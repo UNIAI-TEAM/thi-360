@@ -210,6 +210,17 @@
       "emptyTitle": "Không có tài khoản nào",
       "errorDescription": "Không tải được danh sách. Hãy thử lại.",
       "errorTitle": "Lỗi tải dữ liệu",
+      "sampleNames": {
+        "content": "Quản trị nội dung",
+        "ops": "Vận hành",
+        "student3": "Học viên 03",
+        "student4": "Học viên 04"
+      },
+      "sampleRoles": {
+        "content": "Quản trị nội dung",
+        "ops": "Vận hành / CSKH",
+        "student": "Học viên"
+      },
       "selectAll": "Chọn tất cả dòng",
       "selectRow": "Chọn tài khoản {name}",
       "stateData": "Có dữ liệu",

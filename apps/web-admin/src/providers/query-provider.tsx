@@ -10,7 +10,7 @@ import {
 } from "@thi360/web-kit/client";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { clearSessionBestEffort, refreshSession } from "@/features/session/api";
 import { redirectToLogin } from "@/lib/auth-redirect";
 import { createQueryClient, getErrorStatus } from "@/lib/api/query-client";
@@ -66,9 +66,10 @@ export function QueryProvider({
       clearStaleUnauthorizedMarker(window.location.href);
     }
   }, [guard, pathname]);
+  const forbiddenMessageRef = useRef(t("forbiddenToast"));
+  forbiddenMessageRef.current = t("forbiddenToast");
 
   const [client] = useState(() => {
-    const forbiddenMessage = t("forbiddenToast");
     const recovery = createUnauthorizedRecovery({
       refreshSession,
       clearSessionBestEffort,
@@ -87,7 +88,7 @@ export function QueryProvider({
         const alreadyRetried = readRetryMarker() === currentHref;
         if (alreadyRetried) {
           writeRetryMarker(null);
-          notify.error(forbiddenMessage);
+          notify.error(forbiddenMessageRef.current);
           router.replace(FORBIDDEN_PATH);
           return;
         }
@@ -104,7 +105,7 @@ export function QueryProvider({
               redirectToLogin();
               return;
             }
-            notify.error(forbiddenMessage);
+            notify.error(forbiddenMessageRef.current);
             router.replace(FORBIDDEN_PATH);
           });
       },

@@ -57,17 +57,17 @@ interface SampleAccount {
   id: string;
   code: string;
   username: string;
-  fullName: string;
-  role: string;
+  nameKey: "content" | "ops" | "student3" | "student4";
+  roleKey: "content" | "ops" | "student";
   status: "success" | "warning" | "danger" | "neutral";
   statusKey: "active" | "pending" | "locked" | "inactive";
 }
 
 const SAMPLE_ROWS: SampleAccount[] = [
-  { id: "1", code: "U000001", username: "content.admin", fullName: "Quản trị nội dung", role: "Quản trị nội dung", status: "success", statusKey: "active" },
-  { id: "2", code: "U000002", username: "ops.admin", fullName: "Vận hành", role: "Vận hành / CSKH", status: "success", statusKey: "active" },
-  { id: "3", code: "U000005", username: "student03", fullName: "Học viên 03", role: "Học viên", status: "warning", statusKey: "pending" },
-  { id: "4", code: "U000006", username: "student04", fullName: "Học viên 04", role: "Học viên", status: "danger", statusKey: "locked" },
+  { id: "1", code: "U000001", username: "content.admin", nameKey: "content", roleKey: "content", status: "success", statusKey: "active" },
+  { id: "2", code: "U000002", username: "ops.admin", nameKey: "ops", roleKey: "ops", status: "success", statusKey: "active" },
+  { id: "3", code: "U000005", username: "student03", nameKey: "student3", roleKey: "student", status: "warning", statusKey: "pending" },
+  { id: "4", code: "U000006", username: "student04", nameKey: "student4", roleKey: "student", status: "danger", statusKey: "locked" },
 ];
 
 type TableState = "data" | "loading" | "empty" | "error";
@@ -104,8 +104,18 @@ export function DevUiGallery() {
   const columns: TableProps<SampleAccount>["columns"] = [
     { accessorKey: "code", header: t("table.colCode") },
     { accessorKey: "username", header: t("table.colUsername") },
-    { accessorKey: "fullName", header: t("table.colFullName") },
-    { accessorKey: "role", header: t("table.colRole"), enableSorting: false },
+    {
+      id: "fullName",
+      header: t("table.colFullName"),
+      accessorFn: (row) => t(`table.sampleNames.${row.nameKey}`),
+      cell: ({ row }) => t(`table.sampleNames.${row.original.nameKey}`),
+    },
+    {
+      id: "role",
+      header: t("table.colRole"),
+      enableSorting: false,
+      cell: ({ row }) => t(`table.sampleRoles.${row.original.roleKey}`),
+    },
     {
       id: "status",
       header: t("table.colStatus"),
