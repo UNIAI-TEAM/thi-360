@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
@@ -34,6 +35,7 @@ import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
 import vn.unicom.thi360.shared.security.RateLimitFilter;
 
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @TestPropertySource(properties = "thi360.cookie.domain=.thi360.vn")
 class AuthRedirectAndLogoutCookieIT extends AbstractKeycloakIntegrationTest {
 
