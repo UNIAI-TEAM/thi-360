@@ -71,6 +71,9 @@ public class RoleService {
               AND u.deleted_at IS NULL
             """;
 
+    private static final String COUNT_ALL_ROLE_ASSIGNMENTS_SQL =
+            "SELECT COUNT(*) FROM identity.user_role WHERE role_id = ?";
+
     private static final String ROLE_PERMISSION_CODES_SQL =
             """
             SELECT p.code
@@ -341,8 +344,8 @@ public class RoleService {
         if (role.isSystem()) {
             throw new ConflictException(ERROR_ROLE_IS_SYSTEM);
         }
-        long userCount = countRoleUsers(roleId);
-        if (userCount > 0) {
+        long assignmentCount = countAllRoleAssignments(roleId);
+        if (assignmentCount > 0) {
             throw new ConflictException(ERROR_ROLE_IN_USE);
         }
 
@@ -519,6 +522,11 @@ public class RoleService {
 
     private long countRoleUsers(UUID roleId) {
         Long count = jdbcTemplate.queryForObject(COUNT_ROLE_USERS_SQL, Long.class, roleId);
+        return count == null ? 0L : count;
+    }
+
+    private long countAllRoleAssignments(UUID roleId) {
+        Long count = jdbcTemplate.queryForObject(COUNT_ALL_ROLE_ASSIGNMENTS_SQL, Long.class, roleId);
         return count == null ? 0L : count;
     }
 

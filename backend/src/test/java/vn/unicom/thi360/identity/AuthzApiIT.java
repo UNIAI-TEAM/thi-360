@@ -541,6 +541,28 @@ class AuthzApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.permissionCodes", containsInAnyOrder("ROLE.VIEW", "ROLE.MODIFY")));
     }
 
+    @Test
+    void deleteRole_whenHeldOnlyBySoftDeletedUser_returnsConflictRoleInUseAndKeepsRoleIntact()
+            throws Exception {
+        Role customRole = createCustomRole(
+                "DEL_SOFT_" + suffix(), "Soft Deleted Holder Role", Access.MANAGE, RoleStatus.ACTIVE);
+        UserAccount softDeleted = createUser("soft.holder." + suffix(), UserStatus.INACTIVE, Instant.now());
+        userRoleRepository.save(new UserRole(softDeleted.getId(), customRole.getId(), null, Instant.now()));
+
+        mockMvc.perform(delete("/api/v1/admin/roles/{id}", customRole.getId())
+                        .with(asPlatformAdmin()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ROLE_IN_USE"));
+
+        assertThat(roleRepository.findById(customRole.getId())).isPresent();
+        Integer assignments = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM identity.user_role WHERE role_id = ? AND user_id = ?",
+                Integer.class,
+                customRole.getId(),
+                softDeleted.getId());
+        assertThat(assignments).isEqualTo(1);
+    }
+
     private UserAccount createUser(String username, UserStatus status, Instant deletedAt) {
         UUID id = Ids.newId();
         long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
