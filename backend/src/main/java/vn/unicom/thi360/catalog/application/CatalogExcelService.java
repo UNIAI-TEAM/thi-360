@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -76,6 +77,8 @@ public class CatalogExcelService {
     public static final long MAX_FILE_BYTES = 5L * 1024L * 1024L;
     public static final int MAX_IMPORT_ROWS = 5_000;
     private static final long MAX_TREE_NODES = 50_000L;
+    private static final long MAX_MERGED_REGION_AREA = 50_000L;
+    private static final int MAX_MERGED_REGIONS = 10_000;
     private static final Duration PREVIEW_TTL = Duration.ofHours(2);
     private static final String MODULE = "CATALOG";
 
@@ -743,16 +746,33 @@ public class CatalogExcelService {
             nameViCols[d] = nameViIdx;
             nameEnCols[d] = nameEnIdx == null ? -1 : nameEnIdx;
         }
+        Set<Integer> allowedCols = new HashSet<>();
+        for (int c : refCols) {
+            if (c >= 0) {
+                allowedCols.add(c);
+            }
+        }
+        for (int c : codeCols) {
+            allowedCols.add(c);
+        }
+        for (int c : nameViCols) {
+            allowedCols.add(c);
+        }
+        for (int c : nameEnCols) {
+            if (c >= 0) {
+                allowedCols.add(c);
+            }
+        }
 
-        Map<CellKey, String> mergedValues = buildMergedValueMap(sheet, formatter);
+        Map<CellKey, String> mergedValues = buildMergedValueMap(sheet, formatter, allowedCols);
         Map<String, ExistingTreeNode> existingByCode = loadExistingTreeNodes(group.getId());
         Map<UUID, Map<String, UUID>> activeRefItemsByGroup = loadActiveRefItemsByGroup(refGroups);
 
-        // Maintain staged nodes introduced across rows in this file
+        // Maintain staged nodes introduced across rows in this file (both reused and new)
         Map<String, StagedNodeTracker> stagedByCode = new HashMap<>();
         List<StagedTreeNode> orderedStagedNodes = new ArrayList<>();
         Set<String> reusedExistingCodes = new HashSet<>();
-        Map<String, Set<UUID>> rootRefsByCodeNorm = new LinkedHashMap<>();
+        Map<String, Map<UUID, StagedRootRefEntry>> rootRefsByCodeNorm = new LinkedHashMap<>();
         List<CatalogImportRowError> errors = new ArrayList<>();
         int totalRows = 0;
         int validRows = 0;
@@ -826,13 +846,22 @@ public class CatalogExcelService {
             }
             for (int d = firstExplicit; d <= lastExplicit; d++) {
                 LevelCell raw = rawLevels[d];
-                if (raw.code() == null
-                        && raw.nameVi() == null
-                        && raw.nameEn() == null
-                        && d < lastExplicit
+                if (d < lastExplicit
                         && prevLevels[d] != null
                         && ancestorsMatchPrev(resolved, prevLevels, d)) {
-                    resolved[d] = prevLevels[d];
+                    if (raw.code() == null && raw.nameVi() == null && raw.nameEn() == null) {
+                        resolved[d] = prevLevels[d];
+                    } else if (raw.code() != null
+                            && prevLevels[d].code() != null
+                            && CatalogNormalizer.normalizeCode(raw.code())
+                                    .equals(CatalogNormalizer.normalizeCode(prevLevels[d].code()))) {
+                        resolved[d] = new LevelCell(
+                                raw.code(),
+                                raw.nameVi() != null ? raw.nameVi() : prevLevels[d].nameVi(),
+                                raw.nameEn() != null ? raw.nameEn() : prevLevels[d].nameEn());
+                    } else {
+                        resolved[d] = raw;
+                    }
                 } else {
                     resolved[d] = raw;
                 }
@@ -848,7 +877,8 @@ public class CatalogExcelService {
             UUID parentExistingId = null;
             boolean parentInactiveInDb = false;
 
-            List<StagedTreeNode> rowNewNodes = new ArrayList<>();
+            List<StagedTreeNode> rowStagedNodes = new ArrayList<>();
+            Map<String, StagedNodeTracker> rowStagedByCode = new HashMap<>();
             List<String> rowReusedCodes = new ArrayList<>();
             for (int d = 0; d <= lastExplicit; d++) {
                 int depth = d + 1;
@@ -896,6 +926,21 @@ public class CatalogExcelService {
                         // Child might be new under an inactive existing parent
                         parentInactiveInDb = true;
                     }
+                    if (!stagedByCode.containsKey(codeNorm) && !rowStagedByCode.containsKey(codeNorm)) {
+                        rowStagedNodes.add(new StagedTreeNode(
+                                rowNo,
+                                colCode,
+                                true,
+                                existing.id(),
+                                existing.parentId(),
+                                cell.code(),
+                                codeNorm,
+                                cell.nameVi(),
+                                cell.nameEn(),
+                                (short) depth,
+                                parentCodeNorm));
+                        rowStagedByCode.put(codeNorm, new StagedNodeTracker((short) depth, parentCodeNorm));
+                    }
                     rowReusedCodes.add(codeNorm);
                     parentCodeNorm = codeNorm;
                     parentExistingId = existing.id();
@@ -909,6 +954,9 @@ public class CatalogExcelService {
                         break;
                     }
                     StagedNodeTracker staged = stagedByCode.get(codeNorm);
+                    if (staged == null) {
+                        staged = rowStagedByCode.get(codeNorm);
+                    }
                     if (staged != null) {
                         if (staged.depth() != depth || !Objects.equals(staged.parentCodeNorm(), parentCodeNorm)) {
                             errors.add(new CatalogImportRowError(
@@ -920,13 +968,19 @@ public class CatalogExcelService {
                         }
                     } else {
                         StagedTreeNode newNode = new StagedTreeNode(
+                                rowNo,
+                                colCode,
+                                false,
+                                null,
+                                null,
                                 cell.code(),
                                 codeNorm,
                                 cell.nameVi(),
                                 cell.nameEn(),
                                 (short) depth,
                                 parentCodeNorm);
-                        rowNewNodes.add(newNode);
+                        rowStagedNodes.add(newNode);
+                        rowStagedByCode.put(codeNorm, new StagedNodeTracker((short) depth, parentCodeNorm));
                     }
                     parentCodeNorm = codeNorm;
                     parentExistingId = null;
@@ -934,7 +988,7 @@ public class CatalogExcelService {
             }
 
             // Validate linked-catalog codes
-            Set<UUID> rowRefIds = new LinkedHashSet<>();
+            List<StagedRootRefEntry> rowRefEntries = new ArrayList<>();
             for (int i = 0; i < refGroups.size(); i++) {
                 String rawRefCell = rawRefCells[i];
                 if (rawRefCell == null) {
@@ -956,20 +1010,24 @@ public class CatalogExcelService {
                                 "CATALOG_REF_INVALID",
                                 "Giá trị liên kết '" + trimmedToken + "' không tồn tại hoặc đã ngừng trong " + refGroup.nameVi()));
                     } else {
-                        rowRefIds.add(refItemId);
+                        rowRefEntries.add(new StagedRootRefEntry(refItemId, rowNo, refGroup.code(), trimmedToken));
                     }
                 }
             }
 
             if (errors.size() == errBefore) {
-                for (StagedTreeNode n : rowNewNodes) {
+                for (StagedTreeNode n : rowStagedNodes) {
                     stagedByCode.put(n.codeNormalized(), new StagedNodeTracker(n.depth(), n.parentCodeNormalized()));
                     orderedStagedNodes.add(n);
                 }
                 reusedExistingCodes.addAll(rowReusedCodes);
-                if (!rowRefIds.isEmpty()) {
+                if (!rowRefEntries.isEmpty()) {
                     String rootCodeNorm = CatalogNormalizer.normalizeCode(resolved[0].code());
-                    rootRefsByCodeNorm.computeIfAbsent(rootCodeNorm, ignored -> new LinkedHashSet<>()).addAll(rowRefIds);
+                    Map<UUID, StagedRootRefEntry> rootMap =
+                            rootRefsByCodeNorm.computeIfAbsent(rootCodeNorm, ignored -> new LinkedHashMap<>());
+                    for (StagedRootRefEntry entry : rowRefEntries) {
+                        rootMap.putIfAbsent(entry.refItemId(), entry);
+                    }
                 }
                 prevLevels = resolved;
                 validRows++;
@@ -978,12 +1036,13 @@ public class CatalogExcelService {
             }
         }
 
-        if (existingByCode.size() + orderedStagedNodes.size() > MAX_TREE_NODES) {
+        long newNodeCount = orderedStagedNodes.stream().filter(n -> !n.reused()).count();
+        if (existingByCode.size() + newNodeCount > MAX_TREE_NODES) {
             throw new ConflictException("CATALOG_TREE_TOO_LARGE");
         }
 
         List<StagedRootRefs> rootRefsList = rootRefsByCodeNorm.entrySet().stream()
-                .map(e -> new StagedRootRefs(e.getKey(), List.copyOf(e.getValue())))
+                .map(e -> new StagedRootRefs(e.getKey(), List.copyOf(e.getValue().values())))
                 .toList();
 
         return new StagedImportPayload(
@@ -1061,52 +1120,197 @@ public class CatalogExcelService {
             UUID actorId,
             Instant now) {
         Map<String, ExistingTreeNode> existingByCode = loadExistingTreeNodes(group.getId());
-        if (existingByCode.size() + staged.treeNodes().size() > MAX_TREE_NODES) {
+        Map<UUID, ExistingTreeNode> existingById = new HashMap<>(existingByCode.size());
+        for (ExistingTreeNode existing : existingByCode.values()) {
+            existingById.put(existing.id(), existing);
+        }
+        Set<UUID> inactiveEffectiveInDb = existingById.isEmpty()
+                ? Set.of()
+                : catalogSupportDao.findInactiveEffectiveItemIds(group.getId(), existingById.keySet());
+
+        long stagedNewCount = staged.treeNodes().stream().filter(n -> !n.reused()).count();
+        if (existingByCode.size() + stagedNewCount > MAX_TREE_NODES) {
             throw new ConflictException("CATALOG_TREE_TOO_LARGE");
         }
-
-        int nextValue = Math.max(group.getLastValue(), catalogItemRepository.findMaxValueByGroupId(group.getId())) + 1;
-        Map<UUID, Integer> nextOrderByParent = new HashMap<>();
 
         List<StagedTreeNode> sortedNodes = new ArrayList<>(staged.treeNodes());
         sortedNodes.sort((a, b) -> Short.compare(a.depth(), b.depth()));
 
-        Map<String, ExistingTreeNode> resolvedNodes = new HashMap<>(existingByCode);
-        List<CatalogItem> createdItems = new ArrayList<>();
-        int reusedCount = staged.reusedNodeCount();
+        Map<String, PlannedTreeNode> plannedByCode = new HashMap<>();
+        for (Map.Entry<String, ExistingTreeNode> entry : existingByCode.entrySet()) {
+            ExistingTreeNode ex = entry.getValue();
+            boolean effectiveActive = ex.status() == CatalogStatus.ACTIVE && !inactiveEffectiveInDb.contains(ex.id());
+            plannedByCode.put(
+                    entry.getKey(),
+                    new PlannedTreeNode(ex.id(), ex.parentId(), ex.depth(), ex.path(), effectiveActive, false));
+        }
+
+        List<CatalogImportRowError> recheckErrors = new ArrayList<>();
+        Set<String> failedBranchCodes = new HashSet<>();
+        List<PlannedNewTreeNode> plannedCreates = new ArrayList<>();
+        int reusedCount = 0;
 
         for (StagedTreeNode node : sortedNodes) {
-            ExistingTreeNode parent = node.parentCodeNormalized() == null
+            int rowNo = node.rowNo() > 0 ? node.rowNo() : 2;
+            String col = node.column() != null ? node.column() : "level" + node.depth() + "Code";
+
+            if (node.parentCodeNormalized() != null && failedBranchCodes.contains(node.parentCodeNormalized())) {
+                failedBranchCodes.add(node.codeNormalized());
+                continue;
+            }
+
+            PlannedTreeNode parent = node.parentCodeNormalized() == null
                     ? null
-                    : resolvedNodes.get(node.parentCodeNormalized());
+                    : plannedByCode.get(node.parentCodeNormalized());
+            if (node.parentCodeNormalized() != null && parent == null) {
+                failedBranchCodes.add(node.codeNormalized());
+                recheckErrors.add(new CatalogImportRowError(
+                        rowNo, col, "PARENT_REQUIRED", "Không tìm thấy nút cha " + node.parentCodeNormalized()));
+                continue;
+            }
             UUID parentId = parent == null ? null : parent.id();
 
-            ExistingTreeNode alreadyInDb = resolvedNodes.get(node.codeNormalized());
-            if (alreadyInDb != null) {
-                boolean sameParent = node.depth() == 1
-                        ? alreadyInDb.parentId() == null
-                        : Objects.equals(alreadyInDb.parentId(), parentId);
-                if (alreadyInDb.depth() == node.depth() && sameParent) {
-                    reusedCount++;
+            if (node.reused()) {
+                ExistingTreeNode byId = node.expectedId() == null ? null : existingById.get(node.expectedId());
+                ExistingTreeNode byCode = existingByCode.get(node.codeNormalized());
+                if (node.expectedId() != null && byId == null) {
+                    failedBranchCodes.add(node.codeNormalized());
+                    recheckErrors.add(new CatalogImportRowError(
+                            rowNo, col, "CATALOG_ITEM_NOT_FOUND", "Nút danh mục đã bị xóa trước khi xác nhận"));
                     continue;
                 }
-                throw new CatalogConflictException("IMPORT_HAS_ERRORS", List.of(
-                        new FieldError("code", "CATALOG_CODE_TAKEN", "Mã nút " + node.code() + " đã tồn tại ở vị trí khác")));
+                if (byCode == null || (byId != null && !byCode.id().equals(byId.id()))) {
+                    failedBranchCodes.add(node.codeNormalized());
+                    recheckErrors.add(new CatalogImportRowError(
+                            rowNo,
+                            col,
+                            "CATALOG_CODE_TAKEN",
+                            schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Nút danh mục đã bị đổi mã trước khi xác nhận")));
+                    continue;
+                }
+                boolean sameParent = node.depth() == 1
+                        ? byCode.parentId() == null
+                        : (parentId != null && Objects.equals(byCode.parentId(), parentId));
+                boolean expectedParentMatches = node.expectedParentId() == null
+                        || Objects.equals(byCode.parentId(), node.expectedParentId());
+                if (byCode.depth() != node.depth() || !sameParent || !expectedParentMatches) {
+                    failedBranchCodes.add(node.codeNormalized());
+                    recheckErrors.add(new CatalogImportRowError(
+                            rowNo,
+                            col,
+                            "CATALOG_CODE_TAKEN",
+                            schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã nút đã tồn tại ở vị trí khác")));
+                    continue;
+                }
+                reusedCount++;
+            } else {
+                PlannedTreeNode alreadyInDb = plannedByCode.get(node.codeNormalized());
+                if (alreadyInDb != null) {
+                    boolean sameParent = node.depth() == 1
+                            ? alreadyInDb.parentId() == null
+                            : (parentId != null && Objects.equals(alreadyInDb.parentId(), parentId));
+                    if (alreadyInDb.depth() == node.depth() && sameParent) {
+                        reusedCount++;
+                        continue;
+                    }
+                    failedBranchCodes.add(node.codeNormalized());
+                    recheckErrors.add(new CatalogImportRowError(
+                            rowNo,
+                            col,
+                            "CATALOG_CODE_TAKEN",
+                            schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã nút đã tồn tại ở vị trí khác")));
+                    continue;
+                }
+                if (parent != null && !parent.effectiveActive()) {
+                    failedBranchCodes.add(node.codeNormalized());
+                    recheckErrors.add(new CatalogImportRowError(
+                            rowNo,
+                            col,
+                            "CATALOG_PARENT_INACTIVE",
+                            schemaHelper.rowMessage("CATALOG_PARENT_INACTIVE", "Nút cha đang ngừng sử dụng")));
+                    continue;
+                }
+                UUID itemId = Ids.newId();
+                String path = parent == null ? "/" + itemId + "/" : parent.path() + itemId + "/";
+                PlannedTreeNode plannedNew = new PlannedTreeNode(itemId, parentId, node.depth(), path, true, true);
+                plannedByCode.put(node.codeNormalized(), plannedNew);
+                plannedCreates.add(new PlannedNewTreeNode(node, itemId, parentId, path));
             }
-            if (parent != null && parent.status() != CatalogStatus.ACTIVE) {
-                throw new CatalogConflictException("IMPORT_HAS_ERRORS", List.of(
-                        new FieldError("parentId", "CATALOG_PARENT_INACTIVE", "Nút cha đang ngừng sử dụng")));
+        }
+
+        // Pre-validate add-only refs on root nodes before performing any writes
+        List<PlannedRootRefAdditions> plannedRefAdditions = new ArrayList<>();
+        if (!staged.rootRefs().isEmpty()) {
+            Set<UUID> allowedRefGroupIds = new HashSet<>();
+            for (CatalogGroupRefResponse refGroup : catalogSupportDao
+                    .loadGroupRefs(List.of(group.getId()))
+                    .getOrDefault(group.getId(), List.of())) {
+                allowedRefGroupIds.add(refGroup.refGroupId());
             }
 
-            UUID itemId = Ids.newId();
-            String path = parent == null ? "/" + itemId + "/" : parent.path() + itemId + "/";
+            Set<UUID> allStagedRefIds = new LinkedHashSet<>();
+            for (StagedRootRefs rootRefs : staged.rootRefs()) {
+                for (StagedRootRefEntry entry : rootRefs.refs()) {
+                    allStagedRefIds.add(entry.refItemId());
+                }
+            }
+            Map<UUID, RefItemValidationInfo> refInfoById = loadRefItemValidationInfo(allStagedRefIds);
+
+            for (StagedRootRefs rootRefs : staged.rootRefs()) {
+                if (failedBranchCodes.contains(rootRefs.rootCodeNormalized())) {
+                    continue;
+                }
+                PlannedTreeNode rootNode = plannedByCode.get(rootRefs.rootCodeNormalized());
+                if (rootNode == null || rootRefs.refs().isEmpty()) {
+                    continue;
+                }
+                Set<UUID> existingOwnRefIds = new HashSet<>();
+                if (!rootNode.newlyCreated()) {
+                    for (CatalogItemRef existingRef : catalogItemRefRepository.findByIdItemId(rootNode.id())) {
+                        existingOwnRefIds.add(existingRef.getRefItemId());
+                    }
+                }
+                List<UUID> toAdd = new ArrayList<>();
+                for (StagedRootRefEntry entry : rootRefs.refs()) {
+                    if (existingOwnRefIds.contains(entry.refItemId())) {
+                        continue;
+                    }
+                    RefItemValidationInfo info = refInfoById.get(entry.refItemId());
+                    if (info == null
+                            || !allowedRefGroupIds.contains(info.groupId())
+                            || info.itemStatus() != CatalogStatus.ACTIVE
+                            || info.groupStatus() != CatalogStatus.ACTIVE) {
+                        recheckErrors.add(new CatalogImportRowError(
+                                entry.rowNo() > 0 ? entry.rowNo() : 2,
+                                entry.column() != null ? entry.column() : "refItemIds",
+                                "CATALOG_REF_INVALID",
+                                "Giá trị liên kết '" + entry.refCode() + "' không hợp lệ, đã bị xóa hoặc đã ngừng sử dụng"));
+                    } else {
+                        toAdd.add(entry.refItemId());
+                    }
+                }
+                if (!toAdd.isEmpty()) {
+                    plannedRefAdditions.add(new PlannedRootRefAdditions(rootNode.id(), rootRefs.rootCodeNormalized(), toAdd));
+                }
+            }
+        }
+
+        if (!recheckErrors.isEmpty()) {
+            throw new CatalogConflictException("IMPORT_HAS_ERRORS", toRowFieldErrors(recheckErrors));
+        }
+
+        int nextValue = Math.max(group.getLastValue(), catalogItemRepository.findMaxValueByGroupId(group.getId())) + 1;
+        Map<UUID, Integer> nextOrderByParent = new HashMap<>();
+        List<CatalogItem> createdItems = new ArrayList<>(plannedCreates.size());
+        for (PlannedNewTreeNode planned : plannedCreates) {
+            StagedTreeNode node = planned.staged();
             int order = nextOrderByParent.computeIfAbsent(
-                    parentId,
+                    planned.parentId(),
                     pid -> catalogItemRepository.findMaxDisplayOrder(group.getId(), pid) + 1);
-            nextOrderByParent.put(parentId, order + 1);
+            nextOrderByParent.put(planned.parentId(), order + 1);
 
-            CatalogItem item = new CatalogItem(
-                    itemId,
+            createdItems.add(new CatalogItem(
+                    planned.itemId(),
                     group.getId(),
                     node.code(),
                     nextValue++,
@@ -1116,15 +1320,11 @@ public class CatalogExcelService {
                     order,
                     CatalogStatus.ACTIVE,
                     false,
-                    parentId,
+                    planned.parentId(),
                     node.depth(),
-                    path,
+                    planned.path(),
                     now,
-                    actorId);
-            createdItems.add(item);
-            resolvedNodes.put(
-                    node.codeNormalized(),
-                    new ExistingTreeNode(itemId, parentId, node.depth(), path, CatalogStatus.ACTIVE));
+                    actorId));
         }
 
         if (!createdItems.isEmpty()) {
@@ -1136,30 +1336,21 @@ public class CatalogExcelService {
             }
         }
 
-        // Add-only refs on root nodes
-        for (StagedRootRefs rootRefs : staged.rootRefs()) {
-            ExistingTreeNode rootNode = resolvedNodes.get(rootRefs.rootCodeNormalized());
-            if (rootNode == null || rootRefs.refItemIds().isEmpty()) {
-                continue;
+        for (PlannedRootRefAdditions additions : plannedRefAdditions) {
+            List<CatalogItemRef> newRefs = new ArrayList<>(additions.refItemIds().size());
+            for (UUID refItemId : additions.refItemIds()) {
+                newRefs.add(new CatalogItemRef(additions.rootItemId(), refItemId, actorId, now));
             }
-            Set<UUID> existingOwnRefIds = new HashSet<>();
-            for (CatalogItemRef existingRef : catalogItemRefRepository.findByIdItemId(rootNode.id())) {
-                existingOwnRefIds.add(existingRef.getRefItemId());
-            }
-            List<CatalogItemRef> newRefs = new ArrayList<>();
-            for (UUID refItemId : rootRefs.refItemIds()) {
-                if (!existingOwnRefIds.contains(refItemId)) {
-                    newRefs.add(new CatalogItemRef(rootNode.id(), refItemId, actorId, now));
-                }
-            }
-            if (!newRefs.isEmpty()) {
-                catalogItemRefRepository.saveAll(newRefs);
-                catalogItemRefRepository.flush();
-                auditRecorder.record(AuditEvent.builder(MODULE, "CATALOG_ITEM_REFS_UPDATED")
-                        .target("CATALOG_ITEM", rootNode.id().toString(), rootRefs.rootCodeNormalized())
-                        .after(Map.of("addedRefItemIds", newRefs.stream().map(r -> r.getRefItemId().toString()).toList()))
-                        .build());
-            }
+            catalogItemRefRepository.saveAll(newRefs);
+            catalogItemRefRepository.flush();
+            auditRecorder.record(AuditEvent.builder(MODULE, "CATALOG_ITEM_REFS_UPDATED")
+                    .target("CATALOG_ITEM", additions.rootItemId().toString(), additions.rootCodeNormalized())
+                    .after(Map.of("addedRefItemIds", newRefs.stream().map(r -> r.getRefItemId().toString()).toList()))
+                    .build());
+        }
+
+        if (staged.reusedNodeCount() > reusedCount && reusedCount == 0 && sortedNodes.stream().noneMatch(StagedTreeNode::reused)) {
+            reusedCount = staged.reusedNodeCount();
         }
 
         return new CatalogImportResultResponse(
@@ -1213,6 +1404,32 @@ public class CatalogExcelService {
                             .put(rs.getString("code_normalized"), rs.getObject("id", UUID.class));
                 },
                 refGroupIds.toArray());
+        return result;
+    }
+
+    private Map<UUID, RefItemValidationInfo> loadRefItemValidationInfo(Collection<UUID> refItemIds) {
+        if (refItemIds == null || refItemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = List.copyOf(refItemIds);
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        Map<UUID, RefItemValidationInfo> result = new HashMap<>();
+        jdbcTemplate.query(
+                """
+                SELECT i.id, i.group_id, i.status AS item_status, g.status AS group_status
+                FROM catalog.catalog_item i
+                JOIN catalog.catalog_group g ON g.id = i.group_id
+                WHERE i.id IN (%s)
+                """.formatted(placeholders),
+                rs -> {
+                    result.put(
+                            rs.getObject("id", UUID.class),
+                            new RefItemValidationInfo(
+                                    rs.getObject("group_id", UUID.class),
+                                    CatalogStatus.fromCode(rs.getShort("item_status")),
+                                    CatalogStatus.fromCode(rs.getShort("group_status"))));
+                },
+                ids.toArray());
         return result;
     }
 
@@ -1275,20 +1492,67 @@ public class CatalogExcelService {
         }
     }
 
-    private static Map<CellKey, String> buildMergedValueMap(Sheet sheet, DataFormatter formatter) {
+    private Map<CellKey, String> buildMergedValueMap(
+            Sheet sheet, DataFormatter formatter, Set<Integer> allowedCols) {
+        int numRegions = sheet.getNumMergedRegions();
+        if (numRegions > MAX_MERGED_REGIONS) {
+            throw new ValidationException("IMPORT_MERGED_REGION_TOO_LARGE", null, List.of(
+                    new FieldError(
+                            "file",
+                            "IMPORT_MERGED_REGION_TOO_LARGE",
+                            schemaHelper.rowMessage("IMPORT_MERGED_REGION_TOO_LARGE", "Vùng ô gộp vượt quá giới hạn cho phép"))));
+        }
+        int maxSheetRow = sheet.getLastRowNum();
         Map<CellKey, String> map = new HashMap<>();
+        long expandedCells = 0L;
         for (CellRangeAddress region : sheet.getMergedRegions()) {
-            Row firstRow = sheet.getRow(region.getFirstRow());
-            if (firstRow == null) {
+            int firstRow = region.getFirstRow();
+            int lastRow = region.getLastRow();
+            int firstCol = region.getFirstColumn();
+            int lastCol = region.getLastColumn();
+            if (lastRow < firstRow || lastCol < firstCol) {
                 continue;
             }
-            Cell topLeft = firstRow.getCell(region.getFirstColumn());
+            if (lastRow < 1) {
+                continue;
+            }
+            long rowSpan = (long) lastRow - firstRow + 1L;
+            long colSpan = (long) lastCol - firstCol + 1L;
+            long rawArea = rowSpan * colSpan;
+            if (rowSpan > MAX_IMPORT_ROWS || rawArea > MAX_MERGED_REGION_AREA) {
+                throw new ValidationException("IMPORT_MERGED_REGION_TOO_LARGE", null, List.of(
+                        new FieldError(
+                                "file",
+                                "IMPORT_MERGED_REGION_TOO_LARGE",
+                                schemaHelper.rowMessage("IMPORT_MERGED_REGION_TOO_LARGE", "Vùng ô gộp vượt quá giới hạn cho phép"))));
+            }
+            Row firstRowObj = sheet.getRow(firstRow);
+            if (firstRowObj == null) {
+                continue;
+            }
+            Cell topLeft = firstRowObj.getCell(firstCol);
             String val = topLeft == null ? "" : formatter.formatCellValue(topLeft);
             if (val == null || val.isBlank()) {
                 continue;
             }
-            for (int r = region.getFirstRow(); r <= region.getLastRow(); r++) {
-                for (int c = region.getFirstColumn(); c <= region.getLastColumn(); c++) {
+            int clippedStartRow = Math.max(1, firstRow);
+            int clippedEndRow = Math.min(maxSheetRow, lastRow);
+            if (clippedStartRow > clippedEndRow) {
+                continue;
+            }
+            for (int c : allowedCols) {
+                if (c < firstCol || c > lastCol) {
+                    continue;
+                }
+                for (int r = clippedStartRow; r <= clippedEndRow; r++) {
+                    expandedCells++;
+                    if (expandedCells > MAX_MERGED_REGION_AREA) {
+                        throw new ValidationException("IMPORT_MERGED_REGION_TOO_LARGE", null, List.of(
+                                new FieldError(
+                                        "file",
+                                        "IMPORT_MERGED_REGION_TOO_LARGE",
+                                        schemaHelper.rowMessage("IMPORT_MERGED_REGION_TOO_LARGE", "Vùng ô gộp vượt quá giới hạn cho phép"))));
+                    }
                     map.put(new CellKey(r, c), val);
                 }
             }
@@ -1420,6 +1684,22 @@ public class CatalogExcelService {
             UUID id, UUID parentId, short depth, String path, CatalogStatus status) {
     }
 
+    private record PlannedTreeNode(
+            UUID id, UUID parentId, short depth, String path, boolean effectiveActive, boolean newlyCreated) {
+    }
+
+    private record PlannedNewTreeNode(
+            StagedTreeNode staged, UUID itemId, UUID parentId, String path) {
+    }
+
+    private record PlannedRootRefAdditions(
+            UUID rootItemId, String rootCodeNormalized, List<UUID> refItemIds) {
+    }
+
+    private record RefItemValidationInfo(
+            UUID groupId, CatalogStatus itemStatus, CatalogStatus groupStatus) {
+    }
+
     private record StagedNodeTracker(short depth, String parentCodeNorm) {
     }
 
@@ -1439,6 +1719,11 @@ public class CatalogExcelService {
     }
 
     record StagedTreeNode(
+            int rowNo,
+            String column,
+            boolean reused,
+            UUID expectedId,
+            UUID expectedParentId,
             String code,
             String codeNormalized,
             String nameVi,
@@ -1447,7 +1732,10 @@ public class CatalogExcelService {
             String parentCodeNormalized) {
     }
 
-    record StagedRootRefs(String rootCodeNormalized, List<UUID> refItemIds) {
+    record StagedRootRefEntry(UUID refItemId, int rowNo, String column, String refCode) {
+    }
+
+    record StagedRootRefs(String rootCodeNormalized, List<StagedRootRefEntry> refs) {
     }
 
     record StagedImportPayload(
