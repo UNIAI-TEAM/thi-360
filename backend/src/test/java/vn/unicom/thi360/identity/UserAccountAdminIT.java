@@ -1887,6 +1887,88 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.username").value(username));
     }
 
+    @Test
+    void r2_3_resetPassword_setPasswordFailure_restoresFlag_persistsBothAuditRowsWithoutPassword_andReturns502()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r2.3.reset." + sfx;
+        String oldPwd = "OldValid@123";
+        String newPwd = "SecretNew@987";
+        UUID userId = createUserViaApi(username, oldPwd, "Reset Durability", null, null);
+        assertThat(userAccountRepository.findById(userId).orElseThrow().isMustChangePassword()).isFalse();
+
+        AtomicBoolean committedBeforeIdpCall = new AtomicBoolean(false);
+        doAnswer(inv -> {
+                    committedBeforeIdpCall.set(
+                            userAccountRepository.findById(userId).orElseThrow().isMustChangePassword());
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR");
+                })
+                .when(keycloakClient)
+                .setPassword(eq(userId), eq(newPwd), eq(false));
+
+        clearInvocations(auditRecorder);
+        try {
+            mockMvc.perform(post("/api/v1/admin/users/{id}/reset-password", userId)
+                            .with(asUser(Permissions.USER_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "password": "%s",
+                                      "mustChangePassword": true,
+                                      "reason": "Keycloak outage during reset"
+                                    }
+                                    """.formatted(newPwd)))
+                    .andExpect(status().isBadGateway())
+                    .andExpect(jsonPath("$.code").value("IDENTITY_PROVIDER_ERROR"));
+        } finally {
+            reset(keycloakClient);
+        }
+
+        // Step (2) committed before Keycloak setPassword, then step (4) restored the previous flag
+        assertThat(committedBeforeIdpCall.get()).isTrue();
+        assertThat(userAccountRepository.findById(userId).orElseThrow().isMustChangePassword()).isFalse();
+
+        // Both audit rows (initial SUCCESS + compensating FAILURE) persisted in outbox without password
+        List<String> auditPayloads = jdbcTemplate.queryForList(
+                """
+                SELECT payload::text
+                FROM shared.outbox_event
+                WHERE topic = 'audit'
+                  AND payload->>'action' = 'USER_PASSWORD_RESET'
+                  AND payload->>'targetId' = ?
+                ORDER BY created_at ASC
+                """,
+                String.class,
+                userId.toString());
+        assertThat(auditPayloads).hasSize(2);
+        JsonNode firstAudit = objectMapper.readTree(auditPayloads.get(0));
+        JsonNode secondAudit = objectMapper.readTree(auditPayloads.get(1));
+        assertThat(firstAudit.get("outcome").asText()).isEqualTo("SUCCESS");
+        assertThat(secondAudit.get("outcome").asText()).isEqualTo("FAILURE");
+        assertThat(secondAudit.get("errorCode").asText()).isEqualTo("IDENTITY_PROVIDER_ERROR");
+        assertThat(auditPayloads).allSatisfy(p -> assertThat(p).doesNotContain(newPwd).doesNotContain(oldPwd));
+        verify(auditRecorder).record(argThat(ev ->
+                ev != null
+                        && "USER_PASSWORD_RESET".equals(ev.action())
+                        && ev.outcome() == vn.unicom.thi360.audit.spi.AuditOutcome.SUCCESS
+                        && ev.after() != null
+                        && Boolean.TRUE.equals(ev.after().get("mustChangePassword"))));
+        verify(auditRecorder).record(argThat(ev ->
+                ev != null
+                        && "USER_PASSWORD_RESET".equals(ev.action())
+                        && ev.outcome() == vn.unicom.thi360.audit.spi.AuditOutcome.FAILURE
+                        && "IDENTITY_PROVIDER_ERROR".equals(ev.errorCode())
+                        && ev.after() != null
+                        && Boolean.FALSE.equals(ev.after().get("mustChangePassword"))));
+
+        // Old password still works
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.78")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"" + oldPwd + "\"}"))
+                .andExpect(status().isOk());
+    }
+
     private UUID createUserViaApi(
             String username, String password, String fullName, String email, List<UUID> roleIds)
             throws Exception {

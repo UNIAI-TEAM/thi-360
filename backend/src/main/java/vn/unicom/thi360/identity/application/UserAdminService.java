@@ -39,6 +39,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEvent;
+import vn.unicom.thi360.audit.spi.AuditOutcome;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.api.BulkUserActionItemResult;
 import vn.unicom.thi360.identity.api.BulkUserActionPreviewResponse;
@@ -640,9 +641,9 @@ public class UserAdminService {
         });
 
         revokeAllSessionsFailClosed(userId);
-        keycloakClient.setPassword(userId, request.password(), false);
 
-        return transactionTemplate.execute(status -> {
+        record ResetPrep(boolean oldMustChange, String username, UserDetailResponse response) {}
+        ResetPrep prep = transactionTemplate.execute(status -> {
             UserAccount user = lockActiveManageableUser(actor, userId);
             boolean oldMustChange = user.isMustChangePassword();
             Instant now = Instant.now(clock);
@@ -667,8 +668,62 @@ public class UserAdminService {
                     trimmedReason);
 
             List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
-            return toDetailResponse(user, roles);
+            return new ResetPrep(oldMustChange, user.getUsername(), toDetailResponse(user, roles));
         });
+
+        try {
+            keycloakClient.setPassword(userId, request.password(), false);
+            return prep.response();
+        } catch (RuntimeException ex) {
+            String errorCode = switch (ex) {
+                case ExternalServiceException ese -> ese.getCode();
+                case ValidationException ve -> ve.getCode();
+                default -> "IDENTITY_PROVIDER_ERROR";
+            };
+            try {
+                requiresNewTx.executeWithoutResult(status -> {
+                    jdbcTemplate.query(
+                            "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE",
+                            rs -> {},
+                            userId);
+                    UserAccount user = userAccountRepository.findById(userId)
+                            .filter(u -> !u.isDeleted())
+                            .orElse(null);
+                    if (user != null && user.isMustChangePassword() != prep.oldMustChange()) {
+                        user.updateMustChangePassword(prep.oldMustChange(), Instant.now(clock), actor.id());
+                        userAccountRepository.saveAndFlush(user);
+                    }
+                    Map<String, Object> compBefore = new LinkedHashMap<>();
+                    Map<String, Object> compAfter = new LinkedHashMap<>();
+                    if (mustChange != prep.oldMustChange()) {
+                        compBefore.put("mustChangePassword", mustChange);
+                        compAfter.put("mustChangePassword", prep.oldMustChange());
+                    }
+                    AuditActorType actorType = actor.realm() == Realm.MASTER
+                            ? AuditActorType.PLATFORM
+                            : AuditActorType.USER;
+                    auditRecorder.record(AuditEvent.builder(MODULE, "USER_PASSWORD_RESET")
+                            .target(TARGET_TYPE, userId.toString(), prep.username())
+                            .before(compBefore.isEmpty() ? null : compBefore)
+                            .after(compAfter.isEmpty() ? null : compAfter)
+                            .reason(trimmedReason)
+                            .outcome(AuditOutcome.FAILURE)
+                            .errorCode(errorCode)
+                            .actor(actor.id(), actor.username(), null, actorType)
+                            .build());
+                });
+            } catch (RuntimeException compEx) {
+                log.atError()
+                        .setCause(compEx)
+                        .addKeyValue("userId", userId.toString())
+                        .addKeyValue("errorCode", errorCode)
+                        .log("Failed to compensate resetPassword after Keycloak failure");
+            }
+            if (ex instanceof ExternalServiceException ese) {
+                throw ese;
+            }
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
     }
 
     public void deleteUser(UUID userId, String reason) {
