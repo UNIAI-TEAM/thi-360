@@ -33,12 +33,6 @@ public class IdempotencyService {
     }
 
     @Transactional
-    @SuppressWarnings("unchecked")
-    public <T> T executeOnce(String key, String scope, Supplier<T> supplier) {
-        return (T) executeOnce(key, scope, Object.class, supplier::get);
-    }
-
-    @Transactional
     public <T> T executeOnce(String key, String scope, Class<T> resultType, Supplier<T> supplier) {
         Objects.requireNonNull(resultType, "resultType must not be null");
         return executeOnceWithJavaType(key, scope, objectMapper.constructType(resultType), supplier);

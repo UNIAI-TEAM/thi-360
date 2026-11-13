@@ -168,4 +168,86 @@ class IdempotencyServiceTests extends AbstractIntegrationTest {
         assertThat(replayCalls.get()).isZero();
         assertThat(replayedAsCurrentType).isEqualTo(new SampleResult("batch-42", 7));
     }
+
+    @Test
+    void executeOnce_replaysDtoRecordThroughEachRemainingTypedSignature() {
+        String scope = "typed-dto-replay";
+
+        // 1. Class<T> signature with DTO record
+        String classKey = "idem-dto-class-" + UUID.randomUUID();
+        AtomicInteger classCalls = new AtomicInteger(0);
+        SampleResult firstClassDto = idempotencyService.executeOnce(
+                classKey,
+                scope,
+                SampleResult.class,
+                () -> {
+                    classCalls.incrementAndGet();
+                    return new SampleResult("dto-class-1", 42);
+                });
+        SampleResult replayedClassDto = idempotencyService.executeOnce(
+                classKey,
+                scope,
+                SampleResult.class,
+                () -> {
+                    classCalls.incrementAndGet();
+                    return new SampleResult("should-not-run", 0);
+                });
+        assertThat(classCalls.get()).isEqualTo(1);
+        assertThat(replayedClassDto)
+                .isInstanceOf(SampleResult.class)
+                .isEqualTo(firstClassDto);
+
+        // 2. TypeReference<T> signature with DTO record
+        String typeRefKey = "idem-dto-typeref-" + UUID.randomUUID();
+        AtomicInteger typeRefCalls = new AtomicInteger(0);
+        SampleResult firstTypeRefDto = idempotencyService.executeOnce(
+                typeRefKey,
+                scope,
+                new TypeReference<SampleResult>() {},
+                () -> {
+                    typeRefCalls.incrementAndGet();
+                    return new SampleResult("dto-typeref-1", 17);
+                });
+        SampleResult replayedTypeRefDto = idempotencyService.executeOnce(
+                typeRefKey,
+                scope,
+                new TypeReference<SampleResult>() {},
+                () -> {
+                    typeRefCalls.incrementAndGet();
+                    return new SampleResult("should-not-run", 0);
+                });
+        assertThat(typeRefCalls.get()).isEqualTo(1);
+        assertThat(replayedTypeRefDto)
+                .isInstanceOf(SampleResult.class)
+                .isEqualTo(firstTypeRefDto);
+
+        // 3. TypeReference<T> signature with generic DTO record containing nested DTO records
+        record BatchEnvelope<T>(String requestId, List<T> items) {
+        }
+        String genericDtoKey = "idem-dto-generic-" + UUID.randomUUID();
+        AtomicInteger genericDtoCalls = new AtomicInteger(0);
+        BatchEnvelope<SampleResult> firstGenericDto = idempotencyService.executeOnce(
+                genericDtoKey,
+                scope,
+                new TypeReference<BatchEnvelope<SampleResult>>() {},
+                () -> {
+                    genericDtoCalls.incrementAndGet();
+                    return new BatchEnvelope<>("req-9", List.of(new SampleResult("nested-1", 3)));
+                });
+        BatchEnvelope<SampleResult> replayedGenericDto = idempotencyService.executeOnce(
+                genericDtoKey,
+                scope,
+                new TypeReference<BatchEnvelope<SampleResult>>() {},
+                () -> {
+                    genericDtoCalls.incrementAndGet();
+                    return new BatchEnvelope<>("should-not-run", List.of());
+                });
+        assertThat(genericDtoCalls.get()).isEqualTo(1);
+        assertThat(replayedGenericDto)
+                .isInstanceOf(BatchEnvelope.class)
+                .isEqualTo(firstGenericDto);
+        assertThat(replayedGenericDto.items())
+                .hasSize(1)
+                .allSatisfy(item -> assertThat(item).isInstanceOf(SampleResult.class));
+    }
 }
