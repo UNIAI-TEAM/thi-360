@@ -6,7 +6,7 @@ const base =
   "inline-flex items-center gap-2 rounded-full border text-caption font-medium whitespace-nowrap";
 
 type ChipCommon = {
-  /** Class nền của chấm màu 8px đứng trước chữ, ví dụ `bg-primary-600`. Không có thì không hiện chấm. */
+  /** Class nền của chấm màu 8px đứng trước chữ, ví dụ `bg-primary-600`. Không có thì không hiện chấm. Chip lọc đang chọn tự đổi chấm sang màu chữ (`on-primary`) để tương phản với nền. */
   dotClassName?: string;
 };
 
@@ -63,7 +63,7 @@ export function Chip(props: ChipProps) {
         base,
         "border-border bg-surface px-4 text-text-secondary transition-colors duration-150 motion-reduce:transition-none",
         "hover:border-border-strong disabled:pointer-events-none disabled:opacity-50",
-        "aria-pressed:border-primary-600 aria-pressed:bg-primary-600 aria-pressed:text-on-primary",
+        "group aria-pressed:border-primary-600 aria-pressed:bg-primary-600 aria-pressed:text-on-primary",
         size === "md" ? "h-10" : "h-8",
         focusRing,
         className,
@@ -77,5 +77,11 @@ export function Chip(props: ChipProps) {
 }
 
 function Dot({ className }: { className: string }) {
-  return <span aria-hidden className={cn("size-2 shrink-0 rounded-full", className)} />;
+  // Chip lọc đang chọn có nền primary-600: chấm đổi sang on-primary để còn thấy được.
+  return (
+    <span
+      aria-hidden
+      className={cn("size-2 shrink-0 rounded-full", className, "group-aria-pressed:bg-on-primary")}
+    />
+  );
 }
