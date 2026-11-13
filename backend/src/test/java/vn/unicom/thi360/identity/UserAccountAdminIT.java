@@ -464,10 +464,28 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         UUID activeClass2 = createTestClass("C2-" + sfx, "Active Class 2", true);
         UUID inactiveClass = createTestClass("CIN-" + sfx, "Inactive Class", false);
 
+        // Non-empty classIds without CLASS.MODIFY -> 403 FORBIDDEN before any validation or Keycloak write
+        String forbiddenUsername = "class.forbidden." + sfx;
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "Valid@1234",
+                                  "fullName": "No Class Perm",
+                                  "classIds": ["%s"]
+                                }
+                                """.formatted(forbiddenUsername, activeClass1)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        assertThat(keycloakClient.findUserIdByUsername(forbiddenUsername)).isEmpty();
+        assertThat(userAccountRepository.findActiveByUsernameNormalized(forbiddenUsername)).isEmpty();
+
         // Unknown class -> 404 NOT_FOUND, user not provisioned in Keycloak
         String missingUsername = "class.missing." + sfx;
         mockMvc.perform(post("/api/v1/admin/users")
-                        .with(asUser(Permissions.USER_MODIFY))
+                        .with(asUser(Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -484,7 +502,7 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         // Inactive class -> 409 CLASS_INACTIVE, user not provisioned in Keycloak
         String inactiveUsername = "class.inactive." + sfx;
         mockMvc.perform(post("/api/v1/admin/users")
-                        .with(asUser(Permissions.USER_MODIFY))
+                        .with(asUser(Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -498,10 +516,10 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.code").value("CLASS_INACTIVE"));
         assertThat(keycloakClient.findUserIdByUsername(inactiveUsername)).isEmpty();
 
-        // Valid active classes -> 201, memberships & JOIN history persisted, classId filter matches user
+        // Valid active classes with USER.MODIFY + CLASS.MODIFY -> 201, memberships & JOIN history persisted, classId filter matches user
         String okUsername = "class.ok." + sfx;
         MvcResult createdRes = mockMvc.perform(post("/api/v1/admin/users")
-                        .with(asUser(Permissions.USER_MODIFY))
+                        .with(asUser(Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

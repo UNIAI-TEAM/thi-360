@@ -27,7 +27,7 @@ public interface UserDirectory {
             boolean platformAdmin
     ) {
         public boolean isAvailableForMembership() {
-            return !platformAdmin && !deleted && !"PROVISIONING".equals(status);
+            return !platformAdmin && !deleted && "ACTIVE".equals(status);
         }
     }
 

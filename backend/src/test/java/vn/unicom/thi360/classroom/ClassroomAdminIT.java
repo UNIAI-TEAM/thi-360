@@ -52,7 +52,7 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
 
     private final List<UUID> createdClassIds = new ArrayList<>();
     private final List<UUID> createdUserIds = new ArrayList<>();
-
+    private final List<UUID> createdPlatformAdminIds = new ArrayList<>();
     @AfterEach
     void cleanup() {
         for (UUID classId : createdClassIds) {
@@ -72,6 +72,10 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
             jdbcTemplate.update("DELETE FROM identity.user_account WHERE id = ?", userId);
         }
         createdUserIds.clear();
+        for (UUID platformAdminId : createdPlatformAdminIds) {
+            jdbcTemplate.update("DELETE FROM identity.platform_admin WHERE id = ?", platformAdminId);
+        }
+        createdPlatformAdminIds.clear();
     }
 
     @Test
@@ -530,6 +534,82 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
         assertThat(leaveRowsAfterReplay).isEqualTo(2);
     }
 
+    @Test
+    void inactiveAndPlatformAdminUsers_cannotBeAddedAsMembersOrSetAsOwner() throws Exception {
+        String sfx = suffix();
+        UUID activeOwner = insertUser("act.own." + sfx, "Active Owner");
+        UUID inactiveUser = insertUserWithStatus("ina.usr." + sfx, "Inactive User", (short) 3);
+        UUID platformAdminId = insertPlatformAdmin("plat." + sfx);
+        UUID classId = createClassViaApi("OWN-" + sfx, "Lớp kiểm tra user", activeOwner);
+
+        // Add INACTIVE or PLATFORM_ADMIN user as member -> 404 NOT_FOUND
+        mockMvc.perform(post("/api/v1/admin/classes/{id}/members", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userIds\":[\"%s\"]}".formatted(inactiveUser)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        mockMvc.perform(post("/api/v1/admin/classes/{id}/members", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userIds\":[\"%s\"]}".formatted(platformAdminId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // Create class with INACTIVE or PLATFORM_ADMIN owner -> 404 NOT_FOUND
+        mockMvc.perform(post("/api/v1/admin/classes")
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "OWN-INA-%s",
+                                  "name": "Inactive Owner Class",
+                                  "ownerUserId": "%s"
+                                }
+                                """.formatted(sfx, inactiveUser)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        mockMvc.perform(post("/api/v1/admin/classes")
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "OWN-PLT-%s",
+                                  "name": "Platform Owner Class",
+                                  "ownerUserId": "%s"
+                                }
+                                """.formatted(sfx, platformAdminId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // Update class owner to INACTIVE or PLATFORM_ADMIN -> 404 NOT_FOUND
+        mockMvc.perform(patch("/api/v1/admin/classes/{id}", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "ownerUserId": "%s",
+                                  "version": 0
+                                }
+                                """.formatted(inactiveUser)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        mockMvc.perform(patch("/api/v1/admin/classes/{id}", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "ownerUserId": "%s",
+                                  "version": 0
+                                }
+                                """.formatted(platformAdminId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
     private UUID createClassViaApi(String code, String name, UUID ownerUserId) throws Exception {
         String body = ownerUserId == null
                 ? "{\"code\":\"%s\",\"name\":\"%s\"}".formatted(code, name)
@@ -547,20 +627,35 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
     }
 
     private UUID insertUser(String username, String fullName) {
+        return insertUserWithStatus(username, fullName, (short) 2);
+    }
+
+    private UUID insertUserWithStatus(String username, String fullName, short statusCode) {
         UUID id = Ids.newId();
         String code = "U" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         jdbcTemplate.update(
                 """
                 INSERT INTO identity.user_account (
                     id, code, username, username_normalized, full_name, source, status, must_change_password
-                ) VALUES (?, ?, ?, ?, ?, 1, 2, false)
+                ) VALUES (?, ?, ?, ?, ?, 1, ?, false)
                 """,
                 id,
                 code,
                 username,
                 username.trim().toLowerCase(),
-                fullName);
+                fullName,
+                statusCode);
         createdUserIds.add(id);
+        return id;
+    }
+
+    private UUID insertPlatformAdmin(String username) {
+        UUID id = Ids.newId();
+        jdbcTemplate.update(
+                "INSERT INTO identity.platform_admin (id, username) VALUES (?, ?)",
+                id,
+                username);
+        createdPlatformAdminIds.add(id);
         return id;
     }
 

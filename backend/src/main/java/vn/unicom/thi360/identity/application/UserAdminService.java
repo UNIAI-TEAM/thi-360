@@ -326,7 +326,11 @@ public class UserAdminService {
     public UserDetailResponse createUser(CreateUserRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
 
-        List<UUID> targetClassIds = (request.classIds() == null || request.classIds().isEmpty())
+        boolean hasClassIds = request.classIds() != null && !request.classIds().isEmpty();
+        if (hasClassIds && !actor.permissions().hasCode(Permissions.CLASS_MODIFY)) {
+            throw new ForbiddenException("FORBIDDEN", null);
+        }
+        List<UUID> targetClassIds = !hasClassIds
                 ? List.of()
                 : classMembershipPort.validateAssignableClasses(request.classIds());
 

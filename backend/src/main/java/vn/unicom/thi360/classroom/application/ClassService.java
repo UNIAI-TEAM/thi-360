@@ -704,7 +704,7 @@ public class ClassService {
 
     private void validateOwnerUser(UUID ownerUserId) {
         UserDirectory.UserDetailSummary owner = userDirectory.findDetailById(ownerUserId)
-                .filter(u -> !u.deleted() && !"PROVISIONING".equals(u.status()))
+                .filter(UserDirectory.UserDetailSummary::isAvailableForMembership)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         Objects.requireNonNull(owner);
     }
