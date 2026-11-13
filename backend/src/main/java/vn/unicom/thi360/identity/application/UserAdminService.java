@@ -76,6 +76,7 @@ import vn.unicom.thi360.identity.infrastructure.UserIdentityRepository;
 import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
 import vn.unicom.thi360.identity.spi.AccountDeletionGuard;
 import vn.unicom.thi360.identity.spi.ActiveAttemptChecker;
+import vn.unicom.thi360.identity.spi.ClassMembershipPort;
 import vn.unicom.thi360.identity.spi.Permission;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.identity.spi.UserDeleted;
@@ -111,7 +112,6 @@ public class UserAdminService {
     private static final String ERROR_USERNAME_TAKEN = "USERNAME_TAKEN";
     private static final String ERROR_EMAIL_TAKEN = "EMAIL_TAKEN";
     private static final String ERROR_ROLE_INACTIVE = "ROLE_INACTIVE";
-    private static final String ERROR_CLASS_NOT_SUPPORTED = "CLASS_NOT_SUPPORTED";
     private static final String ERROR_SELF_DEACTIVATE = "SELF_DEACTIVATE";
     private static final String ERROR_SELF_DELETE = "SELF_DELETE";
     private static final String ERROR_USER_HAS_TRANSACTIONS = "USER_HAS_TRANSACTIONS";
@@ -133,6 +133,7 @@ public class UserAdminService {
     private final OutboxPublisher outboxPublisher;
     private final List<AccountDeletionGuard> deletionGuards;
     private final List<ActiveAttemptChecker> activeAttemptCheckers;
+    private final ClassMembershipPort classMembershipPort;
     private final KeycloakIdentityClient keycloakClient;
     private final CurrentUserProvider currentUserProvider;
     private final AuditRecorder auditRecorder;
@@ -155,6 +156,7 @@ public class UserAdminService {
             OutboxPublisher outboxPublisher,
             List<AccountDeletionGuard> deletionGuards,
             List<ActiveAttemptChecker> activeAttemptCheckers,
+            ClassMembershipPort classMembershipPort,
             KeycloakIdentityClient keycloakClient,
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
@@ -174,6 +176,7 @@ public class UserAdminService {
         this.outboxPublisher = outboxPublisher;
         this.deletionGuards = deletionGuards == null ? List.of() : List.copyOf(deletionGuards);
         this.activeAttemptCheckers = activeAttemptCheckers == null ? List.of() : List.copyOf(activeAttemptCheckers);
+        this.classMembershipPort = classMembershipPort;
         this.keycloakClient = keycloakClient;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
@@ -193,13 +196,6 @@ public class UserAdminService {
             Boolean neverLoggedIn,
             Boolean includeDeleted,
             PageQuery pageQuery) {
-        if (classId != null) {
-            throw new ValidationException(
-                    ERROR_CLASS_NOT_SUPPORTED,
-                    null,
-                    List.of(new FieldError("classId", ERROR_CLASS_NOT_SUPPORTED, "Chức năng lớp học chưa được hỗ trợ")));
-        }
-
         StringBuilder where = new StringBuilder("u.status <> ?");
         List<Object> params = new ArrayList<>();
         params.add(UserStatus.PROVISIONING.code());
@@ -218,6 +214,15 @@ public class UserAdminService {
         if (roleId != null) {
             where.append(" AND EXISTS (SELECT 1 FROM identity.user_role ur WHERE ur.user_id = u.id AND ur.role_id = ?)");
             params.add(roleId);
+        }
+        if (classId != null) {
+            Set<UUID> memberUserIds = classMembershipPort.findUserIdsInClass(classId);
+            if (memberUserIds.isEmpty()) {
+                return PageResponse.from(new PageImpl<>(List.of(), pageQuery.toPageable(), 0L));
+            }
+            String placeholders = String.join(",", Collections.nCopies(memberUserIds.size(), "?"));
+            where.append(" AND u.id IN (").append(placeholders).append(")");
+            params.addAll(memberUserIds);
         }
         if (Boolean.TRUE.equals(neverLoggedIn)) {
             where.append(" AND u.last_login_at IS NULL");
@@ -321,12 +326,9 @@ public class UserAdminService {
     public UserDetailResponse createUser(CreateUserRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
 
-        if (request.classIds() != null && !request.classIds().isEmpty()) {
-            throw new ValidationException(
-                    ERROR_CLASS_NOT_SUPPORTED,
-                    null,
-                    List.of(new FieldError("classIds", ERROR_CLASS_NOT_SUPPORTED, "Chức năng lớp học chưa được hỗ trợ")));
-        }
+        List<UUID> targetClassIds = (request.classIds() == null || request.classIds().isEmpty())
+                ? List.of()
+                : classMembershipPort.validateAssignableClasses(request.classIds());
 
         String trimmedUsername = usernamePolicy.validate("username", request.username());
         passwordPolicy.validate("password", request.password(), trimmedUsername);
@@ -442,6 +444,9 @@ public class UserAdminService {
                         .toList();
                 userRoleRepository.saveAll(assignments);
                 userRoleRepository.flush();
+                if (!targetClassIds.isEmpty()) {
+                    classMembershipPort.assignUserToClasses(keycloakUserId, targetClassIds, actor.id(), activatedAt);
+                }
 
                 Map<String, Object> after = new LinkedHashMap<>();
                 after.put("code", account.getCode());
@@ -453,6 +458,9 @@ public class UserAdminService {
                 after.put("status", account.getStatus().name());
                 after.put("mustChangePassword", account.isMustChangePassword());
                 after.put("roleCodes", targetRoles.stream().map(Role::getCode).toList());
+                if (!targetClassIds.isEmpty()) {
+                    after.put("classIds", targetClassIds.stream().map(UUID::toString).toList());
+                }
 
                 recordAudit(actor, "USER_CREATED", keycloakUserId, account.getUsername(), null, after, null);
 

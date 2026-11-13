@@ -21,6 +21,7 @@ spring:
       - identity
       - catalog
       - audit
+      - classroom
     table: flyway_schema_history
     locations:
       - classpath:db/migration
