@@ -98,10 +98,34 @@ class AuditPlatformLoginIT extends AbstractKeycloakIntegrationTest {
         JsonNode event = matching.getFirst();
         assertThat(event.get("action").asText()).isEqualTo("LOGIN");
         assertThat(event.get("module").asText()).isEqualTo("identity");
+        assertThat(event.get("actorId").asText()).isEqualTo(platformId);
+        assertThat(event.get("actorUsername").asText()).isEqualTo("platform");
+        assertThat(event.get("actorType").asText()).isEqualTo("PLATFORM");
         assertThat(event.get("targetType").asText()).isEqualTo("PLATFORM_ADMIN");
         assertThat(event.get("targetId").asText()).isEqualTo(platformId);
         assertThat(event.get("targetLabel").asText()).isEqualTo("platform");
         assertThat(event.get("outcome").asText()).isEqualTo("SUCCESS");
         assertThat(event.path("after").path("realm").asText()).isEqualTo("MASTER");
+
+        MvcResult byActorRes = mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .param("actorId", platformId)
+                        .param("action", "LOGIN")
+                        .cookie(atCookie))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode byActorRoot = objectMapper.readTree(byActorRes.getResponse().getContentAsString());
+        assertThat(byActorRoot.get("totalItems").asLong()).isGreaterThanOrEqualTo(1);
+        boolean foundByActorId = false;
+        for (JsonNode item : byActorRoot.get("items")) {
+            if (event.get("id").asText().equals(item.path("id").asText())) {
+                foundByActorId = true;
+                assertThat(item.path("actorId").asText()).isEqualTo(platformId);
+                assertThat(item.path("actorUsername").asText()).isEqualTo("platform");
+                assertThat(item.path("actorType").asText()).isEqualTo("PLATFORM");
+                break;
+            }
+        }
+        assertThat(foundByActorId).isTrue();
     }
 }

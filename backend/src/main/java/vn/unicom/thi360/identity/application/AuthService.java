@@ -19,6 +19,8 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditEvent;
+import vn.unicom.thi360.audit.spi.AuditActorType;
+import vn.unicom.thi360.audit.spi.AuditOutcome;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.domain.Normalizer;
 import vn.unicom.thi360.identity.domain.PasswordPolicy;
@@ -184,9 +186,12 @@ public class AuthService {
             UserAccount fresh = userAccountRepository.findById(account.getId()).orElse(account);
             fresh.markLoggedIn(now);
             userAccountRepository.save(fresh);
-            auditRecorder.record(AuditEvent.success(
-                    MODULE, "LOGIN", "USER", fresh.getId().toString(), fresh.getUsername(),
-                    Map.of("realm", Realm.APP.name())));
+            auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
+                    .actor(fresh.getId(), fresh.getUsername(), List.of(), AuditActorType.USER)
+                    .target("USER", fresh.getId().toString(), fresh.getUsername())
+                    .after(Map.of("realm", Realm.APP.name()))
+                    .outcome(AuditOutcome.SUCCESS)
+                    .build());
         });
 
         Access access = resolveAccess(account.getId(), Realm.APP);
@@ -256,9 +261,12 @@ public class AuthService {
                     })
                     .orElseGet(() -> new PlatformAdmin(userId, username, now));
             platformAdminRepository.save(admin);
-            auditRecorder.record(AuditEvent.success(
-                    MODULE, "LOGIN", "PLATFORM_ADMIN", userId.toString(), username,
-                    Map.of("realm", Realm.MASTER.name())));
+            auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
+                    .actor(userId, username, List.of(keycloakProperties.platformRole()), AuditActorType.PLATFORM)
+                    .target("PLATFORM_ADMIN", userId.toString(), username)
+                    .after(Map.of("realm", Realm.MASTER.name()))
+                    .outcome(AuditOutcome.SUCCESS)
+                    .build());
         });
 
         Access access = resolveAccess(userId, Realm.MASTER);
