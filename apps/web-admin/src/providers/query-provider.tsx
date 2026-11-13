@@ -36,6 +36,7 @@ function createForbiddenGuard(initialPathname: string) {
  */
 export function QueryProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("errors");
+  const commonT = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -64,7 +65,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       {children}
-      <Toaster />
+      <Toaster
+        containerAriaLabel={commonT("notificationsLabel")}
+        closeButtonAriaLabel={commonT("closeToast")}
+      />
     </QueryClientProvider>
   );
 }

@@ -104,4 +104,17 @@ describe("NAVIGATION của đợt 1", () => {
     const hrefs = NAVIGATION.flatMap((g) => g.items.map((i) => i.href));
     expect(hrefs).not.toContain("/cau-hinh-chung");
   });
+
+  it("có mục Tùy chỉnh giao diện trong nhóm Hệ thống với quyền APPEARANCE.MODIFY", () => {
+    const systemGroup = NAVIGATION.find((g) => g.id === "system");
+    expect(systemGroup?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "appearance",
+          href: "/tuy-chinh-giao-dien",
+          permission: "APPEARANCE.MODIFY",
+        }),
+      ]),
+    );
+  });
 });

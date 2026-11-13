@@ -19,14 +19,25 @@ const tokenStyle = {
   "--border-radius": "var(--radius-lg)",
 } as CSSProperties;
 
+export type ToasterProps = ComponentProps<typeof Sonner> & {
+  /** Nhãn vùng thông báo cho trình đọc màn hình (chuyển xuống `containerAriaLabel` của sonner). */
+  containerAriaLabel?: string;
+  /** Nhãn nút đóng toast cho trình đọc màn hình (gắn vào `toastOptions.closeButtonAriaLabel`). */
+  closeButtonAriaLabel?: string;
+};
+
 /** Đặt một lần ở layout gốc. Góc trên phải, tự ẩn sau 4 giây (DESIGN.md mục 5.10). */
-export function Toaster(props: ComponentProps<typeof Sonner>) {
+export function Toaster({ closeButtonAriaLabel, toastOptions, ...props }: ToasterProps) {
   return (
     <Sonner
       position="top-right"
       duration={4000}
       closeButton
       style={tokenStyle}
+      toastOptions={{
+        ...toastOptions,
+        ...(closeButtonAriaLabel !== undefined ? { closeButtonAriaLabel } : {}),
+      }}
       {...props}
     />
   );
