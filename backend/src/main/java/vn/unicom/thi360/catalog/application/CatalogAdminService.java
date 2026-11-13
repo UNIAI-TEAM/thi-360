@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
@@ -27,6 +28,8 @@ import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.api.CatalogGroupRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogGroupResponse;
 import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
+import vn.unicom.thi360.catalog.api.CombinationSubjectResponse;
+import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemResponse;
 import vn.unicom.thi360.catalog.api.CatalogTreeNodeResponse;
@@ -677,7 +680,7 @@ public class CatalogAdminService {
                 item.getId(),
                 item.getCode(),
                 null,
-                itemAuditState(item, response.ownRefs()),
+                itemAuditState(item, response.ownRefs(), response.combination()),
                 null);
 
         return response;
@@ -704,7 +707,10 @@ public class CatalogAdminService {
 
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
-        Map<String, Object> before = itemAuditState(item, beforeRefs);
+        CombinationVersionResponse beforeCombo = group.getKind() == CatalogGroupKind.COMBINATION
+                ? catalogSupportDao.loadCurrentCombinations(List.of(itemId)).get(itemId)
+                : null;
+        Map<String, Object> before = itemAuditState(item, beforeRefs, beforeCombo);
 
         String newCode = null;
         if (request.code() != null) {
@@ -841,7 +847,7 @@ public class CatalogAdminService {
                 item.getId(),
                 item.getCode(),
                 before,
-                itemAuditState(item, response.ownRefs()),
+                itemAuditState(item, response.ownRefs(), response.combination()),
                 trimmedReason);
         if (combinationVersionCreated && newCombinationVersion != null) {
             recordAudit(
@@ -993,7 +999,10 @@ public class CatalogAdminService {
 
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
-        Map<String, Object> before = itemAuditState(item, beforeRefs);
+        CombinationVersionResponse beforeCombo = group.getKind() == CatalogGroupKind.COMBINATION
+                ? catalogSupportDao.loadCurrentCombinations(List.of(itemId)).get(itemId)
+                : null;
+        Map<String, Object> before = itemAuditState(item, beforeRefs, beforeCombo);
 
         catalogItemRefRepository.deleteAllByIdItemId(itemId);
         catalogItemRepository.delete(item);
@@ -1726,7 +1735,7 @@ public class CatalogAdminService {
     }
 
     private static Map<String, Object> itemAuditState(
-            CatalogItem item, List<CatalogItemRefResponse> ownRefs) {
+            CatalogItem item, List<CatalogItemRefResponse> ownRefs, CombinationVersionResponse combination) {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("groupId", item.getGroupId().toString());
         state.put("code", item.getCode());
@@ -1741,6 +1750,19 @@ public class CatalogAdminService {
         state.put("depth", item.getDepth());
         state.put("path", item.getPath());
         state.put("ownRefItemIds", toRefIds(ownRefs));
+        if (combination != null) {
+            state.put("versionId", combination.id().toString());
+            state.put("versionNo", combination.versionNo());
+            state.put("examItemId", combination.examItemId().toString());
+            state.put("examCode", combination.examCode());
+            state.put("subjectItemIds", combination.subjects().stream()
+                    .map(s -> s.subjectItemId().toString())
+                    .toList());
+            state.put("subjectCodes", combination.subjects().stream()
+                    .map(CombinationSubjectResponse::code)
+                    .toList());
+            state.put("sourceNote", combination.sourceNote());
+        }
         return state;
     }
 
@@ -1987,9 +2009,14 @@ public class CatalogAdminService {
             throw new ValidationException(List.of(
                     new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
         }
-        validateExamItem(examItemId, true);
         List<UUID> subjectIds = validateSubjectIdsList(rawSubjectIds);
-        validateSubjectItems(subjectIds, Set.of());
+        TreeSet<UUID> toLock = new TreeSet<>();
+        toLock.add(examItemId);
+        toLock.addAll(subjectIds);
+        Map<UUID, CatalogItem> lockedItems = lockItemsInOrder(toLock);
+
+        validateExamItem(examItemId, true, lockedItems);
+        validateSubjectItems(subjectIds, Set.of(), lockedItems);
         return subjectIds;
     }
 
@@ -2016,18 +2043,12 @@ public class CatalogAdminService {
                     new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
         }
         boolean examChanged = current == null || !targetExamId.equals(current.getExamItemId());
-        if (examChanged) {
-            validateExamItem(targetExamId, true);
-        } else {
-            validateExamItem(targetExamId, false);
-        }
 
         List<UUID> targetSubjectIds;
         boolean subjectsChanged;
         if (requestedSubjectIds != null) {
             targetSubjectIds = validateSubjectIdsList(requestedSubjectIds);
             subjectsChanged = current == null || !targetSubjectIds.equals(currentSubjectIds);
-            validateSubjectItems(targetSubjectIds, new HashSet<>(currentSubjectIds));
         } else {
             if (currentSubjectIds.isEmpty()) {
                 throw new ValidationException(List.of(
@@ -2037,6 +2058,16 @@ public class CatalogAdminService {
             subjectsChanged = false;
         }
 
+        TreeSet<UUID> toLock = new TreeSet<>();
+        toLock.add(targetExamId);
+        toLock.addAll(targetSubjectIds);
+        Map<UUID, CatalogItem> lockedItems = lockItemsInOrder(toLock);
+
+        validateExamItem(targetExamId, examChanged, lockedItems);
+        if (requestedSubjectIds != null) {
+            validateSubjectItems(targetSubjectIds, new HashSet<>(currentSubjectIds), lockedItems);
+        }
+
         String targetSourceNote = requestedSourceNote != null
                 ? CatalogNormalizer.trimToNull(requestedSourceNote)
                 : (current != null ? current.getSourceNote() : null);
@@ -2044,7 +2075,7 @@ public class CatalogAdminService {
 
         boolean createNewVersion = current != null
                 && (subjectsChanged || examChanged)
-                && isItemReferenced(group.getCode(), item.getId());
+                && isCombinationVersionReferenced(item.getId(), current.getId());
 
         boolean changed = current == null || subjectsChanged || examChanged || sourceNoteChanged;
         return new CombinationUpdatePlan(
@@ -2057,11 +2088,19 @@ public class CatalogAdminService {
                 createNewVersion);
     }
 
-    private void validateExamItem(UUID examItemId, boolean requireActive) {
+    private Map<UUID, CatalogItem> lockItemsInOrder(TreeSet<UUID> sortedIds) {
+        Map<UUID, CatalogItem> locked = new LinkedHashMap<>();
+        for (UUID id : sortedIds) {
+            catalogItemRepository.findByIdForUpdate(id).ifPresent(item -> locked.put(id, item));
+        }
+        return locked;
+    }
+
+    private void validateExamItem(UUID examItemId, boolean requireActive, Map<UUID, CatalogItem> lockedItems) {
         CatalogGroup examGroup = catalogGroupRepository.findByCodeNormalized(EXAM_GROUP_CODE_NORMALIZED)
                 .orElseThrow(() -> new ValidationException(List.of(
                         new FieldError("examItemId", "INVALID_EXAM", "Không tìm thấy nhóm danh mục kỳ thi"))));
-        CatalogItem examItem = catalogItemRepository.findById(examItemId).orElse(null);
+        CatalogItem examItem = lockedItems.get(examItemId);
         if (examItem == null || !examItem.getGroupId().equals(examGroup.getId())) {
             throw new ValidationException(List.of(
                     new FieldError("examItemId", "INVALID_EXAM", "Kỳ thi không hợp lệ hoặc không thuộc nhóm EXAM")));
@@ -2093,16 +2132,13 @@ public class CatalogAdminService {
         return List.copyOf(result);
     }
 
-    private void validateSubjectItems(List<UUID> subjectIds, Set<UUID> existingSubjectIds) {
+    private void validateSubjectItems(
+            List<UUID> subjectIds, Set<UUID> existingSubjectIds, Map<UUID, CatalogItem> lockedItems) {
         CatalogGroup subjectGroup = catalogGroupRepository.findByCodeNormalized(SUBJECT_GROUP_CODE_NORMALIZED)
                 .orElseThrow(() -> new ValidationException(List.of(
                         new FieldError("subjectItemIds", "INVALID_SUBJECT", "Không tìm thấy nhóm danh mục môn học"))));
-        Map<UUID, CatalogItem> byId = new HashMap<>();
-        for (CatalogItem item : catalogItemRepository.findAllById(subjectIds)) {
-            byId.put(item.getId(), item);
-        }
         for (UUID subjectId : subjectIds) {
-            CatalogItem subject = byId.get(subjectId);
+            CatalogItem subject = lockedItems.get(subjectId);
             if (subject == null || !subject.getGroupId().equals(subjectGroup.getId())) {
                 throw new ValidationException(List.of(
                         new FieldError("subjectItemIds", "INVALID_SUBJECT", "Môn học không hợp lệ hoặc không thuộc nhóm SUBJECT")));
@@ -2146,15 +2182,10 @@ public class CatalogAdminService {
         combinationSubjectRepository.flush();
     }
 
-    private boolean isItemReferenced(String groupCode, UUID itemId) {
+    private boolean isCombinationVersionReferenced(UUID itemId, UUID versionId) {
         for (CatalogUsageProvider provider : usageProviders) {
-            List<CatalogUsage> usages = provider.findUsages(groupCode, itemId);
-            if (usages != null) {
-                for (CatalogUsage usage : usages) {
-                    if (usage != null && usage.count() > 0) {
-                        return true;
-                    }
-                }
+            if (provider.isCombinationVersionReferenced(itemId, versionId)) {
+                return true;
             }
         }
         return false;

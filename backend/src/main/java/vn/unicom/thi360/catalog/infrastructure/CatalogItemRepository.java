@@ -18,6 +18,10 @@ public interface CatalogItemRepository extends JpaRepository<CatalogItem, UUID> 
     @Query("SELECT i FROM CatalogItem i WHERE i.id = :id")
     Optional<CatalogItem> findByIdForUpdate(@Param("id") UUID id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM CatalogItem i WHERE i.id IN :ids ORDER BY i.id ASC")
+    List<CatalogItem> findAllByIdInForUpdate(@Param("ids") Collection<UUID> ids);
+
 
     boolean existsByGroupIdAndCodeNormalized(UUID groupId, String codeNormalized);
 

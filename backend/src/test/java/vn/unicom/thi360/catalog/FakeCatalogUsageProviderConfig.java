@@ -2,6 +2,7 @@ package vn.unicom.thi360.catalog;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -29,12 +30,18 @@ public class FakeCatalogUsageProviderConfig {
             public List<CatalogUsage> findUsages(String groupCode, UUID itemId) {
                 return registry.findUsages(itemId);
             }
+
+            @Override
+            public boolean isCombinationVersionReferenced(UUID itemId, UUID versionId) {
+                return registry.isCombinationVersionReferenced(itemId, versionId);
+            }
         };
     }
 
     public static class FakeCatalogUsageRegistry {
 
         private final Map<UUID, List<CatalogUsage>> usagesByItemId = new ConcurrentHashMap<>();
+        private final Map<UUID, Set<UUID>> referencedVersionsByItemId = new ConcurrentHashMap<>();
 
         public void setUsages(UUID itemId, List<CatalogUsage> usages) {
             if (usages == null || usages.isEmpty()) {
@@ -44,12 +51,29 @@ public class FakeCatalogUsageProviderConfig {
             }
         }
 
+        public void setReferencedVersions(UUID itemId, Set<UUID> versionIds) {
+            if (versionIds == null) {
+                referencedVersionsByItemId.remove(itemId);
+            } else {
+                referencedVersionsByItemId.put(itemId, Set.copyOf(versionIds));
+            }
+        }
+
         public void clear() {
             usagesByItemId.clear();
+            referencedVersionsByItemId.clear();
         }
 
         public List<CatalogUsage> findUsages(UUID itemId) {
             return usagesByItemId.getOrDefault(itemId, List.of());
+        }
+
+        public boolean isCombinationVersionReferenced(UUID itemId, UUID versionId) {
+            Set<UUID> trackedVersions = referencedVersionsByItemId.get(itemId);
+            if (trackedVersions != null) {
+                return versionId != null && trackedVersions.contains(versionId);
+            }
+            return !findUsages(itemId).isEmpty();
         }
     }
 }
