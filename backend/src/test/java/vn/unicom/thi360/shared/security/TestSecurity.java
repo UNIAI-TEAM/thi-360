@@ -205,6 +205,17 @@ public class TestSecurity {
         return support.apply(principal);
     }
 
+    public static RequestPostProcessor asUser(
+            TestSecuritySupport support, UUID userId, String username, String... permissions) {
+        SimulatedPrincipal principal = new SimulatedPrincipal(
+                userId,
+                username,
+                null,
+                false,
+                permissions == null ? List.of() : List.of(permissions));
+        return support.apply(principal);
+    }
+
     public static RequestPostProcessor asRole(TestSecuritySupport support, String roleCode) {
         SimulatedPrincipal principal = new SimulatedPrincipal(
                 Ids.newId(),

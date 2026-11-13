@@ -8,4 +8,8 @@ import vn.unicom.thi360.identity.domain.Role;
 public interface RoleRepository extends JpaRepository<Role, UUID> {
 
     Optional<Role> findByCodeNormalized(String codeNormalized);
+
+    boolean existsByCodeNormalized(String codeNormalized);
+
+    boolean existsByCodeNormalizedAndIdNot(String codeNormalized, UUID id);
 }

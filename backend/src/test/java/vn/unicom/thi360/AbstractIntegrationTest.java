@@ -175,6 +175,10 @@ public abstract class AbstractIntegrationTest {
         return TestSecurity.asUser(testSecuritySupport, permissions);
     }
 
+    protected RequestPostProcessor asUser(java.util.UUID userId, String username, String... permissions) {
+        return TestSecurity.asUser(testSecuritySupport, userId, username, permissions);
+    }
+
     protected RequestPostProcessor asRole(String code) {
         return TestSecurity.asRole(testSecuritySupport, code);
     }

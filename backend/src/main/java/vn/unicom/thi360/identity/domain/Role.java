@@ -80,6 +80,37 @@ public class Role {
         this.updatedBy = actorId;
     }
 
+    public void updateDetails(
+            String code,
+            String name,
+            String description,
+            Access access,
+            RoleStatus status,
+            Instant now,
+            UUID actorId) {
+        if (code != null) {
+            this.code = code.trim();
+            this.codeNormalized = Normalizer.normalize(this.code);
+        }
+        if (name != null) {
+            this.name = name.trim();
+        }
+        this.description = description == null || description.isBlank() ? null : description.trim();
+        if (access != null) {
+            this.access = access;
+        }
+        if (status != null) {
+            this.status = status;
+        }
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = actorId;
+    }
+
+    public void markUpdated(Instant now, UUID actorId) {
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = actorId;
+    }
+
     public UUID getId() {
         return id;
     }
