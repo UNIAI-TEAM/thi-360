@@ -24,6 +24,8 @@ spring:
     table: flyway_schema_history
     locations:
       - classpath:db/migration
+    placeholders:
+      auditAppRole: ${THI360_AUDIT_APP_ROLE:${spring.datasource.username}}
   data:
     redis:
       host: ${THI360_REDIS_HOST:localhost}
@@ -86,6 +88,8 @@ thi360:
   outbox:
     scheduling:
       enabled: true
+  audit:
+    archive-after-quarters: ${THI360_AUDIT_ARCHIVE_AFTER_QUARTERS:8}
 
 ---
 spring:

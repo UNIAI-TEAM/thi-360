@@ -30,6 +30,102 @@
         "required" : [ "code", "fieldErrors", "message", "traceId" ],
         "type" : "object"
       },
+      "AuditEventResponse" : {
+        "description" : "Bản ghi nhật ký thao tác",
+        "properties" : {
+          "action" : {
+            "description" : "Mã hành động",
+            "example" : "LOGIN",
+            "type" : "string"
+          },
+          "actorId" : {
+            "description" : "ID người thực hiện",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "actorRoles" : {
+            "description" : "Danh sách vai trò tại thời điểm thao tác",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "actorType" : {
+            "description" : "Loại tác nhân thực hiện",
+            "enum" : [ "USER", "PLATFORM", "SYSTEM" ],
+            "type" : "string"
+          },
+          "actorUsername" : {
+            "description" : "Tên đăng nhập người thực hiện đã lưu",
+            "type" : "string"
+          },
+          "after" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "description" : "Giá trị sau khi thay đổi",
+            "type" : "object"
+          },
+          "before" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "description" : "Giá trị trước khi thay đổi",
+            "type" : "object"
+          },
+          "errorCode" : {
+            "description" : "Mã lỗi nếu thất bại",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID sự kiện (UUID v7)",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "ip" : {
+            "description" : "Địa chỉ IP nguồn",
+            "type" : "string"
+          },
+          "module" : {
+            "description" : "Tên module phát sinh",
+            "example" : "identity",
+            "type" : "string"
+          },
+          "occurredAt" : {
+            "description" : "Thời điểm phát sinh (UTC)",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "outcome" : {
+            "description" : "Kết quả thao tác",
+            "enum" : [ "SUCCESS", "FAILURE" ],
+            "type" : "string"
+          },
+          "reason" : {
+            "description" : "Lý do thao tác",
+            "type" : "string"
+          },
+          "targetId" : {
+            "description" : "ID đối tượng tác động",
+            "type" : "string"
+          },
+          "targetLabel" : {
+            "description" : "Nhãn hiển thị của đối tượng",
+            "type" : "string"
+          },
+          "targetType" : {
+            "description" : "Loại đối tượng tác động",
+            "example" : "USER",
+            "type" : "string"
+          },
+          "traceId" : {
+            "description" : "Mã truy vết yêu cầu (X-Request-Id)",
+            "type" : "string"
+          }
+        },
+        "required" : [ "action", "actorRoles", "actorType", "id", "module", "occurredAt", "outcome" ],
+        "type" : "object"
+      },
       "ChangePasswordRequest" : {
         "description" : "Yêu cầu đổi mật khẩu",
         "properties" : {
@@ -139,6 +235,44 @@
         "required" : [ "access", "fullName", "id", "permissions", "realm", "username" ],
         "type" : "object"
       },
+      "PageResponseAuditEventResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/AuditEventResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
       "PingResponse" : {
         "description" : "Phản hồi kiểm tra kết nối",
         "properties" : {
@@ -165,6 +299,193 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/api/v1/admin/audit-events" : {
+      "get" : {
+        "operationId" : "listAuditEvents",
+        "parameters" : [ {
+          "description" : "Loại đối tượng",
+          "in" : "query",
+          "name" : "targetType",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ID đối tượng",
+          "in" : "query",
+          "name" : "targetId",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ID người thực hiện",
+          "in" : "query",
+          "name" : "actorId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Mã hành động",
+          "in" : "query",
+          "name" : "action",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Từ thời điểm (ISO-8601 UTC)",
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Đến thời điểm (ISO-8601 UTC)",
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Chỉ số trang (bắt đầu từ 0)",
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Kích thước trang (tối đa 100)",
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Sắp xếp theo trường,vd: occurredAt,desc",
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseAuditEventResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tra cứu danh sách sự kiện nhật ký thao tác",
+        "tags" : [ "Audit" ]
+      }
+    },
     "/api/v1/auth/change-password" : {
       "post" : {
         "operationId" : "changePassword",
@@ -854,6 +1175,9 @@
     "url" : "http://localhost"
   } ],
   "tags" : [ {
+    "description" : "Tra cứu nhật ký thao tác",
+    "name" : "Audit"
+  }, {
     "description" : "Kiểm tra trạng thái hệ thống",
     "name" : "System"
   }, {
