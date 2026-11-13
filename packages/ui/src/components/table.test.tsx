@@ -152,4 +152,11 @@ describe("Table", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Không tải được danh sách");
     expect(screen.queryByText("Cường")).toBeNull();
   });
+
+  it("thử lại sau lỗi: đang tải thì hiện khung xương, không hiện lại thông báo lỗi cũ", () => {
+    render(<Harness loading error={<span>Không tải được danh sách</span>} />);
+    expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByRole("row")).toHaveLength(1 + 5);
+  });
 });

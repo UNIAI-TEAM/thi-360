@@ -160,13 +160,7 @@ export function Table<TData>({
           ))}
         </thead>
         <tbody>
-          {error ? (
-            <tr>
-              <td colSpan={columnCount} role="alert">
-                {error}
-              </td>
-            </tr>
-          ) : loading ? (
+          {loading ? (
             Array.from({ length: loadingRows }, (_, rowIndex) => (
               <tr key={rowIndex} className="border-b border-border">
                 {allColumns.map((_, cellIndex) => (
@@ -176,6 +170,12 @@ export function Table<TData>({
                 ))}
               </tr>
             ))
+          ) : error ? (
+            <tr>
+              <td colSpan={columnCount} role="alert">
+                {error}
+              </td>
+            </tr>
           ) : rows.length === 0 ? (
             <tr>
               <td colSpan={columnCount}>{empty}</td>
