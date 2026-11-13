@@ -4,12 +4,13 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1, đang làm **T01 (UNI-2538)** — khởi tạo monorepo, CI, môi trường dev.
+**Giai đoạn:** đợt 1, tài liệu và kế hoạch đã chốt. **Chưa bắt đầu triển khai** (M.Trường yêu cầu tạm chưa làm, 2026-11-13).
 
 **Bước tiếp theo**
 
-1. Hoàn tất T01 và mở PR vào `develop`.
-2. T02 (UNI-2539) khung backend và T06 (UNI-2543) design system chạy song song được.
+1. Merge PR #1 (tài liệu đã chốt câu hỏi mở).
+2. Khi M.Trường cho bắt đầu: T01 (UNI-2538) khởi tạo monorepo, CI, môi trường dev.
+3. Sau T01: T02 (UNI-2539) khung backend và T06 (UNI-2543) design system chạy song song được.
 
 ## Đã làm
 
