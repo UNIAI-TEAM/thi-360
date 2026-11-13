@@ -197,7 +197,12 @@ function ResetPasswordFormBody({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col gap-4" noValidate>
+    <form
+      onSubmit={handleSubmit(handleFormSubmit)}
+      className="flex min-h-0 flex-1 flex-col gap-4"
+      noValidate
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto pr-1">
       {submitError && (
         <div
           role="alert"
@@ -270,7 +275,8 @@ function ResetPasswordFormBody({
         </Label>
       </div>
 
-      <DialogFooter className="pt-2">
+      </div>
+      <DialogFooter className="shrink-0 pt-2">
         <Button
           type="button"
           variant="secondary"
