@@ -30,6 +30,65 @@
         "required" : [ "code", "fieldErrors", "message", "traceId" ],
         "type" : "object"
       },
+      "AppearanceCustomColorsDto" : {
+        "description" : "Cặp màu tùy chỉnh gồm màu chính và màu nhấn",
+        "properties" : {
+          "accent" : {
+            "description" : "Mã màu nhấn định dạng #RRGGBB",
+            "example" : "#F59223",
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
+            "type" : "string"
+          },
+          "primary" : {
+            "description" : "Mã màu chính định dạng #RRGGBB",
+            "example" : "#059669",
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
+            "type" : "string"
+          }
+        },
+        "required" : [ "accent", "primary" ],
+        "type" : "object"
+      },
+      "AppearancePaletteDto" : {
+        "description" : "Cấu hình bộ phối màu giao diện",
+        "properties" : {
+          "custom" : {
+            "$ref" : "#/components/schemas/AppearanceCustomColorsDto",
+            "description" : "Màu tùy chỉnh; bắt buộc khi presetId = 'custom' và được giữ lại khi chọn bộ cố định"
+          },
+          "presetId" : {
+            "description" : "Mã bộ phối màu cố định hoặc 'custom'",
+            "enum" : [ "thi360-green", "emerald-gold", "charcoal-teal", "navy-teal", "blue-silver", "sky-orange", "indigo-amber", "indigo-coral", "slate-crimson", "custom" ],
+            "example" : "thi360-green",
+            "type" : "string"
+          }
+        },
+        "required" : [ "presetId" ],
+        "type" : "object"
+      },
+      "AppearanceResponse" : {
+        "description" : "Cấu hình giao diện toàn hệ thống",
+        "properties" : {
+          "mode" : {
+            "description" : "Chế độ sáng hoặc tối",
+            "enum" : [ "light", "dark" ],
+            "example" : "light",
+            "type" : "string"
+          },
+          "palette" : {
+            "$ref" : "#/components/schemas/AppearancePaletteDto",
+            "description" : "Bộ phối màu đang áp dụng"
+          },
+          "version" : {
+            "description" : "Phiên bản cấu hình phục vụ khóa lạc quan và ETag",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "mode", "palette", "version" ],
+        "type" : "object"
+      },
       "AuditEventResponse" : {
         "description" : "Bản ghi nhật ký thao tác",
         "properties" : {
@@ -743,6 +802,19 @@
         "required" : [ "status", "time" ],
         "type" : "object"
       },
+      "ResetAppearanceRequest" : {
+        "description" : "Yêu cầu khôi phục cấu hình giao diện mặc định",
+        "properties" : {
+          "version" : {
+            "description" : "Phiên bản hiện tại để kiểm tra khóa lạc quan",
+            "example" : 1,
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version" ],
+        "type" : "object"
+      },
       "RoleDetailResponse" : {
         "description" : "Chi tiết vai trò kèm danh sách quyền",
         "properties" : {
@@ -874,6 +946,29 @@
           }
         },
         "required" : [ "access", "code", "createdAt", "id", "name", "permissionCount", "status", "system", "updatedAt", "userCount", "version" ],
+        "type" : "object"
+      },
+      "UpdateAppearanceRequest" : {
+        "description" : "Yêu cầu cập nhật cấu hình giao diện toàn hệ thống",
+        "properties" : {
+          "mode" : {
+            "description" : "Chế độ sáng hoặc tối",
+            "enum" : [ "light", "dark" ],
+            "example" : "light",
+            "type" : "string"
+          },
+          "palette" : {
+            "$ref" : "#/components/schemas/AppearancePaletteDto",
+            "description" : "Bộ phối màu mới"
+          },
+          "version" : {
+            "description" : "Phiên bản hiện tại để kiểm tra khóa lạc quan",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "mode", "palette", "version" ],
         "type" : "object"
       },
       "UpdateRolePermissionsRequest" : {
@@ -1120,6 +1215,244 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/api/v1/admin/appearance" : {
+      "put" : {
+        "operationId" : "updateAppearance",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateAppearanceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppearanceResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Lưu và áp dụng cấu hình giao diện toàn hệ thống",
+        "tags" : [ "Admin Appearance" ]
+      }
+    },
+    "/api/v1/admin/appearance/reset" : {
+      "post" : {
+        "operationId" : "resetAppearance",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResetAppearanceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppearanceResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Khôi phục cấu hình giao diện mặc định",
+        "tags" : [ "Admin Appearance" ]
+      }
+    },
     "/api/v1/admin/audit-events" : {
       "get" : {
         "operationId" : "listAuditEvents",
@@ -3370,6 +3703,158 @@
         "tags" : [ "Admin User Authz" ]
       }
     },
+    "/api/v1/appearance" : {
+      "get" : {
+        "operationId" : "getAppearance",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "If-None-Match",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppearanceResponse"
+                }
+              }
+            },
+            "description" : "OK",
+            "headers" : {
+              "Cache-Control" : {
+                "description" : "Chính sách cache công khai",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              },
+              "ETag" : {
+                "description" : "ETag theo phiên bản cấu hình",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "headers" : {
+              "Cache-Control" : {
+                "description" : "Chính sách cache công khai",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              },
+              "ETag" : {
+                "description" : "ETag theo phiên bản cấu hình",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Lấy cấu hình giao diện toàn hệ thống (công khai)",
+        "tags" : [ "Appearance" ]
+      }
+    },
     "/api/v1/auth/change-password" : {
       "post" : {
         "operationId" : "changePassword",
@@ -4065,6 +4550,9 @@
     "description" : "Gán hoặc gỡ vai trò, quyền trực tiếp hàng loạt",
     "name" : "Admin Bulk Authz"
   }, {
+    "description" : "Cấu hình giao diện toàn hệ thống",
+    "name" : "Appearance"
+  }, {
     "description" : "Kiểm tra trạng thái hệ thống",
     "name" : "System"
   }, {
@@ -4079,5 +4567,8 @@
   }, {
     "description" : "Gán vai trò, quyền trực tiếp và xem quyền hiệu lực của tài khoản",
     "name" : "Admin User Authz"
+  }, {
+    "description" : "Quản trị cấu hình giao diện toàn hệ thống",
+    "name" : "Admin Appearance"
   } ]
 }

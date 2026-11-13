@@ -1,4 +1,4 @@
-import { LayoutDashboard, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, SlidersVertical, type LucideIcon } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
 
 /**
@@ -41,7 +41,17 @@ export const NAVIGATION: readonly NavGroup[] = [
     ],
   },
   { id: "users", items: [] },
-  { id: "system", items: [] },
+  {
+    id: "system",
+    items: [
+      {
+        id: "appearance",
+        href: "/tuy-chinh-giao-dien",
+        icon: SlidersVertical,
+        permission: "APPEARANCE.MODIFY",
+      },
+    ],
+  },
 ];
 
 function isVisible(item: NavItem, granted: ReadonlySet<string>): boolean {

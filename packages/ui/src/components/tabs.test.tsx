@@ -49,4 +49,13 @@ describe("Tabs", () => {
     await userEvent.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Lịch sử" })).toHaveAttribute("aria-selected", "true");
   });
+
+  it("tab phân đoạn đang chọn có chỉ báo 2px bằng token primary-text", () => {
+    render(<Example variant="segmented" />);
+    const activeTab = screen.getByRole("tab", { name: "Vai trò" });
+    expect(activeTab).toHaveClass(
+      "data-[state=active]:after:h-0.5",
+      "data-[state=active]:after:bg-primary-text",
+    );
+  });
 });
