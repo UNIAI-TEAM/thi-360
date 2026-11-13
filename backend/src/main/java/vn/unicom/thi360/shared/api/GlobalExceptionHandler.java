@@ -135,6 +135,17 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.TOO_MANY_REQUESTS, code, message, List.of(), request);
     }
 
+    @ExceptionHandler(ExternalServiceException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ResponseEntity<ApiError> handleExternalService(ExternalServiceException ex, HttpServletRequest request) {
+        log.atError()
+                .setCause(ex)
+                .addKeyValue("code", ex.getCode())
+                .log("External identity/provider service failure");
+        String message = resolveMessage(ex.getCode(), ex.getMessage(), "INTERNAL_ERROR");
+        return respond(HttpStatus.BAD_GATEWAY, ex.getCode(), message, List.of(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex, HttpServletRequest request) {

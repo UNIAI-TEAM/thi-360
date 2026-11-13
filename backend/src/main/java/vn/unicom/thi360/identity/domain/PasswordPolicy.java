@@ -1,0 +1,64 @@
+package vn.unicom.thi360.identity.domain;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.stereotype.Component;
+import vn.unicom.thi360.shared.api.FieldError;
+import vn.unicom.thi360.shared.api.ValidationException;
+
+@Component
+public class PasswordPolicy {
+
+    private static final int MIN_LENGTH = 8;
+    private static final int MAX_LENGTH = 64;
+
+    public void validate(String fieldName, String password, String username) {
+        List<FieldError> errors = new ArrayList<>();
+        if (password == null || password.isEmpty()) {
+            errors.add(new FieldError(fieldName, "PASSWORD_WEAK", "Mật khẩu không được để trống"));
+            throw new ValidationException("PASSWORD_WEAK", null, errors);
+        }
+
+        if (password.length() < MIN_LENGTH || password.length() > MAX_LENGTH) {
+            errors.add(new FieldError(fieldName, "PASSWORD_LENGTH", "Mật khẩu phải từ 8 đến 64 ký tự"));
+        }
+
+        boolean hasUpper = false;
+        boolean hasLower = false;
+        boolean hasDigit = false;
+        boolean hasSpecial = false;
+
+        for (int i = 0; i < password.length(); i++) {
+            char ch = password.charAt(i);
+            if (Character.isUpperCase(ch)) {
+                hasUpper = true;
+            } else if (Character.isLowerCase(ch)) {
+                hasLower = true;
+            } else if (Character.isDigit(ch)) {
+                hasDigit = true;
+            } else if (!Character.isWhitespace(ch)) {
+                hasSpecial = true;
+            }
+        }
+
+        if (!hasUpper) {
+            errors.add(new FieldError(fieldName, "PASSWORD_UPPERCASE", "Mật khẩu phải có ít nhất một chữ hoa"));
+        }
+        if (!hasLower) {
+            errors.add(new FieldError(fieldName, "PASSWORD_LOWERCASE", "Mật khẩu phải có ít nhất một chữ thường"));
+        }
+        if (!hasDigit) {
+            errors.add(new FieldError(fieldName, "PASSWORD_DIGIT", "Mật khẩu phải có ít nhất một chữ số"));
+        }
+        if (!hasSpecial) {
+            errors.add(new FieldError(fieldName, "PASSWORD_SPECIAL", "Mật khẩu phải có ít nhất một ký tự đặc biệt"));
+        }
+        if (username != null && !username.isBlank() && password.equalsIgnoreCase(username.trim())) {
+            errors.add(new FieldError(fieldName, "PASSWORD_SAME_AS_USERNAME", "Mật khẩu không được trùng tên đăng nhập"));
+        }
+
+        if (!errors.isEmpty()) {
+            throw new ValidationException("PASSWORD_WEAK", null, errors);
+        }
+    }
+}

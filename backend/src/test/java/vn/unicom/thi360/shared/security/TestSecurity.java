@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import vn.unicom.thi360.shared.ids.Ids;
 
@@ -14,7 +15,7 @@ public class TestSecurity {
     @Bean
     @ConditionalOnMissingBean(TestSecuritySupport.class)
     public TestSecuritySupport defaultTestSecuritySupport() {
-        return new NoopTestSecuritySupport();
+        return new SecurityContextTestSecuritySupport();
     }
 
     public record SimulatedPrincipal(
@@ -30,12 +31,27 @@ public class TestSecurity {
         RequestPostProcessor apply(SimulatedPrincipal principal);
     }
 
-    public static class NoopTestSecuritySupport implements TestSecuritySupport {
+    public static class SecurityContextTestSecuritySupport implements TestSecuritySupport {
         @Override
         public RequestPostProcessor apply(SimulatedPrincipal principal) {
+            Realm realm = principal.platformAdmin() ? Realm.MASTER : Realm.APP;
+            Access access = (principal.platformAdmin() || !"STUDENT".equalsIgnoreCase(principal.roleCode()))
+                    ? Access.MANAGE
+                    : Access.EXAM;
+            PermissionSet perms = principal.platformAdmin()
+                    ? PermissionSet.all()
+                    : PermissionSet.ofCodes(principal.permissions());
+            CurrentUser currentUser = new CurrentUser(
+                    principal.userId(),
+                    principal.username(),
+                    realm,
+                    access,
+                    perms);
+            CurrentUserAuthenticationToken auth = new CurrentUserAuthenticationToken(currentUser, "test-sid");
+            RequestPostProcessor authProcessor = SecurityMockMvcRequestPostProcessors.authentication(auth);
             return request -> {
-                request.setAttribute(SimulatedPrincipal.class.getName(), principal);
-                return request;
+                request.setAttribute(AdminOriginFilter.SIMULATED_PRINCIPAL_ATTR, principal);
+                return authProcessor.postProcessRequest(request);
             };
         }
     }

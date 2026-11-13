@@ -4,24 +4,33 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 16/83 điểm (T01, T02, T06).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 24/83 điểm (T01, T02, T03, T06).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
-- Sóng 2 đang chạy: T03 (UNI-2540) trên VPS, T05 (UNI-2542) trên máy Windows.
+- T03 (UNI-2540) đã nghiệm thu và merge vào `integration/dot-1` (PR #6, `a996ab4`).
+- Đang chạy: T04 (UNI-2541) trên VPS, T05 (UNI-2542) và UNI-2559 (tương phản màu chế độ sáng, con của UNI-2543) trên máy Windows.
 
 **Bước tiếp theo**
 
-1. T03 và T05 chạy song song; T04 bắt đầu khi T03 merge.
+1. T04 và T05 chạy song song; T18 bắt đầu khi T04 merge, T07 và T17 khi T04 và T05 cùng merge.
 2. Sau T03 và T04: T18; sau T04 và T05: T17 (T06 đã xong).
 
 **Vướng / việc treo**
 
 - DB dev dùng chung: migration `V202611131020` đã sửa trong lúc review, nên DB dev cũ lệch checksum Flyway. Cách xử lý: xóa các schema `shared`, `identity`, `catalog`, `audit` trong DB dev rồi chạy lại backend (chỉ có bảng khung rỗng).
 - Bộ xuất OpenAPI ghi xuống dòng theo hệ điều hành (CRLF trên Windows), nên kiểm tra lệch `diff` chạy trên Windows báo lệch giả. CI chạy Linux không bị. Sửa trong T05.
-- Keycloak dev: tệp realm phải đổi tên thành `thi-360-realm.json` (Keycloak 26.4 từ chối nhập khi tên tệp khác tên realm). Sửa trong T03.
 
 ## Đã làm
+
+### 2026-11-13 — T03 (UNI-2540) xác thực, merge vào integration/dot-1
+
+- Tệp realm đổi thành `infra/keycloak/thi-360-realm.json` (Keycloak 26.4 từ chối nạp khi tên tệp khác tên realm), thêm `init-master.sh` và dịch vụ `keycloak-init`.
+- Migration identity; `KeycloakIdentityClient`; `AuthService`/`AuthController` (đăng nhập, làm mới, đăng xuất, đổi mật khẩu, `/me`); chuỗi bộ lọc B5, JWT hai realm có kiểm tra audience/azp, phiên trên Redis (tối đa 5), chặn đăng nhập sai, giới hạn theo IP qua proxy tin cậy (`THI360_TRUSTED_PROXIES`), ký cookie ngữ cảnh. SPI nhật ký dùng chung với T05.
+- Review bảo mật: 9 lỗi đã sửa (gồm lộ tài khoản bị khóa, thiếu kiểm tra audience, thu hồi phiên từ sid chưa xác minh, chỉ mục phiên không nguyên tử, khóa dev dùng được ở production); review lại không còn lỗi.
+- Lệnh đã chạy trên `c48a073`: Cursor cloud runner `./mvnw -B -ntp verify` (53 + 26 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows cùng các lệnh và kiểm tra lệch openapi/api-client → exit 0.
+- Việc còn lại: proxy web phải ghi đè `X-Forwarded-For` (T18).
+- Merge squash qua PR #6 (`a996ab4`).
 
 ### 2026-11-13 — T06 (UNI-2543) design system và khung web admin, merge vào integration/dot-1
 
