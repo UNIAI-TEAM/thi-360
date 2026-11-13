@@ -4,16 +4,16 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 9/83 điểm (T01, T02).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 16/83 điểm (T01, T02, T06).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
-- T06 (UNI-2543) đang làm: đã sửa xong lỗi review vòng 1, đang test lại.
-- Sóng 2 mở ngay: T03 (UNI-2540) và T05 (UNI-2542).
+- T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
+- Sóng 2 đang chạy: T03 (UNI-2540) trên VPS, T05 (UNI-2542) trên máy Windows.
 
 **Bước tiếp theo**
 
 1. T03 và T05 chạy song song; T04 bắt đầu khi T03 merge.
-2. Nghiệm thu T06 gồm hai tiêu chí giao diện (AC-2, AC-4) chạy trên trình duyệt.
+2. Sau T03 và T04: T18; sau T04 và T05: T17 (T06 đã xong).
 
 **Vướng / việc treo**
 
@@ -22,6 +22,15 @@
 - Keycloak dev: tệp realm phải đổi tên thành `thi-360-realm.json` (Keycloak 26.4 từ chối nhập khi tên tệp khác tên realm). Sửa trong T03.
 
 ## Đã làm
+
+### 2026-11-13 — T06 (UNI-2543) design system và khung web admin, merge vào integration/dot-1
+
+- `packages/ui`: token màu (sáng, tối), 27 thành phần có test; `apps/web-admin`: route proxy, AppShell, menu lọc theo quyền, phiên giả cho dev, `usePermissions`/`<Can>`, xử lý 401/403, next-intl, trang `/`, `/forbidden`, 404, `/dev/ui`; `web.yml` thêm bước `pnpm test`.
+- Review FE và BE (route proxy): vòng đầu 12 lỗi FE, 5 lỗi BE đã sửa; hai vòng review lại không còn lỗi. Sau khi lấy T02 vào nhánh, `vite` bị hạ xuống 7 khi gộp lockfile; đã ghim `vite ^8.3.8`.
+- Nghiệm thu giao diện trên trình duyệt (Windows): lần 1 chưa đạt vì chữ màu xanh ở chế độ tối dưới 4,5:1 và sidebar cuộn mất; đã sửa token chế độ tối (có test tương phản) và cho sidebar dính.
+- Lệnh đã chạy trên `7ff408c`: Cursor cloud runner `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build` → exit 0 (194 test); Advisor chạy lại trên Windows lint, typecheck, test, build → exit 0.
+- Ghi chú thiết kế (chưa sửa, chờ người quyết): ở chế độ sáng chữ `primary-600` trên nền xanh nhạt 3,4–3,6:1, chữ trắng trên nút chính 3,77:1, chữ trắng trên nút màu nhấn 2,33:1, đều dưới 4,5:1 của DESIGN.md §9.
+- Merge squash qua PR #5 (`4a3c7ac`).
 
 ### 2026-11-13 — T02 (UNI-2539) khung backend modular monolith, merge vào integration/dot-1
 

@@ -1,6 +1,7 @@
 {
   "extends": "@thi360/config/tsconfig.base.json",
   "include": [
-    "src"
+    "src",
+    "vitest.config.ts"
   ]
 }

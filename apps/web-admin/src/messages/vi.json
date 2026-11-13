@@ -1,0 +1,189 @@
+{
+  "common": {
+    "backHome": "Về trang chủ",
+    "loading": "Đang tải",
+    "retry": "Thử lại"
+  },
+  "dashboard": {
+    "errorDescription": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
+    "errorTitle": "Không tải được trang",
+    "greeting": "Xin chào, {name}",
+    "intro": "Đây là trang quản trị Thi 360. Chọn một mục ở menu bên trái để bắt đầu.",
+    "shortcuts": "Lối tắt",
+    "title": "Bảng điều khiển"
+  },
+  "devUi": {
+    "buttons": {
+      "danger": "Xóa tài khoản",
+      "disabled": "Đã khóa",
+      "exam": "Vào thi ngay",
+      "link": "Xem tất cả →",
+      "loading": "Đang lưu",
+      "outline": "Nhập Excel",
+      "primary": "Tạo tài khoản",
+      "secondary": "Hủy",
+      "sizeLg": "Cỡ lớn (48px)",
+      "sizeMd": "Mặc định (40px)",
+      "sizeSm": "Cỡ nhỏ (36px)",
+      "sizeXl": "Đăng nhập (52px)",
+      "soft": "Chi tiết"
+    },
+    "chips": {
+      "badge": "3 đề",
+      "filterIdle": "Chưa kích hoạt",
+      "filterSelected": "Hoạt động",
+      "tag": "Môn Toán"
+    },
+    "description": "Bộ thành phần giao diện dùng chung của Thi 360. Chuyển Sáng / Tối để kiểm tra token.",
+    "fields": {
+      "checkboxLabel": "Bắt đổi mật khẩu ở lần đăng nhập đầu",
+      "errorLabel": "Tên đăng nhập",
+      "errorMessage": "Tên đăng nhập đã tồn tại.",
+      "noteLabel": "Ghi chú",
+      "notePlaceholder": "Nhập lý do hoặc ghi chú…",
+      "roleContent": "Quản trị nội dung",
+      "roleLabel": "Vai trò",
+      "roleOps": "Vận hành / CSKH",
+      "roleStudent": "Học viên (không gán ở đây)",
+      "searchHint": "Tìm theo mã, tên đăng nhập hoặc họ tên.",
+      "searchLabel": "Tìm kiếm",
+      "searchPlaceholder": "Nhập từ khóa…",
+      "switchLabel": "Cho phép đăng nhập"
+    },
+    "navigation": {
+      "breadcrumbAria": "Đường dẫn mẫu",
+      "crumbCurrent": "Chi tiết tài khoản",
+      "crumbRoot": "Người dùng",
+      "crumbSection": "Tài khoản",
+      "tabBulk": "Gán hàng loạt",
+      "tabBulkBody": "Chọn danh sách tài khoản để cấp hoặc thu hồi quyền.",
+      "tabPermissions": "Quyền",
+      "tabPermissionsBody": "Danh sách 13 quyền cố định của đợt 1.",
+      "tabRoles": "Vai trò",
+      "tabRolesBody": "Quản lý các vai trò hệ thống và vai trò tự tạo."
+    },
+    "overlays": {
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "confirmAction": "Khóa tài khoản",
+      "confirmDescription": "Tài khoản ops.admin sẽ bị thu hồi mọi phiên đang mở.",
+      "confirmTitle": "Khóa tài khoản này?",
+      "dialogDescription": "Điền thông tin cơ bản của vai trò mới.",
+      "dialogTitle": "Tạo vai trò",
+      "drawerDescription": "Lịch sử thay đổi quyền và trạng thái của tài khoản.",
+      "drawerTitle": "Lịch sử thay đổi",
+      "menuDelete": "Xóa vai trò",
+      "menuEdit": "Đổi tên",
+      "menuHeading": "Thao tác khác",
+      "openConfirm": "Dialog xác nhận",
+      "openDialog": "Mở dialog",
+      "openDrawer": "Mở drawer",
+      "openMenu": "Menu thả",
+      "reasonLabel": "Lý do khóa",
+      "save": "Lưu",
+      "toastSaved": "Đã lưu thay đổi.",
+      "tooltipContent": "Chú thích hiện khi rê chuột hoặc focus bàn phím",
+      "tooltipTrigger": "Rê chuột để xem tooltip",
+      "triggerToast": "Hiện thông báo"
+    },
+    "pagination": {
+      "nav": "Phân trang bảng mẫu",
+      "next": "Trang sau",
+      "page": "Trang {page}",
+      "previous": "Trang trước",
+      "range": "{from}–{to} / {total} bản ghi",
+      "rowsPerPage": "Số dòng"
+    },
+    "sections": {
+      "buttons": "Nút (Button)",
+      "chips": "Chip trạng thái, chip lọc và huy hiệu",
+      "fields": "Ô nhập, chọn, đánh dấu (Input, Select, Textarea, Checkbox, Switch, FormField)",
+      "navigation": "Breadcrumb và Tab",
+      "overlays": "Dialog, ConfirmDialog, Drawer, DropdownMenu, Tooltip, Toast",
+      "skeleton": "Khung xương (Skeleton)",
+      "table": "Bảng, nút thao tác và phân trang (Table, IconButton, EmptyState, Pagination)"
+    },
+    "status": {
+      "active": "Hoạt động",
+      "inactive": "Ngừng sử dụng",
+      "locked": "Bị khóa",
+      "pending": "Chưa đăng nhập",
+      "system": "Hệ thống"
+    },
+    "table": {
+      "ariaLabel": "Danh sách tài khoản mẫu",
+      "colActions": "Thao tác",
+      "colCode": "Mã",
+      "colFullName": "Họ và tên",
+      "colRole": "Vai trò",
+      "colStatus": "Trạng thái",
+      "colUsername": "Tên đăng nhập",
+      "deleteAction": "Xóa tài khoản {name}",
+      "deleteBlockedReason": "Không xóa được tài khoản đang dùng.",
+      "editAction": "Sửa tài khoản {name}",
+      "emptyDescription": "Thử đổi điều kiện lọc hoặc tạo bản ghi mới.",
+      "emptyTitle": "Không có tài khoản nào",
+      "errorDescription": "Không tải được danh sách. Hãy thử lại.",
+      "errorTitle": "Lỗi tải dữ liệu",
+      "selectAll": "Chọn tất cả dòng",
+      "selectRow": "Chọn tài khoản {name}",
+      "stateData": "Có dữ liệu",
+      "stateEmpty": "Rỗng",
+      "stateError": "Lỗi",
+      "stateLabel": "Trạng thái bảng",
+      "stateLoading": "Đang tải",
+      "viewAction": "Xem chi tiết {name}"
+    },
+    "themeDark": "Tối",
+    "themeLabel": "Chế độ màu",
+    "themeLight": "Sáng",
+    "title": "Thành phần giao diện (/dev/ui)"
+  },
+  "errors": {
+    "forbiddenToast": "Bạn không có quyền thực hiện thao tác này.",
+    "notFound": "Không tìm thấy.",
+    "proxyNotConfigured": "Máy chủ web chưa được cấu hình địa chỉ API.",
+    "upstreamTimeout": "Máy chủ xử lý quá lâu. Hãy thử lại sau.",
+    "upstreamUnavailable": "Không kết nối được tới máy chủ. Hãy thử lại sau."
+  },
+  "forbidden": {
+    "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
+    "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
+    "eyebrow": "MÃ LỖI 403",
+    "otherAccount": "Đăng nhập bằng tài khoản khác",
+    "title": "Bạn không có quyền vào trang này"
+  },
+  "nav": {
+    "groups": {
+      "overview": "Tổng quan",
+      "system": "Hệ thống",
+      "users": "Người dùng"
+    },
+    "items": {
+      "dashboard": {
+        "description": "Lời chào và các lối tắt theo quyền",
+        "label": "Bảng điều khiển"
+      }
+    }
+  },
+  "notFound": {
+    "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",
+    "eyebrow": "MÃ LỖI 404",
+    "title": "Không tìm thấy trang"
+  },
+  "shell": {
+    "brand": "Thi 360 · Quản trị",
+    "breadcrumbLabel": "Vị trí hiện tại",
+    "logoMark": "360",
+    "menuLabel": "Menu chính",
+    "menuLoading": "Đang tải menu",
+    "skipToContent": "Chuyển tới nội dung chính",
+    "userMenu": {
+      "changePassword": "Đổi mật khẩu",
+      "logout": "Đăng xuất",
+      "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
+      "profile": "Hồ sơ",
+      "trigger": "Menu tài khoản"
+    }
+  }
+}
