@@ -1,0 +1,452 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  FormField,
+  Input,
+  Select,
+  Textarea,
+} from "@thi360/ui";
+import { AlertTriangle, Lock } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import type {
+  CatalogGroupResponse,
+  CatalogItemResponse,
+  CatalogStatus,
+  CreateCatalogItemRequest,
+  UpdateCatalogItemRequest,
+} from "../api";
+import { createItemFormSchema, type ItemFormValues } from "../schemas";
+import {
+  BEHAVIOR_WARNING_GROUP_CODES,
+  getCatalogErrorCode,
+  getCatalogFieldErrors,
+  pickName,
+  resolveCatalogErrorMessage,
+} from "../utils";
+
+export type ItemFormDialogProps = {
+  open: boolean;
+  mode: "create" | "edit";
+  group: CatalogGroupResponse;
+  item: CatalogItemResponse | null;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (
+    payload:
+      | { mode: "create"; groupId: string; data: CreateCatalogItemRequest; addAnother: boolean }
+      | { mode: "edit"; itemId: string; data: UpdateCatalogItemRequest },
+  ) => Promise<void>;
+};
+
+export function ItemFormDialog({
+  open,
+  mode,
+  group,
+  item,
+  onOpenChange,
+  onSubmit,
+}: ItemFormDialogProps) {
+  const t = useTranslations("catalog");
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (submitting && !next) return;
+        if (!next) setSubmitting(false);
+        onOpenChange(next);
+      }}
+    >
+      {open && (
+        <DialogContent closeLabel={t("close")} size="lg">
+          <DialogHeader>
+            <DialogTitle>
+              {mode === "create" ? t("itemDialog.createTitle") : t("itemDialog.editTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("itemDialog.subtitle")}</DialogDescription>
+          </DialogHeader>
+          <ItemFormBody
+            key={`${mode}-${group.id}-${item?.id ?? "new"}`}
+            mode={mode}
+            group={group}
+            item={item}
+            onCancel={() => onOpenChange(false)}
+            onSubmittingChange={setSubmitting}
+            onSubmit={onSubmit}
+          />
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+}
+
+function ItemFormBody({
+  mode,
+  group,
+  item,
+  onCancel,
+  onSubmittingChange,
+  onSubmit,
+}: {
+  mode: "create" | "edit";
+  group: CatalogGroupResponse;
+  item: CatalogItemResponse | null;
+  onCancel: () => void;
+  onSubmittingChange: (submitting: boolean) => void;
+  onSubmit: ItemFormDialogProps["onSubmit"];
+}) {
+  const t = useTranslations("catalog");
+  const locale = useLocale();
+  const [codeLocked, setCodeLocked] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const initialStatus = mode === "edit" ? item?.status : undefined;
+  const isSystemItem = mode === "edit" && Boolean(item?.system);
+  const effectiveCodeLocked = codeLocked || isSystemItem;
+  const showBehaviorWarning = group.code in BEHAVIOR_WARNING_GROUP_CODES;
+
+  const schema = useMemo(
+    () =>
+      createItemFormSchema(initialStatus, {
+        codeRequired: t("validation.codeRequired"),
+        codePattern: t("validation.codePattern"),
+        nameViRequired: t("validation.nameViRequired"),
+        displayOrderInvalid: t("validation.displayOrderInvalid"),
+        reasonRequired: t("validation.reasonRequired"),
+      }),
+    [initialStatus, t],
+  );
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<ItemFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues:
+      mode === "edit" && item
+        ? {
+            code: item.code,
+            displayOrder: String(item.displayOrder),
+            nameVi: item.nameVi,
+            nameEn: item.nameEn ?? "",
+            status: item.status,
+            description: item.description ?? "",
+            reason: "",
+          }
+        : {
+            code: "",
+            displayOrder: "",
+            nameVi: "",
+            nameEn: "",
+            status: "ACTIVE",
+            description: "",
+            reason: "",
+          },
+  });
+
+  const watchedStatus = useWatch({ control, name: "status" });
+  const showReason = mode === "edit" && item?.status === "ACTIVE" && watchedStatus === "INACTIVE";
+  const statusOptions = useMemo(
+    () => [
+      { value: "ACTIVE" satisfies CatalogStatus, label: t("statuses.ACTIVE") },
+      { value: "INACTIVE" satisfies CatalogStatus, label: t("statuses.INACTIVE") },
+    ],
+    [t],
+  );
+
+  async function handleFormSubmit(values: ItemFormValues, addAnother: boolean) {
+    setServerError(null);
+    onSubmittingChange(true);
+    const trimmedCode = values.code.trim();
+    const trimmedNameVi = values.nameVi.trim();
+    const trimmedNameEn = values.nameEn.trim();
+    const trimmedDescription = values.description.trim();
+    const trimmedDisplayOrder = values.displayOrder.trim();
+    const trimmedReason = values.reason.trim();
+    const parsedOrder = trimmedDisplayOrder ? Number(trimmedDisplayOrder) : undefined;
+
+    try {
+      if (mode === "create") {
+        await onSubmit({
+          mode: "create",
+          groupId: group.id,
+          addAnother,
+          data: {
+            code: trimmedCode,
+            nameVi: trimmedNameVi,
+            ...(trimmedNameEn ? { nameEn: trimmedNameEn } : {}),
+            ...(trimmedDescription ? { description: trimmedDescription } : {}),
+            ...(parsedOrder !== undefined ? { displayOrder: parsedOrder } : {}),
+            status: values.status,
+          },
+        });
+        if (addAnother) {
+          reset({
+            code: "",
+            displayOrder: "",
+            nameVi: "",
+            nameEn: "",
+            status: "ACTIVE",
+            description: "",
+            reason: "",
+          });
+        }
+      } else if (item) {
+        const shouldSendCode = !effectiveCodeLocked && trimmedCode !== item.code;
+        await onSubmit({
+          mode: "edit",
+          itemId: item.id,
+          data: {
+            ...(shouldSendCode ? { code: trimmedCode } : {}),
+            nameVi: trimmedNameVi,
+            nameEn: trimmedNameEn,
+            description: trimmedDescription,
+            ...(parsedOrder !== undefined ? { displayOrder: parsedOrder } : {}),
+            status: values.status,
+            ...(showReason ? { reason: trimmedReason } : {}),
+            version: item.version,
+          },
+        });
+      }
+    } catch (error) {
+      const code = getCatalogErrorCode(error);
+      const translated = resolveCatalogErrorMessage(error, (key) => t(`errorCodes.${key}`));
+
+      if (code === "CATALOG_CODE_LOCKED") {
+        setCodeLocked(true);
+        if (item) {
+          setValue("code", item.code, { shouldValidate: false });
+        }
+        setError("code", { type: "server", message: translated });
+        return;
+      }
+
+      if (code === "CATALOG_CODE_TAKEN") {
+        setError("code", { type: "server", message: translated });
+        return;
+      }
+
+      const fieldErrors = getCatalogFieldErrors(error);
+      let mappedToField = false;
+      for (const fe of fieldErrors) {
+        if (
+          fe.field === "code" ||
+          fe.field === "displayOrder" ||
+          fe.field === "nameVi" ||
+          fe.field === "nameEn" ||
+          fe.field === "status" ||
+          fe.field === "description" ||
+          fe.field === "reason"
+        ) {
+          setError(fe.field, { type: "server", message: translated });
+          mappedToField = true;
+        }
+      }
+      if (!mappedToField) {
+        setServerError(translated);
+      }
+    } finally {
+      onSubmittingChange(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit((values) => handleFormSubmit(values, false))}
+      noValidate
+      className="flex flex-col gap-4"
+    >
+          <div className="flex flex-col gap-1.5">
+            <span className="text-field-label font-medium text-text-secondary">
+              {t("itemDialog.groupLabel")}
+            </span>
+            <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-md border border-border bg-page px-3 py-2">
+              <span className="rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold text-text">
+                {group.code}
+              </span>
+              <span className="font-medium text-text">{pickName(group, locale)}</span>
+              <span className="ml-auto text-caption text-text-muted">
+                {t(`types.${group.type}`)} · {t(`kinds.${group.kind}`)}
+              </span>
+            </div>
+          </div>
+
+          {showBehaviorWarning && (
+            <div
+              role="note"
+              className="flex items-start gap-2.5 rounded-md border border-warning bg-warning-bg px-3.5 py-2.5 text-field-label text-warning"
+            >
+              <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{t("behaviorWarning")}</span>
+            </div>
+          )}
+
+          {serverError && (
+            <div
+              role="alert"
+              className="rounded-md border border-danger bg-danger-bg px-3.5 py-2.5 text-field-label font-medium text-danger"
+            >
+              {serverError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
+            <FormField
+              label={t("itemDialog.codeLabel")}
+              required
+              error={errors.code?.message}
+              hint={
+                effectiveCodeLocked
+                  ? t("itemDialog.codeLockedHint")
+                  : t("itemDialog.codeHint")
+              }
+            >
+              {(fieldProps) => (
+                <Input
+                  {...fieldProps}
+                  {...register("code")}
+                  disabled={isSubmitting || effectiveCodeLocked}
+                  leadingIcon={effectiveCodeLocked ? <Lock aria-hidden /> : undefined}
+                />
+              )}
+            </FormField>
+
+            <FormField
+              label={t("itemDialog.displayOrderLabel")}
+              error={errors.displayOrder?.message}
+              hint={t("itemDialog.displayOrderHint")}
+            >
+              {(fieldProps) => (
+                <Input
+                  {...fieldProps}
+                  {...register("displayOrder")}
+                  inputMode="numeric"
+                  disabled={isSubmitting}
+                />
+              )}
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField
+              label={t("itemDialog.nameViLabel")}
+              required
+              error={errors.nameVi?.message}
+            >
+              {(fieldProps) => (
+                <Input {...fieldProps} {...register("nameVi")} disabled={isSubmitting} />
+              )}
+            </FormField>
+
+            <FormField label={t("itemDialog.nameEnLabel")} error={errors.nameEn?.message}>
+              {(fieldProps) => (
+                <Input
+                  {...fieldProps}
+                  {...register("nameEn")}
+                  placeholder={t("itemDialog.nameEnPlaceholder")}
+                  disabled={isSubmitting}
+                />
+              )}
+            </FormField>
+          </div>
+
+          <FormField
+            label={t("itemDialog.statusLabel")}
+            required
+            error={errors.status?.message}
+          >
+            {(fieldProps) => (
+              <Controller
+                control={control}
+                name="status"
+                render={({ field }) => (
+                  <Select
+                    id={fieldProps.id}
+                    aria-invalid={fieldProps["aria-invalid"]}
+                    aria-required={fieldProps["aria-required"]}
+                    aria-describedby={fieldProps["aria-describedby"]}
+                    options={statusOptions}
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value as CatalogStatus)}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+            )}
+          </FormField>
+
+          {showReason && (
+            <FormField
+              label={t("itemDialog.reasonLabel")}
+              required
+              hint={t("itemDialog.reasonHint")}
+              error={errors.reason?.message}
+            >
+              {(fieldProps) => (
+                <Textarea
+                  {...fieldProps}
+                  {...register("reason")}
+                  rows={2}
+                  disabled={isSubmitting}
+                />
+              )}
+            </FormField>
+          )}
+
+          <FormField label={t("itemDialog.descriptionLabel")} error={errors.description?.message}>
+            {(fieldProps) => (
+              <Textarea
+                {...fieldProps}
+                {...register("description")}
+                rows={2}
+                disabled={isSubmitting}
+              />
+            )}
+          </FormField>
+
+          {mode === "edit" && (
+            <p className="rounded-md border border-border bg-page px-3.5 py-2.5 text-field-label text-text-secondary">
+              {t("itemDialog.editHint")}
+            </p>
+          )}
+
+          <DialogFooter className="flex-wrap pt-1">
+            <Button
+              variant="secondary"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              {t("cancel")}
+            </Button>
+            {mode === "create" && (
+              <Button
+                type="button"
+                variant="soft"
+                loading={isSubmitting}
+                onClick={handleSubmit((values) => handleFormSubmit(values, true))}
+              >
+                {t("itemDialog.saveAndAddMore")}
+              </Button>
+            )}
+            <Button type="submit" variant="primary" loading={isSubmitting}>
+              {t("itemDialog.save")}
+            </Button>
+          </DialogFooter>
+        </form>
+  );
+}
