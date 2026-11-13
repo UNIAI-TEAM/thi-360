@@ -247,11 +247,10 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.value").value(1));
 
         UUID i2Id = UUID.fromString(createItem(groupId, "ITEM_B", "Giá trị B", null).get("id").asText());
-
         mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", i2Id)
+                        .param("reason", "Xóa thử không dùng lại value")
                         .with(asUser(Permissions.CATALOG_MODIFY)))
                 .andExpect(status().isNoContent());
-
         mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -269,10 +268,12 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
         mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", groupId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "version", 0))))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "Ngừng thử nhóm",
+                                "version", 0))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("INACTIVE"));
-
         mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
@@ -499,10 +500,109 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void deactivationAndDeletionRequireReasonAndAuditEventsIncludeActorRoles() throws Exception {
+        String groupCode = "RSN_AUD_" + suffix();
+        cacheGroupCodes.add(groupCode.toLowerCase());
+        UUID groupId = createCustomGroup(groupCode, "Nhóm kiểm tra lý do", null);
+        JsonNode itemNode = createItem(groupId, "ITM_1", "Giá trị 1", null);
+        UUID itemId = UUID.fromString(itemNode.get("id").asText());
+        long itemVer = itemNode.get("version").asLong();
+
+        // Missing and blank reason rejected on item deactivate, group deactivate, item delete, group delete
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "version", itemVer))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("REASON_REQUIRED"));
+
+        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "reason", "   ", "version", 0))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("REASON_REQUIRED"));
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", itemId)
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("REASON_REQUIRED"));
+
+        // Valid reasons succeed and write non-empty actorRoles + reason to outbox audit payload
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "  Ngừng giá trị cũ  ",
+                                "version", itemVer))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
+
+        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "Ngừng nhóm cũ",
+                                "version", 0))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", itemId)
+                        .param("reason", "Xóa giá trị dư")
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/groups/{id}", groupId)
+                        .param("reason", "  ")
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("REASON_REQUIRED"));
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/groups/{id}", groupId)
+                        .param("reason", "Xóa nhóm thử")
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isNoContent());
+        createdGroupIds.remove(groupId);
+
+        assertAuditPayload(itemId, "CATALOG_ITEM_DEACTIVATED", "Ngừng giá trị cũ");
+        assertAuditPayload(groupId, "CATALOG_GROUP_DEACTIVATED", "Ngừng nhóm cũ");
+        assertAuditPayload(itemId, "CATALOG_ITEM_DELETED", "Xóa giá trị dư");
+        assertAuditPayload(groupId, "CATALOG_GROUP_DELETED", "Xóa nhóm thử");
+    }
+
+    private void assertAuditPayload(UUID targetId, String action, String expectedReason) throws Exception {
+        List<String> rows = jdbcTemplate.queryForList(
+                """
+                SELECT payload::text
+                FROM shared.outbox_event
+                WHERE topic = 'audit'
+                  AND payload->>'module' = 'CATALOG'
+                  AND payload->>'action' = ?
+                  AND payload->>'targetId' = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                String.class,
+                action,
+                targetId.toString());
+        assertThat(rows).hasSize(1);
+        JsonNode payload = objectMapper.readTree(rows.getFirst());
+        assertThat(payload.get("actorType").asText()).isEqualTo("USER");
+        assertThat(payload.get("actorRoles").isArray()).isTrue();
+        assertThat(payload.get("actorRoles").size()).isGreaterThan(0);
+        assertThat(payload.get("reason").asText()).isEqualTo(expectedReason);
+    }
+
     private static String suffix() {
         return UUID.randomUUID().toString().substring(0, 8);
     }
-
     private UUID createCustomGroup(String code, String nameVi, String nameEn) throws Exception {
         var body = new java.util.LinkedHashMap<String, Object>();
         body.put("code", code);

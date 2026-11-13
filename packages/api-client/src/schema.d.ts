@@ -1694,6 +1694,8 @@ export interface components {
             nameEn?: string;
             /** @description Tên tiếng Việt mới */
             nameVi?: string;
+            /** @description Lý do ngừng sử dụng hoặc cập nhật (bắt buộc khi chuyển sang INACTIVE, ghi nhật ký) */
+            reason?: string;
             /** @description Danh sách ID nhóm danh mục liên kết mới (chỉ cho nhóm TREE) */
             refGroupIds?: string[];
             /**
@@ -2537,7 +2539,9 @@ export interface operations {
     };
     deleteGroup: {
         parameters: {
-            query?: never;
+            query?: {
+                reason?: string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -3591,7 +3595,9 @@ export interface operations {
     };
     deleteItem: {
         parameters: {
-            query?: never;
+            query?: {
+                reason?: string;
+            };
             header?: never;
             path: {
                 id: string;

@@ -323,6 +323,198 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
         assertThat(catalogLookup.findItem(SAMPLE_0D1_ID).orElseThrow().system()).isFalse();
     }
 
+    @Test
+    void findLeafIdsEmptyAndNullRefsExcludeInactiveAncestors() throws Exception {
+        RefFixture fx = createRefTreeFixture();
+        long ch3Ver = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.ch3Id())
+                                .with(asUser(Permissions.CATALOG_VIEW)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch3Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "Ngừng chương 3",
+                                "version", ch3Ver))))
+                .andExpect(status().isOk());
+
+        assertThat(catalogLookup.findLeafIds(fx.treeCode(), List.of()))
+                .containsExactlyInAnyOrder(fx.k1Id(), fx.k2Id(), fx.k3Id());
+        assertThat(catalogLookup.findLeafIds(fx.treeCode(), null))
+                .containsExactlyInAnyOrder(fx.k1Id(), fx.k2Id(), fx.k3Id());
+    }
+
+    @Test
+    void inactiveRefGroupRejectedOnNewWritesWhileExistingLinksRemainReadableAndInlineRefOpsBumpVersion() throws Exception {
+        RefFixture fx = createRefTreeFixture();
+        String extraCode = "EXTRA_" + suffix();
+        UUID extraGroupId = createSimpleGroup(extraCode);
+        createdGroupIds.add(extraGroupId);
+        cacheGroupCodes.add(extraCode.toLowerCase());
+
+        // Warm public tree cache BEFORE mutating inline refs and renaming target item
+        mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.treeCode()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ownRefs", hasSize(2)));
+
+        // Inline PUT/DELETE ref on item bumps item version; idempotent repeats do not
+        long ch1Ver = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
+                                .with(asUser(Permissions.CATALOG_VIEW)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/refs/{refItemId}", fx.ch1Id(), fx.lyId())
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(ch1Ver + 1));
+
+        // Idempotent repeat does not bump version again
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/refs/{refItemId}", fx.ch1Id(), fx.lyId())
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(ch1Ver + 1));
+
+        // Warmed tree cache reflects newly attached ownRef
+        mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.treeCode()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ownRefs", hasSize(3)));
+
+        // Stale PATCH using pre-ref version returns 412 VERSION_CONFLICT
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("nameVi", "Cũ", "version", ch1Ver))))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}/refs/{refItemId}", fx.ch1Id(), fx.lyId())
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(ch1Ver + 2));
+
+        // Inline PUT/DELETE ref-group on tree group bumps group version; idempotent repeats do not
+        long treeVer = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/admin/catalog/groups/{id}", fx.treeGroupId())
+                                .with(asUser(Permissions.CATALOG_VIEW)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+
+        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/ref-groups/{refGroupId}", fx.treeGroupId(), extraGroupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)));
+        mockMvc.perform(get("/api/v1/admin/catalog/groups/{id}", fx.treeGroupId())
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(treeVer + 1));
+
+        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/ref-groups/{refGroupId}", fx.treeGroupId(), extraGroupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)));
+        mockMvc.perform(get("/api/v1/admin/catalog/groups/{id}", fx.treeGroupId())
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(treeVer + 1));
+        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", fx.treeGroupId())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("nameVi", "Tên cũ", "version", treeVer))))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/groups/{id}/ref-groups/{refGroupId}", fx.treeGroupId(), extraGroupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/admin/catalog/groups/{id}", fx.treeGroupId())
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(treeVer + 2));
+
+        // Renaming referenced item in subjGroup evicts dependent tree cache
+        long toanVer = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.toanId())
+                                .with(asUser(Permissions.CATALOG_VIEW)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.toanId())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("nameVi", "Toán nâng cao", "version", toanVer))))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.treeCode()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ownRefs[?(@.code=='TOAN')].nameVi", hasItem("Toán nâng cao")));
+
+        // Deactivate subjGroup: new refs to toanId/lyId are rejected on create, update, and inline PUT,
+        // while existing ch1Id link remains readable and editable if retained
+        long subjVer = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/admin/catalog/groups/{id}", fx.subjGroupId())
+                                .with(asUser(Permissions.CATALOG_VIEW)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", fx.subjGroupId())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "Ngừng nhóm môn",
+                                "version", subjVer))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", fx.treeGroupId())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "code", "CH4",
+                                "nameVi", "Chương 4",
+                                "refItemIds", List.of(fx.toanId())))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("CATALOG_REF_INVALID"));
+
+        long ch2Ver = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.ch2Id())
+                                .with(asUser(Permissions.CATALOG_VIEW)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch2Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "refItemIds", List.of(fx.lyId()),
+                                "version", ch2Ver))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("CATALOG_REF_INVALID"));
+
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/refs/{refItemId}", fx.ch2Id(), fx.lyId())
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("CATALOG_REF_INVALID"));
+
+        // Existing link on ch1Id remains readable and retained on unrelated PATCH
+        mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ownRefs[*].refItemId", hasItem(fx.toanId().toString())));
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "nameVi", "Chương 1 sửa tên",
+                                "refItemIds", List.of(fx.toanId(), fx.g10Id()),
+                                "version", ch1Ver + 2))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nameVi").value("Chương 1 sửa tên"));
+    }
     private UUID createSimpleGroup(String code) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/v1/admin/catalog/groups")
                         .with(asUser(Permissions.CATALOG_MODIFY))
@@ -405,9 +597,11 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
         mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", g12Id)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "version", g12Ver))))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "Ngừng lớp 12",
+                                "version", g12Ver))))
                 .andExpect(status().isOk());
-
         MvcResult treeRes = mockMvc.perform(post("/api/v1/admin/catalog/groups")
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -436,11 +630,13 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
         createItem(treeGroupId, l3Id, "K4", "Kiến thức 4");
 
         return new RefFixture(
-                subjCode, gradeCode, treeCode, toanId, lyId, g10Id, g11Id, g12Id,
-                undeclaredItemId, ch1Id, ch2Id, l1Id, k1Id, k2Id, k3Id);
+                subjGroupId, treeGroupId, subjCode, gradeCode, treeCode, toanId, lyId, g10Id, g11Id, g12Id,
+                undeclaredItemId, ch1Id, ch2Id, ch3Id, l1Id, k1Id, k2Id, k3Id);
     }
 
     private record RefFixture(
+            UUID subjGroupId,
+            UUID treeGroupId,
             String subjCode,
             String gradeCode,
             String treeCode,
@@ -452,6 +648,7 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
             UUID undeclaredItemId,
             UUID ch1Id,
             UUID ch2Id,
+            UUID ch3Id,
             UUID l1Id,
             UUID k1Id,
             UUID k2Id,

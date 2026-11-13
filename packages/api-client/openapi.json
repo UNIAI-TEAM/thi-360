@@ -1657,6 +1657,12 @@
             "minLength" : 0,
             "type" : "string"
           },
+          "reason" : {
+            "description" : "Lý do ngừng sử dụng hoặc cập nhật (bắt buộc khi chuyển sang INACTIVE, ghi nhật ký)",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "refGroupIds" : {
             "description" : "Danh sách ID nhóm danh mục liên kết mới (chỉ cho nhóm TREE)",
             "items" : {
@@ -2708,6 +2714,13 @@
           "required" : true,
           "schema" : {
             "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "reason",
+          "required" : false,
+          "schema" : {
             "type" : "string"
           }
         } ],
@@ -4018,6 +4031,13 @@
           "required" : true,
           "schema" : {
             "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "reason",
+          "required" : false,
+          "schema" : {
             "type" : "string"
           }
         } ],

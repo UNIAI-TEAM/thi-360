@@ -279,6 +279,116 @@ class CatalogTreeApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void treeOptionsExcludesInactiveAncestorsAndWarmCachesInvalidateOnReactivationAndMove() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_OPT_CACHE_");
+
+        // Warm public options, root tree, child tree, and descendants caches BEFORE mutations
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", fx.code()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(7)));
+        mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.code()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
+        mockMvc.perform(get("/api/v1/catalog/tree")
+                        .param("group", fx.code())
+                        .param("parentId", fx.ch1Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
+        mockMvc.perform(get("/api/v1/catalog/tree")
+                        .param("group", fx.code())
+                        .param("parentId", fx.ch2Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+        mockMvc.perform(get("/api/v1/catalog/tree/descendants")
+                        .param("nodeId", fx.ch1Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)));
+
+        // Deactivate ch1: options & warmed tree/descendants caches must hide ch1 + all descendants
+        long ch1Ver = objectMapper.readTree(
+                mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
+                                .with(asUser(Permissions.CATALOG_MODIFY))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                        "status", "INACTIVE",
+                                        "reason", "Ngừng chương 1",
+                                        "version", fx.ch1Ver()))))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", fx.code()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].code").value("CH_TWO"));
+        mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.code()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].code").value("CH_TWO"));
+        mockMvc.perform(get("/api/v1/catalog/tree/descendants")
+                        .param("nodeId", fx.ch1Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        // Reactivate ch1: warmed options, tree, and descendants caches must restore all 7 / 3 nodes
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "ACTIVE", "version", ch1Ver))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", fx.code()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(7)));
+        mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.code()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
+        mockMvc.perform(get("/api/v1/catalog/tree/descendants")
+                        .param("nodeId", fx.ch1Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)));
+
+        // Move l1 from ch1 to ch2: warmed parentId and descendants caches must reflect new paths
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", fx.l1Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("parentId", fx.ch2Id()))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/catalog/tree")
+                        .param("group", fx.code())
+                        .param("parentId", fx.ch1Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].code").value("LESSON_BETA"));
+        mockMvc.perform(get("/api/v1/catalog/tree")
+                        .param("group", fx.code())
+                        .param("parentId", fx.ch2Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].code").value("LESSON_ALPHA"));
+        mockMvc.perform(get("/api/v1/catalog/tree/descendants")
+                        .param("nodeId", fx.ch2Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].path", containsInAnyOrder(
+                        "/" + fx.ch2Id() + "/" + fx.l1Id() + "/" + fx.k1Id() + "/",
+                        "/" + fx.ch2Id() + "/" + fx.l1Id() + "/" + fx.k2Id() + "/")));
+        mockMvc.perform(get("/api/v1/catalog/tree/descendants")
+                        .param("nodeId", fx.ch1Id().toString())
+                        .with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].code").value("MNO_CONCEPT_3"));
+    }
+    @Test
     void moveUpdatesAllDescendantPaths() throws Exception {
         TreeFixture fx = createSampleTree("TREE_MOVE_");
 
@@ -327,9 +437,11 @@ class CatalogTreeApiIT extends AbstractIntegrationTest {
         mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch2Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "version", fx.ch2Ver()))))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "Ngừng chương 2",
+                                "version", fx.ch2Ver()))))
                 .andExpect(status().isOk());
-
         mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", fx.l2Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -350,10 +462,12 @@ class CatalogTreeApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("CATALOG_NODE_HAS_CHILDREN"));
 
         mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", fx.k3Id())
+                        .param("reason", "Xóa kiến thức 3")
                         .with(asUser(Permissions.CATALOG_MODIFY)))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", fx.l2Id())
+                        .param("reason", "Xóa bài 2")
                         .with(asUser(Permissions.CATALOG_MODIFY)))
                 .andExpect(status().isNoContent());
     }
