@@ -3,6 +3,11 @@ import type { PasswordFieldLabels } from "../components/password-field";
 
 export type UiLocale = "vi" | "en";
 
+const NUMBER_FORMATTERS: Record<UiLocale, Intl.NumberFormat> = {
+  vi: new Intl.NumberFormat("vi-VN"),
+  en: new Intl.NumberFormat("en-US"),
+};
+
 export interface UiStrings {
   common: {
     close: string;
@@ -39,8 +44,9 @@ export const UI_STRINGS_VI: UiStrings = {
     previous: "Trang trước",
     next: "Trang sau",
     rowsPerPage: "Số dòng mỗi trang",
-    page: (page: number) => `Trang ${page}`,
-    range: ({ from, to, total }) => `${from}–${to} / ${total}`,
+    page: (page: number) => `Trang ${NUMBER_FORMATTERS.vi.format(page)}`,
+    range: ({ from, to, total }) =>
+      `${NUMBER_FORMATTERS.vi.format(from)}–${NUMBER_FORMATTERS.vi.format(to)} / ${NUMBER_FORMATTERS.vi.format(total)}`,
   },
   passwordField: {
     showPassword: "Hiện mật khẩu",
@@ -84,8 +90,9 @@ export const UI_STRINGS_EN: UiStrings = {
     previous: "Previous page",
     next: "Next page",
     rowsPerPage: "Rows per page",
-    page: (page: number) => `Page ${page}`,
-    range: ({ from, to, total }) => `${from}–${to} / ${total}`,
+    page: (page: number) => `Page ${NUMBER_FORMATTERS.en.format(page)}`,
+    range: ({ from, to, total }) =>
+      `${NUMBER_FORMATTERS.en.format(from)}–${NUMBER_FORMATTERS.en.format(to)} / ${NUMBER_FORMATTERS.en.format(total)}`,
   },
   passwordField: {
     showPassword: "Show password",

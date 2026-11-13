@@ -164,4 +164,25 @@ describe("UiStringsProvider defaults", () => {
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
   });
+
+  it("định dạng phân tách nghìn trong Pagination cho số >= 1000 theo vi và en", () => {
+    const viRender = render(
+      <UiStringsProvider locale="vi">
+        <Pagination page={1000} pageSize={10} total={12500} onPageChange={() => {}} />
+      </UiStringsProvider>,
+    );
+    expect(screen.getByText("9.991–10.000 / 12.500")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trang 1.000" })).toHaveTextContent("1.000");
+    expect(screen.getByRole("button", { name: "Trang 1.250" })).toHaveTextContent("1.250");
+    viRender.unmount();
+
+    render(
+      <UiStringsProvider locale="en">
+        <Pagination page={1000} pageSize={10} total={12500} onPageChange={() => {}} />
+      </UiStringsProvider>,
+    );
+    expect(screen.getByText("9,991–10,000 / 12,500")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page 1,000" })).toHaveTextContent("1,000");
+    expect(screen.getByRole("button", { name: "Page 1,250" })).toHaveTextContent("1,250");
+  });
 });

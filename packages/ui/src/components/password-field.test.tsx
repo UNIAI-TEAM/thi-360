@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { UI_STRINGS_EN } from "../messages/ui-strings";
 import {
   evaluatePasswordRules,
   generateStrongPassword,
@@ -77,5 +78,22 @@ describe("PasswordField", () => {
     for (const item of rulesList.querySelectorAll("li")) {
       expect(item).toHaveAttribute("data-met", "true");
     }
+  });
+
+  it("evaluatePasswordRules hỗ trợ locale tiếng Anh và truyền bộ chuỗi trực tiếp", () => {
+    const byLocale = evaluatePasswordRules("Abc1!", "en");
+    expect(byLocale.map((r) => r.label)).toEqual([
+      UI_STRINGS_EN.passwordField.ruleLength,
+      UI_STRINGS_EN.passwordField.ruleUpper,
+      UI_STRINGS_EN.passwordField.ruleLower,
+      UI_STRINGS_EN.passwordField.ruleDigit,
+      UI_STRINGS_EN.passwordField.ruleSpecial,
+    ]);
+    expect(byLocale[0]?.met).toBe(false);
+    expect(byLocale.slice(1).every((r) => r.met)).toBe(true);
+
+    const byStrings = evaluatePasswordRules("Abc1!234", UI_STRINGS_EN.passwordField);
+    expect(byStrings.every((r) => r.met)).toBe(true);
+    expect(byStrings[0]?.label).toBe("8 to 64 characters");
   });
 });

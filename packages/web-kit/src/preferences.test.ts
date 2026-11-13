@@ -3,9 +3,11 @@ import {
   buildPreferenceCookieString,
   deepMergeMessages,
   normalizeCookieDomain,
+  normalizeUiLocale,
   parseLocaleCookie,
   parseThemeCookie,
   PREFERENCE_COOKIE_MAX_AGE_SECONDS,
+  resolveIntlLocale,
   resolveTheme,
 } from "./preferences";
 
@@ -19,6 +21,15 @@ describe("preferences cookies", () => {
     expect(parseLocaleCookie("")).toBe("vi");
     expect(parseLocaleCookie("fr")).toBe("vi");
     expect(parseLocaleCookie("EN")).toBe("vi");
+    expect(parseLocaleCookie("en-GB")).toBe("vi");
+  });
+
+  it("resolveIntlLocale ánh xạ en sang en-GB và normalizeUiLocale đưa về vi/en", () => {
+    expect(resolveIntlLocale("vi")).toBe("vi");
+    expect(resolveIntlLocale("en")).toBe("en-GB");
+    expect(normalizeUiLocale("en-GB")).toBe("en");
+    expect(normalizeUiLocale("en")).toBe("en");
+    expect(normalizeUiLocale("fr")).toBe("vi");
   });
 
   it("parseThemeCookie chỉ nhận light/dark và trả null khi thiếu hoặc sai", () => {
@@ -69,5 +80,21 @@ describe("preferences cookies", () => {
       common: { retry: "Retry", loading: "Đang tải" },
       nested: { a: "Một", b: { c: "Three", d: "Bốn" } },
     });
+  });
+
+  it("deepMergeMessages bỏ qua giá trị rỗng, null và lệch kiểu để không che mất chuỗi vi", () => {
+    const vi = {
+      common: { retry: "Thử lại", loading: "Đang tải", nested: { label: "Nhãn" } },
+      title: "Tiêu đề",
+    };
+    const en = {
+      common: { retry: "", loading: "   ", nested: "không-phải-object" },
+      title: null,
+      extraBlank: "   ",
+    } as unknown as Record<string, unknown>;
+    expect(deepMergeMessages(vi, en)).toEqual(vi);
+
+    const enObjOverString = { title: { nested: "wrong" } } as unknown as Record<string, unknown>;
+    expect(deepMergeMessages(vi, enObjOverString)).toEqual(vi);
   });
 });

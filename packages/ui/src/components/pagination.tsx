@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { Select } from "./select";
-import { useUiStrings } from "./ui-strings";
+import { useUiLocale, useUiStrings } from "./ui-strings";
 
 export type PaginationLabels = {
   /** Tên vùng điều hướng, ví dụ "Phân trang". */
@@ -64,6 +64,8 @@ export function Pagination({
   className,
 }: PaginationProps) {
   const { pagination: defaultLabels } = useUiStrings();
+  const locale = useUiLocale();
+  const numberFormat = new Intl.NumberFormat(locale === "en" ? "en-US" : "vi-VN");
   const resolvedLabels: PaginationLabels = { ...defaultLabels, ...labels };
   // pageSize <= 0 hoặc total < 0 là dữ liệu hỏng: coi như một dòng mỗi trang, không có bản ghi.
   const size = Number.isFinite(pageSize) && pageSize >= 1 ? Math.floor(pageSize) : 1;
@@ -86,7 +88,7 @@ export function Pagination({
             className="h-9 w-24"
             value={String(size)}
             onValueChange={(value) => onPageSizeChange(Number(value))}
-            options={pageSizeOptions.map((size) => ({ value: String(size), label: String(size) }))}
+            options={pageSizeOptions.map((size) => ({ value: String(size), label: numberFormat.format(size) }))}
           />
         )}
       </div>
@@ -116,7 +118,7 @@ export function Pagination({
                 className={pageButton}
                 onClick={() => onPageChange(item)}
               >
-                {item}
+                {numberFormat.format(item)}
               </button>
             </li>
           ),

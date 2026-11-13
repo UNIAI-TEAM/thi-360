@@ -14,6 +14,32 @@ export function parseLocaleCookie(raw: string | null | undefined): AppLocale {
   if (normalized === "en") return "en";
   return DEFAULT_LOCALE;
 }
+export const APP_TIME_ZONE = "Asia/Ho_Chi_Minh" as const;
+
+export const INTL_FORMATS = {
+  dateTime: {
+    short: { day: "2-digit", month: "2-digit", year: "numeric" },
+    date: { day: "2-digit", month: "2-digit", year: "numeric" },
+    dateTime: {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    },
+  },
+} as const;
+
+export function resolveIntlLocale(locale: AppLocale): "vi" | "en-GB" {
+  return locale === "en" ? "en-GB" : "vi";
+}
+
+export function normalizeUiLocale(locale: string | null | undefined): AppLocale {
+  const normalized = locale?.trim();
+  if (normalized === "en" || normalized === "en-GB") return "en";
+  return DEFAULT_LOCALE;
+}
 
 export function parseThemeCookie(raw: string | null | undefined): AppTheme | null {
   const normalized = raw?.trim();
@@ -87,13 +113,20 @@ export function deepMergeMessages<T extends Record<string, unknown>>(
   }
   const result: Record<string, unknown> = { ...base };
   for (const [key, overrideVal] of Object.entries(override)) {
-    if (overrideVal === undefined) continue;
+    if (overrideVal === undefined || overrideVal === null) continue;
     const baseVal = result[key];
-    if (isPlainRecord(baseVal) && isPlainRecord(overrideVal)) {
+    if (isPlainRecord(baseVal)) {
+      if (!isPlainRecord(overrideVal)) continue;
       result[key] = deepMergeMessages(baseVal, overrideVal);
-    } else {
-      result[key] = overrideVal;
+      continue;
     }
+    if (typeof baseVal === "string") {
+      if (typeof overrideVal !== "string" || overrideVal.trim().length === 0) continue;
+      result[key] = overrideVal;
+      continue;
+    }
+    if (typeof overrideVal === "string" && overrideVal.trim().length === 0) continue;
+    result[key] = overrideVal;
   }
   return result as T;
 }

@@ -3,7 +3,7 @@
 import { Check, Circle, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { type ComponentProps, type ReactNode, useId, useRef, useState } from "react";
 import { cn } from "../lib/cn";
-import { UI_STRINGS_VI } from "../messages/ui-strings";
+import { UI_STRINGS_BY_LOCALE, type UiLocale } from "../messages/ui-strings";
 import { useUiStrings } from "./ui-strings";
 import { fieldBase, focusRing } from "../lib/styles";
 
@@ -34,9 +34,13 @@ export interface PasswordFieldLabels {
 
 export function evaluatePasswordRules(
   password: string,
+  labelsOrLocale: Partial<PasswordFieldLabels> | UiLocale = "vi",
   labels: Partial<PasswordFieldLabels> = {},
 ): PasswordRuleStatus[] {
-  const merged = { ...UI_STRINGS_VI.passwordField, ...labels };
+  const locale: UiLocale = typeof labelsOrLocale === "string" ? labelsOrLocale : "vi";
+  const resolvedOverrides = typeof labelsOrLocale === "string" ? labels : labelsOrLocale;
+  const base = UI_STRINGS_BY_LOCALE[locale]?.passwordField ?? UI_STRINGS_BY_LOCALE.vi.passwordField;
+  const merged = { ...base, ...resolvedOverrides };
   return [
     { key: "length", label: merged.ruleLength, met: password.length >= 8 && password.length <= 64 },
     { key: "upper", label: merged.ruleUpper, met: /\p{Lu}/u.test(password) },
