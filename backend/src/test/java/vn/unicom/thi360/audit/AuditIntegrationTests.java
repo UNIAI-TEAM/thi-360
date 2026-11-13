@@ -693,6 +693,69 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
                     """,
                     String.class);
             assertThat(owner).isEqualTo("thi360_audit_maint");
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+
+            UUID futureEventId = Ids.newId();
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event_2034q1 (
+                        id, occurred_at, actor_username, actor_type, module, action,
+                        target_type, target_id, outcome
+                    ) VALUES (?, ?, 'app.user', 1, 'identity', 'LOGIN', 'USER', ?, 1)
+                    """,
+                    futureEventId,
+                    Timestamp.from(Instant.parse("2034-01-15T12:00:00Z")),
+                    targetId);
+            assertThat(appJdbc.queryForObject(
+                    "SELECT COUNT(*) FROM audit.audit_event_2034q1 WHERE id = ?",
+                    Integer.class,
+                    futureEventId)).isEqualTo(1);
+
+            UUID futureArchiveId = Ids.newId();
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event_archive_2034 (
+                        id, occurred_at, actor_type, module, action, target_type, target_id, outcome
+                    ) VALUES (?, ?, 3, 'audit', 'TEST', 'USER', ?, 1)
+                    """,
+                    futureArchiveId,
+                    Timestamp.from(Instant.parse("2034-01-15T12:00:00Z")),
+                    targetId);
+            assertThat(appJdbc.queryForObject(
+                    "SELECT COUNT(*) FROM audit.audit_event_archive_2034 WHERE id = ?",
+                    Integer.class,
+                    futureArchiveId)).isEqualTo(1);
 
             // Archive job succeeds as non-superuser app role: copies rows, compares counts, detaches & drops, resets role, emits AUDIT_ARCHIVED
             Clock archiveClock = Clock.fixed(Instant.parse("2026-11-13T10:00:00Z"), ZoneOffset.UTC);

@@ -188,11 +188,24 @@ BEGIN
         WHERE parent_ns.nspname = 'audit'
           AND parent.relname IN ('audit_event', 'audit_event_archive')
     LOOP
+        EXECUTE format('REVOKE ALL ON TABLE audit.%I FROM PUBLIC', child_name);
         EXECUTE format('REVOKE ALL ON TABLE audit.%I FROM %I', child_name, app_role);
+        EXECUTE format('GRANT SELECT, INSERT ON TABLE audit.%I TO %I', child_name, app_role);
         EXECUTE format('ALTER TABLE audit.%I OWNER TO thi360_audit_maint', child_name);
     END LOOP;
 
     ALTER TABLE audit.audit_event OWNER TO thi360_audit_maint;
     ALTER TABLE audit.audit_event_archive OWNER TO thi360_audit_maint;
+
+    ALTER DEFAULT PRIVILEGES FOR ROLE thi360_audit_maint IN SCHEMA audit
+        REVOKE ALL ON TABLES FROM PUBLIC;
+    EXECUTE format(
+        'ALTER DEFAULT PRIVILEGES FOR ROLE thi360_audit_maint IN SCHEMA audit REVOKE ALL ON TABLES FROM %I',
+        app_role
+    );
+    EXECUTE format(
+        'ALTER DEFAULT PRIVILEGES FOR ROLE thi360_audit_maint IN SCHEMA audit GRANT SELECT, INSERT ON TABLES TO %I',
+        app_role
+    );
 END;
 $$;
