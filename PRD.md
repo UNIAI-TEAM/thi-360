@@ -42,7 +42,7 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 **Có trong đợt 1**
 
 - Nền: monorepo, backend, Keycloak, PostgreSQL, Redis, nhật ký thao tác, design system, khung web admin.
-- Tùy chỉnh giao diện toàn hệ thống (bảng màu, sáng/tối, bố cục), là một mục trong menu chính.
+- Tùy chỉnh giao diện toàn hệ thống (sáng/tối, bộ phối màu), là một mục trong menu chính.
 - **PBI-01**:
   - Quản lý tài khoản: danh sách, tạo, sửa, ngừng hoạt động/kích hoạt lại, reset mật khẩu, xóa mềm.
   - Phân quyền theo vai trò: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho từng user, xem người dùng theo quyền, gán hàng loạt.

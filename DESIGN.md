@@ -241,10 +241,10 @@ Giữ bộ cấu hình giao diện như reap, áp dụng **toàn hệ thống** 
 
 | Nhóm | Tùy chọn |
 |---|---|
+| Chế độ | Sáng, tối (tab phân đoạn). Nằm trên cùng |
 | Bộ phối màu | 9 thẻ bộ cố định để chọn nhanh (mỗi thẻ: hai ô màu, tên, dải thu nhỏ nút chính và nút nhấn); thẻ đang dùng có viền `primary-600` và dấu tích. Thẻ thứ mười "Tự tùy chỉnh" mở hai ô Màu chính và Màu nhấn (bảng chọn màu + ô nhập mã). Danh sách bộ, cách suy ra token và các kiểm tra: spec mục 13.1 |
-| Chế độ | Sáng, tối (tab phân đoạn) |
-| Bố cục admin | Vị trí sidebar, kiểu đầy đủ/thu gọn, hiện/ẩn toolbar và footer, độ rộng nội dung |
-| Kích thước | Bo góc và chiều cao điều khiển |
+
+Không có tùy chọn bố cục và kích thước: sidebar, toolbar, bo góc, chiều cao điều khiển cố định theo tài liệu này.
 
 - Thanh dưới cùng: **Khôi phục mặc định** (kiểu Phụ) và **Lưu và áp dụng** (kiểu Chính). Thay đổi chưa lưu chỉ hiện ở vùng xem trước.
 - Khi màu tự chọn làm chữ khó đọc (tương phản dưới 4,5:1), hiện cảnh báo ngay cạnh ô chọn màu; hệ thống tự chọn màu chữ trắng hoặc đen đọc được hơn trên nền màu chính.
