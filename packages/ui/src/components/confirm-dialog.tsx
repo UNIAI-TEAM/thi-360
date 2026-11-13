@@ -35,7 +35,7 @@ export type ConfirmDialogProps = ReasonProps & {
   onConfirm: (reason: string) => void;
   /** `danger` (mặc định) cho khóa, xóa, reset, ngừng sử dụng. */
   tone?: "danger" | "primary";
-  /** Đang thực hiện: khóa cả hai nút. Hộp thoại không tự đóng, bên gọi đóng khi xong. */
+  /** Đang thực hiện: khóa cả hai nút và ô lý do, Escape, nút × và bấm ra ngoài không đóng được. Hộp thoại không tự đóng, bên gọi đóng khi xong. */
   loading?: boolean;
 };
 
@@ -54,7 +54,7 @@ export function ConfirmDialog({
   requireReason = false,
 }: ConfirmDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => (loading && !next ? undefined : onOpenChange(next))}>
       <DialogContent closeLabel={closeLabel}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -105,7 +105,12 @@ function ConfirmBody({
       {reasonLabel && (
         <FormField label={reasonLabel} required={requireReason}>
           {(field) => (
-            <Textarea {...field} value={reason} onChange={(event) => setReason(event.target.value)} />
+            <Textarea
+              {...field}
+              value={reason}
+              disabled={loading}
+              onChange={(event) => setReason(event.target.value)}
+            />
           )}
         </FormField>
       )}

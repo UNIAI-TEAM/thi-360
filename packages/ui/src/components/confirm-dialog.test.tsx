@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -101,5 +101,41 @@ describe("ConfirmDialog", () => {
     setup({ loading: true });
     expect(screen.getByRole("button", { name: "Khóa" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Hủy" })).toBeDisabled();
+  });
+
+  it("đang xử lý: Escape, nút × và bấm ra ngoài không đóng hộp thoại", async () => {
+    const { onOpenChange } = setup({ loading: true });
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Đóng" }));
+    fireEvent.pointerDown(document.body);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("đang xử lý: giữ nguyên lý do đã nhập và không cho sửa", async () => {
+    const onOpenChange = vi.fn();
+    const props = {
+      open: true,
+      onOpenChange,
+      title: "Khóa",
+      description: "Mô tả",
+      confirmLabel: "Khóa",
+      cancelLabel: "Hủy",
+      closeLabel: "Đóng",
+      reasonLabel: "Lý do",
+      onConfirm: () => {},
+    };
+    const { rerender } = render(<ConfirmDialog {...props} />);
+    await userEvent.type(screen.getByRole("textbox", { name: "Lý do" }), "nghỉ học");
+    rerender(<ConfirmDialog {...props} loading />);
+    const reason = screen.getByRole("textbox", { name: "Lý do" });
+    expect(reason).toHaveValue("nghỉ học");
+    expect(reason).toBeDisabled();
+  });
+
+  it("không xử lý: Escape đóng hộp thoại", async () => {
+    const { onOpenChange } = setup();
+    await userEvent.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
