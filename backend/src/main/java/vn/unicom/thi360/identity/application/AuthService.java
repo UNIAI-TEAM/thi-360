@@ -140,15 +140,6 @@ public class AuthService {
         try {
             tokens = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
         } catch (KeycloakAuthException ex) {
-            if (ex.getReason() == AuthFailureReason.USER_DISABLED && account.getStatus() == UserStatus.INACTIVE) {
-                securityLog.atWarn()
-                        .addKeyValue("event", "login.account_inactive")
-                        .addKeyValue("userId", account.getId().toString())
-                        .log("Login refused for inactive account");
-                recordAudit(AuditEvent.failure(
-                        MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "ACCOUNT_INACTIVE"));
-                throw new ForbiddenException("ACCOUNT_INACTIVE", null);
-            }
             if (ex.getReason() == AuthFailureReason.ACCOUNT_LOCKED) {
                 recordAudit(AuditEvent.failure(
                         MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "LOGIN_THROTTLED"));
@@ -158,7 +149,7 @@ public class AuthService {
             securityLog.atWarn()
                     .addKeyValue("event", "login.invalid_credentials")
                     .addKeyValue("userId", account.getId().toString())
-                    .log("Invalid password for user account");
+                    .log("Authentication failed for user account");
             recordAudit(AuditEvent.failure(
                     MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "INVALID_CREDENTIALS"));
             throw new UnauthenticatedException("INVALID_CREDENTIALS", null);

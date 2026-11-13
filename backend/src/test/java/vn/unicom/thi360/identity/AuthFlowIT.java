@@ -201,6 +201,42 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                         .content("{\"identifier\":\"" + username + "\",\"password\":\"NewPass@1234\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mustChangePassword").value(false));
+    @Test
+    void disabledKeycloakUserWithInactiveRow_returnsSameInvalidCredentialsAsUnknown_andThrottlesOnSixthFailure()
+            throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String disabledUser = "disabled.inactive." + suffix;
+        createProvisionedUser(disabledUser, null, "Disabled Inactive", "Valid@1234", UserStatus.INACTIVE, false, false);
+
+        MvcResult unknownRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header("X-Forwarded-For", "203.0.113.61")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"unknown." + suffix + "\",\"password\":\"Wrong@9999\"}"))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+        JsonNode unknownJson = objectMapper.readTree(unknownRes.getResponse().getContentAsString());
+
+        for (int i = 0; i < 5; i++) {
+            MvcResult disabledRes = mockMvc.perform(post("/api/v1/auth/login")
+                            .header("X-Forwarded-For", "203.0.113.61")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"identifier\":\"" + disabledUser + "\",\"password\":\"Wrong@9999\"}"))
+                    .andExpect(status().isUnauthorized())
+                    .andReturn();
+            JsonNode disabledJson = objectMapper.readTree(disabledRes.getResponse().getContentAsString());
+            assertThat(disabledJson.get("code").asText()).isEqualTo("INVALID_CREDENTIALS");
+            assertThat(disabledJson.get("message").asText()).isEqualTo(unknownJson.get("message").asText());
+            assertThat(disabledJson.get("fieldErrors")).isEqualTo(unknownJson.get("fieldErrors"));
+        }
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header("X-Forwarded-For", "203.0.113.61")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + disabledUser + "\",\"password\":\"Wrong@9999\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("LOGIN_THROTTLED"));
+    }
+
     }
 
     @Test
@@ -273,7 +309,7 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
             UserStatus status,
             boolean mustChangePassword) {
         UUID userId = keycloakClient.createUser(new CreateUserCommand(
-                username, email, fullName, "User", password, true, false, true));
+                username, email, fullName, "User", password, enabledInKeycloak, false, true));
         Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
         String code = String.format("U%06d", seq);
         UserAccount account = new UserAccount(
@@ -291,3 +327,14 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
         return userAccountRepository.save(account);
     }
 }
+        return createProvisionedUser(username, email, fullName, password, status, mustChangePassword, true);
+    }
+
+    private UserAccount createProvisionedUser(
+            String username,
+            String email,
+            String fullName,
+            String password,
+            UserStatus status,
+            boolean mustChangePassword,
+            boolean enabledInKeycloak) {
