@@ -12,6 +12,7 @@ import {
 } from "./dialog";
 import { FormField } from "./form-field";
 import { Textarea } from "./textarea";
+import { useUiStrings } from "./ui-strings";
 
 type ReasonProps =
   | {
@@ -28,9 +29,9 @@ export type ConfirmDialogProps = ReasonProps & {
   title: string;
   /** Nêu rõ đối tượng và số bản ghi bị ảnh hưởng. */
   description: ReactNode;
-  confirmLabel: string;
-  cancelLabel: string;
-  closeLabel: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  closeLabel?: string;
   /** Nhận lý do đã cắt khoảng trắng (chuỗi rỗng nếu không có ô lý do hoặc để trống). */
   onConfirm: (reason: string) => void;
   /** `danger` (mặc định) cho khóa, xóa, reset, ngừng sử dụng. */
@@ -53,9 +54,10 @@ export function ConfirmDialog({
   reasonLabel,
   requireReason = false,
 }: ConfirmDialogProps) {
+  const { common } = useUiStrings();
   return (
     <Dialog open={open} onOpenChange={(next) => (loading && !next ? undefined : onOpenChange(next))}>
-      <DialogContent closeLabel={closeLabel}>
+      <DialogContent closeLabel={closeLabel ?? common.close}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -63,8 +65,8 @@ export function ConfirmDialog({
         <ConfirmBody
           reasonLabel={reasonLabel}
           requireReason={requireReason}
-          confirmLabel={confirmLabel}
-          cancelLabel={cancelLabel}
+          confirmLabel={confirmLabel ?? common.confirm}
+          cancelLabel={cancelLabel ?? common.cancel}
           tone={tone}
           loading={loading}
           onCancel={() => onOpenChange(false)}

@@ -4,6 +4,7 @@ import {
   parseAppearanceConfig,
   THEME_STYLE_ELEMENT_ID,
   themeStyleTag,
+  type AppearanceConfig,
 } from "@thi360/ui";
 import { normalizeCookieDomain, parseLocaleCookie, resolveTheme, THEME_COOKIE_NAME } from "@thi360/web-kit/preferences";
 import type { Metadata } from "next";

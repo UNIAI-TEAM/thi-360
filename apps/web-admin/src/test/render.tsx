@@ -1,3 +1,4 @@
+import { UiStringsProvider } from "@thi360/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -17,7 +18,9 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Ho_Chi_Minh">
-        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        <UiStringsProvider locale={locale === "en" ? "en" : "vi"}>
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        </UiStringsProvider>
       </NextIntlClientProvider>
     );
   }
