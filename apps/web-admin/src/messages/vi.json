@@ -154,6 +154,10 @@
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
   },
+  "metadata": {
+    "description": "Trang quản trị cổng luyện thi Thi 360",
+    "title": "Thi 360 — Quản trị"
+  },
   "nav": {
     "groups": {
       "overview": "Tổng quan",
@@ -184,7 +188,6 @@
       "changePassword": "Đổi mật khẩu",
       "logout": "Đăng xuất",
       "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
-      "profile": "Hồ sơ",
       "studentPortal": "Trang học viên",
       "trigger": "Menu tài khoản"
     }

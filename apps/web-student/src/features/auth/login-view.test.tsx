@@ -1,8 +1,10 @@
-import { screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
+import en_messages from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { LoginView } from "./login-view";
 
@@ -81,5 +83,17 @@ describe("LoginView", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(expected);
     expect(identifierInput).toHaveValue("student01");
+  });
+
+  it("dùng nhãn Show/Hide password theo ngôn ngữ tiếng Anh cho PasswordField", async () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
+        <LoginView navigate={mocks.navigate} />
+      </NextIntlClientProvider>,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Show password" });
+    await userEvent.click(toggle);
+    expect(screen.getByRole("button", { name: "Hide password" })).toBeInTheDocument();
   });
 });

@@ -286,6 +286,10 @@ export function ChangePasswordView({
                       size="lg"
                       autoComplete="current-password"
                       leadingIcon={<Lock />}
+                      labels={{
+                        showPassword: ruleLabels.showPassword,
+                        hidePassword: ruleLabels.hidePassword,
+                      }}
                     />
                   )}
                 />
@@ -330,6 +334,10 @@ export function ChangePasswordView({
                       size="lg"
                       autoComplete="new-password"
                       leadingIcon={<Lock />}
+                      labels={{
+                        showPassword: ruleLabels.showPassword,
+                        hidePassword: ruleLabels.hidePassword,
+                      }}
                     />
                   )}
                 />

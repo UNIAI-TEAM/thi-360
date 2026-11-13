@@ -1,9 +1,12 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { notify } from "@thi360/ui";
-import { screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
+import en_messages from "@/messages/en.json";
 import vi_messages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
 import { ChangePasswordView } from "./change-password-view";
@@ -165,5 +168,23 @@ describe("ChangePasswordView", () => {
     await userEvent.click(screen.getByRole("button", { name: "Đăng nhập bằng tài khoản khác" }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(vi_messages.errors.logoutFailed));
     toastError.mockRestore();
+  });
+
+  it("dùng nhãn Show/Hide password theo tiếng Anh cho cả ba ô PasswordField", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
+        <QueryClientProvider client={client}>
+          <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />
+        </QueryClientProvider>
+      </NextIntlClientProvider>,
+    );
+
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+    const showButtons = screen.getAllByRole("button", { name: "Show password" });
+    expect(showButtons).toHaveLength(3);
+
+    await userEvent.click(showButtons[0]!);
+    expect(screen.getByRole("button", { name: "Hide password" })).toBeInTheDocument();
   });
 });

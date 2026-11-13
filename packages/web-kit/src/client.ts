@@ -174,3 +174,13 @@ export function createUnauthorizedRecovery(options: UnauthorizedRecoveryOptions)
     },
   };
 }
+
+export function initialsOf(fullName: string, username: string): string {
+  const source = fullName.trim() || username.trim();
+  const rawWords = source.split(/[\s._-]+/).filter(Boolean);
+  const letterWords = rawWords.filter((word) => /^\p{L}/u.test(word));
+  const words = letterWords.length > 0 ? letterWords : rawWords;
+  const first = words[0]?.[0] ?? "";
+  const last = words.length > 1 ? (words.at(-1)?.[0] ?? "") : (words[0]?.[1] ?? "");
+  return (first + last).toLocaleUpperCase("vi");
+}

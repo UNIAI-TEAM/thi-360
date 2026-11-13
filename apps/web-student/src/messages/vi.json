@@ -4,7 +4,6 @@
     "confirmPasswordMismatch": "Mật khẩu nhập lại không khớp.",
     "confirmPasswordRequired": "Vui lòng nhập lại mật khẩu mới.",
     "description": "Tài khoản <strong>{username}</strong> cần đặt mật khẩu mới trước khi tiếp tục.",
-    "descriptionOptional": "Đổi mật khẩu cho tài khoản <strong>{username}</strong>.",
     "errorLoad": "Không tải được thông tin tài khoản. Hãy thử lại.",
     "errorLoadTitle": "Không tải được trang",
     "footerNote": "Sau khi lưu, bạn được đưa tới trang đang mở dở, hoặc trang chủ theo vai trò.",
@@ -102,15 +101,21 @@
     "feature3": "Xem lời giải và phần cần luyện thêm",
     "forgotNote": "Quên mật khẩu? Liên hệ quản trị viên để được cấp lại. Sau 5 lần nhập sai liên tiếp, đăng nhập bị tạm khóa 15 phút.",
     "headline": "Luyện thi đánh giá năng lực HSA và QDA",
+    "hidePassword": "Ẩn mật khẩu",
     "identifierLabel": "Tên đăng nhập hoặc email",
     "identifierPlaceholder": "Nhập tên đăng nhập hoặc email",
     "identifierRequired": "Vui lòng nhập tên đăng nhập hoặc email.",
     "passwordLabel": "Mật khẩu",
     "passwordPlaceholder": "Nhập mật khẩu",
     "passwordRequired": "Vui lòng nhập mật khẩu.",
+    "showPassword": "Hiện mật khẩu",
     "submit": "Đăng nhập",
     "subtitle": "Một tài khoản dùng cho cả trang học viên và trang quản trị. Sau khi đăng nhập, bạn được đưa tới đúng nơi theo vai trò của mình.",
     "title": "Đăng nhập"
+  },
+  "metadata": {
+    "description": "Cổng luyện thi đánh giá năng lực HSA và QDA",
+    "title": "Thi 360 — Luyện thi HSA, QDA"
   },
   "notFound": {
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",
@@ -123,7 +128,6 @@
     "logout": "Đăng xuất",
     "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
     "menuLabel": "Tài khoản",
-    "profile": "Hồ sơ",
     "studentPortal": "Trang học viên",
     "trigger": "Menu tài khoản"
   }

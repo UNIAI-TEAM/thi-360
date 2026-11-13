@@ -29,16 +29,18 @@ afterEach(() => {
 });
 
 describe("initialsOf", () => {
-  it("ghép chữ cái đầu của từ đầu và từ cuối, hoặc hai chữ cái đầu khi chỉ có một từ", () => {
+  it("ghép chữ cái đầu của từ đầu và từ cuối (bỏ qua từ số), hoặc hai chữ cái đầu khi chỉ có một từ", () => {
     expect(initialsOf("Quản trị nội dung", "content.admin")).toBe("QD");
     expect(initialsOf("Vận hành", "ops.admin")).toBe("VH");
+    expect(initialsOf("Vận hành CSKH", "ops.admin")).toBe("VC");
+    expect(initialsOf("Học viên 01", "student01")).toBe("HV");
     expect(initialsOf("", "ops.admin")).toBe("OA");
     expect(initialsOf("", "platform")).toBe("PL");
   });
 });
 
 describe("AppShell", () => {
-  it("hiện sidebar, breadcrumb Tổng quan › Bảng điều khiển, và menu avatar có Hồ sơ, Đổi mật khẩu, Đăng xuất", async () => {
+  it("hiện sidebar, breadcrumb Tổng quan › Bảng điều khiển, và menu avatar có Đổi mật khẩu, Đăng xuất (ẩn Hồ sơ)", async () => {
     renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
@@ -67,10 +69,7 @@ describe("AppShell", () => {
       "href",
       "http://localhost:3000/home",
     );
-    expect(screen.getByRole("menuitem", { name: "Hồ sơ" })).toHaveAttribute(
-      "href",
-      "http://localhost:3000/ho-so",
-    );
+    expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
       "href",
       "http://localhost:3000/doi-mat-khau",

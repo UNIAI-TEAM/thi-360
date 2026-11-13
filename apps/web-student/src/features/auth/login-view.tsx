@@ -168,6 +168,7 @@ export function LoginView({
                       size="lg"
                       autoComplete="current-password"
                       leadingIcon={<Lock />}
+                      labels={{ showPassword: t("showPassword"), hidePassword: t("hidePassword") }}
                       placeholder={t("passwordPlaceholder")}
                     />
                   )}

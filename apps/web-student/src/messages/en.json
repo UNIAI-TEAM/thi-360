@@ -4,7 +4,6 @@
     "confirmPasswordMismatch": "Passwords do not match.",
     "confirmPasswordRequired": "Please confirm your new password.",
     "description": "Account <strong>{username}</strong> must set a new password before continuing.",
-    "descriptionOptional": "Change password for account <strong>{username}</strong>.",
     "errorLoad": "Unable to load account details. Please try again.",
     "errorLoadTitle": "Unable to load page",
     "footerNote": "After saving, you will continue to your requested page or role home.",
@@ -102,15 +101,21 @@
     "feature3": "Detailed solutions and weak-area focus",
     "forgotNote": "Forgot password? Contact an administrator for a reset. After 5 consecutive failed attempts, sign-in is locked for 15 minutes.",
     "headline": "HSA & QDA Aptitude Exam Preparation",
+    "hidePassword": "Hide password",
     "identifierLabel": "Username or email",
     "identifierPlaceholder": "Enter username or email",
     "identifierRequired": "Please enter your username or email.",
     "passwordLabel": "Password",
     "passwordPlaceholder": "Enter password",
     "passwordRequired": "Please enter your password.",
+    "showPassword": "Show password",
     "submit": "Sign in",
     "subtitle": "One account for both the student portal and the admin portal. After signing in, you are directed to the right place for your role.",
     "title": "Sign in"
+  },
+  "metadata": {
+    "description": "Online practice portal for HSA and QDA aptitude exams",
+    "title": "Thi 360 — HSA & QDA Exam Prep"
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",
@@ -123,7 +128,6 @@
     "logout": "Sign out",
     "logoutFailed": "Unable to sign out. Please try again.",
     "menuLabel": "Account",
-    "profile": "Profile",
     "studentPortal": "Student portal",
     "trigger": "Account menu"
   }

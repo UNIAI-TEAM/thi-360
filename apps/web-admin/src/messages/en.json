@@ -154,6 +154,10 @@
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
   },
+  "metadata": {
+    "description": "Administration portal for Thi 360",
+    "title": "Thi 360 — Admin"
+  },
   "nav": {
     "groups": {
       "overview": "Overview",
@@ -184,7 +188,6 @@
       "changePassword": "Change password",
       "logout": "Sign out",
       "logoutFailed": "Unable to sign out. Please try again.",
-      "profile": "Profile",
       "studentPortal": "Student portal",
       "trigger": "Account menu"
     }

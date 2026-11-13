@@ -8,18 +8,15 @@ import {
   DropdownMenuTrigger,
   notify,
 } from "@thi360/ui";
-import { ChevronDown, KeyRound, LayoutDashboard, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { initialsOf } from "@thi360/web-kit/client";
+import { ChevronDown, KeyRound, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { logoutSession, type StudentSession } from "@/features/session/api";
 import { adminUrl } from "@/lib/env";
 
-export function initialsOf(fullName: string, username: string): string {
-  const words = (fullName.trim() || username).split(/[\s._-]+/).filter(Boolean);
-  const first = words[0]?.[0] ?? "";
-  const last = words.length > 1 ? (words.at(-1)?.[0] ?? "") : (words[0]?.[1] ?? "");
-  return (first + last).toLocaleUpperCase("vi");
-}
+export { initialsOf };
+
 
 export function StudentUserMenu({
   session,
@@ -74,12 +71,6 @@ export function StudentUserMenu({
           <Link href="/home">
             <LayoutDashboard aria-hidden />
             {t("studentPortal")}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/ho-so">
-            <UserRound aria-hidden />
-            {t("profile")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

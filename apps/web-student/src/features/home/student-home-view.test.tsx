@@ -39,8 +39,11 @@ describe("StudentHomeView", () => {
     expect(await screen.findByRole("heading", { name: "Chào Học viên 01" })).toBeInTheDocument();
     expect(screen.getByText("Chưa có bài thi nào")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Menu tài khoản" }));
+    const menuButton = screen.getByRole("button", { name: "Menu tài khoản" });
+    expect(menuButton).toHaveTextContent("HV");
+    await userEvent.click(menuButton);
     expect(screen.queryByRole("menuitem", { name: "Trang quản trị" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Trang học viên" })).toHaveAttribute("href", "/home");
   });
 
