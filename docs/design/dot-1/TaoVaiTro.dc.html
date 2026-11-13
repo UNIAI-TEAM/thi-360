@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog tạo vai trò</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="width: 1080px; height: 900px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+  <form role="dialog" aria-modal="true" aria-labelledby="dlg-title" style="width: 100%; max-height: 100%; box-sizing: border-box; background: #FFFFFF; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); padding: 28px; display: flex; flex-direction: column; gap: 16px; position: relative">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <h1 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Tạo vai trò</h1>
+      <button type="button" aria-label="Đóng" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #3A3A42; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="m-code" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mã vai trò <span style="color: #B91C1C">*</span></label>
+        <input id="m-code" type="text" value="CLASS_MANAGER" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="m-name" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tên vai trò <span style="color: #B91C1C">*</span></label>
+        <input id="m-name" type="text" value="Quản lý lớp" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+      </div>
+      <div role="group" aria-labelledby="m-access" style="min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <div id="m-access" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Phạm vi truy cập <span style="color: #B91C1C">*</span></div>
+        <div style="width: 100%; height: 40px; box-sizing: border-box; padding: 3px; border-radius: 10px; background: #F1F2F4; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px">
+          <button type="button" aria-pressed="{{managePressed}}" onClick="{{pickManage}}" style="{{manageStyle}}">Quản trị</button>
+          <button type="button" aria-pressed="{{examPressed}}" onClick="{{pickExam}}" style="{{examStyle}}">Thi</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px">
+      <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Quyền của vai trò</h2>
+      <div style="color: #54545A">Đang cấp <strong style="color: #11181C">{{objectCount}}</strong> đối tượng · <strong style="color: #11181C">{{extraCount}}</strong> quyền riêng</div>
+    </div>
+
+    <div style="flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+        <div style="{{r.cardStyle}}">
+          <div style="display: flex; align-items: center; gap: 16px">
+          <label style="flex: 1 1 240px; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 48px; cursor: pointer">
+            <input type="checkbox" checked="{{r.granted}}" disabled="{{r.disabled}}" onChange="{{r.toggleGrant}}" aria-label="{{r.grantLabel}}" style="width: 18px; height: 18px; accent-color: #059669">
+            <span aria-hidden="true" style="{{r.tileStyle}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.icon}}"></path></svg></span>
+            <span style="font-weight: 600">{{r.name}}</span>
+          </label>
+
+          <div style="flex: 0 0 276px">
+            <sc-if value="{{r.hasToggle}}" hint-placeholder-val="{{true}}">
+              <div role="group" aria-label="{{r.levelGroupLabel}}" style="{{r.segWrap}}">
+                <button type="button" aria-pressed="{{r.viewPressed}}" disabled="{{r.levelDisabled}}" onClick="{{r.setView}}" style="{{r.viewStyle}}">
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg>
+                  Chỉ xem
+                </button>
+                <button type="button" aria-pressed="{{r.modifyPressed}}" disabled="{{r.levelDisabled}}" onClick="{{r.setModify}}" style="{{r.modifyStyle}}">
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                  Xem và sửa
+                </button>
+              </div>
+            </sc-if>
+            <sc-if value="{{r.fixedLevel}}" hint-placeholder-val="{{false}}">
+              <div style="{{r.fixedStyle}}">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.fixedIcon}}"></path></svg>
+                <span>{{r.fixedText}}</span>
+              </div>
+            </sc-if>
+          </div>
+
+          </div>
+
+          <sc-if value="{{r.hasExtras}}" hint-placeholder-val="{{false}}">
+          <div style="{{r.extrasRowStyle}}">
+            <span style="flex: none; font-size: 12.5px; line-height: 19px; font-weight: 500; color: #54545A">Quyền riêng</span>
+            <sc-if value="{{r.e1.on}}" hint-placeholder-val="{{false}}"><label style="{{r.e1.style}}"><input type="checkbox" checked="{{r.e1.checked}}" disabled="{{r.extraDisabled}}" onChange="{{r.e1.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> {{r.e1.name}}</label></sc-if>
+            <sc-if value="{{r.e2.on}}" hint-placeholder-val="{{false}}"><label style="{{r.e2.style}}"><input type="checkbox" checked="{{r.e2.checked}}" disabled="{{r.extraDisabled}}" onChange="{{r.e2.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> {{r.e2.name}}</label></sc-if>
+          </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: #54545A">Tick ô đầu hàng để cấp đối tượng, rồi chọn mức <strong>Chỉ xem</strong> hoặc <strong>Xem và sửa</strong> (thêm, sửa, xóa). Dòng "Quyền riêng" bên dưới đối tượng là các quyền thêm, chỉ chọn được khi đối tượng đã được cấp. {{accessHint}}</p>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px">
+      <button type="button" style="height: 44px; padding: 0 18px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Hủy</button>
+      <button type="submit" style="height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #059669; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Tạo vai trò</button>
+    </div>
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1080,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const isExam = st.access === 'EXAM';
+// level[mã] = 'VIEW' | 'MODIFY' | undefined (chưa cấp)
+const level = st.level || { CLASS: 'MODIFY', USER: 'VIEW' };
+const extras = st.extras || {};
+const EYE = 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z';
+const PEN = 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z';
+// [mã, tên, kiểu mức, quyền riêng, icon] — đúng 7 đối tượng của đợt 1 (spec mục 5.5)
+const RES = [
+['USER', 'Tài khoản', 'both', [['ASSIGN', 'Gán vai trò và quyền'], ['LEARNING_VIEW', 'Xem dữ liệu học tập']], 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
+['CLASS', 'Lớp học', 'both', [], 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5'],
+['ROLE', 'Vai trò', 'both', [], 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'],
+['PERMISSION', 'Quyền', 'view', [], 'M15 7a4 4 0 1 1-3.9 5H8v3H5v3H2v-3l6.1-6.1A4 4 0 0 1 15 7z'],
+['CATALOG', 'Danh mục', 'both', [], 'M4 6h16M4 12h16M4 18h16'],
+['AUDIT', 'Nhật ký', 'view', [], 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'],
+['APPEARANCE', 'Giao diện', 'modify', [], 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6']
+];
+const topSeg = (on) => 'border: 0; border-radius: 7px; font: inherit; cursor: pointer; ' + (on
+? 'background: #FFFFFF; color: #047857; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.1)'
+: 'background: transparent; color: #3A3A42; font-weight: 500');
+const segBtn = (active, enabled) => 'height: 36px; border: 0; border-radius: 8px; font: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; '
++ (enabled ? 'cursor: pointer; ' : '')
++ (active ? 'background: #FFFFFF; color: #047857; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.12)' : 'background: transparent; font-weight: 500; color: ' + (enabled ? '#3A3A42' : '#6B6B72'));
+const chip = (checked, enabled) => 'display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 9999px; white-space: nowrap; '
++ (enabled ? 'cursor: pointer; ' : '')
++ (checked ? 'background: #ECFDF5; border: 1px solid #A7E3C2; color: #047857; font-weight: 500' : 'background: #FFFFFF; border: 1px solid #E8E8EC; color: ' + (enabled ? '#3A3A42' : '#6B6B72'));
+const rows = RES.map((r) => {
+const code = r[0];
+const cur = isExam ? undefined : level[code];
+const granted = !!cur;
+const enabled = granted && !isExam;
+const firstLevel = r[2] === 'modify' ? 'MODIFY' : 'VIEW';
+const extra = (i) => {
+const e = r[3][i];
+if (!e) return { on: false };
+const key = code + '.' + e[0];
+const checked = granted && !!extras[key];
+return { on: true, name: e[1], checked: checked, style: chip(checked, enabled), toggle: () => this.setState({ extras: Object.assign({}, extras, { [key]: !extras[key] }) }) };
+};
+const setLevel = (lv) => () => this.setState({ level: Object.assign({}, level, { [code]: lv }) });
+return {
+name: r[1], icon: r[4], disabled: isExam, granted: granted, grantLabel: 'Cấp đối tượng ' + r[1],
+toggleGrant: () => {
+const next = Object.assign({}, level);
+if (next[code]) {
+next[code] = undefined;
+const ex = Object.assign({}, extras);
+r[3].forEach((e) => { ex[code + '.' + e[0]] = false; });
+this.setState({ level: next, extras: ex });
+} else {
+next[code] = firstLevel;
+this.setState({ level: next });
+}
+},
+hasToggle: r[2] === 'both', fixedLevel: r[2] !== 'both',
+levelGroupLabel: 'Mức truy cập của ' + r[1], levelDisabled: !enabled,
+viewPressed: cur === 'VIEW' ? 'true' : 'false', modifyPressed: cur === 'MODIFY' ? 'true' : 'false',
+setView: setLevel('VIEW'), setModify: setLevel('MODIFY'),
+segWrap: 'height: 44px; box-sizing: border-box; padding: 4px; border-radius: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: ' + (enabled ? '#E7F6EE' : '#F1F2F4'),
+viewStyle: segBtn(cur === 'VIEW', enabled), modifyStyle: segBtn(cur === 'MODIFY', enabled),
+fixedIcon: r[2] === 'modify' ? PEN : EYE,
+fixedText: r[2] === 'modify' ? 'Chỉ có mức sửa' : 'Chỉ có mức xem',
+fixedStyle: 'height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; display: flex; align-items: center; gap: 8px; '
++ (enabled ? 'background: #E7F6EE; color: #047857; font-weight: 600' : 'background: #F1F2F4; color: #6B6B72'),
+e1: extra(0), e2: extra(1), extraDisabled: !enabled,
+tileStyle: 'flex: none; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; '
++ (enabled ? 'background: #ECFDF5; color: #047857' : 'background: #F1F2F4; color: #6B6B72'),
+hasExtras: r[3].length > 0,
+extrasRowStyle: 'margin: 8px 0 2px 78px; padding-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; border-top: 1px dashed ' + (enabled ? '#A7E3C2' : '#E8E8EC'),
+cardStyle: 'display: flex; flex-direction: column; padding: 8px 14px; border-radius: 14px; '
++ (enabled ? 'background: #FFFFFF; border: 1px solid #A7E3C2' : 'background: #FAFAFB; border: 1px solid #E8E8EC')
++ (isExam ? '; color: #6B6B72' : '')
+};
+});
+return {
+rows: rows,
+objectCount: isExam ? 0 : Object.keys(level).filter((k) => level[k]).length,
+extraCount: isExam ? 0 : Object.keys(extras).filter((k) => extras[k]).length,
+managePressed: isExam ? 'false' : 'true', examPressed: isExam ? 'true' : 'false',
+manageStyle: topSeg(!isExam), examStyle: topSeg(isExam),
+pickManage: () => this.setState({ access: 'MANAGE' }),
+pickExam: () => this.setState({ access: 'EXAM' }),
+accessHint: isExam ? 'Phạm vi Thi không nhận quyền quản trị nên cả danh sách bị khóa.' : ''
+};
+}
+}
+</script>
+</body>
+</html>

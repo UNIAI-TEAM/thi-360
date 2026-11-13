@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Chi tiết tài khoản</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 1080px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="color: #54545A">Người dùng <span aria-hidden="true">›</span> <a href="TaiKhoan.dc.html" style="text-decoration: none">Tài khoản</a> <span aria-hidden="true">›</span> <strong style="color: #11181C; font-weight: 600">content.admin</strong></div>
+      <button type="button" aria-haspopup="menu" style="height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">PL</span>
+        <span>platform</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+        <div style="display: flex; align-items: center; gap: 14px">
+          <span aria-hidden="true" style="width: 52px; height: 52px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center">CA</span>
+          <div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+              <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Quản trị nội dung</h1>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; background: #ECFDF5; color: #047857">Hoạt động</span>
+            </div>
+            <div style="color: #54545A">content.admin · U000001 · Admin tạo · Đăng nhập cuối 13/11/2026 08:42</div>
+          </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Reset mật khẩu</button>
+          <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #FECACA; border-radius: 12px; background: #FFFFFF; color: #B91C1C; font: inherit; font-weight: 600; cursor: pointer">Ngừng hoạt động</button>
+          <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #FECACA; border-radius: 12px; background: #FFFFFF; color: #B91C1C; font: inherit; font-weight: 600; cursor: pointer">Xóa</button>
+        </div>
+      </div>
+
+      <div role="tablist" aria-label="Chi tiết tài khoản" style="display: flex; flex-wrap: wrap; gap: 4px">
+        <button role="tab" aria-selected="false" type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #54545A; font: inherit; font-weight: 500; cursor: pointer">Thông tin</button>
+        <button role="tab" aria-selected="false" type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #54545A; font: inherit; font-weight: 500; cursor: pointer">Lớp học</button>
+        <button role="tab" aria-selected="true" type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: #ECFDF5; color: #047857; font: inherit; font-weight: 600; cursor: pointer">Vai trò &amp; quyền</button>
+        <button role="tab" aria-selected="false" type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #54545A; font: inherit; font-weight: 500; cursor: pointer">Hồ sơ học tập</button>
+        <button role="tab" aria-selected="false" type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #54545A; font: inherit; font-weight: 500; cursor: pointer">Lịch sử thay đổi</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px">
+        <section aria-labelledby="sec-roles" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <h2 id="sec-roles" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Vai trò</h2>
+            <button type="button" style="height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: #DCFCE7; color: #047857; font: inherit; font-weight: 600; cursor: pointer">Gán vai trò</button>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid #E8E8EC; border-radius: 10px">
+            <div>
+              <div style="font-weight: 600">Quản trị nội dung</div>
+              <div style="font-size: 12.5px; line-height: 19px; color: #54545A">CONTENT_ADMIN · vai trò hệ thống · Danh mục: Xem và sửa</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; background: #ECFEFF; color: #0E7490">Quản trị</span>
+              <button type="button" aria-label="Gỡ vai trò Quản trị nội dung" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: #B91C1C; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+          </div>
+          <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: #54545A">Người có ít nhất một vai trò phạm vi Quản trị được vào trang quản trị sau khi đăng nhập.</p>
+        </section>
+
+        <section aria-labelledby="sec-direct" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <h2 id="sec-direct" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Quyền gán trực tiếp</h2>
+            <button type="button" style="height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: #DCFCE7; color: #047857; font: inherit; font-weight: 600; cursor: pointer">Thêm quyền</button>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid #E8E8EC; border-radius: 10px">
+            <div>
+              <div style="font-weight: 600">Nhật ký · Xem <span style="font-weight: 400; color: #54545A">· AUDIT.VIEW</span></div>
+              <div style="font-size: 12.5px; line-height: 19px; color: #54545A">Lý do: tra soát thay đổi danh mục · platform gán ngày 12/11/2026</div>
+            </div>
+            <button type="button" aria-label="Gỡ quyền Xem nhật ký" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: #B91C1C; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+          </div>
+          <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: #54545A">Chỉ gán được cho tài khoản đang giữ vai trò phạm vi Quản trị. Mỗi lần gán phải ghi lý do.</p>
+        </section>
+      </div>
+
+      <section aria-labelledby="sec-eff" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #E8E8EC">
+          <h2 id="sec-eff" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Quyền hiệu lực</h2>
+          <div style="color: #54545A">3 quyền · gộp từ vai trò và quyền gán trực tiếp</div>
+        </div>
+        <div style="overflow-x: auto">
+          <table style="width: 100%; min-width: 640px; border-collapse: collapse">
+            <thead>
+              <tr style="background: #FAFAFB; text-align: left; font-size: 13px; color: #54545A">
+                <th scope="col" style="padding: 12px 20px; font-weight: 600">Đối tượng</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600">Mức</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600">Mã</th>
+                <th scope="col" style="padding: 12px 20px; font-weight: 600">Nguồn</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{perms}}" as="p" hint-placeholder-count="7">
+                <tr style="border-top: 1px solid #E8E8EC; height: 48px">
+                  <td style="padding: 0 20px; color: #54545A">{{p.group}}</td>
+                  <td style="padding: 0 8px">{{p.name}}</td>
+                  <td style="padding: 0 8px; color: #54545A; font-size: 13px">{{p.code}}</td>
+                  <td style="padding: 0 20px"><span style="{{p.chip}}">{{p.source}}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+list: 'M4 6h16M4 12h16M4 18h16',
+key: 'M15 7a4 4 0 1 1-3.9 5H8v3H5v3H2v-3l6.1-6.1A4 4 0 0 1 15 7z',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, '#'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'],
+['h', 'Nội dung'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6', 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+renderVals() {
+const chip = (bg, fg) => 'display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + bg + '; color: ' + fg;
+const role = chip('#F1F2F4', '#3A3A42');
+const direct = chip('#FFFBEB', '#B45309');
+const data = [
+['Danh mục', 'Xem', 'CATALOG.VIEW', 'Vai trò: Quản trị nội dung', role],
+['Danh mục', 'Xem và sửa', 'CATALOG.MODIFY', 'Vai trò: Quản trị nội dung', role],
+['Nhật ký', 'Xem', 'AUDIT.VIEW', 'Gán trực tiếp', direct]
+];
+return {
+nav: this.nav('users'),
+perms: data.map((d) => ({ group: d[0], name: d[1], code: d[2], source: d[3], chip: d[4] }))
+};
+}
+}
+</script>
+</body>
+</html>

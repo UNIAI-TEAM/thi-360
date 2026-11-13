@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tùy chỉnh giao diện</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 1000px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="11">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="color: #54545A">Hệ thống <span aria-hidden="true">›</span> <strong style="color: #11181C; font-weight: 600">Tùy chỉnh giao diện</strong></div>
+      <button type="button" aria-haspopup="menu" style="height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">PL</span>
+        <span>platform</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div>
+        <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Tùy chỉnh giao diện</h1>
+        <p style="margin: 2px 0 0; max-width: 760px; color: #54545A">Cấu hình áp dụng cho <strong style="color: #11181C">toàn hệ thống</strong>: trang quản trị, trang học viên và trang đăng nhập. Thay đổi chỉ hiện ở vùng xem trước cho đến khi bấm Lưu và áp dụng.</p>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+        <div style="flex: 3 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+          <section aria-labelledby="sec-mode" style="padding: 20px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+            <h2 id="sec-mode" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Chế độ</h2>
+            <div style="height: 48px; width: 280px; max-width: 100%; box-sizing: border-box; padding: 4px; border-radius: 12px; background: #F1F2F4; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px">
+              <button type="button" aria-pressed="{{lightPressed}}" onClick="{{pickLight}}" style="{{lightStyle}}">Sáng</button>
+              <button type="button" aria-pressed="{{darkPressed}}" onClick="{{pickDark}}" style="{{darkStyle}}">Tối</button>
+            </div>
+          </section>
+
+          <section aria-labelledby="sec-palette" style="padding: 20px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; display: flex; flex-direction: column; gap: 14px">
+            <div>
+              <h2 id="sec-palette" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Bộ phối màu</h2>
+              <p style="margin: 2px 0 0; color: #54545A">Mỗi bộ gồm màu chính và màu nhấn. Các màu còn lại do hệ thống suy ra.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px">
+              <sc-for list="{{presets}}" as="p" hint-placeholder-count="10">
+                <button type="button" aria-pressed="{{p.pressed}}" onClick="{{p.pick}}" style="{{p.style}}">
+                  <span aria-hidden="true" style="display: flex; gap: 6px">
+                    <span style="{{p.sw1}}">Aa</span>
+                    <span style="{{p.sw2}}">Aa</span>
+                  </span>
+                  <span style="display: block; text-align: left">
+                    <span style="display: block; font-weight: 600">{{p.name}}</span>
+                    <span style="display: block; font-size: 12.5px; line-height: 18px; color: #54545A">{{p.sub}}</span>
+                  </span>
+                </button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{isCustom}}" hint-placeholder-val="{{false}}">
+              <div style="padding: 16px; border-radius: 12px; background: #F7F8F9; border: 1px solid #E8E8EC; display: flex; flex-direction: column; gap: 14px">
+                <div style="font-weight: 600">Tự tùy chỉnh</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px">
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label for="c-primary" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Màu chính</label>
+                    <div style="display: flex; gap: 8px">
+                      <input type="color" aria-label="Chọn màu chính" value="{{customPrimaryPick}}" onChange="{{setPrimary}}" style="flex: none; width: 48px; height: 44px; padding: 2px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; cursor: pointer">
+                      <input id="c-primary" type="text" value="{{customPrimaryText}}" onChange="{{setPrimary}}" maxlength="7" spellcheck="false" style="{{primaryInputStyle}}">
+                    </div>
+                    <span style="{{primaryMsgStyle}}">{{primaryMsg}}</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label for="c-accent" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Màu nhấn</label>
+                    <div style="display: flex; gap: 8px">
+                      <input type="color" aria-label="Chọn màu nhấn" value="{{customAccentPick}}" onChange="{{setAccent}}" style="flex: none; width: 48px; height: 44px; padding: 2px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; cursor: pointer">
+                      <input id="c-accent" type="text" value="{{customAccentText}}" onChange="{{setAccent}}" maxlength="7" spellcheck="false" style="{{accentInputStyle}}">
+                    </div>
+                    <span style="{{accentMsgStyle}}">{{accentMsg}}</span>
+                  </div>
+                </div>
+                <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+                  <sc-for list="{{checks}}" as="c" hint-placeholder-count="2">
+                    <li style="{{c.style}}">{{c.text}}</li>
+                  </sc-for>
+                </ul>
+              </div>
+            </sc-if>
+          </section>
+
+          <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+            <button type="button" onClick="{{reset}}" style="height: 44px; padding: 0 18px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Khôi phục mặc định</button>
+            <button type="button" disabled="{{saveDisabled}}" style="{{saveStyle}}">Lưu và áp dụng</button>
+          </div>
+        </div>
+
+        <section aria-labelledby="sec-preview" style="flex: 2 1 360px; min-width: 0; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+          <div>
+            <h2 id="sec-preview" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Xem trước</h2>
+            <div style="color: #54545A">{{paletteName}} · chế độ {{modeName}}</div>
+          </div>
+
+          <div>
+            <div style="font-size: 12.5px; line-height: 19px; color: #54545A; margin-bottom: 6px">Dải màu chính suy ra từ màu gốc (bậc 600)</div>
+            <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); border-radius: 10px; overflow: hidden; border: 1px solid #E8E8EC">
+              <sc-for list="{{scale}}" as="s" hint-placeholder-count="8">
+                <div style="{{s.style}}">{{s.step}}</div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="{{pvRoot}}">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <div aria-hidden="true" style="{{pvLogo}}">360</div>
+              <div style="font-weight: 700">Thi 360</div>
+            </div>
+            <div style="{{pvCard}}">
+              <div style="{{pvHeading}}">Luyện đề như thi thật</div>
+              <div style="{{pvMuted}}">Chữ phụ dùng cho mô tả và chú thích. <span style="{{pvLink}}">Liên kết màu chính</span></div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <span style="{{pvPrimaryBtn}}">Nút chính</span>
+                <span style="{{pvGhostBtn}}">Nút phụ</span>
+                <span style="{{pvAccentBtn}}">Vào thi ngay</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <span style="{{pvNavItem}}">Mục menu đang chọn</span>
+                <span style="{{pvChipOk}}">Hoạt động</span>
+                <span style="{{pvChipBad}}">Lỗi</span>
+              </div>
+              <div style="{{pvInput}}">Ô nhập đang được chọn</div>
+            </div>
+          </div>
+
+          <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 13px; line-height: 20px">
+            <dt style="color: #54545A">Chữ trên nút chính</dt><dd style="margin: 0">{{onPrimaryInfo}}</dd>
+            <dt style="color: #54545A">Chữ trên nút nhấn</dt><dd style="margin: 0">{{onAccentInfo}}</dd>
+            <dt style="color: #54545A">Liên kết trên nền trắng</dt><dd style="margin: 0">{{linkInfo}}</dd>
+          </dl>
+
+          <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: #54545A">Nhãn trạng thái (Hoạt động, Lỗi) giữ nguyên màu ở mọi bộ phối màu. Mỗi lần lưu được ghi vào nhật ký kèm giá trị trước và sau.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+rgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+hex(c) { return '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase(); }
+mix(a, b, t) { const x = this.rgb(a), y = this.rgb(b); return this.hex([0, 1, 2].map((i) => x[i] + (y[i] - x[i]) * t)); }
+lum(hex) { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; const c = this.rgb(hex); return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+ratio(a, b) { const x = this.lum(a), y = this.lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+on(bg) { return this.ratio('#FFFFFF', bg) >= this.ratio('#11181C', bg) ? '#FFFFFF' : '#11181C'; }
+dist(a, b) { const x = this.rgb(a), y = this.rgb(b); return Math.sqrt([0, 1, 2].reduce((s, i) => s + (x[i] - y[i]) * (x[i] - y[i]), 0)); }
+fmt(r) { return (Math.round(r * 10) / 10).toString().replace('.', ',') + ':1'; }
+renderVals() {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+list: 'M4 6h16M4 12h16M4 18h16',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const navItems = [
+['h', 'Tổng quan'], ['l', 'Bảng điều khiển', I.home, '#'],
+['h', 'Người dùng'], ['l', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['l', 'Lớp học', I.school, 'LopHoc.dc.html'],
+['h', 'Nội dung'], ['l', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['l', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['a', 'Tùy chỉnh giao diện', I.sliders, 'TuyChinhGiaoDien.dc.html'], ['l', 'Nhật ký', I.history, '#']
+];
+// 9 bộ cố định (spec mục 13.1) — [mã, tên, màu chính, màu nhấn]
+const PRESETS = [
+['thi360-green', 'Thi 360 Xanh lá', '#059669', '#F59223'],
+['emerald-gold', 'Ngọc lục bảo & Vàng', '#00695C', '#FFD740'],
+['charcoal-teal', 'Xanh rêu & Xanh cổ vịt', '#094A43', '#009688'],
+['navy-teal', 'Xanh hải quân & Ngọc lam', '#0F3C6E', '#00B4A6'],
+['blue-silver', 'Xanh dương & Bạc', '#0D47A1', '#B0BEC5'],
+['sky-orange', 'Xanh da trời & Cam', '#64B5F6', '#FAA528'],
+['indigo-amber', 'Chàm & Hổ phách', '#21255F', '#FFB547'],
+['indigo-coral', 'Chàm & San hô', '#283593', '#FF7043'],
+['slate-crimson', 'Xám đá & Đỏ thẫm', '#37474F', '#D32F2F']
+];
+const st = this.state || {};
+const id = st.presetId || 'thi360-green';
+const dark = st.mode === 'dark';
+const isCustom = id === 'custom';
+const HEX = /^#[0-9A-Fa-f]{6}$/;
+const cPrimaryText = st.customPrimary || '#7C3AED';
+const cAccentText = st.customAccent || '#F59E0B';
+const pOk = HEX.test(cPrimaryText), aOk = HEX.test(cAccentText);
+const preset = PRESETS.filter((p) => p[0] === id)[0] || PRESETS[0];
+const primary = isCustom ? (pOk ? cPrimaryText.toUpperCase() : '#7C3AED') : preset[2];
+const accent = isCustom ? (aOk ? cAccentText.toUpperCase() : '#F59E0B') : preset[3];
+const onP = id === 'thi360-green' ? '#FFFFFF' : this.on(primary);
+const onA = this.on(accent);
+const W = '#FFFFFF', K = '#000000';
+const scaleDef = [['50', W, 0.92], ['100', W, 0.84], ['200', W, 0.68], ['500', W, 0.15], ['600', null, 0], ['700', K, 0.18], ['800', K, 0.34], ['900', K, 0.5]];
+const sc = {};
+scaleDef.forEach((d) => { sc[d[0]] = d[1] ? this.mix(primary, d[1], d[2]) : primary; });
+let link = sc['700'];
+if (this.ratio(link, W) < 4.5) link = sc['800'];
+if (this.ratio(link, W) < 4.5) link = sc['900'];
+const surface = dark ? '#171D22' : '#FFFFFF';
+const page = dark ? '#0F1418' : '#F7F8F9';
+const text = dark ? '#E6EAED' : '#11181C';
+const muted = dark ? '#A9B2BA' : '#54545A';
+const border = dark ? '#2A3238' : '#E8E8EC';
+const tint = dark ? this.mix(primary, '#171D22', 0.78) : sc['50'];
+const onTint = dark ? this.mix(primary, W, 0.6) : link;
+const seg = (on) => 'border: 0; border-radius: 9px; font: inherit; cursor: pointer; ' + (on
+? 'background: #FFFFFF; color: #047857; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.1)'
+: 'background: transparent; color: #3A3A42; font-weight: 500');
+const pill = 'display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 12px; font-weight: 600; ';
+const sw = (bg, fg) => 'width: 44px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 600; background: ' + bg + '; color: ' + fg;
+const cardBase = 'min-height: 96px; padding: 12px; border-radius: 12px; background: #FFFFFF; font: inherit; color: #11181C; display: flex; flex-direction: column; gap: 10px; cursor: pointer; ';
+const cards = PRESETS.map((p) => ({
+name: p[1], sub: p[2] + ' · ' + p[3], pressed: p[0] === id ? 'true' : 'false',
+pick: () => this.setState({ presetId: p[0] }),
+sw1: sw(p[2], p[0] === 'thi360-green' ? '#FFFFFF' : this.on(p[2])), sw2: sw(p[3], this.on(p[3])),
+style: cardBase + (p[0] === id ? 'border: 2px solid #059669' : 'border: 1px solid #E8E8EC')
+}));
+cards.push({
+name: 'Tự tùy chỉnh', sub: 'Tự chọn màu chính và màu nhấn', pressed: isCustom ? 'true' : 'false',
+pick: () => this.setState({ presetId: 'custom', customPrimary: st.customPrimary || preset[2], customAccent: st.customAccent || preset[3] }),
+sw1: sw(pOk ? cPrimaryText : '#E8E8EC', pOk ? this.on(cPrimaryText) : '#54545A'), sw2: sw(aOk ? cAccentText : '#E8E8EC', aOk ? this.on(cAccentText) : '#54545A'),
+style: cardBase + (isCustom ? 'border: 2px solid #059669' : 'border: 1px dashed #A6A6AE')
+});
+const inputStyle = (ok) => 'flex: 1 1 auto; min-width: 0; height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; text-transform: uppercase; border: 1px solid ' + (ok ? '#E8E8EC' : '#DC2626');
+const msgStyle = (ok) => 'font-size: 12.5px; line-height: 19px; color: ' + (ok ? '#54545A' : '#B91C1C');
+const checks = [];
+const note = (kind, t) => checks.push({ text: t, style: 'padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 20px; ' + (kind === 'warn' ? 'background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A' : 'background: #ECFDF5; color: #047857; border: 1px solid #A7E3C2') });
+if (isCustom && pOk && aOk) {
+if (onP !== '#FFFFFF') note('warn', 'Màu chính khá sáng: nút chính sẽ dùng chữ tối thay cho chữ trắng.');
+if (this.dist(primary, '#DC2626') < 90 || this.dist(accent, '#DC2626') < 90) note('warn', 'Một trong hai màu gần với màu báo lỗi, dễ gây nhầm với cảnh báo.');
+if (this.dist(primary, accent) < 90) note('warn', 'Màu chính và màu nhấn khá giống nhau: nút nhấn sẽ không nổi bật.');
+if (checks.length === 0) note('ok', 'Hai màu dùng được. Chữ trên nút đều đạt mức tương phản 4,5:1 trở lên.');
+}
+const invalid = isCustom && (!pOk || !aOk);
+return {
+nav: navItems.map((it) => it[0] === 'h' ? { head: true, link: false, label: it[1] } : {
+head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === 'a' ? 'page' : 'false',
+style: 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ' + (it[0] === 'a' ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') }),
+presets: cards,
+isCustom: isCustom,
+customPrimaryText: cPrimaryText, customAccentText: cAccentText,
+customPrimaryPick: pOk ? cPrimaryText : '#7C3AED', customAccentPick: aOk ? cAccentText : '#F59E0B',
+setPrimary: (e) => this.setState({ customPrimary: e.target.value }),
+setAccent: (e) => this.setState({ customAccent: e.target.value }),
+primaryInputStyle: inputStyle(pOk), accentInputStyle: inputStyle(aOk),
+primaryMsg: pOk ? 'Dùng cho nút chính, liên kết, mục đang chọn.' : 'Mã màu phải có dạng #RRGGBB, ví dụ #059669.',
+accentMsg: aOk ? 'Dùng cho nút hành động nổi bật và huy hiệu.' : 'Mã màu phải có dạng #RRGGBB, ví dụ #F59223.',
+primaryMsgStyle: msgStyle(pOk), accentMsgStyle: msgStyle(aOk),
+checks: checks,
+saveDisabled: invalid,
+saveStyle: 'height: 44px; padding: 0 18px; border: 0; border-radius: 12px; font: inherit; font-weight: 600; ' + (invalid ? 'background: #F1F2F4; color: #54545A' : 'background: #059669; color: #FFFFFF; cursor: pointer'),
+paletteName: isCustom ? 'Tự tùy chỉnh' : preset[1],
+modeName: dark ? 'tối' : 'sáng',
+lightPressed: dark ? 'false' : 'true', darkPressed: dark ? 'true' : 'false',
+lightStyle: seg(!dark), darkStyle: seg(dark),
+pickLight: () => this.setState({ mode: 'light' }),
+pickDark: () => this.setState({ mode: 'dark' }),
+reset: () => this.setState({ presetId: 'thi360-green', mode: 'light' }),
+scale: scaleDef.map((d) => ({ step: d[0], style: 'height: 44px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; font-size: 11.5px; font-weight: 600; background: ' + sc[d[0]] + '; color: ' + this.on(sc[d[0]]) })),
+pvRoot: 'padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; background: ' + page + '; color: ' + text,
+pvLogo: 'width: 36px; height: 36px; border-radius: 10px; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; background: ' + primary + '; color: ' + onP,
+pvCard: 'padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; background: ' + surface + '; border: 1px solid ' + border,
+pvHeading: 'font-size: 18px; line-height: 28px; font-weight: 700; color: ' + (dark ? text : sc['900']),
+pvMuted: 'color: ' + muted,
+pvLink: 'font-weight: 600; text-decoration: underline; color: ' + (dark ? this.mix(primary, W, 0.6) : link),
+pvPrimaryBtn: pill + 'background: ' + primary + '; color: ' + onP,
+pvGhostBtn: pill + 'background: ' + surface + '; color: ' + text + '; border: 1px solid ' + border,
+pvAccentBtn: pill + 'background: ' + accent + '; color: ' + onA,
+pvNavItem: 'display: inline-flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 8px; font-weight: 600; background: ' + tint + '; color: ' + onTint,
+pvChipOk: 'display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; align-self: center; background: #ECFDF5; color: #047857',
+pvChipBad: 'display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; align-self: center; background: #FEF2F2; color: #B91C1C',
+pvInput: 'height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; display: flex; align-items: center; background: ' + surface + '; color: ' + muted + '; border: 1px solid ' + primary + '; box-shadow: 0 0 0 3px ' + this.mix(primary, surface, 0.8),
+onPrimaryInfo: (onP === '#FFFFFF' ? 'Chữ trắng' : 'Chữ tối') + ' · tương phản ' + this.fmt(this.ratio(onP, primary)) + (id === 'thi360-green' ? ' (ngoại lệ đã chốt cho bộ mặc định)' : ''),
+onAccentInfo: (onA === '#FFFFFF' ? 'Chữ trắng' : 'Chữ tối') + ' · tương phản ' + this.fmt(this.ratio(onA, accent)),
+linkInfo: 'Bậc ' + (link === sc['700'] ? '700' : (link === sc['800'] ? '800' : '900')) + ' · tương phản ' + this.fmt(this.ratio(link, W))
+};
+}
+}
+</script>
+</body>
+</html>

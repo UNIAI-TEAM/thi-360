@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog thêm giá trị danh mục kiểu danh sách</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 640px; height: 780px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+  <form role="dialog" aria-modal="true" aria-labelledby="dlg-title" style="width: 100%; max-height: 100%; box-sizing: border-box; background: #FFFFFF; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); padding: 28px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div>
+        <h1 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Thêm giá trị</h1>
+        <div style="color: #54545A">Cấu hình chung</div>
+      </div>
+      <button type="button" aria-label="Đóng" style="flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: #3A3A42; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </div>
+    <div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Danh mục</label><div style="min-height: 44px; box-sizing: border-box; padding: 8px 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #F7F8F9; display: flex; align-items: center; gap: 8px"><span style="padding: 1px 7px; border-radius: 6px; background: #F1F2F4; font-size: 12.5px; font-weight: 600; white-space: nowrap">SUBJECT</span><span style="font-weight: 500">Môn học</span><span style="margin-left: auto; font-size: 12.5px; line-height: 19px; color: #54545A">Hệ thống · Danh sách</span></div></div>
+    <div style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px"><div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label for="v-code" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mã giá trị <span style="color: #B91C1C">*</span></label><input id="v-code" type="text" value="GDCD" placeholder="" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%"><span style="font-size: 12.5px; line-height: 19px; color: #54545A">Duy nhất trong danh mục, không phân biệt hoa thường.</span></div><div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label for="v-order" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Thứ tự hiển thị <span style="color: #B91C1C">*</span></label><input id="v-order" type="text" value="9" placeholder="" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%"><span style="font-size: 12.5px; line-height: 19px; color: #54545A">Mặc định là vị trí kế tiếp.</span></div></div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px"><div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label for="v-vi" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tên tiếng Việt <span style="color: #B91C1C">*</span></label><input id="v-vi" type="text" value="Giáo dục công dân" placeholder="" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%"></div><div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label for="v-en" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tên tiếng Anh</label><input id="v-en" type="text" value="" placeholder="Trống thì dùng tên tiếng Việt" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%"></div></div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px"><div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label for="v-st" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Trạng thái <span style="color: #B91C1C">*</span></label><select id="v-st" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%; padding: 0 10px"><option>Hoạt động</option><option>Ngừng sử dụng</option></select></div><div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label for="v-val" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Value</label><input id="v-val" type="text" value="Hệ thống sinh khi lưu" placeholder="" readonly style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%; background: #F7F8F9; color: #54545A"><span style="font-size: 12.5px; line-height: 19px; color: #54545A">Không nhập, không đánh lại.</span></div></div>
+    <div style="min-width: 0; display: flex; flex-direction: column; gap: 6px"><label for="v-desc" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mô tả</label><textarea id="v-desc" rows="2" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%; height: auto; padding: 10px 12px; resize: vertical"></textarea></div>
+    <div style="padding: 12px 14px; border-radius: 10px; font-size: 13px; line-height: 20px; background: #F7F8F9; border: 1px solid #E8E8EC; color: #3A3A42">Khi sửa: mã và value đã được tham chiếu thì bị khóa; đổi tên, mô tả, thứ tự không làm mất liên kết.</div>
+
+    <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px"><button type="button" style="height: 44px; padding: 0 18px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42">Hủy</button><button type="button" style="height: 44px; padding: 0 18px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 0; background: #ECFDF5; color: #047857">Lưu và thêm tiếp</button><button type="button" style="height: 44px; padding: 0 18px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 0; background: #059669; color: #FFFFFF">Lưu</button></div>
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":780}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

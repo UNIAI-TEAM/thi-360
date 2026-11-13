@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Đăng nhập Thi 360</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<main style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 900px; box-sizing: border-box; padding: 24px; display: flex; align-items: center; justify-content: center">
+  <div style="width: 100%; max-width: 920px; display: flex; flex-wrap: wrap; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 24px; overflow: hidden; box-shadow: 0 24px 60px rgba(20,20,30,.08)">
+
+    <section style="flex: 1 1 360px; box-sizing: border-box; padding: 48px; background: #ECFDF5; display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <div aria-hidden="true" style="width: 44px; height: 44px; border-radius: 12px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center">360</div>
+        <div style="font-size: 20px; line-height: 28px; font-weight: 700; color: #064E3B">Thi 360</div>
+      </div>
+      <h1 style="margin: 0; font-size: 27px; line-height: 38px; font-weight: 700; color: #064E3B">Luyện thi đánh giá năng lực HSA và QDA</h1>
+      <p style="margin: 0; color: #3A3A42">Một tài khoản dùng cho cả trang học viên và trang quản trị. Sau khi đăng nhập, bạn được đưa tới đúng nơi theo vai trò của mình.</p>
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px">
+        <li style="display: flex; align-items: center; gap: 12px">
+          <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+          <span>Thi thử theo đúng cấu trúc đề</span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 12px">
+          <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+          <span>Biết điểm ngay sau khi nộp bài</span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 12px">
+          <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+          <span>Xem lời giải và phần cần luyện thêm</span>
+        </li>
+      </ul>
+    </section>
+
+    <section style="flex: 1 1 360px; box-sizing: border-box; padding: 48px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px">
+        <h2 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Đăng nhập</h2>
+        <a href="Landing.dc.html" style="font-weight: 500; text-decoration: none">← Trang chủ</a>
+      </div>
+
+      <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+        <span>Tên đăng nhập hoặc mật khẩu không đúng.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="login-id" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tên đăng nhập hoặc email</label>
+        <input id="login-id" type="text" autocomplete="username" value="student01" style="height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; font: inherit; color: #11181C; background: #FFFFFF">
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="login-pw" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mật khẩu</label>
+        <input id="login-pw" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" style="height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #DC2626; border-radius: 12px; font: inherit; color: #11181C; background: #FFFFFF">
+      </div>
+
+      <button type="submit" style="height: 52px; border: 0; border-radius: 12px; background: #059669; color: #FFFFFF; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 20px rgba(5,150,105,.25)">Đăng nhập</button>
+
+      <p style="margin: 0; color: #54545A; font-size: 13px; line-height: 20px">Quên mật khẩu? Liên hệ quản trị viên để được cấp lại. Sau 5 lần nhập sai liên tiếp, đăng nhập bị tạm khóa 15 phút.</p>
+    </section>
+
+  </div>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

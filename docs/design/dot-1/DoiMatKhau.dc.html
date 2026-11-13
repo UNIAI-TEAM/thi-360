@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Đổi mật khẩu bắt buộc</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<main style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 900px; box-sizing: border-box; padding: 24px; display: flex; align-items: center; justify-content: center">
+  <form style="width: 100%; max-width: 480px; box-sizing: border-box; padding: 40px; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div aria-hidden="true" style="width: 40px; height: 40px; border-radius: 12px; background: #059669; color: #FFFFFF; font-weight: 700; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 18px; line-height: 28px; font-weight: 700; color: #064E3B">Thi 360</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Đặt mật khẩu mới</h1>
+      <p style="margin: 0; color: #54545A">Tài khoản <strong style="color: #11181C">student03</strong> được yêu cầu đổi mật khẩu trước khi tiếp tục.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="pw-old" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mật khẩu hiện tại</label>
+      <input id="pw-old" type="password" autocomplete="current-password" style="height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; font: inherit; color: #11181C; background: #FFFFFF">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="pw-new" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mật khẩu mới</label>
+      <input id="pw-new" type="password" autocomplete="new-password" aria-describedby="pw-rule" style="height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #059669; border-radius: 12px; font: inherit; color: #11181C; background: #FFFFFF; box-shadow: 0 0 0 3px rgba(5,150,105,.15)">
+      <span id="pw-rule" style="font-size: 12.5px; line-height: 19px; color: #54545A">Tối thiểu 8 ký tự, có đủ chữ hoa, chữ thường, chữ số và ký tự đặc biệt.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="pw-again" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Nhập lại mật khẩu mới</label>
+      <input id="pw-again" type="password" autocomplete="new-password" style="height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; font: inherit; color: #11181C; background: #FFFFFF">
+    </div>
+
+    <button type="submit" style="height: 52px; border: 0; border-radius: 12px; background: #059669; color: #FFFFFF; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer">Lưu và tiếp tục</button>
+
+    <p style="margin: 0; font-size: 13px; line-height: 20px; color: #54545A">Sau khi lưu, bạn được đưa tới trang đang mở dở, hoặc trang chủ theo vai trò. <a href="Main.dc.html" style="font-weight: 500">Đăng nhập bằng tài khoản khác</a></p>
+  </form>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

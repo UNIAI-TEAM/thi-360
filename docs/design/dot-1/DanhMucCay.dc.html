@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Cấu hình chung · danh mục dạng cây</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 1340px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="color: #54545A">Nội dung <span aria-hidden="true">›</span> <strong style="color: #11181C; font-weight: 600">Cấu hình chung</strong></div>
+      <button type="button" aria-haspopup="menu" style="height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">CA</span>
+        <span>content.admin</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Cấu hình chung</h1>
+
+      <div style="display: flex; gap: 16px; align-items: flex-start">
+        <section aria-labelledby="sec-groups" style="flex: 0 0 264px; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 14px 14px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px">
+            <h2 id="sec-groups" style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 600">Danh mục <span style="font-weight: 400; color: #54545A">· 10</span></h2>
+            <button type="button" title="Thêm danh mục" aria-label="Thêm danh mục" style="width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: #ECFDF5; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+          </div>
+          <div style="padding: 0 14px 12px">
+            <input type="search" aria-label="Tìm danh mục" placeholder="Tìm danh mục" style="width: 100%; height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FAFAFB">
+          </div>
+          <ul style="margin: 0; padding: 0 8px 8px; list-style: none; display: flex; flex-direction: column; gap: 2px">
+            <sc-for list="{{groups}}" as="g" hint-placeholder-count="12">
+              <li>
+                <sc-if value="{{g.head}}" hint-placeholder-val="{{false}}"><div style="padding: 12px 10px 4px; display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A"><sc-if value="{{g.locked}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>{{g.label}}</div></sc-if>
+                <sc-if value="{{g.item}}" hint-placeholder-val="{{true}}"><button type="button" aria-pressed="{{g.pressed}}" style="{{g.style}}">
+                  <span aria-hidden="true" style="{{g.tile}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.icon}}"></path></svg></span>
+                  <span style="flex: 1 1 auto; min-width: 0; text-align: left">
+                    <span style="{{g.nameStyle}}">{{g.name}}</span>
+                    <span style="display: block; font-size: 12px; line-height: 17px; color: #54545A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{g.code}}</span>
+                  </span>
+                  <span style="flex: none; font-size: 12.5px; font-variant-numeric: tabular-nums; color: #54545A">{{g.count}}</span>
+                </button></sc-if>
+              </li>
+            </sc-for>
+          </ul>
+        </section>
+
+        <section aria-labelledby="sec-items" style="flex: 1 1 0; min-width: 0; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+            <div>
+              <h2 id="sec-items" style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 700">Cấu trúc kiến thức</h2>
+              <div style="font-size: 12.5px; line-height: 19px; color: #54545A">KNOWLEDGE · Cây: Chương <span aria-hidden="true">›</span> Bài <span aria-hidden="true">›</span> Kiến thức · {{summary}} · Liên kết: Môn học, Khối lớp</div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Nhập Excel</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Xuất Excel</button>
+              <span title="Danh mục hệ thống: không sửa, không xóa. Vẫn quản lý được giá trị bên trong." style="height: 40px; padding: 0 12px; border-radius: 12px; background: #F1F2F4; color: #3A3A42; font-weight: 600; display: inline-flex; align-items: center; gap: 6px"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg>Hệ thống</span>
+              <button type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 12px; background: #059669; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">+ Thêm chương</button>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: stretch; border-top: 1px solid #E8E8EC">
+            <div style="flex: 1 1 0; min-width: 0">
+              <form aria-label="Lọc nút" style="padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #E8E8EC">
+                <input type="search" aria-label="Tìm theo mã hoặc tên" placeholder="Tìm theo mã hoặc tên" style="flex: 1 1 200px; height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+                <sc-if value="{{fa.on}}" hint-placeholder-val="{{false}}"><select aria-label="{{fa.label}}" value="{{fa.value}}" onChange="{{fa.change}}" style="{{fa.style}}"><option value="">{{fa.all}}</option><sc-for list="{{fa.options}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.v}}</option></sc-for></select></sc-if>
+                <sc-if value="{{fb.on}}" hint-placeholder-val="{{false}}"><select aria-label="{{fb.label}}" value="{{fb.value}}" onChange="{{fb.change}}" style="{{fb.style}}"><option value="">{{fb.all}}</option><sc-for list="{{fb.options}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.v}}</option></sc-for></select></sc-if>
+                <sc-if value="{{fc.on}}" hint-placeholder-val="{{false}}"><select aria-label="{{fc.label}}" value="{{fc.value}}" onChange="{{fc.change}}" style="{{fc.style}}"><option value="">{{fc.all}}</option><sc-for list="{{fc.options}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.v}}</option></sc-for></select></sc-if>
+                <sc-if value="{{fd.on}}" hint-placeholder-val="{{false}}"><select aria-label="{{fd.label}}" value="{{fd.value}}" onChange="{{fd.change}}" style="{{fd.style}}"><option value="">{{fd.all}}</option><sc-for list="{{fd.options}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.v}}</option></sc-for></select></sc-if>
+                <sc-if value="{{fe.on}}" hint-placeholder-val="{{false}}"><select aria-label="{{fe.label}}" value="{{fe.value}}" onChange="{{fe.change}}" style="{{fe.style}}"><option value="">{{fe.all}}</option><sc-for list="{{fe.options}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.v}}</option></sc-for></select></sc-if>
+                <select aria-label="Trạng thái" style="flex: 0 0 150px; height: 38px; padding: 0 8px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF"><option>Mọi trạng thái</option><option>Hoạt động</option><option>Ngừng sử dụng</option></select>
+                <button type="button" onClick="{{expandAll}}" style="height: 38px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: #047857; font: inherit; font-weight: 600; cursor: pointer">Mở tất cả</button>
+                <button type="button" onClick="{{collapseAll}}" style="height: 38px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: #047857; font: inherit; font-weight: 600; cursor: pointer">Thu gọn</button>
+              </form>
+              <sc-if value="{{filterOn}}" hint-placeholder-val="{{false}}">
+                <div style="padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; background: #F7F8F9; border-bottom: 1px solid #E8E8EC; font-size: 13px; line-height: 20px"><span>{{filterText}}</span><button type="button" onClick="{{clearFilter}}" style="height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #047857; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">Bỏ lọc</button></div>
+              </sc-if>
+              <div role="tree" aria-label="Cấu trúc kiến thức" style="padding: 8px">
+                <sc-if value="{{noRows}}" hint-placeholder-val="{{false}}"><div style="padding: 32px 16px; text-align: center; color: #54545A">Không có nút nào khớp bộ lọc. Nút chưa gắn liên kết tới danh mục đang lọc sẽ không hiện.</div></sc-if>
+                <sc-for list="{{rows}}" as="r" hint-placeholder-count="17">
+                  <div role="treeitem" aria-level="{{r.ariaLevel}}" aria-selected="{{r.selected}}" style="{{r.rowStyle}}">
+                    <sc-if value="{{r.hasChildren}}" hint-placeholder-val="{{true}}">
+                      <button type="button" aria-expanded="{{r.expanded}}" aria-label="{{r.toggleLabel}}" onClick="{{r.toggle}}" style="flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #54545A; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="{{r.chevStyle}}"><path d="M9 6l6 6-6 6"></path></svg></button>
+                    </sc-if>
+                    <sc-if value="{{r.isLeaf}}" hint-placeholder-val="{{false}}">
+                      <span aria-hidden="true" style="flex: none; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; color: #C4C4CC"><svg width="5" height="5" viewBox="0 0 6 6" fill="currentColor"><circle cx="3" cy="3" r="3"></circle></svg></span>
+                    </sc-if>
+                    <button type="button" onClick="{{r.select}}" style="flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 6px 10px 6px 4px; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 10px">
+                      <span style="{{r.codeStyle}}">{{r.code}}</span>
+                      <span style="{{r.nameStyle}}">{{r.name}}</span>
+                      <sc-if value="{{r.showOff}}" hint-placeholder-val="{{false}}"><span style="{{r.offChip}}">{{r.offText}}</span></sc-if>
+                      <sc-if value="{{r.showRef}}" hint-placeholder-val="{{false}}"><span style="flex: none; font-size: 12.5px; white-space: nowrap; color: #54545A">{{r.refText}}</span></sc-if>
+                      <span style="flex: none; min-width: 20px; text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: #54545A">{{r.count}}</span>
+                    </button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <aside aria-label="Chi tiết nút đang chọn" style="flex: 0 0 340px; box-sizing: border-box; border-left: 1px solid #E8E8EC; background: #FAFAFB; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+              <div>
+                <div style="font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #047857">{{d.level}}</div>
+                <div style="margin-top: 4px; display: flex; align-items: flex-start; gap: 8px">
+                  <span style="flex: none; margin-top: 3px; padding: 2px 8px; border-radius: 6px; background: #FFFFFF; border: 1px solid #E8E8EC; font-size: 12.5px; line-height: 19px; font-weight: 600; white-space: nowrap">{{d.code}}</span>
+                  <h3 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 700">{{d.name}}</h3>
+                </div>
+                <div style="margin-top: 8px; font-size: 12.5px; line-height: 19px; color: #54545A">{{d.path}}</div>
+                <div style="margin-top: 10px"><span style="{{d.statusChip}}">{{d.status}}</span></div>
+              </div>
+
+              <div style="padding: 12px 14px; border-radius: 10px; background: #ECFDF5; color: #065F46; font-size: 13px; line-height: 20px">{{d.scope}}</div>
+
+              <div style="padding: 12px 14px; border-radius: 10px; background: #FFFFFF; border: 1px solid #E8E8EC; display: flex; flex-direction: column; gap: 10px">
+                <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px"><span style="font-weight: 600">Liên kết</span><span style="font-size: 12px; color: #54545A">Lưu ngay khi đổi</span></div>
+                <sc-if value="{{d.K.on}}" hint-placeholder-val="{{true}}">
+                <div style="padding-top: 10px; border-top: 1px solid #E8E8EC">
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #11181C">{{d.K.label}} <span style="font-weight: 400; font-size: 12px; color: #54545A">{{d.K.tag}}</span></span>
+                    <sc-if value="{{d.K.removable}}" hint-placeholder-val="{{false}}"><button type="button" title="{{d.K.removeTitle}}" aria-label="{{d.K.removeLabel}}" disabled="{{d.K.removeDisabled}}" onClick="{{d.K.removeGroup}}" style="{{d.K.removeStyle}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></button></sc-if>
+                    <button type="button" aria-expanded="{{d.K.openAttr}}" onClick="{{d.K.toggleOpen}}" style="flex: none; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: #ECFDF5; color: #047857; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">{{d.K.addText}}</button>
+                  </div>
+                  <div style="margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+                    <sc-for list="{{d.K.chips}}" as="c" hint-placeholder-count="2">
+                      <span title="{{c.title}}" style="{{c.style}}">
+                        <sc-if value="{{c.lock}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+                        {{c.text}}
+                        <sc-if value="{{c.own}}" hint-placeholder-val="{{true}}"><button type="button" title="Gỡ giá trị này" aria-label="{{c.removeLabel}}" onClick="{{c.remove}}" style="width: 20px; height: 20px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+                      </span>
+                    </sc-for>
+                    <sc-if value="{{d.ra.empty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #6B6B72">Nút này chưa gắn giá trị nào</span></sc-if>
+                  </div>
+                  <sc-if value="{{d.ra.hasNote}}" hint-placeholder-val="{{false}}"><div style="margin-top: 4px; font-size: 12px; line-height: 18px; color: #54545A">{{d.ra.note}}</div></sc-if>
+                  <sc-if value="{{d.ra.open}}" hint-placeholder-val="{{false}}">
+                    <div role="group" aria-label="{{d.ra.pickLabel}}" style="margin-top: 8px; padding: 4px; border: 1px solid #A7E3C2; border-radius: 10px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(20,20,30,.08); display: flex; flex-direction: column">
+                      <sc-for list="{{d.ra.options}}" as="o" hint-placeholder-count="3">
+                        <label style="{{o.style}}"><input type="checkbox" checked="{{o.checked}}" disabled="{{o.disabled}}" onChange="{{o.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> <span style="flex: 1 1 auto">{{o.text}}</span><span style="font-size: 12px; color: #54545A">{{o.note}}</span></label>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                </sc-if>
+                <sc-if value="{{d.K.on}}" hint-placeholder-val="{{true}}">
+                <div style="padding-top: 10px; border-top: 1px solid #E8E8EC">
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #11181C">{{d.K.label}} <span style="font-weight: 400; font-size: 12px; color: #54545A">{{d.K.tag}}</span></span>
+                    <sc-if value="{{d.K.removable}}" hint-placeholder-val="{{false}}"><button type="button" title="{{d.K.removeTitle}}" aria-label="{{d.K.removeLabel}}" disabled="{{d.K.removeDisabled}}" onClick="{{d.K.removeGroup}}" style="{{d.K.removeStyle}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></button></sc-if>
+                    <button type="button" aria-expanded="{{d.K.openAttr}}" onClick="{{d.K.toggleOpen}}" style="flex: none; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: #ECFDF5; color: #047857; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">{{d.K.addText}}</button>
+                  </div>
+                  <div style="margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+                    <sc-for list="{{d.K.chips}}" as="c" hint-placeholder-count="2">
+                      <span title="{{c.title}}" style="{{c.style}}">
+                        <sc-if value="{{c.lock}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+                        {{c.text}}
+                        <sc-if value="{{c.own}}" hint-placeholder-val="{{true}}"><button type="button" title="Gỡ giá trị này" aria-label="{{c.removeLabel}}" onClick="{{c.remove}}" style="width: 20px; height: 20px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+                      </span>
+                    </sc-for>
+                    <sc-if value="{{d.rb.empty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #6B6B72">Nút này chưa gắn giá trị nào</span></sc-if>
+                  </div>
+                  <sc-if value="{{d.rb.hasNote}}" hint-placeholder-val="{{false}}"><div style="margin-top: 4px; font-size: 12px; line-height: 18px; color: #54545A">{{d.rb.note}}</div></sc-if>
+                  <sc-if value="{{d.rb.open}}" hint-placeholder-val="{{false}}">
+                    <div role="group" aria-label="{{d.rb.pickLabel}}" style="margin-top: 8px; padding: 4px; border: 1px solid #A7E3C2; border-radius: 10px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(20,20,30,.08); display: flex; flex-direction: column">
+                      <sc-for list="{{d.rb.options}}" as="o" hint-placeholder-count="3">
+                        <label style="{{o.style}}"><input type="checkbox" checked="{{o.checked}}" disabled="{{o.disabled}}" onChange="{{o.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> <span style="flex: 1 1 auto">{{o.text}}</span><span style="font-size: 12px; color: #54545A">{{o.note}}</span></label>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                </sc-if>
+                <sc-if value="{{d.K.on}}" hint-placeholder-val="{{true}}">
+                <div style="padding-top: 10px; border-top: 1px solid #E8E8EC">
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #11181C">{{d.K.label}} <span style="font-weight: 400; font-size: 12px; color: #54545A">{{d.K.tag}}</span></span>
+                    <sc-if value="{{d.K.removable}}" hint-placeholder-val="{{false}}"><button type="button" title="{{d.K.removeTitle}}" aria-label="{{d.K.removeLabel}}" disabled="{{d.K.removeDisabled}}" onClick="{{d.K.removeGroup}}" style="{{d.K.removeStyle}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></button></sc-if>
+                    <button type="button" aria-expanded="{{d.K.openAttr}}" onClick="{{d.K.toggleOpen}}" style="flex: none; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: #ECFDF5; color: #047857; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">{{d.K.addText}}</button>
+                  </div>
+                  <div style="margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+                    <sc-for list="{{d.K.chips}}" as="c" hint-placeholder-count="2">
+                      <span title="{{c.title}}" style="{{c.style}}">
+                        <sc-if value="{{c.lock}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+                        {{c.text}}
+                        <sc-if value="{{c.own}}" hint-placeholder-val="{{true}}"><button type="button" title="Gỡ giá trị này" aria-label="{{c.removeLabel}}" onClick="{{c.remove}}" style="width: 20px; height: 20px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+                      </span>
+                    </sc-for>
+                    <sc-if value="{{d.rc.empty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #6B6B72">Nút này chưa gắn giá trị nào</span></sc-if>
+                  </div>
+                  <sc-if value="{{d.rc.hasNote}}" hint-placeholder-val="{{false}}"><div style="margin-top: 4px; font-size: 12px; line-height: 18px; color: #54545A">{{d.rc.note}}</div></sc-if>
+                  <sc-if value="{{d.rc.open}}" hint-placeholder-val="{{false}}">
+                    <div role="group" aria-label="{{d.rc.pickLabel}}" style="margin-top: 8px; padding: 4px; border: 1px solid #A7E3C2; border-radius: 10px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(20,20,30,.08); display: flex; flex-direction: column">
+                      <sc-for list="{{d.rc.options}}" as="o" hint-placeholder-count="3">
+                        <label style="{{o.style}}"><input type="checkbox" checked="{{o.checked}}" disabled="{{o.disabled}}" onChange="{{o.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> <span style="flex: 1 1 auto">{{o.text}}</span><span style="font-size: 12px; color: #54545A">{{o.note}}</span></label>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                </sc-if>
+                <sc-if value="{{d.K.on}}" hint-placeholder-val="{{true}}">
+                <div style="padding-top: 10px; border-top: 1px solid #E8E8EC">
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #11181C">{{d.K.label}} <span style="font-weight: 400; font-size: 12px; color: #54545A">{{d.K.tag}}</span></span>
+                    <sc-if value="{{d.K.removable}}" hint-placeholder-val="{{false}}"><button type="button" title="{{d.K.removeTitle}}" aria-label="{{d.K.removeLabel}}" disabled="{{d.K.removeDisabled}}" onClick="{{d.K.removeGroup}}" style="{{d.K.removeStyle}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></button></sc-if>
+                    <button type="button" aria-expanded="{{d.K.openAttr}}" onClick="{{d.K.toggleOpen}}" style="flex: none; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: #ECFDF5; color: #047857; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">{{d.K.addText}}</button>
+                  </div>
+                  <div style="margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+                    <sc-for list="{{d.K.chips}}" as="c" hint-placeholder-count="2">
+                      <span title="{{c.title}}" style="{{c.style}}">
+                        <sc-if value="{{c.lock}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+                        {{c.text}}
+                        <sc-if value="{{c.own}}" hint-placeholder-val="{{true}}"><button type="button" title="Gỡ giá trị này" aria-label="{{c.removeLabel}}" onClick="{{c.remove}}" style="width: 20px; height: 20px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+                      </span>
+                    </sc-for>
+                    <sc-if value="{{d.rd.empty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #6B6B72">Nút này chưa gắn giá trị nào</span></sc-if>
+                  </div>
+                  <sc-if value="{{d.rd.hasNote}}" hint-placeholder-val="{{false}}"><div style="margin-top: 4px; font-size: 12px; line-height: 18px; color: #54545A">{{d.rd.note}}</div></sc-if>
+                  <sc-if value="{{d.rd.open}}" hint-placeholder-val="{{false}}">
+                    <div role="group" aria-label="{{d.rd.pickLabel}}" style="margin-top: 8px; padding: 4px; border: 1px solid #A7E3C2; border-radius: 10px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(20,20,30,.08); display: flex; flex-direction: column">
+                      <sc-for list="{{d.rd.options}}" as="o" hint-placeholder-count="3">
+                        <label style="{{o.style}}"><input type="checkbox" checked="{{o.checked}}" disabled="{{o.disabled}}" onChange="{{o.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> <span style="flex: 1 1 auto">{{o.text}}</span><span style="font-size: 12px; color: #54545A">{{o.note}}</span></label>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                </sc-if>
+                <sc-if value="{{d.K.on}}" hint-placeholder-val="{{true}}">
+                <div style="padding-top: 10px; border-top: 1px solid #E8E8EC">
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #11181C">{{d.K.label}} <span style="font-weight: 400; font-size: 12px; color: #54545A">{{d.K.tag}}</span></span>
+                    <sc-if value="{{d.K.removable}}" hint-placeholder-val="{{false}}"><button type="button" title="{{d.K.removeTitle}}" aria-label="{{d.K.removeLabel}}" disabled="{{d.K.removeDisabled}}" onClick="{{d.K.removeGroup}}" style="{{d.K.removeStyle}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></button></sc-if>
+                    <button type="button" aria-expanded="{{d.K.openAttr}}" onClick="{{d.K.toggleOpen}}" style="flex: none; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: #ECFDF5; color: #047857; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">{{d.K.addText}}</button>
+                  </div>
+                  <div style="margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+                    <sc-for list="{{d.K.chips}}" as="c" hint-placeholder-count="2">
+                      <span title="{{c.title}}" style="{{c.style}}">
+                        <sc-if value="{{c.lock}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+                        {{c.text}}
+                        <sc-if value="{{c.own}}" hint-placeholder-val="{{true}}"><button type="button" title="Gỡ giá trị này" aria-label="{{c.removeLabel}}" onClick="{{c.remove}}" style="width: 20px; height: 20px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+                      </span>
+                    </sc-for>
+                    <sc-if value="{{d.re.empty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #6B6B72">Nút này chưa gắn giá trị nào</span></sc-if>
+                  </div>
+                  <sc-if value="{{d.re.hasNote}}" hint-placeholder-val="{{false}}"><div style="margin-top: 4px; font-size: 12px; line-height: 18px; color: #54545A">{{d.re.note}}</div></sc-if>
+                  <sc-if value="{{d.re.open}}" hint-placeholder-val="{{false}}">
+                    <div role="group" aria-label="{{d.re.pickLabel}}" style="margin-top: 8px; padding: 4px; border: 1px solid #A7E3C2; border-radius: 10px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(20,20,30,.08); display: flex; flex-direction: column">
+                      <sc-for list="{{d.re.options}}" as="o" hint-placeholder-count="3">
+                        <label style="{{o.style}}"><input type="checkbox" checked="{{o.checked}}" disabled="{{o.disabled}}" onChange="{{o.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> <span style="flex: 1 1 auto">{{o.text}}</span><span style="font-size: 12px; color: #54545A">{{o.note}}</span></label>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                </sc-if>
+                <div style="padding-top: 10px; border-top: 1px solid #E8E8EC">
+                  <button type="button" aria-expanded="{{d.addOpenAttr}}" onClick="{{d.toggleAdd}}" style="width: 100%; height: 38px; border: 1px dashed #A7E3C2; border-radius: 10px; background: #FFFFFF; color: #047857; font: inherit; font-weight: 600; cursor: pointer">{{d.addGroupText}}</button>
+                  <sc-if value="{{d.addOpen}}" hint-placeholder-val="{{false}}">
+                    <div role="group" aria-label="Chọn danh mục liên kết" style="margin-top: 8px; padding: 4px; border: 1px solid #A7E3C2; border-radius: 10px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(20,20,30,.08); display: flex; flex-direction: column">
+                      <sc-for list="{{d.groupOptions}}" as="o" hint-placeholder-count="5">
+                        <label style="{{o.style}}"><input type="checkbox" checked="{{o.checked}}" disabled="{{o.disabled}}" onChange="{{o.toggle}}" style="width: 16px; height: 16px; accent-color: #059669"> <span style="flex: 1 1 auto">{{o.text}}</span><span style="font-size: 12px; color: #54545A">{{o.note}}</span></label>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <div style="margin-top: 6px; font-size: 12px; line-height: 18px; color: #54545A">Danh mục liên kết áp cho cả cây, không riêng nút đang chọn.</div>
+                </div>
+              </div>
+
+              <dl style="margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px">
+                <div><dt style="font-size: 12.5px; color: #54545A">Value</dt><dd style="margin: 2px 0 0; font-weight: 500">{{d.value}}</dd></div>
+                <div><dt style="font-size: 12.5px; color: #54545A">Thứ tự trong nút cha</dt><dd style="margin: 2px 0 0; font-weight: 500">{{d.order}}</dd></div>
+                <div><dt style="font-size: 12.5px; color: #54545A">Bên dưới</dt><dd style="margin: 2px 0 0; font-weight: 500">{{d.below}}</dd></div>
+                <div><dt style="font-size: 12.5px; color: #54545A">Tên tiếng Anh</dt><dd style="margin: 2px 0 0; color: #54545A">Chưa nhập</dd></div>
+                <div style="grid-column: 1 / -1"><dt style="font-size: 12.5px; color: #54545A">Nơi đang dùng</dt><dd style="margin: 2px 0 0; color: #54545A">Chưa được câu hỏi hay đề nào tham chiếu</dd></div>
+              </dl>
+
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <sc-if value="{{d.canAdd}}" hint-placeholder-val="{{true}}">
+                  <button type="button" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; font: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px; border: 0; background: #059669; color: #FFFFFF; cursor: pointer; justify-content: center">{{d.addText}}</button>
+                </sc-if>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+                  <button type="button" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; font: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; cursor: pointer; justify-content: center">Sửa</button>
+                  <button type="button" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; font: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; cursor: pointer; justify-content: center">Chuyển nhánh</button>
+                  <button type="button" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; font: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; cursor: pointer; justify-content: center">{{d.toggleText}}</button>
+                  <button type="button" disabled="{{d.deleteDisabled}}" style="{{d.deleteStyle}}">Xóa</button>
+                </div>
+                <sc-if value="{{d.deleteDisabled}}" hint-placeholder-val="{{false}}">
+                  <div style="font-size: 12.5px; line-height: 19px; color: #54545A">Không xóa được vì còn nút con bên dưới.</div>
+                </sc-if>
+                <button type="button" style="height: 36px; padding: 0; border: 0; background: transparent; color: #047857; font: inherit; font-weight: 600; text-align: left; cursor: pointer">Xem lịch sử thay đổi</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1340}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+list: 'M4 6h16M4 12h16M4 18h16',
+key: 'M15 7a4 4 0 1 1-3.9 5H8v3H5v3H2v-3l6.1-6.1A4 4 0 0 1 15 7z',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, '#'],
+['h', 'Nội dung'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+renderVals() {
+const LIST = 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01';
+const TREEI = 'M6 3v12M6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9';
+const LINK = 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1';
+const GROUPS = [
+['Kỳ thi', 'EXAM', '2', LIST], ['Môn học', 'SUBJECT', '8', LIST], ['Khối lớp', 'GRADE', '3', LIST], ['Mức độ câu hỏi', 'QUESTION_LEVEL', '4', LIST],
+['Dạng câu', 'QUESTION_FORMAT', '2', LIST], ['Dạng bài', 'TASK_TYPE', '2', LIST], ['Nhãn câu hỏi', 'QUESTION_TAG', '0', LIST],
+['Mã tổ hợp', 'SUBJECT_COMBINATION', '5', LINK], ['Cấu trúc kiến thức', 'KNOWLEDGE', '33', TREEI]
+];
+const groupRows = (active) => {
+const out = [];
+const section = (label, list, locked) => {
+out.push({ head: true, item: false, label: label + ' · ' + list.length, locked: locked });
+list.forEach((g) => out.push({
+head: false, item: true, name: g[0], code: g[1], count: g[2], icon: g[3], pressed: g[1] === active ? 'true' : 'false',
+nameStyle: 'display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: ' + (g[1] === active ? '600' : '500'),
+tile: 'flex: none; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; ' + (g[1] === active ? 'background: #FFFFFF; color: #047857' : 'background: #F1F2F4; color: #54545A'),
+style: 'width: 100%; min-height: 56px; box-sizing: border-box; padding: 8px 10px; border: 0; border-radius: 10px; font: inherit; display: flex; align-items: center; gap: 10px; cursor: pointer; ' + (g[1] === active ? 'background: #ECFDF5; color: #047857; box-shadow: inset 3px 0 0 #059669' : 'background: transparent; color: #11181C')
+}));
+};
+section('Hệ thống', GROUPS, true);
+section('Tùy chỉnh', [['Nguồn câu hỏi', 'QUESTION_SOURCE', '3', LIST]], false);
+return out;
+};
+const chip = (bg, fg) => 'display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 9999px; font-size: 12px; font-weight: 500; white-space: nowrap; flex: none; background: ' + bg + '; color: ' + fg;
+// Bộ mẫu dev: [mã, tên, trạng thái riêng, nút con]
+const TREE = [
+['0D1', 'Mệnh đề. Tập hợp', 'A', [
+['0D1-1', 'Mệnh đề', 'A', [
+['0D1-1-1', 'Xác định mệnh đề, mệnh đề chứa biến'], ['0D1-1-2', 'Tính đúng-sai của mệnh đề'], ['0D1-1-3', 'Phủ định của một mệnh đề'],
+['0D1-1-4', 'Mệnh đề kéo theo, mệnh đề đảo, mệnh đề tương đương'], ['0D1-1-5', 'Mệnh đề với mọi, tồn tại (và phủ định chúng)'], ['0D1-1-6', 'Áp dụng mệnh đề vào suy luận có lí']]],
+['0D1-2', 'Tập hợp', 'A', [
+['0D1-2-1', 'Tập hợp và phần tử của tập hợp'], ['0D1-2-2', 'Tập hợp con. Hai tập hợp bằng nhau'], ['0D1-2-3', 'Ký hiệu khoảng, đoạn, nửa khoảng']]],
+['0D1-3', 'Các phép toán tập hợp', 'A', [
+['0D1-3-1', 'Giao và hợp của hai tập hợp (rời rạc)'], ['0D1-3-2', 'Hiệu và phần bù của hai tập hợp (rời rạc)'], ['0D1-3-3', 'Giao và hợp (dùng đoạn, khoảng)'],
+['0D1-3-4', 'Hiệu và phần bù (dùng đoạn, khoảng)'], ['0D1-3-5', 'Toán thực tế ứng dụng của tập hợp']]]]],
+['0D2', 'Bất phương trình và hệ bất phương trình bậc nhất hai ẩn', 'A', [
+['0D2-1', 'Bất phương trình bậc nhất hai ẩn', 'A', [
+['0D2-1-1', 'Các khái niệm về bất phương trình bậc nhất hai ẩn'], ['0D2-1-2', 'Miền nghiệm của bất phương trình bậc nhất hai ẩn'], ['0D2-1-3', 'Toán thực tế về bất phương trình bậc nhất hai ẩn']]],
+['0D2-2', 'Hệ bất phương trình bậc nhất hai ẩn', 'I', [
+['0D2-2-1', 'Các khái niệm về hệ bất phương trình bậc nhất hai ẩn'], ['0D2-2-2', 'Miền nghiệm của hệ bất phương trình bậc nhất hai ẩn'], ['0D2-2-3', 'Toán thực tế về hệ bất phương trình bậc nhất hai ẩn']]]]],
+['0D3', 'Hàm số bậc hai và đồ thị', 'A', [
+['0D3-1', 'Hàm số và đồ thị', 'A', [
+['0D3-1-1', 'Xác định một hàm số'], ['0D3-1-2', 'Tập xác định của hàm số'], ['0D3-1-3', 'Giá trị của hàm số'], ['0D3-1-4', 'Đồ thị của hàm số']]]]]
+];
+const LEVELS = ['Chương', 'Bài', 'Kiến thức'];
+// Liên kết của chính nút: mã nút -> [môn học[], khối lớp[]]
+const REFS = { '0D1': [['Toán'], ['Lớp 10']], '0D2': [['Toán'], ['Lớp 10']], '0D3': [['Toán'], ['Lớp 10', 'Lớp 11']] };
+const REF_GROUPS = ['Môn học', 'Khối lớp', 'Mức độ câu hỏi', 'Dạng bài', 'Nguồn câu hỏi'];
+const REF_TYPE = ['Hệ thống', 'Hệ thống', 'Hệ thống', 'Hệ thống', 'Tùy chỉnh'];
+const G = 5, DEFAULTS = 2;
+const st = this.state || {};
+const R = st.refs || REFS;
+const OPTIONS = [['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí'], ['Lớp 10', 'Lớp 11', 'Lớp 12'], ['Nhận biết', 'Thông hiểu', 'Vận dụng', 'Vận dụng cao'], ['Câu đơn', 'Câu chùm'], ['Sách giáo khoa', 'Đề minh họa', 'Tự biên soạn']];
+const extra = st.extra || [];
+const active = (gi) => gi < DEFAULTS || extra.indexOf(gi) >= 0;
+const ownOf = (c) => { const a = R[c] || []; const out = []; for (let k = 0; k < G; k += 1) out.push(active(k) ? (a[k] || []) : []); return out; };
+const flat = (c) => ownOf(c).reduce((acc, x) => acc.concat(x), []);
+const hasOwn = (c) => flat(c).length > 0;
+const open = st.open || { '0D1': true, '0D1-1': true, '0D2': true, '0D2-2': true };
+const sel = st.sel || '0D1-1';
+const parents = [];
+const leafCount = (n) => (n[3] && n[3].length) ? n[3].reduce((a, c) => a + leafCount(c), 0) : (n.length < 4 ? 1 : 0);
+const filt = st.filt || {};
+const activeFilters = [0, 1, 2, 3, 4].filter((gi) => active(gi) && filt[gi]);
+const filterOn = activeFilters.length > 0;
+const keep = {}, selfMatch = {};
+let matchLeaves = 0;
+const mark = (nodes, depth, inhEff) => {
+let any = false;
+nodes.forEach((n) => {
+const own = ownOf(n[0]);
+const eff = inhEff.map((l, gi) => l.concat(own[gi]));
+const self = activeFilters.every((gi) => eff[gi].indexOf(filt[gi]) >= 0);
+const kids = n[3] || [];
+const childAny = mark(kids, depth + 1, eff);
+selfMatch[n[0]] = self;
+if (self && kids.length === 0) matchLeaves += 1;
+if (self || childAny) { keep[n[0]] = true; any = true; }
+});
+return any;
+};
+if (filterOn) mark(TREE, 0, [[], [], [], [], []]);
+const rows = [];
+const info = {};
+let counter = 0, nLesson = 0, nLeaf = 0;
+const INDENT = 28;
+const walk = (nodes, depth, inheritedOff, visible, trail, inh) => {
+nodes.forEach((n, idx) => {
+counter += 1;
+const value = counter;
+const kids = n[3] || [];
+const isLeaf = depth === LEVELS.length - 1;
+if (depth === 1) nLesson += 1;
+if (isLeaf) nLeaf += 1;
+if (kids.length) parents.push(n[0]);
+const own = n[2] || 'A';
+const off = inheritedOff || own === 'I';
+const leaves = leafCount(n);
+info[n[0]] = { code: n[0], name: n[1], depth: depth, value: value, order: idx + 1, of: nodes.length, kids: kids.length, leaves: leaves, own: own, inherited: inheritedOff, trail: trail, own: own, ownRefs: ownOf(n[0]), inhRefs: inh };
+if (visible && (!filterOn || keep[n[0]])) {
+const expanded = !!open[n[0]] || (filterOn && !selfMatch[n[0]]);
+const isSel = n[0] === sel;
+const lines = [], pos = [];
+for (let i = 0; i < depth; i += 1) { lines.push('linear-gradient(#E8E8EC, #E8E8EC)'); pos.push((i * INDENT + 21) + 'px 0'); }
+rows.push({
+code: n[0], name: n[1], ariaLevel: String(depth + 1), selected: isSel ? 'true' : 'false',
+hasChildren: kids.length > 0, isLeaf: kids.length === 0,
+expanded: expanded ? 'true' : 'false',
+toggleLabel: (expanded ? 'Thu gọn ' : 'Mở ') + n[0],
+toggle: () => this.setState({ open: Object.assign({}, open, { [n[0]]: !expanded }) }),
+select: () => this.setState({ sel: n[0], pick: -1, addGroup: false }),
+chevStyle: 'transition: transform .15s; transform: rotate(' + (expanded ? '90' : '0') + 'deg)',
+rowStyle: 'display: flex; align-items: center; gap: 2px; border-radius: 8px; padding-left: ' + (depth * INDENT + 8) + 'px; '
++ (depth === 0 && idx > 0 ? 'margin-top: 6px; ' : '')
++ 'background-color: ' + (isSel ? '#ECFDF5' : 'transparent') + '; color: ' + (off ? '#6B6B72' : '#11181C')
++ (lines.length ? '; background-image: ' + lines.join(', ') + '; background-repeat: no-repeat; background-size: 1px 100%; background-position: ' + pos.join(', ') : ''),
+codeStyle: 'flex: none; padding: 1px 7px; border-radius: 6px; font-size: 12.5px; line-height: 20px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; background: ' + (isSel ? '#FFFFFF' : '#F1F2F4') + '; color: ' + (off ? '#6B6B72' : (isSel ? '#047857' : '#3A3A42')),
+nameStyle: 'flex: 1 1 auto; min-width: 0; ' + (depth === 0 ? 'font-size: 15px; line-height: 22px; font-weight: 600' : (depth === 1 ? 'font-weight: 500' : 'font-weight: 400' + (off ? '' : '; color: #3A3A42'))),
+showOff: off,
+offText: own === 'I' ? 'Ngừng sử dụng' : 'Ngừng theo cấp trên',
+offChip: own === 'I' ? chip('#E8E8EC', '#3A3A42') : chip('#FFFBEB', '#92400E'),
+showRef: hasOwn(n[0]), refText: flat(n[0]).join(' · '),
+count: isLeaf ? '' : String(leaves)
+});
+}
+walk(kids, depth + 1, off, visible && (!!open[n[0]] || (filterOn && !selfMatch[n[0]])), trail.concat([n[0] + ' ' + n[1]]), inh.map((list, gi) => list.concat((ownOf(n[0])[gi]).filter((v) => !list.some((x) => x.v === v)).map((v) => ({ v: v, from: LEVELS[depth].toLowerCase() + ' ' + n[0] })))));
+});
+};
+walk(TREE, 0, false, true, [], [[], [], [], [], []]);
+const fslot = (gi) => ({
+on: active(gi), label: 'Lọc theo ' + REF_GROUPS[gi], all: REF_GROUPS[gi] + ': tất cả', value: filt[gi] || '',
+options: OPTIONS[gi].map((v) => ({ v: v })),
+style: 'flex: 0 1 150px; min-width: 120px; height: 38px; padding: 0 8px; border-radius: 10px; font: inherit; background: #FFFFFF; ' + (filt[gi] ? 'border: 1px solid #059669; color: #047857; font-weight: 600' : 'border: 1px solid #E8E8EC; color: #11181C'),
+change: (e) => this.setState({ filt: Object.assign({}, filt, { [gi]: e.target.value }) })
+});
+const allOpen = {}; parents.forEach((c) => { allOpen[c] = true; });
+const n = info[sel] || info['0D1-1'];
+const leafLevel = n.depth === LEVELS.length - 1;
+const dOff = n.own === 'I' || n.inherited;
+const big = (bg, fg) => 'display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; background: ' + bg + '; color: ' + fg;
+const chipBase = 'display: inline-flex; align-items: center; gap: 6px; min-height: 28px; border-radius: 9999px; font-size: 13px; font-weight: 500; ';
+const setRefs = (code, gi, vals) => {
+const next = Object.assign({}, R);
+const cur = []; for (let k = 0; k < G; k += 1) cur.push(((next[code] || [])[k] || []).slice());
+cur[gi] = vals; next[code] = cur;
+this.setState({ refs: next });
+};
+const refGroup = (gi) => {
+const inhV = n.inhRefs[gi];
+const ownV = n.ownRefs[gi].filter((v) => !inhV.some((x) => x.v === v));
+const isOpen = st.pick === gi;
+const linked = Object.keys(R).filter((c) => ((R[c] || [])[gi] || []).length > 0).length;
+const froms = inhV.map((x) => x.from).filter((f, k, arr) => arr.indexOf(f) === k);
+const chips = inhV.map((x) => ({ text: x.v, own: false, lock: true, title: 'Kế thừa từ ' + x.from + ', sửa ở nút đó', style: chipBase + 'padding: 0 10px; background: #F1F2F4; color: #3A3A42' }))
+.concat(ownV.map((v) => ({ text: v, own: true, lock: false, title: 'Gắn riêng cho nút này', removeLabel: 'Gỡ liên kết ' + v, style: chipBase + 'padding: 0 5px 0 10px; background: #D1FAE5; color: #047857', remove: () => setRefs(n.code, gi, ownV.filter((o) => o !== v)) })));
+return {
+label: REF_GROUPS[gi], chips: chips, empty: chips.length === 0,
+on: active(gi), tag: gi < DEFAULTS ? '· mặc định' : '',
+removable: gi >= DEFAULTS, removeDisabled: linked > 0,
+removeLabel: 'Bỏ danh mục liên kết ' + REF_GROUPS[gi],
+removeTitle: linked > 0 ? 'Còn ' + linked + ' nút đang liên kết, gỡ hết giá trị trước khi bỏ' : 'Bỏ danh mục liên kết này khỏi cây',
+removeGroup: () => { if (linked === 0) this.setState({ extra: extra.filter((x) => x !== gi), pick: -1 }); },
+removeStyle: 'flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; background: transparent; display: inline-flex; align-items: center; justify-content: center; ' + (linked > 0 ? 'color: #C4C4CC' : 'color: #B91C1C; cursor: pointer'),
+open: isOpen, openAttr: isOpen ? 'true' : 'false', addText: isOpen ? 'Xong' : '+ Thêm',
+toggleOpen: () => this.setState({ pick: isOpen ? -1 : gi }),
+pickLabel: 'Chọn ' + REF_GROUPS[gi].toLowerCase(),
+hasNote: froms.length > 0, note: 'Có hình khóa: kế thừa từ ' + froms.join(', ') + '.',
+options: OPTIONS[gi].map((o) => {
+const inherited = inhV.some((x) => x.v === o);
+const on = inherited || ownV.indexOf(o) >= 0;
+return { text: o, checked: on, disabled: inherited, note: inherited ? 'kế thừa' : '',
+style: 'min-height: 36px; padding: 0 8px; border-radius: 8px; display: flex; align-items: center; gap: 8px; ' + (inherited ? 'color: #6B6B72' : 'cursor: pointer'),
+toggle: () => { if (!inherited) setRefs(n.code, gi, on ? ownV.filter((v) => v !== o) : ownV.concat([o])); } };
+})
+};
+};
+const delDisabled = n.kids > 0;
+return {
+nav: this.nav('catalog'),
+groups: groupRows('KNOWLEDGE'),
+rows: rows,
+filterOn: filterOn, noRows: rows.length === 0,
+filterText: 'Đang lọc theo ' + activeFilters.map((gi) => REF_GROUPS[gi] + ': ' + filt[gi]).join(' và ') + ' · ' + matchLeaves + ' kiến thức khớp (tính cả liên kết kế thừa)',
+clearFilter: () => this.setState({ filt: {} }),
+fa: fslot(0), fb: fslot(1), fc: fslot(2), fd: fslot(3), fe: fslot(4),
+summary: TREE.length + ' chương · ' + nLesson + ' bài · ' + nLeaf + ' kiến thức',
+expandAll: () => this.setState({ open: allOpen }),
+collapseAll: () => this.setState({ open: {} }),
+d: {
+level: LEVELS[n.depth], code: n.code, name: n.name,
+ra: refGroup(0), rb: refGroup(1), rc: refGroup(2), rd: refGroup(3), re: refGroup(4),
+addOpen: !!st.addGroup, addOpenAttr: st.addGroup ? 'true' : 'false', addGroupText: st.addGroup ? 'Xong' : '+ Thêm danh mục liên kết',
+toggleAdd: () => this.setState({ addGroup: !st.addGroup, pick: -1 }),
+groupOptions: REF_GROUPS.map((g, gi) => {
+const isDef = gi < DEFAULTS, on = active(gi);
+const used = Object.keys(R).filter((c) => ((R[c] || [])[gi] || []).length > 0).length;
+const locked = isDef || (on && used > 0);
+return { text: g, checked: on, disabled: locked, note: isDef ? 'mặc định' : (on && used > 0 ? 'còn ' + used + ' nút dùng' : REF_TYPE[gi]),
+style: 'min-height: 36px; padding: 0 8px; border-radius: 8px; display: flex; align-items: center; gap: 8px; ' + (locked ? 'color: #6B6B72' : 'cursor: pointer'),
+toggle: () => { if (!locked) this.setState({ extra: on ? extra.filter((x) => x !== gi) : extra.concat([gi]) }); } };
+}),
+path: n.trail.length ? 'Thuộc: ' + n.trail.join(' › ') : 'Cấp gốc của cây',
+status: n.own === 'I' ? 'Ngừng sử dụng' : (n.inherited ? 'Ngừng theo cấp trên' : 'Hoạt động'),
+statusChip: n.own === 'I' ? big('#E8E8EC', '#3A3A42') : (n.inherited ? big('#FFFBEB', '#92400E') : big('#D1FAE5', '#047857')),
+scope: dOff ? 'Nút này đang ngừng nên không chọn mới được cho câu hỏi và đề. Dữ liệu đã gắn trước đó vẫn giữ nguyên.'
+: (leafLevel ? 'Câu hỏi được gắn trực tiếp vào kiến thức này. Đề gắn nút này chỉ lấy câu hỏi của riêng nó.'
+: 'Đề gắn ' + LEVELS[n.depth].toLowerCase() + ' này sẽ lấy câu hỏi của ' + n.leaves + ' kiến thức bên dưới.'),
+value: String(n.value), order: n.order + ' / ' + n.of,
+below: leafLevel ? 'Nút lá' : (n.depth === 0 ? n.kids + ' bài · ' + n.leaves + ' kiến thức' : n.leaves + ' kiến thức'),
+canAdd: !leafLevel && !dOff,
+addText: '+ Thêm ' + (LEVELS[n.depth + 1] || '').toLowerCase() + ' vào ' + LEVELS[n.depth].toLowerCase() + ' ' + n.code,
+toggleText: n.own === 'I' ? 'Bật lại' : 'Ngừng sử dụng',
+deleteDisabled: delDisabled,
+deleteStyle: 'width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; font: inherit; font-weight: 600; display: flex; align-items: center; justify-content: center; '
++ (delDisabled ? 'border: 1px solid #E8E8EC; background: #F1F2F4; color: #6B6B72' : 'border: 1px solid #FECACA; background: #FFFFFF; color: #B91C1C; cursor: pointer')
+}
+};
+}
+}
+</script>
+</body>
+</html>

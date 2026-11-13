@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Trang học viên</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 900px">
+
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E8E8EC">
+    <div style="max-width: 1170px; margin: 0 auto; box-sizing: border-box; padding: 12px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <div aria-hidden="true" style="width: 40px; height: 40px; border-radius: 12px; background: #059669; color: #FFFFFF; font-weight: 700; display: flex; align-items: center; justify-content: center">360</div>
+        <div style="font-size: 18px; line-height: 28px; font-weight: 700; color: #064E3B">Thi 360</div>
+      </div>
+
+      <div style="position: relative">
+        <button type="button" aria-haspopup="menu" aria-expanded="true" style="height: 44px; padding: 0 10px 0 6px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+          <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; display: flex; align-items: center; justify-content: center">S1</span>
+          <span>student01</span>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+        </button>
+        <div role="menu" aria-label="Tài khoản" style="position: absolute; right: 0; top: 52px; width: 240px; box-sizing: border-box; padding: 8px; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; box-shadow: 0 6px 18px rgba(20,20,30,.12); display: flex; flex-direction: column; gap: 2px">
+          <div style="padding: 8px 12px 10px; border-bottom: 1px solid #E8E8EC; margin-bottom: 6px">
+            <div style="font-weight: 600">Học viên 01</div>
+            <div style="font-size: 12.5px; line-height: 19px; color: #54545A">Vai trò: Học viên</div>
+          </div>
+          <a role="menuitem" href="#" style="height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; color: #11181C; text-decoration: none">Hồ sơ</a>
+          <a role="menuitem" href="DoiMatKhau.dc.html" style="height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; color: #11181C; text-decoration: none">Đổi mật khẩu</a>
+          <a role="menuitem" href="Main.dc.html" style="height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; color: #B91C1C; text-decoration: none">Đăng xuất</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1170px; margin: 0 auto; box-sizing: border-box; padding: 40px 24px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 30px; line-height: 38px; font-weight: 700">Chào Học viên 01</h1>
+      <p style="margin: 0; color: #54545A">Bạn đã đăng nhập vào trang học viên.</p>
+    </div>
+
+    <section aria-labelledby="my-exams" style="display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span aria-hidden="true" style="width: 4px; height: 24px; border-radius: 2px; background: #059669"></span>
+        <h2 id="my-exams" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Bài thi của tôi</h2>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 16px; padding: 48px 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+        <span aria-hidden="true" style="width: 48px; height: 48px; border-radius: 12px; background: #ECFDF5; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></span>
+        <div style="font-size: 16px; line-height: 24px; font-weight: 600">Chưa có bài thi nào</div>
+        <p style="margin: 0; max-width: 440px; color: #54545A">Danh mục bài thi, mua bài và làm bài sẽ có ở các đợt phát triển tiếp theo. Đợt này trang học viên chỉ có đăng nhập, đổi mật khẩu và đăng xuất.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

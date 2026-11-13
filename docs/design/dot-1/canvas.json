@@ -1,0 +1,298 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "CapHangLoat.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "title": "Cấp tài khoản hàng loạt · bước xem trước",
+      "w": 1440,
+      "x": 3680,
+      "y": 1300
+    },
+    "DanhMucCay.dc.html": {
+      "expand": "fill",
+      "h": 1340,
+      "is_interactive": true,
+      "title": "Cấu hình chung · danh mục dạng cây (Cấu trúc kiến thức)",
+      "w": 1440,
+      "x": 3760,
+      "y": 5800
+    },
+    "CauHinhChung.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": false,
+      "title": "Cấu hình chung (danh mục dùng chung)",
+      "w": 1440,
+      "x": 0,
+      "y": 5800
+    },
+    "ChiTietLop.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "title": "Chi tiết lớp",
+      "w": 1440,
+      "x": 1520,
+      "y": 4300
+    },
+    "ChiTietTaiKhoan.dc.html": {
+      "expand": "fill",
+      "h": 1080,
+      "title": "Chi tiết tài khoản · tab Vai trò & quyền",
+      "w": 1440,
+      "x": 2160,
+      "y": 1300
+    },
+    "DoiMatKhau.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Đổi mật khẩu bắt buộc",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Forbidden.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Trang 403",
+      "w": 1440,
+      "x": 6080,
+      "y": 0
+    },
+    "GanQuyenHangLoat.dc.html": {
+      "expand": "fill",
+      "h": 1080,
+      "is_interactive": true,
+      "title": "Phân quyền · tab Gán hàng loạt",
+      "w": 1440,
+      "x": 5720,
+      "y": 2800
+    },
+    "Home.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Trang học viên tạm (/home)",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "Landing.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Trang giới thiệu tạm (thi360.vn)",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "LopHoc.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "title": "Danh sách lớp học",
+      "w": 1440,
+      "x": 0,
+      "y": 4300
+    },
+    "MaToHop.dc.html": {
+      "h": 820,
+      "title": "Dialog giá trị · kiểu Tổ hợp (sửa mã tổ hợp)",
+      "w": 640,
+      "x": 1520,
+      "y": 5800
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Đăng nhập (thi360.vn/dang-nhap)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "NguoiDungTheoQuyen.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "title": "Phân quyền · tab Người dùng theo quyền",
+      "w": 1440,
+      "x": 4200,
+      "y": 2800
+    },
+    "Quyen.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Phân quyền · tab Quyền",
+      "w": 1440,
+      "x": 2680,
+      "y": 2800
+    },
+    "TaiKhoan.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "title": "Danh sách tài khoản",
+      "w": 1440,
+      "x": 0,
+      "y": 1300
+    },
+    "TaoTaiKhoan.dc.html": {
+      "h": 920,
+      "title": "Dialog tạo tài khoản",
+      "w": 560,
+      "x": 1520,
+      "y": 1300
+    },
+    "TaoVaiTro.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "Dialog tạo vai trò · chọn quyền theo đối tượng",
+      "w": 1080,
+      "x": 1520,
+      "y": 2800
+    },
+    "TuyChinhGiaoDien.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "Tùy chỉnh giao diện",
+      "w": 1440,
+      "x": 2240,
+      "y": 5800
+    },
+    "VaiTro.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Phân quyền · tab Vai trò",
+      "w": 1440,
+      "x": 0,
+      "y": 2800
+    },
+    "TaoDanhMucCay.dc.html": {
+      "h": 940,
+      "title": "Dialog thêm danh mục · kiểu cây",
+      "w": 680,
+      "x": 0,
+      "y": 7700
+    },
+    "ThemNutCay.dc.html": {
+      "h": 980,
+      "title": "Dialog giá trị · kiểu Cây (thêm bài, có liên kết)",
+      "w": 680,
+      "x": 760,
+      "y": 7700
+    },
+    "ChuyenNhanhCay.dc.html": {
+      "h": 760,
+      "title": "Dialog chuyển nhánh",
+      "w": 600,
+      "x": 1520,
+      "y": 7700
+    },
+    "NgungNutCay.dc.html": {
+      "h": 800,
+      "title": "Dialog ngừng sử dụng nút · phạm vi ảnh hưởng",
+      "w": 600,
+      "x": 2200,
+      "y": 7700
+    },
+    "NhapCayExcel.dc.html": {
+      "h": 960,
+      "title": "Dialog nhập Excel cho cây · bước xem trước",
+      "w": 1200,
+      "x": 2880,
+      "y": 7700
+    },
+    "ThemGiaTri.dc.html": {
+      "h": 780,
+      "title": "Dialog giá trị · kiểu Danh sách (thêm môn học)",
+      "w": 640,
+      "x": 4160,
+      "y": 7700
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-13T09:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "row-a": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Web học viên · tên miền chính · đăng nhập một nơi",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row-b": {
+      "kind": "title1",
+      "maxW": 5120,
+      "text": "Web admin · Tài khoản (PBI-01)",
+      "w": 240,
+      "x": 0,
+      "y": 1000
+    },
+    "row-c": {
+      "kind": "title1",
+      "maxW": 7160,
+      "text": "Web admin · Phân quyền (PBI-01) · một menu, bốn tab",
+      "w": 240,
+      "x": 0,
+      "y": 2500
+    },
+    "row-d": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Web admin · Lớp học (PBI-01)",
+      "w": 240,
+      "x": 0,
+      "y": 4000
+    },
+    "row-e": {
+      "kind": "title1",
+      "maxW": 5200,
+      "text": "Web admin · Danh mục dùng chung (PBI-02) và giao diện",
+      "w": 240,
+      "x": 0,
+      "y": 5500
+    },
+    "row-f": {
+      "kind": "title1",
+      "maxW": 4800,
+      "text": "Web admin · Danh mục · các hộp thoại",
+      "w": 240,
+      "x": 0,
+      "y": 7400
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Landing.dc.html",
+    "DoiMatKhau.dc.html",
+    "Home.dc.html",
+    "Forbidden.dc.html",
+    "TaiKhoan.dc.html",
+    "TaoTaiKhoan.dc.html",
+    "ChiTietTaiKhoan.dc.html",
+    "CapHangLoat.dc.html",
+    "VaiTro.dc.html",
+    "TaoVaiTro.dc.html",
+    "Quyen.dc.html",
+    "NguoiDungTheoQuyen.dc.html",
+    "GanQuyenHangLoat.dc.html",
+    "LopHoc.dc.html",
+    "ChiTietLop.dc.html",
+    "CauHinhChung.dc.html",
+    "MaToHop.dc.html",
+    "DanhMucCay.dc.html",
+    "TuyChinhGiaoDien.dc.html",
+    "TaoDanhMucCay.dc.html",
+    "ThemNutCay.dc.html",
+    "ChuyenNhanhCay.dc.html",
+    "NgungNutCay.dc.html",
+    "NhapCayExcel.dc.html",
+    "ThemGiaTri.dc.html"
+  ],
+  "pages": [],
+  "title": "Thi 360 — Thiết kế màn hình đợt 1"
+}
