@@ -5,17 +5,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.connection.RedisClusterConnection;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisSentinelConnection;
+import org.springframework.data.redis.connection.StringRedisConnection;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 
@@ -65,44 +78,62 @@ class SessionStoreIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void interleavedCreateAndBulkRevokeWithBarriers_neverLeavesOrphanAcceptedHash() throws Exception {
+    void interleavedCreateAndBulkRevokeAtRedisCommandBoundary_neverLeavesOrphanAcceptedHash() throws Exception {
+        AtomicBoolean armed = new AtomicBoolean(false);
+        CountDownLatch snapshotCompleted = new CountDownLatch(1);
+        CountDownLatch createCompleted = new CountDownLatch(1);
+        StringRedisTemplate interceptedTemplate = templateWithPostSnapshotPause(
+                redisTemplate.getConnectionFactory(), armed, snapshotCompleted, createCompleted);
+
         SessionStore storeA = new SessionStore(redisTemplate, securityProperties, Clock.systemUTC());
-        SessionStore storeB = new SessionStore(redisTemplate, securityProperties, Clock.systemUTC());
+        SessionStore storeB = new SessionStore(interceptedTemplate, securityProperties, Clock.systemUTC());
         UUID userId = UUID.randomUUID();
+        String seedSid = "interleave-seed-" + UUID.randomUUID();
+        String newSid = "interleave-create-" + UUID.randomUUID();
+        List<String> createdSids = List.of(seedSid, newSid);
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            List<String> createdSids = new ArrayList<>();
-            for (int round = 0; round < 30; round++) {
-                String sid = "interleave-" + round + "-" + UUID.randomUUID();
-                createdSids.add(sid);
-                CyclicBarrier barrier = new CyclicBarrier(2);
+            storeA.createSession(seedSid, userId, Realm.APP);
+            armed.set(true);
 
-                Future<List<String>> createFuture = pool.submit(() -> {
-                    awaitBarrier(barrier);
-                    return storeA.createSession(sid, userId, Realm.APP);
-                });
-                Future<Void> revokeFuture = pool.submit(() -> {
-                    awaitBarrier(barrier);
+            Future<Void> revokeFuture = pool.submit(() -> {
+                try {
                     storeB.deleteAllSessions(userId);
                     return null;
-                });
+                } finally {
+                    snapshotCompleted.countDown();
+                }
+            });
+            Future<List<String>> createFuture = pool.submit(() -> {
+                try {
+                    assertThat(snapshotCompleted.await(10, TimeUnit.SECONDS))
+                            .as("deleteAllSessions must complete its snapshot or atomic script command on Redis")
+                            .isTrue();
+                    return storeA.createSession(newSid, userId, Realm.APP);
+                } finally {
+                    createCompleted.countDown();
+                }
+            });
 
-                createFuture.get();
-                revokeFuture.get();
+            createFuture.get();
+            revokeFuture.get();
+            assertThat(armed.get())
+                    .as("Redis command boundary hook must have intercepted deleteAllSessions")
+                    .isFalse();
 
-                Set<String> indexed = redisTemplate.opsForZSet().range("user-sess:" + userId, 0, -1);
-                for (String s : createdSids) {
-                    boolean hashExists = Boolean.TRUE.equals(redisTemplate.hasKey("sess:" + s));
-                    boolean inIndex = indexed != null && indexed.contains(s);
-                    assertThat(hashExists)
-                            .as("Surviving session hash %s must match user index membership", s)
-                            .isEqualTo(inIndex);
-                    if (!inIndex) {
-                        assertThat(storeA.findSession(s)).isEmpty();
-                    }
+            Set<String> indexed = redisTemplate.opsForZSet().range("user-sess:" + userId, 0, -1);
+            for (String s : createdSids) {
+                boolean hashExists = Boolean.TRUE.equals(redisTemplate.hasKey("sess:" + s));
+                boolean inIndex = indexed != null && indexed.contains(s);
+                assertThat(hashExists)
+                        .as("Surviving session hash %s must match user index membership", s)
+                        .isEqualTo(inIndex);
+                if (!inIndex) {
+                    assertThat(storeA.findSession(s)).isEmpty();
                 }
             }
+            assertThat(storeA.findSession(newSid)).isPresent();
 
             storeB.deleteAllSessions(userId);
             for (String s : createdSids) {
@@ -111,6 +142,9 @@ class SessionStoreIT extends AbstractIntegrationTest {
             }
             assertThat(redisTemplate.hasKey("user-sess:" + userId)).isFalse();
         } finally {
+            armed.set(false);
+            createCompleted.countDown();
+            snapshotCompleted.countDown();
             pool.shutdownNow();
             storeA.deleteAllSessions(userId);
             redisTemplate.delete("user-sess-seq:" + userId);
@@ -180,6 +214,137 @@ class SessionStoreIT extends AbstractIntegrationTest {
             throw new RuntimeException(ex);
         } catch (BrokenBarrierException ex) {
             throw new RuntimeException(ex);
+        }
+    }
+
+    private static StringRedisTemplate templateWithPostSnapshotPause(
+            RedisConnectionFactory delegateFactory,
+            AtomicBoolean armed,
+            CountDownLatch snapshotCompleted,
+            CountDownLatch createCompleted) {
+        RedisConnectionFactory interceptingFactory = new RedisConnectionFactory() {
+            @Override
+            public RedisConnection getConnection() {
+                RedisConnection delegate = delegateFactory.getConnection();
+                return wrapConnection(delegate, armed, snapshotCompleted, createCompleted);
+            }
+
+            @Override
+            public RedisClusterConnection getClusterConnection() {
+                return delegateFactory.getClusterConnection();
+            }
+
+            @Override
+            public boolean getConvertPipelineAndTxResults() {
+                return delegateFactory.getConvertPipelineAndTxResults();
+            }
+
+            @Override
+            public RedisSentinelConnection getSentinelConnection() {
+                return delegateFactory.getSentinelConnection();
+            }
+
+            @Override
+            public DataAccessException translateExceptionIfPossible(RuntimeException ex) {
+                return delegateFactory.translateExceptionIfPossible(ex);
+            }
+        };
+        return new StringRedisTemplate(interceptingFactory);
+    }
+
+    private static RedisConnection wrapConnection(
+            RedisConnection delegate,
+            AtomicBoolean armed,
+            CountDownLatch snapshotCompleted,
+            CountDownLatch createCompleted) {
+        Class<?>[] interfaces = delegate instanceof StringRedisConnection
+                ? new Class<?>[] {StringRedisConnection.class, RedisConnection.class}
+                : new Class<?>[] {RedisConnection.class};
+        return (RedisConnection) Proxy.newProxyInstance(
+                SessionStoreIT.class.getClassLoader(),
+                interfaces,
+                new PostSnapshotPauseHandler(delegate, armed, snapshotCompleted, createCompleted));
+    }
+
+    private static final class PostSnapshotPauseHandler implements InvocationHandler {
+
+        private static final Set<String> SUB_COMMAND_PROVIDERS = Set.of(
+                "commands",
+                "geoCommands",
+                "hashCommands",
+                "hyperLogLogCommands",
+                "keyCommands",
+                "listCommands",
+                "setCommands",
+                "scriptingCommands",
+                "serverCommands",
+                "streamCommands",
+                "stringCommands",
+                "zSetCommands");
+
+        private static final Set<String> SNAPSHOT_OR_SCRIPT_COMMANDS = Set.of(
+                "zRange",
+                "zRangeByScore",
+                "zRangeWithScores",
+                "zRangeByScoreWithScores",
+                "zRevRange",
+                "zRevRangeWithScores",
+                "zRevRangeByScore",
+                "zRevRangeByScoreWithScores",
+                "zScan",
+                "keys",
+                "scan",
+                "sMembers",
+                "sScan",
+                "hGetAll",
+                "hKeys",
+                "hScan",
+                "eval",
+                "evalSha");
+
+        private final Object delegate;
+        private final AtomicBoolean armed;
+        private final CountDownLatch snapshotCompleted;
+        private final CountDownLatch createCompleted;
+
+        private PostSnapshotPauseHandler(
+                Object delegate,
+                AtomicBoolean armed,
+                CountDownLatch snapshotCompleted,
+                CountDownLatch createCompleted) {
+            this.delegate = delegate;
+            this.armed = armed;
+            this.snapshotCompleted = snapshotCompleted;
+            this.createCompleted = createCompleted;
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            Object result;
+            try {
+                result = method.invoke(delegate, args);
+            } catch (InvocationTargetException ex) {
+                throw ex.getTargetException();
+            }
+            if (method.getDeclaringClass() == Object.class) {
+                return result;
+            }
+            String name = method.getName();
+            if (SUB_COMMAND_PROVIDERS.contains(name)
+                    && result != null
+                    && method.getReturnType().isInterface()) {
+                return Proxy.newProxyInstance(
+                        SessionStoreIT.class.getClassLoader(),
+                        new Class<?>[] {method.getReturnType()},
+                        new PostSnapshotPauseHandler(result, armed, snapshotCompleted, createCompleted));
+            }
+            if (SNAPSHOT_OR_SCRIPT_COMMANDS.contains(name) && armed.compareAndSet(true, false)) {
+                snapshotCompleted.countDown();
+                if (!createCompleted.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting for concurrent createSession");
+                }
+            }
+            return result;
         }
     }
 }
