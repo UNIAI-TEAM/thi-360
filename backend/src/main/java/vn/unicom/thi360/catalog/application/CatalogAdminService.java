@@ -30,6 +30,8 @@ import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemResponse;
 import vn.unicom.thi360.catalog.api.CatalogTreeNodeResponse;
+import vn.unicom.thi360.catalog.api.CatalogUsageResponse;
+import vn.unicom.thi360.catalog.api.CatalogUsagesResponse;
 import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.api.CreateCatalogGroupRequest;
 import vn.unicom.thi360.catalog.api.CreateCatalogItemRequest;
@@ -94,6 +96,9 @@ public class CatalogAdminService {
     private static final String ERR_REF_GROUP_IN_USE = "CATALOG_REF_GROUP_IN_USE";
     private static final String ERR_REF_GROUP_DEFAULT = "CATALOG_REF_GROUP_DEFAULT";
     private static final String ERR_REF_INVALID = "CATALOG_REF_INVALID";
+    private static final String ERR_ITEM_IN_USE = "CATALOG_ITEM_IN_USE";
+    private static final String ERR_CHANGE_BLOCKED = "CATALOG_CHANGE_BLOCKED";
+    private static final String ERR_CODE_LOCKED = "CATALOG_CODE_LOCKED";
 
     private final CatalogGroupRepository catalogGroupRepository;
     private final CatalogItemRepository catalogItemRepository;
@@ -341,11 +346,25 @@ public class CatalogAdminService {
         if (request.code() != null) {
             String trimmed = validateAndTrimCode(request.code());
             String normalized = CatalogNormalizer.normalizeCode(trimmed);
+            if (!trimmed.equals(group.getCode())) {
+                List<CatalogUsageResponse> groupUsages = aggregateGroupUsages(group);
+                if (!groupUsages.isEmpty()) {
+                    throw new CatalogConflictException(ERR_CODE_LOCKED, toUsageFieldErrors(groupUsages));
+                }
+            }
             if (!normalized.equals(group.getCodeNormalized())
                     && catalogGroupRepository.existsByCodeNormalizedAndIdNot(normalized, groupId)) {
                 throw new ConflictException(ERR_CODE_TAKEN);
             }
             newCode = trimmed;
+        }
+        if (deactivating) {
+            List<CatalogUsageResponse> blocking = aggregateGroupUsages(group).stream()
+                    .filter(CatalogUsageResponse::blocking)
+                    .toList();
+            if (!blocking.isEmpty()) {
+                throw new CatalogConflictException(ERR_CHANGE_BLOCKED, toUsageFieldErrors(blocking));
+            }
         }
 
         String newNameVi = null;
@@ -693,6 +712,12 @@ public class CatalogAdminService {
             if (!trimmed.equals(item.getCode()) && item.isSystem()) {
                 throw new ConflictException(ERR_ITEM_SYSTEM);
             }
+            if (!trimmed.equals(item.getCode())) {
+                List<CatalogUsageResponse> codeUsages = aggregateItemUsages(group, item, false);
+                if (!codeUsages.isEmpty()) {
+                    throw new CatalogConflictException(ERR_CODE_LOCKED, toUsageFieldErrors(codeUsages));
+                }
+            }
             String normalized = CatalogNormalizer.normalizeCode(trimmed);
             if (!normalized.equals(item.getCodeNormalized())
                     && catalogItemRepository.existsByGroupIdAndCodeNormalizedAndIdNot(
@@ -700,6 +725,14 @@ public class CatalogAdminService {
                 throw new ConflictException(ERR_CODE_TAKEN);
             }
             newCode = trimmed;
+        }
+        if (deactivating) {
+            List<CatalogUsageResponse> blocking = aggregateItemUsages(group, item, true).stream()
+                    .filter(CatalogUsageResponse::blocking)
+                    .toList();
+            if (!blocking.isEmpty()) {
+                throw new CatalogConflictException(ERR_CHANGE_BLOCKED, toUsageFieldErrors(blocking));
+            }
         }
 
         String newNameVi = null;
@@ -952,6 +985,10 @@ public class CatalogAdminService {
         if (catalogItemRepository.existsByParentId(itemId)) {
             throw new ConflictException(ERR_NODE_HAS_CHILDREN);
         }
+        List<CatalogUsageResponse> deleteUsages = aggregateItemUsages(group, item, false);
+        if (!deleteUsages.isEmpty()) {
+            throw new CatalogConflictException(ERR_ITEM_IN_USE, toUsageFieldErrors(deleteUsages));
+        }
         String trimmedReason = requireReason(reason, "Vui lòng nhập lý do khi xóa giá trị danh mục");
 
         List<CatalogItemRefResponse> beforeRefs =
@@ -1178,6 +1215,11 @@ public class CatalogAdminService {
                 catalogSupportDao.findInactiveEffectiveItemIds(group.getId(), List.of(newParentId));
         if (newParent.getStatus() != CatalogStatus.ACTIVE || inactiveParent.contains(newParentId)) {
             throw new ConflictException(ERR_PARENT_INACTIVE);
+        }
+
+        List<CatalogUsageResponse> branchUsages = aggregateItemUsages(group, item, true);
+        if (!branchUsages.isEmpty()) {
+            throw new CatalogConflictException(ERR_ITEM_IN_USE, toUsageFieldErrors(branchUsages));
         }
 
         String oldPrefix = item.getPath();
@@ -1820,6 +1862,124 @@ public class CatalogAdminService {
             throw new NotFoundException("NOT_FOUND", null);
         }
         return version;
+    }
+
+    @Transactional(readOnly = true)
+    public CatalogUsagesResponse getItemUsages(UUID itemId) {
+        CatalogItem item = catalogItemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        List<CatalogUsageResponse> usages = aggregateItemUsages(group, item, true);
+        return toUsagesResponse(item.getId(), item.getCode(), usages);
+    }
+
+    @Transactional(readOnly = true)
+    public CatalogUsagesResponse getGroupUsages(UUID groupId) {
+        CatalogGroup group = catalogGroupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        List<CatalogUsageResponse> usages = aggregateGroupUsages(group);
+        return toUsagesResponse(group.getId(), group.getCode(), usages);
+    }
+
+    private List<CatalogUsageResponse> aggregateGroupUsages(CatalogGroup group) {
+        List<UUID> itemIds = jdbcTemplate.query(
+                "SELECT id FROM catalog.catalog_item WHERE group_id = ?",
+                (rs, rowNum) -> rs.getObject("id", UUID.class),
+                group.getId());
+        return aggregateUsages(group.getCode(), itemIds);
+    }
+
+    private List<CatalogUsageResponse> aggregateItemUsages(
+            CatalogGroup group, CatalogItem item, boolean includeSubtree) {
+        List<UUID> targetIds;
+        if (includeSubtree && group.getKind() == CatalogGroupKind.TREE) {
+            targetIds = jdbcTemplate.query(
+                    """
+                    SELECT id
+                    FROM catalog.catalog_item
+                    WHERE group_id = ?
+                      AND path LIKE ? ESCAPE '\\'
+                    """,
+                    (rs, rowNum) -> rs.getObject("id", UUID.class),
+                    group.getId(),
+                    escapeLike(item.getPath()) + "%");
+        } else {
+            targetIds = List.of(item.getId());
+        }
+        return aggregateUsages(group.getCode(), targetIds);
+    }
+
+    private List<CatalogUsageResponse> aggregateUsages(String groupCode, List<UUID> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return List.of();
+        }
+        record Key(String source, String objectType) {}
+        final class Acc {
+            final String source;
+            final String objectType;
+            long count;
+            boolean blocking;
+            final Set<String> labels = new LinkedHashSet<>();
+
+            Acc(String source, String objectType) {
+                this.source = source;
+                this.objectType = objectType;
+            }
+        }
+        Map<Key, Acc> accMap = new LinkedHashMap<>();
+        for (UUID id : itemIds) {
+            for (CatalogUsageProvider provider : usageProviders) {
+                List<CatalogUsage> list = provider.findUsages(groupCode, id);
+                if (list == null) {
+                    continue;
+                }
+                for (CatalogUsage u : list) {
+                    if (u == null || u.count() <= 0L) {
+                        continue;
+                    }
+                    String src = u.source() != null && !u.source().isBlank() ? u.source() : provider.source();
+                    String obj = u.objectType() != null && !u.objectType().isBlank() ? u.objectType() : "REFERENCE";
+                    Key key = new Key(src, obj);
+                    Acc acc = accMap.computeIfAbsent(key, ignored -> new Acc(src, obj));
+                    acc.count += u.count();
+                    if (u.blocking()) {
+                        acc.blocking = true;
+                    }
+                    for (String label : u.sampleLabels()) {
+                        if (label != null && !label.isBlank() && acc.labels.size() < 10) {
+                            acc.labels.add(label);
+                        }
+                    }
+                }
+            }
+        }
+        return accMap.values().stream()
+                .map(a -> new CatalogUsageResponse(a.source, a.objectType, a.count, a.blocking, List.copyOf(a.labels)))
+                .toList();
+    }
+
+    private static CatalogUsagesResponse toUsagesResponse(
+            UUID targetId, String targetCode, List<CatalogUsageResponse> usages) {
+        long total = usages.stream().mapToLong(CatalogUsageResponse::count).sum();
+        boolean blocking = usages.stream().anyMatch(CatalogUsageResponse::blocking);
+        return new CatalogUsagesResponse(targetId, targetCode, total, blocking, usages);
+    }
+
+    private static List<FieldError> toUsageFieldErrors(List<CatalogUsageResponse> usages) {
+        return usages.stream()
+                .map(u -> {
+                    StringBuilder msg = new StringBuilder();
+                    msg.append(u.source()).append(" (").append(u.count()).append(")");
+                    if (!u.sampleLabels().isEmpty()) {
+                        msg.append(": ").append(String.join(", ", u.sampleLabels()));
+                    }
+                    return new FieldError(
+                            u.objectType(),
+                            u.blocking() ? "BLOCKING" : "IN_USE",
+                            msg.toString());
+                })
+                .toList();
     }
 
     private List<UUID> validateCombinationForCreate(UUID examItemId, List<UUID> rawSubjectIds) {

@@ -218,4 +218,18 @@ public class AdminCatalogController {
     public CombinationVersionResponse getCombinationVersion(@PathVariable UUID versionId) {
         return catalogAdminService.getCombinationVersion(versionId);
     }
+
+    @GetMapping("/items/{id}/usages")
+    @RequirePermission(Permissions.CATALOG_VIEW)
+    @Operation(summary = "Danh sách nơi đang sử dụng của giá trị (nhóm cây gộp cả nhánh)")
+    public CatalogUsagesResponse getItemUsages(@PathVariable UUID id) {
+        return catalogAdminService.getItemUsages(id);
+    }
+
+    @GetMapping("/groups/{id}/usages")
+    @RequirePermission(Permissions.CATALOG_VIEW)
+    @Operation(summary = "Danh sách nơi đang sử dụng của toàn nhóm danh mục")
+    public CatalogUsagesResponse getGroupUsages(@PathVariable UUID id) {
+        return catalogAdminService.getGroupUsages(id);
+    }
 }

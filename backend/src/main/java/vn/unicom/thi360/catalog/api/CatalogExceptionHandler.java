@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import vn.unicom.thi360.catalog.application.CatalogConflictException;
 import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.api.GlobalExceptionHandler;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
@@ -50,6 +51,18 @@ public class CatalogExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ApiError.of(ERR_CODE_TAKEN, message, List.of(), traceId));
+    }
+
+    @ExceptionHandler(CatalogConflictException.class)
+    public ResponseEntity<ApiError> handleCatalogConflict(
+            CatalogConflictException ex, HttpServletRequest request) {
+        String code = ex.getCode();
+        String message = messageSource.getMessage(
+                code, null, "Xung đột dữ liệu danh mục", DEFAULT_LOCALE);
+        String traceId = resolveTraceId(request);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiError.of(code, message, ex.getFieldErrors(), traceId));
     }
 
     private static boolean isCatalogCodeUniqueViolation(Throwable throwable) {
