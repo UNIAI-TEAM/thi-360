@@ -4,19 +4,20 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 30/83 điểm (T01, T02, T03, T05, T06).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 38/83 điểm (T01–T06).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
 - T03 (UNI-2540) đã nghiệm thu và merge vào `integration/dot-1` (PR #6, `a996ab4`).
 - UNI-2559 (tương phản màu chế độ sáng, con của UNI-2543, ngoài điểm plan) đã nghiệm thu và merge vào `integration/dot-1` (PR #7, `dec8d5b`).
 - T05 (UNI-2542) đã nghiệm thu và merge vào `integration/dot-1` (PR #8, `457b80d`).
-- Đang chạy: T04 (UNI-2541) trên VPS.
+- T04 (UNI-2541) đã nghiệm thu và merge vào `integration/dot-1` (PR #9, `b252db2`).
+- Đang mở: T07 (UNI-2544) trên VPS; T18 (UNI-2556) và T17 (UNI-2555) trên máy Windows.
 
 **Bước tiếp theo**
 
-1. T04 đang chạy; khi T04 merge thì mở T18, T07 và T17 (T03, T05, T06 đã xong).
-2. T04 thêm `@RequirePermission("AUDIT.VIEW")` và test 403 cho `GET /api/v1/admin/audit-events` (D-T05-P1).
+1. T07, T18, T17 chạy song song. Sau T18: T08; sau T07 và T18: T09; rồi T10 → T11, T12 → T16.
+2. Tài khoản mẫu dev (B13: `sys.admin`, `content.admin`, `ops.admin`, `student01`…`05`) làm trong T18; lớp mẫu làm trong T10.
 
 **Vướng / việc treo**
 
@@ -24,6 +25,16 @@
 - Việc còn lại sau T05 (không chặn): tách login role riêng cho job nhật ký (hiện tài khoản ứng dụng có thể `SET ROLE` sang vai trò bảo trì); thiếu test đầu-cuối ghi người thực hiện khi đăng nhập realm APP. Ghi thành issue con của UNI-2542.
 
 ## Đã làm
+
+### 2026-11-13 — T04 (UNI-2541) phân quyền, merge vào integration/dot-1
+
+- Engine: migration bảng quyền/vai trò, `Permission` (13 bit), đồng bộ catalog lúc khởi động, `PermissionSetNormalizer`, `@RequirePermission` (aspect), `AuthzSnapshotService` (1 lệnh Redis, 0 SQL mỗi request admin khi có snapshot), `/me` và `thi360_ctx` lấy quyền thật.
+- API admin: quyền, vai trò, quyền và vai trò của user, người dùng theo quyền (+ xuất xlsx), gán hàng loạt có xem trước và khóa idempotency; `PrivilegeGuard` chặn nâng quyền, `SELF_LOCKOUT` chặn tự khóa; `AUDIT.VIEW` cho API nhật ký (D-T05-P1).
+- Review BE: vòng 1 có 2 lỗi high (tự khóa khi sửa vai trò, bulk song song lách `SELF_LOCKOUT`) và 9 medium, đã sửa; vòng 2 không còn lỗi.
+- Nghiệm thu lần 1 bị từ chối: test `AuthzEvictionIT` đặt `next_attempt_at = now()` theo đồng hồ DB còn relay so với đồng hồ ứng dụng; trên Windows (Docker chạy nhanh hơn vài ms) test hỏng. Đã sửa riêng test.
+- Lệnh đã chạy trên `9e5a103`: Cursor cloud runner `./mvnw -B -ntp verify` (99 + 46 test) → exit 0; Advisor chạy lại trên Windows `./mvnw -B -ntp verify` và kiểm tra lệch openapi → exit 0 (web và api-client đã chạy trên `40f7c12`, bản sửa chỉ đổi test).
+- AC-2 trên bộ dịch vụ riêng `thi360-t04`: `content.admin` gọi `/me` trả `access: MANAGE`, quyền `[CATALOG.MODIFY, CATALOG.VIEW]`.
+- Merge squash qua PR #9 (`b252db2`).
 
 ### 2026-11-13 — T05 (UNI-2542) nhật ký thao tác, merge vào integration/dot-1
 
