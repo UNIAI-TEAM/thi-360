@@ -30,6 +30,7 @@ import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemResponse;
 import vn.unicom.thi360.catalog.api.CatalogTreeNodeResponse;
+import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.api.CreateCatalogGroupRequest;
 import vn.unicom.thi360.catalog.api.CreateCatalogItemRequest;
 import vn.unicom.thi360.catalog.api.MoveCatalogItemRequest;
@@ -42,13 +43,19 @@ import vn.unicom.thi360.catalog.domain.CatalogItem;
 import vn.unicom.thi360.catalog.domain.CatalogItemRef;
 import vn.unicom.thi360.catalog.domain.CatalogItemRefId;
 import vn.unicom.thi360.catalog.domain.CatalogNormalizer;
+import vn.unicom.thi360.catalog.domain.CombinationSubject;
+import vn.unicom.thi360.catalog.domain.CombinationVersion;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRefRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogItemRefRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogItemRepository;
+import vn.unicom.thi360.catalog.infrastructure.CombinationSubjectRepository;
+import vn.unicom.thi360.catalog.infrastructure.CombinationVersionRepository;
 import vn.unicom.thi360.catalog.spi.CatalogGroupKind;
 import vn.unicom.thi360.catalog.spi.CatalogGroupType;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
+import vn.unicom.thi360.catalog.spi.CatalogUsage;
+import vn.unicom.thi360.catalog.spi.CatalogUsageProvider;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
@@ -69,6 +76,8 @@ public class CatalogAdminService {
             Set.of("displayOrder", "code", "value", "nameVi", "nameEn", "status", "createdAt", "updatedAt");
 
     private static final String MODULE = "CATALOG";
+    private static final String EXAM_GROUP_CODE_NORMALIZED = "exam";
+    private static final String SUBJECT_GROUP_CODE_NORMALIZED = "subject";
     private static final long MAX_TREE_NODES = 50_000L;
 
     private static final String ERR_CODE_TAKEN = "CATALOG_CODE_TAKEN";
@@ -90,6 +99,9 @@ public class CatalogAdminService {
     private final CatalogItemRepository catalogItemRepository;
     private final CatalogGroupRefRepository catalogGroupRefRepository;
     private final CatalogItemRefRepository catalogItemRefRepository;
+    private final CombinationVersionRepository combinationVersionRepository;
+    private final CombinationSubjectRepository combinationSubjectRepository;
+    private final List<CatalogUsageProvider> usageProviders;
     private final CatalogSupportDao catalogSupportDao;
     private final CatalogCacheService catalogCacheService;
     private final CurrentUserProvider currentUserProvider;
@@ -103,6 +115,9 @@ public class CatalogAdminService {
             CatalogItemRepository catalogItemRepository,
             CatalogGroupRefRepository catalogGroupRefRepository,
             CatalogItemRefRepository catalogItemRefRepository,
+            CombinationVersionRepository combinationVersionRepository,
+            CombinationSubjectRepository combinationSubjectRepository,
+            List<CatalogUsageProvider> usageProviders,
             CatalogSupportDao catalogSupportDao,
             CatalogCacheService catalogCacheService,
             CurrentUserProvider currentUserProvider,
@@ -114,6 +129,9 @@ public class CatalogAdminService {
         this.catalogItemRepository = catalogItemRepository;
         this.catalogGroupRefRepository = catalogGroupRefRepository;
         this.catalogItemRefRepository = catalogItemRefRepository;
+        this.combinationVersionRepository = combinationVersionRepository;
+        this.combinationSubjectRepository = combinationSubjectRepository;
+        this.usageProviders = usageProviders == null ? List.of() : List.copyOf(usageProviders);
         this.catalogSupportDao = catalogSupportDao;
         this.catalogCacheService = catalogCacheService;
         this.currentUserProvider = currentUserProvider;
@@ -574,6 +592,17 @@ public class CatalogAdminService {
             validateItemRefsForAdd(groupId, refItemIds, Set.of());
         }
 
+        List<UUID> combinationSubjectIds = List.of();
+        if (group.getKind() == CatalogGroupKind.COMBINATION) {
+            combinationSubjectIds = validateCombinationForCreate(
+                    request.examItemId(), request.subjectItemIds());
+        } else if (request.examItemId() != null
+                || (request.subjectItemIds() != null && !request.subjectItemIds().isEmpty())
+                || CatalogNormalizer.trimToNull(request.sourceNote()) != null) {
+            throw new ValidationException(List.of(new FieldError(
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+        }
+
         int maxExistingValue = catalogItemRepository.findMaxValueByGroupId(groupId);
         int nextValue = Math.max(group.getLastValue(), maxExistingValue) + 1;
         catalogGroupRepository.advanceLastValue(groupId, nextValue);
@@ -610,6 +639,17 @@ public class CatalogAdminService {
             catalogItemRefRepository.flush();
         }
 
+        if (group.getKind() == CatalogGroupKind.COMBINATION) {
+            saveCombinationVersion(
+                    item.getId(),
+                    1,
+                    request.examItemId(),
+                    combinationSubjectIds,
+                    request.sourceNote(),
+                    actor.id(),
+                    now);
+        }
+
         CatalogItemResponse response = toItemResponses(group, List.of(item)).getFirst();
         catalogCacheService.evictGroupAndDependents(groupId, group.getCodeNormalized());
         recordAudit(
@@ -631,7 +671,7 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        CatalogItem item = catalogItemRepository.findById(itemId)
+        CatalogItem item = catalogItemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (!Objects.equals(item.getVersion(), request.version())) {
             throw new VersionConflictException();
@@ -697,6 +737,56 @@ public class CatalogAdminService {
             }
         }
 
+        boolean combinationVersionCreated = false;
+        CombinationVersion newCombinationVersion = null;
+        List<UUID> newCombinationSubjects = List.of();
+        if (group.getKind() == CatalogGroupKind.COMBINATION) {
+            CombinationUpdatePlan plan = prepareCombinationUpdate(
+                    group,
+                    item,
+                    request.examItemId(),
+                    request.subjectItemIds(),
+                    request.sourceNote());
+            if (plan.createNewVersion()) {
+                plan.currentVersion().markSuperseded();
+                combinationVersionRepository.saveAndFlush(plan.currentVersion());
+                newCombinationVersion = saveCombinationVersion(
+                        itemId,
+                        plan.currentVersion().getVersionNo() + 1,
+                        plan.targetExamItemId(),
+                        plan.targetSubjectIds(),
+                        plan.targetSourceNote(),
+                        actor.id(),
+                        now);
+                combinationVersionCreated = true;
+                newCombinationSubjects = plan.targetSubjectIds();
+            } else if (plan.changed()) {
+                if (plan.currentVersion() == null) {
+                    newCombinationVersion = saveCombinationVersion(
+                            itemId,
+                            1,
+                            plan.targetExamItemId(),
+                            plan.targetSubjectIds(),
+                            plan.targetSourceNote(),
+                            actor.id(),
+                            now);
+                } else {
+                    plan.currentVersion().replaceInPlace(plan.targetExamItemId(), plan.targetSourceNote());
+                    combinationVersionRepository.saveAndFlush(plan.currentVersion());
+                    if (plan.subjectsChanged()) {
+                        combinationSubjectRepository.deleteAllByIdCombinationVersionId(plan.currentVersion().getId());
+                        combinationSubjectRepository.flush();
+                        saveCombinationSubjects(plan.currentVersion().getId(), plan.targetSubjectIds());
+                    }
+                }
+            }
+        } else if (request.examItemId() != null
+                || request.subjectItemIds() != null
+                || request.sourceNote() != null) {
+            throw new ValidationException(List.of(new FieldError(
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+        }
+
         item.updateDetails(
                 newCode,
                 newNameVi,
@@ -720,7 +810,20 @@ public class CatalogAdminService {
                 before,
                 itemAuditState(item, response.ownRefs()),
                 trimmedReason);
-
+        if (combinationVersionCreated && newCombinationVersion != null) {
+            recordAudit(
+                    "COMBINATION_VERSION_CREATED",
+                    "COMBINATION_VERSION",
+                    newCombinationVersion.getId(),
+                    item.getCode() + ":v" + newCombinationVersion.getVersionNo(),
+                    null,
+                    Map.of(
+                            "itemId", item.getId().toString(),
+                            "versionNo", newCombinationVersion.getVersionNo(),
+                            "examItemId", newCombinationVersion.getExamItemId().toString(),
+                            "subjectItemIds", newCombinationSubjects.stream().map(UUID::toString).toList()),
+                    trimmedReason);
+        }
         return response;
     }
 
@@ -840,7 +943,7 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        CatalogItem item = catalogItemRepository.findById(itemId)
+        CatalogItem item = catalogItemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
         if (item.isSystem()) {
@@ -1424,6 +1527,10 @@ public class CatalogAdminService {
         Map<UUID, List<CatalogItemRefResponse>> ownRefs = catalogSupportDao.loadOwnRefs(itemIds);
         Map<UUID, List<CatalogInheritedRefResponse>> inheritedRefs =
                 catalogSupportDao.loadInheritedRefs(group.getId(), itemIds);
+        Map<UUID, CombinationVersionResponse> combinations =
+                group.getKind() == CatalogGroupKind.COMBINATION
+                        ? catalogSupportDao.loadCurrentCombinations(itemIds)
+                        : Map.of();
 
         return items.stream()
                 .map(item -> {
@@ -1449,6 +1556,7 @@ public class CatalogAdminService {
                             childCounts.getOrDefault(item.getId(), 0L),
                             ownRefs.getOrDefault(item.getId(), List.of()),
                             inheritedRefs.getOrDefault(item.getId(), List.of()),
+                            combinations.get(item.getId()),
                             item.getVersion(),
                             item.getCreatedAt(),
                             item.getUpdatedAt());
@@ -1689,6 +1797,217 @@ public class CatalogAdminService {
             short depth,
             String path,
             long version
+    ) {
+    }
+
+    @Transactional(readOnly = true)
+    public List<CombinationVersionResponse> listCombinationVersions(UUID itemId) {
+        CatalogItem item = catalogItemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        if (group.getKind() != CatalogGroupKind.COMBINATION) {
+            throw new ValidationException(List.of(
+                    new FieldError("id", "NOT_COMBINATION", "Giá trị này không thuộc nhóm mã tổ hợp")));
+        }
+        return catalogSupportDao.loadCombinationVersionsByItemId(itemId);
+    }
+
+    @Transactional(readOnly = true)
+    public CombinationVersionResponse getCombinationVersion(UUID versionId) {
+        CombinationVersionResponse version = catalogSupportDao.loadCombinationVersionById(versionId);
+        if (version == null) {
+            throw new NotFoundException("NOT_FOUND", null);
+        }
+        return version;
+    }
+
+    private List<UUID> validateCombinationForCreate(UUID examItemId, List<UUID> rawSubjectIds) {
+        if (examItemId == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+        }
+        validateExamItem(examItemId, true);
+        List<UUID> subjectIds = validateSubjectIdsList(rawSubjectIds);
+        validateSubjectItems(subjectIds, Set.of());
+        return subjectIds;
+    }
+
+    private CombinationUpdatePlan prepareCombinationUpdate(
+            CatalogGroup group,
+            CatalogItem item,
+            UUID requestedExamId,
+            List<UUID> requestedSubjectIds,
+            String requestedSourceNote) {
+        CombinationVersion current = combinationVersionRepository.findByItemIdAndCurrentTrue(item.getId())
+                .orElse(null);
+        List<UUID> currentSubjectIds = current == null
+                ? List.of()
+                : combinationSubjectRepository.findByIdCombinationVersionIdOrderByPositionAsc(current.getId())
+                        .stream()
+                        .map(CombinationSubject::getSubjectItemId)
+                        .toList();
+
+        UUID targetExamId = requestedExamId != null
+                ? requestedExamId
+                : (current != null ? current.getExamItemId() : null);
+        if (targetExamId == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+        }
+        boolean examChanged = current == null || !targetExamId.equals(current.getExamItemId());
+        if (examChanged) {
+            validateExamItem(targetExamId, true);
+        } else {
+            validateExamItem(targetExamId, false);
+        }
+
+        List<UUID> targetSubjectIds;
+        boolean subjectsChanged;
+        if (requestedSubjectIds != null) {
+            targetSubjectIds = validateSubjectIdsList(requestedSubjectIds);
+            subjectsChanged = current == null || !targetSubjectIds.equals(currentSubjectIds);
+            validateSubjectItems(targetSubjectIds, new HashSet<>(currentSubjectIds));
+        } else {
+            if (currentSubjectIds.isEmpty()) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+            }
+            targetSubjectIds = currentSubjectIds;
+            subjectsChanged = false;
+        }
+
+        String targetSourceNote = requestedSourceNote != null
+                ? CatalogNormalizer.trimToNull(requestedSourceNote)
+                : (current != null ? current.getSourceNote() : null);
+        boolean sourceNoteChanged = current != null && !Objects.equals(targetSourceNote, current.getSourceNote());
+
+        boolean createNewVersion = current != null
+                && (subjectsChanged || examChanged)
+                && isItemReferenced(group.getCode(), item.getId());
+
+        boolean changed = current == null || subjectsChanged || examChanged || sourceNoteChanged;
+        return new CombinationUpdatePlan(
+                current,
+                targetExamId,
+                targetSubjectIds,
+                targetSourceNote,
+                subjectsChanged,
+                changed,
+                createNewVersion);
+    }
+
+    private void validateExamItem(UUID examItemId, boolean requireActive) {
+        CatalogGroup examGroup = catalogGroupRepository.findByCodeNormalized(EXAM_GROUP_CODE_NORMALIZED)
+                .orElseThrow(() -> new ValidationException(List.of(
+                        new FieldError("examItemId", "INVALID_EXAM", "Không tìm thấy nhóm danh mục kỳ thi"))));
+        CatalogItem examItem = catalogItemRepository.findById(examItemId).orElse(null);
+        if (examItem == null || !examItem.getGroupId().equals(examGroup.getId())) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "INVALID_EXAM", "Kỳ thi không hợp lệ hoặc không thuộc nhóm EXAM")));
+        }
+        if (requireActive && (examGroup.getStatus() != CatalogStatus.ACTIVE || examItem.getStatus() != CatalogStatus.ACTIVE)) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "INACTIVE_EXAM", "Kỳ thi đang ngừng sử dụng")));
+        }
+    }
+
+    private List<UUID> validateSubjectIdsList(List<UUID> rawSubjectIds) {
+        if (rawSubjectIds == null || rawSubjectIds.isEmpty()) {
+            throw new ValidationException(List.of(
+                    new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+        }
+        List<UUID> result = new ArrayList<>(rawSubjectIds.size());
+        Set<UUID> seen = new LinkedHashSet<>();
+        for (UUID subjectId : rawSubjectIds) {
+            if (subjectId == null) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INVALID", "Danh sách môn học chứa ID trống")));
+            }
+            if (!seen.add(subjectId)) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "DUPLICATE", "Danh sách môn học không được trùng lặp")));
+            }
+            result.add(subjectId);
+        }
+        return List.copyOf(result);
+    }
+
+    private void validateSubjectItems(List<UUID> subjectIds, Set<UUID> existingSubjectIds) {
+        CatalogGroup subjectGroup = catalogGroupRepository.findByCodeNormalized(SUBJECT_GROUP_CODE_NORMALIZED)
+                .orElseThrow(() -> new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Không tìm thấy nhóm danh mục môn học"))));
+        Map<UUID, CatalogItem> byId = new HashMap<>();
+        for (CatalogItem item : catalogItemRepository.findAllById(subjectIds)) {
+            byId.put(item.getId(), item);
+        }
+        for (UUID subjectId : subjectIds) {
+            CatalogItem subject = byId.get(subjectId);
+            if (subject == null || !subject.getGroupId().equals(subjectGroup.getId())) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Môn học không hợp lệ hoặc không thuộc nhóm SUBJECT")));
+            }
+            boolean isNewlyAdded = !existingSubjectIds.contains(subjectId);
+            if (isNewlyAdded && (subjectGroup.getStatus() != CatalogStatus.ACTIVE || subject.getStatus() != CatalogStatus.ACTIVE)) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INACTIVE_SUBJECT", "Môn học đang ngừng sử dụng")));
+            }
+        }
+    }
+
+    private CombinationVersion saveCombinationVersion(
+            UUID itemId,
+            int versionNo,
+            UUID examItemId,
+            List<UUID> subjectIds,
+            String sourceNote,
+            UUID actorId,
+            Instant now) {
+        CombinationVersion version = new CombinationVersion(
+                Ids.newId(),
+                itemId,
+                versionNo,
+                examItemId,
+                sourceNote,
+                true,
+                actorId,
+                now);
+        version = combinationVersionRepository.saveAndFlush(version);
+        saveCombinationSubjects(version.getId(), subjectIds);
+        return version;
+    }
+
+    private void saveCombinationSubjects(UUID combinationVersionId, List<UUID> subjectIds) {
+        List<CombinationSubject> rows = new ArrayList<>(subjectIds.size());
+        for (int i = 0; i < subjectIds.size(); i++) {
+            rows.add(new CombinationSubject(combinationVersionId, subjectIds.get(i), i));
+        }
+        combinationSubjectRepository.saveAll(rows);
+        combinationSubjectRepository.flush();
+    }
+
+    private boolean isItemReferenced(String groupCode, UUID itemId) {
+        for (CatalogUsageProvider provider : usageProviders) {
+            List<CatalogUsage> usages = provider.findUsages(groupCode, itemId);
+            if (usages != null) {
+                for (CatalogUsage usage : usages) {
+                    if (usage != null && usage.count() > 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private record CombinationUpdatePlan(
+            CombinationVersion currentVersion,
+            UUID targetExamItemId,
+            List<UUID> targetSubjectIds,
+            String targetSourceNote,
+            boolean subjectsChanged,
+            boolean changed,
+            boolean createNewVersion
     ) {
     }
 }

@@ -204,4 +204,18 @@ public class AdminCatalogController {
     public void removeItemRef(@PathVariable UUID id, @PathVariable UUID refItemId) {
         catalogAdminService.removeItemRef(id, refItemId);
     }
+
+    @GetMapping("/items/{id}/versions")
+    @RequirePermission(Permissions.CATALOG_VIEW)
+    @Operation(summary = "Danh sách phiên bản của mã tổ hợp môn")
+    public List<CombinationVersionResponse> listItemVersions(@PathVariable UUID id) {
+        return catalogAdminService.listCombinationVersions(id);
+    }
+
+    @GetMapping("/combination-versions/{versionId}")
+    @RequirePermission(Permissions.CATALOG_VIEW)
+    @Operation(summary = "Chi tiết một phiên bản lịch sử hoặc hiện hành của mã tổ hợp")
+    public CombinationVersionResponse getCombinationVersion(@PathVariable UUID versionId) {
+        return catalogAdminService.getCombinationVersion(versionId);
+    }
 }
