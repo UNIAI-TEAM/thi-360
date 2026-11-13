@@ -48,9 +48,11 @@ import {
   Textarea,
   notify,
   Tooltip,
+  useUiPreferences,
+  type ThemeMode,
 } from "@thi360/ui";
 import { Eye, Inbox, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 interface SampleAccount {
@@ -71,10 +73,20 @@ const SAMPLE_ROWS: SampleAccount[] = [
 ];
 
 type TableState = "data" | "loading" | "empty" | "error";
+function readDomTheme(fallback: ThemeMode): ThemeMode {
+  if (typeof document === "undefined") return fallback;
+  const domTheme = document.documentElement.dataset.theme;
+  return domTheme === "dark" || domTheme === "light" ? domTheme : fallback;
+}
 
 export function DevUiGallery() {
   const t = useTranslations("devUi");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const format = useFormatter();
+  const prefs = useUiPreferences();
+  const [localTheme, setLocalTheme] = useState<ThemeMode>(() =>
+    prefs?.theme ?? readDomTheme("light"),
+  );
+  const theme = prefs?.theme ?? localTheme;
   const [chipSelected, setChipSelected] = useState(true);
   const [checked, setChecked] = useState(true);
   const [switched, setSwitched] = useState(true);
@@ -87,19 +99,29 @@ export function DevUiGallery() {
   const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
-    const previousTheme = document.documentElement.dataset.theme;
-    return () => {
-      if (previousTheme === undefined) {
-        delete document.documentElement.dataset.theme;
-      } else {
-        document.documentElement.dataset.theme = previousTheme;
+    if (prefs || typeof document === "undefined") return;
+    const root = document.documentElement;
+    const syncFromDom = () => {
+      const domTheme = root.dataset.theme;
+      if (domTheme === "light" || domTheme === "dark") {
+        setLocalTheme(domTheme);
       }
     };
-  }, []);
+    const observer = new MutationObserver(syncFromDom);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, [prefs]);
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+  function handleThemeChange(next: ThemeMode) {
+    if (prefs) {
+      prefs.setTheme(next);
+      return;
+    }
+    setLocalTheme(next);
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.theme = next;
+    }
+  }
 
   const columns: TableProps<SampleAccount>["columns"] = [
     { accessorKey: "code", header: t("table.colCode") },
@@ -151,7 +173,7 @@ export function DevUiGallery() {
           <Tabs
             variant="segmented"
             value={theme}
-            onValueChange={(next) => setTheme(next === "dark" ? "dark" : "light")}
+            onValueChange={(next) => handleThemeChange(next === "dark" ? "dark" : "light")}
           >
             <TabsList aria-label={t("themeLabel")}>
               <TabsTrigger value="light">{t("themeLight")}</TabsTrigger>
@@ -393,8 +415,13 @@ export function DevUiGallery() {
               previous: t("pagination.previous"),
               next: t("pagination.next"),
               rowsPerPage: t("pagination.rowsPerPage"),
-              page: (p) => t("pagination.page", { page: p }),
-              range: ({ from, to, total }) => t("pagination.range", { from, to, total }),
+              page: (p) => t("pagination.page", { page: format.number(p) }),
+              range: ({ from, to, total }) =>
+                t("pagination.range", {
+                  from: format.number(from),
+                  to: format.number(to),
+                  total: format.number(total),
+                }),
             }}
           />
         </div>
