@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -82,7 +83,8 @@ public class ProvisioningReconcilerJob {
         this.clock = clock;
     }
 
-    @Scheduled(fixedDelayString = "${thi360.identity.provisioning-reconcile-interval:PT5M}")
+    // Scheduled trigger lives in ProvisioningReconcilerWorker so tests can call reconcile() directly
+    // without background scheduling racing against Mockito spies.
     public ReconcileResult reconcile() {
         String prevTraceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         String prevJob = MDC.get("job");
@@ -408,6 +410,28 @@ public class ProvisioningReconcilerJob {
     public record ReconcileResult(int promoted, int deleted, int failed, int enabledSynced) {
         public ReconcileResult(int promoted, int deleted, int failed) {
             this(promoted, deleted, failed, 0);
+        }
+    }
+
+    @Component
+    @Profile("worker")
+    @ConditionalOnProperty(
+            name = "thi360.identity.provisioning-reconcile.scheduling.enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    public static class ProvisioningReconcilerWorker {
+
+        private final ProvisioningReconcilerJob reconcilerJob;
+
+        public ProvisioningReconcilerWorker(ProvisioningReconcilerJob reconcilerJob) {
+            this.reconcilerJob = reconcilerJob;
+        }
+
+        @Scheduled(
+                fixedDelayString = "${thi360.identity.provisioning-reconcile-interval:PT5M}",
+                initialDelayString = "${thi360.identity.provisioning-reconcile-interval:PT5M}")
+        public void runScheduledReconcile() {
+            reconcilerJob.reconcile();
         }
     }
 }

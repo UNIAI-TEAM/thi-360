@@ -92,6 +92,9 @@ thi360:
     archive-after-quarters: ${THI360_AUDIT_ARCHIVE_AFTER_QUARTERS:8}
   identity:
     reserved-usernames: ${THI360_RESERVED_USERNAMES:admin,administrator,root,system,support,platform,thi360,null,undefined}
+    provisioning-reconcile:
+      scheduling:
+        enabled: true
 
 ---
 spring:
@@ -146,6 +149,10 @@ thi360:
   outbox:
     scheduling:
       enabled: false
+  identity:
+    provisioning-reconcile:
+      scheduling:
+        enabled: false
   cookie:
     secure: ${THI360_COOKIE_SECURE:false}
 ---
