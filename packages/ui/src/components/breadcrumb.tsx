@@ -44,7 +44,7 @@ export function Breadcrumb({
                 <LinkComponent
                   href={item.href}
                   className={cn(
-                    "rounded-sm text-text-muted transition-colors duration-150 hover:text-primary-600 motion-reduce:transition-none",
+                    "rounded-sm text-text-muted transition-colors duration-150 hover:text-primary-text motion-reduce:transition-none",
                     focusRing,
                   )}
                 >

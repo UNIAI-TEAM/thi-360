@@ -18,7 +18,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       {icon && (
         <div
           aria-hidden
-          className="grid size-12 place-items-center rounded-full bg-primary-50 text-primary-600 [&_svg]:size-6"
+          className="grid size-12 place-items-center rounded-full bg-primary-50 text-primary-text [&_svg]:size-6"
         >
           {icon}
         </div>
