@@ -21,12 +21,12 @@ import vn.unicom.thi360.classroom.infrastructure.ClassMemberHistoryRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassRoomRepository;
 import vn.unicom.thi360.identity.spi.ClassMembershipPort;
+import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.ids.Ids;
-
 @Service
 public class ClassMembershipPortImpl implements ClassMembershipPort {
 
@@ -35,14 +35,20 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
     private final ClassRoomRepository classRoomRepository;
     private final ClassMemberRepository classMemberRepository;
     private final ClassMemberHistoryRepository classMemberHistoryRepository;
+    private final UserDirectory userDirectory;
+    private final ClassMemberLock classMemberLock;
 
     public ClassMembershipPortImpl(
             ClassRoomRepository classRoomRepository,
             ClassMemberRepository classMemberRepository,
-            ClassMemberHistoryRepository classMemberHistoryRepository) {
+            ClassMemberHistoryRepository classMemberHistoryRepository,
+            UserDirectory userDirectory,
+            ClassMemberLock classMemberLock) {
         this.classRoomRepository = classRoomRepository;
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
+        this.userDirectory = userDirectory;
+        this.classMemberLock = classMemberLock;
     }
 
     @Override
@@ -99,6 +105,14 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             if (locked.getStatus() == ClassStatus.INACTIVE) {
                 throw new ConflictException(ERROR_CLASS_INACTIVE);
             }
+        }
+
+        classMemberLock.lockUser(userId);
+        UserDirectory.UserDetailSummary userSummary = userDirectory.findDetailById(userId)
+                .filter(UserDirectory.UserDetailSummary::isAvailableForMembership)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        if (userSummary.deleted()) {
+            throw new NotFoundException("NOT_FOUND", null);
         }
 
         List<ClassMember> newMembers = new ArrayList<>();

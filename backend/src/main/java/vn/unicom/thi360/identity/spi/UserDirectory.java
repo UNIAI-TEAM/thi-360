@@ -15,6 +15,10 @@ public interface UserDirectory {
 
     Map<UUID, UserDetailSummary> findDetailsByIds(Collection<UUID> userIds);
 
+    default Optional<String> findDeleteReason(UUID userId) {
+        return Optional.empty();
+    }
+
     record UserDetailSummary(
             UUID id,
             String code,

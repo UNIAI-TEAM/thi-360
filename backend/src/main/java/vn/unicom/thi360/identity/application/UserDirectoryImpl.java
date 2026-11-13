@@ -107,6 +107,16 @@ public class UserDirectoryImpl implements UserDirectory {
         return Map.copyOf(result);
     }
 
+    @Override
+    public Optional<String> findDeleteReason(UUID userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userAccountRepository.findById(userId)
+                .map(UserAccount::getDeleteReason)
+                .filter(reason -> reason != null && !reason.isBlank());
+    }
+
     private static UserSummary toSummary(UserAccount account) {
         return new UserSummary(
                 account.getId(),

@@ -16,19 +16,36 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.classroom.api.AddClassMembersRequest;
+import vn.unicom.thi360.classroom.api.TransferClassMemberRequest;
+import vn.unicom.thi360.classroom.application.ClassService;
+import vn.unicom.thi360.classroom.application.UserDeletedClassCleanupListener;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.identity.spi.UserDeleted;
+import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
+import vn.unicom.thi360.shared.security.Access;
+import vn.unicom.thi360.shared.security.CurrentUser;
+import vn.unicom.thi360.shared.security.CurrentUserAuthenticationToken;
+import vn.unicom.thi360.shared.security.PermissionSet;
+import vn.unicom.thi360.shared.security.Realm;
 
 class ClassroomAdminIT extends AbstractIntegrationTest {
 
@@ -49,6 +66,12 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
 
     @Autowired
     private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private ClassService classService;
+
+    @Autowired
+    private UserDeletedClassCleanupListener userDeletedClassCleanupListener;
 
     private final List<UUID> createdClassIds = new ArrayList<>();
     private final List<UUID> createdUserIds = new ArrayList<>();
@@ -483,7 +506,11 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
     void userDeletedOutbox_removesMembershipsAndWritesLeaveHistoryIdempotently() throws Exception {
         String sfx = suffix();
         UUID student = insertUser("del." + sfx, "SV Xóa " + sfx);
-        UUID actorId = Ids.newId();
+        UUID actorId = insertUser("deleter." + sfx, "Admin Xóa " + sfx);
+        jdbcTemplate.update(
+                "UPDATE identity.user_account SET delete_reason = ? WHERE id = ?",
+                "Người dùng yêu cầu xóa",
+                student);
         UUID class1 = createClassViaApi("DEL1-" + sfx, "Lớp 1", null);
         UUID class2 = createClassViaApi("DEL2-" + sfx, "Lớp 2", null);
 
@@ -505,10 +532,10 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
 
         Instant deletedAt = Instant.now();
         UserDeleted deletedPayload = new UserDeleted(student, "del." + sfx, deletedAt, actorId);
-        new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+        new TransactionTemplate(transactionManager)
                 .executeWithoutResult(status -> outboxPublisher.publish(UserDeleted.OUTBOX_TOPIC, deletedPayload));
 
-        // Drain outbox backlog in a loop after relayBatch()
+        // Drain outbox backlog (UserDeleted + generated CLASS_MEMBER_REMOVED audit events)
         while (outboxRelay.relayBatch() > 0) {
             // drain
         }
@@ -525,13 +552,238 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
                 student);
         assertThat(leaveRows).isEqualTo(2);
 
-        // Re-delivering the same UserDeleted event must be idempotent (no duplicate LEAVE rows)
+        List<String> removedReasons = jdbcTemplate.queryForList(
+                "SELECT reason FROM audit.audit_event WHERE action = 'CLASS_MEMBER_REMOVED' AND target_id IN (?, ?) ORDER BY target_id ASC",
+                String.class,
+                class1.toString(),
+                class2.toString());
+        assertThat(removedReasons).containsExactly("Người dùng yêu cầu xóa", "Người dùng yêu cầu xóa");
+
+        List<UUID> removedActors = jdbcTemplate.queryForList(
+                "SELECT actor_id FROM audit.audit_event WHERE action = 'CLASS_MEMBER_REMOVED' AND target_id IN (?, ?)",
+                UUID.class,
+                class1.toString(),
+                class2.toString());
+        assertThat(removedActors).containsExactly(actorId, actorId);
+
+        // Re-delivering the same UserDeleted event must be idempotent (no duplicate LEAVE or audit rows)
         eventPublisher.publishEvent(deletedPayload);
+        while (outboxRelay.relayBatch() > 0) {
+            // drain
+        }
         Integer leaveRowsAfterReplay = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM classroom.class_member_history WHERE user_id = ? AND action = 2",
                 Integer.class,
                 student);
         assertThat(leaveRowsAfterReplay).isEqualTo(2);
+
+        Integer auditRowsAfterReplay = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE action = 'CLASS_MEMBER_REMOVED' AND target_id IN (?, ?)",
+                Integer.class,
+                class1.toString(),
+                class2.toString());
+        assertThat(auditRowsAfterReplay).isEqualTo(2);
+    }
+
+    @Test
+    void userDeletedCleanup_serializesWithAddAndTransferWithoutOrphanMembership() throws Exception {
+        String sfx = suffix();
+        UUID actorId = insertUser("conc.actor." + sfx, "Admin Conc");
+        UUID studentA = insertUser("conc.a." + sfx, "SV Conc A");
+        UUID studentB = insertUser("conc.b." + sfx, "SV Conc B");
+        UUID studentC = insertUser("conc.c." + sfx, "SV Conc C");
+        UUID class1 = createClassViaApi("CONC1-" + sfx, "Lớp Conc 1", null);
+        UUID class2 = createClassViaApi("CONC2-" + sfx, "Lớp Conc 2", null);
+        UUID class3 = createClassViaApi("CONC3-" + sfx, "Lớp Conc 3", null);
+
+        while (outboxRelay.relayBatch() > 0) {
+            // drain backlog
+        }
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            // Case A: addMembers holds advisory lock and inserts membership before commit while UserDeleted relay waits.
+            CountDownLatch addInsertedLatch = new CountDownLatch(1);
+            Future<?> addFuture = pool.submit(() -> {
+                setTestSecurityContext(actorId, "conc.actor." + sfx, Permissions.CLASS_MODIFY);
+                try {
+                    new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                        classService.addMembers(class1, new AddClassMembersRequest(List.of(studentA)));
+                        addInsertedLatch.countDown();
+                        awaitUngrantedAdvisoryLock();
+                    });
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            });
+
+            Future<?> relayFuture = pool.submit(() -> {
+                try {
+                    assertThat(addInsertedLatch.await(5, TimeUnit.SECONDS)).isTrue();
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(ex);
+                }
+                Instant deletedAt = Instant.now();
+                new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                    jdbcTemplate.update(
+                            "UPDATE identity.user_account SET deleted_at = ?, status = 3 WHERE id = ?",
+                            java.sql.Timestamp.from(deletedAt),
+                            studentA);
+                    outboxPublisher.publish(
+                            UserDeleted.OUTBOX_TOPIC,
+                            new UserDeleted(studentA, "conc.a." + sfx, deletedAt, actorId));
+                });
+                while (outboxRelay.relayBatch() > 0) {
+                    // relay UserDeleted + resulting audit events
+                }
+            });
+
+            addFuture.get(15, TimeUnit.SECONDS);
+            relayFuture.get(15, TimeUnit.SECONDS);
+            while (outboxRelay.relayBatch() > 0) {
+                // drain any remaining audit events
+            }
+
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM classroom.class_member WHERE user_id = ?",
+                    Integer.class,
+                    studentA)).isZero();
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM classroom.class_member_history WHERE user_id = ? AND action = 2",
+                    Integer.class,
+                    studentA)).isEqualTo(1);
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM audit.audit_event WHERE action = 'CLASS_MEMBER_REMOVED' AND target_id = ?",
+                    Integer.class,
+                    class1.toString())).isEqualTo(1);
+
+            // Case B: UserDeleted cleanup holds advisory lock while addMembers waits; addMembers re-checks deleted status under lock and rejects.
+            mockMvc.perform(post("/api/v1/admin/classes/{id}/members", class2)
+                            .with(asUser(Permissions.CLASS_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"userIds\":[\"%s\"]}".formatted(studentB)))
+                    .andExpect(status().isOk());
+
+            Instant deletedAtB = Instant.now();
+            jdbcTemplate.update(
+                    "UPDATE identity.user_account SET deleted_at = ?, status = 3 WHERE id = ?",
+                    java.sql.Timestamp.from(deletedAtB),
+                    studentB);
+
+            CountDownLatch cleanupLockedLatch = new CountDownLatch(1);
+            UserDeleted deletedB = new UserDeleted(studentB, "conc.b." + sfx, deletedAtB, actorId);
+
+            Future<?> cleanupFuture = pool.submit(() ->
+                    new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                        userDeletedClassCleanupListener.onUserDeleted(deletedB);
+                        cleanupLockedLatch.countDown();
+                        awaitUngrantedAdvisoryLock();
+                    }));
+
+            Future<Throwable> blockedAddFuture = pool.submit(() -> {
+                try {
+                    assertThat(cleanupLockedLatch.await(5, TimeUnit.SECONDS)).isTrue();
+                    setTestSecurityContext(actorId, "conc.actor." + sfx, Permissions.CLASS_MODIFY);
+                    classService.addMembers(class3, new AddClassMembersRequest(List.of(studentB)));
+                    return null;
+                } catch (Throwable ex) {
+                    return ex;
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            });
+
+            cleanupFuture.get(15, TimeUnit.SECONDS);
+            Throwable addError = blockedAddFuture.get(15, TimeUnit.SECONDS);
+            assertThat(addError).isInstanceOf(NotFoundException.class);
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM classroom.class_member WHERE user_id = ?",
+                    Integer.class,
+                    studentB)).isZero();
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM classroom.class_member_history WHERE user_id = ? AND action = 2",
+                    Integer.class,
+                    studentB)).isEqualTo(1);
+
+            // Case C: UserDeleted cleanup holds advisory lock while transferMember waits; transferMember rejects after cleanup commits.
+            mockMvc.perform(post("/api/v1/admin/classes/{id}/members", class2)
+                            .with(asUser(Permissions.CLASS_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"userIds\":[\"%s\"]}".formatted(studentC)))
+                    .andExpect(status().isOk());
+
+            Instant deletedAtC = Instant.now();
+            jdbcTemplate.update(
+                    "UPDATE identity.user_account SET deleted_at = ?, status = 3 WHERE id = ?",
+                    java.sql.Timestamp.from(deletedAtC),
+                    studentC);
+
+            CountDownLatch cleanupLockedCLatch = new CountDownLatch(1);
+            UserDeleted deletedC = new UserDeleted(studentC, "conc.c." + sfx, deletedAtC, actorId);
+
+            Future<?> cleanupCFuture = pool.submit(() ->
+                    new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                        userDeletedClassCleanupListener.onUserDeleted(deletedC);
+                        cleanupLockedCLatch.countDown();
+                        awaitUngrantedAdvisoryLock();
+                    }));
+
+            Future<Throwable> blockedTransferFuture = pool.submit(() -> {
+                try {
+                    assertThat(cleanupLockedCLatch.await(5, TimeUnit.SECONDS)).isTrue();
+                    setTestSecurityContext(actorId, "conc.actor." + sfx, Permissions.CLASS_MODIFY);
+                    classService.transferMember(
+                            class2,
+                            studentC,
+                            new TransferClassMemberRequest(class3, "Chuyển lớp"));
+                    return null;
+                } catch (Throwable ex) {
+                    return ex;
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            });
+
+            cleanupCFuture.get(15, TimeUnit.SECONDS);
+            Throwable transferError = blockedTransferFuture.get(15, TimeUnit.SECONDS);
+            assertThat(transferError).isInstanceOf(NotFoundException.class);
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM classroom.class_member WHERE user_id = ?",
+                    Integer.class,
+                    studentC)).isZero();
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM classroom.class_member_history WHERE user_id = ? AND action IN (3, 4)",
+                    Integer.class,
+                    studentC)).isZero();
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private void awaitUngrantedAdvisoryLock() {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < deadline) {
+            Integer waiting = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
+                    Integer.class);
+            if (waiting != null && waiting > 0) {
+                return;
+            }
+            Thread.onSpinWait();
+        }
+        throw new IllegalStateException("Timed out waiting for concurrent advisory lock contention");
+    }
+
+    private static void setTestSecurityContext(UUID userId, String username, String... permissions) {
+        CurrentUser currentUser = new CurrentUser(
+                userId,
+                username,
+                Realm.APP,
+                Access.MANAGE,
+                PermissionSet.ofCodes(List.of(permissions)));
+        SecurityContextHolder.getContext().setAuthentication(
+                new CurrentUserAuthenticationToken(currentUser, "test-sid"));
     }
 
     @Test

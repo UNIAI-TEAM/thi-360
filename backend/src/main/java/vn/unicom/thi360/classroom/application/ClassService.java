@@ -78,6 +78,7 @@ public class ClassService {
     private final ClassMemberRepository classMemberRepository;
     private final ClassMemberHistoryRepository classMemberHistoryRepository;
     private final UserDirectory userDirectory;
+    private final ClassMemberLock classMemberLock;
     private final CurrentUserProvider currentUserProvider;
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
@@ -88,6 +89,7 @@ public class ClassService {
             ClassMemberRepository classMemberRepository,
             ClassMemberHistoryRepository classMemberHistoryRepository,
             UserDirectory userDirectory,
+            ClassMemberLock classMemberLock,
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
@@ -96,6 +98,7 @@ public class ClassService {
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
         this.userDirectory = userDirectory;
+        this.classMemberLock = classMemberLock;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
         this.jdbcTemplate = jdbcTemplate;
@@ -423,6 +426,8 @@ public class ClassService {
             throw new ConflictException(ERROR_CLASS_INACTIVE);
         }
 
+        classMemberLock.lockUsers(uniqueRequested);
+
         Map<UUID, UserDirectory.UserDetailSummary> userDetails = userDirectory.findDetailsByIds(uniqueRequested);
         for (UUID uid : uniqueRequested) {
             UserDirectory.UserDetailSummary summary = userDetails.get(uid);
@@ -535,6 +540,13 @@ public class ClassService {
 
         ClassRoom sourceClass = firstLocked.getId().equals(sourceClassId) ? firstLocked : secondLocked;
         ClassRoom targetClass = firstLocked.getId().equals(targetClassId) ? firstLocked : secondLocked;
+
+        classMemberLock.lockUser(userId);
+
+        UserDirectory.UserDetailSummary userSummary = userDirectory.findDetailById(userId)
+                .filter(u -> !u.deleted() && !u.platformAdmin() && !"PROVISIONING".equals(u.status()))
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        Objects.requireNonNull(userSummary);
 
         ClassMember sourceMember = classMemberRepository.findByIdClassIdAndIdUserId(sourceClassId, userId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
