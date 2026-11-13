@@ -5,15 +5,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
-import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,14 +17,170 @@ public class SessionStore {
 
     private static final String SESSION_KEY_PREFIX = "sess:";
     private static final String USER_SESSIONS_PREFIX = "user-sess:";
+    private static final String USER_SESSION_SEQ_PREFIX = "user-sess-seq:";
     private static final String FIELD_USER_ID = "userId";
     private static final String FIELD_REALM = "realm";
     private static final String FIELD_CREATED_AT = "createdAt";
 
+    private static final DefaultRedisScript<List> CREATE_SESSION_SCRIPT = createScript(
+            """
+            local sessKey = KEYS[1]
+            local userSessKey = KEYS[2]
+            local seqKey = KEYS[3]
+            local sid = ARGV[1]
+            local userId = ARGV[2]
+            local realm = ARGV[3]
+            local createdAt = ARGV[4]
+            local ttlMs = tonumber(ARGV[5])
+            local maxPerUser = tonumber(ARGV[6])
+            local sessPrefix = ARGV[7]
+
+            local seq = redis.call('INCR', seqKey)
+            redis.call('PEXPIRE', seqKey, ttlMs)
+
+            redis.call('HSET', sessKey, 'userId', userId, 'realm', realm, 'createdAt', createdAt)
+            redis.call('PEXPIRE', sessKey, ttlMs)
+
+            redis.call('ZADD', userSessKey, seq, sid)
+            redis.call('PEXPIRE', userSessKey, ttlMs)
+
+            local members = redis.call('ZRANGE', userSessKey, 0, -1)
+            local liveCount = 0
+            local live = {}
+            for _, m in ipairs(members) do
+              if redis.call('EXISTS', sessPrefix .. m) == 1 then
+                liveCount = liveCount + 1
+                live[liveCount] = m
+              else
+                redis.call('ZREM', userSessKey, m)
+              end
+            end
+
+            local evicted = {}
+            if liveCount > maxPerUser then
+              local excess = liveCount - maxPerUser
+              for i = 1, excess do
+                local oldSid = live[i]
+                redis.call('ZREM', userSessKey, oldSid)
+                redis.call('DEL', sessPrefix .. oldSid)
+                table.insert(evicted, oldSid)
+              end
+            end
+            return evicted
+            """,
+            List.class);
+
+    private static final DefaultRedisScript<List> FIND_SESSION_SCRIPT = createScript(
+            """
+            local vals = redis.call('HMGET', KEYS[1], 'userId', 'realm', 'createdAt')
+            if not vals[1] or not vals[2] or not vals[3] then
+              return {}
+            end
+            if not redis.call('ZSCORE', ARGV[2] .. vals[1], ARGV[1]) then
+              return {}
+            end
+            return vals
+            """,
+            List.class);
+
+    private static final DefaultRedisScript<Long> DELETE_SESSION_SCRIPT = createScript(
+            """
+            local userId = redis.call('HGET', KEYS[1], 'userId')
+            redis.call('DEL', KEYS[1])
+            if userId then
+              redis.call('ZREM', ARGV[2] .. userId, ARGV[1])
+              return 1
+            end
+            return 0
+            """,
+            Long.class);
+
+    private static final DefaultRedisScript<Long> DELETE_SESSION_IF_OWNER_SCRIPT = createScript(
+            """
+            local userId = redis.call('HGET', KEYS[1], 'userId')
+            local realm = redis.call('HGET', KEYS[1], 'realm')
+            if userId == ARGV[2] and realm == ARGV[3] then
+              redis.call('DEL', KEYS[1])
+              redis.call('ZREM', KEYS[2], ARGV[1])
+              return 1
+            end
+            return 0
+            """,
+            Long.class);
+
+    private static final DefaultRedisScript<Long> DELETE_ALL_SESSIONS_SCRIPT = createScript(
+            """
+            local members = redis.call('ZRANGE', KEYS[1], 0, -1)
+            for _, sid in ipairs(members) do
+              redis.call('DEL', ARGV[1] .. sid)
+            end
+            redis.call('DEL', KEYS[1])
+            return #members
+            """,
+            Long.class);
+
+    private static final DefaultRedisScript<Long> ROTATE_SESSION_SCRIPT = createScript(
+            """
+            local oldSessKey = KEYS[1]
+            local newSessKey = KEYS[2]
+            local userSessKey = KEYS[3]
+            local seqKey = KEYS[4]
+            local oldSid = ARGV[1]
+            local newSid = ARGV[2]
+            local expectedUserId = ARGV[3]
+            local expectedRealm = ARGV[4]
+            local createdAt = ARGV[5]
+            local ttlMs = tonumber(ARGV[6])
+            local maxPerUser = tonumber(ARGV[7])
+            local sessPrefix = ARGV[8]
+
+            local userId = redis.call('HGET', oldSessKey, 'userId')
+            local realm = redis.call('HGET', oldSessKey, 'realm')
+            if userId ~= expectedUserId or realm ~= expectedRealm then
+              return 0
+            end
+            if not redis.call('ZSCORE', userSessKey, oldSid) then
+              return 0
+            end
+
+            redis.call('DEL', oldSessKey)
+            redis.call('ZREM', userSessKey, oldSid)
+
+            local seq = redis.call('INCR', seqKey)
+            redis.call('PEXPIRE', seqKey, ttlMs)
+
+            redis.call('HSET', newSessKey, 'userId', expectedUserId, 'realm', expectedRealm, 'createdAt', createdAt)
+            redis.call('PEXPIRE', newSessKey, ttlMs)
+
+            redis.call('ZADD', userSessKey, seq, newSid)
+            redis.call('PEXPIRE', userSessKey, ttlMs)
+
+            local members = redis.call('ZRANGE', userSessKey, 0, -1)
+            local liveCount = 0
+            local live = {}
+            for _, m in ipairs(members) do
+              if redis.call('EXISTS', sessPrefix .. m) == 1 then
+                liveCount = liveCount + 1
+                live[liveCount] = m
+              else
+                redis.call('ZREM', userSessKey, m)
+              end
+            end
+            if liveCount > maxPerUser then
+              local excess = liveCount - maxPerUser
+              for i = 1, excess do
+                local evictSid = live[i]
+                redis.call('ZREM', userSessKey, evictSid)
+                redis.call('DEL', sessPrefix .. evictSid)
+              end
+            end
+            return 1
+            """,
+            Long.class);
+
     private final StringRedisTemplate redisTemplate;
     private final SecurityProperties securityProperties;
     private final Clock clock;
-    private final AtomicLong sequence = new AtomicLong();
 
     public SessionStore(
             StringRedisTemplate redisTemplate,
@@ -44,36 +196,28 @@ public class SessionStore {
         Objects.requireNonNull(userId, "userId must not be null");
         Objects.requireNonNull(realm, "realm must not be null");
 
-        Duration ttl = securityProperties.session().ttl();
+        long ttlMs = Math.max(1L, securityProperties.session().ttl().toMillis());
         int maxPerUser = Math.max(1, securityProperties.session().maxPerUser());
         Instant now = Instant.now(clock);
 
-        String sessKey = sessionKey(sessionId);
-        String userSessKey = userSessionsKey(userId);
+        List<?> rawEvicted = redisTemplate.execute(
+                CREATE_SESSION_SCRIPT,
+                List.of(sessionKey(sessionId), userSessionsKey(userId), userSessionSeqKey(userId)),
+                sessionId,
+                userId.toString(),
+                realm.name(),
+                Long.toString(now.toEpochMilli()),
+                Long.toString(ttlMs),
+                Integer.toString(maxPerUser),
+                SESSION_KEY_PREFIX);
 
-        HashOperations<String, String, String> hashOps = redisTemplate.opsForHash();
-        hashOps.putAll(sessKey, Map.of(
-                FIELD_USER_ID, userId.toString(),
-                FIELD_REALM, realm.name(),
-                FIELD_CREATED_AT, Long.toString(now.toEpochMilli())));
-        redisTemplate.expire(sessKey, ttl);
-
-        ZSetOperations<String, String> zsetOps = redisTemplate.opsForZSet();
-        double score = now.toEpochMilli() * 1_000_000.0 + (sequence.incrementAndGet() % 1_000_000L);
-        zsetOps.add(userSessKey, sessionId, score);
-        redisTemplate.expire(userSessKey, ttl);
-
-        List<String> evicted = new ArrayList<>();
-        Long size = zsetOps.zCard(userSessKey);
-        if (size != null && size > maxPerUser) {
-            long excess = size - maxPerUser;
-            Set<String> oldest = zsetOps.range(userSessKey, 0, excess - 1);
-            if (oldest != null && !oldest.isEmpty()) {
-                for (String oldSid : oldest) {
-                    zsetOps.remove(userSessKey, oldSid);
-                    redisTemplate.delete(sessionKey(oldSid));
-                    evicted.add(oldSid);
-                }
+        if (rawEvicted == null || rawEvicted.isEmpty()) {
+            return List.of();
+        }
+        List<String> evicted = new ArrayList<>(rawEvicted.size());
+        for (Object item : rawEvicted) {
+            if (item != null) {
+                evicted.add(String.valueOf(item));
             }
         }
         return List.copyOf(evicted);
@@ -83,59 +227,100 @@ public class SessionStore {
         if (sessionId == null || sessionId.isBlank()) {
             return Optional.empty();
         }
-        Map<Object, Object> raw = redisTemplate.opsForHash().entries(sessionKey(sessionId));
-        if (raw == null || raw.isEmpty()) {
-            return Optional.empty();
-        }
-        Object userIdObj = raw.get(FIELD_USER_ID);
-        Object realmObj = raw.get(FIELD_REALM);
-        Object createdAtObj = raw.get(FIELD_CREATED_AT);
-        if (userIdObj == null || realmObj == null || createdAtObj == null) {
+        List<?> values = redisTemplate.execute(
+                FIND_SESSION_SCRIPT,
+                List.of(sessionKey(sessionId)),
+                sessionId,
+                USER_SESSIONS_PREFIX);
+        if (values == null || values.size() < 3
+                || values.get(0) == null || values.get(1) == null || values.get(2) == null) {
             return Optional.empty();
         }
         try {
             return Optional.of(new SessionData(
                     sessionId,
-                    UUID.fromString(String.valueOf(userIdObj)),
-                    Realm.valueOf(String.valueOf(realmObj)),
-                    Instant.ofEpochMilli(Long.parseLong(String.valueOf(createdAtObj)))));
+                    UUID.fromString(String.valueOf(values.get(0))),
+                    Realm.valueOf(String.valueOf(values.get(1))),
+                    Instant.ofEpochMilli(Long.parseLong(String.valueOf(values.get(2))))));
         } catch (RuntimeException ex) {
             return Optional.empty();
         }
     }
 
     public boolean exists(String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
+        return findSession(sessionId).isPresent();
+    }
+
+    public boolean existsForUser(String sessionId, UUID userId, Realm realm) {
+        if (sessionId == null || sessionId.isBlank() || userId == null || realm == null) {
             return false;
         }
-        return Boolean.TRUE.equals(redisTemplate.hasKey(sessionKey(sessionId)));
+        return findSession(sessionId)
+                .filter(data -> userId.equals(data.userId()) && realm == data.realm())
+                .isPresent();
     }
 
     public void deleteSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             return;
         }
-        Optional<SessionData> existing = findSession(sessionId);
-        redisTemplate.delete(sessionKey(sessionId));
-        existing.ifPresent(data -> redisTemplate.opsForZSet().remove(userSessionsKey(data.userId()), sessionId));
+        redisTemplate.execute(
+                DELETE_SESSION_SCRIPT,
+                List.of(sessionKey(sessionId)),
+                sessionId,
+                USER_SESSIONS_PREFIX);
+    }
+
+    public boolean deleteSessionIfOwner(String sessionId, UUID expectedUserId, Realm expectedRealm) {
+        if (sessionId == null || sessionId.isBlank() || expectedUserId == null || expectedRealm == null) {
+            return false;
+        }
+        Long deleted = redisTemplate.execute(
+                DELETE_SESSION_IF_OWNER_SCRIPT,
+                List.of(sessionKey(sessionId), userSessionsKey(expectedUserId)),
+                sessionId,
+                expectedUserId.toString(),
+                expectedRealm.name());
+        return deleted != null && deleted > 0L;
+    }
+
+    public boolean rotateSession(String oldSid, String newSid, UUID userId, Realm realm) {
+        if (oldSid == null || oldSid.isBlank() || newSid == null || newSid.isBlank()
+                || userId == null || realm == null) {
+            return false;
+        }
+        long ttlMs = Math.max(1L, securityProperties.session().ttl().toMillis());
+        int maxPerUser = Math.max(1, securityProperties.session().maxPerUser());
+        Instant now = Instant.now(clock);
+        Long rotated = redisTemplate.execute(
+                ROTATE_SESSION_SCRIPT,
+                List.of(sessionKey(oldSid), sessionKey(newSid), userSessionsKey(userId), userSessionSeqKey(userId)),
+                oldSid,
+                newSid,
+                userId.toString(),
+                realm.name(),
+                Long.toString(now.toEpochMilli()),
+                Long.toString(ttlMs),
+                Integer.toString(maxPerUser),
+                SESSION_KEY_PREFIX);
+        return rotated != null && rotated > 0L;
     }
 
     public void deleteAllSessions(UUID userId) {
         if (userId == null) {
             return;
         }
-        String userSessKey = userSessionsKey(userId);
-        Set<String> sessionIds = redisTemplate.opsForZSet().range(userSessKey, 0, -1);
-        if (sessionIds != null && !sessionIds.isEmpty()) {
-            List<String> keysToDelete = new ArrayList<>(sessionIds.size() + 1);
-            for (String sid : sessionIds) {
-                keysToDelete.add(sessionKey(sid));
-            }
-            keysToDelete.add(userSessKey);
-            redisTemplate.delete(keysToDelete);
-        } else {
-            redisTemplate.delete(userSessKey);
-        }
+        redisTemplate.execute(
+                DELETE_ALL_SESSIONS_SCRIPT,
+                List.of(userSessionsKey(userId)),
+                SESSION_KEY_PREFIX);
+    }
+
+    private static <T> DefaultRedisScript<T> createScript(String lua, Class<T> resultType) {
+        DefaultRedisScript<T> script = new DefaultRedisScript<>();
+        script.setScriptText(lua);
+        script.setResultType(resultType);
+        return script;
     }
 
     private static String sessionKey(String sessionId) {
@@ -146,6 +331,9 @@ public class SessionStore {
         return USER_SESSIONS_PREFIX + userId;
     }
 
+    private static String userSessionSeqKey(UUID userId) {
+        return USER_SESSION_SEQ_PREFIX + userId;
+    }
     public record SessionData(
             String sessionId,
             UUID userId,
