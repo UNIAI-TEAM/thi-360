@@ -207,9 +207,14 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 ### 5.11 Bố cục hai khu vực (màn Cấu hình chung)
 
-Trái 360px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm và tổng số; dòng đang chọn nền `primary-50` kèm thanh dọc 3px `primary-600`. Phải: thẻ giá trị của nhóm đang chọn. Khi chưa chọn nhóm, khu vực phải hiện hướng dẫn và ẩn nút Thêm giá trị.
+Trái 264px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm; mỗi dòng cao 56px gồm ô icon 32px theo kiểu nhóm (danh sách, cây, tổ hợp), tên đậm 600, mã 12.5px `text-muted` ở dòng phụ, số giá trị căn phải; dòng đang chọn nền `primary-50` kèm thanh dọc 3px `primary-600`. Phải: thẻ giá trị của nhóm đang chọn. Khi chưa chọn nhóm, khu vực phải hiện hướng dẫn và ẩn nút thêm.
 
-**Bảng dạng cây** (nhóm danh mục kiểu cây, spec mục 9.10): hàng cao 48px; cột Tên thụt 24px mỗi cấp, đầu hàng là nút mở/đóng 32px (mũi tên xoay 90° khi mở), mã đậm 600 đứng trước tên; nhãn cấp dùng chip trung tính; hàng cấp gốc nền `#FAFAFB`. Nút con của nút đã ngừng hiện chip "Ngừng theo cấp trên" và chữ `text-muted`.
+**Nhóm kiểu cây** (spec mục 9.10): thẻ phải chia hai phần, cây ở giữa và ô chi tiết 340px có viền trái.
+
+- Dòng của cây cao tối thiểu 44px, thụt 28px mỗi cấp, đường kẻ dọc 1px `border` nối cấp; nút mở/đóng 28px (mũi tên xoay 90° khi mở); mã trong ô nền `bg-subtle` bo 6px, chữ 12.5px đậm 600, không xuống dòng; số nút lá bên dưới căn phải, màu `text-muted`.
+- Cấp phân biệt bằng chữ: cấp gốc 15px đậm 600, cấp giữa 14px đậm 500, nút lá 14px thường màu `#3A3A42`. Không gắn nhãn cấp trên từng dòng.
+- Chỉ hiện chip trạng thái khi khác Hoạt động. Nút đã ngừng dùng chữ `text-muted`.
+- Ô chi tiết: tên cấp kiểu `overline`, tiêu đề 18px, đường dẫn 12.5px, danh sách thông tin dạng nhãn trên, giá trị dưới; nút thao tác xếp dọc, nút xóa kiểu nguy hiểm ở cuối.
 
 ### 5.12 Trang đăng nhập
 
