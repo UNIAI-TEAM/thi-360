@@ -4,7 +4,7 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 48/105 điểm (T01–T06, T13, T17); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 55/105 điểm (T01–T07, T13, T17); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
@@ -14,7 +14,8 @@
 - T04 (UNI-2541) đã nghiệm thu và merge vào `integration/dot-1` (PR #9, `b252db2`).
 - T17 (UNI-2555) đã nghiệm thu và merge vào `integration/dot-1` (PR #11, `feece8f`).
 - T13 (UNI-2550) đã nghiệm thu và merge vào `integration/dot-1` (PR #10, `8f1a579`).
-- Đang mở: T07 (UNI-2544), T14 (UNI-2551) trên VPS; T18 (UNI-2556) trên máy Windows.
+- T07 (UNI-2544) đã nghiệm thu và merge vào `integration/dot-1` (PR #12).
+- Đang mở: T14 (UNI-2551) trên VPS; T18 (UNI-2556) trên máy Windows.
 - 2026-11-14: M.Trường yêu cầu làm luôn phần danh mục đã hoãn (PBI-02: T13, T14, T15). Plan mục A7, A4, Phần C, hợp đồng T13–T15 và T16 đã sửa theo; T13 (UNI-2550) mở ngay trên VPS, T14 sau T13, T15 sau T13, T14, T18.
 - 2026-11-14: M.Trường yêu cầu đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh). Thêm T19 (UNI-2561) vào plan, chạy sau T17 và T18; mọi lane có giao diện thêm khóa tiếng Anh cho chuỗi của mình ngay từ bây giờ (`en.json` cùng bộ khóa với `vi.json`).
 - 2026-11-14: M.Trường chốt chế độ sáng/tối **theo từng người**, bật tắt bằng nút ở thanh trên cùng (cạnh nút ngôn ngữ, bên trái avatar). Cấu hình hệ thống của T17 chỉ còn giữ chế độ mặc định. Nút và cookie `thi360_theme` làm trong T19. Spec §13, `DESIGN.md` §5/§8/§9 và plan T17/T19 đã sửa.
@@ -31,6 +32,17 @@
 - Việc còn lại sau T05 (không chặn): tách login role riêng cho job nhật ký (hiện tài khoản ứng dụng có thể `SET ROLE` sang vai trò bảo trì); thiếu test đầu-cuối ghi người thực hiện khi đăng nhập realm APP. Ghi thành issue con của UNI-2542.
 
 ## Đã làm
+
+### 2026-11-14 — T07 (UNI-2544) API quản lý tài khoản, merge vào integration/dot-1
+
+- `UsernamePolicy`, `PasswordPolicy`, `PasswordGenerator`; API `/api/v1/admin/users`: danh sách có lọc và sắp xếp, tạo (PROVISIONING → Keycloak → ACTIVE), xem, sửa, ngừng hoạt động (thu hồi phiên), kích hoạt, reset mật khẩu, xóa mềm có `AccountDeletionGuard`, kiểm tra trước khi xóa/ngừng, thao tác hàng loạt có `Idempotency-Key`, kiểm tra tên đăng nhập.
+- `ProvisioningReconcilerJob` (worker, 5 phút, có công tắc `thi360.identity.provisioning-reconcile.scheduling.enabled`, tắt trong test); sự kiện `UserDeleted` qua outbox.
+- Thu hồi phiên chặn cả lượt đăng nhập đang dở: bộ đếm thu hồi theo tài khoản trong Redis (`SessionStore`), áp cho cả làm mới phiên.
+- Lớp học chưa có (T10): `classIds` và lọc `classId` trả 400 `CLASS_NOT_SUPPORTED`.
+- Review BE ba vòng (12 + 4 lỗi đã sửa); vòng cuối không còn lỗi high. Ba lỗi medium về bù trừ khi reset/kích hoạt chạy chồng nhau ghi thành issue con của UNI-2544.
+- Nghiệm thu bị trả lại một lần: job đối soát chạy ngay khi mỗi ngữ cảnh test khởi động và đụng test của T17; hết kết nối PostgreSQL. Đã sửa.
+- Lệnh đã chạy trên `fbfe30a`: Cursor cloud runner `./mvnw -B -ntp verify` (146 + 132 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows các lệnh đó và kiểm tra lệch openapi/api-client → exit 0.
+- Merge squash qua PR #12.
 
 ### 2026-11-14 — T13 (UNI-2550) danh mục dùng chung: schema, seed, API, merge vào integration/dot-1
 

@@ -68,6 +68,14 @@ public class UserAccount {
     @Column(name = "delete_reason")
     private String deleteReason;
 
+    @Column(name = "provisioning_role_ids")
+    private String provisioningRoleIds;
+
+    @Column(name = "idp_cleanup_pending", nullable = false)
+    private boolean idpCleanupPending;
+    @Column(name = "idp_enabled_sync_pending", nullable = false)
+    private boolean idpEnabledSyncPending;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -125,6 +133,95 @@ public class UserAccount {
         this.mustChangePassword = false;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedBy = actorId;
+    }
+
+    public boolean updateProfile(
+            String fullName,
+            String email,
+            String phone,
+            Instant now,
+            UUID actorId) {
+        boolean changed = false;
+        if (fullName != null) {
+            String trimmedFullName = fullName.trim();
+            if (!Objects.equals(this.fullName, trimmedFullName)) {
+                this.fullName = trimmedFullName;
+                changed = true;
+            }
+        }
+        if (email != null) {
+            String trimmedEmail = email.isBlank() ? null : email.trim();
+            String normalizedEmail = Normalizer.normalize(trimmedEmail);
+            if (!Objects.equals(this.email, trimmedEmail)
+                    || !Objects.equals(this.emailNormalized, normalizedEmail)) {
+                if (!Objects.equals(this.emailNormalized, normalizedEmail)) {
+                    this.emailVerifiedAt = null;
+                }
+                this.email = trimmedEmail;
+                this.emailNormalized = normalizedEmail;
+                changed = true;
+            }
+        }
+        if (phone != null) {
+            String trimmedPhone = phone.isBlank() ? null : phone.trim();
+            if (!Objects.equals(this.phone, trimmedPhone)) {
+                this.phone = trimmedPhone;
+                changed = true;
+            }
+        }
+        if (changed) {
+            this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+            this.updatedBy = actorId;
+        }
+        return changed;
+    }
+
+    public void deactivate(String reason, Instant now, UUID actorId) {
+        this.status = UserStatus.INACTIVE;
+        this.inactiveReason = reason == null || reason.isBlank() ? null : reason.trim();
+        this.inactivatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.inactivatedBy = actorId;
+        this.idpEnabledSyncPending = false;
+        this.updatedAt = now;
+        this.updatedBy = actorId;
+    }
+
+    public void activate(Instant now, UUID actorId) {
+        this.status = UserStatus.ACTIVE;
+        this.inactiveReason = null;
+        this.inactivatedAt = null;
+        this.inactivatedBy = null;
+        this.idpEnabledSyncPending = false;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = actorId;
+    }
+
+    public void updateMustChangePassword(boolean mustChangePassword, Instant now, UUID actorId) {
+        this.mustChangePassword = mustChangePassword;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = actorId;
+    }
+
+    public void softDelete(String reason, Instant now, UUID actorId) {
+        this.status = UserStatus.INACTIVE;
+        this.deletedAt = Objects.requireNonNull(now, "now must not be null");
+        this.deletedBy = actorId;
+        this.deleteReason = reason == null || reason.isBlank() ? null : reason.trim();
+        this.idpCleanupPending = true;
+        this.idpEnabledSyncPending = false;
+        this.updatedAt = now;
+        this.updatedBy = actorId;
+    }
+
+    public void setProvisioningRoleIds(String provisioningRoleIds) {
+        this.provisioningRoleIds = provisioningRoleIds == null || provisioningRoleIds.isBlank()
+                ? null
+                : provisioningRoleIds.trim();
+    }
+
+    public void markIdpCleanupPending(boolean pending, Instant now) {
+        this.idpCleanupPending = pending;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
     public boolean isDeleted() {
@@ -206,6 +303,17 @@ public class UserAccount {
     public String getDeleteReason() {
         return deleteReason;
     }
+    public String getProvisioningRoleIds() {
+        return provisioningRoleIds;
+    }
+
+    public boolean isIdpCleanupPending() {
+        return idpCleanupPending;
+    }
+    public boolean isIdpEnabledSyncPending() {
+        return idpEnabledSyncPending;
+    }
+
 
     public Instant getCreatedAt() {
         return createdAt;
