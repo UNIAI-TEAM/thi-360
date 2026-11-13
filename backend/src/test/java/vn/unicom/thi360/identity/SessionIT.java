@@ -150,7 +150,8 @@ class SessionIT extends AbstractKeycloakIntegrationTest {
                         .header(HttpHeaders.ORIGIN, "http://localhost:3001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
     private static String tamperOneChar(String value) {
