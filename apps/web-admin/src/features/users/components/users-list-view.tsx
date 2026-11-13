@@ -1,6 +1,6 @@
 "use client";
 
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { ColumnDef, RowSelectionState, SortingState } from "@tanstack/react-table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -9,6 +9,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
   FormField,
@@ -22,7 +23,7 @@ import {
   Table,
   Tooltip,
 } from "@thi360/ui";
-import { Eye, MoreHorizontal, Plus, Search, Users } from "lucide-react";
+import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -38,6 +39,8 @@ import {
 } from "../api";
 import { getUserDisplayStatus } from "../utils";
 import { CreateUserDialog } from "./create-user-dialog";
+import { UserActionDialogs, useUserActionController } from "./user-action-dialogs";
+import { UserBulkBar } from "./user-bulk-bar";
 
 const ALL_VALUE = "ALL";
 const DEFAULT_PAGE_SIZE = 20;
@@ -107,15 +110,24 @@ function UsersListContent({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [createOpen, setCreateOpen] = useState(false);
 
+  const actionController = useUserActionController({
+    deps,
+    onMutated: () => {
+      void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
+    },
+  });
   useEffect(() => {
+    const trimmed = searchInput.trim();
+    if (trimmed === debouncedSearch) return;
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchInput.trim());
+      setDebouncedSearch(trimmed);
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchInput]);
+  }, [searchInput, debouncedSearch]);
 
   const canViewRoles = can("ROLE.VIEW");
   const rolesQuery = useQuery({
@@ -263,38 +275,106 @@ function UsersListContent({
           return <StatusChip tone={display.tone}>{t(`statuses.${display.status}`)}</StatusChip>;
         },
       },
-      {
-        id: "actions",
-        header: () => <span className="block text-right">{t("table.actions")}</span>,
-        enableSorting: false,
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <DropdownMenu>
-              <Tooltip content={t("actions.rowMenu", { username: row.original.username })}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t("actions.rowMenu", { username: row.original.username })}
-                    className="inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none"
-                  >
-                    <MoreHorizontal aria-hidden className="size-[18px]" />
-                  </button>
-                </DropdownMenuTrigger>
-              </Tooltip>
-              <DropdownMenuContent>
-                <DropdownMenuItem asChild>
-                  <Link href={`/tai-khoan/${row.original.id}`}>
-                    <Eye />
-                    <span>{t("actions.viewDetail")}</span>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ),
-      },
+      ...(can("USER.MODIFY")
+        ? [
+            {
+              id: "actions",
+              header: () => <span className="block text-right">{t("table.actions")}</span>,
+              enableSorting: false,
+              cell: ({ row }: { row: { original: UserSummary } }) => {
+                const item = row.original;
+                const isDeleted = Boolean(item.deletedAt);
+                return (
+                  <div className="flex justify-end">
+                    <DropdownMenu>
+                      <Tooltip content={t("actions.rowMenu", { username: item.username })}>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={t("actions.rowMenu", { username: item.username })}
+                            className="inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none"
+                          >
+                            <MoreHorizontal aria-hidden className="size-[18px]" />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </Tooltip>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/tai-khoan/${item.id}`}>
+                            <Eye />
+                            <span>{t("actions.viewDetail")}</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        {!isDeleted && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                actionController.openResetPassword({
+                                  id: item.id,
+                                  username: item.username,
+                                })
+                              }
+                            >
+                              <KeyRound />
+                              <span>{t("actions.resetPassword")}</span>
+                            </DropdownMenuItem>
+                            {item.status === "ACTIVE" ? (
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  void actionController.openDeactivate({
+                                    id: item.id,
+                                    username: item.username,
+                                  })
+                                }
+                              >
+                                <PowerOff />
+                                <span>{t("actions.deactivate")}</span>
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  actionController.openActivate({
+                                    id: item.id,
+                                    username: item.username,
+                                  })
+                                }
+                              >
+                                <Power />
+                                <span>{t("actions.activate")}</span>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              destructive
+                              onSelect={() =>
+                                void actionController.openDelete({
+                                  id: item.id,
+                                  username: item.username,
+                                })
+                              }
+                            >
+                              <Trash2 />
+                              <span>{t("actions.delete")}</span>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
+              },
+            },
+          ]
+        : []),
     ],
-    [t],
+    [t, can, actionController],
+  );
+
+  const canBulkOperate = can("USER.MODIFY") || can("USER.ASSIGN");
+  const selectedIds = useMemo(
+    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
+    [rowSelection],
   );
 
   const items = usersQuery.data?.items ?? [];
@@ -435,12 +515,35 @@ function UsersListContent({
           <p className="text-caption text-text-muted">{t("list.hint")}</p>
         </div>
 
+        {canBulkOperate && (
+          <UserBulkBar
+            selectedIds={selectedIds}
+            onClearSelection={() => setRowSelection({})}
+            onBulkApplied={() => {
+              void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
+            }}
+            previewBulkUserActions={deps.previewBulkUserActions}
+            applyBulkUserActions={deps.applyBulkUserActions}
+          />
+        )}
+
         <Table
           aria-label={t("list.tableAriaLabel")}
           columns={columns}
           data={items}
           getRowId={(row) => row.id}
           loading={usersQuery.isLoading}
+          selection={
+            canBulkOperate
+              ? {
+                  state: rowSelection,
+                  onChange: setRowSelection,
+                  selectAllLabel: t("table.selectAll"),
+                  rowLabel: (_index, row) =>
+                    t("table.selectRow", { username: row.username }),
+                }
+              : undefined
+          }
           sorting={{
             state: sorting,
             manual: true,
@@ -528,6 +631,8 @@ function UsersListContent({
           void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
         }}
       />
+
+      <UserActionDialogs controller={actionController} />
     </div>
   );
 }

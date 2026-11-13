@@ -86,3 +86,71 @@ export interface CreateUserFormValues {
   roleId: string;
   mustChangePassword: boolean;
 }
+
+export interface UpdateUserValidationMessages {
+  fullNameRequired: string;
+  fullNameMax: string;
+  emailInvalid: string;
+  emailMax: string;
+  phoneMax: string;
+}
+
+export function createUpdateUserSchema(messages: UpdateUserValidationMessages) {
+  return z.object({
+    fullName: z
+      .string()
+      .transform((value) => value.trim())
+      .refine((value) => value.length > 0, messages.fullNameRequired)
+      .refine((value) => value.length <= 200, messages.fullNameMax),
+    email: z
+      .string()
+      .transform((value) => value.trim())
+      .refine((value) => value.length <= 255, messages.emailMax)
+      .refine(
+        (value) => value.length === 0 || z.email().safeParse(value).success,
+        messages.emailInvalid,
+      ),
+    phone: z
+      .string()
+      .transform((value) => value.trim())
+      .refine((value) => value.length <= 30, messages.phoneMax),
+  });
+}
+
+export interface UpdateUserFormValues {
+  fullName: string;
+  email: string;
+  phone: string;
+}
+
+export interface ResetPasswordValidationMessages {
+  passwordWeak: string;
+  passwordSameAsUsername: string;
+  reasonMax: string;
+}
+
+export function createResetPasswordSchema(
+  messages: ResetPasswordValidationMessages,
+  username: string,
+) {
+  return z.object({
+    password: z
+      .string()
+      .refine((value) => isPasswordStrong(value), messages.passwordWeak)
+      .refine(
+        (value) => !username || value.toLowerCase() !== username.trim().toLowerCase(),
+        messages.passwordSameAsUsername,
+      ),
+    reason: z
+      .string()
+      .transform((value) => value.trim())
+      .refine((value) => value.length <= 500, messages.reasonMax),
+    mustChangePassword: z.boolean(),
+  });
+}
+
+export interface ResetPasswordFormValues {
+  password: string;
+  reason: string;
+  mustChangePassword: boolean;
+}

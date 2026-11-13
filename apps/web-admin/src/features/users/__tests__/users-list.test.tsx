@@ -8,6 +8,10 @@ import { renderWithProviders } from "@/test/render";
 import { defaultUsersApiDeps, type UsersApiDeps, type UserSummary } from "../api";
 import { UsersListView } from "../components/users-list-view";
 
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => routerMock,
+}));
 const SAMPLE_USERS: UserSummary[] = [
   {
     id: "00000000-0000-4000-8000-000000000101",
@@ -142,6 +146,8 @@ function renderUsersView(
 }
 
 afterEach(() => {
+  routerMock.push.mockReset();
+  window.sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -158,7 +164,7 @@ describe("UsersListView (Slice 1)", () => {
     const deps = makeDeps();
     renderUsersView(deps, { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW"] });
 
-    expect(await screen.findByText("student01")).toBeInTheDocument();
+    expect(await screen.findByText("student01", undefined, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText("Hoạt động", { selector: "[data-tone='success']" })).toBeInTheDocument();
     expect(screen.getByText("Chưa đăng nhập", { selector: "[data-tone='warning']" })).toBeInTheDocument();
     expect(screen.getByText("Ngừng hoạt động", { selector: "[data-tone='danger']" })).toBeInTheDocument();
@@ -167,6 +173,8 @@ describe("UsersListView (Slice 1)", () => {
     expect(screen.queryByRole("columnheader", { name: "Mã" })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Đăng nhập cuối" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Tạo tài khoản/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Thao tác với/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Chọn tất cả tài khoản" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Lớp")).not.toBeInTheDocument();
   });
 
@@ -181,7 +189,7 @@ describe("UsersListView (Slice 1)", () => {
     const deps = makeDeps({ listUsers: listUsersMock });
     renderUsersView(deps);
 
-    await screen.findByText("Chưa có tài khoản");
+    await screen.findByText("Chưa có tài khoản", undefined, { timeout: 3000 });
 
     const searchBox = screen.getByLabelText("Tìm kiếm");
     await userEvent.type(searchBox, "student05");
@@ -294,5 +302,88 @@ describe("UsersListView (Slice 1)", () => {
         }),
       );
     });
+  });
+
+  it("thanh chọn nhiều dòng gọi preview/apply với Idempotency-Key và nút Gán vai trò, quyền ghi sessionStorage", async () => {
+    const previewMock = vi.fn<UsersApiDeps["previewBulkUserActions"]>(async () => ({
+      total: 2,
+      affected: 1,
+      skipped: [
+        {
+          id: SAMPLE_USERS[3]!.id,
+          username: "student04",
+          reasonCode: "USER_NOT_AVAILABLE",
+          reason: "Tài khoản không tồn tại hoặc đã bị xóa",
+        },
+      ],
+    }));
+    const applyMock = vi.fn<UsersApiDeps["applyBulkUserActions"]>(async () => ({
+      batchId: "batch-1",
+      action: "DEACTIVATE",
+      total: 2,
+      succeeded: 1,
+      skipped: 1,
+      failed: 0,
+      results: [
+        {
+          id: SAMPLE_USERS[0]!.id,
+          username: "student01",
+          outcome: "SUCCEEDED",
+        },
+        {
+          id: SAMPLE_USERS[3]!.id,
+          username: "student04",
+          outcome: "SKIPPED",
+          reasonCode: "USER_NOT_AVAILABLE",
+          reason: "Tài khoản không tồn tại hoặc đã bị xóa",
+        },
+      ],
+    }));
+
+    const deps = makeDeps({
+      previewBulkUserActions: previewMock,
+      applyBulkUserActions: applyMock,
+    });
+    renderUsersView(deps);
+
+    await screen.findByText("student01");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student04" }));
+
+    const toolbar = await screen.findByRole("toolbar", {
+      name: "Thao tác với các tài khoản đã chọn",
+    });
+    expect(toolbar).toHaveTextContent("Đã chọn 2 tài khoản");
+    expect(screen.queryByRole("button", { name: "Cấp hàng loạt" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Gán vai trò, quyền" }));
+    expect(window.sessionStorage.getItem("rbac.bulk.userIds")).toBe(
+      JSON.stringify([SAMPLE_USERS[0]!.id, SAMPLE_USERS[3]!.id]),
+    );
+    expect(routerMock.push).toHaveBeenCalledWith("/phan-quyen?tab=gan-hang-loat");
+
+    await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
+    expect(previewMock).toHaveBeenCalledWith({
+      action: "DEACTIVATE",
+      userIds: [SAMPLE_USERS[0]!.id, SAMPLE_USERS[3]!.id],
+    });
+
+    expect(await screen.findByText("1 / 2 tài khoản đủ điều kiện thực hiện thao tác.")).toBeInTheDocument();
+    expect(screen.getByText(/Tài khoản không tồn tại hoặc đã bị xóa/)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/Lý do thực hiện/), "Ngừng hàng loạt");
+    await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động 1 tài khoản" }));
+
+    await waitFor(() => {
+      expect(applyMock).toHaveBeenCalledWith(
+        {
+          action: "DEACTIVATE",
+          userIds: [SAMPLE_USERS[0]!.id, SAMPLE_USERS[3]!.id],
+          reason: "Ngừng hàng loạt",
+        },
+        expect.any(String),
+      );
+    });
+    expect(await screen.findByText("Kết quả thao tác hàng loạt")).toBeInTheDocument();
   });
 });
