@@ -35,50 +35,26 @@ public class IdempotencyService {
     @Transactional
     @SuppressWarnings("unchecked")
     public <T> T executeOnce(String key, String scope, Supplier<T> supplier) {
-        Objects.requireNonNull(key, "key must not be null");
-        Objects.requireNonNull(scope, "scope must not be null");
-        Objects.requireNonNull(supplier, "supplier must not be null");
-
-        acquireAdvisoryXactLock(scope, key);
-
-        IdempotencyKeyId id = new IdempotencyKeyId(scope, key);
-        Optional<IdempotencyKey> existing = repository.findById(id);
-        if (existing.isPresent()) {
-            return (T) deserializeStoredEnvelope(existing.get().getResponse());
-        }
-
-        T result = supplier.get();
-        String json = serializeStoredEnvelope(result);
-        repository.saveAndFlush(new IdempotencyKey(id, json, Instant.now(clock)));
-        return result;
+        return (T) executeOnce(key, scope, Object.class, supplier::get);
     }
 
     @Transactional
     public <T> T executeOnce(String key, String scope, Class<T> resultType, Supplier<T> supplier) {
-        Objects.requireNonNull(key, "key must not be null");
-        Objects.requireNonNull(scope, "scope must not be null");
         Objects.requireNonNull(resultType, "resultType must not be null");
-        Objects.requireNonNull(supplier, "supplier must not be null");
-
-        acquireAdvisoryXactLock(scope, key);
-
-        IdempotencyKeyId id = new IdempotencyKeyId(scope, key);
-        Optional<IdempotencyKey> existing = repository.findById(id);
-        if (existing.isPresent()) {
-            return deserializeTyped(existing.get().getResponse(), objectMapper.constructType(resultType));
-        }
-
-        T result = supplier.get();
-        String json = serializeStoredEnvelope(result);
-        repository.saveAndFlush(new IdempotencyKey(id, json, Instant.now(clock)));
-        return result;
+        return executeOnceWithJavaType(key, scope, objectMapper.constructType(resultType), supplier);
     }
 
     @Transactional
     public <T> T executeOnce(String key, String scope, TypeReference<T> resultType, Supplier<T> supplier) {
+        Objects.requireNonNull(resultType, "resultType must not be null");
+        return executeOnceWithJavaType(key, scope, objectMapper.constructType(resultType.getType()), supplier);
+    }
+
+    private <T> T executeOnceWithJavaType(
+            String key, String scope, JavaType javaType, Supplier<T> supplier) {
         Objects.requireNonNull(key, "key must not be null");
         Objects.requireNonNull(scope, "scope must not be null");
-        Objects.requireNonNull(resultType, "resultType must not be null");
+        Objects.requireNonNull(javaType, "javaType must not be null");
         Objects.requireNonNull(supplier, "supplier must not be null");
 
         acquireAdvisoryXactLock(scope, key);
@@ -86,11 +62,11 @@ public class IdempotencyService {
         IdempotencyKeyId id = new IdempotencyKeyId(scope, key);
         Optional<IdempotencyKey> existing = repository.findById(id);
         if (existing.isPresent()) {
-            return deserializeTyped(existing.get().getResponse(), objectMapper.constructType(resultType.getType()));
+            return deserializeJson(existing.get().getResponse(), javaType);
         }
 
         T result = supplier.get();
-        String json = serializeStoredEnvelope(result);
+        String json = serializeJson(result);
         repository.saveAndFlush(new IdempotencyKey(id, json, Instant.now(clock)));
         return result;
     }
@@ -103,51 +79,19 @@ public class IdempotencyService {
                 key);
     }
 
-    private String serializeStoredEnvelope(Object value) {
+    private String serializeJson(Object value) {
         try {
-            String typeName = value == null ? null : value.getClass().getName();
-            StoredEnvelope envelope = new StoredEnvelope(typeName, objectMapper.valueToTree(value));
-            return objectMapper.writeValueAsString(envelope);
+            return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("Failed to serialize idempotency response", ex);
+            throw new IllegalStateException("Failed to serialize idempotency response", ex);
         }
     }
 
-    private Object deserializeStoredEnvelope(String json) {
+    private <T> T deserializeJson(String json, JavaType javaType) {
         try {
-            StoredEnvelope envelope = objectMapper.readValue(json, StoredEnvelope.class);
-            if (envelope == null || envelope.value() == null || envelope.value().isNull()) {
-                return null;
-            }
-            if (envelope.type() != null) {
-                try {
-                    Class<?> clazz = Class.forName(envelope.type());
-                    return objectMapper.treeToValue(envelope.value(), clazz);
-                } catch (ClassNotFoundException ignored) {
-                    // Fallback to generic conversion
-                }
-            }
-            return objectMapper.treeToValue(envelope.value(), Object.class);
-        } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Failed to deserialize idempotency response", ex);
-        }
-    }
-
-    private <T> T deserializeTyped(String json, JavaType javaType) {
-        try {
-            StoredEnvelope envelope = objectMapper.readValue(json, StoredEnvelope.class);
-            if (envelope != null && envelope.value() != null) {
-                if (envelope.value().isNull()) {
-                    return null;
-                }
-                return objectMapper.convertValue(envelope.value(), javaType);
-            }
             return objectMapper.readValue(json, javaType);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to deserialize idempotency response", ex);
         }
-    }
-
-    private record StoredEnvelope(String type, com.fasterxml.jackson.databind.JsonNode value) {
     }
 }

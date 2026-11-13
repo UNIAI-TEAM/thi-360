@@ -2,6 +2,9 @@ package vn.unicom.thi360.shared.idempotency;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -18,6 +21,9 @@ class IdempotencyServiceTests extends AbstractIntegrationTest {
     @Autowired
     private IdempotencyService idempotencyService;
 
+    @Autowired
+    private IdempotencyKeyRepository idempotencyKeyRepository;
+
     public record SampleResult(String batchId, int processedRows) {
     }
 
@@ -27,12 +33,12 @@ class IdempotencyServiceTests extends AbstractIntegrationTest {
         String scope = "bulk-import";
         AtomicInteger executions = new AtomicInteger(0);
 
-        SampleResult first = idempotencyService.executeOnce(key, scope, () -> {
+        SampleResult first = idempotencyService.executeOnce(key, scope, SampleResult.class, () -> {
             int count = executions.incrementAndGet();
             return new SampleResult("batch-1", count * 10);
         });
 
-        SampleResult second = idempotencyService.executeOnce(key, scope, () -> {
+        SampleResult second = idempotencyService.executeOnce(key, scope, SampleResult.class, () -> {
             int count = executions.incrementAndGet();
             return new SampleResult("batch-2", count * 10);
         });
@@ -71,5 +77,95 @@ class IdempotencyServiceTests extends AbstractIntegrationTest {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    void executeOnce_replaysMapOf_listOf_andNullResults() {
+        String scope = "collections-scope";
+
+        // Map.of (JDK immutable implementation class)
+        String mapKey = "idem-map-" + UUID.randomUUID();
+        AtomicInteger mapCalls = new AtomicInteger(0);
+        Map<String, Integer> firstMap = idempotencyService.executeOnce(
+                mapKey, scope, new TypeReference<>() {}, () -> {
+                    mapCalls.incrementAndGet();
+                    return Map.of("created", 4, "skipped", 1);
+                });
+        Map<String, Integer> replayedMap = idempotencyService.executeOnce(
+                mapKey, scope, new TypeReference<>() {}, () -> {
+                    mapCalls.incrementAndGet();
+                    return Map.of("created", 99);
+                });
+        assertThat(mapCalls.get()).isEqualTo(1);
+        assertThat(replayedMap).isEqualTo(firstMap).containsEntry("created", 4).containsEntry("skipped", 1);
+
+        // List.of (JDK immutable implementation class)
+        String listKey = "idem-list-" + UUID.randomUUID();
+        AtomicInteger listCalls = new AtomicInteger(0);
+        List<String> firstList = idempotencyService.executeOnce(
+                listKey, scope, new TypeReference<>() {}, () -> {
+                    listCalls.incrementAndGet();
+                    return List.of("USER.VIEW", "USER.MODIFY");
+                });
+        List<String> replayedList = idempotencyService.executeOnce(
+                listKey, scope, new TypeReference<>() {}, () -> {
+                    listCalls.incrementAndGet();
+                    return List.of("OTHER");
+                });
+        assertThat(listCalls.get()).isEqualTo(1);
+        assertThat(replayedList).isEqualTo(firstList).containsExactly("USER.VIEW", "USER.MODIFY");
+
+        // null result
+        String nullKey = "idem-null-" + UUID.randomUUID();
+        AtomicInteger nullCalls = new AtomicInteger(0);
+        SampleResult firstNull = idempotencyService.executeOnce(
+                nullKey, scope, SampleResult.class, () -> {
+                    nullCalls.incrementAndGet();
+                    return null;
+                });
+        SampleResult replayedNull = idempotencyService.executeOnce(
+                nullKey, scope, SampleResult.class, () -> {
+                    nullCalls.incrementAndGet();
+                    return new SampleResult("should-not-run", 1);
+                });
+        assertThat(nullCalls.get()).isEqualTo(1);
+        assertThat(firstNull).isNull();
+        assertThat(replayedNull).isNull();
+    }
+
+    @Test
+    void executeOnce_storesPlainJson_andReplaysWhenOriginalImplementationClassIsUnavailable() {
+        String scope = "schema-evolution";
+        String key = "idem-plain-" + UUID.randomUUID();
+
+        record EphemeralWriterOnlyPayload(String batchId, int processedRows) {
+        }
+
+        idempotencyService.executeOnce(
+                key,
+                scope,
+                EphemeralWriterOnlyPayload.class,
+                () -> new EphemeralWriterOnlyPayload("batch-42", 7));
+
+        IdempotencyKey saved = idempotencyKeyRepository
+                .findById(new IdempotencyKeyId(scope, key))
+                .orElseThrow();
+        assertThat(saved.getResponse())
+                .doesNotContain("EphemeralWriterOnlyPayload")
+                .contains("\"batchId\"")
+                .contains("\"batch-42\"");
+
+        AtomicInteger replayCalls = new AtomicInteger(0);
+        SampleResult replayedAsCurrentType = idempotencyService.executeOnce(
+                key,
+                scope,
+                SampleResult.class,
+                () -> {
+                    replayCalls.incrementAndGet();
+                    return new SampleResult("unexpected", 0);
+                });
+
+        assertThat(replayCalls.get()).isZero();
+        assertThat(replayedAsCurrentType).isEqualTo(new SampleResult("batch-42", 7));
     }
 }
