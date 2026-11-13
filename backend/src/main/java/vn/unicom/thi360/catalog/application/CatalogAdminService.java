@@ -934,18 +934,20 @@ public class CatalogAdminService {
 
             String sql =
                     """
-                    SELECT DISTINCT anc.id, anc.group_id, anc.code, anc.value, anc.name_vi, anc.name_en,
+                    SELECT anc.id, anc.group_id, anc.code, anc.code_normalized, anc.value, anc.name_vi, anc.name_en,
                            anc.description, anc.display_order, anc.status, anc.parent_id, anc.depth,
                            anc.path, anc.version,
-                           (anc.id = m.id) AS is_direct_match
+                           BOOL_OR(anc.id = m.id) AS is_direct_match
                     FROM catalog.catalog_item anc
                     JOIN catalog.catalog_item m
                       ON m.group_id = anc.group_id
-                     AND m.path LIKE anc.path || '%%'
+                     AND m.path LIKE anc.path || '%'
                     WHERE\s"""
                             + matchWhere
+                            + " GROUP BY anc.id, anc.group_id, anc.code, anc.code_normalized, anc.value, anc.name_vi,"
+                            + " anc.name_en, anc.description, anc.display_order, anc.status, anc.parent_id,"
+                            + " anc.depth, anc.path, anc.version"
                             + " ORDER BY anc.depth ASC, anc.display_order ASC, anc.code_normalized ASC, anc.id ASC";
-
             Map<UUID, TreeRow> dedup = new LinkedHashMap<>();
             jdbcTemplate.query(
                     sql,
