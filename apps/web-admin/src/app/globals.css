@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@import "../../../../packages/ui/src/styles/tokens.css";
+
+/* Tailwind quét cả class dùng trong UI kit dùng chung. */
+@source "../../../../packages/ui/src";
+
+body {
+  background-color: var(--color-page);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 21px;
+}

@@ -1,0 +1,33 @@
+name: UniAI link
+
+# Mọi PR vào develop/main phải nêu mã issue UniAI (UNI-nnn) trong tiêu đề hoặc mô tả — RULES.md mục 2.
+# Ngoại lệ duy nhất: PR gắn nhãn `no-issue` (chỉ maintainer gắn, dùng cho sửa CI khẩn).
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled]
+    branches: [develop, main]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  link:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR nêu mã issue UniAI
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          if printf '%s\n%s' "$TITLE" "$BODY" | grep -qE '\bUNI-[0-9]+\b'; then
+            echo "ok: $(printf '%s\n%s' "$TITLE" "$BODY" | grep -oE '\bUNI-[0-9]+\b' | sort -u | tr '\n' ' ')"
+            exit 0
+          fi
+          if printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'no-issue'; then
+            echo "::warning::PR không có mã issue UniAI; được phép vì có nhãn no-issue"
+            exit 0
+          fi
+          echo "::error::Tiêu đề hoặc mô tả PR phải có mã issue UniAI (UNI-nnn). Chạy: scripts/uniai.sh pr UNI-nnn"
+          exit 1

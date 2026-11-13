@@ -172,7 +172,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 ```
 ┌──────────┬───────────────────────────────────────────────┐
-│ Logo     │ Breadcrumb                      🔔  Tài khoản │  topbar 56px, nền trắng, viền dưới
+│ Logo     │ Breadcrumb                      🔔  Avatar ▾  │  topbar 56px; menu avatar: Hồ sơ, Đổi mật khẩu, Đăng xuất
 │          ├───────────────────────────────────────────────┤
 │ Sidebar  │ Tiêu đề trang                 [Nút chính]     │
 │ 248px    │ Thanh lọc (thẻ trắng, bo 12px)                │
@@ -186,12 +186,15 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - Sidebar: mục cao 40px, bo góc 8px, icon lucide 18px; mục đang chọn nền `primary-50`, chữ và icon `primary-600`, đậm 600. Tên nhóm menu dùng kiểu `overline`.
 - Nền vùng nội dung `bg-page`.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
+- Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện, Nhật ký). Chức năng phụ của một mục là nút hoặc tab bên trong màn đó, không thành mục menu riêng: Cấp hàng loạt là nút trong màn Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền.
 
 ### 5.9 Bảng (admin)
 
 - Nằm trong thẻ trắng bo góc 12px. Hàng tiêu đề nền `#FAFAFB`, chữ 13px đậm 600 màu `text-muted`.
 - Dòng cao 48px, viền dưới `border`, hover nền `bg-subtle`. Dòng đang chọn nền `primary-50`.
-- Cột thao tác căn phải, dùng nút icon 32px có tooltip; thao tác nguy hiểm nằm trong menu "⋯".
+- **Cột Thao tác ưu tiên nút icon, không dùng nút chữ** (chốt 2026-11-13). Mỗi nút là một icon lucide 18px trong vùng bấm 40–44px, căn phải, có **tooltip** hiện tên thao tác khi rê chuột hoặc focus bàn phím, và có `aria-label` nêu rõ thao tác kèm đối tượng ("Sửa vai trò Vận hành").
+- Icon dùng thống nhất: bút chì = Sửa, thùng rác = Xóa, mắt = Xem/Chi tiết, hai mũi tên ngược chiều = Chuyển, người có dấu trừ = Loại khỏi lớp, vòng tròn có dấu trừ = Gỡ quyền. Thao tác nguy hiểm dùng màu `#DC2626`; thao tác bị khóa hiện mờ và tooltip nêu lý do.
+- Tối đa ba icon trên một dòng; nhiều hơn thì gom phần còn lại vào menu "⋯".
 - Phía trên bảng: tổng số bản ghi theo bộ lọc. Phía dưới: phân trang và chọn số dòng mỗi trang.
 - Trạng thái rỗng: icon, một câu giải thích, nút hành động (nếu có quyền).
 
@@ -204,7 +207,14 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 ### 5.11 Bố cục hai khu vực (màn Cấu hình chung)
 
-Trái 360px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm và tổng số; dòng đang chọn nền `primary-50` kèm thanh dọc 3px `primary-600`. Phải: thẻ giá trị của nhóm đang chọn. Khi chưa chọn nhóm, khu vực phải hiện hướng dẫn và ẩn nút Thêm giá trị.
+Trái 264px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm; mỗi dòng cao 56px gồm ô icon 32px theo kiểu nhóm (danh sách, cây, tổ hợp), tên đậm 600, mã 12.5px `text-muted` ở dòng phụ, số giá trị căn phải; dòng đang chọn nền `primary-50` kèm thanh dọc 3px `primary-600`. Danh sách chia hai phần có tiêu đề kiểu `overline`: **Hệ thống** (kèm hình khóa) và **Tùy chỉnh**. Tiêu đề thẻ bên phải có chip loại: Hệ thống (nền `bg-subtle`, có hình khóa) hoặc Tùy chỉnh (nền `primary-50`). Phải: thẻ giá trị của nhóm đang chọn. Khi chưa chọn nhóm, khu vực phải hiện hướng dẫn và ẩn nút thêm.
+
+**Nhóm kiểu cây** (spec mục 9.10): thẻ phải chia hai phần, cây ở giữa và ô chi tiết 340px có viền trái.
+
+- Dòng của cây cao tối thiểu 44px, thụt 28px mỗi cấp, đường kẻ dọc 1px `border` nối cấp; nút mở/đóng 28px (mũi tên xoay 90° khi mở); mã trong ô nền `bg-subtle` bo 6px, chữ 12.5px đậm 600, không xuống dòng; số nút lá bên dưới căn phải, màu `text-muted`.
+- Cấp phân biệt bằng chữ: cấp gốc 15px đậm 600, cấp giữa 14px đậm 500, nút lá 14px thường màu `#3A3A42`. Không gắn nhãn cấp trên từng dòng.
+- Chỉ hiện chip trạng thái khi khác Hoạt động. Nút đã ngừng dùng chữ `text-muted`.
+- Ô chi tiết: tên cấp kiểu `overline`, tiêu đề 18px, đường dẫn 12.5px, danh sách thông tin dạng nhãn trên, giá trị dưới; nút thao tác xếp dọc, nút xóa kiểu nguy hiểm ở cuối.
 
 ### 5.12 Trang đăng nhập
 
@@ -224,14 +234,32 @@ Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-lig
 
 ## 8. Truy cập và ngôn ngữ
 
-- Độ tương phản: chữ trắng trên `primary-600` đạt khoảng 3,8:1, đủ cho chữ lớn nhưng **chưa đạt AA (4,5:1) cho chữ 14px**. Nút chính giữ `primary-600` để đúng phong cách tham khảo; nếu cần đạt AA đầy đủ thì đổi nền nút chính sang `primary-700` (khoảng 5,5:1). Chữ xanh trên nền trắng dùng `primary-700` khi cỡ chữ dưới 14px. Không dùng `text-muted` cho chữ dưới 12px.
+- Độ tương phản: chữ trắng trên `primary-600` đạt khoảng 3,8:1, đủ cho chữ lớn nhưng **chưa đạt AA (4,5:1) cho chữ 14px**. Đã chốt (2026-11-13) giữ nút chính `primary-600` để đúng phong cách tham khảo. Chữ xanh trên nền trắng dùng `primary-700` khi cỡ chữ dưới 14px. Không dùng `text-muted` cho chữ dưới 12px.
 - Mọi điều khiển dùng được bằng bàn phím, có vòng focus nhìn thấy được. Nút chỉ có icon phải có `aria-label`.
 - Không truyền đạt trạng thái chỉ bằng màu: chip trạng thái luôn có chữ.
 - Ngôn ngữ mặc định tiếng Việt, chuỗi hiển thị nằm trong file dịch (`next-intl`). Ngày `dd/MM/yyyy`, số dùng dấu chấm phân tách nghìn.
 
-## 9. Cài đặt token
+## 9. Tùy chỉnh giao diện
 
-Token khai báo một lần trong `packages/ui/src/styles/tokens.css` bằng `@theme` của Tailwind 4, hai app cùng nhập. Không viết mã màu trực tiếp trong thành phần.
+Giữ bộ cấu hình giao diện như reap, áp dụng **toàn hệ thống** (web admin và web học viên dùng chung một cấu hình). Chi tiết ở spec mục 13.
+
+- **Lối vào:** một mục trong **menu chính** của trang quản trị (nhóm "Hệ thống" → "Tùy chỉnh giao diện"), chỉ hiện với người có quyền `APPEARANCE.MODIFY`. Không đặt trong menu avatar và **không dùng nút nổi** ở mép màn hình như reap.
+- **Trang tùy chỉnh:** cột trái là các nhóm tùy chọn, cột phải là vùng xem trước (nút, ô nhập, chip, bảng, thẻ, sidebar thu nhỏ).
+
+| Nhóm | Tùy chọn |
+|---|---|
+| Chế độ | Sáng, tối (tab phân đoạn). Nằm trên cùng |
+| Bộ phối màu | 9 thẻ bộ cố định để chọn nhanh (mỗi thẻ: hai ô màu, tên, dải thu nhỏ nút chính và nút nhấn); thẻ đang dùng có viền `primary-600` và dấu tích. Thẻ thứ mười "Tự tùy chỉnh" mở hai ô Màu chính và Màu nhấn (bảng chọn màu + ô nhập mã). Danh sách bộ, cách suy ra token và các kiểm tra: spec mục 13.1 |
+
+Không có tùy chọn bố cục và kích thước: sidebar, toolbar, bo góc, chiều cao điều khiển cố định theo tài liệu này.
+
+- Thanh dưới cùng: **Khôi phục mặc định** (kiểu Phụ) và **Lưu và áp dụng** (kiểu Chính). Thay đổi chưa lưu chỉ hiện ở vùng xem trước.
+- Khi màu tự chọn làm chữ khó đọc (tương phản dưới 4,5:1), hiện cảnh báo ngay cạnh ô chọn màu; hệ thống tự chọn màu chữ trắng hoặc đen đọc được hơn trên nền màu chính.
+- Vì màu đổi được, thành phần **chỉ dùng token** (`primary-600`, `text`, `border`…), không viết mã màu. Chế độ tối định nghĩa lại các token trung tính; không viết kiểu riêng cho chế độ tối trong thành phần.
+
+## 10. Cài đặt token
+
+Token khai báo một lần trong `packages/ui/src/styles/tokens.css` bằng `@theme` của Tailwind 4, hai app cùng nhập. Không viết mã màu trực tiếp trong thành phần. Giá trị dưới đây là bảng màu mặc định; cấu hình giao diện đang áp dụng ghi đè các biến này trên thẻ `<html>` khi render.
 
 ```css
 @theme {

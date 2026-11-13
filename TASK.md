@@ -1,7 +1,7 @@
 # TASK — Thi 360
 
 > Cập nhật: 2026-11-13 · Trạng thái sống nằm trên UniAI (project Thi 360). File này là bản chụp để đọc nhanh trong repo; khi lệch thì UniAI đúng.
-> Chi tiết từng task: `docs/plans/2026-11-13-base-port-pbi-01-02.md`.
+> Chi tiết từng task (hợp đồng, thứ tự sóng, trọng số): `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Phụ thuộc trong bảng dưới theo Phần C của plan.
 
 ## Đợt 1 — Port nền + PBI-01 + PBI-02
 
@@ -9,33 +9,38 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 
 | Task | Issue | Việc | Phụ thuộc | Trạng thái |
 |---|---|---|---|---|
-| T01 | UNI-2538 | Nền · Khởi tạo monorepo, CI, môi trường dev (Docker Compose) | — | todo |
+| T01 | UNI-2538 | Nền · Khởi tạo monorepo, CI, môi trường dev (Docker Compose) | — | in_review (đã merge vào `develop` ngày 2026-11-13; người chuyển `done`) |
 | T02 | UNI-2539 | Nền · Khung backend modular monolith (Spring Boot, Flyway, OpenAPI, lỗi chuẩn) | T01 | todo |
 | T03 | UNI-2540 | Nền · Xác thực: Keycloak, đăng nhập/refresh/đăng xuất, phiên, chặn đăng nhập sai | T02 | todo |
-| T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user (API + engine) | T03 | todo |
+| T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user, người dùng theo quyền, gán hàng loạt (API + engine) | T03 | todo |
 | T05 | UNI-2542 | Nền · Nhật ký thao tác: bảng chỉ ghi thêm, outbox, worker, API tra cứu | T02 | todo |
 | T06 | UNI-2543 | Nền · Design system (`packages/ui`) và khung web admin | T01 | todo |
 | T07 | UNI-2544 | PBI-01 · API quản lý tài khoản | T03, T04, T05 | todo |
-| T08 | UNI-2545 | PBI-01 · UI phân quyền: màn Quyền, màn Vai trò, gán vai trò/quyền cho user | T04, T06 | todo |
-| T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07 | todo |
+| T08 | UNI-2545 | PBI-01 · UI phân quyền: một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt) | T04, T06, T18 | todo |
+| T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07, T18 | todo |
 | T10 | UNI-2547 | PBI-01 · Lớp học: API + UI | T07, T09 | todo |
 | T11 | UNI-2548 | PBI-01 · Cấp tài khoản hàng loạt | T07, T10 | todo |
 | T12 | UNI-2549 | PBI-01 · Hồ sơ học viên (khung) | T09, T10 | todo |
-| T13 | UNI-2550 | PBI-02 · Danh mục: schema, dữ liệu mặc định, API nhóm và giá trị, API lựa chọn | T04, T05 | todo |
-| T14 | UNI-2551 | PBI-02 · Mã tổ hợp có phiên bản, nơi đang dùng, quy tắc ngừng và xóa | T13 | todo |
-| T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14 | todo |
-| T16 | UNI-2553 | Kiểm thử nghiệm thu PBI-01, PBI-02 và kiểm thử bảo mật gọi thẳng API | T07–T15 | todo |
+| T13 | UNI-2550 | PBI-02 · Danh mục: schema, dữ liệu mặc định, API nhóm và giá trị, API lựa chọn | T04, T05 | **hoãn** |
+| T14 | UNI-2551 | PBI-02 · Mã tổ hợp có phiên bản, nơi đang dùng, quy tắc ngừng và xóa | T13 | **hoãn** |
+| T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14, T18 | **hoãn** |
+| T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mục trong menu chính, port từ reap) | T04, T05, T06 | todo |
+| T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | todo |
+| T16 | UNI-2553 | Kiểm thử nghiệm thu nền, PBI-01 và kiểm thử bảo mật gọi thẳng API (PBI-02 hoãn) | T02–T12, T17, T18 | todo |
 
-### Thứ tự làm đề xuất
+### Thứ tự làm
 
 ```
-T01 ─► T02 ─► T03 ─► T04 ─┬─► T07 ─► T09 ─► T10 ─► T11
-  │      └──► T05 ────────┤                   └──► T12
-  └──► T06 ───────────────┼─► T08
-                          └─► T13 ─► T14 ─► T15            ─► T16
+Sóng 1:  T02 · T06
+Sóng 2:  T03 · T05
+Sóng 3:  T04
+Sóng 4:  T18 · T07 · T17
+Sóng 5:  T08 · T09 · T10 (API)
+Sóng 6:  T10 (UI) · T11 · T12
+Sóng 7:  T16
 ```
 
-Có thể chạy song song: T06 với T02–T05; nhánh PBI-02 (T13–T15) với nhánh tài khoản (T07–T12) sau khi xong T04 và T05.
+**Hoãn (2026-11-13, M.Trường):** T13, T14, T15 (PBI-02 Danh mục dùng chung) chưa làm trong đợt chạy này vì còn có thể thiết kế lại. Chi tiết: plan mục A7.
 
 ## Backlog
 

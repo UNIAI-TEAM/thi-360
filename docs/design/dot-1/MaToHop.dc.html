@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog mã tổ hợp</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="width: 640px; height: 820px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+  <form role="dialog" aria-modal="true" aria-labelledby="dlg-title" style="width: 100%; box-sizing: border-box; background: #FFFFFF; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); padding: 28px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div>
+        <h1 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Sửa mã tổ hợp</h1>
+        <p style="margin: 2px 0 0; color: #54545A">Nhóm: Mã tổ hợp (SUBJECT_COMBINATION) · Phiên bản hiện tại: 1</p>
+      </div>
+      <button type="button" aria-label="Đóng" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #3A3A42; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="c-code" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mã giá trị <span style="color: #B91C1C">*</span></label>
+        <input id="c-code" type="text" value="QDA_QD01" readonly aria-describedby="c-code-hint" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #3A3A42; background: #F1F2F4">
+        <span id="c-code-hint" style="font-size: 12.5px; line-height: 19px; color: #54545A">Đã được tham chiếu nên không đổi được.</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="c-name" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tên tiếng Việt <span style="color: #B91C1C">*</span></label>
+        <input id="c-name" type="text" value="QĐ01" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="c-exam" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Kỳ thi <span style="color: #B91C1C">*</span></label>
+      <select id="c-exam" style="height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF"><option>QDA — Đánh giá năng lực Bộ Quốc phòng</option><option>HSA — Đánh giá năng lực ĐHQG Hà Nội</option></select>
+    </div>
+
+    <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+      <legend style="padding: 0; font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Môn học theo thứ tự <span style="color: #B91C1C">*</span></legend>
+      <ol style="margin: 0; padding: 0; list-style: none; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+        <sc-for list="{{subjects}}" as="s" hint-placeholder-count="3">
+          <li style="{{s.style}}">
+            <button type="button" aria-label="{{s.dragLabel}}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #6B6B72; cursor: grab"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"></circle><circle cx="15" cy="6" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="9" cy="18" r="1.6"></circle><circle cx="15" cy="18" r="1.6"></circle></svg></button>
+            <span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{s.no}}</span>
+            <span style="flex: 1 1 auto; font-weight: 500">{{s.name}}</span>
+            <button type="button" aria-label="{{s.removeLabel}}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #B91C1C; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+          </li>
+        </sc-for>
+      </ol>
+      <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #54545A">Thêm môn
+        <select style="height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; font-size: 14px; color: #11181C; background: #FFFFFF"><option>Chọn môn đang hoạt động…</option><option>Ngữ văn</option><option>Tiếng Anh</option><option>Sinh học</option><option>Lịch sử</option><option>Địa lí</option></select>
+      </label>
+    </fieldset>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="c-src" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Nguồn quy ước</label>
+      <input id="c-src" type="text" value="[MẪU] Dữ liệu thử nghiệm, chưa phải quy ước chính thức" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+    </div>
+
+    <div role="note" style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 1px"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+      <span>Tổ hợp này đang được dùng. Đổi môn hoặc thứ tự môn sẽ tạo <strong>phiên bản 2</strong>; đề đã công bố và kết quả cũ tiếp tục dùng phiên bản 1.</span>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px">
+      <button type="button" style="height: 44px; padding: 0 18px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Hủy</button>
+      <button type="submit" style="height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #059669; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Lưu thành phiên bản mới</button>
+    </div>
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+const names = ['Toán', 'Vật lí', 'Hóa học'];
+return {
+subjects: names.map((n, i) => ({
+no: String(i + 1), name: n, dragLabel: 'Kéo để đổi thứ tự ' + n, removeLabel: 'Bỏ môn ' + n,
+style: 'min-height: 48px; padding: 0 4px; display: flex; align-items: center; gap: 8px; ' + (i > 0 ? 'border-top: 1px solid #E8E8EC' : '')
+}))
+};
+}
+}
+</script>
+</body>
+</html>

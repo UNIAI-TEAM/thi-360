@@ -1,0 +1,82 @@
+# Môi trường dev của Thi 360. Chạy: docker compose --env-file ../.env -f infra/docker-compose.yml up -d
+# (hoặc `cd infra && docker compose up -d`; mọi biến đều có giá trị mặc định cho máy dev).
+# Cổng mặc định lệch khỏi cổng chuẩn để không đụng các dự án khác trên cùng máy.
+name: thi360
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${THI360_DB_USER:-thi360}
+      POSTGRES_PASSWORD: ${THI360_DB_PASSWORD:-thi360-dev-only}
+      POSTGRES_DB: ${THI360_DB_NAME:-thi360}
+    ports:
+      - "${THI360_DB_PORT:-54360}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${THI360_REDIS_PORT:-63790}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${THI360_KC_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${THI360_KC_ADMIN_PASSWORD:-admin-dev-only}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${THI360_DB_USER:-thi360}
+      KC_DB_PASSWORD: ${THI360_DB_PASSWORD:-thi360-dev-only}
+      KC_HEALTH_ENABLED: "true"
+      # Được thay vào infra/keycloak/thi360-realm.json khi import.
+      THI360_KC_CLIENT_SECRET: ${THI360_KC_CLIENT_SECRET:-thi360-api-dev-only}
+    ports:
+      - "${THI360_KC_PORT:-8360}:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  minio:
+    # MinIO không còn phát hành image công khai trên Docker Hub/Quay; dùng bản dựng của Chainguard.
+    image: cgr.dev/chainguard/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${THI360_S3_ACCESS_KEY:-thi360}
+      MINIO_ROOT_PASSWORD: ${THI360_S3_SECRET_KEY:-thi360-dev-only}
+    ports:
+      - "${THI360_S3_PORT:-9360}:9000"
+      - "${THI360_S3_CONSOLE_PORT:-9361}:9001"
+    volumes:
+      - minio-data:/data
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "${THI360_SMTP_PORT:-1360}:1025"
+      - "${THI360_MAIL_UI_PORT:-8361}:8025"
+
+volumes:
+  postgres-data:
+  minio-data:

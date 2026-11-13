@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bước 3 xác nhận · Cấp tài khoản hàng loạt</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 860px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="color: #54545A">Người dùng <span aria-hidden="true">›</span> <a href="TaiKhoan.dc.html" style="text-decoration: none">Tài khoản</a> <span aria-hidden="true">›</span> <strong style="color: #11181C; font-weight: 600">Cấp hàng loạt</strong></div>
+      <button type="button" aria-haspopup="menu" style="height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">OA</span>
+        <span>ops.admin</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+        <div>
+          <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Cấp tài khoản hàng loạt</h1>
+          <p style="margin: 2px 0 0; color: #54545A">Tối đa 2.000 dòng, tệp không quá 5 MB. Tài khoản đã có không bị ghi đè.</p>
+        </div>
+        <a href="#" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: #FFFFFF; border: 1px solid #E8E8EC; color: #3A3A42; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Tải file mẫu</a>
+      </div>
+
+      <ol aria-label="Các bước" style="margin: 0; padding: 12px; list-style: none; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+          <li aria-current="{{s.current}}" style="{{s.style}}">
+            <span aria-hidden="true" style="{{s.dot}}">{{s.no}}</span>
+            <span>{{s.label}}</span>
+          </li>
+        </sc-for>
+      </ol>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px"><div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px"><div style="color: #54545A">Tệp đã tải lên</div><div style="font-weight: 600; word-break: break-all">danh-sach-lop-b.xlsx</div></div><div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px"><div style="color: #54545A">Sẽ tạo</div><div style="font-size: 22px; line-height: 30px; font-weight: 700; color: #047857">6 tài khoản</div></div><div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px"><div style="color: #54545A">Vào lớp LOP-B</div><div style="font-size: 22px; line-height: 30px; font-weight: 700; color: #11181C">5</div></div><div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px"><div style="color: #54545A">Không thuộc lớp</div><div style="font-size: 22px; line-height: 30px; font-weight: 700; color: #11181C">1</div></div></div>
+
+      <section aria-labelledby="sec-sum" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <h2 id="sec-sum" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Kiểm tra lần cuối</h2>
+        <dl style="margin: 0; display: grid; grid-template-columns: minmax(180px, auto) 1fr; gap: 10px 20px">
+          <dt style="color: #54545A">Vai trò</dt><dd style="margin: 0; font-weight: 500">Học viên (phạm vi Thi)</dd>
+          <dt style="color: #54545A">Mật khẩu</dt><dd style="margin: 0; font-weight: 500">4 dòng dùng mật khẩu trong tệp · 2 dòng hệ thống sinh</dd>
+          <dt style="color: #54545A">Bắt đổi mật khẩu lần đầu</dt><dd style="margin: 0; font-weight: 500">Không</dd>
+          <dt style="color: #54545A">Dòng lỗi</dt><dd style="margin: 0; font-weight: 500">Không còn</dd>
+        </dl>
+        <div style="padding: 12px 14px; border-radius: 10px; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; font-size: 13px; line-height: 20px">Sau khi xác nhận, tài khoản được tạo ngay và không hoàn tác cả đợt được. Mật khẩu do hệ thống sinh chỉ có trong file kết quả ở bước 4.</div>
+        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px">
+          <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Quay lại xem trước</button>
+          <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: #059669; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Xác nhận cấp 6 tài khoản</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+list: 'M4 6h16M4 12h16M4 18h16',
+key: 'M15 7a4 4 0 1 1-3.9 5H8v3H5v3H2v-3l6.1-6.1A4 4 0 0 1 15 7z',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, '#'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'],
+['h', 'Nội dung'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6', 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+renderVals() {
+const chip = (bg, fg) => 'display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + bg + '; color: ' + fg;
+const ok = chip('#ECFDF5', '#047857');
+const bad = chip('#FEF2F2', '#B91C1C');
+const stepBase = 'flex: 1 1 180px; min-height: 44px; padding: 0 12px; border-radius: 10px; display: flex; align-items: center; gap: 10px; font-weight: 500; ';
+const dotBase = 'width: 26px; height: 26px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; ';
+const steps = [['1', 'Tải mẫu và chọn tệp', 'done'], ['2', 'Xem trước và sửa lỗi', 'done'], ['3', 'Xác nhận', 'now'], ['4', 'Kết quả', 'next']];
+const data = [
+['3', 'student07', 'Học viên 07', 'student07@example.com', 'LOP-B', false, 'Cột Tên đăng nhập: đã tồn tại trong hệ thống'],
+['6', 'hv 11', 'Học viên 11', '—', 'LOP-C', false, 'Cột Tên đăng nhập: có khoảng trắng · Cột Mật khẩu: thiếu ký tự đặc biệt · Cột Mã lớp: lớp không tồn tại'],
+['2', 'student06', 'Học viên 06', 'student06@example.com', 'LOP-B', true, ''],
+['4', 'student08', 'Học viên 08', '—', 'LOP-B', true, ''],
+['5', 'student09', 'Học viên 09', 'student09@example.com', 'LOP-B', true, ''],
+['7', 'student10', 'Học viên 10', '—', '—', true, '']
+];
+return {
+nav: this.nav('users'),
+steps: steps.map((s) => ({
+no: s[0], label: s[1], current: s[2] === 'now' ? 'step' : 'false',
+style: stepBase + (s[2] === 'now' ? 'background: #ECFDF5; color: #047857' : 'color: #54545A'),
+dot: dotBase + (s[2] === 'next' ? 'background: #F1F2F4; color: #54545A' : 'background: #059669; color: #FFFFFF')
+})),
+rows: data.map((d) => ({
+no: d[0], username: d[1], pw: (d[0] === '4' || d[0] === '7') ? 'Để trống, hệ thống sinh' : 'Đã nhập, đạt quy tắc', name: d[2], email: d[3], cls: d[4], status: d[5] ? 'Hợp lệ' : 'Lỗi', chip: d[5] ? ok : bad, error: d[6],
+rowStyle: 'border-top: 1px solid #E8E8EC; ' + (d[5] ? '' : 'background: #FEF2F2')
+}))
+};
+}
+}
+</script>
+</body>
+</html>

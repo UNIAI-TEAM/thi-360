@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Màn Vai trò</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 960px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="color: #54545A">Hệ thống <span aria-hidden="true">›</span> <strong style="color: #11181C; font-weight: 600">Phân quyền</strong></div>
+      <button type="button" aria-haspopup="menu" style="height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">PL</span>
+        <span>platform</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+        <div>
+          <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Phân quyền</h1>
+          <p style="margin: 2px 0 0; color: #54545A">Tab Vai trò: mỗi vai trò có một phạm vi truy cập và một tập quyền. Phạm vi quyết định người giữ vai trò vào trang nào sau khi đăng nhập.</p>
+        </div>
+        <a href="TaoVaiTro.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: #059669; color: #FFFFFF; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">+ Tạo vai trò</a>
+      </div>
+
+      <nav aria-label="Các tab phân quyền" style="display: flex; flex-wrap: wrap; gap: 4px">
+        <a href="VaiTro.dc.html" aria-current="page" style="height: 44px; padding: 0 14px; border-radius: 10px; background: #ECFDF5; color: #047857; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Vai trò</a>
+        <a href="Quyen.dc.html" style="height: 44px; padding: 0 14px; border-radius: 10px; color: #54545A; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center">Quyền</a>
+        <a href="NguoiDungTheoQuyen.dc.html" style="height: 44px; padding: 0 14px; border-radius: 10px; color: #54545A; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center">Người dùng theo quyền</a>
+        <a href="GanQuyenHangLoat.dc.html" style="height: 44px; padding: 0 14px; border-radius: 10px; color: #54545A; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center">Gán hàng loạt</a>
+      </nav>
+
+      <form aria-label="Bộ lọc" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 12px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+        <label style="flex: 2 1 240px; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #54545A">Tìm kiếm
+          <input type="search" placeholder="Mã hoặc tên vai trò" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; font-size: 14px; color: #11181C">
+        </label>
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 4px">
+          <legend style="padding: 0; font-size: 12.5px; color: #54545A">Phạm vi truy cập</legend>
+          <div style="height: 44px; box-sizing: border-box; padding: 4px; border-radius: 12px; background: #F1F2F4; display: flex; gap: 4px">
+            <button type="button" aria-pressed="true" style="padding: 0 14px; border: 0; border-radius: 9px; background: #FFFFFF; color: #047857; font: inherit; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.1); cursor: pointer">Tất cả</button>
+            <button type="button" aria-pressed="false" style="padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: #3A3A42; font: inherit; font-weight: 500; cursor: pointer">Quản trị</button>
+            <button type="button" aria-pressed="false" style="padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: #3A3A42; font: inherit; font-weight: 500; cursor: pointer">Thi</button>
+          </div>
+        </fieldset>
+      </form>
+
+      <section aria-label="Danh sách vai trò" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 12px 16px; border-bottom: 1px solid #E8E8EC"><strong style="font-weight: 600">5</strong> vai trò</div>
+        <div style="overflow-x: auto">
+          <table style="width: 100%; min-width: 900px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+            <thead>
+              <tr style="background: #FAFAFB; text-align: left; font-size: 13px; color: #54545A">
+                <th scope="col" style="padding: 12px 16px; font-weight: 600">Vai trò</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600">Phạm vi truy cập</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600">Số quyền</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600">Tài khoản đang giữ</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600">Loại</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600">Trạng thái</th>
+                <th scope="col" style="padding: 12px 16px; font-weight: 600; text-align: right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+                <tr style="border-top: 1px solid #E8E8EC; height: 60px">
+                  <td style="padding: 0 16px">
+                    <div style="font-weight: 600">{{r.name}}</div>
+                    <div style="font-size: 12.5px; line-height: 19px; color: #54545A">{{r.code}}</div>
+                  </td>
+                  <td style="padding: 0 8px"><span style="{{r.accessChip}}">{{r.access}}</span></td>
+                  <td style="padding: 0 8px">{{r.perms}}</td>
+                  <td style="padding: 0 8px">{{r.users}}</td>
+                  <td style="padding: 0 8px"><span style="{{r.kindChip}}">{{r.kind}}</span></td>
+                  <td style="padding: 0 8px"><span style="{{r.statusChip}}">Hoạt động</span></td>
+                  <td style="padding: 0 16px; text-align: right; white-space: nowrap">
+                    <a href="TaoVaiTro.dc.html" title="Sửa" aria-label="{{r.editLabel}}" style="width: 44px; height: 44px; border-radius: 8px; color: #047857; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></a>
+                    <button type="button" title="{{r.deleteTip}}" aria-label="{{r.deleteLabel}}" disabled="{{r.locked}}" style="{{r.deleteStyle}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></button>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding: 12px 16px; border-top: 1px solid #E8E8EC; font-size: 12.5px; line-height: 19px; color: #54545A">Vai trò hệ thống không xóa được và không đổi phạm vi truy cập. Vai trò đang có tài khoản giữ thì chỉ ngừng sử dụng được.</div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+list: 'M4 6h16M4 12h16M4 18h16',
+key: 'M15 7a4 4 0 1 1-3.9 5H8v3H5v3H2v-3l6.1-6.1A4 4 0 0 1 15 7z',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, '#'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'],
+['h', 'Nội dung'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6', 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+renderVals() {
+const chip = (bg, fg) => 'display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + bg + '; color: ' + fg;
+const manage = chip('#ECFEFF', '#0E7490');
+const exam = chip('#F3E8FF', '#6B21A8');
+const sys = chip('#F1F2F4', '#3A3A42');
+const custom = chip('#FFFBEB', '#B45309');
+const ok = chip('#ECFDF5', '#047857');
+const delBase = 'width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; ';
+const data = [
+['Quản trị hệ thống', 'SYSTEM_ADMIN', true, '13', '0', true],
+['Quản trị nội dung', 'CONTENT_ADMIN', true, '2', '1', true],
+['Vận hành / CSKH', 'OPERATIONS', true, '5', '1', true],
+['Học viên', 'STUDENT', false, '0', '5', true],
+['Kiểm duyệt nội dung', 'CONTENT_REVIEWER', true, '1', '0', false]
+];
+return {
+nav: this.nav('rbac'),
+rows: data.map((d) => ({
+name: d[0], code: d[1], access: d[2] ? 'Quản trị' : 'Thi', accessChip: d[2] ? manage : exam, perms: d[3], users: d[4],
+kind: d[5] ? 'Hệ thống' : 'Tự tạo', kindChip: d[5] ? sys : custom, statusChip: ok, locked: d[5],
+editLabel: 'Sửa vai trò ' + d[0], deleteLabel: 'Xóa vai trò ' + d[0], deleteTip: d[5] ? 'Vai trò hệ thống không xóa được' : 'Xóa',
+deleteStyle: delBase + (d[5] ? 'color: #6B6B72' : 'color: #B91C1C; cursor: pointer')
+}))
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Cấu hình chung</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 900px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="color: #54545A">Nội dung <span aria-hidden="true">›</span> <strong style="color: #11181C; font-weight: 600">Cấu hình chung</strong></div>
+      <button type="button" aria-haspopup="menu" style="height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">CA</span>
+        <span>content.admin</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Cấu hình chung</h1>
+
+      <div style="display: flex; gap: 16px; align-items: flex-start">
+        <section aria-labelledby="sec-groups" style="flex: 0 0 264px; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 14px 14px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px">
+            <h2 id="sec-groups" style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 600">Danh mục <span style="font-weight: 400; color: #54545A">· 10</span></h2>
+            <button type="button" title="Thêm danh mục" aria-label="Thêm danh mục" style="width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: #ECFDF5; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+          </div>
+          <div style="padding: 0 14px 12px">
+            <input type="search" aria-label="Tìm danh mục" placeholder="Tìm danh mục" style="width: 100%; height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FAFAFB">
+          </div>
+          <ul style="margin: 0; padding: 0 8px 8px; list-style: none; display: flex; flex-direction: column; gap: 2px">
+            <sc-for list="{{groups}}" as="g" hint-placeholder-count="12">
+              <li>
+                <sc-if value="{{g.head}}" hint-placeholder-val="{{false}}"><div style="padding: 12px 10px 4px; display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A"><sc-if value="{{g.locked}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>{{g.label}}</div></sc-if>
+                <sc-if value="{{g.item}}" hint-placeholder-val="{{true}}"><button type="button" aria-pressed="{{g.pressed}}" style="{{g.style}}">
+                  <span aria-hidden="true" style="{{g.tile}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.icon}}"></path></svg></span>
+                  <span style="flex: 1 1 auto; min-width: 0; text-align: left">
+                    <span style="{{g.nameStyle}}">{{g.name}}</span>
+                    <span style="display: block; font-size: 12px; line-height: 17px; color: #54545A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{g.code}}</span>
+                  </span>
+                  <span style="flex: none; font-size: 12.5px; font-variant-numeric: tabular-nums; color: #54545A">{{g.count}}</span>
+                </button></sc-if>
+              </li>
+            </sc-for>
+          </ul>
+        </section>
+
+        <section aria-labelledby="sec-items" style="flex: 1 1 0; min-width: 0; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+            <div>
+              <h2 id="sec-items" style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 700">Môn học</h2>
+              <div style="font-size: 12.5px; line-height: 19px; color: #54545A">SUBJECT · Danh sách · 8 giá trị</div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Nhập Excel</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Xuất Excel</button>
+              <span title="Danh mục hệ thống: không sửa, không xóa. Vẫn quản lý được giá trị bên trong." style="height: 40px; padding: 0 12px; border-radius: 12px; background: #F1F2F4; color: #3A3A42; font-weight: 600; display: inline-flex; align-items: center; gap: 6px"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg>Hệ thống</span>
+              <button type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 12px; background: #059669; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">+ Thêm giá trị</button>
+            </div>
+          </div>
+
+          <form aria-label="Lọc giá trị" style="padding: 0 20px 14px; display: flex; flex-wrap: wrap; gap: 10px">
+            <input type="search" aria-label="Tìm theo mã hoặc tên" placeholder="Tìm theo mã hoặc tên" style="flex: 1 1 280px; height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+            <select aria-label="Trạng thái" style="flex: 0 0 180px; height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF"><option>Mọi trạng thái</option><option>Hoạt động</option><option>Ngừng sử dụng</option></select>
+          </form>
+
+          <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums">
+            <thead>
+              <tr style="background: #FAFAFB; text-align: left; font-size: 13px; color: #54545A; border-top: 1px solid #E8E8EC">
+                <th scope="col" style="padding: 10px 0 10px 12px; width: 40px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Kéo để sắp xếp</span></th>
+                <th scope="col" style="padding: 10px 8px; font-weight: 600; width: 120px">Mã</th>
+                <th scope="col" style="padding: 10px 8px; font-weight: 600">Tên tiếng Việt</th>
+                <th scope="col" style="padding: 10px 8px; font-weight: 600">Tên tiếng Anh</th>
+                <th scope="col" style="padding: 10px 8px; font-weight: 600; width: 70px">Value</th>
+                <th scope="col" style="padding: 10px 8px; font-weight: 600; width: 140px">Trạng thái</th>
+                <th scope="col" style="padding: 10px 20px 10px 8px; font-weight: 600; text-align: right; width: 140px">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{items}}" as="it" hint-placeholder-count="8">
+                <tr style="border-top: 1px solid #E8E8EC; height: 52px">
+                  <td style="padding: 0 0 0 4px"><button type="button" title="Kéo để đổi thứ tự" aria-label="{{it.dragLabel}}" style="width: 36px; height: 40px; border: 0; background: transparent; color: #A6A6AE; cursor: grab"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.8"></circle><circle cx="15" cy="6" r="1.8"></circle><circle cx="9" cy="12" r="1.8"></circle><circle cx="15" cy="12" r="1.8"></circle><circle cx="9" cy="18" r="1.8"></circle><circle cx="15" cy="18" r="1.8"></circle></svg></button></td>
+                  <td style="padding: 0 8px"><span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background: #F1F2F4; font-size: 12.5px; font-weight: 600">{{it.code}}</span></td>
+                  <td style="padding: 0 8px; font-weight: 500">{{it.vi}}</td>
+                  <td style="padding: 0 8px; color: #54545A">{{it.en}}</td>
+                  <td style="padding: 0 8px; color: #54545A">{{it.value}}</td>
+                  <td style="padding: 0 8px"><span style="{{it.chip}}">{{it.status}}</span></td>
+                  <td style="padding: 0 12px 0 8px; text-align: right; white-space: nowrap">
+                    <button type="button" title="Chi tiết: nơi đang dùng, lịch sử" aria-label="{{it.detailLabel}}" style="width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; color: #047857"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg></button>
+                    <button type="button" title="Sửa" aria-label="{{it.editLabel}}" style="width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; color: #047857"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></button>
+                    <button type="button" title="Xóa" aria-label="{{it.deleteLabel}}" style="width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; color: #B91C1C"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></button>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="padding: 12px 20px; border-top: 1px solid #E8E8EC; font-size: 12.5px; line-height: 19px; color: #54545A">Thứ tự hiển thị là thứ tự các dòng; kéo biểu tượng đầu dòng để đổi. Giá trị đã được tham chiếu thì không xóa được, chỉ ngừng sử dụng.</div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+list: 'M4 6h16M4 12h16M4 18h16',
+key: 'M15 7a4 4 0 1 1-3.9 5H8v3H5v3H2v-3l6.1-6.1A4 4 0 0 1 15 7z',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, '#'],
+['h', 'Nội dung'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+renderVals() {
+const LIST = 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01';
+const TREEI = 'M6 3v12M6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9';
+const LINK = 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1';
+const GROUPS = [
+['Kỳ thi', 'EXAM', '2', LIST], ['Môn học', 'SUBJECT', '8', LIST], ['Khối lớp', 'GRADE', '3', LIST], ['Mức độ câu hỏi', 'QUESTION_LEVEL', '4', LIST],
+['Dạng câu', 'QUESTION_FORMAT', '2', LIST], ['Dạng bài', 'TASK_TYPE', '2', LIST], ['Nhãn câu hỏi', 'QUESTION_TAG', '0', LIST],
+['Mã tổ hợp', 'SUBJECT_COMBINATION', '5', LINK], ['Cấu trúc kiến thức', 'KNOWLEDGE', '33', TREEI]
+];
+const groupRows = (active) => {
+const out = [];
+const section = (label, list, locked) => {
+out.push({ head: true, item: false, label: label + ' · ' + list.length, locked: locked });
+list.forEach((g) => out.push({
+head: false, item: true, name: g[0], code: g[1], count: g[2], icon: g[3], pressed: g[1] === active ? 'true' : 'false',
+nameStyle: 'display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: ' + (g[1] === active ? '600' : '500'),
+tile: 'flex: none; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; ' + (g[1] === active ? 'background: #FFFFFF; color: #047857' : 'background: #F1F2F4; color: #54545A'),
+style: 'width: 100%; min-height: 56px; box-sizing: border-box; padding: 8px 10px; border: 0; border-radius: 10px; font: inherit; display: flex; align-items: center; gap: 10px; cursor: pointer; ' + (g[1] === active ? 'background: #ECFDF5; color: #047857; box-shadow: inset 3px 0 0 #059669' : 'background: transparent; color: #11181C')
+}));
+};
+section('Hệ thống', GROUPS, true);
+section('Tùy chỉnh', [['Nguồn câu hỏi', 'QUESTION_SOURCE', '3', LIST]], false);
+return out;
+};
+const chip = (bg, fg) => 'display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + bg + '; color: ' + fg;
+const subjects = [
+['TOAN', '1', 'Toán', 'Mathematics', 'A'], ['VAN', '2', 'Ngữ văn', 'Literature', 'A'], ['ANH', '3', 'Tiếng Anh', 'English', 'A'], ['LY', '4', 'Vật lí', 'Physics', 'A'],
+['HOA', '5', 'Hóa học', 'Chemistry', 'A'], ['SINH', '6', 'Sinh học', 'Biology', 'A'], ['SU', '7', 'Lịch sử', 'History', 'A'], ['DIA', '8', 'Địa lí', 'Geography', 'I']
+];
+return {
+nav: this.nav('catalog'),
+groups: groupRows('SUBJECT'),
+items: subjects.map((s) => ({
+code: s[0], value: s[1], vi: s[2], en: s[3], status: s[4] === 'A' ? 'Hoạt động' : 'Ngừng sử dụng',
+chip: s[4] === 'A' ? chip('#ECFDF5', '#047857') : chip('#F1F2F4', '#3A3A42'),
+dragLabel: 'Kéo để đổi thứ tự ' + s[2], detailLabel: 'Chi tiết ' + s[2], editLabel: 'Sửa ' + s[2], deleteLabel: 'Xóa ' + s[2]
+}))
+};
+}
+}
+</script>
+</body>
+</html>

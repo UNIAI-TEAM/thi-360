@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog chuyển nhánh</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 600px; height: 760px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+  <form role="dialog" aria-modal="true" aria-labelledby="dlg-title" style="width: 100%; max-height: 100%; box-sizing: border-box; background: #FFFFFF; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); padding: 28px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div>
+        <h1 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Chuyển sang chương khác</h1>
+        <div style="color: #54545A">Cấu trúc kiến thức</div>
+      </div>
+      <button type="button" aria-label="Đóng" style="flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: #3A3A42; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </div>
+    <div style="padding: 12px 14px; border-radius: 10px; font-size: 13px; line-height: 20px; background: #F7F8F9; border: 1px solid #E8E8EC; color: #3A3A42">Đang chuyển: Bài <span style="padding: 1px 7px; border-radius: 6px; background: #F1F2F4; font-size: 12.5px; font-weight: 600; white-space: nowrap">0D1-3</span> <strong>Các phép toán tập hợp</strong>, kèm 5 kiến thức bên dưới.</div>
+    <input type="search" aria-label="Tìm chương" placeholder="Tìm chương theo mã hoặc tên" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF; width: 100%">
+    <div role="radiogroup" aria-label="Chương nhận" style="display: flex; flex-direction: column; gap: 8px"><label style="min-height: 56px; box-sizing: border-box; padding: 8px 12px; border: 1px solid #E8E8EC; border-radius: 12px; background: #F7F8F9; display: flex; align-items: center; gap: 10px; color: #6B6B72"><span aria-hidden="true" style="flex: none; width: 18px; height: 18px; box-sizing: border-box; border-radius: 9999px; border: 2px solid #C4C4CC; background: #FFFFFF"></span><span style="flex: 1 1 auto; min-width: 0"><span style="display: flex; align-items: center; gap: 8px"><span style="padding: 1px 7px; border-radius: 6px; background: #F1F2F4; font-size: 12.5px; font-weight: 600; white-space: nowrap">0D1</span><span style="font-weight: 500">Mệnh đề. Tập hợp</span></span><span style="display: block; margin-top: 2px; font-size: 12.5px; line-height: 19px; color: #54545A">3 bài · Toán · Lớp 10</span></span><span style="flex: none; padding: 0 8px; height: 22px; display: inline-flex; align-items: center; border-radius: 9999px; background: #E8E8EC; color: #3A3A42; font-size: 12px; font-weight: 500">Nút cha hiện tại</span></label><label style="min-height: 56px; box-sizing: border-box; padding: 8px 12px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; gap: 10px; cursor: pointer"><span aria-hidden="true" style="flex: none; width: 18px; height: 18px; box-sizing: border-box; border-radius: 9999px; border: 2px solid #C4C4CC; background: #FFFFFF"></span><span style="flex: 1 1 auto; min-width: 0"><span style="display: flex; align-items: center; gap: 8px"><span style="padding: 1px 7px; border-radius: 6px; background: #F1F2F4; font-size: 12.5px; font-weight: 600; white-space: nowrap">0D2</span><span style="font-weight: 500">Bất phương trình và hệ bất phương trình bậc nhất hai ẩn</span></span><span style="display: block; margin-top: 2px; font-size: 12.5px; line-height: 19px; color: #54545A">2 bài · Toán · Lớp 10</span></span></label><label style="min-height: 56px; box-sizing: border-box; padding: 8px 12px; border: 2px solid #059669; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; gap: 10px; cursor: pointer"><span aria-hidden="true" style="flex: none; width: 18px; height: 18px; box-sizing: border-box; border-radius: 9999px; border: 6px solid #059669; background: #FFFFFF"></span><span style="flex: 1 1 auto; min-width: 0"><span style="display: flex; align-items: center; gap: 8px"><span style="padding: 1px 7px; border-radius: 6px; background: #F1F2F4; font-size: 12.5px; font-weight: 600; white-space: nowrap">0D3</span><span style="font-weight: 500">Hàm số bậc hai và đồ thị</span></span><span style="display: block; margin-top: 2px; font-size: 12.5px; line-height: 19px; color: #54545A">1 bài · Toán · Lớp 10, Lớp 11</span></span></label></div>
+    <div style="padding: 12px 14px; border-radius: 10px; font-size: 13px; line-height: 20px; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E"><strong>Liên kết kế thừa sẽ đổi theo chương mới.</strong> Khối lớp: Lớp 10 → Lớp 10, Lớp 11. Môn học không đổi. Liên kết gắn riêng trên bài và các kiến thức được giữ nguyên.</div>
+    <div style="font-size: 12.5px; line-height: 19px; color: #54545A">Chỉ chuyển được sang chương khác, không đổi cấp của nút. Bị chặn nếu bài hoặc kiến thức bên dưới đã được câu hỏi hay đề tham chiếu.</div>
+
+    <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px"><button type="button" style="height: 44px; padding: 0 18px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42">Hủy</button><button type="button" style="height: 44px; padding: 0 18px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 0; background: #059669; color: #FFFFFF">Chuyển</button></div>
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":600,"height":760}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
