@@ -1,8 +1,9 @@
 import { createApiClient } from "@thi360/api-client";
 import {
-  buildThemeVars,
   DEFAULT_APPEARANCE_CONFIG,
   parseAppearanceConfig,
+  THEME_STYLE_ELEMENT_ID,
+  themeStyleTag,
   type AppearanceConfig,
   type ThemeMode,
 } from "@thi360/ui";
@@ -10,7 +11,7 @@ import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { SessionProvider } from "@/features/session/session-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
@@ -58,14 +59,12 @@ function resolveTheme(appearanceMode: ThemeMode): ThemeMode {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const [locale, appearance] = await Promise.all([getLocale(), loadAppearance()]);
   const themeMode = resolveTheme(appearance.mode);
-  const themeVars = buildThemeVars({ ...appearance, mode: themeMode }) as CSSProperties;
+  const themeCss = themeStyleTag(appearance);
   return (
-    <html
-      lang={locale}
-      className={beVietnamPro.variable}
-      data-theme={themeMode}
-      style={themeVars}
-    >
+    <html lang={locale} className={beVietnamPro.variable} data-theme={themeMode}>
+      <head>
+        <style id={THEME_STYLE_ELEMENT_ID} dangerouslySetInnerHTML={{ __html: themeCss }} />
+      </head>
       <body className="font-sans antialiased">
         <NextIntlClientProvider>
           <QueryProvider>

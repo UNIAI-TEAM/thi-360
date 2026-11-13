@@ -1,6 +1,7 @@
+import { THEME_STYLE_ELEMENT_ID } from "@thi360/ui";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RootLayout from "./layout";
-
 vi.mock("next/font/google", () => ({
   Be_Vietnam_Pro: () => ({ variable: "--font-be-vietnam-pro" }),
 }));
@@ -26,7 +27,7 @@ afterEach(() => {
 });
 
 describe("RootLayout appearance SSR", () => {
-  it("chèn biến CSS và data-theme từ GET /api/v1/appearance lên thẻ <html>", async () => {
+  it("chèn <style> cho cả sáng và tối trong <head> và data-theme lên <html>, không đặt inline style", async () => {
     const fetchMock = vi.fn(async () =>
       Response.json({
         palette: { presetId: "navy-teal" },
@@ -38,7 +39,21 @@ describe("RootLayout appearance SSR", () => {
 
     const tree = await RootLayout({ children: "ok" });
     expect(tree.props["data-theme"]).toBe("dark");
-    expect(tree.props.style["--color-primary-600"]).toBe("#0f3c6e");
+    expect(tree.props.style).toBeUndefined();
+    const children = Array.isArray(tree.props.children) ? tree.props.children : [tree.props.children];
+    const headEl = children.find((node: ReactElement) => node?.type === "head") as ReactElement<{
+      children: ReactElement<{ id: string; dangerouslySetInnerHTML: { __html: string } }>;
+    }>;
+    expect(headEl).toBeDefined();
+    const styleEl = headEl.props.children;
+    expect(styleEl.type).toBe("style");
+    expect(styleEl.props.id).toBe(THEME_STYLE_ELEMENT_ID);
+    const css = styleEl.props.dangerouslySetInnerHTML.__html;
+    expect(css).toContain(':root[data-theme="light"]');
+    expect(css).toContain(':root[data-theme="dark"]');
+    expect(css).toContain("--color-primary-600: #0f3c6e;");
+    expect(css).toContain("--color-page: #f7f8f9;");
+    expect(css).toContain("--color-page: #0f1418;");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [request, init] = fetchMock.mock.calls[0] as unknown as [
       Request,
@@ -58,6 +73,12 @@ describe("RootLayout appearance SSR", () => {
 
     const tree = await RootLayout({ children: "ok" });
     expect(tree.props["data-theme"]).toBe("light");
-    expect(tree.props.style["--color-primary-600"]).toBe("#059669");
+    expect(tree.props.style).toBeUndefined();
+    const children = Array.isArray(tree.props.children) ? tree.props.children : [tree.props.children];
+    const headEl = children.find((node: ReactElement) => node?.type === "head") as ReactElement<{
+      children: ReactElement<{ dangerouslySetInnerHTML: { __html: string } }>;
+    }>;
+    const css = headEl.props.children.props.dangerouslySetInnerHTML.__html;
+    expect(css).toContain("--color-primary-600: #059669;");
   });
 });

@@ -11,7 +11,6 @@ import {
   deriveTokens,
   EmptyState,
   findPresetPalette,
-  formatContrastRatio,
   FormField,
   getContrastRatio,
   Input,
@@ -32,8 +31,8 @@ import {
   type ThemeMode,
 } from "@thi360/ui";
 import { AlertTriangle, Check, CheckCircle2, SlidersVertical, TriangleAlert } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { type CSSProperties, useMemo, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -161,6 +160,7 @@ function AppearanceEditor({
 }: Required<AppearanceViewProps>) {
   const t = useTranslations("appearance");
   const commonT = useTranslations("common");
+  const format = useFormatter();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -175,7 +175,12 @@ function AppearanceEditor({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [staleConflict, setStaleConflict] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const alertBannerRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (!staleConflict && !serverError) return;
+    alertBannerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [staleConflict, serverError]);
   const serverData = query.data;
   const activeDraft = useMemo<AppearanceDraft | null>(() => {
     if (!serverData) return null;
@@ -285,7 +290,7 @@ function AppearanceEditor({
         action={
           <Button
             loading={resetMutation.isPending}
-            onClick={() => resetMutation.mutate(undefined)}
+            onClick={() => resetMutation.mutate({ version: 0 })}
           >
             {t("emptyAction")}
           </Button>
@@ -351,15 +356,15 @@ function AppearanceEditor({
   const isMutating = saveMutation.isPending || resetMutation.isPending;
   const saveDisabled = invalidCustom || isMutating;
 
-  const onPrimaryRatio = formatContrastRatio(
+  const formatRatio = (ratio: number) =>
+    `${format.number(Math.round(ratio * 10) / 10, { maximumFractionDigits: 1 })}:1`;
+  const onPrimaryRatio = formatRatio(
     getContrastRatio(previewTokens.onPrimary, previewTokens.primaryFill),
   );
-  const onAccentRatio = formatContrastRatio(
+  const onAccentRatio = formatRatio(
     getContrastRatio(previewTokens.onAccent, previewTokens.accent500),
   );
-  const linkRatio = formatContrastRatio(
-    getContrastRatio(previewTokens.link, previewTokens.surface),
-  );
+  const linkRatio = formatRatio(getContrastRatio(previewTokens.link, previewTokens.surface));
 
   const onPrimaryTone =
     previewTokens.onPrimary.toLowerCase() === WHITE_COLOR ? t("whiteText") : t("darkText");
@@ -405,7 +410,10 @@ function AppearanceEditor({
     setStaleConflict(false);
     setServerError(null);
     setDraftOverride(null);
-    await query.refetch();
+    const result = await query.refetch();
+    if (result.data) {
+      applyAppearanceToDocument(result.data);
+    }
   }
 
   return (
@@ -414,6 +422,29 @@ function AppearanceEditor({
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex min-w-0 flex-[3_1_520px] flex-col gap-4">
+          {staleConflict && (
+            <div
+              ref={alertBannerRef}
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger bg-danger-bg p-3.5 text-field-label text-danger"
+            >
+              <span>{t("errorCodes.VERSION_CONFLICT")}</span>
+              <Button variant="secondary" size="sm" onClick={() => void handleReloadLatest()}>
+                {t("reloadLatest")}
+              </Button>
+            </div>
+          )}
+
+          {serverError && !staleConflict && (
+            <div
+              ref={alertBannerRef}
+              role="alert"
+              className="rounded-lg border border-danger bg-danger-bg p-3.5 text-field-label text-danger"
+            >
+              {serverError}
+            </div>
+          )}
+
           <Card padding="md" className="flex flex-wrap items-center justify-between gap-3 p-5">
             <div>
               <h2 id="sec-mode" className="text-title font-semibold text-text">
@@ -463,7 +494,7 @@ function AppearanceEditor({
                     onClick={() => handleSelectPreset(preset.id)}
                     className={cn(
                       "flex min-h-24 flex-col gap-2.5 rounded-lg bg-surface p-3 text-left transition-colors duration-150 motion-reduce:transition-none",
-                      "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                      "focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
                       selected
                         ? "border-2 border-primary-600"
                         : "border border-border hover:border-border-strong",
@@ -512,7 +543,7 @@ function AppearanceEditor({
                 onClick={handleSelectCustom}
                 className={cn(
                   "flex min-h-24 flex-col gap-2.5 rounded-lg bg-surface p-3 text-left transition-colors duration-150 motion-reduce:transition-none",
-                  "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                  "focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
                   isCustom
                     ? "border-2 border-primary-600"
                     : "border border-dashed border-border-strong hover:border-text-muted",
@@ -575,7 +606,7 @@ function AppearanceEditor({
                               hasCustomColors: true,
                             }));
                           }}
-                          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1"
+                          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1 focus-visible:border-primary-600 focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
                         />
                         <Input
                           {...controlProps}
@@ -615,7 +646,7 @@ function AppearanceEditor({
                               hasCustomColors: true,
                             }));
                           }}
-                          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1"
+                          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1 focus-visible:border-primary-600 focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
                         />
                         <Input
                           {...controlProps}
@@ -645,19 +676,21 @@ function AppearanceEditor({
                     {customWarnings.length > 0 ? (
                       customWarnings.map((warning) => (
                         <li
-                          key={warning.code}
+                          key={`${warning.code}-${warning.target}`}
                           className="flex items-center gap-2 rounded-md border border-border bg-warning-bg px-3 py-2 text-field-label text-warning"
                         >
                           <AlertTriangle aria-hidden className="size-4 shrink-0" />
                           <span>
                             {warning.code === "PRIMARY_USES_DARK_TEXT"
                               ? t("warnings.PRIMARY_USES_DARK_TEXT", { ratio: onPrimaryRatio })
-                              : t(`warnings.${warning.code}`)}
+                              : warning.code === "NEAR_DANGER_COLOR"
+                                ? t(`warnings.NEAR_DANGER_COLOR_${warning.target}`)
+                                : t(`warnings.${warning.code}`)}
                           </span>
                         </li>
                       ))
                     ) : (
-                      <li className="flex items-center gap-2 rounded-md border border-primary-200 bg-success-bg px-3 py-2 text-field-label text-success">
+                      <li className="flex items-center gap-2 rounded-md border border-border bg-success-bg px-3 py-2 text-field-label text-success">
                         <CheckCircle2 aria-hidden className="size-4 shrink-0" />
                         <span>{t("warningsOk")}</span>
                       </li>
@@ -667,27 +700,6 @@ function AppearanceEditor({
               </div>
             )}
           </Card>
-
-          {staleConflict && (
-            <div
-              role="alert"
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger bg-danger-bg p-3.5 text-field-label text-danger"
-            >
-              <span>{t("errorCodes.VERSION_CONFLICT")}</span>
-              <Button variant="secondary" size="sm" onClick={() => void handleReloadLatest()}>
-                {t("reloadLatest")}
-              </Button>
-            </div>
-          )}
-
-          {serverError && !staleConflict && (
-            <div
-              role="alert"
-              className="rounded-lg border border-danger bg-danger-bg p-3.5 text-field-label text-danger"
-            >
-              {serverError}
-            </div>
-          )}
 
           <div className="flex flex-wrap justify-end gap-2.5">
             <Button
@@ -823,11 +835,7 @@ function AppearanceEditor({
         cancelLabel={t("cancel")}
         closeLabel={t("close")}
         loading={resetMutation.isPending}
-        onConfirm={() =>
-          resetMutation.mutate(
-            serverData.version !== undefined ? { version: serverData.version } : undefined,
-          )
-        }
+        onConfirm={() => resetMutation.mutate({ version: serverData.version })}
       />
     </>
   );

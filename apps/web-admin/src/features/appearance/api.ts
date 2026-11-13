@@ -1,5 +1,5 @@
 import { createApiClient, type components } from "@thi360/api-client";
-import { buildThemeVars, type AppearanceConfig } from "@thi360/ui";
+import { THEME_STYLE_ELEMENT_ID, themeStyleTag, type AppearanceConfig } from "@thi360/ui";
 import { ApiStatusError } from "@/lib/api/query-client";
 
 export type AppearanceResponse = components["schemas"]["AppearanceResponse"];
@@ -7,7 +7,7 @@ export type UpdateAppearanceRequest = components["schemas"]["UpdateAppearanceReq
 export type ResetAppearanceRequest = components["schemas"]["ResetAppearanceRequest"];
 export type AppearanceLoader = () => Promise<AppearanceResponse | null>;
 export type AppearanceSaver = (payload: UpdateAppearanceRequest) => Promise<AppearanceResponse>;
-export type AppearanceResetter = (payload?: ResetAppearanceRequest) => Promise<AppearanceResponse>;
+export type AppearanceResetter = (payload: ResetAppearanceRequest) => Promise<AppearanceResponse>;
 
 export const APPEARANCE_QUERY_KEY = ["appearance"] as const;
 
@@ -72,11 +72,11 @@ export async function saveAppearance(
 }
 
 export async function resetAppearance(
-  payload?: ResetAppearanceRequest,
+  payload: ResetAppearanceRequest,
 ): Promise<AppearanceResponse> {
   const client = createAppearanceClient(true);
   const { data, error, response } = await client.POST("/api/v1/admin/appearance/reset", {
-    body: payload ?? { version: 0 },
+    body: payload,
   });
   if (!response.ok || !data) throw toAppearanceApiError(response.status, error);
   return data;
@@ -86,7 +86,11 @@ export function applyAppearanceToDocument(config: AppearanceConfig): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   root.dataset.theme = config.mode;
-  for (const [name, value] of Object.entries(buildThemeVars(config))) {
-    root.style.setProperty(name, value);
+  let styleEl = document.getElementById(THEME_STYLE_ELEMENT_ID);
+  if (!(styleEl instanceof HTMLStyleElement)) {
+    styleEl = document.createElement("style");
+    styleEl.id = THEME_STYLE_ELEMENT_ID;
+    document.head.appendChild(styleEl);
   }
+  styleEl.textContent = themeStyleTag(config);
 }

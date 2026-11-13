@@ -1,7 +1,7 @@
 {
   "appearance": {
     "accentHelper": "Used for prominent action buttons and badges.",
-    "accentInvalid": "Color code must use #RRGGBB format, e.g. F59223.",
+    "accentInvalid": "Color code must use #RRGGBB format, e.g. #F59223.",
     "accentLabel": "Accent color",
     "accentPickerAria": "Pick accent color",
     "cancel": "Cancel",
@@ -59,7 +59,7 @@
     "previewSubtitle": "{palette} · {mode} mode",
     "previewTitle": "Preview",
     "primaryHelper": "Used for primary buttons, links, and active items.",
-    "primaryInvalid": "Color code must use #RRGGBB format, e.g. 059669.",
+    "primaryInvalid": "Color code must use #RRGGBB format, e.g. #059669.",
     "primaryLabel": "Primary color",
     "primaryPickerAria": "Pick primary color",
     "reloadLatest": "Reload latest settings",
@@ -73,7 +73,9 @@
     "saveSuccess": "Saved and applied the new appearance system-wide.",
     "title": "Appearance settings",
     "warnings": {
-      "NEAR_DANGER_COLOR": "Too close to the error color",
+      "NEAR_DANGER_COLOR_accent": "Accent color is too close to the error color",
+      "NEAR_DANGER_COLOR_both": "Primary and accent colors are too close to the error color",
+      "NEAR_DANGER_COLOR_primary": "Primary color is too close to the error color",
       "PRIMARY_ACCENT_SIMILAR": "Accent button will not stand out against the primary button",
       "PRIMARY_USES_DARK_TEXT": "Primary button will use dark text (contrast {ratio})"
     },
@@ -82,7 +84,9 @@
   },
   "common": {
     "backHome": "Back to home",
+    "closeToast": "Close toast",
     "loading": "Loading",
+    "notificationsLabel": "Notifications",
     "retry": "Retry"
   },
   "dashboard": {

@@ -1,7 +1,7 @@
 {
   "appearance": {
     "accentHelper": "Dùng cho nút hành động nổi bật và huy hiệu.",
-    "accentInvalid": "Mã màu phải có dạng #RRGGBB, ví dụ F59223.",
+    "accentInvalid": "Mã màu phải có dạng #RRGGBB, ví dụ #F59223.",
     "accentLabel": "Màu nhấn",
     "accentPickerAria": "Chọn màu nhấn",
     "cancel": "Hủy",
@@ -59,7 +59,7 @@
     "previewSubtitle": "{palette} · chế độ {mode}",
     "previewTitle": "Xem trước",
     "primaryHelper": "Dùng cho nút chính, liên kết, mục đang chọn.",
-    "primaryInvalid": "Mã màu phải có dạng #RRGGBB, ví dụ 059669.",
+    "primaryInvalid": "Mã màu phải có dạng #RRGGBB, ví dụ #059669.",
     "primaryLabel": "Màu chính",
     "primaryPickerAria": "Chọn màu chính",
     "reloadLatest": "Tải lại cấu hình mới nhất",
@@ -73,7 +73,9 @@
     "saveSuccess": "Đã lưu và áp dụng giao diện mới cho toàn hệ thống.",
     "title": "Tùy chỉnh giao diện",
     "warnings": {
-      "NEAR_DANGER_COLOR": "Dễ nhầm với màu báo lỗi",
+      "NEAR_DANGER_COLOR_accent": "Màu nhấn dễ nhầm với màu báo lỗi",
+      "NEAR_DANGER_COLOR_both": "Màu chính và màu nhấn dễ nhầm với màu báo lỗi",
+      "NEAR_DANGER_COLOR_primary": "Màu chính dễ nhầm với màu báo lỗi",
       "PRIMARY_ACCENT_SIMILAR": "Nút nhấn sẽ không nổi bật so với nút chính",
       "PRIMARY_USES_DARK_TEXT": "Nút chính sẽ dùng chữ tối (tương phản {ratio})"
     },
@@ -82,7 +84,9 @@
   },
   "common": {
     "backHome": "Về trang chủ",
+    "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
+    "notificationsLabel": "Thông báo",
     "retry": "Thử lại"
   },
   "dashboard": {

@@ -1,10 +1,12 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PRESET_PALETTES, Toaster } from "@thi360/ui";
+import { PRESET_PALETTES, THEME_STYLE_ELEMENT_ID, Toaster } from "@thi360/ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FAKE_SESSION } from "@/features/session/fake-session";
 import { SessionProvider } from "@/features/session/session-provider";
 import { ApiStatusError } from "@/lib/api/query-client";
+import en from "@/messages/en.json";
+import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
 import {
   AppearanceApiError,
@@ -37,12 +39,15 @@ function renderAppearance({
     mode: "light",
     version: 3,
   }),
+  locale = "vi",
 }: {
   permissions?: readonly string[];
   loadAppearance?: AppearanceLoader;
   saveAppearance?: AppearanceSaver;
   resetAppearance?: AppearanceResetter;
+  locale?: "vi" | "en";
 } = {}) {
+  const activeMessages = locale === "en" ? en : viMessages;
   return renderWithProviders(
     <>
       <SessionProvider loadSession={async () => ({ ...FAKE_SESSION, permissions: [...permissions] })}>
@@ -52,14 +57,19 @@ function renderAppearance({
           resetAppearance={resetAppearance}
         />
       </SessionProvider>
-      <Toaster />
+      <Toaster
+        containerAriaLabel={activeMessages.common.notificationsLabel}
+        closeButtonAriaLabel={activeMessages.common.closeToast}
+      />
     </>,
+    { locale, messages: activeMessages },
   );
 }
 
 afterEach(() => {
   delete document.documentElement.dataset.theme;
   document.documentElement.style.cssText = "";
+  document.getElementById(THEME_STYLE_ELEMENT_ID)?.remove();
   vi.unstubAllGlobals();
   document.cookie = "thi360_xsrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
 });
@@ -96,7 +106,7 @@ describe("AppearanceView", () => {
     expect(await screen.findByText("Chưa có cấu hình giao diện")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Khôi phục mặc định" }));
 
-    await waitFor(() => expect(resetMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(resetMock).toHaveBeenCalledWith({ version: 0 }));
     expect(await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" })).toBeInTheDocument();
   });
 
@@ -159,7 +169,7 @@ describe("AppearanceView", () => {
     await userEvent.clear(primaryInput);
     await userEvent.type(primaryInput, "#12G");
     expect(screen.getByRole("button", { name: "Lưu và áp dụng" })).toBeDisabled();
-    expect(screen.getByText(/Mã màu phải có dạng #RRGGBB/)).toBeInTheDocument();
+    expect(screen.getByText(/Mã màu phải có dạng #RRGGBB, ví dụ #059669/)).toBeInTheDocument();
 
     // Đổi qua color picker -> đồng bộ sang ô hex và cảnh báo chữ tối kèm tỉ lệ tương phản
     fireEvent.change(primaryPicker, { target: { value: "#fde047" } });
@@ -202,14 +212,22 @@ describe("AppearanceView", () => {
     await userEvent.click(screen.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }));
     await userEvent.click(screen.getByRole("tab", { name: "Tối" }));
 
-    // Lần lưu 1 trả 412 -> hiện prompt tải lại
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy;
+
+    // Lần lưu 1 trả 412 -> hiện prompt tải lại và cuộn tới banner
     await userEvent.click(screen.getByRole("button", { name: "Lưu và áp dụng" }));
     expect(
       await screen.findByText(/Cấu hình giao diện đã được cập nhật từ nơi khác/),
     ).toBeInTheDocument();
+    expect(scrollSpy).toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: "Tải lại cấu hình mới nhất" }));
     await waitFor(() => expect(loadMock).toHaveBeenCalledTimes(2));
+    // VIS-10: tải lại cấu hình mới nhất cũng áp dụng ngay lên document
+    expect(
+      getComputedStyle(document.documentElement).getPropertyValue("--color-primary-600").trim(),
+    ).toBe("#00695c");
 
     // Chọn lại bộ màu & lưu thành công
     await userEvent.click(screen.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }));
@@ -223,7 +241,13 @@ describe("AppearanceView", () => {
       version: 3,
     });
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(document.documentElement.style.getPropertyValue("--color-primary-600")).toBe("#0f3c6e");
+    expect(
+      getComputedStyle(document.documentElement).getPropertyValue("--color-primary-600").trim(),
+    ).toBe("#0f3c6e");
+    expect(document.getElementById(THEME_STYLE_ELEMENT_ID)?.textContent).toContain(
+      ':root[data-theme="dark"]',
+    );
+    expect(screen.getByRole("region", { name: /Thông báo/ })).toBeInTheDocument();
 
     // Khôi phục mặc định qua ConfirmDialog
     await userEvent.click(screen.getByRole("button", { name: "Khôi phục mặc định" }));
@@ -232,7 +256,9 @@ describe("AppearanceView", () => {
 
     await waitFor(() => expect(resetMock).toHaveBeenCalledWith({ version: 4 }));
     expect(document.documentElement.dataset.theme).toBe("light");
-    expect(document.documentElement.style.getPropertyValue("--color-primary-600")).toBe("#059669");
+    expect(
+      getComputedStyle(document.documentElement).getPropertyValue("--color-primary-600").trim(),
+    ).toBe("#059669");
   });
 
   it("hiển thị thông báo lỗi theo mã lỗi next-intl, không dùng message thô từ backend", async () => {
@@ -253,6 +279,35 @@ describe("AppearanceView", () => {
       ),
     ).toBe(true);
     expect(screen.queryByText("Raw backend error text")).not.toBeInTheDocument();
+  });
+
+  it("định dạng tỉ lệ tương phản qua next-intl theo locale (vi dấu phẩy, en dấu chấm) và nêu rõ màu trong cảnh báo NEAR_DANGER_COLOR", async () => {
+    const { unmount } = renderAppearance({ locale: "vi" });
+    await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
+    expect(screen.getByText(/tương phản 5,5:1/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Tự tùy chỉnh/ }));
+    const primaryInput = screen.getByLabelText("Màu chính") as HTMLInputElement;
+    const accentInput = screen.getByLabelText("Màu nhấn") as HTMLInputElement;
+
+    await userEvent.clear(primaryInput);
+    await userEvent.type(primaryInput, "#E02424");
+    expect(screen.getByText("Màu chính dễ nhầm với màu báo lỗi")).toBeInTheDocument();
+
+    await userEvent.clear(primaryInput);
+    await userEvent.type(primaryInput, "#059669");
+    await userEvent.clear(accentInput);
+    await userEvent.type(accentInput, "#D32F2F");
+    expect(screen.getByText("Màu nhấn dễ nhầm với màu báo lỗi")).toBeInTheDocument();
+
+    await userEvent.clear(primaryInput);
+    await userEvent.type(primaryInput, "#E02424");
+    expect(screen.getByText("Màu chính và màu nhấn dễ nhầm với màu báo lỗi")).toBeInTheDocument();
+    unmount();
+
+    renderAppearance({ locale: "en" });
+    await screen.findByRole("heading", { name: "Appearance settings" });
+    expect(screen.getByText(/contrast 5\.5:1/)).toBeInTheDocument();
   });
 });
 
