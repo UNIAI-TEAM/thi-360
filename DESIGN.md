@@ -209,6 +209,8 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 Trái 360px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm và tổng số; dòng đang chọn nền `primary-50` kèm thanh dọc 3px `primary-600`. Phải: thẻ giá trị của nhóm đang chọn. Khi chưa chọn nhóm, khu vực phải hiện hướng dẫn và ẩn nút Thêm giá trị.
 
+**Bảng dạng cây** (nhóm danh mục kiểu cây, spec mục 9.10): hàng cao 48px; cột Tên thụt 24px mỗi cấp, đầu hàng là nút mở/đóng 32px (mũi tên xoay 90° khi mở), mã đậm 600 đứng trước tên; nhãn cấp dùng chip trung tính; hàng cấp gốc nền `#FAFAFB`. Nút con của nút đã ngừng hiện chip "Ngừng theo cấp trên" và chữ `text-muted`.
+
 ### 5.12 Trang đăng nhập
 
 Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-light` có logo, khẩu hiệu, ba ý chính; phải là biểu mẫu với tab phân đoạn, ô nhập cao 48px có icon, nút chính `xl`. Nút "Đăng nhập với Google" (kiểu Phụ, cao 48px) chỉ hiện khi tính năng được bật.
