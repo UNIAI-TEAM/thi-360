@@ -192,7 +192,9 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 - Nằm trong thẻ trắng bo góc 12px. Hàng tiêu đề nền `#FAFAFB`, chữ 13px đậm 600 màu `text-muted`.
 - Dòng cao 48px, viền dưới `border`, hover nền `bg-subtle`. Dòng đang chọn nền `primary-50`.
-- Cột thao tác căn phải, dùng nút icon 32px có tooltip; thao tác nguy hiểm nằm trong menu "⋯".
+- **Cột Thao tác ưu tiên nút icon, không dùng nút chữ** (chốt 2026-11-13). Mỗi nút là một icon lucide 18px trong vùng bấm 40–44px, căn phải, có **tooltip** hiện tên thao tác khi rê chuột hoặc focus bàn phím, và có `aria-label` nêu rõ thao tác kèm đối tượng ("Sửa vai trò Vận hành").
+- Icon dùng thống nhất: bút chì = Sửa, thùng rác = Xóa, mắt = Xem/Chi tiết, hai mũi tên ngược chiều = Chuyển, người có dấu trừ = Loại khỏi lớp, vòng tròn có dấu trừ = Gỡ quyền. Thao tác nguy hiểm dùng màu `#DC2626`; thao tác bị khóa hiện mờ và tooltip nêu lý do.
+- Tối đa ba icon trên một dòng; nhiều hơn thì gom phần còn lại vào menu "⋯".
 - Phía trên bảng: tổng số bản ghi theo bộ lọc. Phía dưới: phân trang và chọn số dòng mỗi trang.
 - Trạng thái rỗng: icon, một câu giải thích, nút hành động (nếu có quyền).
 
