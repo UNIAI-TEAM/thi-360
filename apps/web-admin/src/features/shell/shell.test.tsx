@@ -94,6 +94,19 @@ describe("AppShell", () => {
     await waitFor(() => screen.getByRole("link", { name: "Bảng điều khiển" }));
   });
 
+  it("sidebar dính đầu trang, cao hết viewport và tự cuộn khi menu dài hơn", async () => {
+    renderWithProviders(
+      <SessionProvider loadSession={async () => FAKE_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <p>Nội dung trang dài</p>
+        </AppShell>
+      </SessionProvider>,
+    );
+
+    const nav = await waitFor(() => screen.getByRole("navigation", { name: "Menu chính" }));
+    expect(nav).toHaveClass("sticky", "top-0", "h-dvh", "overflow-y-auto", "w-62");
+  });
+
   it("trang ngoài menu không có breadcrumb: menu avatar vẫn nằm bên phải thanh trên", async () => {
     mocks.pathname.current = "/trang-khong-co-trong-menu";
     renderWithProviders(

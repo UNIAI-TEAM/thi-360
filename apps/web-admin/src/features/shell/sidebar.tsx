@@ -17,7 +17,7 @@ export function Sidebar() {
   return (
     <nav
       aria-label={t("shell.menuLabel")}
-      className="flex w-62 shrink-0 flex-col gap-0.5 border-r border-border bg-surface px-3 py-4"
+      className="sticky top-0 flex h-dvh w-62 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface px-3 py-4"
     >
       <div className="flex items-center gap-2.5 px-2 pb-4">
         <div
