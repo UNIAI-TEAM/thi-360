@@ -11,8 +11,8 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 |---|---|---|---|---|
 | T01 | UNI-2538 | Nền · Khởi tạo monorepo, CI, môi trường dev (Docker Compose) | — | in_review (đã merge vào `develop` ngày 2026-11-13; người chuyển `done`) |
 | T02 | UNI-2539 | Nền · Khung backend modular monolith (Spring Boot, Flyway, OpenAPI, lỗi chuẩn) | T01 | in_review (đã merge vào `integration/dot-1` qua PR #4 ngày 2026-11-13) |
-| T03 | UNI-2540 | Nền · Xác thực: Keycloak, đăng nhập/refresh/đăng xuất, phiên, chặn đăng nhập sai | T02 | in_progress |
-| T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user, người dùng theo quyền, gán hàng loạt (API + engine) | T03 | todo |
+| T03 | UNI-2540 | Nền · Xác thực: Keycloak, đăng nhập/refresh/đăng xuất, phiên, chặn đăng nhập sai | T02 | in_review (đã merge vào `integration/dot-1` qua PR #6 ngày 2026-11-13) |
+| T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user, người dùng theo quyền, gán hàng loạt (API + engine) | T03 | in_progress |
 | T05 | UNI-2542 | Nền · Nhật ký thao tác: bảng chỉ ghi thêm, outbox, worker, API tra cứu | T02 | in_progress |
 | T06 | UNI-2543 | Nền · Design system (`packages/ui`) và khung web admin | T01 | in_review (đã merge vào `integration/dot-1` qua PR #5 ngày 2026-11-13) |
 | T07 | UNI-2544 | PBI-01 · API quản lý tài khoản | T03, T04, T05 | todo |

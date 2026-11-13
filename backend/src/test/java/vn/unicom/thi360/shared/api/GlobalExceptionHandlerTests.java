@@ -99,6 +99,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns400ValidationFailed_withFieldErrors_andTraceId() throws Exception {
         mockMvc.perform(post("/api/v1/test-errors/400-bean")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-a")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"\"}"))
@@ -112,6 +113,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.traceId").value("req-400-a"));
 
         mockMvc.perform(get("/api/v1/test-errors/400-custom")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-b"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
@@ -124,6 +126,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns401Unauthenticated() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/401")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-401"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
@@ -135,6 +138,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns403Forbidden() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/403")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-403"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"))
@@ -146,6 +150,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns404NotFound() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/404")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-404"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"))
@@ -157,6 +162,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns409ConflictWithBusinessCode() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/409")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-409"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("USER_HAS_TRANSACTIONS"))
@@ -168,6 +174,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns412VersionConflict() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/412")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-412"))
                 .andExpect(status().isPreconditionFailed())
                 .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"))
@@ -179,6 +186,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns429RateLimited() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/429")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-429"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
@@ -190,6 +198,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns500InternalError_withoutLeakingDetails() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/500")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-500"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
@@ -201,6 +210,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns400ValidationFailed_forMalformedBody_typeMismatch_andMissingParameter() throws Exception {
         mockMvc.perform(post("/api/v1/test-errors/400-bean")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-json")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{malformed-json"))
@@ -212,6 +222,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.traceId").value("req-400-json"));
 
         mockMvc.perform(get("/api/v1/test-errors/400-param?count=not-a-number")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-mismatch"))
                 .andExpect(status().isBadRequest())
                 .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-400-mismatch"))
@@ -221,6 +232,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.traceId").value("req-400-mismatch"));
 
         mockMvc.perform(get("/api/v1/test-errors/400-param")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-missing"))
                 .andExpect(status().isBadRequest())
                 .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-400-missing"))
@@ -233,6 +245,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns500InternalError_whenApplicationThrowsIllegalArgumentException() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/500-illegal-arg")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-500-ia"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-500-ia"))
@@ -245,6 +258,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void returns404NotFound_forUnmappedApiRoute() throws Exception {
         mockMvc.perform(get("/api/v1/unmapped-route-does-not-exist")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-404-unmapped"))
                 .andExpect(status().isNotFound())
                 .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-404-unmapped"))
@@ -257,6 +271,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
     @Test
     void usesLocalizedVietnameseFallbackMessage_whenDomainExceptionCodeIsUnregistered() throws Exception {
         mockMvc.perform(get("/api/v1/test-errors/409-unknown-code")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-409-unknown"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("USER_LOCKED"))
@@ -265,6 +280,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.traceId").value("req-409-unknown"));
 
         mockMvc.perform(get("/api/v1/test-errors/403-unknown-code")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-403-unknown"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("PRIVILEGE_ESCALATION"))

@@ -42,7 +42,7 @@ services:
       KC_DB_USERNAME: ${THI360_DB_USER:-thi360}
       KC_DB_PASSWORD: ${THI360_DB_PASSWORD:-thi360-dev-only}
       KC_HEALTH_ENABLED: "true"
-      # Được thay vào infra/keycloak/thi360-realm.json khi import.
+      # Được thay vào infra/keycloak/thi-360-realm.json khi import.
       THI360_KC_CLIENT_SECRET: ${THI360_KC_CLIENT_SECRET:-thi360-api-dev-only}
     ports:
       - "${THI360_KC_PORT:-8360}:8080"
@@ -58,6 +58,25 @@ services:
       retries: 30
       start_period: 30s
 
+
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.4
+    entrypoint: ["/bin/bash", "/opt/keycloak/init-master.sh"]
+    environment:
+      KC_URL: http://keycloak:8080
+      THI360_KC_ADMIN_USER: ${THI360_KC_ADMIN_USER:-admin}
+      THI360_KC_ADMIN_PASSWORD: ${THI360_KC_ADMIN_PASSWORD:-admin-dev-only}
+      THI360_KC_PLATFORM_REALM: ${THI360_KC_PLATFORM_REALM:-master}
+      THI360_KC_PLATFORM_ROLE: ${THI360_KC_PLATFORM_ROLE:-PLATFORM_ADMIN}
+      THI360_KC_PLATFORM_CLIENT_ID: ${THI360_KC_PLATFORM_CLIENT_ID:-thi360-platform}
+      THI360_KC_PLATFORM_CLIENT_SECRET: ${THI360_KC_PLATFORM_CLIENT_SECRET:-thi360-platform-dev-only}
+      THI360_DEV_PLATFORM_PASSWORD: ${THI360_DEV_PLATFORM_PASSWORD:-platform-dev-only}
+    volumes:
+      - ./keycloak/init-master.sh:/opt/keycloak/init-master.sh:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
   minio:
     # MinIO không còn phát hành image công khai trên Docker Hub/Quay; dùng bản dựng của Chainguard.
     image: cgr.dev/chainguard/minio:latest
