@@ -103,6 +103,15 @@ class AuditSharedRoleIntegrationTests {
 
             assertThat(ownerOf(sharedJdbc, "audit_event")).isEqualTo("thi360_audit_maint");
             assertThat(ownerOf(sharedJdbc, "audit_event_archive")).isEqualTo("thi360_audit_maint");
+            assertThat(sharedJdbc.queryForObject(
+                    "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'audit'",
+                    String.class)).isEqualTo("thi360_audit_maint");
+            assertThat(sharedJdbc.queryForObject(
+                    "SELECT has_schema_privilege(current_user, 'audit', 'USAGE')",
+                    Boolean.class)).isTrue();
+            assertThat(sharedJdbc.queryForObject(
+                    "SELECT has_schema_privilege(current_user, 'audit', 'CREATE')",
+                    Boolean.class)).isFalse();
 
             // Actual INSERT + SELECT on audit.audit_event (initial current-quarter partition)
             Instant now = Instant.now();
@@ -163,6 +172,12 @@ class AuditSharedRoleIntegrationTests {
             String curPartition = "audit_event_" + curYear + "q" + curQuarter;
             assertThatThrownBy(() -> sharedJdbc.execute(
                     "ALTER TABLE audit.audit_event DETACH PARTITION audit." + curPartition))
+                    .isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> sharedJdbc.execute("CREATE TABLE audit.x (id int)"))
+                    .isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> sharedJdbc.execute("DROP TABLE audit." + curPartition))
+                    .isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> sharedJdbc.execute("DROP TABLE audit.audit_event"))
                     .isInstanceOf(DataAccessException.class);
 
             // AuditPartitionJob creates next quarter (and future year) partitions with working default ACLs

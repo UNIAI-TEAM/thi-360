@@ -185,9 +185,6 @@ BEGIN
     END IF;
 
     GRANT USAGE, CREATE ON SCHEMA audit TO thi360_audit_maint;
-    EXECUTE format('REVOKE ALL ON SCHEMA audit FROM %I', app_role);
-    EXECUTE format('GRANT USAGE ON SCHEMA audit TO %I', app_role);
-
     FOR child_name IN
         SELECT child.relname
         FROM pg_inherits inh
@@ -203,7 +200,13 @@ BEGIN
     ALTER TABLE audit.audit_event OWNER TO thi360_audit_maint;
     ALTER TABLE audit.audit_event_archive OWNER TO thi360_audit_maint;
 
+    ALTER SCHEMA audit OWNER TO thi360_audit_maint;
+
     SET LOCAL ROLE thi360_audit_maint;
+
+    REVOKE ALL ON SCHEMA audit FROM PUBLIC;
+    EXECUTE format('REVOKE ALL ON SCHEMA audit FROM %I', app_role);
+    EXECUTE format('GRANT USAGE ON SCHEMA audit TO %I', app_role);
 
     REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM PUBLIC;
     EXECUTE format('REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM %I', app_role);
