@@ -9,7 +9,7 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 
 | Task | Issue | Việc | Phụ thuộc | Trạng thái |
 |---|---|---|---|---|
-| T01 | UNI-2538 | Nền · Khởi tạo monorepo, CI, môi trường dev (Docker Compose) | — | todo |
+| T01 | UNI-2538 | Nền · Khởi tạo monorepo, CI, môi trường dev (Docker Compose) | — | in_progress (đã push, chờ duyệt) |
 | T02 | UNI-2539 | Nền · Khung backend modular monolith (Spring Boot, Flyway, OpenAPI, lỗi chuẩn) | T01 | todo |
 | T03 | UNI-2540 | Nền · Xác thực: Keycloak, đăng nhập/refresh/đăng xuất, phiên, chặn đăng nhập sai | T02 | todo |
 | T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user (API + engine) | T03 | todo |

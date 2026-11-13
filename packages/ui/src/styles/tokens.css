@@ -1,0 +1,52 @@
+/*
+ * Token giao diện Thi 360 — bảng màu mặc định "Thi 360 Xanh lá" (DESIGN.md mục 2–4, 10).
+ * Thành phần chỉ dùng token, không viết mã màu trực tiếp.
+ * Cấu hình giao diện toàn hệ thống (T17) sẽ ghi đè các biến này trên thẻ <html>.
+ */
+@theme {
+  --font-sans: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, sans-serif;
+
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #a7e3c2;
+  --color-primary-500: #10b981;
+  --color-primary-600: #059669;
+  --color-primary-700: #047857;
+  --color-primary-800: #065f46;
+  --color-primary-900: #064e3b;
+
+  --color-accent-500: #f59223;
+  --color-accent-700: #b45309;
+
+  --color-text: #11181c;
+  --color-text-secondary: #3a3a42;
+  --color-text-muted: #6b6b72;
+  --color-text-placeholder: #a6a6ae;
+
+  --color-page: #f7f8f9;
+  --color-surface: #ffffff;
+  --color-subtle: #f1f2f4;
+  --color-border: #e8e8ec;
+  --color-border-strong: #d4d4d8;
+  --color-border-primary: #d4eee0;
+
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-warning: #b45309;
+  --color-warning-bg: #fffbeb;
+  --color-info: #0e7490;
+  --color-info-bg: #ecfeff;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 4px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 6px 18px rgb(20 20 30 / 0.12);
+  --shadow-lg: 0 14px 34px rgb(20 20 30 / 0.14);
+  --shadow-xl: 0 24px 60px rgb(20 20 30 / 0.08);
+  --shadow-primary: 0 8px 20px rgb(5 150 105 / 0.25);
+}

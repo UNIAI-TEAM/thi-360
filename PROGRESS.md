@@ -4,15 +4,28 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1, tài liệu và kế hoạch đã chốt. **Chưa bắt đầu triển khai** (M.Trường yêu cầu tạm chưa làm, 2026-11-13).
+**Giai đoạn:** đợt 1. **T01 (UNI-2538) đã dựng xong và push** lên nhánh `feature/UNI-2538-khoi-tao-monorepo-ci-moi-truong-dev`; chưa mở PR. Đang dừng chờ M.Trường.
 
-**Bước tiếp theo**
+**Bước tiếp theo** (chờ M.Trường cho làm tiếp)
 
-1. Merge PR #1 (tài liệu đã chốt câu hỏi mở).
-2. Khi M.Trường cho bắt đầu: T01 (UNI-2538) khởi tạo monorepo, CI, môi trường dev.
-3. Sau T01: T02 (UNI-2539) khung backend và T06 (UNI-2543) design system chạy song song được.
+1. Merge PR #1 (tài liệu), rồi mở PR cho T01 vào `develop`.
+2. T02 (UNI-2539) khung backend và T06 (UNI-2543) design system chạy song song được.
 
 ## Đã làm
+
+### 2026-11-13 — T01 khởi tạo monorepo, CI, môi trường dev (UNI-2538)
+
+- Monorepo pnpm + Turborepo: `backend/`, `apps/web-admin`, `apps/web-student`, `packages/{ui,api-client,config}`, `infra/`.
+- Backend Spring Boot 3.5.16, Java 21, Maven wrapper, chỉ có health check (module và cơ sở dữ liệu thuộc T02).
+- Hai web Next.js 16.2.6 + Tailwind 4, dùng token trong `packages/ui/src/styles/tokens.css`, font Be Vietnam Pro.
+- `infra/docker-compose.yml`: PostgreSQL 16, Redis 7, Keycloak 26.4 (tự nạp realm `thi360`), MinIO, Mailpit. Cổng lệch khỏi cổng chuẩn (54360, 63790, 8360, 9360/9361, 1360/8361).
+- CI: `backend.yml`, `web.yml`, `uniai-link.yml`; mẫu PR.
+- `scripts/uniai.sh` và hook `prepare-commit-msg` chỉnh từ UniWork (chạy được cả khi máy chỉ có `python`).
+- **Đã chạy thật trên máy dev (Windows):**
+  - `cd backend && ./mvnw -B -ntp verify` → 1 test xanh, BUILD SUCCESS.
+  - `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm build` → xanh; CSS build ra có `--color-primary-600:#059669`.
+  - `docker compose -f infra/docker-compose.yml up -d` → postgres, redis, keycloak, mailpit `healthy`; minio trả 200 ở `/minio/health/live`; realm `thi360` trả 200; lấy được token `client_credentials` cho client `thi360-api`; PostgreSQL có hai cơ sở dữ liệu `thi360` và `keycloak`.
+- **Chưa kiểm tra:** chạy trên "máy sạch" khác; kết quả CI xem ở mục dưới.
 
 ### 2026-11-13 — Chốt câu hỏi mở, cập nhật tài liệu
 
@@ -56,7 +69,10 @@ Danh sách đầy đủ ở `PRD.md` mục 6 (P1–P12) và spec mục 14. Tóm 
 
 ## Lỗi đã gặp
 
-Chưa có.
+| Ngày | Lỗi | Xử lý |
+|---|---|---|
+| 2026-11-13 | Image `minio/minio` và `quay.io/minio/minio` trả `unauthorized` (MinIO ngừng phát hành image công khai) | Dùng `cgr.dev/chainguard/minio:latest`. Chưa ghim được phiên bản vì bản miễn phí chỉ có tag `latest`; cần xem lại trước khi lên môi trường thật |
+| 2026-11-13 | `pnpm install` bỏ qua script build của `sharp` | Thêm `onlyBuiltDependencies: [sharp]` vào `pnpm-workspace.yaml` |
 
 ## Ghi chú cho phiên sau
 
