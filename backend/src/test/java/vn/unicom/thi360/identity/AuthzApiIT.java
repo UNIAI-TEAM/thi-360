@@ -472,6 +472,75 @@ class AuthzApiIT extends AbstractIntegrationTest {
         verify(auditRecorder, atLeastOnce()).record(argThat(e -> "USER_PERMISSIONS_CHANGED".equals(e.action())));
     }
 
+    @Test
+    void roleEdit_selfLockoutOnDeactivateAndPermissionReplace() throws Exception {
+        UserAccount actor = createUser("role.selflock." + suffix(), UserStatus.ACTIVE, null);
+        Role adminRole = createCustomRole("SELF_ADMIN_" + suffix(), "Self Admin", Access.MANAGE, RoleStatus.ACTIVE);
+        PermissionEntity roleView = permissionRepository.findByCode(Permissions.ROLE_VIEW).orElseThrow();
+        PermissionEntity roleModify = permissionRepository.findByCode(Permissions.ROLE_MODIFY).orElseThrow();
+        PermissionEntity userView = permissionRepository.findByCode(Permissions.USER_VIEW).orElseThrow();
+        PermissionEntity userAssign = permissionRepository.findByCode(Permissions.USER_ASSIGN).orElseThrow();
+
+        rolePermissionRepository.saveAll(List.of(
+                new RolePermission(adminRole.getId(), roleView.getId(), null, Instant.now()),
+                new RolePermission(adminRole.getId(), roleModify.getId(), null, Instant.now()),
+                new RolePermission(adminRole.getId(), userView.getId(), null, Instant.now()),
+                new RolePermission(adminRole.getId(), userAssign.getId(), null, Instant.now())));
+        userRoleRepository.save(new UserRole(actor.getId(), adminRole.getId(), null, Instant.now()));
+
+        var initialSnap = authzSnapshotService.load(actor.getId());
+        assertThat(initialSnap.permissions().hasCode(Permissions.USER_ASSIGN)).isTrue();
+
+        var asSelfActor = asUser(
+                actor.getId(),
+                actor.getUsername(),
+                Permissions.ROLE_VIEW,
+                Permissions.ROLE_MODIFY,
+                Permissions.USER_VIEW,
+                Permissions.USER_ASSIGN);
+
+        // 1. Deactivating the actor's own role providing USER.ASSIGN -> 409 SELF_LOCKOUT
+        mockMvc.perform(patch("/api/v1/admin/roles/{id}", adminRole.getId())
+                        .with(asSelfActor)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"INACTIVE\", \"version\": %d}".formatted(adminRole.getVersion())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("SELF_LOCKOUT"));
+
+        Role afterDeactivateAttempt = roleRepository.findById(adminRole.getId()).orElseThrow();
+        assertThat(afterDeactivateAttempt.getStatus()).isEqualTo(RoleStatus.ACTIVE);
+        assertThat(redisTemplate.hasKey(authzSnapshotService.cacheKey(actor.getId()))).isTrue();
+
+        // 2. Replacing permissions without USER.ASSIGN -> 409 SELF_LOCKOUT
+        mockMvc.perform(put("/api/v1/admin/roles/{id}/permissions", adminRole.getId())
+                        .with(asSelfActor)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"permissionCodes\": [\"ROLE.VIEW\", \"ROLE.MODIFY\"]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("SELF_LOCKOUT"));
+
+        mockMvc.perform(get("/api/v1/admin/roles/{id}", adminRole.getId())
+                        .with(asPlatformAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissionCodes", containsInAnyOrder(
+                        "ROLE.VIEW", "ROLE.MODIFY", "USER.VIEW", "USER.ASSIGN")));
+        assertThat(redisTemplate.hasKey(authzSnapshotService.cacheKey(actor.getId()))).isTrue();
+
+        // 3. When actor holds USER.ASSIGN via another active role, removing USER.ASSIGN from adminRole succeeds
+        Role backupRole = createCustomRole("SELF_BACKUP_" + suffix(), "Self Backup", Access.MANAGE, RoleStatus.ACTIVE);
+        rolePermissionRepository.saveAll(List.of(
+                new RolePermission(backupRole.getId(), userView.getId(), null, Instant.now()),
+                new RolePermission(backupRole.getId(), userAssign.getId(), null, Instant.now())));
+        userRoleRepository.save(new UserRole(actor.getId(), backupRole.getId(), null, Instant.now()));
+
+        mockMvc.perform(put("/api/v1/admin/roles/{id}/permissions", adminRole.getId())
+                        .with(asSelfActor)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"permissionCodes\": [\"ROLE.VIEW\", \"ROLE.MODIFY\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissionCodes", containsInAnyOrder("ROLE.VIEW", "ROLE.MODIFY")));
+    }
+
     private UserAccount createUser(String username, UserStatus status, Instant deletedAt) {
         UUID id = Ids.newId();
         long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);

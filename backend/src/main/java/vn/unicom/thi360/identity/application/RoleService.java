@@ -288,6 +288,17 @@ public class RoleService {
         boolean statusChanged = newStatus != null && newStatus != role.getStatus();
 
         String newDescription = request.description() != null ? request.description() : role.getDescription();
+        if ((statusChanged || accessChanged)
+                && actor.realm() != Realm.MASTER
+                && actorHoldsRole(actor.id(), roleId)) {
+            RoleStatus effectiveStatus = newStatus != null ? newStatus : role.getStatus();
+            Access effectiveAccess = newAccess != null ? newAccess : role.getAccess();
+            Set<Permission> rolePermsOverride = effectiveAccess == Access.EXAM ? Set.of() : null;
+            Set<Permission> resultingEffective = computeActorEffectivePermissionsWithRoleOverride(
+                    actor.id(), roleId, effectiveStatus, effectiveAccess, rolePermsOverride);
+            privilegeGuard.assertNoSelfLockout(actor, actor.id(), resultingEffective);
+        }
+
         Instant now = Instant.now(clock);
         role.updateDetails(newCode, newName, newDescription, newAccess, newStatus, now, actor.id());
         role = roleRepository.saveAndFlush(role);
@@ -364,6 +375,12 @@ public class RoleService {
 
         Set<Permission> normalized = permissionSetNormalizer.normalize(requested);
         privilegeGuard.assertCanGrant(actor, normalized);
+
+        if (actor.realm() != Realm.MASTER && actorHoldsRole(actor.id(), roleId)) {
+            Set<Permission> resultingEffective = computeActorEffectivePermissionsWithRoleOverride(
+                    actor.id(), roleId, role.getStatus(), role.getAccess(), normalized);
+            privilegeGuard.assertNoSelfLockout(actor, actor.id(), resultingEffective);
+        }
 
         Instant now = Instant.now(clock);
         List<String> afterCodes = replaceRolePermissions(roleId, normalized, actor.id(), now);
@@ -503,6 +520,85 @@ public class RoleService {
     private long countRoleUsers(UUID roleId) {
         Long count = jdbcTemplate.queryForObject(COUNT_ROLE_USERS_SQL, Long.class, roleId);
         return count == null ? 0L : count;
+    }
+
+    private boolean actorHoldsRole(UUID actorId, UUID roleId) {
+        Boolean exists = jdbcTemplate.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM identity.user_role WHERE user_id = ? AND role_id = ?)",
+                Boolean.class,
+                actorId,
+                roleId);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    private Set<Permission> computeActorEffectivePermissionsWithRoleOverride(
+            UUID actorId,
+            UUID targetRoleId,
+            RoleStatus targetStatus,
+            Access targetAccess,
+            Set<Permission> targetPermissionsOverride) {
+        boolean[] resultingHasManage = {false};
+        EnumSet<Permission> resultingEffective = EnumSet.noneOf(Permission.class);
+        boolean[] targetOverrideApplied = {false};
+
+        jdbcTemplate.query(
+                """
+                SELECT r.id AS role_id,
+                       r.access AS role_access,
+                       r.status AS role_status,
+                       p.code AS perm_code
+                FROM identity.user_role ur
+                JOIN identity.role r ON r.id = ur.role_id
+                LEFT JOIN identity.role_permission rp ON rp.role_id = r.id
+                LEFT JOIN identity.permission p ON p.id = rp.permission_id
+                WHERE ur.user_id = ?
+                """,
+                rs -> {
+                    UUID rowRoleId = rs.getObject("role_id", UUID.class);
+                    boolean isTarget = targetRoleId.equals(rowRoleId);
+                    RoleStatus effectiveStatus = isTarget
+                            ? targetStatus
+                            : RoleStatus.fromCode(rs.getShort("role_status"));
+                    Access effectiveAccess = isTarget
+                            ? targetAccess
+                            : Access.fromCode(rs.getShort("role_access"));
+                    if (effectiveStatus != RoleStatus.ACTIVE) {
+                        return;
+                    }
+                    if (effectiveAccess == Access.MANAGE) {
+                        resultingHasManage[0] = true;
+                    }
+                    if (isTarget && targetPermissionsOverride != null) {
+                        if (!targetOverrideApplied[0]) {
+                            resultingEffective.addAll(targetPermissionsOverride);
+                            targetOverrideApplied[0] = true;
+                        }
+                    } else {
+                        String permCode = rs.getString("perm_code");
+                        if (permCode != null) {
+                            Permission.findByCode(permCode).ifPresent(resultingEffective::add);
+                        }
+                    }
+                },
+                actorId);
+
+        if (resultingHasManage[0]) {
+            jdbcTemplate.query(
+                    """
+                    SELECT p.code
+                    FROM identity.user_permission up
+                    JOIN identity.permission p ON p.id = up.permission_id
+                    WHERE up.user_id = ?
+                    """,
+                    rs -> {
+                        String permCode = rs.getString("code");
+                        if (permCode != null) {
+                            Permission.findByCode(permCode).ifPresent(resultingEffective::add);
+                        }
+                    },
+                    actorId);
+        }
+        return resultingEffective;
     }
 
     private List<String> findRolePermissionCodes(UUID roleId) {
