@@ -115,7 +115,9 @@ class MessageBundlesTest {
                         "ops@thi360.vn",
                         UserStatus.ACTIVE,
                         List.of(
-                                PermissionSourceResponse.role(UUID.randomUUID(), "OPERATIONS", "Operations"),
+                                PermissionSourceResponse.role(UUID.randomUUID(), "SYSTEM_ADMIN", "Quản trị hệ thống"),
+                                PermissionSourceResponse.role(UUID.randomUUID(), "OPERATIONS", "Vận hành / CSKH"),
+                                PermissionSourceResponse.role(UUID.randomUUID(), "CUSTOM_REVIEWER", "Giáo viên chấm thi"),
                                 PermissionSourceResponse.direct(UUID.randomUUID(), "sys.admin", Instant.now(), "Test"))),
                 new PermissionUserResponse(
                         UUID.randomUUID(),
@@ -136,7 +138,7 @@ class MessageBundlesTest {
             assertThat(sheet.getRow(0).getCell(4).getStringCellValue()).isEqualTo("Permission sources");
             assertThat(sheet.getRow(1).getCell(3).getStringCellValue()).isEqualTo("Active");
             assertThat(sheet.getRow(1).getCell(4).getStringCellValue())
-                    .isEqualTo("Role: Operations; Direct grant (sys.admin)");
+                    .isEqualTo("Role: System Admin; Role: Operations / Support; Role: Giáo viên chấm thi; Direct grant (sys.admin)");
             assertThat(sheet.getRow(2).getCell(3).getStringCellValue()).isEqualTo("Provisioning");
             assertThat(sheet.getRow(2).getCell(4).getStringCellValue()).isEqualTo("Direct grant");
         }
@@ -148,7 +150,7 @@ class MessageBundlesTest {
             assertThat(sheet.getRow(0).getCell(3).getStringCellValue()).isEqualTo("Trạng thái");
             assertThat(sheet.getRow(1).getCell(3).getStringCellValue()).isEqualTo("Hoạt động");
             assertThat(sheet.getRow(1).getCell(4).getStringCellValue())
-                    .isEqualTo("Vai trò: Operations; Gán trực tiếp (sys.admin)");
+                    .isEqualTo("Vai trò: Quản trị hệ thống; Vai trò: Vận hành / CSKH; Vai trò: Giáo viên chấm thi; Gán trực tiếp (sys.admin)");
             assertThat(sheet.getRow(2).getCell(3).getStringCellValue()).isEqualTo("Chờ kích hoạt");
             assertThat(sheet.getRow(2).getCell(4).getStringCellValue()).isEqualTo("Gán trực tiếp");
         }

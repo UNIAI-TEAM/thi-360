@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -29,6 +30,11 @@ public class PermissionUsersExportWriter {
         "export.permissionUsers.header.status",
         "export.permissionUsers.header.sources"
     };
+    private static final Set<String> SYSTEM_ROLE_CODES = Set.of(
+            "SYSTEM_ADMIN",
+            "CONTENT_ADMIN",
+            "OPERATIONS",
+            "STUDENT");
 
     private final AppMessages messages;
 
@@ -94,7 +100,8 @@ public class PermissionUsersExportWriter {
         return sources.stream()
                 .map(src -> {
                     if (src.type() == PermissionSourceType.ROLE) {
-                        return messages.get(locale, "export.permissionUsers.source.role", safe(src.roleName()));
+                        return messages.get(
+                                locale, "export.permissionUsers.source.role", resolveRoleLabel(src, locale));
                     }
                     String by = safe(src.grantedByUsername());
                     return by.isEmpty()
@@ -102,6 +109,17 @@ public class PermissionUsersExportWriter {
                             : messages.get(locale, "export.permissionUsers.source.directBy", by);
                 })
                 .collect(Collectors.joining("; "));
+    }
+
+    private String resolveRoleLabel(PermissionSourceResponse src, Locale locale) {
+        String roleCode = safe(src.roleCode()).trim();
+        if (!roleCode.isEmpty()) {
+            String normalizedCode = roleCode.toUpperCase(Locale.ROOT);
+            if (SYSTEM_ROLE_CODES.contains(normalizedCode)) {
+                return messages.get(locale, "export.permissionUsers.systemRole." + normalizedCode);
+            }
+        }
+        return safe(src.roleName());
     }
     private static String safe(String value) {
         return value == null ? "" : value;

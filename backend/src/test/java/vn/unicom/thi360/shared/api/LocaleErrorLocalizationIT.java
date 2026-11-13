@@ -10,6 +10,8 @@ import static vn.unicom.thi360.shared.security.TestSecurity.asStudent;
 import static vn.unicom.thi360.shared.security.TestSecurity.asUser;
 
 import java.io.ByteArrayInputStream;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
@@ -20,11 +22,37 @@ import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.infrastructure.PermissionRepository;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.identity.domain.Role;
+import vn.unicom.thi360.identity.domain.RolePermission;
+import vn.unicom.thi360.identity.domain.RoleStatus;
+import vn.unicom.thi360.identity.domain.UserAccount;
+import vn.unicom.thi360.identity.domain.UserRole;
+import vn.unicom.thi360.identity.domain.UserSource;
+import vn.unicom.thi360.identity.domain.UserStatus;
+import vn.unicom.thi360.identity.infrastructure.RolePermissionRepository;
+import vn.unicom.thi360.identity.infrastructure.RoleRepository;
+import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
+import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
+ import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.security.Access;
 
 class LocaleErrorLocalizationIT extends AbstractIntegrationTest {
 
     @Autowired
     private PermissionRepository permissionRepository;
+
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
 
     @Test
     void notFoundError_resolvesLocaleFromAcceptLanguage_withStableCode() throws Exception {
@@ -180,25 +208,79 @@ class LocaleErrorLocalizationIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[0].groupName").value("Tài khoản"))
                 .andExpect(jsonPath("$[0].name").value("Xem tài khoản"));
 
-        MvcResult enExport = mockMvc.perform(get("/api/v1/admin/permissions/{id}/users/export", userViewId)
-                        .with(asUser(Permissions.PERMISSION_VIEW, Permissions.USER_VIEW))
-                        .header(HttpHeaders.ACCEPT_LANGUAGE, "en"))
-                .andExpect(status().isOk())
-                .andReturn();
-        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(enExport.getResponse().getContentAsByteArray()))) {
-            var header = wb.getSheetAt(0).getRow(0);
-            assertThat(header.getCell(0).getStringCellValue()).isEqualTo("Username");
-            assertThat(header.getCell(4).getStringCellValue()).isEqualTo("Permission sources");
-        }
+        UUID userId = Ids.newId();
+        UUID customRoleId = Ids.newId();
+        String suffix = userId.toString().substring(0, 8);
+        String username = "export.locale." + suffix;
+        Instant now = Instant.now();
+        Role systemAdminRole = roleRepository.findByCodeNormalized("system_admin").orElseThrow();
+        Role customRole = roleRepository.saveAndFlush(new Role(
+                customRoleId,
+                "CUSTOM_EXPORT_" + suffix,
+                "Giáo viên chấm thi",
+                null,
+                Access.MANAGE,
+                false,
+                RoleStatus.ACTIVE,
+                now,
+                null));
+        RolePermission customRolePermission = rolePermissionRepository.saveAndFlush(
+                new RolePermission(customRoleId, userViewId, null, now));
+        userAccountRepository.saveAndFlush(new UserAccount(
+                userId,
+                "UEXP" + suffix,
+                username,
+                "Export Locale User",
+                null,
+                null,
+                UserSource.ADMIN_CREATED,
+                UserStatus.ACTIVE,
+                false,
+                now,
+                null));
+        UserRole sysUserRole = userRoleRepository.saveAndFlush(new UserRole(userId, systemAdminRole.getId(), null, now));
+        UserRole customUserRole = userRoleRepository.saveAndFlush(new UserRole(userId, customRole.getId(), null, now));
 
-        MvcResult viExport = mockMvc.perform(get("/api/v1/admin/permissions/{id}/users/export", userViewId)
-                        .with(asUser(Permissions.PERMISSION_VIEW, Permissions.USER_VIEW)))
-                .andExpect(status().isOk())
-                .andReturn();
-        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(viExport.getResponse().getContentAsByteArray()))) {
-            var header = wb.getSheetAt(0).getRow(0);
-            assertThat(header.getCell(0).getStringCellValue()).isEqualTo("Tên đăng nhập");
-            assertThat(header.getCell(4).getStringCellValue()).isEqualTo("Nguồn quyền");
+        try {
+            MvcResult enExport = mockMvc.perform(get("/api/v1/admin/permissions/{id}/users/export", userViewId)
+                            .param("q", username)
+                            .with(asUser(Permissions.PERMISSION_VIEW, Permissions.USER_VIEW))
+                            .header(HttpHeaders.ACCEPT_LANGUAGE, "en"))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(enExport.getResponse().getContentAsByteArray()))) {
+                var sheet = wb.getSheetAt(0);
+                var header = sheet.getRow(0);
+                assertThat(header.getCell(0).getStringCellValue()).isEqualTo("Username");
+                assertThat(header.getCell(4).getStringCellValue()).isEqualTo("Permission sources");
+                var row = sheet.getRow(1);
+                assertThat(row.getCell(0).getStringCellValue()).isEqualTo(username);
+                assertThat(row.getCell(3).getStringCellValue()).isEqualTo("Active");
+                assertThat(row.getCell(4).getStringCellValue())
+                        .isEqualTo("Role: System Admin; Role: Giáo viên chấm thi");
+            }
+
+            MvcResult viExport = mockMvc.perform(get("/api/v1/admin/permissions/{id}/users/export", userViewId)
+                            .param("q", username)
+                            .with(asUser(Permissions.PERMISSION_VIEW, Permissions.USER_VIEW)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(viExport.getResponse().getContentAsByteArray()))) {
+                var sheet = wb.getSheetAt(0);
+                var header = sheet.getRow(0);
+                assertThat(header.getCell(0).getStringCellValue()).isEqualTo("Tên đăng nhập");
+                assertThat(header.getCell(4).getStringCellValue()).isEqualTo("Nguồn quyền");
+                var row = sheet.getRow(1);
+                assertThat(row.getCell(0).getStringCellValue()).isEqualTo(username);
+                assertThat(row.getCell(3).getStringCellValue()).isEqualTo("Hoạt động");
+                assertThat(row.getCell(4).getStringCellValue())
+                        .isEqualTo("Vai trò: Quản trị hệ thống; Vai trò: Giáo viên chấm thi");
+            }
+        } finally {
+            userRoleRepository.deleteAll(List.of(sysUserRole, customUserRole));
+            userAccountRepository.deleteById(userId);
+            rolePermissionRepository.delete(customRolePermission);
+            roleRepository.deleteById(customRoleId);
         }
     }
 }
