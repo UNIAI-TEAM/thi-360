@@ -53,6 +53,53 @@ class SensitiveDataMaskerTests {
     }
 
     @Test
+    void removesResetLinkAndResetUrlVariantsRecursively_whileKeepingNonSensitiveUrls() {
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("resetLink", "https://app.thi360.vn/reset?c=1");
+        nested.put("reset_url", "https://app.thi360.vn/reset?c=2");
+        nested.put("reset-uri", "https://app.thi360.vn/reset?c=3");
+        nested.put("safeLabel", "keep-nested");
+
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("resetLink", "https://app.thi360.vn/reset?a=1");
+        input.put("resetUrl", "https://app.thi360.vn/reset?a=2");
+        input.put("reset_link", "https://app.thi360.vn/reset?a=3");
+        input.put("reset-url", "https://app.thi360.vn/reset?a=4");
+        input.put("RESET.LINK", "https://app.thi360.vn/reset?a=5");
+        input.put("accountResetUrl", "https://app.thi360.vn/reset?a=6");
+        input.put("callbackUrl", "https://app.thi360.vn/cb");
+        input.put("resetReason", "admin requested");
+        input.put("nested", nested);
+        input.put("items", List.of(Map.of("user_reset_link", "https://app.thi360.vn/reset?b=1", "name", "item1")));
+
+        Map<String, Object> masked = SensitiveDataMasker.mask(input);
+
+        assertThat(masked)
+                .containsEntry("callbackUrl", "https://app.thi360.vn/cb")
+                .containsEntry("resetReason", "admin requested")
+                .doesNotContainKeys(
+                        "resetLink",
+                        "resetUrl",
+                        "reset_link",
+                        "reset-url",
+                        "RESET.LINK",
+                        "accountResetUrl");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> maskedNested = (Map<String, Object>) masked.get("nested");
+        assertThat(maskedNested)
+                .containsEntry("safeLabel", "keep-nested")
+                .doesNotContainKeys("resetLink", "reset_url", "reset-uri");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> maskedItems = (List<Map<String, Object>>) masked.get("items");
+        assertThat(maskedItems).hasSize(1);
+        assertThat(maskedItems.getFirst())
+                .containsEntry("name", "item1")
+                .doesNotContainKey("user_reset_link");
+    }
+
+    @Test
     void returnsNullWhenInputIsNull() {
         assertThat(SensitiveDataMasker.mask(null)).isNull();
     }

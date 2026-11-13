@@ -209,6 +209,48 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
     }
 
     @Test
+    void resetLinkAndResetUrlAreMaskedBeforeOutboxAndInStoredAuditRow() {
+        String targetId = "mask-reset-" + Ids.newId();
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("resetLink", "https://thi360.vn/reset?secret=nested-1");
+        nested.put("reset_url", "https://thi360.vn/reset?secret=nested-2");
+        nested.put("note", "password-reset-triggered");
+
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("email", "reset@thi360.vn");
+        after.put("resetLink", "https://thi360.vn/reset?secret=top-1");
+        after.put("resetUrl", "https://thi360.vn/reset?secret=top-2");
+        after.put("reset-link", "https://thi360.vn/reset?secret=top-3");
+        after.put("nested", nested);
+
+        transactionTemplate.executeWithoutResult(status -> auditRecorder.record(
+                AuditEvent.builder("identity", "USER_PASSWORD_RESET")
+                        .target("USER", targetId, "reset.user")
+                        .after(after)
+                        .build()));
+
+        var outboxRows = outboxEventRepository.findAll();
+        assertThat(outboxRows).hasSize(1);
+        String outboxPayload = outboxRows.getFirst().getPayload();
+        assertThat(outboxPayload)
+                .doesNotContain("top-1", "top-2", "top-3", "nested-1", "nested-2")
+                .doesNotContain("resetLink", "resetUrl", "reset-link", "reset_url")
+                .contains("reset@thi360.vn", "password-reset-triggered");
+
+        outboxRelay.relayBatch();
+
+        String storedAfterJson = jdbcTemplate.queryForObject(
+                "SELECT after::text FROM audit.audit_event WHERE target_id = ?",
+                String.class,
+                targetId);
+        assertThat(storedAfterJson)
+                .isNotNull()
+                .doesNotContain("top-1", "top-2", "top-3", "nested-1", "nested-2")
+                .doesNotContain("resetLink", "resetUrl", "reset-link", "reset_url")
+                .contains("reset@thi360.vn", "password-reset-triggered");
+    }
+
+    @Test
     void reprocessingSameOutboxEvent_isIdempotentOnId() {
         String targetId = "idemp-" + Ids.newId();
         transactionTemplate.executeWithoutResult(status -> auditRecorder.record(

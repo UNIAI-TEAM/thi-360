@@ -7,10 +7,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public final class SensitiveDataMasker {
 
-    private static final List<String> SENSITIVE_KEY_TOKENS = List.of("password", "secret", "token", "otp");
+    private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]");
+    private static final List<String> SENSITIVE_KEY_TOKENS = List.of(
+            "password",
+            "secret",
+            "token",
+            "otp",
+            "resetlink",
+            "reseturl",
+            "reseturi");
 
     private SensitiveDataMasker() {
     }
@@ -38,7 +47,7 @@ public final class SensitiveDataMasker {
         if (key == null || key.isBlank()) {
             return false;
         }
-        String normalized = key.toLowerCase(Locale.ROOT);
+        String normalized = NON_ALPHANUMERIC.matcher(key.toLowerCase(Locale.ROOT)).replaceAll("");
         for (String token : SENSITIVE_KEY_TOKENS) {
             if (normalized.contains(token)) {
                 return true;
