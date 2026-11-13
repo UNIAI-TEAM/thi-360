@@ -5,7 +5,7 @@ import {
   THEME_STYLE_ELEMENT_ID,
   themeStyleTag,
 } from "@thi360/ui";
-import { resolveTheme, THEME_COOKIE_NAME } from "@thi360/web-kit/preferences";
+import { normalizeCookieDomain, parseLocaleCookie, resolveTheme, THEME_COOKIE_NAME } from "@thi360/web-kit/preferences";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
@@ -13,6 +13,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { SessionProvider } from "@/features/session/session-provider";
+import { PreferencesProvider } from "@/providers/preferences-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
@@ -69,6 +70,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   ]);
   const themeMode = resolveTheme(appearance.mode, themeCookie);
   const themeCss = themeStyleTag(appearance);
+  const uiLocale = parseLocaleCookie(locale);
+  const cookieDomain = normalizeCookieDomain(process.env.THI360_COOKIE_DOMAIN);
   return (
     <html lang={locale} className={beVietnamPro.variable} data-theme={themeMode}>
       <head>
@@ -76,9 +79,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body className="font-sans antialiased">
         <NextIntlClientProvider>
-          <QueryProvider>
-            <SessionProvider>{children}</SessionProvider>
-          </QueryProvider>
+          <PreferencesProvider locale={uiLocale} initialTheme={themeMode} cookieDomain={cookieDomain}>
+            <QueryProvider>
+              <SessionProvider>{children}</SessionProvider>
+            </QueryProvider>
+          </PreferencesProvider>
         </NextIntlClientProvider>
       </body>
     </html>
