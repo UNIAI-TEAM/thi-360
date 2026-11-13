@@ -80,7 +80,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body className="font-sans antialiased">
         <NextIntlClientProvider>
           <PreferencesProvider locale={uiLocale} initialTheme={themeMode} cookieDomain={cookieDomain}>
-            <QueryProvider>{children}</QueryProvider>
+            <QueryProvider key={uiLocale}>{children}</QueryProvider>
           </PreferencesProvider>
         </NextIntlClientProvider>
       </body>

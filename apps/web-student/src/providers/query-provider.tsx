@@ -11,7 +11,7 @@ import {
 import { buildLoginUrl } from "@thi360/web-kit/redirect";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { clearSessionBestEffort, refreshSession } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { webUrl } from "@/lib/env";
@@ -55,10 +55,8 @@ export function QueryProvider({
     }
   }, [guard, pathname]);
 
-  const forbiddenMessageRef = useRef(t("forbiddenToast"));
-  forbiddenMessageRef.current = t("forbiddenToast");
-
   const [client] = useState(() => {
+    const forbiddenMessage = t("forbiddenToast");
     const recovery = createUnauthorizedRecovery({
       refreshSession,
       clearSessionBestEffort,
@@ -72,7 +70,7 @@ export function QueryProvider({
       if (status === 401 && guard.pathname() !== LOGIN_PATH) {
         void recovery.handleUnauthorized();
       } else if (status === 403 && guard.claimForbidden()) {
-        notify.error(forbiddenMessageRef.current);
+        notify.error(forbiddenMessage);
         router.replace(FORBIDDEN_PATH);
       }
     };

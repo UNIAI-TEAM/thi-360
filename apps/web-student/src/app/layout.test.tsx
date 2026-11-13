@@ -3,10 +3,24 @@ import type { ReactNode } from "react";
 import { THEME_STYLE_ELEMENT_ID } from "@thi360/ui";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import enMessages from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import LoginPage from "./dang-nhap/page";
 import RootLayout from "./layout";
 
+const ssrState = vi.hoisted(() => ({
+  locale: "vi" as "vi" | "en",
+  themeCookie: undefined as string | undefined,
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) =>
+      name === "thi360_theme" && ssrState.themeCookie !== undefined
+        ? { value: ssrState.themeCookie }
+        : undefined,
+  }),
+}));
 vi.mock("next/font/google", () => ({
   Be_Vietnam_Pro: () => ({ variable: "--font-be-vietnam-pro" }),
 }));
@@ -17,7 +31,11 @@ vi.mock("next-intl", async (importOriginal) => {
   return {
     ...actual,
     NextIntlClientProvider: ({ children }: { children: ReactNode }) => (
-      <Provider locale="vi" messages={viMessages} timeZone="Asia/Ho_Chi_Minh">
+      <Provider
+        locale={ssrState.locale}
+        messages={ssrState.locale === "en" ? enMessages : viMessages}
+        timeZone="Asia/Ho_Chi_Minh"
+      >
         {children}
       </Provider>
     ),
@@ -25,7 +43,7 @@ vi.mock("next-intl", async (importOriginal) => {
 });
 
 vi.mock("next-intl/server", () => ({
-  getLocale: async () => "vi",
+  getLocale: async () => ssrState.locale,
   getTranslations: async (namespace?: string) => (key: string) => `${namespace ?? ""}.${key}`,
 }));
 
@@ -36,6 +54,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 afterEach(() => {
+  ssrState.locale = "vi";
+  ssrState.themeCookie = undefined;
   vi.unstubAllGlobals();
 });
 
@@ -102,5 +122,45 @@ describe("web-student RootLayout /dang-nhap SSR appearance", () => {
     expect(html).toContain('data-theme="light"');
     expect(html).toContain(`<style id="${THEME_STYLE_ELEMENT_ID}">`);
     expect(html).toContain("--color-primary-600: #059669;");
+  });
+
+  it("ưu tiên cookie thi360_theme hợp lệ và rơi về chế độ mặc định hệ thống khi cookie sai", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          palette: { presetId: "thi360-green" },
+          mode: "light",
+          version: 1,
+        }),
+      ),
+    );
+
+    ssrState.themeCookie = "dark";
+    const darkHtml = renderToStaticMarkup(await RootLayout({ children: <LoginPage /> }));
+    expect(darkHtml).toContain('data-theme="dark"');
+
+    ssrState.themeCookie = "sepia";
+    const fallbackHtml = renderToStaticMarkup(await RootLayout({ children: <LoginPage /> }));
+    expect(fallbackHtml).toContain('data-theme="light"');
+  });
+
+  it("render <html lang=\"en\"> và nút chuyển đổi trên /dang-nhap khi locale=en", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          palette: { presetId: "thi360-green" },
+          mode: "light",
+          version: 1,
+        }),
+      ),
+    );
+    ssrState.locale = "en";
+    const html = renderToStaticMarkup(await RootLayout({ children: <LoginPage /> }));
+    expect(html).toContain('lang="en"');
+    expect(html).toContain("Sign in");
+    expect(html).toContain("Switch to dark mode");
+    expect(html).toContain("Change language");
   });
 });
