@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +25,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.identity.spi.Permission;
 import vn.unicom.thi360.shared.outbox.OutboxEvent;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
@@ -178,6 +180,17 @@ public class AuthzSnapshotService implements SessionAuthzResolver, SmartInitiali
 
         decodedCache.put(new SnapshotCacheKey(userId, version), permissions);
         return new AuthzSnapshot(dbResult.access(), permissions, version);
+    }
+
+    public Set<Permission> computeEffectivePermissions(UUID userId) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        DbAuthzResult dbResult = queryEffectiveAuthz(userId);
+        PermissionSet set = permissionCatalog.decode(dbResult.bits());
+        EnumSet<Permission> result = EnumSet.noneOf(Permission.class);
+        for (String code : set.codes()) {
+            Permission.findByCode(code).ifPresent(result::add);
+        }
+        return result;
     }
 
     public void evict(UUID userId) {

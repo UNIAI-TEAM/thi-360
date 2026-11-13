@@ -13,10 +13,21 @@ public class PasswordPolicy {
     private static final int MAX_LENGTH = 64;
 
     public void validate(String fieldName, String password, String username) {
+        List<FieldError> errors = check(fieldName, password, username);
+        if (!errors.isEmpty()) {
+            throw new ValidationException("PASSWORD_WEAK", null, errors);
+        }
+    }
+
+    public boolean isValid(String password, String username) {
+        return check("password", password, username).isEmpty();
+    }
+
+    public List<FieldError> check(String fieldName, String password, String username) {
         List<FieldError> errors = new ArrayList<>();
         if (password == null || password.isEmpty()) {
             errors.add(new FieldError(fieldName, "PASSWORD_WEAK", "Mật khẩu không được để trống"));
-            throw new ValidationException("PASSWORD_WEAK", null, errors);
+            return errors;
         }
 
         if (password.length() < MIN_LENGTH || password.length() > MAX_LENGTH) {
@@ -57,8 +68,6 @@ public class PasswordPolicy {
             errors.add(new FieldError(fieldName, "PASSWORD_SAME_AS_USERNAME", "Mật khẩu không được trùng tên đăng nhập"));
         }
 
-        if (!errors.isEmpty()) {
-            throw new ValidationException("PASSWORD_WEAK", null, errors);
-        }
+        return List.copyOf(errors);
     }
 }

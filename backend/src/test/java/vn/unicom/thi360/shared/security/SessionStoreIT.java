@@ -206,6 +206,69 @@ class SessionStoreIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void createSessionIfNotRevoked_refusesWhenGenerationChangedBetweenReadAndCreate_evenWithSkewedClocks() {
+        // Skewed clocks across nodes (+10s on login node, -10s on revoking node) cannot bypass generation check
+        Instant base = Instant.parse("2026-11-14T01:00:00Z");
+        SessionStore aheadLoginStore = new SessionStore(
+                redisTemplate, securityProperties, Clock.fixed(base.plusSeconds(10), ZoneOffset.UTC));
+        SessionStore behindRevokeStore = new SessionStore(
+                redisTemplate, securityProperties, Clock.fixed(base.minusSeconds(10), ZoneOffset.UTC));
+
+        UUID userId = UUID.randomUUID();
+        try {
+            aheadLoginStore.createSession("seed-" + userId, userId, Realm.APP);
+            long generationBeforeGrant = aheadLoginStore.currentRevocationGeneration(userId);
+            assertThat(generationBeforeGrant).isZero();
+
+            behindRevokeStore.deleteAllSessions(userId);
+            assertThat(aheadLoginStore.currentRevocationGeneration(userId)).isEqualTo(1L);
+
+            SessionStore.SessionCreateResult stale = aheadLoginStore.createSessionIfNotRevoked(
+                    "stale-" + userId, userId, Realm.APP, generationBeforeGrant);
+            assertThat(stale.accepted()).isFalse();
+            assertThat(aheadLoginStore.findSession("stale-" + userId)).isEmpty();
+            assertThat(redisTemplate.hasKey("sess:stale-" + userId)).isFalse();
+
+            long freshGeneration = aheadLoginStore.currentRevocationGeneration(userId);
+            SessionStore.SessionCreateResult fresh = aheadLoginStore.createSessionIfNotRevoked(
+                    "fresh-" + userId, userId, Realm.APP, freshGeneration);
+            assertThat(fresh.accepted()).isTrue();
+            assertThat(aheadLoginStore.findSession("fresh-" + userId)).isPresent();
+        } finally {
+            behindRevokeStore.deleteAllSessions(userId);
+            redisTemplate.delete(List.of("user-sess-seq:" + userId, "user-rev-gen:" + userId));
+        }
+    }
+
+    @Test
+    void rotateSessionAndActiveCheck_refuseWhenGenerationChangedBetweenReadAndApply() {
+        Instant t0 = Instant.parse("2026-11-14T01:05:00.000Z");
+        SessionStore storeA = new SessionStore(
+                redisTemplate, securityProperties, Clock.fixed(t0.plusSeconds(15), ZoneOffset.UTC));
+        SessionStore storeB = new SessionStore(
+                redisTemplate, securityProperties, Clock.fixed(t0.minusSeconds(15), ZoneOffset.UTC));
+
+        UUID userId = UUID.randomUUID();
+        String sid1 = "rot-1-" + userId;
+        String sid2 = "rot-2-" + userId;
+        try {
+            long initialGen = storeA.currentRevocationGeneration(userId);
+            assertThat(storeA.createSessionIfNotRevoked(sid1, userId, Realm.APP, initialGen).accepted()).isTrue();
+
+            long genBeforeRefresh = storeA.currentRevocationGeneration(userId);
+            storeB.deleteAllSessions(userId);
+
+            assertThat(storeA.rotateSession(sid1, sid2, userId, Realm.APP, genBeforeRefresh)).isFalse();
+            assertThat(storeA.findSession(sid2)).isEmpty();
+            assertThat(redisTemplate.hasKey("sess:" + sid2)).isFalse();
+            assertThat(storeA.isSessionActiveForGeneration(sid1, userId, Realm.APP, genBeforeRefresh)).isFalse();
+        } finally {
+            storeB.deleteAllSessions(userId);
+            redisTemplate.delete(List.of("user-sess-seq:" + userId, "user-rev-gen:" + userId));
+        }
+    }
+
     private static void awaitBarrier(CyclicBarrier barrier) {
         try {
             barrier.await();
