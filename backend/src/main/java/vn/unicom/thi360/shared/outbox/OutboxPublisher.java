@@ -6,10 +6,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @Service
 public class OutboxPublisher {
@@ -39,18 +41,17 @@ public class OutboxPublisher {
         Objects.requireNonNull(payload, "payload must not be null");
 
         String json = serializePayload(payload);
-        OutboxEvent event = new OutboxEvent(id, topic, json, Instant.now(clock));
+        String rawTraceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
+        String traceId = (rawTraceId != null && !rawTraceId.isBlank()) ? rawTraceId : null;
+        OutboxEvent event = new OutboxEvent(id, topic, json, traceId, Instant.now(clock));
         return repository.save(event);
     }
 
     private String serializePayload(Object payload) {
-        if (payload instanceof String str) {
-            return str;
-        }
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("Failed to serialize outbox payload", ex);
+            throw new IllegalStateException("Failed to serialize outbox payload", ex);
         }
     }
 }

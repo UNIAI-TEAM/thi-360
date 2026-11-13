@@ -1,6 +1,7 @@
 package vn.unicom.thi360.shared.outbox;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @Service
 public class OutboxRelay {
@@ -24,6 +26,14 @@ public class OutboxRelay {
     private static final Logger jobLog = LoggerFactory.getLogger("thi360.job");
     public static final int DEFAULT_BATCH_SIZE = 200;
     public static final int DEFAULT_MAX_ATTEMPTS = 5;
+    public static final Duration INITIAL_BACKOFF = Duration.ofSeconds(2);
+    public static final Duration MAX_BACKOFF = Duration.ofMinutes(5);
+
+    private enum StepResult {
+        PROCESSED,
+        FAILED,
+        EMPTY
+    }
 
     private final OutboxEventRepository repository;
     private final TransactionTemplate requiresNewTx;
@@ -65,20 +75,26 @@ public class OutboxRelay {
         int safeBatchSize = Math.max(1, batchSize);
         int safeMaxAttempts = Math.max(1, maxAttempts);
         String jobId = Ids.newId().toString();
+        String workerTraceId = Ids.newId().toString();
 
+        String prevTraceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         String prevJob = MDC.get("job");
         String prevJobId = MDC.get("jobId");
+        MDC.put(TraceIdFilter.MDC_TRACE_ID, workerTraceId);
         MDC.put("job", "outbox");
         MDC.put("jobId", jobId);
 
         try {
             int processedCount = 0;
             for (int i = 0; i < safeBatchSize; i++) {
-                Boolean handledOne = requiresNewTx.execute(status -> processNextAvailable(safeMaxAttempts));
-                if (!Boolean.TRUE.equals(handledOne)) {
+                StepResult step = requiresNewTx.execute(
+                        status -> processNextAvailable(safeMaxAttempts, workerTraceId));
+                if (step == null || step == StepResult.EMPTY) {
                     break;
                 }
-                processedCount++;
+                if (step == StepResult.PROCESSED) {
+                    processedCount++;
+                }
             }
             if (processedCount > 0) {
                 jobLog.atInfo()
@@ -87,45 +103,78 @@ public class OutboxRelay {
             }
             return processedCount;
         } finally {
+            restoreMdc(TraceIdFilter.MDC_TRACE_ID, prevTraceId);
             restoreMdc("job", prevJob);
             restoreMdc("jobId", prevJobId);
         }
     }
 
-    private boolean processNextAvailable(int maxAttempts) {
-        List<OutboxEvent> batch = repository.findNextPendingBatchForUpdate(1, maxAttempts);
+    private StepResult processNextAvailable(int maxAttempts, String workerTraceId) {
+        Instant now = Instant.now(clock);
+        List<OutboxEvent> batch = repository.findNextPendingBatchForUpdate(1, maxAttempts, now);
         if (batch.isEmpty()) {
-            return false;
+            return StepResult.EMPTY;
         }
         OutboxEvent event = batch.getFirst();
-        OutboxHandler handler = handlers.get(event.getTopic());
-        if (handler == null) {
-            String msg = "No OutboxHandler registered for topic: " + event.getTopic();
-            event.recordFailure(msg);
-            repository.save(event);
-            jobLog.atWarn()
-                    .addKeyValue("eventId", event.getId())
-                    .addKeyValue("topic", event.getTopic())
-                    .log(msg);
-            return true;
-        }
-
+        String eventTraceId = (event.getTraceId() != null && !event.getTraceId().isBlank())
+                ? event.getTraceId()
+                : workerTraceId;
+        MDC.put(TraceIdFilter.MDC_TRACE_ID, eventTraceId);
         try {
-            handler.handle(event);
-            event.markProcessed(Instant.now(clock));
-            repository.save(event);
-        } catch (Exception ex) {
-            String errorMsg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-            event.recordFailure(errorMsg);
-            repository.save(event);
-            jobLog.atError()
-                    .setCause(ex)
-                    .addKeyValue("eventId", event.getId())
-                    .addKeyValue("topic", event.getTopic())
-                    .addKeyValue("attempts", event.getAttempts())
-                    .log("Failed to handle outbox event");
+            OutboxHandler handler = handlers.get(event.getTopic());
+            if (handler == null) {
+                String msg = "No OutboxHandler registered for topic: " + event.getTopic();
+                event.markFailedPermanently(msg, now);
+                repository.save(event);
+                jobLog.atError()
+                        .addKeyValue("eventId", event.getId())
+                        .addKeyValue("topic", event.getTopic())
+                        .addKeyValue("attempts", event.getAttempts())
+                        .log(msg);
+                return StepResult.FAILED;
+            }
+
+            try {
+                handler.handle(event);
+                event.markProcessed(now);
+                repository.save(event);
+                jobLog.atInfo()
+                        .addKeyValue("eventId", event.getId())
+                        .addKeyValue("topic", event.getTopic())
+                        .log("Outbox event processed");
+                return StepResult.PROCESSED;
+            } catch (Exception ex) {
+                String errorMsg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+                Duration backoff = computeBackoff(event.getAttempts() + 1);
+                event.recordFailure(errorMsg, now, maxAttempts, backoff);
+                repository.save(event);
+                if (event.getFailedAt() != null) {
+                    jobLog.atError()
+                            .setCause(ex)
+                            .addKeyValue("eventId", event.getId())
+                            .addKeyValue("topic", event.getTopic())
+                            .addKeyValue("attempts", event.getAttempts())
+                            .log("Outbox event failed permanently");
+                } else {
+                    jobLog.atWarn()
+                            .setCause(ex)
+                            .addKeyValue("eventId", event.getId())
+                            .addKeyValue("topic", event.getTopic())
+                            .addKeyValue("attempts", event.getAttempts())
+                            .addKeyValue("nextAttemptAt", event.getNextAttemptAt())
+                            .log("Outbox event handler failed; retry scheduled");
+                }
+                return StepResult.FAILED;
+            }
+        } finally {
+            MDC.put(TraceIdFilter.MDC_TRACE_ID, workerTraceId);
         }
-        return true;
+    }
+
+    static Duration computeBackoff(int attemptsAfterFailure) {
+        int shift = Math.min(Math.max(0, attemptsAfterFailure - 1), 10);
+        Duration backoff = INITIAL_BACKOFF.multipliedBy(1L << shift);
+        return backoff.compareTo(MAX_BACKOFF) > 0 ? MAX_BACKOFF : backoff;
     }
 
     private static void restoreMdc(String key, String previousValue) {
@@ -135,7 +184,6 @@ public class OutboxRelay {
             MDC.put(key, previousValue);
         }
     }
-
     @Component
     @Profile("worker")
     public static class OutboxRelayWorker {

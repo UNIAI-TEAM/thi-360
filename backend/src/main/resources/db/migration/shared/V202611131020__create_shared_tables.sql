@@ -7,8 +7,11 @@ CREATE TABLE shared.outbox_event (
     id uuid PRIMARY KEY,
     topic text NOT NULL,
     payload jsonb NOT NULL,
+    trace_id text,
     created_at timestamptz NOT NULL DEFAULT now(),
+    next_attempt_at timestamptz NOT NULL DEFAULT now(),
     processed_at timestamptz,
+    failed_at timestamptz,
     attempts int NOT NULL DEFAULT 0,
     last_error text
 );
