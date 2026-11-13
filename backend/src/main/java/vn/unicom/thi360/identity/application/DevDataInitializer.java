@@ -2,10 +2,13 @@ package vn.unicom.thi360.identity.application;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +19,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.audit.spi.AuditActorType;
+import vn.unicom.thi360.audit.spi.AuditEvent;
+import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.domain.IdentityProvider;
 import vn.unicom.thi360.identity.domain.Normalizer;
 import vn.unicom.thi360.identity.domain.Role;
@@ -39,6 +45,8 @@ import vn.unicom.thi360.shared.ids.Ids;
 public class DevDataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevDataInitializer.class);
+    private static final String MODULE = "identity";
+    private static final String SEED_REASON = "dev_seed";
 
     private static final List<SeedUser> SEED_USERS = List.of(
             new SeedUser("sys.admin", "sys.admin@thi360.vn", "Hệ thống", "Quản trị", "Quản trị hệ thống", "SYSTEM_ADMIN"),
@@ -56,6 +64,7 @@ public class DevDataInitializer implements ApplicationRunner {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final AuthzSnapshotService authzSnapshotService;
+    private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
@@ -69,6 +78,7 @@ public class DevDataInitializer implements ApplicationRunner {
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
             @Autowired(required = false) AuthzSnapshotService authzSnapshotService,
+            AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
             TransactionTemplate transactionTemplate,
             Clock clock,
@@ -79,6 +89,7 @@ public class DevDataInitializer implements ApplicationRunner {
         this.roleRepository = Objects.requireNonNull(roleRepository);
         this.userRoleRepository = Objects.requireNonNull(userRoleRepository);
         this.authzSnapshotService = authzSnapshotService;
+        this.auditRecorder = Objects.requireNonNull(auditRecorder);
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
         this.transactionTemplate = Objects.requireNonNull(transactionTemplate);
         this.clock = Objects.requireNonNull(clock);
@@ -137,6 +148,12 @@ public class DevDataInitializer implements ApplicationRunner {
                 userAccountRepository.save(account);
                 createdAccount[0] = true;
                 userId = keycloakUserId;
+                auditRecorder.record(AuditEvent.builder(MODULE, "USER_CREATED")
+                        .target("USER", userId.toString(), spec.username())
+                        .after(userAuditState(code, spec))
+                        .reason(SEED_REASON)
+                        .actorType(AuditActorType.SYSTEM)
+                        .build());
             } else {
                 userId = account.getId();
             }
@@ -157,8 +174,21 @@ public class DevDataInitializer implements ApplicationRunner {
                     .orElseThrow(() -> new IllegalStateException("Missing seeded role: " + spec.roleCode()));
             UserRoleId roleLinkId = new UserRoleId(userId, role.getId());
             if (!userRoleRepository.existsById(roleLinkId)) {
+                List<String> beforeCodes = loadRoleCodes(userId);
                 userRoleRepository.save(new UserRole(userId, role.getId(), null, now));
                 roleAdded[0] = true;
+
+                List<String> afterCodes = Stream.concat(beforeCodes.stream(), Stream.of(role.getCode()))
+                        .distinct()
+                        .sorted()
+                        .toList();
+                auditRecorder.record(AuditEvent.builder(MODULE, "USER_ROLES_CHANGED")
+                        .target("USER", userId.toString(), spec.username())
+                        .before(Map.of("roleCodes", beforeCodes))
+                        .after(Map.of("roleCodes", afterCodes))
+                        .reason(SEED_REASON)
+                        .actorType(AuditActorType.SYSTEM)
+                        .build());
             }
         });
 
@@ -166,6 +196,31 @@ public class DevDataInitializer implements ApplicationRunner {
             authzSnapshotService.evict(keycloakUserId);
         }
         return createdAccount[0];
+    }
+
+    private List<String> loadRoleCodes(UUID userId) {
+        List<UUID> roleIds = userRoleRepository.findAllByIdUserId(userId).stream()
+                .map(ur -> ur.getId().getRoleId())
+                .toList();
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+        return roleRepository.findAllById(roleIds).stream()
+                .map(Role::getCode)
+                .sorted()
+                .toList();
+    }
+
+    private static Map<String, Object> userAuditState(String code, SeedUser spec) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("code", code);
+        state.put("username", spec.username());
+        state.put("fullName", spec.fullName());
+        state.put("email", spec.email());
+        state.put("source", UserSource.ADMIN_CREATED.name());
+        state.put("status", UserStatus.ACTIVE.name());
+        state.put("mustChangePassword", false);
+        return state;
     }
 
     private UUID ensureKeycloakUser(SeedUser spec) {
