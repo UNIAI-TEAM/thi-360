@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -47,22 +48,28 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
-import vn.unicom.thi360.identity.application.AuthzSnapshotService;
 import vn.unicom.thi360.identity.application.ProvisioningReconcilerJob;
+import vn.unicom.thi360.identity.domain.IdentityProvider;
+import vn.unicom.thi360.identity.domain.PermissionEntity;
 import vn.unicom.thi360.identity.domain.PlatformAdmin;
 import vn.unicom.thi360.identity.domain.Role;
 import vn.unicom.thi360.identity.domain.UserAccount;
+import vn.unicom.thi360.identity.domain.UserPermission;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
+import vn.unicom.thi360.identity.infrastructure.PermissionRepository;
 import vn.unicom.thi360.identity.infrastructure.PlatformAdminRepository;
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
+import vn.unicom.thi360.identity.infrastructure.UserIdentityRepository;
+import vn.unicom.thi360.identity.infrastructure.UserPermissionRepository;
 import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
 import vn.unicom.thi360.identity.spi.AccountDeletionGuard;
 import vn.unicom.thi360.identity.spi.ActiveAttemptChecker;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.identity.spi.UserDeleted;
+import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.outbox.OutboxEventRepository;
@@ -87,8 +94,16 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
     private UserRoleRepository userRoleRepository;
 
     @Autowired
-    private PlatformAdminRepository platformAdminRepository;
+    private UserIdentityRepository userIdentityRepository;
 
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private UserPermissionRepository userPermissionRepository;
+
+    @Autowired
+    private PlatformAdminRepository platformAdminRepository;
     @Autowired
     private OutboxEventRepository outboxEventRepository;
 
@@ -110,8 +125,10 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
     private KeycloakIdentityClient keycloakClient;
 
     @MockitoSpyBean
-    private AuditRecorder auditRecorder;
+    private SessionStore sessionStore;
 
+    @MockitoSpyBean
+    private AuditRecorder auditRecorder;
     private final List<UUID> createdUserIds = new ArrayList<>();
     private final List<UUID> createdKeycloakUserIds = new ArrayList<>();
     private final List<UUID> createdPlatformIds = new ArrayList<>();
@@ -127,7 +144,7 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
     void cleanup() {
         fakeGuardsControl.reset();
         redisTemplate.delete(RateLimitFilter.KEY_PREFIX + "203.0.113.77");
-        reset(keycloakClient);
+        reset(keycloakClient, sessionStore, auditRecorder);
         for (UUID kcId : createdKeycloakUserIds) {
             try {
                 keycloakClient.deleteUser(kcId);
@@ -1123,7 +1140,9 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 "UPDATE identity.user_account SET created_at = now() - interval '15 minutes' WHERE id = ?",
                 partialRow.getId());
 
-        // Case 3: Keycloak createUser + setPassword succeeded, Tx2 crashed (KC user HAS password), > 10 min -> promote to ACTIVE
+        // Case 3: Keycloak createUser + setPassword succeeded, Tx2 crashed (KC user HAS password)
+        // with non-STUDENT role intent + mustChangePassword=true -> promote with exact role, LOCAL identity & audit
+        Role operationsRole = roleRepository.findByCodeNormalized("operations").orElseThrow();
         String readyKcUsername = "reconcile.ready." + sfx;
         UUID readyKcId = keycloakClient.createUser(new KeycloakIdentityClient.CreateUserCommand(
                 readyKcUsername, null, "Ready", "Promote", "Valid@1234", true, false, false));
@@ -1133,7 +1152,8 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 readyKcUsername, "Ready Promote", null, null,
                 UserSource.ADMIN_CREATED, UserStatus.PROVISIONING, null, null);
         jdbcTemplate.update(
-                "UPDATE identity.user_account SET created_at = now() - interval '15 minutes' WHERE id = ?",
+                "UPDATE identity.user_account SET provisioning_role_ids = ?, must_change_password = true, created_at = now() - interval '15 minutes' WHERE id = ?",
+                operationsRole.getId().toString(),
                 readyRow.getId());
 
         // Case 4: Fresh PROVISIONING row (< 10 min) -> left untouched
@@ -1142,18 +1162,424 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 freshUsername, "Fresh Row", null, null,
                 UserSource.ADMIN_CREATED, UserStatus.PROVISIONING, null, null);
 
+        // Case 5 (R1-4): PROVISIONING row with missing role intent -> cleaned up (NOT defaulted to STUDENT)
+        String noIntentUsername = "reconcile.nointent." + sfx;
+        UUID noIntentKcId = keycloakClient.createUser(new KeycloakIdentityClient.CreateUserCommand(
+                noIntentUsername, null, "No", "Intent", "Valid@1234", true, false, false));
+        createdKeycloakUserIds.add(noIntentKcId);
+        UserAccount noIntentRow = insertUser(
+                noIntentUsername, "No Intent", null, null,
+                UserSource.ADMIN_CREATED, UserStatus.PROVISIONING, null, null);
+        jdbcTemplate.update(
+                "UPDATE identity.user_account SET created_at = now() - interval '15 minutes' WHERE id = ?",
+                noIntentRow.getId());
+
+        clearInvocations(auditRecorder);
         ProvisioningReconcilerJob.ReconcileResult result = provisioningReconcilerJob.reconcile();
-        assertThat(result.deleted()).isGreaterThanOrEqualTo(2);
+        assertThat(result.deleted()).isGreaterThanOrEqualTo(3);
         assertThat(result.promoted()).isGreaterThanOrEqualTo(1);
         assertThat(result.failed()).isZero();
 
         assertThat(userAccountRepository.findById(noKcRow.getId())).isEmpty();
         assertThat(userAccountRepository.findById(partialRow.getId())).isEmpty();
         assertThat(keycloakClient.findUserIdByUsername(partialKcUsername)).isEmpty();
+        assertThat(userAccountRepository.findById(noIntentRow.getId())).isEmpty();
+        assertThat(keycloakClient.findUserIdByUsername(noIntentUsername)).isEmpty();
 
-        UserAccount promoted = userAccountRepository.findById(readyKcId).orElseThrow();
-        assertThat(promoted.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        // R1-12 & R1-4: Verify promoted account via GET (exact non-STUDENT role + flag), LOCAL identity, and creation audit
+        mockMvc.perform(get("/api/v1/admin/users/{id}", readyKcId)
+                        .with(asUser(Permissions.USER_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.mustChangePassword").value(true))
+                .andExpect(jsonPath("$.roles.length()").value(1))
+                .andExpect(jsonPath("$.roles[0].code").value("OPERATIONS"));
+
+        assertThat(userIdentityRepository.findByProviderAndProviderSubject(
+                IdentityProvider.LOCAL, readyKcId.toString())).isPresent();
+        verify(auditRecorder).record(argThat(ev ->
+                "USER_CREATED".equals(ev.action())
+                        && readyKcId.toString().equals(ev.targetId())
+                        && ev.after() != null
+                        && Boolean.TRUE.equals(ev.after().get("mustChangePassword"))
+                        && List.of("OPERATIONS").equals(ev.after().get("roleCodes"))));
+
         assertThat(userAccountRepository.findById(freshRow.getId())).isPresent();
+    }
+
+    @Test
+    void r1_1_deleteUser_commitsLocalBeforeKeycloak_rollsBackOnPreCommitFailure_andReconcilesPendingKcCleanup()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r1.1.del." + sfx;
+        String email = "r1.1.del." + sfx + "@thi360.vn";
+        UUID userId = createUserViaApi(username, "Valid@1234", "Delete Order", email, null);
+
+        // 1. Pre-commit Redis failure rolls back DB cleanly without touching Keycloak
+        doThrow(new RuntimeException("Redis down"))
+                .when(sessionStore)
+                .deleteAllSessions(userId);
+        mockMvc.perform(delete("/api/v1/admin/users/{id}", userId)
+                        .param("reason", "Should rollback")
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isInternalServerError());
+
+        verify(keycloakClient, never()).deleteUser(userId);
+        UserAccount stillActive = userAccountRepository.findById(userId).orElseThrow();
+        assertThat(stillActive.getDeletedAt()).isNull();
+        assertThat(stillActive.isIdpCleanupPending()).isFalse();
+        assertThat(keycloakClient.findUserIdByUsername(username)).isPresent();
+        reset(sessionStore, keycloakClient);
+
+        // 2. Post-commit Keycloak failure keeps committed tombstone, audit, outbox & frees username/email immediately
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR"))
+                .when(keycloakClient)
+                .deleteUser(userId);
+        clearInvocations(auditRecorder);
+        fakeGuardsControl.clearDeletedEvents();
+
+        mockMvc.perform(delete("/api/v1/admin/users/{id}", userId)
+                        .param("reason", "KC outage delete")
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        UserAccount deletedPendingKc = userAccountRepository.findById(userId).orElseThrow();
+        assertThat(deletedPendingKc.getDeletedAt()).isNotNull();
+        assertThat(deletedPendingKc.isIdpCleanupPending()).isTrue();
+        verify(auditRecorder).record(argThat(ev ->
+                "USER_DELETED".equals(ev.action()) && userId.toString().equals(ev.targetId())));
+        outboxRelay.relayBatch();
+        assertThat(fakeGuardsControl.deletedEvents())
+                .anyMatch(e -> e.userId().equals(userId));
+
+        // Even before KC cleanup finishes, username & email are free in DB (recreate with different KC user or after cleanup)
+        assertThat(userAccountRepository.findActiveByUsernameNormalized(username)).isEmpty();
+        assertThat(userAccountRepository.findActiveByEmailNormalized(email)).isEmpty();
+
+        // 3. Once Keycloak recovers, reconciler retries delete (404/2xx) and clears idp_cleanup_pending
+        reset(keycloakClient);
+        ProvisioningReconcilerJob.ReconcileResult result = provisioningReconcilerJob.reconcile();
+        assertThat(result.deleted()).isGreaterThanOrEqualTo(1);
+        assertThat(result.failed()).isZero();
+
+        UserAccount cleaned = userAccountRepository.findById(userId).orElseThrow();
+        assertThat(cleaned.isIdpCleanupPending()).isFalse();
+        assertThat(keycloakClient.findUserIdByUsername(username)).isEmpty();
+
+        // Recreate with same username and email succeeds immediately
+        UUID recreatedId = createUserViaApi(username, "Valid@1234", "Recreated After Cleanup", email, null);
+        assertThat(recreatedId).isNotEqualTo(userId);
+    }
+
+    @Test
+    void r1_2_resetPassword_revokeFailureBeforeChangeReturns502WithNothingChanged_andTriesAllSteps()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r1.2.reset." + sfx;
+        String oldPwd = "OldValid@123";
+        String newPwd = "NewValid@456";
+        UUID userId = createUserViaApi(username, oldPwd, "Reset Fail Safe", null, null);
+
+        // Redis deleteAllSessions fails -> must still call Keycloak logoutAllSessions (no short-circuit), return 502, and NOT change password/flag/audit
+        doThrow(new RuntimeException("Redis down"))
+                .when(sessionStore)
+                .deleteAllSessions(userId);
+        clearInvocations(auditRecorder, keycloakClient);
+
+        mockMvc.perform(post("/api/v1/admin/users/{id}/reset-password", userId)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "password": "%s",
+                                  "mustChangePassword": true,
+                                  "reason": "Should fail on revoke"
+                                }
+                                """.formatted(newPwd)))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("IDENTITY_PROVIDER_ERROR"));
+
+        verify(keycloakClient).logoutAllSessions(userId);
+        verify(keycloakClient, never()).setPassword(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        verify(auditRecorder, never()).record(argThat(ev ->
+                ev != null && "USER_PASSWORD_RESET".equals(ev.action())));
+        assertThat(userAccountRepository.findById(userId).orElseThrow().isMustChangePassword()).isFalse();
+
+        // Old password still logs in
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"" + oldPwd + "\"}"))
+                .andExpect(status().isOk());
+        reset(sessionStore, keycloakClient);
+    }
+
+    @Test
+    void r1_5_createUser_failedCompensatingKeycloakDeleteKeepsProvisioningAnchorForReconciler()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r1.5.comp." + sfx;
+
+        // Keycloak setPassword fails with ValidationException AND compensating deleteUser fails
+        doThrow(new ValidationException("PASSWORD_WEAK", null, List.of()))
+                .when(keycloakClient)
+                .setPassword(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR"))
+                .when(keycloakClient)
+                .deleteUser(any());
+
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "Valid@1234",
+                                  "fullName": "Failed Comp"
+                                }
+                                """.formatted(username)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_WEAK"));
+
+        // Anchor PROVISIONING row was retained with idp_cleanup_pending = true, and KC orphan exists
+        UserAccount anchor = userAccountRepository.findActiveByUsernameNormalized(username).orElseThrow();
+        createdUserIds.add(anchor.getId());
+        assertThat(anchor.getStatus()).isEqualTo(UserStatus.PROVISIONING);
+        assertThat(anchor.isIdpCleanupPending()).isTrue();
+        UUID orphanKcId = keycloakClient.findUserIdByUsername(username).orElseThrow();
+        createdKeycloakUserIds.add(orphanKcId);
+
+        // Reconciler removes both orphan KC user and PROVISIONING anchor, allowing clean recreate
+        reset(keycloakClient);
+        jdbcTemplate.update(
+                "UPDATE identity.user_account SET created_at = now() - interval '15 minutes' WHERE id = ?",
+                anchor.getId());
+        ProvisioningReconcilerJob.ReconcileResult result = provisioningReconcilerJob.reconcile();
+        assertThat(result.deleted()).isGreaterThanOrEqualTo(1);
+        assertThat(userAccountRepository.findById(anchor.getId())).isEmpty();
+        assertThat(keycloakClient.findUserIdByUsername(username)).isEmpty();
+
+        createUserViaApi(username, "Valid@1234", "Recreated Cleanly", null, null);
+    }
+
+    @Test
+    void r1_8_privilegeGuard_ignoresSuspendedDirectPermissionsWhenUserLacksActiveManageRole()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r1.8.exam." + sfx;
+        UUID userId = createUserViaApi(username, "Valid@1234", "Exam Only", null, null);
+
+        // User has only STUDENT (EXAM) role, plus a suspended direct permission AUDIT.VIEW (which actor lacks)
+        PermissionEntity auditView = permissionRepository.findByCode(Permissions.AUDIT_VIEW).orElseThrow();
+        userPermissionRepository.saveAndFlush(
+                new UserPermission(userId, auditView.getId(), null, Instant.now(), "Suspended direct grant"));
+
+        // Operator with only USER.VIEW + USER.MODIFY (no AUDIT.VIEW) can preview, PATCH, and deactivate
+        mockMvc.perform(post("/api/v1/admin/users/bulk-actions/preview")
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "action": "DEACTIVATE",
+                                  "userIds": ["%s"]
+                                }
+                                """.formatted(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.affected").value(1))
+                .andExpect(jsonPath("$.skipped").isEmpty());
+
+        mockMvc.perform(patch("/api/v1/admin/users/{id}", userId)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"Updated Exam\",\"version\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Updated Exam"));
+
+        mockMvc.perform(post("/api/v1/admin/users/{id}/deactivate", userId)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Allowed mutation\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
+    }
+
+    @Test
+    void r1_10_updateUser_patchSinglePartName_clearsKeycloakLastName() throws Exception {
+        String sfx = suffix();
+        UUID userId = createUserViaApi("r1.10.name." + sfx, "Valid@1234", "Nguyễn Văn An", null, null);
+        clearInvocations(keycloakClient);
+
+        mockMvc.perform(patch("/api/v1/admin/users/{id}", userId)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"An\",\"version\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("An"));
+
+        verify(keycloakClient).updateUserProfile(userId, null, "An", "", false);
+    }
+
+    @Test
+    void r1_3_r1_11_bulkActions_deactivateWithPostSaveFailure_activate_delete_withStateAuditAndReplay()
+            throws Exception {
+        String sfx = suffix();
+        UUID actorId = Ids.newId();
+        UUID u1 = createUserViaApi("r1.11.a." + sfx, "Valid@1234", "Bulk One", null, null);
+        UUID u2 = createUserViaApi("r1.11.b." + sfx, "Valid@1234", "Bulk Two", null, null);
+        UUID uBlocked = createUserViaApi("r1.11.blk." + sfx, "Valid@1234", "Bulk Blocked", null, null);
+
+        // u1 logs in so we can verify session revocation
+        MvcResult u1Login = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"r1.11.a." + sfx + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie u1Cookie = u1Login.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+
+        // 1. Bulk DEACTIVATE with post-save failure on u2 (auditRecorder throws after saveAndFlush)
+        doThrow(new RuntimeException("Simulated audit failure"))
+                .when(auditRecorder)
+                .record(argThat(ev -> ev != null && u2.toString().equals(ev.targetId())));
+
+        String deactKey = "r1-11-deact-" + sfx;
+        String deactPayload = """
+                {
+                  "action": "DEACTIVATE",
+                  "userIds": ["%s", "%s"],
+                  "reason": "Mixed batch test"
+                }
+                """.formatted(u1, u2);
+
+        MvcResult deactRes = mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", deactKey)
+                        .with(asUser(actorId, "bulk.actor." + sfx, Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deactPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.succeeded").value(1))
+                .andExpect(jsonPath("$.failed").value(1))
+                .andExpect(jsonPath("$.results[0].outcome").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.results[1].outcome").value("FAILED"))
+                .andReturn();
+
+        // u1 committed INACTIVE + session revoked + audited; u2 rolled back to ACTIVE + still enabled in KC
+        assertThat(userAccountRepository.findById(u1).orElseThrow().getStatus()).isEqualTo(UserStatus.INACTIVE);
+        assertThat(userAccountRepository.findById(u2).orElseThrow().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        mockMvc.perform(get("/api/v1/me").cookie(u1Cookie)).andExpect(status().isUnauthorized());
+        verify(auditRecorder).record(argThat(ev ->
+                "USER_DEACTIVATED".equals(ev.action()) && u1.toString().equals(ev.targetId())));
+
+        // Replay stores and returns exact same mixed outcomes
+        MvcResult replayRes = mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", deactKey)
+                        .with(asUser(actorId, "bulk.actor." + sfx, Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deactPayload))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(replayRes.getResponse().getContentAsString())
+                .isEqualTo(deactRes.getResponse().getContentAsString());
+        reset(auditRecorder);
+
+        // u2 is still enabled in Keycloak (compensated after rollback)
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"r1.11.b." + sfx + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk());
+
+        // 2. Bulk ACTIVATE: u1 (INACTIVE -> ACTIVE), u2 (ACTIVE -> skipped ALREADY_ACTIVE)
+        clearInvocations(auditRecorder);
+        mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", "r1-11-act-" + sfx)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "action": "ACTIVATE",
+                                  "userIds": ["%s", "%s"]
+                                }
+                                """.formatted(u1, u2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.succeeded").value(1))
+                .andExpect(jsonPath("$.skipped").value(1))
+                .andExpect(jsonPath("$.results[0].outcome").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.results[1].reasonCode").value("ALREADY_ACTIVE"));
+
+        assertThat(userAccountRepository.findById(u1).orElseThrow().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        verify(auditRecorder).record(argThat(ev ->
+                "USER_ACTIVATED".equals(ev.action()) && u1.toString().equals(ev.targetId())));
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"r1.11.a." + sfx + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk());
+
+        // 3. Bulk DELETE: u1 (deletable), uBlocked (guard blocker -> skipped), u2 (KC delete fails post-commit -> SUCCEEDED + reconciler cleans up)
+        fakeGuardsControl.setBlockers(List.of(
+                new AccountDeletionGuard.Blocker("COMMERCE", "USER_HAS_ORDERS", "Đơn hàng chưa đối soát")));
+        // Only block uBlocked via custom guard? FakeGuardsControl applies globally, so test blocked first then unblocked!
+        mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", "r1-11-del-blk-" + sfx)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "action": "DELETE",
+                                  "userIds": ["%s"],
+                                  "reason": "Blocked test"
+                                }
+                                """.formatted(uBlocked)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skipped").value(1))
+                .andExpect(jsonPath("$.results[0].reasonCode").value("USER_HAS_TRANSACTIONS"));
+        assertThat(userAccountRepository.findById(uBlocked).orElseThrow().getDeletedAt()).isNull();
+
+        fakeGuardsControl.setBlockers(List.of());
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR"))
+                .when(keycloakClient)
+                .deleteUser(u2);
+        clearInvocations(auditRecorder);
+        fakeGuardsControl.clearDeletedEvents();
+
+        mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", "r1-11-del-ok-" + sfx)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "action": "DELETE",
+                                  "userIds": ["%s", "%s"],
+                                  "reason": "Bulk cleanup"
+                                }
+                                """.formatted(u1, u2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.succeeded").value(2))
+                .andExpect(jsonPath("$.failed").value(0));
+
+        UserAccount d1 = userAccountRepository.findById(u1).orElseThrow();
+        UserAccount d2 = userAccountRepository.findById(u2).orElseThrow();
+        assertThat(d1.getDeletedAt()).isNotNull();
+        assertThat(d1.isIdpCleanupPending()).isFalse();
+        assertThat(keycloakClient.findUserIdByUsername("r1.11.a." + sfx)).isEmpty();
+
+        assertThat(d2.getDeletedAt()).isNotNull();
+        assertThat(d2.isIdpCleanupPending()).isTrue();
+        verify(auditRecorder).record(argThat(ev ->
+                "USER_DELETED".equals(ev.action()) && u1.toString().equals(ev.targetId())));
+        verify(auditRecorder).record(argThat(ev ->
+                "USER_DELETED".equals(ev.action()) && u2.toString().equals(ev.targetId())));
+        outboxRelay.relayBatch();
+        assertThat(fakeGuardsControl.deletedEvents())
+                .anyMatch(e -> e.userId().equals(u1))
+                .anyMatch(e -> e.userId().equals(u2));
+
+        // Reconciler finishes u2 Keycloak deletion
+        reset(keycloakClient);
+        provisioningReconcilerJob.reconcile();
+        assertThat(userAccountRepository.findById(u2).orElseThrow().isIdpCleanupPending()).isFalse();
+        assertThat(keycloakClient.findUserIdByUsername("r1.11.b." + sfx)).isEmpty();
     }
 
     private UUID createUserViaApi(
