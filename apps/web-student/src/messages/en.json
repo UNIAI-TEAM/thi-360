@@ -1,0 +1,129 @@
+{
+  "changePassword": {
+    "confirmPasswordLabel": "Confirm new password",
+    "confirmPasswordMismatch": "Passwords do not match.",
+    "confirmPasswordRequired": "Please confirm your new password.",
+    "description": "Account <strong>{username}</strong> must set a new password before continuing.",
+    "descriptionOptional": "Change password for account <strong>{username}</strong>.",
+    "errorLoad": "Unable to load account details. Please try again.",
+    "errorLoadTitle": "Unable to load page",
+    "footerNote": "After saving, you will continue to your requested page or role home.",
+    "genericError": "Unable to change password. Please try again.",
+    "masterRealmNotice": "Platform admin accounts change their password directly in Keycloak.",
+    "newPasswordLabel": "New password",
+    "newPasswordSameAsUsername": "New password must not match your username.",
+    "newPasswordWeak": "New password does not meet all five requirements.",
+    "oldPasswordLabel": "Current password",
+    "oldPasswordRequired": "Please enter your current password.",
+    "otherAccount": "Sign in with another account",
+    "rules": {
+      "generate": "Generate random",
+      "hidePassword": "Hide password",
+      "ruleDigit": "At least one digit",
+      "ruleLength": "8 to 64 characters",
+      "ruleLower": "At least one lowercase letter",
+      "ruleSpecial": "At least one special character",
+      "ruleUpper": "At least one uppercase letter",
+      "rulesLabel": "Password requirements",
+      "showPassword": "Show password"
+    },
+    "submit": "Save and continue",
+    "title": "Set new password",
+    "wrongOldPassword": "Current password is incorrect."
+  },
+  "common": {
+    "appName": "Thi 360",
+    "backHome": "Back to home",
+    "loading": "Loading",
+    "logoMark": "360",
+    "retry": "Retry"
+  },
+  "errorPage": {
+    "description": "An unexpected error occurred while processing your request. Please try again later.",
+    "eyebrow": "ERROR 500",
+    "title": "Server error",
+    "traceLabel": "Request ID: {traceId}"
+  },
+  "errors": {
+    "forbiddenToast": "You do not have permission to perform this action.",
+    "notFound": "Not found.",
+    "proxyNotConfigured": "Web server API address is not configured.",
+    "upstreamTimeout": "The server took too long to respond. Please try again later.",
+    "upstreamUnavailable": "Unable to connect to the server. Please try again later."
+  },
+  "forbidden": {
+    "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "eyebrow": "ERROR 403",
+    "otherAccount": "Sign in with another account",
+    "title": "You do not have access to this page"
+  },
+  "home": {
+    "emptyDescription": "Exam catalog, purchases, and test taking will arrive in upcoming waves. This release includes sign-in, password change, and sign-out.",
+    "emptyTitle": "No exams yet",
+    "errorDescription": "An error occurred while loading your account. Please try again.",
+    "errorTitle": "Unable to load page",
+    "greeting": "Hello {name}",
+    "intro": "You are signed in to the student portal.",
+    "pageTitle": "Student portal",
+    "roleAdmin": "Role: Admin",
+    "roleStudent": "Role: Student",
+    "sectionTitle": "My exams"
+  },
+  "landing": {
+    "badge": "HSA · QDA Prep",
+    "ctaHeader": "Sign in",
+    "ctaHero": "Sign in to start",
+    "features": {
+      "analysisDescription": "Section scores, correct, incorrect, and skipped items shown right after submission.",
+      "analysisTitle": "Instant scores and breakdown",
+      "practiceDescription": "Targeted topic recommendations and progress tracking across attempts.",
+      "practiceTitle": "Focus on weak areas",
+      "structureDescription": "Full-length or section practice exams with server-tracked timing.",
+      "structureTitle": "Authentic exam structure"
+    },
+    "featuresTitle": "How Thi 360 helps you prepare",
+    "footerNote": "Online practice portal for HSA and QDA exams",
+    "heroDescription": "Thi 360 is the online exam preparation portal for the VNU Hanoi (HSA) and Ministry of Defense (QDA) aptitude tests.",
+    "heroTitle": "Practice like the real exam, see what to improve right away"
+  },
+  "login": {
+    "backHome": "Home",
+    "errors": {
+      "ACCOUNT_INACTIVE": "Account is inactive. Please contact an administrator.",
+      "INVALID_CREDENTIALS": "Username or password is incorrect.",
+      "LOGIN_THROTTLED": "Too many failed attempts. Please try again in 15 minutes.",
+      "RATE_LIMITED": "Too many requests from your address. Please try again in a few minutes.",
+      "generic": "Unable to sign in. Please try again."
+    },
+    "feature1": "Practice exams matching official structure",
+    "feature2": "Instant scoring upon submission",
+    "feature3": "Detailed solutions and weak-area focus",
+    "forgotNote": "Forgot password? Contact an administrator for a reset. After 5 consecutive failed attempts, sign-in is locked for 15 minutes.",
+    "headline": "HSA & QDA Aptitude Exam Preparation",
+    "identifierLabel": "Username or email",
+    "identifierPlaceholder": "Enter username or email",
+    "identifierRequired": "Please enter your username or email.",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter password",
+    "passwordRequired": "Please enter your password.",
+    "submit": "Sign in",
+    "subtitle": "One account for both the student portal and the admin portal. After signing in, you are directed to the right place for your role.",
+    "title": "Sign in"
+  },
+  "notFound": {
+    "description": "The page you opened does not exist or has been moved.",
+    "eyebrow": "ERROR 404",
+    "title": "Page not found"
+  },
+  "userMenu": {
+    "adminPortal": "Admin portal",
+    "changePassword": "Change password",
+    "logout": "Sign out",
+    "logoutFailed": "Unable to sign out. Please try again.",
+    "menuLabel": "Account",
+    "profile": "Profile",
+    "studentPortal": "Student portal",
+    "trigger": "Account menu"
+  }
+}
