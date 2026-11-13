@@ -1,0 +1,13 @@
+node_modules/
+.next/
+dist/
+target/
+.turbo/
+.env
+.env.*
+!.env.example
+*.log
+.idea/
+.vscode/
+.DS_Store
+.tmp-uniai/
