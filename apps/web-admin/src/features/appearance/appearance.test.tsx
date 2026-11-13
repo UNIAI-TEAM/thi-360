@@ -230,6 +230,26 @@ describe("AppearanceView", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(document.documentElement.style.getPropertyValue("--color-primary-600")).toBe("#059669");
   });
+
+  it("hiển thị thông báo lỗi theo mã lỗi next-intl, không dùng message thô từ backend", async () => {
+    const saveMock = vi
+      .fn<AppearanceSaver>()
+      .mockRejectedValueOnce(
+        new AppearanceApiError(400, "Raw backend error text", "VALIDATION_FAILED"),
+      );
+
+    renderAppearance({ saveAppearance: saveMock });
+    await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
+    await userEvent.click(screen.getByRole("button", { name: "Lưu và áp dụng" }));
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(
+      alerts.some((node) =>
+        node.textContent?.includes("Dữ liệu màu hoặc bộ phối màu không hợp lệ."),
+      ),
+    ).toBe(true);
+    expect(screen.queryByText("Raw backend error text")).not.toBeInTheDocument();
+  });
 });
 
 describe("appearance api client", () => {

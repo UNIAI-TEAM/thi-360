@@ -40,6 +40,7 @@ import { getErrorStatus } from "@/lib/api/query-client";
 import { revalidateAppearance } from "./actions";
 import {
   APPEARANCE_QUERY_KEY,
+  AppearanceApiError,
   applyAppearanceToDocument,
   loadAppearance as defaultLoadAppearance,
   resetAppearance as defaultResetAppearance,
@@ -52,7 +53,12 @@ import {
 
 const PREVIEW_SCALE_STEPS = [50, 100, 200, 500, 600, 700, 800, 900] as const;
 const DEFAULT_FALLBACK_PRESET = PRESET_PALETTES[0];
-
+const ERROR_CODE_KEYS = {
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+  RATE_LIMITED: "RATE_LIMITED",
+  VALIDATION_FAILED: "VALIDATION_FAILED",
+  VERSION_CONFLICT: "VERSION_CONFLICT",
+} as const;
 export interface AppearanceViewProps {
   loadAppearance?: AppearanceLoader;
   saveAppearance?: AppearanceSaver;
@@ -188,6 +194,21 @@ function AppearanceEditor({
     });
   }
 
+  function resolveMutationErrorMessage(
+    error: unknown,
+    fallbackKey: "saveFailed" | "resetFailed",
+  ): string {
+    const code = error instanceof AppearanceApiError ? error.code : undefined;
+    if (code && code in ERROR_CODE_KEYS) {
+      return t(`errorCodes.${code as keyof typeof ERROR_CODE_KEYS}`);
+    }
+    const status = getErrorStatus(error);
+    if (status === 400) return t("errorCodes.VALIDATION_FAILED");
+    if (status === 429) return t("errorCodes.RATE_LIMITED");
+    if (status !== null && status >= 500) return t("errorCodes.INTERNAL_ERROR");
+    return t(fallbackKey);
+  }
+
   const saveMutation = useMutation({
     mutationFn: (payload: Parameters<AppearanceSaver>[0]) => saveAppearance(payload),
     onSuccess: (saved) => {
@@ -201,12 +222,13 @@ function AppearanceEditor({
     },
     onError: (error) => {
       const status = getErrorStatus(error);
-      if (status === 412) {
+      const code = error instanceof AppearanceApiError ? error.code : undefined;
+      if (status === 412 || code === "VERSION_CONFLICT") {
         setStaleConflict(true);
         return;
       }
       if (status === 401 || status === 403) return;
-      const msg = error instanceof Error && error.message ? error.message : t("saveFailed");
+      const msg = resolveMutationErrorMessage(error, "saveFailed");
       setServerError(msg);
       notify.error(msg);
     },
@@ -227,12 +249,13 @@ function AppearanceEditor({
     onError: (error) => {
       setResetDialogOpen(false);
       const status = getErrorStatus(error);
-      if (status === 412) {
+      const code = error instanceof AppearanceApiError ? error.code : undefined;
+      if (status === 412 || code === "VERSION_CONFLICT") {
         setStaleConflict(true);
         return;
       }
       if (status === 401 || status === 403) return;
-      const msg = error instanceof Error && error.message ? error.message : t("resetFailed");
+      const msg = resolveMutationErrorMessage(error, "resetFailed");
       setServerError(msg);
       notify.error(msg);
     },
@@ -469,7 +492,9 @@ function AppearanceEditor({
                       )}
                     </span>
                     <span className="block">
-                      <span className="block font-semibold text-text">{preset.name}</span>
+                      <span className="block font-semibold text-text">
+                        {t(`presets.${preset.id}`)}
+                      </span>
                       <span className="block text-caption text-text-muted">
                         {preset.primary} · {preset.accent}
                       </span>
@@ -623,11 +648,8 @@ function AppearanceEditor({
                           <AlertTriangle aria-hidden className="size-4 shrink-0" />
                           <span>
                             {warning.code === "PRIMARY_USES_DARK_TEXT"
-                              ? t("warningsWithRatio", {
-                                  message: warning.message,
-                                  ratio: onPrimaryRatio,
-                                })
-                              : warning.message}
+                              ? t("warnings.PRIMARY_USES_DARK_TEXT", { ratio: onPrimaryRatio })
+                              : t(`warnings.${warning.code}`)}
                           </span>
                         </li>
                       ))
@@ -648,7 +670,7 @@ function AppearanceEditor({
               role="alert"
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger bg-danger-bg p-3.5 text-field-label text-danger"
             >
-              <span>{t("staleMessage")}</span>
+              <span>{t("errorCodes.VERSION_CONFLICT")}</span>
               <Button variant="secondary" size="sm" onClick={() => void handleReloadLatest()}>
                 {t("reloadLatest")}
               </Button>
@@ -694,7 +716,7 @@ function AppearanceEditor({
             </h2>
             <p className="text-body text-text-muted">
               {t("previewSubtitle", {
-                palette: isCustom ? t("customCardTitle") : currentPreset.name,
+                palette: isCustom ? t("customCardTitle") : t(`presets.${currentPreset.id}`),
                 mode: activeDraft.mode === "dark" ? t("modeDark") : t("modeLight"),
               })}
             </p>

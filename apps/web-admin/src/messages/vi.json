@@ -17,6 +17,12 @@
     "emptyAction": "Khôi phục mặc định",
     "emptyDescription": "Chưa có cấu hình giao diện trên máy chủ. Bạn có thể áp dụng cấu hình mặc định ngay.",
     "emptyTitle": "Chưa có cấu hình giao diện",
+    "errorCodes": {
+      "INTERNAL_ERROR": "Đã xảy ra lỗi hệ thống. Hãy thử lại sau.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Hãy thử lại sau.",
+      "VALIDATION_FAILED": "Dữ liệu màu hoặc bộ phối màu không hợp lệ.",
+      "VERSION_CONFLICT": "Cấu hình giao diện đã được cập nhật từ nơi khác. Hãy tải lại cấu hình mới nhất trước khi lưu."
+    },
     "errorDescription": "Không tải được cấu hình giao diện. Hãy thử lại.",
     "errorTitle": "Không tải được trang",
     "modeDark": "Tối",
@@ -24,6 +30,17 @@
     "modeSection": "Chế độ",
     "paletteDescription": "Mỗi bộ gồm màu chính và màu nhấn. Các màu còn lại do hệ thống suy ra.",
     "paletteSection": "Bộ phối màu",
+    "presets": {
+      "blue-silver": "Xanh dương & Bạc",
+      "charcoal-teal": "Xanh rêu & Xanh cổ vịt",
+      "emerald-gold": "Ngọc lục bảo & Vàng",
+      "indigo-amber": "Chàm & Hổ phách",
+      "indigo-coral": "Chàm & San hô",
+      "navy-teal": "Xanh hải quân & Ngọc lam",
+      "sky-orange": "Xanh da trời & Cam",
+      "slate-crimson": "Xám đá & Đỏ thẫm",
+      "thi360-green": "Thi 360 Xanh lá"
+    },
     "previewAccentButton": "Vào thi ngay",
     "previewActiveChip": "Hoạt động",
     "previewBrand": "Thi 360",
@@ -53,10 +70,13 @@
     "saveAction": "Lưu và áp dụng",
     "saveFailed": "Không lưu được cấu hình giao diện. Hãy thử lại.",
     "saveSuccess": "Đã lưu và áp dụng giao diện mới cho toàn hệ thống.",
-    "staleMessage": "Cấu hình giao diện đã được cập nhật từ nơi khác. Hãy tải lại cấu hình mới nhất trước khi lưu.",
     "title": "Tùy chỉnh giao diện",
+    "warnings": {
+      "NEAR_DANGER_COLOR": "Dễ nhầm với màu báo lỗi",
+      "PRIMARY_ACCENT_SIMILAR": "Nút nhấn sẽ không nổi bật so với nút chính",
+      "PRIMARY_USES_DARK_TEXT": "Nút chính sẽ dùng chữ tối (tương phản {ratio})"
+    },
     "warningsOk": "Hai màu dùng được. Chữ trên nút đều đạt mức tương phản 4,5:1 trở lên.",
-    "warningsWithRatio": "{message} (tương phản {ratio})",
     "whiteText": "Chữ trắng"
   },
   "common": {
@@ -212,6 +232,10 @@
     "eyebrow": "MÃ LỖI 403",
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
+  },
+  "metadata": {
+    "description": "Trang quản trị cổng luyện thi Thi 360",
+    "title": "Thi 360 — Quản trị"
   },
   "nav": {
     "groups": {

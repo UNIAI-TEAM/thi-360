@@ -1,0 +1,277 @@
+{
+  "appearance": {
+    "accentHelper": "Used for prominent action buttons and badges.",
+    "accentInvalid": "Color code must use #RRGGBB format, e.g. F59223.",
+    "accentLabel": "Accent color",
+    "accentPickerAria": "Pick accent color",
+    "cancel": "Cancel",
+    "close": "Close",
+    "contrastLinkLabel": "Link on background",
+    "contrastOnAccentLabel": "Text on accent button",
+    "contrastOnPrimaryLabel": "Text on primary button",
+    "contrastValue": "{tone} · contrast {ratio}",
+    "customCardDescription": "Choose custom primary and accent colors",
+    "customCardTitle": "Custom",
+    "darkText": "Dark text",
+    "description": "Applies system-wide across the admin portal, student portal, and sign-in page. Changes remain in the preview area until you click Save and apply.",
+    "emptyAction": "Restore defaults",
+    "emptyDescription": "No appearance configuration exists on the server yet. You can apply the default configuration now.",
+    "emptyTitle": "No appearance configuration",
+    "errorCodes": {
+      "INTERNAL_ERROR": "A system error occurred. Please try again later.",
+      "RATE_LIMITED": "Too many requests. Please try again later.",
+      "VALIDATION_FAILED": "The color or palette configuration is invalid.",
+      "VERSION_CONFLICT": "Appearance settings were updated elsewhere. Reload the latest configuration before saving."
+    },
+    "errorDescription": "Could not load appearance settings. Please try again.",
+    "errorTitle": "Could not load page",
+    "modeDark": "Dark",
+    "modeLight": "Light",
+    "modeSection": "Mode",
+    "paletteDescription": "Each palette pairs a primary and an accent color. Remaining tokens are derived automatically.",
+    "paletteSection": "Color palette",
+    "presets": {
+      "blue-silver": "Blue & Silver",
+      "charcoal-teal": "Charcoal & Teal",
+      "emerald-gold": "Emerald & Gold",
+      "indigo-amber": "Indigo & Amber",
+      "indigo-coral": "Indigo & Coral",
+      "navy-teal": "Navy & Teal",
+      "sky-orange": "Sky & Orange",
+      "slate-crimson": "Slate & Crimson",
+      "thi360-green": "Thi 360 Green"
+    },
+    "previewAccentButton": "Start exam now",
+    "previewActiveChip": "Active",
+    "previewBrand": "Thi 360",
+    "previewDangerChip": "Error",
+    "previewFootnote": "Status chips (Active, Error) keep their colors across all palettes. Every save is recorded in the audit log with before and after values.",
+    "previewHeading": "Practice like the real exam",
+    "previewInputValue": "Focused input field",
+    "previewLink": "Primary link",
+    "previewLogoMark": "360",
+    "previewMuted": "Muted text for descriptions and captions.",
+    "previewNavItem": "Active menu item",
+    "previewPrimaryButton": "Primary button",
+    "previewScaleLabel": "Primary scale derived from base color (step 600)",
+    "previewSecondaryButton": "Secondary button",
+    "previewSubtitle": "{palette} · {mode} mode",
+    "previewTitle": "Preview",
+    "primaryHelper": "Used for primary buttons, links, and active items.",
+    "primaryInvalid": "Color code must use #RRGGBB format, e.g. 059669.",
+    "primaryLabel": "Primary color",
+    "primaryPickerAria": "Pick primary color",
+    "reloadLatest": "Reload latest settings",
+    "resetAction": "Restore defaults",
+    "resetConfirmDescription": "System-wide appearance (admin, student, and sign-in pages) will return to Thi 360 Green and Light mode.",
+    "resetConfirmTitle": "Restore default appearance?",
+    "resetFailed": "Could not restore default appearance. Please try again.",
+    "resetSuccess": "Default appearance restored.",
+    "saveAction": "Save and apply",
+    "saveFailed": "Could not save appearance settings. Please try again.",
+    "saveSuccess": "Saved and applied the new appearance system-wide.",
+    "title": "Appearance settings",
+    "warnings": {
+      "NEAR_DANGER_COLOR": "Too close to the error color",
+      "PRIMARY_ACCENT_SIMILAR": "Accent button will not stand out against the primary button",
+      "PRIMARY_USES_DARK_TEXT": "Primary button will use dark text (contrast {ratio})"
+    },
+    "warningsOk": "Colors look good. Button text achieves at least 4.5:1 contrast.",
+    "whiteText": "White text"
+  },
+  "common": {
+    "backHome": "Back to home",
+    "loading": "Loading",
+    "retry": "Retry"
+  },
+  "dashboard": {
+    "errorDescription": "An error occurred while loading account details. Please try again.",
+    "errorTitle": "Could not load page",
+    "greeting": "Hello, {name}",
+    "intro": "This is the Thi 360 admin portal. Choose an item from the left menu to get started.",
+    "shortcuts": "Shortcuts",
+    "title": "Dashboard"
+  },
+  "devUi": {
+    "buttons": {
+      "danger": "Delete account",
+      "disabled": "Locked",
+      "exam": "Start exam now",
+      "link": "View all →",
+      "loading": "Saving",
+      "outline": "Import Excel",
+      "primary": "Create account",
+      "secondary": "Cancel",
+      "sizeLg": "Large (48px)",
+      "sizeMd": "Default (40px)",
+      "sizeSm": "Small (36px)",
+      "sizeXl": "Sign in (52px)",
+      "soft": "Details"
+    },
+    "chips": {
+      "badge": "3 exams",
+      "filterIdle": "Inactive",
+      "filterSelected": "Active",
+      "tag": "Mathematics"
+    },
+    "description": "Shared UI components of Thi 360. Switch Light / Dark to inspect tokens.",
+    "fields": {
+      "checkboxLabel": "Require password change on first sign-in",
+      "errorLabel": "Username",
+      "errorMessage": "Username already exists.",
+      "noteLabel": "Notes",
+      "notePlaceholder": "Enter a reason or note…",
+      "roleContent": "Content Admin",
+      "roleLabel": "Role",
+      "roleOps": "Operations / Support",
+      "roleStudent": "Student (not assigned here)",
+      "searchHint": "Search by code, username, or full name.",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Enter keyword…",
+      "switchLabel": "Allow sign-in"
+    },
+    "navigation": {
+      "breadcrumbAria": "Sample breadcrumb",
+      "crumbCurrent": "Account details",
+      "crumbRoot": "Users",
+      "crumbSection": "Accounts",
+      "tabBulk": "Bulk assignment",
+      "tabBulkBody": "Select accounts to grant or revoke permissions.",
+      "tabPermissions": "Permissions",
+      "tabPermissionsBody": "Fixed list of 13 wave-1 permissions.",
+      "tabRoles": "Roles",
+      "tabRolesBody": "Manage system roles and custom roles."
+    },
+    "overlays": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "confirmAction": "Lock account",
+      "confirmDescription": "All active sessions of ops.admin will be revoked.",
+      "confirmTitle": "Lock this account?",
+      "dialogDescription": "Fill in basic details for the new role.",
+      "dialogTitle": "Create role",
+      "drawerDescription": "History of permission and status changes for this account.",
+      "drawerTitle": "Change history",
+      "menuDelete": "Delete role",
+      "menuEdit": "Rename",
+      "menuHeading": "More actions",
+      "openConfirm": "Confirm dialog",
+      "openDialog": "Open dialog",
+      "openDrawer": "Open drawer",
+      "openMenu": "Dropdown menu",
+      "reasonLabel": "Lock reason",
+      "save": "Save",
+      "toastSaved": "Changes saved.",
+      "tooltipContent": "Hint shown on hover or keyboard focus",
+      "tooltipTrigger": "Hover to view tooltip",
+      "triggerToast": "Show notification"
+    },
+    "pagination": {
+      "nav": "Sample table pagination",
+      "next": "Next page",
+      "page": "Page {page}",
+      "previous": "Previous page",
+      "range": "{from}–{to} / {total} items",
+      "rowsPerPage": "Rows per page"
+    },
+    "sections": {
+      "buttons": "Buttons (Button)",
+      "chips": "Status chips, filter chips, and badges",
+      "fields": "Inputs, selects, checkboxes, and switches (Input, Select, Textarea, Checkbox, Switch, FormField)",
+      "navigation": "Breadcrumb and Tabs",
+      "overlays": "Dialog, ConfirmDialog, Drawer, DropdownMenu, Tooltip, Toast",
+      "skeleton": "Skeleton loaders (Skeleton)",
+      "table": "Table, icon buttons, and pagination (Table, IconButton, EmptyState, Pagination)"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "locked": "Locked",
+      "pending": "Pending sign-in",
+      "system": "System"
+    },
+    "table": {
+      "ariaLabel": "Sample account list",
+      "colActions": "Actions",
+      "colCode": "Code",
+      "colFullName": "Full name",
+      "colRole": "Role",
+      "colStatus": "Status",
+      "colUsername": "Username",
+      "deleteAction": "Delete account {name}",
+      "deleteBlockedReason": "Cannot delete an account in use.",
+      "editAction": "Edit account {name}",
+      "emptyDescription": "Try changing filters or creating a new record.",
+      "emptyTitle": "No accounts found",
+      "errorDescription": "Could not load the list. Please try again.",
+      "errorTitle": "Failed to load data",
+      "selectAll": "Select all rows",
+      "selectRow": "Select account {name}",
+      "stateData": "Has data",
+      "stateEmpty": "Empty",
+      "stateError": "Error",
+      "stateLabel": "Table state",
+      "stateLoading": "Loading",
+      "viewAction": "View details for {name}"
+    },
+    "themeDark": "Dark",
+    "themeLabel": "Color mode",
+    "themeLight": "Light",
+    "title": "UI Components (/dev/ui)"
+  },
+  "errors": {
+    "forbiddenToast": "You do not have permission to perform this action.",
+    "notFound": "Not found.",
+    "proxyNotConfigured": "The web server API URL is not configured.",
+    "upstreamTimeout": "The server took too long to respond. Please try again later.",
+    "upstreamUnavailable": "Could not connect to the server. Please try again later."
+  },
+  "forbidden": {
+    "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "eyebrow": "ERROR 403",
+    "otherAccount": "Sign in with another account",
+    "title": "You do not have access to this page"
+  },
+  "metadata": {
+    "description": "Thi 360 exam preparation administration portal",
+    "title": "Thi 360 — Admin"
+  },
+  "nav": {
+    "groups": {
+      "overview": "Overview",
+      "system": "System",
+      "users": "Users"
+    },
+    "items": {
+      "appearance": {
+        "description": "Light/dark mode and system-wide color palette",
+        "label": "Appearance"
+      },
+      "dashboard": {
+        "description": "Greeting and permission-based shortcuts",
+        "label": "Dashboard"
+      }
+    }
+  },
+  "notFound": {
+    "description": "The page you opened does not exist or has been moved.",
+    "eyebrow": "ERROR 404",
+    "title": "Page not found"
+  },
+  "shell": {
+    "brand": "Thi 360 · Admin",
+    "breadcrumbLabel": "Current location",
+    "logoMark": "360",
+    "menuLabel": "Main menu",
+    "menuLoading": "Loading menu",
+    "skipToContent": "Skip to main content",
+    "userMenu": {
+      "changePassword": "Change password",
+      "logout": "Sign out",
+      "logoutFailed": "Could not sign out. Please try again.",
+      "profile": "Profile",
+      "trigger": "Account menu"
+    }
+  }
+}

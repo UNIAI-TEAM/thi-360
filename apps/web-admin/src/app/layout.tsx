@@ -8,7 +8,7 @@ import {
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { CSSProperties, ReactNode } from "react";
 import { SessionProvider } from "@/features/session/session-provider";
 import { QueryProvider } from "@/providers/query-provider";
@@ -21,10 +21,13 @@ const beVietnamPro = Be_Vietnam_Pro({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Thi 360 — Quản trị",
-  description: "Trang quản trị cổng luyện thi Thi 360",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 async function loadAppearance(): Promise<AppearanceConfig> {
   const apiBase =
