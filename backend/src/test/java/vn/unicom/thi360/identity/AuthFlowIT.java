@@ -7,18 +7,35 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
+import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.jwt.SignedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
 import vn.unicom.thi360.identity.domain.UserAccount;
+import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
@@ -26,6 +43,8 @@ import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUse
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.security.AuthCookieService;
+import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 import vn.unicom.thi360.shared.security.SessionStore;
 
 class AuthFlowIT extends AbstractKeycloakIntegrationTest {
@@ -47,6 +66,25 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+
+    @MockitoSpyBean
+    private AuditRecorder auditRecorder;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void cleanupRateLimitBuckets() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + "203.0.113.60",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.61",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.62",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.63",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.64",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.65",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.66"));
+    }
     @Test
     void loginWithUsernameEmailAndMixedCase_setsCookies_andMeReturnsAppExamUser() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
@@ -310,6 +348,135 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
             boolean mustChangePassword) {
         UUID userId = keycloakClient.createUser(new CreateUserCommand(
                 username, email, fullName, "User", password, enabledInKeycloak, false, true));
+    @Test
+    void forgedOrUnsignedLogoutCookie_doesNotRevokeVictimSessionOrRecordLogoutAudit() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "victim.logout." + suffix;
+        UserAccount account = createProvisionedUser(
+                username, null, "Victim Logout", "Valid@1234", UserStatus.ACTIVE, false);
+
+        MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header("X-Forwarded-For", "203.0.113.62")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie victimAt = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie victimRt = loginRes.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie victimXsrf = loginRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        JWTClaimsSet victimClaims = JWTParser.parse(victimAt.getValue()).getJWTClaimsSet();
+        String unsignedAt = new PlainJWT(victimClaims).serialize();
+        String tamperedSigAt = tamperSignature(victimAt.getValue());
+        RSAKey rogueKey = new RSAKeyGenerator(2048).keyID("rogue").generate();
+        SignedJWT rogueSigned = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("rogue").build(),
+                victimClaims);
+        rogueSigned.sign(new RSASSASigner(rogueKey));
+        String rogueAt = rogueSigned.serialize();
+
+        String callerXsrf = "attacker-xsrf-" + suffix;
+        for (String forgedAt : List.of(unsignedAt, tamperedSigAt, rogueAt)) {
+            MvcResult logoutRes = mockMvc.perform(post("/api/v1/auth/logout")
+                            .cookie(
+                                    new Cookie(AuthCookieService.ACCESS_TOKEN_COOKIE, forgedAt),
+                                    new Cookie(AuthCookieService.XSRF_COOKIE, callerXsrf))
+                            .header(AuthCookieService.XSRF_HEADER, callerXsrf))
+                    .andExpect(status().isNoContent())
+                    .andReturn();
+            assertThat(logoutRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE).getMaxAge()).isZero();
+        }
+
+        mockMvc.perform(get("/api/v1/me").cookie(victimAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(username));
+
+        verify(auditRecorder, never()).record(argThat(event ->
+                event != null
+                        && "LOGOUT".equals(event.action())
+                        && account.getId().toString().equals(event.targetId())));
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(victimAt, victimRt, victimXsrf)
+                        .header(AuthCookieService.XSRF_HEADER, victimXsrf.getValue()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/me").cookie(victimAt))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+
+        verify(auditRecorder).record(argThat(event ->
+                event != null
+                        && "LOGOUT".equals(event.action())
+                        && account.getId().toString().equals(event.targetId())));
+    }
+
+    @Test
+    void forgedOrUnsignedRefreshCookie_doesNotRevokeVictimSession() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "victim.refresh." + suffix;
+        UserAccount account = createProvisionedUser(
+                username, null, "Victim Refresh", "Valid@1234", UserStatus.ACTIVE, false);
+
+        MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header("X-Forwarded-For", "203.0.113.63")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie victimAt = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie victimRt = loginRes.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie victimXsrf = loginRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        JWTClaimsSet victimAtClaims = JWTParser.parse(victimAt.getValue()).getJWTClaimsSet();
+        String unsignedRt = new PlainJWT(new JWTClaimsSet.Builder()
+                .issuer(victimAtClaims.getIssuer())
+                .subject(victimAtClaims.getSubject())
+                .claim("sid", victimAtClaims.getStringClaim("sid"))
+                .build()).serialize();
+        String tamperedRt = tamperSignature(victimRt.getValue());
+
+        String callerXsrf = "attacker-rt-xsrf-" + suffix;
+        for (String forgedRt : List.of(unsignedRt, tamperedRt)) {
+            mockMvc.perform(post("/api/v1/auth/refresh")
+                            .cookie(
+                                    new Cookie(AuthCookieService.REFRESH_TOKEN_COOKIE, forgedRt),
+                                    new Cookie(AuthCookieService.XSRF_COOKIE, callerXsrf))
+                            .header(AuthCookieService.XSRF_HEADER, callerXsrf))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+        }
+
+        mockMvc.perform(get("/api/v1/me").cookie(victimAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(username));
+
+        MvcResult genuineRefresh = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(victimRt, victimXsrf)
+                        .header(AuthCookieService.XSRF_HEADER, victimXsrf.getValue()))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie rotatedRt = genuineRefresh.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie rotatedXsrf = genuineRefresh.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        sessionStore.deleteAllSessions(account.getId());
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(rotatedRt, rotatedXsrf)
+                        .header(AuthCookieService.XSRF_HEADER, rotatedXsrf.getValue()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+    }
+
+    private static String tamperSignature(String token) {
+        int lastDot = token.lastIndexOf('.');
+        int mid = lastDot + 1 + (token.length() - lastDot - 1) / 2;
+        char ch = token.charAt(mid);
+        char replacement = ch == 'A' ? 'B' : 'A';
+        return token.substring(0, mid) + replacement + token.substring(mid + 1);
+    }
+
         Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
         String code = String.format("U%06d", seq);
         UserAccount account = new UserAccount(

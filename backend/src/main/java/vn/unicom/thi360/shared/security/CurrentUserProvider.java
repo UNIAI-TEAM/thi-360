@@ -20,6 +20,14 @@ public class CurrentUserProvider {
         return Optional.empty();
     }
 
+    public Optional<String> getCurrentSessionId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof CurrentUserAuthenticationToken token && token.isAuthenticated()) {
+            return Optional.ofNullable(token.getSessionId());
+        }
+        return Optional.empty();
+    }
+
     public CurrentUser requireCurrentUser() {
         return getCurrentUser().orElseThrow(UnauthenticatedException::new);
     }

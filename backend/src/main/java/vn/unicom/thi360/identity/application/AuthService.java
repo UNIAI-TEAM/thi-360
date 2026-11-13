@@ -277,17 +277,27 @@ public class AuthService {
 
     public LoginResult refresh(String refreshToken, HttpServletResponse response) {
         if (refreshToken == null || refreshToken.isBlank()) {
+            authCookieService.clearAuthCookies(response);
             throw new UnauthenticatedException("UNAUTHENTICATED", null);
         }
 
         JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
         String oldSid = refreshClaims == null ? null : getStringClaim(refreshClaims, "sid");
         if (oldSid == null || oldSid.isBlank()) {
+            authCookieService.clearAuthCookies(response);
             throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
 
         SessionStore.SessionData session = sessionStore.findSession(oldSid)
-                .orElseThrow(() -> new UnauthenticatedException("SESSION_REVOKED", null));
+                .orElseThrow(() -> {
+                    authCookieService.clearAuthCookies(response);
+                    return new UnauthenticatedException("SESSION_REVOKED", null);
+                });
+
+        if (!refreshClaimsMatchSession(refreshClaims, session)) {
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
 
         String targetRealmName = session.realm() == Realm.MASTER
                 ? keycloakProperties.platformRealm()
@@ -297,17 +307,34 @@ public class AuthService {
         try {
             tokens = keycloakClient.refresh(targetRealmName, refreshToken);
         } catch (KeycloakAuthException ex) {
-            sessionStore.deleteSession(oldSid);
+            // Never delete oldSid here: Keycloak rejected refreshToken, so session ownership is unverified.
             authCookieService.clearAuthCookies(response);
             throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
 
-        Jwt jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
-        UUID userId = UUID.fromString(jwt.getSubject());
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        UUID userId = parseUuid(jwt.getSubject());
+        Realm verifiedRealm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
         String newSid = requireSid(jwt);
+        if (userId == null
+                || !userId.equals(session.userId())
+                || verifiedRealm == null
+                || verifiedRealm != session.realm()) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
 
         boolean mustChangePassword = false;
-        if (session.realm() == Realm.APP) {
+        if (verifiedRealm == Realm.APP) {
             UserAccount account = userAccountRepository.findById(userId).orElse(null);
             if (account == null || account.isDeleted() || account.getStatus() != UserStatus.ACTIVE) {
                 sessionStore.deleteAllSessions(userId);
@@ -319,13 +346,20 @@ public class AuthService {
         }
 
         if (!oldSid.equals(newSid)) {
-            sessionStore.deleteSession(oldSid);
-            sessionStore.createSession(newSid, userId, session.realm());
+            if (!sessionStore.rotateSession(oldSid, newSid, userId, verifiedRealm)) {
+                keycloakClient.logout(targetRealmName, tokens.refreshToken());
+                authCookieService.clearAuthCookies(response);
+                throw new UnauthenticatedException("SESSION_REVOKED", null);
+            }
+        } else if (!sessionStore.existsForUser(oldSid, userId, verifiedRealm)) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
 
-        Access access = resolveAccess(userId, session.realm());
-        long ver = resolveAuthzVersion(userId, session.realm());
-        String ctx = ctxCookieSigner.sign(userId, session.realm(), access, ver);
+        Access access = resolveAccess(userId, verifiedRealm);
+        long ver = resolveAuthzVersion(userId, verifiedRealm);
+        String ctx = ctxCookieSigner.sign(userId, verifiedRealm, access, ver);
         authCookieService.setAuthCookies(
                 response,
                 tokens.accessToken(),
@@ -338,60 +372,156 @@ public class AuthService {
     }
 
     public void logout(String refreshToken, String accessToken, HttpServletResponse response) {
-        Optional<CurrentUser> currentUserOpt = currentUserProvider.getCurrentUser();
-        UUID userId = currentUserOpt.map(CurrentUser::id).orElse(null);
-        String username = currentUserOpt.map(CurrentUser::username).orElse(null);
-        Realm realm = currentUserOpt.map(CurrentUser::realm).orElse(null);
-        String sid = null;
+        try {
+            Optional<CurrentUser> currentUserOpt = currentUserProvider.getCurrentUser();
+            Optional<String> currentSidOpt = currentUserProvider.getCurrentSessionId();
+            if (currentUserOpt.isPresent() && currentSidOpt.isPresent() && !currentSidOpt.get().isBlank()) {
+                CurrentUser currentUser = currentUserOpt.get();
+                String sid = currentSidOpt.get();
+                boolean deleted = sessionStore.deleteSessionIfOwner(sid, currentUser.id(), currentUser.realm());
+                if (deleted) {
+                    logoutKeycloakIfMatching(refreshToken, sid, currentUser.id(), currentUser.realm());
+                    recordLogoutAudit(currentUser.id(), currentUser.username(), currentUser.realm());
+                }
+                return;
+            }
 
-        JWTClaimsSet accessClaims = parseClaimsUnverified(accessToken);
+            if (accessToken != null && !accessToken.isBlank()) {
+                Jwt jwt;
+                try {
+                    jwt = twoIssuerJwtDecoder.decodeAllowingExpired(accessToken);
+                } catch (JwtException ex) {
+                    securityLog.atWarn()
+                            .addKeyValue("event", "logout.invalid_access_token")
+                            .log("Ignoring unverified access token on logout");
+                    return;
+                }
+
+                String sid = jwt.getClaimAsString("sid");
+                UUID userId = parseUuid(jwt.getSubject());
+                Realm realm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
+                String username = Optional.ofNullable(jwt.getClaimAsString("preferred_username"))
+                        .filter(u -> !u.isBlank())
+                        .orElse(userId != null ? userId.toString() : null);
+
+                if (sid == null || sid.isBlank() || userId == null || realm == null) {
+                    return;
+                }
+
+                boolean deleted = sessionStore.deleteSessionIfOwner(sid, userId, realm);
+                if (deleted) {
+                    logoutKeycloakIfMatching(refreshToken, sid, userId, realm);
+                    recordLogoutAudit(userId, username, realm);
+                }
+                return;
+            }
+
+            if (refreshToken != null && !refreshToken.isBlank()) {
+                logoutViaRefreshTokenVerification(refreshToken);
+            }
+        } finally {
+            authCookieService.clearAuthCookies(response);
+        }
+    }
+
+    private void logoutViaRefreshTokenVerification(String refreshToken) {
         JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
-
-        if (accessClaims != null) {
-            sid = getStringClaim(accessClaims, "sid");
-            if (userId == null) {
-                userId = parseUuid(accessClaims.getSubject());
-            }
-            if (username == null) {
-                username = getStringClaim(accessClaims, "preferred_username");
-            }
-            if (realm == null) {
-                realm = resolveRealmByIssuer(accessClaims.getIssuer());
-            }
+        String oldSid = refreshClaims == null ? null : getStringClaim(refreshClaims, "sid");
+        if (oldSid == null || oldSid.isBlank()) {
+            return;
         }
+        Optional<SessionStore.SessionData> sessionOpt = sessionStore.findSession(oldSid);
+        if (sessionOpt.isEmpty()) {
+            return;
+        }
+        SessionStore.SessionData session = sessionOpt.get();
+        if (!refreshClaimsMatchSession(refreshClaims, session)) {
+            return;
+        }
+
+        String targetRealmName = session.realm() == Realm.MASTER
+                ? keycloakProperties.platformRealm()
+                : keycloakProperties.realm();
+
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.refresh(targetRealmName, refreshToken);
+        } catch (KeycloakAuthException ex) {
+            securityLog.atWarn()
+                    .addKeyValue("event", "logout.invalid_refresh_token")
+                    .log("Ignoring unverified refresh token on logout");
+            return;
+        }
+
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            return;
+        }
+
+        UUID userId = parseUuid(jwt.getSubject());
+        Realm verifiedRealm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
+        String newSid = jwt.getClaimAsString("sid");
+        if (userId == null
+                || !userId.equals(session.userId())
+                || verifiedRealm == null
+                || verifiedRealm != session.realm()) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            return;
+        }
+
+        String username = Optional.ofNullable(jwt.getClaimAsString("preferred_username"))
+                .filter(u -> !u.isBlank())
+                .orElse(userId.toString());
+
+        boolean deletedOld = sessionStore.deleteSessionIfOwner(oldSid, userId, verifiedRealm);
+        boolean deletedNew = newSid != null && !newSid.isBlank() && !newSid.equals(oldSid)
+                && sessionStore.deleteSessionIfOwner(newSid, userId, verifiedRealm);
+        keycloakClient.logout(targetRealmName, tokens.refreshToken());
+        if (deletedOld || deletedNew) {
+            recordLogoutAudit(userId, username, verifiedRealm);
+        }
+    }
+
+    private void logoutKeycloakIfMatching(String refreshToken, String expectedSid, UUID expectedUserId, Realm realm) {
+        if (refreshToken == null || refreshToken.isBlank() || realm == null) {
+            return;
+        }
+        JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
         if (refreshClaims != null) {
-            if (sid == null) {
-                sid = getStringClaim(refreshClaims, "sid");
+            String rtSid = getStringClaim(refreshClaims, "sid");
+            if (rtSid != null && !rtSid.isBlank() && !expectedSid.equals(rtSid)) {
+                return;
             }
-            if (userId == null) {
-                userId = parseUuid(refreshClaims.getSubject());
-            }
-            if (realm == null) {
-                realm = resolveRealmByIssuer(refreshClaims.getIssuer());
+            UUID rtSub = parseUuid(refreshClaims.getSubject());
+            if (rtSub != null && !expectedUserId.equals(rtSub)) {
+                return;
             }
         }
+        String realmName = realm == Realm.MASTER
+                ? keycloakProperties.platformRealm()
+                : keycloakProperties.realm();
+        keycloakClient.logout(realmName, refreshToken);
+    }
 
-        if (sid != null && !sid.isBlank()) {
-            if (realm == null) {
-                realm = sessionStore.findSession(sid).map(SessionStore.SessionData::realm).orElse(null);
-            }
-            sessionStore.deleteSession(sid);
+    private void recordLogoutAudit(UUID userId, String username, Realm realm) {
+        String targetType = realm == Realm.MASTER ? "PLATFORM_ADMIN" : "USER";
+        String label = username != null ? username : userId.toString();
+        recordAudit(AuditEvent.success(MODULE, "LOGOUT", targetType, userId.toString(), label));
+    }
+
+    private boolean refreshClaimsMatchSession(JWTClaimsSet refreshClaims, SessionStore.SessionData session) {
+        if (refreshClaims == null) {
+            return false;
         }
-
-        if (refreshToken != null && !refreshToken.isBlank() && realm != null) {
-            String realmName = realm == Realm.MASTER
-                    ? keycloakProperties.platformRealm()
-                    : keycloakProperties.realm();
-            keycloakClient.logout(realmName, refreshToken);
+        String claimIss = refreshClaims.getIssuer();
+        if (claimIss != null && !claimIss.isBlank() && resolveRealmByIssuer(claimIss) != session.realm()) {
+            return false;
         }
-
-        authCookieService.clearAuthCookies(response);
-
-        if (userId != null) {
-            String targetType = realm == Realm.MASTER ? "PLATFORM_ADMIN" : "USER";
-            String label = username != null ? username : userId.toString();
-            recordAudit(AuditEvent.success(MODULE, "LOGOUT", targetType, userId.toString(), label));
-        }
+        UUID claimSub = parseUuid(refreshClaims.getSubject());
+        return claimSub == null || claimSub.equals(session.userId());
     }
 
     public void changePassword(String oldPassword, String newPassword) {
