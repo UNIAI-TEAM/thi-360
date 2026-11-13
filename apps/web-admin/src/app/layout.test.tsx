@@ -27,20 +27,25 @@ afterEach(() => {
 
 describe("RootLayout appearance SSR", () => {
   it("chèn biến CSS và data-theme từ GET /api/v1/appearance lên thẻ <html>", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          palette: { presetId: "navy-teal" },
-          mode: "dark",
-          version: 7,
-        }),
-      ),
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        palette: { presetId: "navy-teal" },
+        mode: "dark",
+        version: 7,
+      }),
     );
+    vi.stubGlobal("fetch", fetchMock);
 
     const tree = await RootLayout({ children: "ok" });
     expect(tree.props["data-theme"]).toBe("dark");
     expect(tree.props.style["--color-primary-600"]).toBe("#0f3c6e");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [request, init] = fetchMock.mock.calls[0] as unknown as [
+      Request,
+      RequestInit & { next?: { revalidate?: number; tags?: string[] } },
+    ];
+    expect(request.url).toMatch(/\/api\/v1\/appearance$/);
+    expect(init.next).toEqual({ revalidate: 60, tags: ["appearance"] });
   });
 
   it("rơi về cấu hình mặc định khi fetch /api/v1/appearance lỗi", async () => {

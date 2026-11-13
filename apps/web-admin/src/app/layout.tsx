@@ -1,3 +1,4 @@
+import { createApiClient } from "@thi360/api-client";
 import {
   buildThemeVars,
   DEFAULT_APPEARANCE_CONFIG,
@@ -31,12 +32,16 @@ async function loadAppearance(): Promise<AppearanceConfig> {
     (process.env.NODE_ENV === "production" ? "" : "http://localhost:8080");
   if (!apiBase) return DEFAULT_APPEARANCE_CONFIG;
   try {
-    const response = await fetch(`${apiBase}/api/v1/appearance`, {
-      next: { revalidate: 60, tags: ["appearance"] },
-      signal: AbortSignal.timeout(2000),
+    const client = createApiClient(apiBase, {
+      fetch: (request) =>
+        fetch(request, {
+          next: { revalidate: 60, tags: ["appearance"] },
+          signal: AbortSignal.timeout(2000),
+        }),
     });
-    if (!response.ok) return DEFAULT_APPEARANCE_CONFIG;
-    return parseAppearanceConfig(await response.json());
+    const { data, response } = await client.GET("/api/v1/appearance");
+    if (!response.ok || !data) return DEFAULT_APPEARANCE_CONFIG;
+    return parseAppearanceConfig(data);
   } catch {
     return DEFAULT_APPEARANCE_CONFIG;
   }

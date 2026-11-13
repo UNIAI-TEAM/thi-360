@@ -1,27 +1,10 @@
-import {
-  buildThemeVars,
-  type AppearanceConfig,
-  type AppearancePalette,
-  type ThemeMode,
-} from "@thi360/ui";
+import { createApiClient, type components } from "@thi360/api-client";
+import { buildThemeVars, type AppearanceConfig } from "@thi360/ui";
 import { ApiStatusError } from "@/lib/api/query-client";
 
-export interface AppearanceResponse {
-  palette: AppearancePalette;
-  mode: ThemeMode;
-  version: number;
-}
-
-export interface UpdateAppearanceRequest {
-  palette: AppearancePalette;
-  mode: ThemeMode;
-  version: number;
-}
-
-export interface ResetAppearanceRequest {
-  version?: number;
-}
-
+export type AppearanceResponse = components["schemas"]["AppearanceResponse"];
+export type UpdateAppearanceRequest = components["schemas"]["UpdateAppearanceRequest"];
+export type ResetAppearanceRequest = components["schemas"]["ResetAppearanceRequest"];
 export type AppearanceLoader = () => Promise<AppearanceResponse | null>;
 export type AppearanceSaver = (payload: UpdateAppearanceRequest) => Promise<AppearanceResponse>;
 export type AppearanceResetter = (payload?: ResetAppearanceRequest) => Promise<AppearanceResponse>;
@@ -49,60 +32,54 @@ function readXsrfToken(): string | null {
   return null;
 }
 
-async function parseError(response: Response): Promise<AppearanceApiError> {
-  try {
-    const body = (await response.json()) as { code?: unknown; message?: unknown };
+function toAppearanceApiError(status: number, error: unknown): AppearanceApiError {
+  if (typeof error === "object" && error !== null) {
+    const body = error as { code?: unknown; message?: unknown };
     const message = typeof body.message === "string" ? body.message : "";
     const code = typeof body.code === "string" ? body.code : undefined;
-    return new AppearanceApiError(response.status, message, code);
-  } catch {
-    return new AppearanceApiError(response.status);
+    return new AppearanceApiError(status, message, code);
   }
+  return new AppearanceApiError(status);
+}
+
+function createAppearanceClient(withXsrf = false) {
+  const xsrf = withXsrf ? readXsrfToken() : null;
+  return createApiClient(undefined, {
+    credentials: "include",
+    ...(xsrf ? { headers: { "x-xsrf-token": xsrf } } : {}),
+  });
 }
 
 export async function loadAppearance(): Promise<AppearanceResponse | null> {
-  const response = await fetch("/api/v1/appearance", {
-    method: "GET",
-    credentials: "include",
+  const client = createAppearanceClient();
+  const { data, error, response } = await client.GET("/api/v1/appearance", {
     cache: "no-store",
   });
   if (response.status === 204) return null;
-  if (!response.ok) throw await parseError(response);
-  return (await response.json()) as AppearanceResponse;
+  if (!response.ok || !data) throw toAppearanceApiError(response.status, error);
+  return data;
 }
 
 export async function saveAppearance(
   payload: UpdateAppearanceRequest,
 ): Promise<AppearanceResponse> {
-  const headers = new Headers({ "Content-Type": "application/json" });
-  const xsrf = readXsrfToken();
-  if (xsrf) headers.set("x-xsrf-token", xsrf);
-
-  const response = await fetch("/api/v1/admin/appearance", {
-    method: "PUT",
-    credentials: "include",
-    headers,
-    body: JSON.stringify(payload),
+  const client = createAppearanceClient(true);
+  const { data, error, response } = await client.PUT("/api/v1/admin/appearance", {
+    body: payload,
   });
-  if (!response.ok) throw await parseError(response);
-  return (await response.json()) as AppearanceResponse;
+  if (!response.ok || !data) throw toAppearanceApiError(response.status, error);
+  return data;
 }
 
 export async function resetAppearance(
   payload?: ResetAppearanceRequest,
 ): Promise<AppearanceResponse> {
-  const headers = new Headers({ "Content-Type": "application/json" });
-  const xsrf = readXsrfToken();
-  if (xsrf) headers.set("x-xsrf-token", xsrf);
-
-  const response = await fetch("/api/v1/admin/appearance/reset", {
-    method: "POST",
-    credentials: "include",
-    headers,
-    body: JSON.stringify(payload ?? {}),
+  const client = createAppearanceClient(true);
+  const { data, error, response } = await client.POST("/api/v1/admin/appearance/reset", {
+    body: payload ?? {},
   });
-  if (!response.ok) throw await parseError(response);
-  return (await response.json()) as AppearanceResponse;
+  if (!response.ok || !data) throw toAppearanceApiError(response.status, error);
+  return data;
 }
 
 export function applyAppearanceToDocument(config: AppearanceConfig): void {

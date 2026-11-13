@@ -6,7 +6,16 @@ import { FAKE_SESSION } from "@/features/session/fake-session";
 import { SessionProvider } from "@/features/session/session-provider";
 import { ApiStatusError } from "@/lib/api/query-client";
 import { renderWithProviders } from "@/test/render";
-import type { AppearanceLoader, AppearanceResetter, AppearanceResponse, AppearanceSaver } from "./api";
+import {
+  AppearanceApiError,
+  loadAppearance as apiLoadAppearance,
+  resetAppearance as apiResetAppearance,
+  saveAppearance as apiSaveAppearance,
+  type AppearanceLoader,
+  type AppearanceResetter,
+  type AppearanceResponse,
+  type AppearanceSaver,
+} from "./api";
 import { AppearanceView } from "./appearance-view";
 
 vi.mock("./actions", () => ({
@@ -51,6 +60,8 @@ function renderAppearance({
 afterEach(() => {
   delete document.documentElement.dataset.theme;
   document.documentElement.style.cssText = "";
+  vi.unstubAllGlobals();
+  document.cookie = "thi360_xsrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
 });
 
 describe("AppearanceView", () => {
@@ -218,5 +229,98 @@ describe("AppearanceView", () => {
     await waitFor(() => expect(resetMock).toHaveBeenCalledWith({ version: 4 }));
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(document.documentElement.style.getPropertyValue("--color-primary-600")).toBe("#059669");
+  });
+});
+
+describe("appearance api client", () => {
+  it("loadAppearance gọi GET /api/v1/appearance và trả null khi 204", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(DEFAULT_SERVER))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiLoadAppearance()).resolves.toEqual(DEFAULT_SERVER);
+    await expect(apiLoadAppearance()).resolves.toBeNull();
+
+    const firstRequest = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(firstRequest.method).toBe("GET");
+    expect(firstRequest.url).toMatch(/\/api\/v1\/appearance$/);
+    expect(firstRequest.credentials).toBe("include");
+    expect(firstRequest.cache).toBe("no-store");
+  });
+
+  it("saveAppearance gửi PUT kèm XSRF token và giữ xử lý lỗi 412 / 400", async () => {
+    document.cookie = "thi360_xsrf=xsrf-token-123; path=/";
+    const savedResponse: AppearanceResponse = {
+      palette: { presetId: "navy-teal" },
+      mode: "dark",
+      version: 3,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(savedResponse))
+      .mockResolvedValueOnce(
+        Response.json(
+          { code: "VERSION_CONFLICT", message: "Cấu hình đã thay đổi", fieldErrors: [], traceId: "t1" },
+          { status: 412 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          { code: "VALIDATION_FAILED", message: "Mã màu không hợp lệ", fieldErrors: [], traceId: "t2" },
+          { status: 400 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await apiSaveAppearance({
+      palette: { presetId: "navy-teal" },
+      mode: "dark",
+      version: 2,
+    });
+    expect(result).toEqual(savedResponse);
+
+    const firstRequest = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(firstRequest.method).toBe("PUT");
+    expect(firstRequest.url).toMatch(/\/api\/v1\/admin\/appearance$/);
+    expect(firstRequest.headers.get("x-xsrf-token")).toBe("xsrf-token-123");
+    expect(firstRequest.credentials).toBe("include");
+
+    await expect(
+      apiSaveAppearance({ palette: { presetId: "navy-teal" }, mode: "dark", version: 2 }),
+    ).rejects.toMatchObject({
+      name: "AppearanceApiError",
+      status: 412,
+      code: "VERSION_CONFLICT",
+    } satisfies Partial<AppearanceApiError>);
+
+    await expect(
+      apiSaveAppearance({
+        palette: { presetId: "custom", custom: { primary: "bad", accent: "#F59223" } },
+        mode: "light",
+        version: 2,
+      }),
+    ).rejects.toMatchObject({
+      name: "AppearanceApiError",
+      status: 400,
+      code: "VALIDATION_FAILED",
+      message: "Mã màu không hợp lệ",
+    } satisfies Partial<AppearanceApiError>);
+  });
+
+  it("resetAppearance gửi POST /api/v1/admin/appearance/reset kèm XSRF token", async () => {
+    document.cookie = "thi360_xsrf=xsrf-reset; path=/";
+    const fetchMock = vi.fn().mockResolvedValueOnce(Response.json(DEFAULT_SERVER));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await apiResetAppearance({ version: 2 });
+    expect(result).toEqual(DEFAULT_SERVER);
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(request.method).toBe("POST");
+    expect(request.url).toMatch(/\/api\/v1\/admin\/appearance\/reset$/);
+    expect(request.headers.get("x-xsrf-token")).toBe("xsrf-reset");
+    expect(await request.json()).toEqual({ version: 2 });
   });
 });
