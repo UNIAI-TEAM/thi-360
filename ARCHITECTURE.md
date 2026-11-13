@@ -28,7 +28,7 @@ Một backend chia module (modular monolith), chạy hai vai trò từ cùng m�
 | Lớp | Lựa chọn | Ghi chú |
 |---|---|---|
 | Backend | Java 21, Spring Boot 3.5, Spring Modulith, Spring Security, Spring Data JPA, Flyway, MapStruct, springdoc | Giữ Java để port được mã reap |
-| Xác thực | Keycloak, realm `thi360` | Giữ mật khẩu, phiên, bắt đổi mật khẩu; sau này cắm Google. **Không** giữ quyền nghiệp vụ |
+| Xác thực | Keycloak, realm `thi-360` | Giữ mật khẩu, phiên, bắt đổi mật khẩu; sau này cắm Google. **Không** giữ quyền nghiệp vụ |
 | Phân quyền | Bảng `permission`, `role`, `role_permission`, `user_role`, `user_permission` trong schema `identity` | Kiểm tra bằng `@RequirePermission` ở máy chủ |
 | Dữ liệu | PostgreSQL 16, Redis 7, MinIO | Mỗi module một schema |
 | Bất đồng bộ | Bảng outbox trong PostgreSQL + worker | Chưa dùng Kafka |
@@ -65,7 +65,7 @@ thi-360/
 │   └── config/                eslint, tsconfig, tailwind preset
 ├── infra/
 │   ├── docker-compose.yml     postgres, redis, keycloak, minio, mailpit
-│   ├── keycloak/              realm export `thi360`
+│   ├── keycloak/              realm export `thi-360`
 │   └── nginx/
 ├── docs/
 │   ├── specs/                 đặc tả theo đợt
@@ -178,12 +178,12 @@ Keycloak có hai realm:
 
 | Realm | Chứa | Ứng dụng làm gì với nó |
 |---|---|---|
-| `thi360` | Mọi tài khoản Thi 360 (học viên, quản trị viên) | Tạo, vô hiệu, xóa user qua service account; xác thực đăng nhập |
-| `master` | Chỉ tài khoản `PLATFORM_ADMIN` (realm role `platform_admin`) | Chỉ xác thực đăng nhập. Không tạo, không sửa |
+| `thi-360` | Mọi tài khoản Thi 360 (học viên, quản trị viên) | Tạo, vô hiệu, xóa user qua service account; xác thực đăng nhập |
+| `master` | Chỉ tài khoản `PLATFORM_ADMIN` (realm role `PLATFORM_ADMIN`) | Chỉ xác thực đăng nhập. Không tạo, không sửa |
 
-Backend chấp nhận token của cả hai nguồn phát hành; token của `master` phải có role `platform_admin`. Khi đăng nhập, máy chủ chọn realm theo việc tên đăng nhập có trong `user_account` hay không (spec mục 15.1a).
+Backend chấp nhận token của cả hai nguồn phát hành; token của `master` phải có role `PLATFORM_ADMIN`. Khi đăng nhập, máy chủ chọn realm theo việc tên đăng nhập có trong `user_account` hay không (spec mục 15.1a).
 
-`identity.user_account` là nguồn dữ liệu nghiệp vụ của realm `thi360`; `id` trùng với `sub` của Keycloak. `PLATFORM_ADMIN` không có dòng trong `user_account`.
+`identity.user_account` là nguồn dữ liệu nghiệp vụ của realm `thi-360`; `id` trùng với `sub` của Keycloak. `PLATFORM_ADMIN` không có dòng trong `user_account`.
 
 - **Tạo:** ghi `user_account` trạng thái `PROVISIONING` → tạo user ở Keycloak → cập nhật trạng thái. Job đối soát xử lý bản ghi kẹt ở `PROVISIONING`.
 - **Ngừng hoạt động:** đổi trạng thái trong `user_account`, vô hiệu user ở Keycloak, thu hồi phiên.
@@ -202,7 +202,7 @@ Backend chấp nhận token của cả hai nguồn phát hành; token của `mas
 | A6 | Bảng `user_identity` có từ đầu dù chưa bật Google | Bật Google sau không phải đổi mô hình dữ liệu |
 | A7 | Giao diện là cấu hình toàn hệ thống lưu ở máy chủ, áp bằng biến CSS | Giữ khả năng tùy chỉnh như reap mà không phụ thuộc MUI |
 | A8 | Nhật ký phân vùng theo quý, lưu trữ theo năm | Lưu vĩnh viễn nhưng bảng chính vẫn gọn |
-| A10 | Hai realm: `thi360` cho mọi tài khoản ứng dụng, `master` chỉ cho `PLATFORM_ADMIN` | Người khởi tạo tách khỏi dữ liệu người dùng; đánh đổi là backend phải xác thực với hai realm |
+| A10 | Hai realm: `thi-360` cho mọi tài khoản ứng dụng, `master` chỉ cho `PLATFORM_ADMIN` | Người khởi tạo tách khỏi dữ liệu người dùng; đánh đổi là backend phải xác thực với hai realm |
 | A9 | Hai web trên hai tên miền, một nơi đăng nhập, cookie phiên dùng chung tên miền cha | Người dùng đăng nhập một lần; đánh đổi là hai web không còn tách phiên, bù bằng `HttpOnly`, XSRF, kiểm tra `Origin` cho API quản trị, CSP |
 
 ## 8. Bảo mật

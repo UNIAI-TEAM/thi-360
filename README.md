@@ -43,7 +43,7 @@ pnpm dev                                                # web học viên :3000,
 |---|---|---|
 | PostgreSQL | `localhost:54360` | cơ sở dữ liệu `thi360`; Keycloak dùng cơ sở dữ liệu `keycloak` riêng |
 | Redis | `localhost:63790` | |
-| Keycloak | http://localhost:8360 | realm `thi360` được nạp từ `infra/keycloak/thi360-realm.json` |
+| Keycloak | http://localhost:8360 | realm `thi-360` được nạp từ `infra/keycloak/thi360-realm.json` |
 | MinIO | API `localhost:9360`, bảng điều khiển http://localhost:9361 | |
 | Mailpit | SMTP `localhost:1360`, xem thư http://localhost:8361 | bắt mọi email gửi thử |
 

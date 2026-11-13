@@ -84,7 +84,7 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 | P15 | Quyền và vai trò gom thành một menu "Phân quyền" có bốn tab: Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt | M.Trường, 2026-11-13 |
 | P16 | Cấp tài khoản hàng loạt không có menu riêng; là nút trong màn Tài khoản | M.Trường, 2026-11-13 |
 | P13 | Hai web trên hai tên miền; landing và đăng nhập ở tên miền chính; đăng nhập một lần, điều hướng theo vai trò (admin → trang quản trị, học viên → `/home`) hoặc theo `callbackUrl`; trang đích kiểm tra quyền, sai thì ra trang mã lỗi | M.Trường, 2026-11-13 |
-| P14 | Vai trò có trường phạm vi truy cập `access` (`MANAGE` / `EXAM`), chọn trong biểu mẫu vai trò; đăng nhập điều hướng theo trường này. Tài khoản Thi 360 nằm ở realm riêng (`thi360`); realm `master` chỉ có `PLATFORM_ADMIN`, mặc định có mọi quyền và `MANAGE`, là người khởi tạo, không hiển thị trong danh sách user | M.Trường, 2026-11-13 |
+| P14 | Vai trò có trường phạm vi truy cập `access` (`MANAGE` / `EXAM`), chọn trong biểu mẫu vai trò; đăng nhập điều hướng theo trường này. Tài khoản Thi 360 nằm ở realm riêng (`thi-360`); realm `master` chỉ có `PLATFORM_ADMIN`, mặc định có mọi quyền và `MANAGE`, là người khởi tạo, không hiển thị trong danh sách user | M.Trường, 2026-11-13 |
 | P12 | Kiến trúc theo đề xuất: modular monolith, Keycloak, một UI kit Tailwind | M.Trường, 2026-11-13 |
 
 ## 7. Việc cần BA cập nhật trong SRS
