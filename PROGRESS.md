@@ -4,7 +4,7 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 43/105 điểm (T01–T06, T17); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 48/105 điểm (T01–T06, T13, T17); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
@@ -13,7 +13,8 @@
 - T05 (UNI-2542) đã nghiệm thu và merge vào `integration/dot-1` (PR #8, `457b80d`).
 - T04 (UNI-2541) đã nghiệm thu và merge vào `integration/dot-1` (PR #9, `b252db2`).
 - T17 (UNI-2555) đã nghiệm thu và merge vào `integration/dot-1` (PR #11, `feece8f`).
-- Đang mở: T07 (UNI-2544), T13 (UNI-2550) trên VPS; T18 (UNI-2556) trên máy Windows.
+- T13 (UNI-2550) đã nghiệm thu và merge vào `integration/dot-1` (PR #10, `8f1a579`).
+- Đang mở: T07 (UNI-2544), T14 (UNI-2551) trên VPS; T18 (UNI-2556) trên máy Windows.
 - 2026-11-14: M.Trường yêu cầu làm luôn phần danh mục đã hoãn (PBI-02: T13, T14, T15). Plan mục A7, A4, Phần C, hợp đồng T13–T15 và T16 đã sửa theo; T13 (UNI-2550) mở ngay trên VPS, T14 sau T13, T15 sau T13, T14, T18.
 - 2026-11-14: M.Trường yêu cầu đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh). Thêm T19 (UNI-2561) vào plan, chạy sau T17 và T18; mọi lane có giao diện thêm khóa tiếng Anh cho chuỗi của mình ngay từ bây giờ (`en.json` cùng bộ khóa với `vi.json`).
 - 2026-11-14: M.Trường chốt chế độ sáng/tối **theo từng người**, bật tắt bằng nút ở thanh trên cùng (cạnh nút ngôn ngữ, bên trái avatar). Cấu hình hệ thống của T17 chỉ còn giữ chế độ mặc định. Nút và cookie `thi360_theme` làm trong T19. Spec §13, `DESIGN.md` §5/§8/§9 và plan T17/T19 đã sửa.
@@ -26,9 +27,20 @@
 **Vướng / việc treo**
 
 - DB dev dùng chung: migration `V202611131020` đã sửa trong lúc review, nên DB dev cũ lệch checksum Flyway. Cách xử lý: xóa các schema `shared`, `identity`, `catalog`, `audit` trong DB dev rồi chạy lại backend (chỉ có bảng khung rỗng).
+- Test tích hợp backend dùng chung một PostgreSQL Testcontainers và giữ nhiều ngữ cảnh Spring: `backend/src/test/resources/application-test.yml` (Hikari tối đa 4) và `spring.properties` (giữ tối đa 8 ngữ cảnh) chặn lỗi "too many clients". Test nào cần nhiều kết nối hơn thì đặt pool riêng và `@DirtiesContext`. Test dựa vào `outboxRelay.relayBatch()` phải xả hết tồn đọng (vòng lặp), vì thứ tự lớp test trên Windows khác Linux.
 - Việc còn lại sau T05 (không chặn): tách login role riêng cho job nhật ký (hiện tài khoản ứng dụng có thể `SET ROLE` sang vai trò bảo trì); thiếu test đầu-cuối ghi người thực hiện khi đăng nhập realm APP. Ghi thành issue con của UNI-2542.
 
 ## Đã làm
+
+### 2026-11-14 — T13 (UNI-2550) danh mục dùng chung: schema, seed, API, merge vào integration/dot-1
+
+- Schema `catalog`: `catalog_group` (tên Việt bắt buộc, tên Anh tùy chọn), `catalog_item` (cây: `parent_id`, `depth`, `path`), `catalog_group_ref`, `catalog_item_ref`; seed 9 nhóm hệ thống, dữ liệu mẫu dev.
+- API `/api/v1/admin/catalog` (nhóm, giá trị, thứ tự, cây, chuyển nhánh, liên kết) và API đọc `GET /api/v1/catalog/options|tree|tree/descendants`; `value` đánh số dưới khóa dòng nhóm, không dùng lại; cache Redis có chặn ghi đè cũ; `CatalogLookup` cho module khác; nhật ký có vai trò và lý do.
+- Review BE: vòng 1 có 3 lỗi high về xử lý đồng thời và 12 medium, vòng 2 còn 3 medium; đã sửa hết.
+- Nghiệm thu bị trả lại ba lần vì môi trường test, không phải tính năng: test `AuthzEvictionIT` phụ thuộc thứ tự lớp (tồn đọng outbox quá 200 sự kiện); lần gộp integration làm rỗng hai tệp `messages*.properties`; hết kết nối PostgreSQL khi có thêm ngữ cảnh test. Cả ba đã sửa.
+- Lệnh đã chạy trên `59e466e`: Cursor cloud runner `./mvnw -B -ntp verify` (101 + 101 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows các lệnh đó và kiểm tra lệch openapi/api-client → exit 0.
+- Còn mở cho T19: tên các cấp của cây (`Chương`, `Bài`, `Kiến thức`) mới có một ngôn ngữ.
+- Merge squash qua PR #10 (`8f1a579`).
 
 ### 2026-11-14 — T17 (UNI-2555) tùy chỉnh giao diện toàn hệ thống, merge vào integration/dot-1
 

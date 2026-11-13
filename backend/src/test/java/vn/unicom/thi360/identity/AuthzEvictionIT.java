@@ -286,6 +286,12 @@ class AuthzEvictionIT extends AbstractKeycloakIntegrationTest {
         String key = authzSnapshotService.cacheKey(user.getId());
         assertThat(redisTemplate.hasKey(key)).isTrue();
 
+        // 0. Drain the outbox backlog left by earlier ITs (scheduling is off in tests) so the single
+        //    relayBatch() calls below only see this scenario's events (batch limit 200).
+        while (outboxRelay.relayBatch() > 0) {
+            // drain
+        }
+
         // 1. Rolled-back transaction must NOT evict Redis or enqueue outbox fallback
         transactionTemplate.executeWithoutResult(status -> {
             authzSnapshotService.evict(user.getId());
