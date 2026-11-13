@@ -100,7 +100,7 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"identifier\":\"" + identifier + "\",\"password\":\"Valid@1234\"}"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.redirectTo").value("/"))
+                    .andExpect(jsonPath("$.redirectTo").value("http://localhost:3000/home"))
                     .andExpect(jsonPath("$.mustChangePassword").value(false))
                     .andReturn();
 
@@ -126,7 +126,8 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                     .andExpect(jsonPath("$.realm").value("APP"))
                     .andExpect(jsonPath("$.access").value("EXAM"))
                     .andExpect(jsonPath("$.permissions").isArray())
-                    .andExpect(jsonPath("$.permissions").isEmpty());
+                    .andExpect(jsonPath("$.permissions").isEmpty())
+                    .andExpect(jsonPath("$.homeUrl").value("http://localhost:3000/home"));
         }
 
         UserAccount reloaded = userAccountRepository.findById(account.getId()).orElseThrow();
@@ -317,7 +318,7 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                         .cookie(at1, rt1, xsrf1)
                         .header(AuthCookieService.XSRF_HEADER, xsrf1.getValue()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.redirectTo").value("/"))
+                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3000/home"))
                 .andReturn();
 
         Cookie at2 = refreshRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
@@ -575,7 +576,7 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                         .cookie(victimRt, victimXsrf)
                         .header(AuthCookieService.XSRF_HEADER, victimXsrf.getValue()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.redirectTo").value("/"));
+                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3000/home"));
     }
 
     private static String tamperSignature(String token) {

@@ -70,6 +70,7 @@ thi360:
     platform-client-secret: ${THI360_KC_PLATFORM_CLIENT_SECRET:thi360-platform-dev-only}
   web-url: ${THI360_WEB_URL:http://localhost:3000}
   admin-url: ${THI360_ADMIN_URL:http://localhost:3001}
+  redirect-allowed-origins: []
   cookie:
     domain: ${THI360_COOKIE_DOMAIN:}
     secure: ${THI360_COOKIE_SECURE:true}
