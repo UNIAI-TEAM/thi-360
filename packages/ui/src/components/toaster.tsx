@@ -1,6 +1,8 @@
 import type { ComponentProps, CSSProperties } from "react";
 import { Toaster as Sonner, toast } from "sonner";
 
+export { toast };
+
 // Màu của sonner lấy từ token; style inline thắng theme mặc định của sonner.
 const tokenStyle = {
   "--normal-bg": "var(--color-surface)",

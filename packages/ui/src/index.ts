@@ -79,5 +79,5 @@ export {
   type TableSorting,
 } from "./components/table";
 export { Textarea, type TextareaProps } from "./components/textarea";
-export { notify, Toaster } from "./components/toaster";
+export { notify, Toaster, toast } from "./components/toaster";
 export { Tooltip, type TooltipProps } from "./components/tooltip";
