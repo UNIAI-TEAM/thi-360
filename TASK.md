@@ -1,7 +1,7 @@
 # TASK — Thi 360
 
 > Cập nhật: 2026-11-13 · Trạng thái sống nằm trên UniAI (project Thi 360). File này là bản chụp để đọc nhanh trong repo; khi lệch thì UniAI đúng.
-> Chi tiết từng task: `docs/plans/2026-11-13-base-port-pbi-01-02.md`.
+> Chi tiết từng task (hợp đồng, thứ tự sóng, trọng số): `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Phụ thuộc trong bảng dưới theo Phần C của plan.
 
 ## Đợt 1 — Port nền + PBI-01 + PBI-02
 
@@ -16,27 +16,29 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T05 | UNI-2542 | Nền · Nhật ký thao tác: bảng chỉ ghi thêm, outbox, worker, API tra cứu | T02 | todo |
 | T06 | UNI-2543 | Nền · Design system (`packages/ui`) và khung web admin | T01 | todo |
 | T07 | UNI-2544 | PBI-01 · API quản lý tài khoản | T03, T04, T05 | todo |
-| T08 | UNI-2545 | PBI-01 · UI phân quyền: màn Quyền, màn Vai trò, gán vai trò/quyền cho user | T04, T06 | todo |
-| T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07 | todo |
+| T08 | UNI-2545 | PBI-01 · UI phân quyền: màn Quyền, màn Vai trò, gán vai trò/quyền cho user | T04, T06, T18 | todo |
+| T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07, T18 | todo |
 | T10 | UNI-2547 | PBI-01 · Lớp học: API + UI | T07, T09 | todo |
 | T11 | UNI-2548 | PBI-01 · Cấp tài khoản hàng loạt | T07, T10 | todo |
 | T12 | UNI-2549 | PBI-01 · Hồ sơ học viên (khung) | T09, T10 | todo |
 | T13 | UNI-2550 | PBI-02 · Danh mục: schema, dữ liệu mặc định, API nhóm và giá trị, API lựa chọn | T04, T05 | todo |
 | T14 | UNI-2551 | PBI-02 · Mã tổ hợp có phiên bản, nơi đang dùng, quy tắc ngừng và xóa | T13 | todo |
-| T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14 | todo |
+| T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14, T18 | todo |
 | T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mở từ menu profile, port từ reap) | T04, T05, T06 | todo |
+| T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | todo |
 | T16 | UNI-2553 | Kiểm thử nghiệm thu PBI-01, PBI-02 và kiểm thử bảo mật gọi thẳng API | T07–T15, T17 | todo |
 
-### Thứ tự làm đề xuất
+### Thứ tự làm
 
 ```
-T01 ─► T02 ─► T03 ─► T04 ─┬─► T07 ─► T09 ─► T10 ─► T11
-  │      └──► T05 ────────┤                   └──► T12
-  └──► T06 ───────────────┼─► T08, T17
-                          └─► T13 ─► T14 ─► T15            ─► T16
+Sóng 1:  T02 · T06
+Sóng 2:  T03 · T05
+Sóng 3:  T04
+Sóng 4:  T18 · T07 · T13 · T17
+Sóng 5:  T08 · T09 · T10 (API) · T14
+Sóng 6:  T10 (UI) · T11 · T12 · T15
+Sóng 7:  T16
 ```
-
-Có thể chạy song song: T06 với T02–T05; nhánh PBI-02 (T13–T15) với nhánh tài khoản (T07–T12) sau khi xong T04 và T05.
 
 ## Backlog
 

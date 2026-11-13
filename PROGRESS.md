@@ -6,12 +6,19 @@
 
 **Giai đoạn:** đợt 1. **T01 (UNI-2538) đã dựng xong và push** lên nhánh `feature/UNI-2538-khoi-tao-monorepo-ci-moi-truong-dev`; chưa mở PR. Đang dừng chờ M.Trường.
 
-**Bước tiếp theo** (chờ M.Trường cho làm tiếp)
+**Bước tiếp theo**
 
-1. Merge PR #1 (tài liệu), rồi mở PR cho T01 vào `develop`.
-2. T02 (UNI-2539) khung backend và T06 (UNI-2543) design system chạy song song được.
+1. M.Trường giao một phiên Advisor chạy `zone17-cook-plan` với plan `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Plan đã có đủ cấu hình đợt chạy (Phần A), quy ước kỹ thuật (Phần B), sóng thực thi (Phần C) và hợp đồng từng task (Phần D).
+2. Bước 0 của Advisor: tạo `integration/dot-1` từ đầu nhánh này (đã gồm T01 và toàn bộ tài liệu).
+3. Sóng 1: T02 (UNI-2539) và T06 (UNI-2543) chạy song song.
 
 ## Đã làm
+
+### 2026-11-13 — Plan triển khai chi tiết
+
+- Viết lại `docs/plans/2026-11-13-base-port-pbi-01-02.md` thành plan tự đủ cho phiên Advisor: nhánh tích hợp `integration/dot-1`, phạm vi ủy quyền, trọng số 100 điểm, thư viện và quy ước chốt sẵn, bảng `bit_index` của quyền, hợp đồng T02–T18.
+- Bổ sung spec: đăng nhập một nơi (mục 15), trường `access` của vai trò và hai realm Keycloak (mục 5.6), cách máy chủ xử lý phân quyền (mục 5.7).
+- Gộp nhánh tài liệu vào nhánh này để làm gốc cho nhánh tích hợp.
 
 ### 2026-11-13 — T01 khởi tạo monorepo, CI, môi trường dev (UNI-2538)
 
@@ -49,7 +56,7 @@ Danh sách đầy đủ ở `PRD.md` mục 6 (P1–P12) và spec mục 14. Tóm 
 | Điểm | Chốt |
 |---|---|
 | Kiến trúc | Modular monolith + worker; Keycloak chỉ xác thực; outbox trong PostgreSQL; một UI kit Tailwind |
-| Phân quyền | Vai trò → quyền, có gán quyền trực tiếp cho user |
+| Phân quyền | Vai trò → quyền, có gán quyền trực tiếp cho user. Vai trò có trường `access` (`MANAGE`/`EXAM`). `PLATFORM_ADMIN` nằm ở realm `master` của Keycloak (realm `thi360` chứa mọi tài khoản còn lại), là người khởi tạo, mọi quyền, không có trong danh sách user |
 | Trạng thái tài khoản | `ACTIVE` / `INACTIVE` / xóa mềm. Có giao dịch thì không xóa được |
 | Dùng lại tên đăng nhập, email | Được, sau khi xóa mềm (chỉ mục duy nhất `WHERE deleted_at IS NULL`) |
 | Mật khẩu | Hệ thống sinh; bắt đổi lần đầu là tùy chọn, mặc định không; file kết quả cấp hàng loạt không hết hạn |
@@ -58,6 +65,7 @@ Danh sách đầy đủ ở `PRD.md` mục 6 (P1–P12) và spec mục 14. Tóm 
 | Nhật ký | Lưu vĩnh viễn, phân vùng theo quý, lưu trữ theo năm |
 | Giao diện | Tùy chỉnh toàn hệ thống, mở từ menu profile, không có nút nổi; nút chính `#059669` |
 | Google | Backlog; khi bật thì gộp theo email |
+| Đăng nhập | Một nơi đăng nhập ở tên miền chính cho cả hai web; điều hướng theo `access` của vai trò hoặc `callbackUrl`; trang đích kiểm tra quyền (spec mục 15, T18) |
 
 ## Chờ người khác
 

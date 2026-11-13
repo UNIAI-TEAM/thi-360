@@ -7,7 +7,7 @@
 Một backend chia module (modular monolith), chạy hai vai trò từ cùng một codebase, phục vụ ba loại client.
 
 ```
- Web học viên (Next.js) ─┐
+ Web học viên (Next.js) ─┐   thi360.vn: landing, đăng nhập duy nhất, trang học viên
  Web admin (Next.js) ────┼─ HTTPS / nginx ─► thi360-api (Spring Boot) ◄──► Keycloak (chỉ lo xác thực)
  App Android/iOS (sau) ──┘                        │
                                     ┌─────────────┼─────────────┐
@@ -107,10 +107,13 @@ Trình duyệt ──POST /api/auth/login──► Next.js (route proxy) ──�
                                                                │ 2. đổi tên đăng nhập/mật khẩu lấy token ở Keycloak
                                                                │ 3. đọc identity.user_account: trạng thái, bắt đổi mật khẩu
                                                                │ 4. ghi phiên vào Redis, ghi audit LOGIN
-Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF ──────┘
+Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF + redirectTo ─┘
 ```
 
 - Trình duyệt không bao giờ giữ token trong JavaScript.
+- **Một nơi đăng nhập cho cả hai web** (spec mục 15): biểu mẫu đăng nhập chỉ có ở web học viên (tên miền chính). Cookie đặt cho tên miền cha (`THI360_COOKIE_DOMAIN`, ví dụ `.thi360.vn`) nên web admin (`admin.thi360.vn`) dùng chung phiên.
+- Máy chủ trả `redirectTo`: `callbackUrl` nếu hợp lệ (đường dẫn tương đối hoặc tên miền trong danh sách cho phép), nếu không thì theo trường `access` của vai trò: có vai trò `MANAGE` → web admin, còn lại → `/home` của web học viên.
+- Web admin không có trang đăng nhập: chưa đăng nhập thì chuyển về trang đăng nhập kèm `callbackUrl`; thiếu quyền thì hiện trang 403.
 - Tài khoản `INACTIVE` hoặc đã xóa mềm bị từ chối ở bước 3, kể cả khi Keycloak trả token.
 - Ngừng hoạt động tài khoản: vô hiệu ở Keycloak, xóa phiên trong Redis, request kế tiếp của phiên cũ nhận 401.
 
@@ -118,17 +121,18 @@ Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF ────�
 
 ```
 Request ─► CookieAuthFilter (xác minh JWT bằng khóa công khai Keycloak)
-        ─► SessionFilter (phiên còn hiệu lực trong Redis?)
-        ─► @RequirePermission("USER_LOCK")
-              └─ PermissionService.effective(userId)
-                    ├─ Redis `perm:{userId}` (nếu có)
-                    └─ PostgreSQL: quyền từ vai trò ∪ quyền gán trực tiếp  → ghi lại Redis
+        ─► SessionFilter: một lệnh MGET tới Redis lấy cả phiên lẫn authz:{userId}
+              └─ authz:{userId} = { access, dãy bit quyền, ver }   (chưa có thì dựng bằng một câu SQL)
+        ─► kiểm tra cổng quản trị: access == MANAGE
+        ─► @RequirePermission("USER_LOCK"): thử một bit trong dãy bit quyền
         ─► use case ─► PostgreSQL + outbox_event (cùng transaction)
 ```
 
-- JWT chỉ dùng để biết **ai**. Quyền luôn đọc từ dữ liệu của ứng dụng, nên đổi vai trò có hiệu lực ở request kế tiếp.
-- Khi đổi `role_permission`, `user_role`, `user_permission`: xóa khóa Redis của các user liên quan trong cùng use case.
-- Vai trò `SUPER_ADMIN` có mọi quyền, không cần liệt kê.
+- JWT chỉ dùng để biết **ai**. Quyền và `access` luôn đọc từ ảnh chụp của ứng dụng, không nằm trong token.
+- Mỗi request thông thường: **một lần gọi Redis, không truy vấn cơ sở dữ liệu** cho phần xác thực và phân quyền.
+- Khi đổi phân quyền, use case xóa `authz:{userId}` của các user liên quan, nên thay đổi có hiệu lực ở request kế tiếp (spec mục 5.7).
+- `PLATFORM_ADMIN` (tài khoản realm `master`) có mọi quyền (dãy bit toàn 1) và không có trong danh sách user.
+- Middleware của hai web dùng cookie `thi360_ctx` có chữ ký để điều hướng mà không gọi backend; cookie này không thay cho kiểm tra ở API.
 
 ### 5.3 Ghi nhật ký
 
@@ -170,7 +174,16 @@ Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không 
 
 ## 6. Đồng bộ với Keycloak
 
-`identity.user_account` là nguồn dữ liệu nghiệp vụ; `id` trùng với `sub` của Keycloak.
+Keycloak có hai realm:
+
+| Realm | Chứa | Ứng dụng làm gì với nó |
+|---|---|---|
+| `thi360` | Mọi tài khoản Thi 360 (học viên, quản trị viên) | Tạo, vô hiệu, xóa user qua service account; xác thực đăng nhập |
+| `master` | Chỉ tài khoản `PLATFORM_ADMIN` (realm role `platform_admin`) | Chỉ xác thực đăng nhập. Không tạo, không sửa |
+
+Backend chấp nhận token của cả hai nguồn phát hành; token của `master` phải có role `platform_admin`. Khi đăng nhập, máy chủ chọn realm theo việc tên đăng nhập có trong `user_account` hay không (spec mục 15.1a).
+
+`identity.user_account` là nguồn dữ liệu nghiệp vụ của realm `thi360`; `id` trùng với `sub` của Keycloak. `PLATFORM_ADMIN` không có dòng trong `user_account`.
 
 - **Tạo:** ghi `user_account` trạng thái `PROVISIONING` → tạo user ở Keycloak → cập nhật trạng thái. Job đối soát xử lý bản ghi kẹt ở `PROVISIONING`.
 - **Ngừng hoạt động:** đổi trạng thái trong `user_account`, vô hiệu user ở Keycloak, thu hồi phiên.
@@ -189,11 +202,15 @@ Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không 
 | A6 | Bảng `user_identity` có từ đầu dù chưa bật Google | Bật Google sau không phải đổi mô hình dữ liệu |
 | A7 | Giao diện là cấu hình toàn hệ thống lưu ở máy chủ, áp bằng biến CSS | Giữ khả năng tùy chỉnh như reap mà không phụ thuộc MUI |
 | A8 | Nhật ký phân vùng theo quý, lưu trữ theo năm | Lưu vĩnh viễn nhưng bảng chính vẫn gọn |
+| A10 | Hai realm: `thi360` cho mọi tài khoản ứng dụng, `master` chỉ cho `PLATFORM_ADMIN` | Người khởi tạo tách khỏi dữ liệu người dùng; đánh đổi là backend phải xác thực với hai realm |
+| A9 | Hai web trên hai tên miền, một nơi đăng nhập, cookie phiên dùng chung tên miền cha | Người dùng đăng nhập một lần; đánh đổi là hai web không còn tách phiên, bù bằng `HttpOnly`, XSRF, kiểm tra `Origin` cho API quản trị, CSP |
 
 ## 8. Bảo mật
 
 - Mọi endpoint dưới `/api/v1/admin/**` bắt buộc có `@RequirePermission`; có test quét và làm hỏng build nếu thiếu.
 - Cookie `HttpOnly`, `Secure`, `SameSite=Lax`; kiểm tra XSRF cho request ghi.
 - Giới hạn tần suất cho đăng nhập, reset mật khẩu, upload file.
+- `callbackUrl` sau đăng nhập chỉ được là đường dẫn tương đối hoặc URL thuộc `THI360_WEB_URL`, `THI360_ADMIN_URL`; trường hợp khác bị bỏ qua (chống chuyển hướng tới trang giả mạo).
+- API quản trị (`/api/v1/admin/**`) chỉ nhận request ghi có `Origin` là `THI360_ADMIN_URL`.
 - Không ghi mật khẩu, token, link reset vào log hay nhật ký.
 - Bí mật nằm trong biến môi trường, không commit (`.env` nằm trong `.gitignore`, có `.env.example`).
