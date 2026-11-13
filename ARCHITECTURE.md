@@ -121,17 +121,18 @@ Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF + redirectTo �
 
 ```
 Request ─► CookieAuthFilter (xác minh JWT bằng khóa công khai Keycloak)
-        ─► SessionFilter (phiên còn hiệu lực trong Redis?)
-        ─► @RequirePermission("USER_LOCK")
-              └─ PermissionService.effective(userId)
-                    ├─ Redis `perm:{userId}` (nếu có)
-                    └─ PostgreSQL: quyền từ vai trò ∪ quyền gán trực tiếp  → ghi lại Redis
+        ─► SessionFilter: một lệnh MGET tới Redis lấy cả phiên lẫn authz:{userId}
+              └─ authz:{userId} = { access, dãy bit quyền, ver }   (chưa có thì dựng bằng một câu SQL)
+        ─► kiểm tra cổng quản trị: access == MANAGE
+        ─► @RequirePermission("USER_LOCK"): thử một bit trong dãy bit quyền
         ─► use case ─► PostgreSQL + outbox_event (cùng transaction)
 ```
 
-- JWT chỉ dùng để biết **ai**. Quyền luôn đọc từ dữ liệu của ứng dụng, nên đổi vai trò có hiệu lực ở request kế tiếp.
-- Khi đổi `role_permission`, `user_role`, `user_permission`: xóa khóa Redis của các user liên quan trong cùng use case.
-- Vai trò `PLATFORM_ADMIN` có mọi quyền, không cần liệt kê; tài khoản giữ vai trò này ẩn khỏi danh sách user.
+- JWT chỉ dùng để biết **ai**. Quyền và `access` luôn đọc từ ảnh chụp của ứng dụng, không nằm trong token.
+- Mỗi request thông thường: **một lần gọi Redis, không truy vấn cơ sở dữ liệu** cho phần xác thực và phân quyền.
+- Khi đổi phân quyền, use case xóa `authz:{userId}` của các user liên quan, nên thay đổi có hiệu lực ở request kế tiếp (spec mục 5.7).
+- Vai trò `PLATFORM_ADMIN` có mọi quyền (dãy bit toàn 1); tài khoản giữ vai trò này ẩn khỏi danh sách user.
+- Middleware của hai web dùng cookie `thi360_ctx` có chữ ký để điều hướng mà không gọi backend; cookie này không thay cho kiểm tra ở API.
 
 ### 5.3 Ghi nhật ký
 
