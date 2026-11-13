@@ -806,12 +806,13 @@
         "description" : "Yêu cầu khôi phục cấu hình giao diện mặc định",
         "properties" : {
           "version" : {
-            "description" : "Phiên bản hiện tại để kiểm tra khóa lạc quan (tùy chọn)",
+            "description" : "Phiên bản hiện tại để kiểm tra khóa lạc quan",
             "example" : 1,
             "format" : "int64",
             "type" : "integer"
           }
         },
+        "required" : [ "version" ],
         "type" : "object"
       },
       "RoleDetailResponse" : {
@@ -1343,7 +1344,8 @@
                 "$ref" : "#/components/schemas/ResetAppearanceRequest"
               }
             }
-          }
+          },
+          "required" : true
         },
         "responses" : {
           "200" : {
@@ -3721,7 +3723,42 @@
                 }
               }
             },
-            "description" : "OK"
+            "description" : "OK",
+            "headers" : {
+              "Cache-Control" : {
+                "description" : "Chính sách cache công khai",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              },
+              "ETag" : {
+                "description" : "ETag theo phiên bản cấu hình",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "headers" : {
+              "Cache-Control" : {
+                "description" : "Chính sách cache công khai",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              },
+              "ETag" : {
+                "description" : "ETag theo phiên bản cấu hình",
+                "schema" : {
+                  "type" : "string"
+                },
+                "style" : "simple"
+              }
+            }
           },
           "400" : {
             "content" : {

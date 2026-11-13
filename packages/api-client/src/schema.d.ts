@@ -913,10 +913,10 @@ export interface components {
         ResetAppearanceRequest: {
             /**
              * Format: int64
-             * @description Phiên bản hiện tại để kiểm tra khóa lạc quan (tùy chọn)
+             * @description Phiên bản hiện tại để kiểm tra khóa lạc quan
              * @example 1
              */
-            version?: number;
+            version: number;
         };
         /** @description Chi tiết vai trò kèm danh sách quyền */
         RoleDetailResponse: {
@@ -1299,7 +1299,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["ResetAppearanceRequest"];
             };
@@ -3224,11 +3224,26 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    /** @description Chính sách cache công khai */
+                    "Cache-Control"?: string;
+                    /** @description ETag theo phiên bản cấu hình */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["AppearanceResponse"];
                 };
+            };
+            /** @description Not Modified */
+            304: {
+                headers: {
+                    /** @description Chính sách cache công khai */
+                    "Cache-Control"?: string;
+                    /** @description ETag theo phiên bản cấu hình */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {

@@ -76,7 +76,7 @@ export async function resetAppearance(
 ): Promise<AppearanceResponse> {
   const client = createAppearanceClient(true);
   const { data, error, response } = await client.POST("/api/v1/admin/appearance/reset", {
-    body: payload ?? {},
+    body: payload ?? { version: 0 },
   });
   if (!response.ok || !data) throw toAppearanceApiError(response.status, error);
   return data;
