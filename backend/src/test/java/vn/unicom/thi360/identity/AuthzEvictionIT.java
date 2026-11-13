@@ -1,9 +1,11 @@
 package vn.unicom.thi360.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.reset;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static vn.unicom.thi360.shared.security.TestSecurity.asPlatformAdmin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
@@ -110,7 +114,7 @@ class AuthzEvictionIT extends AbstractKeycloakIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
+    @MockitoSpyBean
     private StringRedisTemplate redisTemplate;
 
     @BeforeEach
@@ -223,7 +227,7 @@ class AuthzEvictionIT extends AbstractKeycloakIntegrationTest {
     }
 
     @Test
-    void rolePermissionChange_evictsAllHoldersSnapshots() {
+    void rolePermissionChange_evictsAllHoldersSnapshots() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         UserAccount userA = createUser("holder.a." + suffix, "Holder A");
         UserAccount userB = createUser("holder.b." + suffix, "Holder B");
@@ -252,10 +256,13 @@ class AuthzEvictionIT extends AbstractKeycloakIntegrationTest {
         assertThat(redisTemplate.hasKey(authzSnapshotService.cacheKey(userA.getId()))).isTrue();
         assertThat(redisTemplate.hasKey(authzSnapshotService.cacheKey(userB.getId()))).isTrue();
 
-        transactionTemplate.executeWithoutResult(status -> {
-            rolePermissionRepository.deleteAllByIdRoleId(customRole.getId());
-            authzSnapshotService.evictByRole(customRole.getId());
-        });
+        mockMvc.perform(put("/api/v1/admin/roles/{id}/permissions", customRole.getId())
+                        .with(asPlatformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"permissionCodes\": [\"CLASS.VIEW\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissionCodes[0]").value("CLASS.VIEW"));
+
         assertThat(redisTemplate.hasKey(authzSnapshotService.cacheKey(userA.getId()))).isFalse();
         assertThat(redisTemplate.hasKey(authzSnapshotService.cacheKey(userB.getId()))).isFalse();
 
@@ -263,43 +270,82 @@ class AuthzEvictionIT extends AbstractKeycloakIntegrationTest {
         SessionAuthzResolver.AuthzSnapshot reloadedB = authzSnapshotService.load(userB.getId());
         assertThat(reloadedA.permissions().hasCode(Permissions.USER_VIEW)).isFalse();
         assertThat(reloadedB.permissions().hasCode(Permissions.USER_VIEW)).isFalse();
+        assertThat(reloadedA.permissions().hasCode(Permissions.CLASS_VIEW)).isTrue();
+        assertThat(reloadedB.permissions().hasCode(Permissions.CLASS_VIEW)).isTrue();
         assertThat(reloadedA.version()).isGreaterThan(snapA.version());
         assertThat(reloadedB.version()).isGreaterThan(snapB.version());
     }
 
     @Test
-    void evict_whenRedisFails_enqueuesOutboxEvent_andRelayDeletesKey() {
+    void evict_whenRedisFails_enqueuesOutboxEventAfterCommit_andRetriesUntilDeleted() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         UserAccount user = createUser("outbox.evict." + suffix, "Outbox Evict");
+        Role opsRole = roleRepository.findByCodeNormalized("operations").orElseThrow();
+
         authzSnapshotService.build(user.getId());
         String key = authzSnapshotService.cacheKey(user.getId());
         assertThat(redisTemplate.hasKey(key)).isTrue();
 
-        StringRedisTemplate failingRedis = spy(redisTemplate);
-        doThrow(new DataAccessResourceFailureException("Simulated Redis outage"))
-                .when(failingRedis)
-                .delete(anyCollection());
-
-        AuthzSnapshotService outageService = new AuthzSnapshotService(
-                jdbcTemplate,
-                failingRedis,
-                permissionCatalog,
-                outboxPublisher,
-                outboxRelay,
-                objectMapper,
-                transactionManager);
-
-        outageService.evict(user.getId());
-
-        Integer pending = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM shared.outbox_event WHERE topic = ? AND processed_at IS NULL",
-                Integer.class,
-                AuthzSnapshotService.OUTBOX_TOPIC_EVICT);
-        assertThat(pending).isGreaterThanOrEqualTo(1);
+        // 1. Rolled-back transaction must NOT evict Redis or enqueue outbox fallback
+        transactionTemplate.executeWithoutResult(status -> {
+            authzSnapshotService.evict(user.getId());
+            assertThat(redisTemplate.hasKey(key)).isTrue();
+            status.setRollbackOnly();
+        });
         assertThat(redisTemplate.hasKey(key)).isTrue();
+        Integer beforeFailureCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM shared.outbox_event WHERE topic = ? AND payload::text LIKE ?",
+                Integer.class,
+                AuthzSnapshotService.OUTBOX_TOPIC_EVICT,
+                "%" + user.getId() + "%");
+        assertThat(beforeFailureCount).isZero();
 
+        // 2. Simulate Redis delete outage during a committed production HTTP mutation (afterCommit -> REQUIRES_NEW outbox)
+        try {
+            doThrow(new DataAccessResourceFailureException("Simulated Redis outage"))
+                    .when(redisTemplate)
+                    .delete(argThat((Collection<String> keys) -> keys != null && keys.contains(key)));
+
+            mockMvc.perform(put("/api/v1/admin/users/{id}/roles", user.getId())
+                            .with(asPlatformAdmin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"roleIds\": [\"%s\"]}".formatted(opsRole.getId())))
+                    .andExpect(status().isOk());
+
+            Integer pendingAfterCommit = jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM shared.outbox_event WHERE topic = ? AND payload::text LIKE ? AND processed_at IS NULL AND attempts = 0",
+                    Integer.class,
+                    AuthzSnapshotService.OUTBOX_TOPIC_EVICT,
+                    "%" + user.getId() + "%");
+            assertThat(pendingAfterCommit).isEqualTo(1);
+            assertThat(redisTemplate.hasKey(key)).isTrue();
+
+            // 3. Relay retry while Redis is still failing -> increments attempts, stays unprocessed
+            outboxRelay.relayBatch();
+            Integer retriedPending = jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM shared.outbox_event WHERE topic = ? AND payload::text LIKE ? AND processed_at IS NULL AND attempts = 1",
+                    Integer.class,
+                    AuthzSnapshotService.OUTBOX_TOPIC_EVICT,
+                    "%" + user.getId() + "%");
+            assertThat(retriedPending).isEqualTo(1);
+            assertThat(redisTemplate.hasKey(key)).isTrue();
+        } finally {
+            reset(redisTemplate);
+        }
+
+        // 4. Redis recovers -> next relay run succeeds, marks processed_at, and deletes snapshot key
+        jdbcTemplate.update(
+                "UPDATE shared.outbox_event SET next_attempt_at = now() WHERE topic = ? AND payload::text LIKE ? AND processed_at IS NULL",
+                AuthzSnapshotService.OUTBOX_TOPIC_EVICT,
+                "%" + user.getId() + "%");
         int processed = outboxRelay.relayBatch();
         assertThat(processed).isGreaterThanOrEqualTo(1);
+        Integer remainingPending = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM shared.outbox_event WHERE topic = ? AND payload::text LIKE ? AND processed_at IS NULL",
+                Integer.class,
+                AuthzSnapshotService.OUTBOX_TOPIC_EVICT,
+                "%" + user.getId() + "%");
+        assertThat(remainingPending).isZero();
         assertThat(redisTemplate.hasKey(key)).isFalse();
     }
 

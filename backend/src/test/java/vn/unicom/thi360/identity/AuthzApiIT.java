@@ -288,6 +288,14 @@ class AuthzApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
 
         // 6. Change access on role with 0 holders -> succeeds & does not touch any user snapshot
+        UserAccount untouchedUser = createUser("snap.untouched." + suffix(), UserStatus.ACTIVE, null);
+        Role operationsForSnap = roleRepository.findByCodeNormalized("operations").orElseThrow();
+        userRoleRepository.save(new UserRole(untouchedUser.getId(), operationsForSnap.getId(), null, Instant.now()));
+        var preSnapshot = authzSnapshotService.load(untouchedUser.getId());
+        String untouchedKey = authzSnapshotService.cacheKey(untouchedUser.getId());
+        String preSnapshotRaw = redisTemplate.opsForValue().get(untouchedKey);
+        assertThat(preSnapshotRaw).isNotBlank();
+
         MvcResult patchAccessRes = mockMvc.perform(patch("/api/v1/admin/roles/{id}", customRoleId)
                         .with(asPlatformAdmin())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -303,6 +311,9 @@ class AuthzApiIT extends AbstractIntegrationTest {
                 .andReturn();
         long version1 = objectMapper.readTree(patchAccessRes.getResponse().getContentAsString())
                 .get("version").asLong();
+        assertThat(redisTemplate.hasKey(untouchedKey)).isTrue();
+        assertThat(redisTemplate.opsForValue().get(untouchedKey)).isEqualTo(preSnapshotRaw);
+        assertThat(authzSnapshotService.load(untouchedUser.getId()).version()).isEqualTo(preSnapshot.version());
 
         // 7. PUT /roles/{id}/permissions on EXAM role with MANAGE permission -> 409 PERMISSION_SCOPE_MISMATCH
         mockMvc.perform(put("/api/v1/admin/roles/{id}/permissions", customRoleId)
