@@ -177,7 +177,7 @@ public class AuthService {
             String normalizedIdentifier,
             String password,
             HttpServletResponse response) {
-        Instant grantStartedAt = Instant.now(clock);
+        long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
         TokenResult tokens;
         try {
             tokens = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
@@ -220,7 +220,7 @@ public class AuthService {
         Instant now = Instant.now(clock);
 
         SessionStore.SessionCreateResult sessionResult =
-                sessionStore.createSessionIfNotRevoked(sid, account.getId(), Realm.APP, grantStartedAt);
+                sessionStore.createSessionIfNotRevoked(sid, account.getId(), Realm.APP, revocationGeneration);
         if (!sessionResult.accepted()) {
             keycloakClient.logout(keycloakProperties.realm(), tokens.refreshToken());
             securityLog.atWarn()
@@ -262,7 +262,7 @@ public class AuthService {
             String normalizedIdentifier,
             String password,
             HttpServletResponse response) {
-        Instant grantStartedAt = Instant.now(clock);
+        // Master realm admins are not managed by UserAdminService; read generation for consistency.
         TokenResult tokens;
         try {
             tokens = keycloakClient.passwordGrant(keycloakProperties.platformRealm(), rawUsername, password);
@@ -300,8 +300,9 @@ public class AuthService {
         String sid = requireSid(jwt);
         Instant now = Instant.now(clock);
 
+        long revocationGeneration = sessionStore.currentRevocationGeneration(userId);
         SessionStore.SessionCreateResult sessionResult =
-                sessionStore.createSessionIfNotRevoked(sid, userId, Realm.MASTER, grantStartedAt);
+                sessionStore.createSessionIfNotRevoked(sid, userId, Realm.MASTER, revocationGeneration);
         if (!sessionResult.accepted()) {
             keycloakClient.logout(keycloakProperties.platformRealm(), tokens.refreshToken());
             securityLog.atWarn()
@@ -370,7 +371,7 @@ public class AuthService {
                 ? keycloakProperties.platformRealm()
                 : keycloakProperties.realm();
 
-        Instant refreshStartedAt = Instant.now(clock);
+        long revocationGeneration = sessionStore.currentRevocationGeneration(session.userId());
         TokenResult tokens;
         try {
             tokens = keycloakClient.refresh(targetRealmName, refreshToken);
@@ -414,12 +415,12 @@ public class AuthService {
         }
 
         if (!oldSid.equals(newSid)) {
-            if (!sessionStore.rotateSession(oldSid, newSid, userId, verifiedRealm, refreshStartedAt)) {
+            if (!sessionStore.rotateSession(oldSid, newSid, userId, verifiedRealm, revocationGeneration)) {
                 keycloakClient.logout(targetRealmName, tokens.refreshToken());
                 authCookieService.clearAuthCookies(response);
                 throw new UnauthenticatedException("SESSION_REVOKED", null);
             }
-        } else if (!sessionStore.isSessionActiveAfterEpoch(oldSid, userId, verifiedRealm, refreshStartedAt)) {
+        } else if (!sessionStore.isSessionActiveForGeneration(oldSid, userId, verifiedRealm, revocationGeneration)) {
             keycloakClient.logout(targetRealmName, tokens.refreshToken());
             authCookieService.clearAuthCookies(response);
             throw new UnauthenticatedException("SESSION_REVOKED", null);

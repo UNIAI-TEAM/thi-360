@@ -165,7 +165,7 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
             redisTemplate.delete(List.of(
                     "user-sess:" + userId,
                     "user-sess-seq:" + userId,
-                    "user-revoked-epoch:" + userId));
+                    "user-rev-gen:" + userId));
         }
         createdUserIds.clear();
 
@@ -1627,7 +1627,8 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
             assertThat(capturedSid.get()).isNotBlank();
             assertThat(redisTemplate.hasKey("sess:" + capturedSid.get())).isFalse();
             assertThat(redisTemplate.opsForZSet().range("user-sess:" + userId, 0, -1)).isEmpty();
-            assertThat(redisTemplate.hasKey("user-revoked-epoch:" + userId)).isTrue();
+            assertThat(redisTemplate.hasKey("user-rev-gen:" + userId)).isTrue();
+            assertThat(sessionStore.currentRevocationGeneration(userId)).isGreaterThanOrEqualTo(1L);
         } finally {
             executor.shutdownNow();
         }
@@ -1835,6 +1836,55 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         assertThat(newId).isNotEqualTo(oldId);
         assertThat(newCode).isNotEqualTo(oldCode);
         assertThat(userAccountRepository.findById(oldId).orElseThrow().isIdpCleanupPending()).isFalse();
+    }
+
+    @Test
+    void r2_2_generationChangedBetweenReadAndRegistration_refusesSessionCreation_evenWhileAccountActive()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r2.2.gen." + sfx;
+        UUID userId = createUserViaApi(username, "Valid@1234", "Gen Race", null, null);
+
+        AtomicReference<String> capturedSid = new AtomicReference<>();
+        AtomicBoolean bumpArmed = new AtomicBoolean(true);
+        doAnswer(inv -> {
+            KeycloakIdentityClient.TokenResult tokens =
+                    (KeycloakIdentityClient.TokenResult) inv.callRealMethod();
+            if (bumpArmed.compareAndSet(true, false)) {
+                capturedSid.set(JWTParser.parse(tokens.accessToken()).getJWTClaimsSet().getStringClaim("sid"));
+                // Another node revokes sessions (INCR user-rev-gen:<userId>) between read and createSession
+                sessionStore.deleteAllSessions(userId);
+            }
+            return tokens;
+        }).when(keycloakClient).passwordGrant(any(), eq(username), eq("Valid@1234"));
+
+        MvcResult rejected = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"))
+                .andReturn();
+
+        assertThat(rejected.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE)).isNull();
+        assertThat(capturedSid.get()).isNotBlank();
+        assertThat(redisTemplate.hasKey("sess:" + capturedSid.get())).isFalse();
+        assertThat(redisTemplate.opsForZSet().range("user-sess:" + userId, 0, -1)).isEmpty();
+        assertThat(sessionStore.currentRevocationGeneration(userId)).isEqualTo(1L);
+
+        // Subsequent login reads updated generation=1 and succeeds
+        reset(keycloakClient);
+        MvcResult allowed = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie at = allowed.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        assertThat(at).isNotNull();
+        mockMvc.perform(get("/api/v1/me").cookie(at))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(username));
     }
 
     private UUID createUserViaApi(
