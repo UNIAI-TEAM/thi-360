@@ -63,7 +63,7 @@ export function Chip(props: ChipProps) {
         base,
         "border-border bg-surface px-4 text-text-secondary transition-colors duration-150 motion-reduce:transition-none",
         "hover:border-border-strong disabled:pointer-events-none disabled:opacity-50",
-        "group aria-pressed:border-primary-600 aria-pressed:bg-primary-600 aria-pressed:text-on-primary",
+        "group aria-pressed:border-primary-fill aria-pressed:bg-primary-fill aria-pressed:text-on-primary",
         size === "md" ? "h-10" : "h-8",
         focusRing,
         className,
@@ -77,7 +77,7 @@ export function Chip(props: ChipProps) {
 }
 
 function Dot({ className }: { className: string }) {
-  // Chip lọc đang chọn có nền primary-600: chấm đổi sang on-primary để còn thấy được.
+  // Chip lọc đang chọn có nền primary-fill: chấm đổi sang on-primary để còn thấy được.
   return (
     <span
       aria-hidden

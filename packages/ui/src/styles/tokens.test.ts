@@ -46,30 +46,49 @@ function contrast(fg: string, bg: string): number {
   return (a + 0.05) / (b + 0.05);
 }
 
+type Pair = { fg: string; bg: string; note: string };
+
 /**
- * Các cặp chữ/nền mà thành phần thực sự dùng trong chế độ tối (đọc từ class trong
- * packages/ui và apps/web-admin). Mỗi cặp phải đạt >= 4.5:1 (WCAG AA, DESIGN.md mục 8/9).
- * Nút chính trắng trên `primary-600` (#059669) được giữ nguyên theo lựa chọn thương hiệu
- * (DESIGN 8) nên không nằm trong danh sách này.
+ * Cặp chữ/nền của chế độ sáng mà thành phần thực sự dùng (đọc từ class trong packages/ui và
+ * apps/web-admin). T06b (UNI-2559): trước đó chữ primary-600 trên nền nhạt chỉ đạt 3,4–3,6:1,
+ * trắng trên nút chính 3,77:1, trắng trên nút nhấn 2,33:1.
  */
-const DARK_TEXT_PAIRS: Array<{ fg: string; bg: string; note: string }> = [
+const LIGHT_PAIRS: Pair[] = [
+  // Chữ màu chính trên nền nhạt primary-50/100/200
+  { fg: "--color-primary-text", bg: "--color-primary-50", note: "tab/mục nav/trang hiện tại, empty-state icon" },
+  { fg: "--color-primary-text", bg: "--color-primary-100", note: "nút nhạt" },
+  { fg: "--color-primary-800", bg: "--color-primary-200", note: "nút nhạt hover (chữ primary-800)" },
+  { fg: "--color-primary-text", bg: "--color-surface", note: "link, tab phân đoạn, mục select đang chọn" },
+  { fg: "--color-primary-text", bg: "--color-page", note: "link trên nền trang" },
+  { fg: "--color-primary-text", bg: "--color-subtle", note: "mục select đang chọn được tô sáng" },
+  // Chữ trên nền đặc của màu chính
+  { fg: "--color-on-primary", bg: "--color-primary-fill", note: "nút chính, chip lọc đang chọn, ô logo" },
+  { fg: "--color-on-primary", bg: "--color-primary-fill-hover", note: "nút chính hover" },
+  { fg: "--color-on-primary", bg: "--color-primary-fill-active", note: "nút chính pressed" },
+  // Nút nhấn (thi) và nút nguy hiểm
+  { fg: "--color-on-accent", bg: "--color-accent-500", note: "nút exam" },
+  { fg: "--color-on-primary", bg: "--color-danger-solid", note: "nút nguy hiểm" },
+  { fg: "--color-on-primary", bg: "--color-danger-solid-hover", note: "nút nguy hiểm hover" },
+  // Cặp còn lại mà thành phần dùng (R1-2)
+  { fg: "--color-text-muted", bg: "--color-subtle", note: "tab phân đoạn thường" },
+  { fg: "--color-text-muted", bg: "--color-table-head", note: "tiêu đề bảng" },
+  { fg: "--color-danger", bg: "--color-surface", note: "lỗi form, dấu * bắt buộc, nút icon nguy hiểm, mục menu hủy" },
+  { fg: "--color-neutral", bg: "--color-surface", note: "tab nội dung thường" },
+  { fg: "--color-text-secondary", bg: "--color-subtle", note: "mục sidebar/dropdown hover" },
+];
+
+/**
+ * Cặp chữ/nền đã kiểm cho chế độ tối (A6, F1) và dùng chung cho cả hai chế độ: chữ thương hiệu,
+ * trạng thái, trung tính. Chữ màu chính dùng `primary-text`, không dùng `primary-600` trực tiếp.
+ */
+const DARK_PAIRS: Pair[] = [
   // Chữ thương hiệu / tiêu đề trên nền surface
   { fg: "--color-primary-900", bg: "--color-surface", note: "wordmark sidebar" },
   { fg: "--color-primary-700", bg: "--color-surface", note: "icon/initials" },
   { fg: "--color-primary-800", bg: "--color-surface", note: "nút outline" },
-  // primary-600 (#059669) làm màu chữ trên các nền
-  { fg: "--color-primary-600", bg: "--color-page", note: "link trên nền trang" },
-  { fg: "--color-primary-600", bg: "--color-surface", note: "link/tab trên card" },
-  { fg: "--color-primary-600", bg: "--color-primary-50", note: "chip tag, tab/mục/nav đang chọn" },
-  { fg: "--color-primary-600", bg: "--color-primary-100", note: "nút soft" },
-  { fg: "--color-primary-600", bg: "--color-primary-200", note: "nút soft hover" },
-  // primary-700/800 trên nền primary-50 (icon box, avatar, chip tag)
-  { fg: "--color-primary-700", bg: "--color-primary-50", note: "icon/avatar trên primary-50" },
-  { fg: "--color-primary-800", bg: "--color-primary-50", note: "chip tag" },
-  // primary-600 trên primary-50 (empty-state icon, pagination hiện tại)
-  { fg: "--color-primary-600", bg: "--color-primary-50", note: "empty-state/pagination" },
-  // Nút outline hover: primary-800 trên primary-50
-  { fg: "--color-primary-800", bg: "--color-primary-50", note: "outline hover" },
+  // primary-700/800 trên nền primary-50 (icon box, avatar, chip tag, nút outline hover)
+  { fg: "--color-primary-700", bg: "--color-primary-50", note: "icon/avatar trên primary-50, chip tag" },
+  { fg: "--color-primary-800", bg: "--color-primary-50", note: "nút outline hover" },
   // Trạng thái: chữ trên nền trạng thái
   { fg: "--color-success", bg: "--color-success-bg", note: "StatusChip success" },
   { fg: "--color-warning", bg: "--color-warning-bg", note: "StatusChip warning" },
@@ -82,15 +101,23 @@ const DARK_TEXT_PAIRS: Array<{ fg: string; bg: string; note: string }> = [
   { fg: "--color-text-muted", bg: "--color-surface", note: "mô tả" },
 ];
 
-describe("tokens.css chế độ tối", () => {
-  it("mọi cặp chữ/nền thành phần dùng đều đạt >= 4.5:1", () => {
-    const failures: string[] = [];
-    const rows: string[] = [];
-    for (const { fg, bg, note } of DARK_TEXT_PAIRS) {
-      const ratio = contrast(token(fg, "dark"), token(bg, "dark"));
-      rows.push(`${note}: ${token(fg, "dark")} trên ${token(bg, "dark")} = ${ratio.toFixed(2)}:1`);
-      if (ratio < 4.5) failures.push(`${note} chỉ đạt ${ratio.toFixed(2)}:1`);
-    }
-    expect(failures, `\n${rows.join("\n")}\n`).toEqual([]);
+function check(pairs: Pair[], theme: "light" | "dark") {
+  const failures: string[] = [];
+  const rows: string[] = [];
+  for (const { fg, bg, note } of pairs) {
+    const ratio = contrast(token(fg, theme), token(bg, theme));
+    rows.push(`${note}: ${token(fg, theme)} trên ${token(bg, theme)} = ${ratio.toFixed(2)}:1`);
+    if (ratio < 4.5) failures.push(`${note} chỉ đạt ${ratio.toFixed(2)}:1`);
+  }
+  expect(failures, `\n${rows.join("\n")}\n`).toEqual([]);
+}
+
+describe("tokens.css tương phản chữ/nền >= 4.5:1", () => {
+  it.each(["light", "dark"] as const)("cặp chữ/nền của chế độ sáng đạt trong chế độ %s", (theme) => {
+    check(LIGHT_PAIRS, theme);
+  });
+
+  it.each(["light", "dark"] as const)("cặp chữ/nền của chế độ tối đạt trong chế độ %s", (theme) => {
+    check(DARK_PAIRS, theme);
   });
 });

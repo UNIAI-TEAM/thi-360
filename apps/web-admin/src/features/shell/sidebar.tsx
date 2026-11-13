@@ -22,7 +22,7 @@ export function Sidebar() {
       <div className="flex items-center gap-2.5 px-2 pb-4">
         <div
           aria-hidden
-          className="flex size-9 items-center justify-center rounded-md bg-primary-600 text-field-label font-bold text-on-primary"
+          className="flex size-9 items-center justify-center rounded-md bg-primary-fill text-field-label font-bold text-on-primary"
         >
           {t("shell.logoMark")}
         </div>
@@ -51,7 +51,7 @@ export function Sidebar() {
                     "flex h-10 items-center gap-2.5 rounded-sm px-3 text-label transition-colors duration-150 motion-reduce:transition-none",
                     "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
                     active
-                      ? "bg-primary-50 font-semibold text-primary-600"
+                      ? "bg-primary-50 font-semibold text-primary-text"
                       : "font-medium text-text-secondary hover:bg-subtle",
                   )}
                 >

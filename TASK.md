@@ -13,8 +13,9 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T02 | UNI-2539 | Nền · Khung backend modular monolith (Spring Boot, Flyway, OpenAPI, lỗi chuẩn) | T01 | in_review (đã merge vào `integration/dot-1` qua PR #4 ngày 2026-11-13) |
 | T03 | UNI-2540 | Nền · Xác thực: Keycloak, đăng nhập/refresh/đăng xuất, phiên, chặn đăng nhập sai | T02 | in_review (đã merge vào `integration/dot-1` qua PR #6 ngày 2026-11-13) |
 | T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user, người dùng theo quyền, gán hàng loạt (API + engine) | T03 | in_progress |
-| T05 | UNI-2542 | Nền · Nhật ký thao tác: bảng chỉ ghi thêm, outbox, worker, API tra cứu | T02 | in_progress |
+| T05 | UNI-2542 | Nền · Nhật ký thao tác: bảng chỉ ghi thêm, outbox, worker, API tra cứu | T02 | in_review (đã merge vào `integration/dot-1` qua PR #8 ngày 2026-11-13) |
 | T06 | UNI-2543 | Nền · Design system (`packages/ui`) và khung web admin | T01 | in_review (đã merge vào `integration/dot-1` qua PR #5 ngày 2026-11-13) |
+| T06b | UNI-2559 | Nền · Tương phản chữ/nền chế độ sáng >= 4,5:1 (con của UNI-2543, ngoài điểm plan) | T06 | in_review (đã merge vào `integration/dot-1` qua PR #7 ngày 2026-11-13) |
 | T07 | UNI-2544 | PBI-01 · API quản lý tài khoản | T03, T04, T05 | todo |
 | T08 | UNI-2545 | PBI-01 · UI phân quyền: một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt) | T04, T06, T18 | todo |
 | T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07, T18 | todo |

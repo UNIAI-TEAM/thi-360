@@ -4,13 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -34,20 +36,27 @@ class OpenApiExportIT extends AbstractIntegrationTest {
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
 
-        JsonNode tree = sortObjectKeys(objectMapper.readTree(rawJson));
-        String openApiJson = objectMapper.copy()
-                .enable(SerializationFeature.INDENT_OUTPUT)
-                .writeValueAsString(tree);
+        String openApiJson = serializeDeterministicLf(objectMapper, objectMapper.readTree(rawJson));
 
         assertThat(openApiJson)
                 .contains("\"/api/v1/ping\"")
                 .contains("\"PingResponse\"")
-                .contains("\"ApiError\"");
+                .contains("\"ApiError\"")
+                .doesNotContain("\r");
         assertObjectKeysSorted(objectMapper.readTree(openApiJson), "$");
 
         Path targetOut = Path.of("target", "openapi.json");
         Files.createDirectories(targetOut.getParent());
-        Files.writeString(targetOut, openApiJson + "\n", StandardCharsets.UTF_8);
+        Files.writeString(targetOut, openApiJson, StandardCharsets.UTF_8);
+        assertThat(Files.readString(targetOut, StandardCharsets.UTF_8)).doesNotContain("\r");
+    }
+
+    static String serializeDeterministicLf(ObjectMapper mapper, JsonNode root)
+            throws JsonProcessingException {
+        JsonNode tree = sortObjectKeys(root);
+        DefaultPrettyPrinter prettyPrinter = new DefaultPrettyPrinter()
+                .withObjectIndenter(new DefaultIndenter("  ", "\n"));
+        return mapper.writer(prettyPrinter).writeValueAsString(tree) + "\n";
     }
 
     private static JsonNode sortObjectKeys(JsonNode node) {

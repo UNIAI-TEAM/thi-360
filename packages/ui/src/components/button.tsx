@@ -15,15 +15,16 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-primary-600 text-on-primary hover:bg-primary-700",
+        primary:
+          "bg-primary-fill text-on-primary hover:bg-primary-fill-hover active:bg-primary-fill-active",
         secondary:
           "border border-border bg-surface text-text-secondary hover:border-border-strong hover:bg-subtle",
         outline:
           "border border-primary-200 bg-surface text-primary-800 hover:bg-primary-50",
-        soft: "bg-primary-100 text-primary-600 hover:bg-primary-200",
+        soft: "bg-primary-100 text-primary-text hover:bg-primary-200 hover:text-primary-800",
         exam: "bg-accent-500 text-on-accent hover:brightness-95",
         danger: "bg-danger-solid text-on-primary hover:bg-danger-solid-hover",
-        link: "bg-transparent text-primary-600 hover:underline",
+        link: "bg-transparent text-primary-text hover:underline",
       },
       size: {
         sm: "h-9 px-3",

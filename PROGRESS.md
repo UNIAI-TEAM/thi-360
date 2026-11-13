@@ -4,24 +4,43 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 24/83 điểm (T01, T02, T03, T06).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 30/83 điểm (T01, T02, T03, T05, T06).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
 - T03 (UNI-2540) đã nghiệm thu và merge vào `integration/dot-1` (PR #6, `a996ab4`).
-- Đang chạy: T04 (UNI-2541) trên VPS, T05 (UNI-2542) và UNI-2559 (tương phản màu chế độ sáng, con của UNI-2543) trên máy Windows.
+- UNI-2559 (tương phản màu chế độ sáng, con của UNI-2543, ngoài điểm plan) đã nghiệm thu và merge vào `integration/dot-1` (PR #7, `dec8d5b`).
+- T05 (UNI-2542) đã nghiệm thu và merge vào `integration/dot-1` (PR #8, `457b80d`).
+- Đang chạy: T04 (UNI-2541) trên VPS.
 
 **Bước tiếp theo**
 
-1. T04 và T05 chạy song song; T18 bắt đầu khi T04 merge, T07 và T17 khi T04 và T05 cùng merge.
-2. Sau T03 và T04: T18; sau T04 và T05: T17 (T06 đã xong).
+1. T04 đang chạy; khi T04 merge thì mở T18, T07 và T17 (T03, T05, T06 đã xong).
+2. T04 thêm `@RequirePermission("AUDIT.VIEW")` và test 403 cho `GET /api/v1/admin/audit-events` (D-T05-P1).
 
 **Vướng / việc treo**
 
 - DB dev dùng chung: migration `V202611131020` đã sửa trong lúc review, nên DB dev cũ lệch checksum Flyway. Cách xử lý: xóa các schema `shared`, `identity`, `catalog`, `audit` trong DB dev rồi chạy lại backend (chỉ có bảng khung rỗng).
-- Bộ xuất OpenAPI ghi xuống dòng theo hệ điều hành (CRLF trên Windows), nên kiểm tra lệch `diff` chạy trên Windows báo lệch giả. CI chạy Linux không bị. Sửa trong T05.
+- Việc còn lại sau T05 (không chặn): tách login role riêng cho job nhật ký (hiện tài khoản ứng dụng có thể `SET ROLE` sang vai trò bảo trì); thiếu test đầu-cuối ghi người thực hiện khi đăng nhập realm APP. Ghi thành issue con của UNI-2542.
 
 ## Đã làm
+
+### 2026-11-13 — T05 (UNI-2542) nhật ký thao tác, merge vào integration/dot-1
+
+- Schema `audit`: bảng `audit_event` phân vùng theo quý (PK `(id, occurred_at)`), `audit_event_archive` theo năm, trigger chặn UPDATE/DELETE không có đường vòng; vai trò NOLOGIN `thi360_audit_maint` sở hữu bảng, vai trò ứng dụng chỉ SELECT/INSERT, job dùng `SET LOCAL ROLE`.
+- Ghi nhật ký qua outbox (`AuditRecorderImpl`, che khóa nhạy cảm gồm link đặt lại mật khẩu), worker ghi idempotent, job tạo phân vùng và job lưu trữ, API `GET /api/v1/admin/audit-events` có lọc. Bỏ `NoopAuditRecorder` của T03; nhật ký ghi đúng người thực hiện (MASTER → PLATFORM, APP → USER), kể cả lúc đăng nhập thành công.
+- Bộ xuất OpenAPI ghi LF (hết lệch giả trên Windows).
+- Review BE sáu vòng; vòng cuối không còn lỗi chặn.
+- Lệnh đã chạy trên `ba92d8a`: Cursor cloud runner `./mvnw -B -ntp verify` (86 + 28 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows `./mvnw -B -ntp verify`, kiểm tra lệch openapi/api-client, `pnpm` lint/typecheck/test/build → exit 0.
+- Merge squash qua PR #8 (`457b80d`).
+
+### 2026-11-13 — UNI-2559 tương phản màu chế độ sáng, merge vào integration/dot-1
+
+- Người dùng chọn phương án 2 (D-USER-CONTRAST): chữ màu chính trên nền nhạt và nền nút chính dùng `#047857`; nút nhấn giữ `#F59223`, chữ `#1A1A1F`; chữ lỗi `#b91c1c`; chữ màu chính chế độ tối `#10b981`.
+- `packages/ui`: token `primary-text`, `primary-fill`, `on-accent`, cập nhật các thành phần dùng màu; `tokens.test.ts` liệt kê mọi cặp chữ/nền đang dùng và kiểm tra >= 4,5:1 cả sáng lẫn tối. `DESIGN.md` và spec mục 13, 13.1, 14 sửa cho khớp.
+- Review FE hai vòng không còn lỗi; nghiệm thu giao diện hai vòng, 0 phần tử dưới 4,5:1.
+- Lệnh đã chạy trên `f457153`: Cursor cloud runner `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows (Node 22) cùng các lệnh → exit 0.
+- Merge squash qua PR #7 (`dec8d5b`).
 
 ### 2026-11-13 — T03 (UNI-2540) xác thực, merge vào integration/dot-1
 
