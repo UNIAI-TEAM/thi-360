@@ -251,13 +251,13 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
                         .content("{\"status\":\"INACTIVE\",\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.version").value(0));
+                .andExpect(jsonPath("$.version").value(1));
 
         // Deactivate (ACTIVE -> INACTIVE) without reason -> 400 VALIDATION_FAILED with REASON_REQUIRED
         mockMvc.perform(patch("/api/v1/admin/classes/{id}/status", classId)
                         .with(asUser(Permissions.CLASS_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"INACTIVE\",\"reason\":\"   \",\"version\":0}"))
+                        .content("{\"status\":\"INACTIVE\",\"reason\":\"   \",\"version\":1}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.fieldErrors[0].code").value("REASON_REQUIRED"));
@@ -266,11 +266,10 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
         mockMvc.perform(patch("/api/v1/admin/classes/{id}/status", classId)
                         .with(asUser(Permissions.CLASS_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"INACTIVE\",\"reason\":\"  Tạm ngưng lớp  \",\"version\":0}"))
+                        .content("{\"status\":\"INACTIVE\",\"reason\":\"  Tạm ngưng lớp  \",\"version\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("INACTIVE"))
-                .andExpect(jsonPath("$.version").value(1));
-
+                .andExpect(jsonPath("$.version").value(2));
         // Soft delete without reason -> 400 VALIDATION_FAILED with REASON_REQUIRED
         mockMvc.perform(delete("/api/v1/admin/classes/{id}", classId)
                         .with(asUser(Permissions.CLASS_MODIFY)))
