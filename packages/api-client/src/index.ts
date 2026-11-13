@@ -7,36 +7,26 @@ export type FieldError = components["schemas"]["FieldError"];
 export type PingResponse = components["schemas"]["PingResponse"];
 export type ApiClient = Client<paths>;
 
-const RelativeSafeRequest: typeof Request = class extends Request {
-  private readonly _rawUrl?: string;
-
-  constructor(input: RequestInfo | URL, init?: RequestInit) {
-    if (typeof input === "string" && input.startsWith("/")) {
-      const origin =
-        typeof location !== "undefined" && location?.origin
-          ? location.origin
-          : "http://localhost";
-      super(new URL(input, origin), init);
-      if (typeof location === "undefined") {
-        this._rawUrl = input;
-      }
-    } else {
-      super(input, init);
-    }
+function resolveBaseUrl(baseUrl?: string): string {
+  if (baseUrl !== undefined) {
+    return baseUrl;
   }
-
-  override get url(): string {
-    return this._rawUrl ?? super.url;
+  const locationOrigin =
+    typeof globalThis.location !== "undefined" ? globalThis.location?.origin : undefined;
+  if (locationOrigin && locationOrigin !== "null") {
+    return locationOrigin;
   }
-};
+  throw new Error(
+    "createApiClient requires an explicit baseUrl origin when globalThis.location is unavailable",
+  );
+}
 
 export function createApiClient(
-  baseUrl = "",
+  baseUrl?: string,
   options?: Omit<ClientOptions, "baseUrl">,
 ): ApiClient {
   return createClient<paths>({
-    Request: RelativeSafeRequest,
     ...options,
-    baseUrl,
+    baseUrl: resolveBaseUrl(baseUrl),
   });
 }
