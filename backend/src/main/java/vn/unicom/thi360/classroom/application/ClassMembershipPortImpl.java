@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.audit.spi.AuditEvent;
+import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.classroom.domain.ClassMember;
 import vn.unicom.thi360.classroom.domain.ClassMemberHistory;
 import vn.unicom.thi360.classroom.domain.ClassMemberHistoryAction;
@@ -30,6 +33,8 @@ import vn.unicom.thi360.shared.ids.Ids;
 @Service
 public class ClassMembershipPortImpl implements ClassMembershipPort {
 
+    private static final String MODULE = "CLASSROOM";
+    private static final String TARGET_TYPE_CLASS = "CLASS";
     private static final String ERROR_CLASS_INACTIVE = "CLASS_INACTIVE";
 
     private final ClassRoomRepository classRoomRepository;
@@ -37,18 +42,21 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
     private final ClassMemberHistoryRepository classMemberHistoryRepository;
     private final UserDirectory userDirectory;
     private final ClassMemberLock classMemberLock;
+    private final AuditRecorder auditRecorder;
 
     public ClassMembershipPortImpl(
             ClassRoomRepository classRoomRepository,
             ClassMemberRepository classMemberRepository,
             ClassMemberHistoryRepository classMemberHistoryRepository,
             UserDirectory userDirectory,
-            ClassMemberLock classMemberLock) {
+            ClassMemberLock classMemberLock,
+            AuditRecorder auditRecorder) {
         this.classRoomRepository = classRoomRepository;
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
         this.userDirectory = userDirectory;
         this.classMemberLock = classMemberLock;
+        this.auditRecorder = auditRecorder;
     }
 
     @Override
@@ -99,12 +107,14 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
         }
 
         List<UUID> sortedIds = uniqueIds.stream().sorted().toList();
+        Map<UUID, ClassRoom> lockedById = new HashMap<>();
         for (UUID classId : sortedIds) {
             ClassRoom locked = classRoomRepository.findByIdAndDeletedAtIsNullForUpdate(classId)
                     .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
             if (locked.getStatus() == ClassStatus.INACTIVE) {
                 throw new ConflictException(ERROR_CLASS_INACTIVE);
             }
+            lockedById.put(classId, locked);
         }
 
         classMemberLock.lockUser(userId);
@@ -117,6 +127,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
 
         List<ClassMember> newMembers = new ArrayList<>();
         List<ClassMemberHistory> historyRows = new ArrayList<>();
+        List<ClassRoom> assignedClasses = new ArrayList<>();
         for (UUID classId : uniqueIds) {
             if (classMemberRepository.existsByIdClassIdAndIdUserId(classId, userId)) {
                 continue;
@@ -131,6 +142,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
                     actorId,
                     null,
                     occurredAt));
+            assignedClasses.add(lockedById.get(classId));
         }
 
         if (!newMembers.isEmpty()) {
@@ -138,6 +150,16 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             classMemberRepository.flush();
             classMemberHistoryRepository.saveAll(historyRows);
             classMemberHistoryRepository.flush();
+
+            for (ClassRoom classRoom : assignedClasses) {
+                Map<String, Object> after = new LinkedHashMap<>();
+                after.put("addedUserIds", List.of(userId.toString()));
+                after.put("addedCount", 1);
+                auditRecorder.record(AuditEvent.builder(MODULE, "CLASS_MEMBER_ADDED")
+                        .target(TARGET_TYPE_CLASS, classRoom.getId().toString(), classRoom.getCode())
+                        .after(after)
+                        .build());
+            }
         }
     }
 

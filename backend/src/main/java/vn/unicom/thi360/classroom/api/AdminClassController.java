@@ -92,7 +92,7 @@ public class AdminClassController {
     @Operation(summary = "Xóa mềm lớp học (không ảnh hưởng tài khoản học viên)")
     public void deleteClass(
             @PathVariable UUID id,
-            @Parameter(description = "Lý do xóa lớp (không bắt buộc)")
+            @Parameter(description = "Lý do xóa lớp (bắt buộc)", required = true)
             @RequestParam(required = false) String reason) {
         classService.deleteClass(id, reason);
     }

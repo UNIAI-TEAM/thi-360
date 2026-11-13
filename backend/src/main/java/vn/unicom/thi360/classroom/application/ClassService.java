@@ -274,9 +274,6 @@ public class ClassService {
             newOwnerUserId = null;
         }
 
-        ClassStatus previousStatus = classRoom.getStatus();
-        boolean deactivating = previousStatus == ClassStatus.ACTIVE && request.status() == ClassStatus.INACTIVE;
-
         Instant now = Instant.now(clock);
         classRoom.updateDetails(
                 newCode,
@@ -285,14 +282,12 @@ public class ClassService {
                 updateDescription,
                 newOwnerUserId,
                 updateOwner,
-                request.status(),
                 now,
                 actor.id());
         classRoom = classRoomRepository.saveAndFlush(classRoom);
 
         Map<String, Object> after = classAuditState(classRoom);
-        String action = deactivating ? "CLASS_DEACTIVATED" : "CLASS_UPDATED";
-        recordAudit(action, classRoom.getId(), classRoom.getCode(), before, after, null);
+        recordAudit("CLASS_UPDATED", classRoom.getId(), classRoom.getCode(), before, after, null);
 
         return toDetailResponse(classRoom, countMembers(classId));
     }
@@ -307,8 +302,11 @@ public class ClassService {
             throw new VersionConflictException();
         }
 
-        String trimmedReason = validateOptionalReason(request.reason());
         ClassStatus previousStatus = classRoom.getStatus();
+        boolean deactivating = previousStatus == ClassStatus.ACTIVE && request.status() == ClassStatus.INACTIVE;
+        String trimmedReason = deactivating
+                ? validateRequiredReason(request.reason(), "Vui lòng nhập lý do khi ngừng sử dụng lớp học")
+                : validateOptionalReason(request.reason());
         Map<String, Object> before = Map.of("status", previousStatus.name());
 
         Instant now = Instant.now(clock);
@@ -316,9 +314,7 @@ public class ClassService {
         classRoom = classRoomRepository.saveAndFlush(classRoom);
 
         Map<String, Object> after = Map.of("status", classRoom.getStatus().name());
-        String action = (previousStatus == ClassStatus.ACTIVE && request.status() == ClassStatus.INACTIVE)
-                ? "CLASS_DEACTIVATED"
-                : "CLASS_UPDATED";
+        String action = deactivating ? "CLASS_DEACTIVATED" : "CLASS_UPDATED";
         recordAudit(action, classRoom.getId(), classRoom.getCode(), before, after, trimmedReason);
 
         return toDetailResponse(classRoom, countMembers(classId));
@@ -330,7 +326,7 @@ public class ClassService {
         ClassRoom classRoom = classRoomRepository.findByIdAndDeletedAtIsNullForUpdate(classId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
-        String trimmedReason = validateOptionalReason(reason);
+        String trimmedReason = validateRequiredReason(reason, "Vui lòng nhập lý do khi xóa lớp học");
         Map<String, Object> before = classAuditState(classRoom);
 
         Instant now = Instant.now(clock);
@@ -339,9 +335,7 @@ public class ClassService {
 
         Map<String, Object> after = new LinkedHashMap<>();
         after.put("deletedAt", classRoom.getDeletedAt().toString());
-        if (trimmedReason != null) {
-            after.put("deleteReason", trimmedReason);
-        }
+        after.put("deleteReason", trimmedReason);
         recordAudit("CLASS_DELETED", classRoom.getId(), classRoom.getCode(), before, after, trimmedReason);
     }
 
@@ -822,6 +816,19 @@ public class ClassService {
         }
         String trimmed = ClassNormalizer.trimToNull(rawReason);
         if (trimmed != null && trimmed.length() > 500) {
+            throw new ValidationException(List.of(
+                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+        }
+        return trimmed;
+    }
+
+    private static String validateRequiredReason(String rawReason, String emptyMessage) {
+        if (rawReason == null || rawReason.isBlank()) {
+            throw new ValidationException(List.of(
+                    new FieldError("reason", "REASON_REQUIRED", emptyMessage)));
+        }
+        String trimmed = rawReason.trim();
+        if (trimmed.length() > 500) {
             throw new ValidationException(List.of(
                     new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
         }

@@ -92,7 +92,6 @@ public class ClassRoom {
             boolean updateDescription,
             UUID newOwnerUserId,
             boolean updateOwner,
-            ClassStatus newStatus,
             Instant now,
             UUID actorId) {
         if (newCode != null) {
@@ -107,9 +106,6 @@ public class ClassRoom {
         }
         if (updateOwner) {
             this.ownerUserId = newOwnerUserId;
-        }
-        if (newStatus != null) {
-            this.status = newStatus;
         }
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedBy = actorId;

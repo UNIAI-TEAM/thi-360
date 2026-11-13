@@ -244,11 +244,60 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
                 .andExpect(status().isPreconditionFailed())
                 .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
 
-        // Soft delete -> code becomes reusable
+        // Generic PATCH ignores/cannot mutate status; status changes must go through PATCH /{id}/status
+        mockMvc.perform(patch("/api/v1/admin/classes/{id}", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"INACTIVE\",\"version\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.version").value(0));
+
+        // Deactivate (ACTIVE -> INACTIVE) without reason -> 400 VALIDATION_FAILED with REASON_REQUIRED
+        mockMvc.perform(patch("/api/v1/admin/classes/{id}/status", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"INACTIVE\",\"reason\":\"   \",\"version\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("REASON_REQUIRED"));
+
+        // Deactivate with padded reason -> 200 and trimmed reason persisted in audit
+        mockMvc.perform(patch("/api/v1/admin/classes/{id}/status", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"INACTIVE\",\"reason\":\"  Tạm ngưng lớp  \",\"version\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"))
+                .andExpect(jsonPath("$.version").value(1));
+
+        // Soft delete without reason -> 400 VALIDATION_FAILED with REASON_REQUIRED
         mockMvc.perform(delete("/api/v1/admin/classes/{id}", classId)
-                        .param("reason", "Hết khóa")
+                        .with(asUser(Permissions.CLASS_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("REASON_REQUIRED"));
+
+        // Soft delete with padded reason -> 204, trimmed reason persisted in audit, code becomes reusable
+        mockMvc.perform(delete("/api/v1/admin/classes/{id}", classId)
+                        .param("reason", "  Hết khóa  ")
                         .with(asUser(Permissions.CLASS_MODIFY)))
                 .andExpect(status().isNoContent());
+
+        while (outboxRelay.relayBatch() > 0) {
+            // drain outbox
+        }
+        String deactivateReason = jdbcTemplate.queryForObject(
+                "SELECT reason FROM audit.audit_event WHERE action = 'CLASS_DEACTIVATED' AND target_id = ?",
+                String.class,
+                classId.toString());
+        assertThat(deactivateReason).isEqualTo("Tạm ngưng lớp");
+
+        String deleteReason = jdbcTemplate.queryForObject(
+                "SELECT reason FROM audit.audit_event WHERE action = 'CLASS_DELETED' AND target_id = ?",
+                String.class,
+                classId.toString());
+        assertThat(deleteReason).isEqualTo("Hết khóa");
 
         mockMvc.perform(get("/api/v1/admin/classes/{id}", classId)
                         .with(asUser(Permissions.CLASS_VIEW)))

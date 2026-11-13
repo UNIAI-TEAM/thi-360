@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
-import vn.unicom.thi360.classroom.domain.ClassStatus;
 
 @Schema(description = "Yêu cầu cập nhật thông tin lớp học")
 public record UpdateClassRequest(
@@ -21,8 +20,6 @@ public record UpdateClassRequest(
         UUID ownerUserId,
         @Schema(description = "Xóa người phụ trách hiện tại khi đặt là true")
         Boolean clearOwner,
-        @Schema(description = "Trạng thái mới")
-        ClassStatus status,
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "Phiên bản cập nhật là bắt buộc")
         Long version

@@ -516,10 +516,15 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.code").value("CLASS_INACTIVE"));
         assertThat(keycloakClient.findUserIdByUsername(inactiveUsername)).isEmpty();
 
-        // Valid active classes with USER.MODIFY + CLASS.MODIFY -> 201, memberships & JOIN history persisted, classId filter matches user
+        // Valid active classes with USER.MODIFY + CLASS.MODIFY -> 201, memberships, JOIN history & CLASS_MEMBER_ADDED audits persisted
+        while (outboxRelay.relayBatch() > 0) {
+            // drain outbox backlog before asserting class-member audit rows
+        }
+        UUID creatorId = Ids.newId();
+        String creatorUsername = "creator." + sfx;
         String okUsername = "class.ok." + sfx;
         MvcResult createdRes = mockMvc.perform(post("/api/v1/admin/users")
-                        .with(asUser(Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
+                        .with(asUser(creatorId, creatorUsername, Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -549,6 +554,17 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 createdUserId);
         assertThat(joinHistoryCount).isEqualTo(2);
 
+        while (outboxRelay.relayBatch() > 0) {
+            // drain outbox to materialize audit.audit_event
+        }
+        List<String> addedTargets = jdbcTemplate.queryForList(
+                "SELECT target_id FROM audit.audit_event WHERE action = 'CLASS_MEMBER_ADDED' AND target_id IN (?, ?) AND actor_id = ? AND actor_username = ?",
+                String.class,
+                activeClass1.toString(),
+                activeClass2.toString(),
+                creatorId,
+                creatorUsername);
+        assertThat(addedTargets).containsExactlyInAnyOrder(activeClass1.toString(), activeClass2.toString());
         mockMvc.perform(get("/api/v1/admin/users")
                         .param("classId", activeClass1.toString())
                         .with(asUser(Permissions.USER_VIEW)))
