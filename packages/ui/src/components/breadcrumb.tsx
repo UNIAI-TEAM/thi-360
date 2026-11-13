@@ -20,13 +20,14 @@ export type BreadcrumbProps = {
   className?: string;
 };
 
-/** Mục cuối là trang hiện tại, không là liên kết. */
+/** Mục cuối là trang hiện tại, không là liên kết. Không có mục nào thì không hiện gì (tránh vùng điều hướng rỗng). */
 export function Breadcrumb({
   items,
   linkComponent: LinkComponent = DefaultLink,
   className,
   "aria-label": ariaLabel,
 }: BreadcrumbProps) {
+  if (items.length === 0) return null;
   const lastIndex = items.length - 1;
   return (
     <nav aria-label={ariaLabel} className={className}>

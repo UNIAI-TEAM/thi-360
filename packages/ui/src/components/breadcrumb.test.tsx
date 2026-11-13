@@ -38,4 +38,10 @@ describe("Breadcrumb", () => {
     render(<Breadcrumb aria-label="Đường dẫn" items={items} />);
     expect(screen.getAllByRole("listitem")).toHaveLength(items.length);
   });
+
+  it("không có mục nào: không hiện vùng điều hướng rỗng", () => {
+    const { container } = render(<Breadcrumb aria-label="Vị trí hiện tại" items={[]} />);
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(container).toBeEmptyDOMElement();
+  });
 });
