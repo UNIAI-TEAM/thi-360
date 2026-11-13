@@ -241,7 +241,7 @@ Giữ bộ cấu hình giao diện như reap, áp dụng **toàn hệ thống** 
 
 | Nhóm | Tùy chọn |
 |---|---|
-| Bảng màu | Lưới thẻ xem trước các bảng có sẵn; bảng đang dùng có viền `primary-600` và dấu tích. Mặc định là "Thi 360 Xanh lá" (toàn bộ giá trị ở mục 2). Có "Tự tạo": chọn màu chính và màu nhấn, hệ thống sinh dải 50–900 |
+| Bộ phối màu | 9 thẻ bộ cố định để chọn nhanh (mỗi thẻ: hai ô màu, tên, dải thu nhỏ nút chính và nút nhấn); thẻ đang dùng có viền `primary-600` và dấu tích. Thẻ thứ mười "Tự tùy chỉnh" mở hai ô Màu chính và Màu nhấn (bảng chọn màu + ô nhập mã). Danh sách bộ, cách suy ra token và các kiểm tra: spec mục 13.1 |
 | Chế độ | Sáng, tối (tab phân đoạn) |
 | Bố cục admin | Vị trí sidebar, kiểu đầy đủ/thu gọn, hiện/ẩn toolbar và footer, độ rộng nội dung |
 | Kích thước | Bo góc và chiều cao điều khiển |
