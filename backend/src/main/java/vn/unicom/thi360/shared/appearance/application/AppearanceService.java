@@ -3,7 +3,6 @@ package vn.unicom.thi360.shared.appearance.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -17,12 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.api.VersionConflictException;
@@ -37,13 +33,10 @@ import vn.unicom.thi360.shared.appearance.domain.AppearanceSettingPayload.Custom
 import vn.unicom.thi360.shared.appearance.domain.AppearanceSettingPayload.Palette;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
-import vn.unicom.thi360.shared.security.Realm;
 
 @Service
 public class AppearanceService {
 
-    public static final String CACHE_KEY = "setting:appearance";
-    private static final Duration CACHE_TTL = Duration.ofSeconds(60);
     private static final Locale DEFAULT_LOCALE = Locale.of("vi");
     private static final Logger log = LoggerFactory.getLogger(AppearanceService.class);
 
@@ -67,7 +60,6 @@ public class AppearanceService {
     private final Clock clock;
     private final CurrentUserProvider currentUserProvider;
     private final MessageSource messageSource;
-    private final StringRedisTemplate redisTemplate;
     private final AppearanceAuditRecorder auditRecorder;
 
     public AppearanceService(
@@ -76,33 +68,22 @@ public class AppearanceService {
             Clock clock,
             CurrentUserProvider currentUserProvider,
             MessageSource messageSource,
-            @Autowired(required = false) StringRedisTemplate redisTemplate,
             @Autowired(required = false) AppearanceAuditRecorder auditRecorder) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
         this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider must not be null");
         this.messageSource = Objects.requireNonNull(messageSource, "messageSource must not be null");
-        this.redisTemplate = redisTemplate;
         this.auditRecorder = auditRecorder;
     }
 
     @Transactional(readOnly = true)
     public AppearanceResponse getAppearance() {
-        AppearanceResponse cached = readFromCache();
-        if (cached != null) {
-            return cached;
-        }
-
         SettingRow row = loadSettingRow();
-        AppearanceResponse response;
         if (row == null) {
-            response = toResponse(AppearanceSettingPayload.defaultConfig(), 0L);
-        } else {
-            response = toResponse(deserializePayload(row.valueJson()), row.version());
+            return toResponse(AppearanceSettingPayload.defaultConfig(), 0L);
         }
-        writeToCache(response);
-        return response;
+        return toResponse(deserializePayload(row.valueJson()), row.version());
     }
 
     @Transactional
@@ -110,14 +91,18 @@ public class AppearanceService {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         validateUpdateRequest(request);
 
-        CustomColors customColors = request.palette().custom() != null
+        CustomColors requestedCustom = request.palette().custom() != null
                 ? new CustomColors(request.palette().custom().primary(), request.palette().custom().accent())
                 : null;
-        AppearanceSettingPayload nextPayload = new AppearanceSettingPayload(
-                new Palette(request.palette().presetId(), customColors),
-                request.mode());
+        boolean preserveStoredCustom = !AppearancePolicy.isCustomPreset(request.palette().presetId());
 
-        AppearanceResponse updated = applyChange(actor, nextPayload, request.version());
+        AppearanceResponse updated = applyChange(
+                actor,
+                request.palette().presetId(),
+                requestedCustom,
+                request.mode(),
+                preserveStoredCustom,
+                request.version());
         log.atInfo()
                 .addKeyValue("event", "appearance.updated")
                 .addKeyValue("presetId", updated.palette().presetId())
@@ -130,16 +115,26 @@ public class AppearanceService {
     @Transactional
     public AppearanceResponse resetAppearance(ResetAppearanceRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        Long expectedVersion = request != null ? request.version() : null;
-        if (expectedVersion != null && expectedVersion < 0L) {
+        if (request == null || request.version() == null) {
+            throw new ValidationException(List.of(new FieldError(
+                    "version",
+                    "APPEARANCE_VERSION_REQUIRED",
+                    resolveMessage("APPEARANCE_VERSION_REQUIRED", "Phiên bản cấu hình là bắt buộc"))));
+        }
+        if (request.version() < 0L) {
             throw new ValidationException(List.of(new FieldError(
                     "version",
                     "APPEARANCE_VERSION_INVALID",
                     resolveMessage("APPEARANCE_VERSION_INVALID", "Phiên bản cấu hình không hợp lệ"))));
         }
 
-        AppearanceSettingPayload defaultPayload = AppearanceSettingPayload.defaultConfig();
-        AppearanceResponse updated = applyChange(actor, defaultPayload, expectedVersion);
+        AppearanceResponse updated = applyChange(
+                actor,
+                AppearancePolicy.DEFAULT_PRESET_ID,
+                null,
+                AppearancePolicy.DEFAULT_MODE,
+                false,
+                request.version());
         log.atInfo()
                 .addKeyValue("event", "appearance.reset")
                 .addKeyValue("presetId", updated.palette().presetId())
@@ -151,17 +146,27 @@ public class AppearanceService {
 
     private AppearanceResponse applyChange(
             CurrentUser actor,
-            AppearanceSettingPayload nextPayload,
-            Long expectedVersion) {
+            String nextPresetId,
+            CustomColors requestedCustom,
+            String nextMode,
+            boolean preserveStoredCustom,
+            long expectedVersion) {
         SettingRow existing = loadSettingRow();
         long currentVersion = existing == null ? 0L : existing.version();
-        if (expectedVersion != null && expectedVersion != currentVersion) {
+        if (expectedVersion != currentVersion) {
             throw new VersionConflictException();
         }
 
         AppearanceSettingPayload beforePayload = existing == null
                 ? AppearanceSettingPayload.defaultConfig()
                 : deserializePayload(existing.valueJson());
+
+        CustomColors nextCustom = requestedCustom != null
+                ? requestedCustom
+                : (preserveStoredCustom ? beforePayload.palette().custom() : null);
+        AppearanceSettingPayload nextPayload = new AppearanceSettingPayload(
+                new Palette(nextPresetId, nextCustom),
+                nextMode);
 
         String nextJson = serializePayload(nextPayload);
         Instant now = Instant.now(clock);
@@ -195,14 +200,10 @@ public class AppearanceService {
 
         if (auditRecorder != null) {
             auditRecorder.recordUpdated(
-                    actor.id(),
-                    actor.username(),
-                    actor.realm() == Realm.MASTER,
                     toAuditState(beforePayload, currentVersion),
                     toAuditState(nextPayload, newVersion));
         }
 
-        evictCacheAfterCommit();
         return toResponse(nextPayload, newVersion);
     }
 
@@ -299,67 +300,6 @@ public class AppearanceService {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize appearance setting payload", ex);
-        }
-    }
-
-    private AppearanceResponse readFromCache() {
-        if (redisTemplate == null) {
-            return null;
-        }
-        try {
-            String cachedJson = redisTemplate.opsForValue().get(CACHE_KEY);
-            if (cachedJson == null || cachedJson.isBlank()) {
-                return null;
-            }
-            return objectMapper.readValue(cachedJson, AppearanceResponse.class);
-        } catch (RuntimeException | JsonProcessingException ex) {
-            log.atWarn()
-                    .addKeyValue("event", "appearance.cache.read_failed")
-                    .setCause(ex)
-                    .log("Failed to read appearance cache from Redis, falling back to database");
-            return null;
-        }
-    }
-
-    private void writeToCache(AppearanceResponse response) {
-        if (redisTemplate == null) {
-            return;
-        }
-        try {
-            String json = objectMapper.writeValueAsString(response);
-            redisTemplate.opsForValue().set(CACHE_KEY, json, CACHE_TTL);
-        } catch (RuntimeException | JsonProcessingException ex) {
-            log.atWarn()
-                    .addKeyValue("event", "appearance.cache.write_failed")
-                    .setCause(ex)
-                    .log("Failed to populate appearance cache in Redis");
-        }
-    }
-
-    private void evictCacheAfterCommit() {
-        if (redisTemplate == null) {
-            return;
-        }
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    deleteCacheKey();
-                }
-            });
-        } else {
-            deleteCacheKey();
-        }
-    }
-
-    private void deleteCacheKey() {
-        try {
-            redisTemplate.delete(CACHE_KEY);
-        } catch (RuntimeException ex) {
-            log.atWarn()
-                    .addKeyValue("event", "appearance.cache.evict_failed")
-                    .setCause(ex)
-                    .log("Failed to evict appearance cache key in Redis");
         }
     }
 

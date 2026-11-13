@@ -35,7 +35,7 @@ public class AppearanceAdminController {
     @RequirePermission(PERMISSION_APPEARANCE_MODIFY)
     @Operation(summary = "Khôi phục cấu hình giao diện mặc định")
     public AppearanceResponse resetAppearance(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(required = false)
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true)
             @RequestBody(required = false) ResetAppearanceRequest request) {
         return appearanceService.resetAppearance(request);
     }

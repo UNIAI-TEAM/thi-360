@@ -1,6 +1,10 @@
 package vn.unicom.thi360.shared.appearance.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
 import org.springframework.http.CacheControl;
@@ -29,7 +33,40 @@ public class AppearanceController {
     }
 
     @GetMapping
-    @Operation(summary = "Lấy cấu hình giao diện toàn hệ thống (công khai)")
+    @Operation(
+            summary = "Lấy cấu hình giao diện toàn hệ thống (công khai)",
+            responses = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "OK",
+                        headers = {
+                            @Header(
+                                    name = HttpHeaders.CACHE_CONTROL,
+                                    description = "Chính sách cache công khai",
+                                    schema = @Schema(implementation = String.class)),
+                            @Header(
+                                    name = HttpHeaders.ETAG,
+                                    description = "ETag theo phiên bản cấu hình",
+                                    schema = @Schema(implementation = String.class))
+                        },
+                        content = @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema = @Schema(implementation = AppearanceResponse.class))),
+                @ApiResponse(
+                        responseCode = "304",
+                        description = "Not Modified",
+                        headers = {
+                            @Header(
+                                    name = HttpHeaders.CACHE_CONTROL,
+                                    description = "Chính sách cache công khai",
+                                    schema = @Schema(implementation = String.class)),
+                            @Header(
+                                    name = HttpHeaders.ETAG,
+                                    description = "ETag theo phiên bản cấu hình",
+                                    schema = @Schema(implementation = String.class))
+                        },
+                        content = @Content(schema = @Schema(hidden = true)))
+            })
     public ResponseEntity<AppearanceResponse> getAppearance(
             @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
         AppearanceResponse appearance = appearanceService.getAppearance();

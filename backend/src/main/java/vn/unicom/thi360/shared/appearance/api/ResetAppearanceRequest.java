@@ -5,9 +5,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Yêu cầu khôi phục cấu hình giao diện mặc định")
 public record ResetAppearanceRequest(
         @Schema(
-                description = "Phiên bản hiện tại để kiểm tra khóa lạc quan (tùy chọn)",
+                description = "Phiên bản hiện tại để kiểm tra khóa lạc quan",
                 example = "1",
-                requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                requiredMode = Schema.RequiredMode.REQUIRED)
         Long version
 ) {
 }
