@@ -170,163 +170,100 @@ class CatalogTreeApiIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void treeDescendantsNonPrefixLeafLimitDuplicateAcrossBranchesInactiveAncestorMoveAndDelete()
-            throws Exception {
-        String code = "TREE_FULL_" + suffix();
-        cacheGroupCodes.add(code.toLowerCase());
-
-        UUID groupId = createTreeGroup(code, List.of("Chương", "Bài", "Kiến thức"));
-        createdGroupIds.add(groupId);
-
-        // Chapter 1 & Chapter 2
-        JsonNode ch1 = createNode(groupId, null, "CH_ONE", "Chương 1");
-        UUID ch1Id = UUID.fromString(ch1.get("id").asText());
-        long ch1Ver = ch1.get("version").asLong();
-
-        JsonNode ch2 = createNode(groupId, null, "CH_TWO", "Chương 2");
-        UUID ch2Id = UUID.fromString(ch2.get("id").asText());
-        long ch2Ver = ch2.get("version").asLong();
-
-        // Lessons under Ch1 (unrelated code prefix!)
-        JsonNode l1 = createNode(groupId, ch1Id, "LESSON_ALPHA", "Bài Alpha");
-        UUID l1Id = UUID.fromString(l1.get("id").asText());
-        JsonNode l2 = createNode(groupId, ch1Id, "LESSON_BETA", "Bài Beta");
-        UUID l2Id = UUID.fromString(l2.get("id").asText());
-
-        // Leaves under L1 and L2 (deliberately non-prefix codes!)
-        JsonNode k1 = createNode(groupId, l1Id, "XYZ_CONCEPT_1", "Kiến thức 1");
-        UUID k1Id = UUID.fromString(k1.get("id").asText());
-        JsonNode k2 = createNode(groupId, l1Id, "QRS_CONCEPT_2", "Kiến thức 2");
-        UUID k2Id = UUID.fromString(k2.get("id").asText());
-        JsonNode k3 = createNode(groupId, l2Id, "MNO_CONCEPT_3", "Kiến thức 3");
-        UUID k3Id = UUID.fromString(k3.get("id").asText());
-
-        // Duplicate code across different branches blocked
-        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "xyz_concept_1",
-                                "nameVi", "Trùng khác nhánh",
-                                "parentId", l2Id))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CATALOG_CODE_TAKEN"));
-
-        // Adding child under leaf blocked with CATALOG_TREE_DEPTH_EXCEEDED
-        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "TOO_DEEP",
-                                "nameVi", "Quá cấp",
-                                "parentId", k1Id))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CATALOG_TREE_DEPTH_EXCEEDED"));
-
-        // Public descendants of Chapter 1 returns all 3 leaves despite non-prefix codes
+    void descendantsOfChapter() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_CH_");
         mockMvc.perform(get("/api/v1/catalog/tree/descendants")
-                        .param("nodeId", ch1Id.toString())
+                        .param("nodeId", fx.ch1Id().toString())
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)))
                 .andExpect(jsonPath("$[*].code", containsInAnyOrder("XYZ_CONCEPT_1", "QRS_CONCEPT_2", "MNO_CONCEPT_3")));
 
-        // Public descendants of Lesson 1 returns ONLY its 2 leaves
         mockMvc.perform(get("/api/v1/catalog/tree/descendants")
-                        .param("nodeId", l1Id.toString())
-                        .with(asStudent()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[*].code", containsInAnyOrder("XYZ_CONCEPT_1", "QRS_CONCEPT_2")));
-
-        // Public descendants with leafOnly=false includes lessons + leaves under Chapter 1 (5 nodes)
-        mockMvc.perform(get("/api/v1/catalog/tree/descendants")
-                        .param("nodeId", ch1Id.toString())
+                        .param("nodeId", fx.ch1Id().toString())
                         .param("leafOnly", "false")
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(5)));
+    }
 
-        // Admin tree search with q returns matched leaf AND its ancestor chain
-        mockMvc.perform(get("/api/v1/admin/catalog/groups/{id}/tree", groupId)
-                        .param("q", "QRS_CONCEPT_2")
-                        .with(asUser(Permissions.CATALOG_VIEW)))
+    @Test
+    void descendantsOfLessonNonPrefixCodes() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_LSN_");
+        mockMvc.perform(get("/api/v1/catalog/tree/descendants")
+                        .param("nodeId", fx.l1Id().toString())
+                        .with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(3)))
-                .andExpect(jsonPath("$[*].code", containsInAnyOrder("CH_ONE", "LESSON_ALPHA", "QRS_CONCEPT_2")))
-                .andExpect(jsonPath("$[?(@.code=='QRS_CONCEPT_2')].matched").value(hasItem(true)))
-                .andExpect(jsonPath("$[?(@.code=='CH_ONE')].matched").value(hasItem(false)));
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].code", containsInAnyOrder("XYZ_CONCEPT_1", "QRS_CONCEPT_2")));
+    }
 
-        // Reorder siblings under same parent succeeds; mixing parents fails
-        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/items/order", groupId)
+    @Test
+    void childUnderLeafBlocked() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_LEAF_");
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", fx.groupId())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "itemIds", List.of(k2Id, k1Id)))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].code").value("QRS_CONCEPT_2"))
-                .andExpect(jsonPath("$[1].code").value("XYZ_CONCEPT_1"));
-
-        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/items/order", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "itemIds", List.of(k1Id, k3Id)))))
+                                "code", "TOO_DEEP",
+                                "nameVi", "Quá cấp",
+                                "parentId", fx.k1Id()))))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CATALOG_PARENT_INVALID"));
+                .andExpect(jsonPath("$.code").value("CATALOG_TREE_DEPTH_EXCEEDED"));
+    }
 
-        // Deactivate Chapter 1 -> tree and descendants hide Chapter 1 and children; admin shows effectiveStatus INACTIVE
-        ch1Ver = objectMapper.readTree(
-                mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", ch1Id)
+    @Test
+    void inactiveAncestorHidesChildrenAndReactivationRestores() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_INACT_");
+
+        long ch1Ver = objectMapper.readTree(
+                mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
                                 .with(asUser(Permissions.CATALOG_MODIFY))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(Map.of(
                                         "status", "INACTIVE",
                                         "reason", "Tạm ngừng chương",
-                                        "version", ch1Ver))))
+                                        "version", fx.ch1Ver()))))
                         .andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsString()).get("version").asLong();
 
         mockMvc.perform(get("/api/v1/catalog/tree")
-                        .param("group", code)
+                        .param("group", fx.code())
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].code").value("CH_TWO"));
 
         mockMvc.perform(get("/api/v1/catalog/tree")
-                        .param("group", code)
-                        .param("parentId", ch1Id.toString())
+                        .param("group", fx.code())
+                        .param("parentId", fx.ch1Id().toString())
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
 
         mockMvc.perform(get("/api/v1/catalog/tree/descendants")
-                        .param("nodeId", l1Id.toString())
+                        .param("nodeId", fx.l1Id().toString())
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
 
-        // Admin still sees child's own status ACTIVE and effectiveStatus INACTIVE
-        mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", k1Id)
+        mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.k1Id())
                         .with(asUser(Permissions.CATALOG_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.effectiveStatus").value("INACTIVE"));
 
-        // Adding child under node with inactive ancestor blocked
-        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", fx.groupId())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "code", "UNDER_INACTIVE",
                                 "nameVi", "Dưới cha ngừng",
-                                "parentId", l1Id))))
+                                "parentId", fx.l1Id()))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_PARENT_INACTIVE"));
 
-        // Reactivate Chapter 1 -> descendants immediately restored!
-        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", ch1Id)
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch1Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
@@ -335,90 +272,133 @@ class CatalogTreeApiIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/catalog/tree/descendants")
-                        .param("nodeId", l1Id.toString())
+                        .param("nodeId", fx.l1Id().toString())
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
+    }
 
-        // Move branch: move Lesson 1 (and its 2 leaves!) from Chapter 1 to Chapter 2
-        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", l1Id)
+    @Test
+    void moveUpdatesAllDescendantPaths() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_MOVE_");
+
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", fx.l1Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("parentId", ch2Id))))
+                        .content(objectMapper.writeValueAsString(Map.of("parentId", fx.ch2Id()))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.parentId").value(ch2Id.toString()))
-                .andExpect(jsonPath("$.path").value("/" + ch2Id + "/" + l1Id + "/"));
+                .andExpect(jsonPath("$.parentId").value(fx.ch2Id().toString()))
+                .andExpect(jsonPath("$.path").value("/" + fx.ch2Id() + "/" + fx.l1Id() + "/"));
 
-        // Descendants path of k1 and k2 updated in same tx!
-        mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", k1Id)
+        mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.k1Id())
                         .with(asUser(Permissions.CATALOG_VIEW)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.path").value("/" + ch2Id + "/" + l1Id + "/" + k1Id + "/"));
+                .andExpect(jsonPath("$.path").value("/" + fx.ch2Id() + "/" + fx.l1Id() + "/" + fx.k1Id() + "/"));
 
         mockMvc.perform(get("/api/v1/catalog/tree/descendants")
-                        .param("nodeId", ch2Id.toString())
+                        .param("nodeId", fx.ch2Id().toString())
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[*].code", containsInAnyOrder("QRS_CONCEPT_2", "XYZ_CONCEPT_1")));
 
-        // Chapter 1 now only has Lesson 2's 1 leaf
         mockMvc.perform(get("/api/v1/catalog/tree/descendants")
-                        .param("nodeId", ch1Id.toString())
+                        .param("nodeId", fx.ch1Id().toString())
                         .with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].code").value("MNO_CONCEPT_3"));
 
         // Invalid moves: wrong depth, self/cycle, inactive parent
-        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", l1Id)
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", fx.l1Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("parentId", l2Id))))
+                        .content(objectMapper.writeValueAsString(Map.of("parentId", fx.l2Id()))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_PARENT_INVALID"));
 
-        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", ch2Id)
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", fx.ch2Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("parentId", ch1Id))))
+                        .content(objectMapper.writeValueAsString(Map.of("parentId", fx.ch1Id()))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_PARENT_INVALID"));
 
-        // Deactivate Chapter 2, then try moving Lesson 2 under Chapter 2 -> CATALOG_PARENT_INACTIVE
-        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", ch2Id)
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", fx.ch2Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "status", "INACTIVE",
-                                "version", ch2Ver))))
+                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "version", fx.ch2Ver()))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", l2Id)
+        mockMvc.perform(put("/api/v1/admin/catalog/items/{id}/parent", fx.l2Id())
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("parentId", ch2Id))))
+                        .content(objectMapper.writeValueAsString(Map.of("parentId", fx.ch2Id()))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_PARENT_INACTIVE"));
-
-        // Delete node with children blocked with CATALOG_NODE_HAS_CHILDREN; deleting leaf then parent works
-        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", l2Id)
-                        .with(asUser(Permissions.CATALOG_MODIFY)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CATALOG_NODE_HAS_CHILDREN"));
-
-        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", k3Id)
-                        .with(asUser(Permissions.CATALOG_MODIFY)))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", l2Id)
-                        .with(asUser(Permissions.CATALOG_MODIFY)))
-                .andExpect(status().isNoContent());
 
         verify(auditRecorder, atLeastOnce()).record(argThat(e ->
                 "CATALOG".equals(e.module()) && "CATALOG_ITEM_MOVED".equals(e.action())));
     }
 
+    @Test
+    void deleteWithChildrenBlocked() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_DEL_");
+        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", fx.l2Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CATALOG_NODE_HAS_CHILDREN"));
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", fx.k3Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", fx.l2Id())
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void duplicateCodeAcrossBranchesBlocked() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_DUP_");
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", fx.groupId())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "code", "xyz_concept_1",
+                                "nameVi", "Trùng khác nhánh",
+                                "parentId", fx.l2Id()))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CATALOG_CODE_TAKEN"));
+    }
+
+    @Test
+    void treeSearchIncludesAncestorsAndReorderRequiresSameParent() throws Exception {
+        TreeFixture fx = createSampleTree("TREE_SRCH_");
+        mockMvc.perform(get("/api/v1/admin/catalog/groups/{id}/tree", fx.groupId())
+                        .param("q", "QRS_CONCEPT_2")
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[*].code", containsInAnyOrder("CH_ONE", "LESSON_ALPHA", "QRS_CONCEPT_2")))
+                .andExpect(jsonPath("$[?(@.code=='QRS_CONCEPT_2')].matched").value(hasItem(true)))
+                .andExpect(jsonPath("$[?(@.code=='CH_ONE')].matched").value(hasItem(false)));
+
+        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/items/order", fx.groupId())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("itemIds", List.of(fx.k2Id(), fx.k1Id())))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value("QRS_CONCEPT_2"))
+                .andExpect(jsonPath("$[1].code").value("XYZ_CONCEPT_1"));
+
+        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/items/order", fx.groupId())
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("itemIds", List.of(fx.k1Id(), fx.k3Id())))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CATALOG_PARENT_INVALID"));
+    }
     @Test
     void treeTooLargeBlockedAt50000Nodes() throws Exception {
         String code = "TREE_BIG_" + suffix();
@@ -475,6 +455,44 @@ class CatalogTreeApiIT extends AbstractIntegrationTest {
         return objectMapper.readTree(res.getResponse().getContentAsString());
     }
 
+
+    private TreeFixture createSampleTree(String prefix) throws Exception {
+        String code = prefix + suffix();
+        cacheGroupCodes.add(code.toLowerCase());
+        UUID groupId = createTreeGroup(code, List.of("Chương", "Bài", "Kiến thức"));
+        createdGroupIds.add(groupId);
+
+        JsonNode ch1 = createNode(groupId, null, "CH_ONE", "Chương 1");
+        UUID ch1Id = UUID.fromString(ch1.get("id").asText());
+        long ch1Ver = ch1.get("version").asLong();
+        JsonNode ch2 = createNode(groupId, null, "CH_TWO", "Chương 2");
+        UUID ch2Id = UUID.fromString(ch2.get("id").asText());
+        long ch2Ver = ch2.get("version").asLong();
+
+        JsonNode l1 = createNode(groupId, ch1Id, "LESSON_ALPHA", "Bài Alpha");
+        UUID l1Id = UUID.fromString(l1.get("id").asText());
+        JsonNode l2 = createNode(groupId, ch1Id, "LESSON_BETA", "Bài Beta");
+        UUID l2Id = UUID.fromString(l2.get("id").asText());
+
+        UUID k1Id = UUID.fromString(createNode(groupId, l1Id, "XYZ_CONCEPT_1", "Kiến thức 1").get("id").asText());
+        UUID k2Id = UUID.fromString(createNode(groupId, l1Id, "QRS_CONCEPT_2", "Kiến thức 2").get("id").asText());
+        UUID k3Id = UUID.fromString(createNode(groupId, l2Id, "MNO_CONCEPT_3", "Kiến thức 3").get("id").asText());
+
+        return new TreeFixture(code, groupId, ch1Id, ch1Ver, ch2Id, ch2Ver, l1Id, l2Id, k1Id, k2Id, k3Id);
+    }
+
+    private record TreeFixture(
+            String code,
+            UUID groupId,
+            UUID ch1Id,
+            long ch1Ver,
+            UUID ch2Id,
+            long ch2Ver,
+            UUID l1Id,
+            UUID l2Id,
+            UUID k1Id,
+            UUID k2Id,
+            UUID k3Id) {}
     private static String suffix() {
         return UUID.randomUUID().toString().substring(0, 8);
     }

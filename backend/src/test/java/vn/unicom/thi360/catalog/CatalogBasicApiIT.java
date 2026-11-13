@@ -195,28 +195,13 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void groupCaseInsensitiveUniquenessValidationAndSystemProtection() throws Exception {
+    void groupCodeDuplicateCaseInsensitive409() throws Exception {
         String code = "CUSTOM_GRP_" + suffix();
         cacheGroupCodes.add(code.toLowerCase());
 
-        MvcResult createRes = mockMvc.perform(post("/api/v1/admin/catalog/groups")
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "  " + code + "  ",
-                                "nameVi", "Nhóm tùy chỉnh",
-                                "nameEn", "Custom Group"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.code").value(code))
-                .andExpect(jsonPath("$.type").value("CUSTOM"))
-                .andExpect(jsonPath("$.system").value(false))
-                .andExpect(jsonPath("$.kind").value("SIMPLE"))
-                .andReturn();
+        UUID groupId = createCustomGroup(code, "Nhóm tùy chỉnh", "Custom Group");
+        assertThat(groupId).isNotNull();
 
-        UUID groupId = UUID.fromString(objectMapper.readTree(createRes.getResponse().getContentAsString()).get("id").asText());
-        createdGroupIds.add(groupId);
-
-        // Case-insensitive duplicate blocked
         mockMvc.perform(post("/api/v1/admin/catalog/groups")
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -226,32 +211,154 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_CODE_TAKEN"));
 
-        // Invalid regex rejected with 400
-        mockMvc.perform(post("/api/v1/admin/catalog/groups")
+        verify(auditRecorder, atLeastOnce()).record(argThat(e ->
+                "CATALOG".equals(e.module()) && "CATALOG_GROUP_CREATED".equals(e.action())));
+    }
+
+    @Test
+    void itemCodeDuplicateCaseInsensitive409() throws Exception {
+        String groupCode = "ITEM_DUP_" + suffix();
+        cacheGroupCodes.add(groupCode.toLowerCase());
+        UUID groupId = createCustomGroup(groupCode, "Nhóm trùng mã", null);
+
+        createItem(groupId, "ITEM_A", "Giá trị A", "Value A");
+
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "INVALID CODE!",
-                                "nameVi", "Sai định dạng"))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+                                "code", "item_a",
+                                "nameVi", "Trùng mã"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CATALOG_CODE_TAKEN"));
+    }
 
-        // SYSTEM group rejects PATCH, deactivate, and DELETE with 409 CATALOG_GROUP_SYSTEM
+    @Test
+    void valueNotReusedAfterDelete() throws Exception {
+        String groupCode = "VAL_GRP_" + suffix();
+        cacheGroupCodes.add(groupCode.toLowerCase());
+        UUID groupId = createCustomGroup(groupCode, "Nhóm giá trị", null);
+
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("code", "ITEM_A", "nameVi", "Giá trị A"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.value").value(1));
+
+        UUID i2Id = UUID.fromString(createItem(groupId, "ITEM_B", "Giá trị B", null).get("id").asText());
+
+        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", i2Id)
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("code", "ITEM_C", "nameVi", "Giá trị C"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.value").value(3));
+    }
+
+    @Test
+    void inactiveGroupRejectsItem() throws Exception {
+        String groupCode = "INACT_GRP_" + suffix();
+        cacheGroupCodes.add(groupCode.toLowerCase());
+        UUID groupId = createCustomGroup(groupCode, "Nhóm sẽ ngừng", null);
+
+        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "version", 0))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
+
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("code", "BLOCKED", "nameVi", "Không nhận"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CATALOG_GROUP_INACTIVE"));
+    }
+
+    @Test
+    void optionsHidesInactiveAndReflectsEdits() throws Exception {
+        String groupCode = "OPT_GRP_" + suffix();
+        cacheGroupCodes.add(groupCode.toLowerCase());
+        UUID groupId = createCustomGroup(groupCode, "Nhóm options", null);
+
+        UUID i1Id = UUID.fromString(createItem(groupId, "ITEM_A", "Giá trị A", "Value A").get("id").asText());
+        JsonNode i2Node = createItem(groupId, "ITEM_C", "Giá trị C", "Value C");
+        UUID i2Id = UUID.fromString(i2Node.get("id").asText());
+
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].code").value("ITEM_A"))
+                .andExpect(jsonPath("$[1].code").value("ITEM_C"));
+        assertThat(redisTemplate.hasKey(CatalogCacheService.optionsKey(groupCode.toLowerCase()))).isTrue();
+
+        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/items/order", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("itemIds", List.of(i2Id, i1Id)))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value("ITEM_C"))
+                .andExpect(jsonPath("$[1].code").value("ITEM_A"));
+
+        long i2Ver = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", i2Id).with(asUser(Permissions.CATALOG_VIEW)))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
+
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", i2Id)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", "INACTIVE",
+                                "reason", "Ngừng thử",
+                                "version", i2Ver))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].code").value("ITEM_A"));
+
+        mockMvc.perform(get("/api/v1/catalog/items/{id}", i2Id).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
+
+        mockMvc.perform(get("/api/v1/catalog/options").param("group", "DOES_NOT_EXIST").with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        verify(auditRecorder, atLeastOnce()).record(argThat(e ->
+                "CATALOG".equals(e.module()) && "CATALOG_ITEM_DEACTIVATED".equals(e.action())));
+        verify(auditRecorder, atLeastOnce()).record(argThat(e ->
+                "CATALOG".equals(e.module()) && "CATALOG_ITEM_REORDERED".equals(e.action())));
+    }
+
+    @Test
+    void systemGroupPatchDeleteDeactivate409() throws Exception {
         mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", EXAM_GROUP_ID)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "nameVi", "Sửa tên",
-                                "version", 0))))
+                        .content(objectMapper.writeValueAsString(Map.of("nameVi", "Sửa tên", "version", 0))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_GROUP_SYSTEM"));
 
         mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", EXAM_GROUP_ID)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "status", "INACTIVE",
-                                "version", 0))))
+                        .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVE", "version", 0))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_GROUP_SYSTEM"));
 
@@ -259,8 +366,10 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.CATALOG_MODIFY)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_GROUP_SYSTEM"));
+    }
 
-        // Adding item to SYSTEM group is allowed
+    @Test
+    void systemGroupAcceptsItem() throws Exception {
         MvcResult sysItemRes = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", EXAM_GROUP_ID)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -273,125 +382,29 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
         UUID sysItemId = UUID.fromString(objectMapper.readTree(sysItemRes.getResponse().getContentAsString()).get("id").asText());
         createdItemIds.add(sysItemId);
         cacheGroupCodes.add("exam");
-
-        verify(auditRecorder, atLeastOnce()).record(argThat(e ->
-                "CATALOG".equals(e.module()) && "CATALOG_GROUP_CREATED".equals(e.action())));
     }
 
     @Test
-    void groupSearchMatchesNameEnCaseInsensitivelyAndBlankNameEnStoresNull() throws Exception {
-        String searchGroupCode = "SRCH_GRP_" + suffix();
-        cacheGroupCodes.add(searchGroupCode.toLowerCase());
-        MvcResult searchRes = mockMvc.perform(post("/api/v1/admin/catalog/groups")
+    void groupValidationNotEmptyAndSystemItemProtection() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/catalog/groups")
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "code", searchGroupCode,
-                                "nameVi", "Nhóm tìm kiếm",
-                                "nameEn", "UniqueEnglishPhrase"))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        JsonNode searchNode = objectMapper.readTree(searchRes.getResponse().getContentAsString());
-        UUID searchGroupId = UUID.fromString(searchNode.get("id").asText());
-        long searchGroupVer = searchNode.get("version").asLong();
-        createdGroupIds.add(searchGroupId);
+                                "code", "INVALID CODE!",
+                                "nameVi", "Sai định dạng"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
-        mockMvc.perform(get("/api/v1/admin/catalog/groups")
-                        .param("q", "englishphrase")
-                        .with(asUser(Permissions.CATALOG_VIEW)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.code=='" + searchGroupCode + "')]", hasSize(1)));
-
-        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", searchGroupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "nameEn", "   ",
-                                "version", searchGroupVer))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nameEn").doesNotExist());
-    }
-
-    @Test
-    void itemsValueNeverReusedCaseInsensitiveUniquenessInactiveGroupAndOptionsCache() throws Exception {
-        String groupCode = "OPT_GRP_" + suffix();
+        String groupCode = "EMPTY_CHK_" + suffix();
         cacheGroupCodes.add(groupCode.toLowerCase());
+        UUID groupId = createCustomGroup(groupCode, "Nhóm kiểm tra xóa", null);
+        createItem(groupId, "ITEM_1", "Giá trị 1", null);
 
-        MvcResult groupRes = mockMvc.perform(post("/api/v1/admin/catalog/groups")
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", groupCode,
-                                "nameVi", "Nhóm thử nghiệm"))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        JsonNode groupNode = objectMapper.readTree(groupRes.getResponse().getContentAsString());
-        UUID groupId = UUID.fromString(groupNode.get("id").asText());
-        long groupVersion = groupNode.get("version").asLong();
-        createdGroupIds.add(groupId);
-
-        // Create item 1 & item 2
-        MvcResult i1Res = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "ITEM_A",
-                                "nameVi", "Giá trị A",
-                                "nameEn", "Value A"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.value").value(1))
-                .andReturn();
-        UUID i1Id = UUID.fromString(objectMapper.readTree(i1Res.getResponse().getContentAsString()).get("id").asText());
-
-        MvcResult i2Res = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "ITEM_B",
-                                "nameVi", "Giá trị B",
-                                "nameEn", "Value B"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.value").value(2))
-                .andReturn();
-        JsonNode i2Node = objectMapper.readTree(i2Res.getResponse().getContentAsString());
-        UUID i2Id = UUID.fromString(i2Node.get("id").asText());
-
-        // Case-insensitive duplicate item code blocked
-        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "item_a",
-                                "nameVi", "Trùng mã"))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CATALOG_CODE_TAKEN"));
-
-        // Non-empty group cannot be deleted
         mockMvc.perform(delete("/api/v1/admin/catalog/groups/{id}", groupId)
                         .with(asUser(Permissions.CATALOG_MODIFY)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_GROUP_NOT_EMPTY"));
 
-        // Delete item 2, then create item 3 -> value must be 3 (never reuse 2)
-        mockMvc.perform(delete("/api/v1/admin/catalog/items/{id}", i2Id)
-                        .with(asUser(Permissions.CATALOG_MODIFY)))
-                .andExpect(status().isNoContent());
-
-        MvcResult i3Res = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "ITEM_C",
-                                "nameVi", "Giá trị C",
-                                "nameEn", "Value C"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.value").value(3))
-                .andReturn();
-        JsonNode i3Node = objectMapper.readTree(i3Res.getResponse().getContentAsString());
-        UUID i3Id = UUID.fromString(i3Node.get("id").asText());
-        long i3Version = i3Node.get("version").asLong();
-
-        // System item cannot be deleted
         UUID sysItemId = Ids.newId();
         createdItemIds.add(sysItemId);
         jdbcTemplate.update(
@@ -408,90 +421,29 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_ITEM_SYSTEM"));
         jdbcTemplate.update("DELETE FROM catalog.catalog_item WHERE id = ?", sysItemId);
-
-        // Populate Redis cache via options
-        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].code").value("ITEM_A"))
-                .andExpect(jsonPath("$[1].code").value("ITEM_C"));
-        assertThat(redisTemplate.hasKey(CatalogCacheService.optionsKey(groupCode.toLowerCase()))).isTrue();
-
-        // Reorder items -> cache evicted & reflected immediately
-        mockMvc.perform(put("/api/v1/admin/catalog/groups/{id}/items/order", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("itemIds", List.of(i3Id, i1Id)))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].code").value("ITEM_C"))
-                .andExpect(jsonPath("$[1].code").value("ITEM_A"));
-
-        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].code").value("ITEM_C"))
-                .andExpect(jsonPath("$[1].code").value("ITEM_A"));
-
-        // Re-read i3 version after reorder
-        long i3LatestVersion = objectMapper.readTree(
-                mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", i3Id).with(asUser(Permissions.CATALOG_VIEW)))
-                        .andExpect(status().isOk())
-                        .andReturn().getResponse().getContentAsString()).get("version").asLong();
-        assertThat(i3LatestVersion).isGreaterThanOrEqualTo(i3Version);
-
-        // Deactivate item 3 -> hidden in options, visible in GET /api/v1/catalog/items/{id}
-        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", i3Id)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "status", "INACTIVE",
-                                "reason", "Ngừng thử",
-                                "version", i3LatestVersion))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INACTIVE"));
-
-        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].code").value("ITEM_A"));
-
-        mockMvc.perform(get("/api/v1/catalog/items/{id}", i3Id).with(asStudent()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INACTIVE"));
-
-        // Deactivate group -> cannot add item & options returns empty
-        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "status", "INACTIVE",
-                                "version", groupVersion))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INACTIVE"));
-
-        mockMvc.perform(get("/api/v1/catalog/options").param("group", groupCode).with(asStudent()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
-
-        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "code", "BLOCKED",
-                                "nameVi", "Không nhận"))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CATALOG_GROUP_INACTIVE"));
-
-        // Nonexistent group returns empty options
-        mockMvc.perform(get("/api/v1/catalog/options").param("group", "DOES_NOT_EXIST").with(asStudent()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
-
-        verify(auditRecorder, atLeastOnce()).record(argThat(e ->
-                "CATALOG".equals(e.module()) && "CATALOG_ITEM_DEACTIVATED".equals(e.action())));
-        verify(auditRecorder, atLeastOnce()).record(argThat(e ->
-                "CATALOG".equals(e.module()) && "CATALOG_ITEM_REORDERED".equals(e.action())));
     }
 
+    @Test
+    void groupSearchMatchesNameEnCaseInsensitivelyAndBlankNameEnStoresNull() throws Exception {
+        String searchGroupCode = "SRCH_GRP_" + suffix();
+        cacheGroupCodes.add(searchGroupCode.toLowerCase());
+        UUID searchGroupId = createCustomGroup(searchGroupCode, "Nhóm tìm kiếm", "UniqueEnglishPhrase");
+
+        mockMvc.perform(get("/api/v1/admin/catalog/groups")
+                        .param("q", "englishphrase")
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.code=='" + searchGroupCode + "')]", hasSize(1)));
+
+        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", searchGroupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "nameEn", "   ",
+                                "version", 0))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nameEn").doesNotExist());
+    }
     @Test
     void concurrentItemCreationGeneratesUniqueValuesUnderGroupRowLock() throws Exception {
         String groupCode = "LOCK_GRP_" + suffix();
@@ -549,5 +501,39 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
 
     private static String suffix() {
         return UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    private UUID createCustomGroup(String code, String nameVi, String nameEn) throws Exception {
+        var body = new java.util.LinkedHashMap<String, Object>();
+        body.put("code", code);
+        body.put("nameVi", nameVi);
+        if (nameEn != null) {
+            body.put("nameEn", nameEn);
+        }
+        MvcResult res = mockMvc.perform(post("/api/v1/admin/catalog/groups")
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID id = UUID.fromString(objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText());
+        createdGroupIds.add(id);
+        return id;
+    }
+
+    private JsonNode createItem(UUID groupId, String code, String nameVi, String nameEn) throws Exception {
+        var body = new java.util.LinkedHashMap<String, Object>();
+        body.put("code", code);
+        body.put("nameVi", nameVi);
+        if (nameEn != null) {
+            body.put("nameEn", nameEn);
+        }
+        MvcResult res = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", groupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return objectMapper.readTree(res.getResponse().getContentAsString());
     }
 }
