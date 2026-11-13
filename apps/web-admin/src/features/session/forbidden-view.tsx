@@ -1,15 +1,15 @@
 "use client";
 
-import { Lock } from "lucide-react";
 import { Button } from "@thi360/ui";
+import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useState } from "react";
 import { StatusPage } from "@/components/status-page";
+import { webUrl } from "@/lib/env";
 import { logout } from "./api";
 import { useSession } from "./session-provider";
 
-/** Trang 403 (`Forbidden.dc.html`): về trang chủ, hoặc đăng xuất để vào bằng tài khoản khác. */
+/** Trang 403 (`Forbidden.dc.html`): về trang chủ theo `homeUrl`, hoặc đăng xuất để vào bằng tài khoản khác. */
 export function ForbiddenView() {
   const t = useTranslations("forbidden");
   const common = useTranslations("common");
@@ -33,6 +33,8 @@ export function ForbiddenView() {
         })
       : t("descriptionAnonymous");
 
+  const homeHref = state.status === "ready" ? state.session.homeUrl : webUrl();
+
   return (
     <StatusPage
       icon={Lock}
@@ -42,7 +44,7 @@ export function ForbiddenView() {
       actions={
         <>
           <Button asChild size="lg">
-            <Link href="/">{common("backHome")}</Link>
+            <a href={homeHref}>{common("backHome")}</a>
           </Button>
           <Button variant="secondary" size="lg" loading={leaving} onClick={signInAsAnother}>
             {t("otherAccount")}

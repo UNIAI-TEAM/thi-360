@@ -179,10 +179,12 @@
     "menuLoading": "Đang tải menu",
     "skipToContent": "Chuyển tới nội dung chính",
     "userMenu": {
+      "adminPortal": "Trang quản trị",
       "changePassword": "Đổi mật khẩu",
       "logout": "Đăng xuất",
       "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
       "profile": "Hồ sơ",
+      "studentPortal": "Trang học viên",
       "trigger": "Menu tài khoản"
     }
   }

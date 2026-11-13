@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, KeyRound, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, GraduationCap, KeyRound, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,10 +10,10 @@ import {
   notify,
 } from "@thi360/ui";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { webUrl } from "@/lib/env";
 import { logout } from "@/features/session/api";
 import { useSession } from "@/features/session/session-provider";
-
 /** Hai chữ cái đầu của họ tên, hoặc của tên đăng nhập khi họ tên trống. */
 export function initialsOf(fullName: string, username: string): string {
   const words = (fullName.trim() || username).split(/[\s._-]+/).filter(Boolean);
@@ -23,8 +23,7 @@ export function initialsOf(fullName: string, username: string): string {
 }
 
 /**
- * Nút avatar ở thanh trên: Hồ sơ, Đổi mật khẩu, Đăng xuất (DESIGN 5.8).
- * Hồ sơ và đổi mật khẩu nằm ở web học viên, nơi duy nhất có biểu mẫu tài khoản (ARCHITECTURE 5.1).
+ * Nút avatar ở thanh trên: Trang quản trị (khi access = MANAGE), Trang học viên, Hồ sơ, Đổi mật khẩu, Đăng xuất.
  */
 export function UserMenu() {
   const t = useTranslations("shell.userMenu");
@@ -56,6 +55,20 @@ export function UserMenu() {
         <ChevronDown aria-hidden className="size-4 text-text-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
+        {session.access === "MANAGE" && (
+          <DropdownMenuItem asChild>
+            <Link href="/">
+              <ShieldCheck aria-hidden />
+              {t("adminPortal")}
+            </Link>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem asChild>
+          <a href={`${webUrl()}/home`}>
+            <GraduationCap aria-hidden />
+            {t("studentPortal")}
+          </a>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a href={`${webUrl()}/ho-so`}>
             <UserRound aria-hidden />

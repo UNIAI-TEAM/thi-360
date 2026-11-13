@@ -1,28 +1,31 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FAKE_SESSION } from "@/features/session/fake-session";
+import type * as SessionApi from "@/features/session/api";
 import { SessionProvider } from "@/features/session/session-provider";
+import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
 import { AppShell } from "./app-shell";
 import { initialsOf } from "./user-menu";
 
 const mocks = vi.hoisted(() => ({
   pathname: { current: "/" },
-  redirectToLogin: vi.fn(),
+  logout: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname.current,
 }));
-vi.mock("@/lib/auth-redirect", () => ({ redirectToLogin: mocks.redirectToLogin }));
-
+vi.mock("@/features/session/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof SessionApi>();
+  return { ...actual, logout: mocks.logout };
+});
 beforeEach(() => {
   mocks.pathname.current = "/";
 });
 
 afterEach(() => {
-  mocks.redirectToLogin.mockReset();
+  mocks.logout.mockReset();
 });
 
 describe("initialsOf", () => {
@@ -37,7 +40,7 @@ describe("initialsOf", () => {
 describe("AppShell", () => {
   it("hiện sidebar, breadcrumb Tổng quan › Bảng điều khiển, và menu avatar có Hồ sơ, Đổi mật khẩu, Đăng xuất", async () => {
     renderWithProviders(
-      <SessionProvider loadSession={async () => FAKE_SESSION}>
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
           <p>Nội dung trang</p>
         </AppShell>
@@ -59,6 +62,11 @@ describe("AppShell", () => {
     expect(trigger).toHaveTextContent("ops.admin");
     await userEvent.click(trigger);
 
+    expect(screen.getByRole("menuitem", { name: "Trang quản trị" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("menuitem", { name: "Trang học viên" })).toHaveAttribute(
+      "href",
+      "http://localhost:3000/home",
+    );
     expect(screen.getByRole("menuitem", { name: "Hồ sơ" })).toHaveAttribute(
       "href",
       "http://localhost:3000/ho-so",
@@ -70,15 +78,13 @@ describe("AppShell", () => {
 
     await userEvent.click(screen.getByRole("menuitem", { name: "Đăng xuất" }));
 
-    await waitFor(() =>
-      expect(mocks.redirectToLogin).toHaveBeenCalledWith({ returnHere: false }),
-    );
+    await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
   });
 
   it("cửa sổ hẹp: vùng nội dung cuộn ngang còn sidebar nằm ngoài vùng cuộn và không bị co", async () => {
     // jsdom không dàn trang nên chỉ kiểm cấu trúc: nội dung trong vùng cuộn ngang, sidebar thì không.
     renderWithProviders(
-      <SessionProvider loadSession={async () => FAKE_SESSION}>
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
           <p>Nội dung trang</p>
         </AppShell>
@@ -96,7 +102,7 @@ describe("AppShell", () => {
 
   it("sidebar dính đầu trang, cao hết viewport và tự cuộn khi menu dài hơn", async () => {
     renderWithProviders(
-      <SessionProvider loadSession={async () => FAKE_SESSION}>
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
           <p>Nội dung trang dài</p>
         </AppShell>
@@ -110,7 +116,7 @@ describe("AppShell", () => {
   it("trang ngoài menu không có breadcrumb: menu avatar vẫn nằm bên phải thanh trên", async () => {
     mocks.pathname.current = "/trang-khong-co-trong-menu";
     renderWithProviders(
-      <SessionProvider loadSession={async () => FAKE_SESSION}>
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
           <p>Nội dung trang</p>
         </AppShell>

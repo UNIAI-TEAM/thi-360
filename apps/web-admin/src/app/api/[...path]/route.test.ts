@@ -90,6 +90,18 @@ describe("proxy /api/[...path]", () => {
     expect(headers.get("cookie")).toBe("thi360_at=at");
   });
 
+  it("ghi đè X-Forwarded-For bằng địa chỉ kết nối đến của proxy khi có sẵn", async () => {
+    const req = request("v1/auth/login", {
+      method: "POST",
+      body: "{}",
+      headers: { "x-forwarded-for": "203.0.113.9" },
+    }) as NextRequest & { ip?: string };
+    req.ip = "198.51.100.25";
+
+    await POST(req, context("v1", "auth", "login"));
+    expect(lastCall().headers.get("x-forwarded-for")).toBe("198.51.100.25");
+  });
+
   it("bỏ header cho phép mà request nêu trong Connection, giữ phần còn lại", async () => {
     await POST(
       request("v1/admin/users", {

@@ -1,0 +1,191 @@
+{
+  "common": {
+    "backHome": "Back to home",
+    "loading": "Loading",
+    "retry": "Retry"
+  },
+  "dashboard": {
+    "errorDescription": "An error occurred while loading your account. Please try again.",
+    "errorTitle": "Unable to load page",
+    "greeting": "Hello, {name}",
+    "intro": "This is the Thi 360 admin portal. Choose an item from the left menu to get started.",
+    "shortcuts": "Shortcuts",
+    "title": "Dashboard"
+  },
+  "devUi": {
+    "buttons": {
+      "danger": "Delete account",
+      "disabled": "Locked",
+      "exam": "Start exam",
+      "link": "View all →",
+      "loading": "Saving",
+      "outline": "Import Excel",
+      "primary": "Create account",
+      "secondary": "Cancel",
+      "sizeLg": "Large (48px)",
+      "sizeMd": "Default (40px)",
+      "sizeSm": "Small (36px)",
+      "sizeXl": "Sign in (52px)",
+      "soft": "Details"
+    },
+    "chips": {
+      "badge": "3 exams",
+      "filterIdle": "Inactive",
+      "filterSelected": "Active",
+      "tag": "Mathematics"
+    },
+    "description": "Shared UI components of Thi 360. Switch Light / Dark to inspect tokens.",
+    "fields": {
+      "checkboxLabel": "Require password change on first sign-in",
+      "errorLabel": "Username",
+      "errorMessage": "Username is already taken.",
+      "noteLabel": "Note",
+      "notePlaceholder": "Enter reason or note…",
+      "roleContent": "Content admin",
+      "roleLabel": "Role",
+      "roleOps": "Operations / Support",
+      "roleStudent": "Student (not assigned here)",
+      "searchHint": "Search by code, username, or full name.",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Enter keyword…",
+      "switchLabel": "Allow sign-in"
+    },
+    "navigation": {
+      "breadcrumbAria": "Sample breadcrumb",
+      "crumbCurrent": "Account details",
+      "crumbRoot": "Users",
+      "crumbSection": "Accounts",
+      "tabBulk": "Bulk assign",
+      "tabBulkBody": "Select accounts to grant or revoke permissions.",
+      "tabPermissions": "Permissions",
+      "tabPermissionsBody": "List of 13 fixed wave-1 permissions.",
+      "tabRoles": "Roles",
+      "tabRolesBody": "Manage system and custom roles."
+    },
+    "overlays": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "confirmAction": "Lock account",
+      "confirmDescription": "All active sessions for ops.admin will be revoked.",
+      "confirmTitle": "Lock this account?",
+      "dialogDescription": "Fill in basic information for the new role.",
+      "dialogTitle": "Create role",
+      "drawerDescription": "Permission and status change history of the account.",
+      "drawerTitle": "Change history",
+      "menuDelete": "Delete role",
+      "menuEdit": "Rename",
+      "menuHeading": "More actions",
+      "openConfirm": "Confirm dialog",
+      "openDialog": "Open dialog",
+      "openDrawer": "Open drawer",
+      "openMenu": "Dropdown menu",
+      "reasonLabel": "Lock reason",
+      "save": "Save",
+      "toastSaved": "Changes saved.",
+      "tooltipContent": "Tooltip shown on hover or keyboard focus",
+      "tooltipTrigger": "Hover to view tooltip",
+      "triggerToast": "Show toast"
+    },
+    "pagination": {
+      "nav": "Sample table pagination",
+      "next": "Next page",
+      "page": "Page {page}",
+      "previous": "Previous page",
+      "range": "{from}–{to} / {total} records",
+      "rowsPerPage": "Rows"
+    },
+    "sections": {
+      "buttons": "Buttons (Button)",
+      "chips": "Status chips, filter chips, and badges",
+      "fields": "Inputs, selects, toggles (Input, Select, Textarea, Checkbox, Switch, FormField)",
+      "navigation": "Breadcrumb and Tabs",
+      "overlays": "Dialog, ConfirmDialog, Drawer, DropdownMenu, Tooltip, Toast",
+      "skeleton": "Skeleton",
+      "table": "Table, icon actions, and pagination (Table, IconButton, EmptyState, Pagination)"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "locked": "Locked",
+      "pending": "Never signed in",
+      "system": "System"
+    },
+    "table": {
+      "ariaLabel": "Sample account list",
+      "colActions": "Actions",
+      "colCode": "Code",
+      "colFullName": "Full name",
+      "colRole": "Role",
+      "colStatus": "Status",
+      "colUsername": "Username",
+      "deleteAction": "Delete account {name}",
+      "deleteBlockedReason": "Cannot delete an active account in use.",
+      "editAction": "Edit account {name}",
+      "emptyDescription": "Try changing filters or creating a new record.",
+      "emptyTitle": "No accounts found",
+      "errorDescription": "Unable to load list. Please try again.",
+      "errorTitle": "Failed to load data",
+      "selectAll": "Select all rows",
+      "selectRow": "Select account {name}",
+      "stateData": "With data",
+      "stateEmpty": "Empty",
+      "stateError": "Error",
+      "stateLabel": "Table state",
+      "stateLoading": "Loading",
+      "viewAction": "View details of {name}"
+    },
+    "themeDark": "Dark",
+    "themeLabel": "Color mode",
+    "themeLight": "Light",
+    "title": "UI components (/dev/ui)"
+  },
+  "errors": {
+    "forbiddenToast": "You do not have permission to perform this action.",
+    "notFound": "Not found.",
+    "proxyNotConfigured": "Web server API address is not configured.",
+    "upstreamTimeout": "The server took too long to respond. Please try again later.",
+    "upstreamUnavailable": "Unable to connect to the server. Please try again later."
+  },
+  "forbidden": {
+    "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "eyebrow": "ERROR 403",
+    "otherAccount": "Sign in with another account",
+    "title": "You do not have access to this page"
+  },
+  "nav": {
+    "groups": {
+      "overview": "Overview",
+      "system": "System",
+      "users": "Users"
+    },
+    "items": {
+      "dashboard": {
+        "description": "Greeting and role-based shortcuts",
+        "label": "Dashboard"
+      }
+    }
+  },
+  "notFound": {
+    "description": "The page you opened does not exist or has been moved.",
+    "eyebrow": "ERROR 404",
+    "title": "Page not found"
+  },
+  "shell": {
+    "brand": "Thi 360 · Admin",
+    "breadcrumbLabel": "Current location",
+    "logoMark": "360",
+    "menuLabel": "Main menu",
+    "menuLoading": "Loading menu",
+    "skipToContent": "Skip to main content",
+    "userMenu": {
+      "adminPortal": "Admin portal",
+      "changePassword": "Change password",
+      "logout": "Sign out",
+      "logoutFailed": "Unable to sign out. Please try again.",
+      "profile": "Profile",
+      "studentPortal": "Student portal",
+      "trigger": "Account menu"
+    }
+  }
+}
