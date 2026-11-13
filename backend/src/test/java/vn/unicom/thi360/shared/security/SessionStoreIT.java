@@ -206,6 +206,63 @@ class SessionStoreIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void createSessionIfNotRevoked_refusesAtOrBeforeRevocationEpoch_andAcceptsStrictlyAfter() {
+        Instant revocationTime = Instant.parse("2026-11-14T01:00:00.123456Z");
+        Clock fixedClock = Clock.fixed(revocationTime, ZoneOffset.UTC);
+        SessionStore store = new SessionStore(redisTemplate, securityProperties, fixedClock);
+
+        UUID userId = UUID.randomUUID();
+        try {
+            store.createSession("seed-" + userId, userId, Realm.APP);
+            store.deleteAllSessions(userId);
+
+            SessionStore.SessionCreateResult before = store.createSessionIfNotRevoked(
+                    "before-" + userId, userId, Realm.APP, revocationTime.minusNanos(1_000));
+            assertThat(before.accepted()).isFalse();
+            assertThat(store.findSession("before-" + userId)).isEmpty();
+            assertThat(redisTemplate.hasKey("sess:before-" + userId)).isFalse();
+
+            SessionStore.SessionCreateResult equal = store.createSessionIfNotRevoked(
+                    "equal-" + userId, userId, Realm.APP, revocationTime);
+            assertThat(equal.accepted()).isFalse();
+            assertThat(store.findSession("equal-" + userId)).isEmpty();
+            assertThat(redisTemplate.hasKey("sess:equal-" + userId)).isFalse();
+
+            SessionStore.SessionCreateResult after = store.createSessionIfNotRevoked(
+                    "after-" + userId, userId, Realm.APP, revocationTime.plusNanos(1_000));
+            assertThat(after.accepted()).isTrue();
+            assertThat(store.findSession("after-" + userId)).isPresent();
+        } finally {
+            store.deleteAllSessions(userId);
+            redisTemplate.delete(List.of("user-sess-seq:" + userId, "user-revoked-epoch:" + userId));
+        }
+    }
+
+    @Test
+    void rotateSessionAndActiveCheck_refuseWhenRevokedAtOrAfterRefreshStart() {
+        Instant t0 = Instant.parse("2026-11-14T01:05:00.000Z");
+        SessionStore initialStore = new SessionStore(redisTemplate, securityProperties, Clock.fixed(t0, ZoneOffset.UTC));
+        Instant tRevoke = t0.plusSeconds(2);
+        SessionStore revokeStore = new SessionStore(redisTemplate, securityProperties, Clock.fixed(tRevoke, ZoneOffset.UTC));
+
+        UUID userId = UUID.randomUUID();
+        String sid1 = "rot-1-" + userId;
+        String sid2 = "rot-2-" + userId;
+        try {
+            assertThat(initialStore.createSessionIfNotRevoked(sid1, userId, Realm.APP, t0).accepted()).isTrue();
+            revokeStore.deleteAllSessions(userId);
+
+            assertThat(revokeStore.rotateSession(sid1, sid2, userId, Realm.APP, tRevoke)).isFalse();
+            assertThat(revokeStore.findSession(sid2)).isEmpty();
+            assertThat(redisTemplate.hasKey("sess:" + sid2)).isFalse();
+            assertThat(revokeStore.isSessionActiveAfterEpoch(sid1, userId, Realm.APP, tRevoke)).isFalse();
+        } finally {
+            revokeStore.deleteAllSessions(userId);
+            redisTemplate.delete(List.of("user-sess-seq:" + userId, "user-revoked-epoch:" + userId));
+        }
+    }
+
     private static void awaitBarrier(CyclicBarrier barrier) {
         try {
             barrier.await();

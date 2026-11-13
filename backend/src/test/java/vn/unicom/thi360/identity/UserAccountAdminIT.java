@@ -5,7 +5,9 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -19,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.JWTParser;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -159,6 +162,10 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
             jdbcTemplate.update("DELETE FROM identity.user_permission WHERE user_id = ?", userId);
             jdbcTemplate.update("DELETE FROM identity.user_role WHERE user_id = ?", userId);
             jdbcTemplate.update("DELETE FROM identity.user_account WHERE id = ?", userId);
+            redisTemplate.delete(List.of(
+                    "user-sess:" + userId,
+                    "user-sess-seq:" + userId,
+                    "user-revoked-epoch:" + userId));
         }
         createdUserIds.clear();
 
@@ -1580,6 +1587,185 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         provisioningReconcilerJob.reconcile();
         assertThat(userAccountRepository.findById(u2).orElseThrow().isIdpCleanupPending()).isFalse();
         assertThat(keycloakClient.findUserIdByUsername("r1.11.b." + sfx)).isEmpty();
+    }
+
+    @Test
+    void r1_6_loginRaceWithDeactivate_refusesSessionCreation_andLeavesNoRedisSession() throws Exception {
+        String sfx = suffix();
+        String username = "r1.6.deact." + sfx;
+        UUID userId = createUserViaApi(username, "Valid@1234", "Race Deact", null, null);
+
+        AtomicReference<String> capturedSid = new AtomicReference<>();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            doAnswer(inv -> {
+                KeycloakIdentityClient.TokenResult tokens =
+                        (KeycloakIdentityClient.TokenResult) inv.callRealMethod();
+                capturedSid.set(JWTParser.parse(tokens.accessToken()).getJWTClaimsSet().getStringClaim("sid"));
+                executor.submit(() -> {
+                    mockMvc.perform(post("/api/v1/admin/users/{id}/deactivate", userId)
+                                    .with(asUser(Permissions.USER_MODIFY))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"reason\":\"Race deactivate during login\"}"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.status").value("INACTIVE"));
+                    return null;
+                }).get(10, TimeUnit.SECONDS);
+                return tokens;
+            }).when(keycloakClient).passwordGrant(any(), eq(username), eq("Valid@1234"));
+
+            MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                            .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("SESSION_REVOKED"))
+                    .andReturn();
+
+            assertThat(loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE)).isNull();
+            assertThat(loginRes.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE)).isNull();
+            assertThat(capturedSid.get()).isNotBlank();
+            assertThat(redisTemplate.hasKey("sess:" + capturedSid.get())).isFalse();
+            assertThat(redisTemplate.opsForZSet().range("user-sess:" + userId, 0, -1)).isEmpty();
+            assertThat(redisTemplate.hasKey("user-revoked-epoch:" + userId)).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void r1_6_loginRaceWithResetPassword_refusesStaleGrantSession_andAllowsSubsequentLogin() throws Exception {
+        String sfx = suffix();
+        String username = "r1.6.rst." + sfx;
+        UUID userId = createUserViaApi(username, "OldValid@1234", "Race Reset", null, null);
+
+        AtomicReference<String> staleSid = new AtomicReference<>();
+        AtomicBoolean raceArmed = new AtomicBoolean(true);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            doAnswer(inv -> {
+                KeycloakIdentityClient.TokenResult tokens =
+                        (KeycloakIdentityClient.TokenResult) inv.callRealMethod();
+                if (raceArmed.compareAndSet(true, false)) {
+                    staleSid.set(JWTParser.parse(tokens.accessToken()).getJWTClaimsSet().getStringClaim("sid"));
+                    executor.submit(() -> {
+                        mockMvc.perform(post("/api/v1/admin/users/{id}/reset-password", userId)
+                                        .with(asUser(Permissions.USER_MODIFY))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("""
+                                                {
+                                                  "password": "NewValid@1234",
+                                                  "mustChangePassword": false,
+                                                  "reason": "Race reset during login"
+                                                }
+                                                """))
+                                .andExpect(status().isOk());
+                        return null;
+                    }).get(10, TimeUnit.SECONDS);
+                }
+                return tokens;
+            }).when(keycloakClient).passwordGrant(any(), eq(username), any());
+
+            MvcResult staleLogin = mockMvc.perform(post("/api/v1/auth/login")
+                            .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"identifier\":\"" + username + "\",\"password\":\"OldValid@1234\"}"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("SESSION_REVOKED"))
+                    .andReturn();
+
+            assertThat(staleLogin.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE)).isNull();
+            assertThat(staleSid.get()).isNotBlank();
+            assertThat(redisTemplate.hasKey("sess:" + staleSid.get())).isFalse();
+            assertThat(redisTemplate.opsForZSet().range("user-sess:" + userId, 0, -1)).isEmpty();
+
+            // Immediate login with the new password (even in the same second) must succeed
+            reset(keycloakClient);
+            MvcResult freshLogin = mockMvc.perform(post("/api/v1/auth/login")
+                            .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"identifier\":\"" + username + "\",\"password\":\"NewValid@1234\"}"))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            Cookie freshAt = freshLogin.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+            assertThat(freshAt).isNotNull();
+            mockMvc.perform(get("/api/v1/me").cookie(freshAt))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.username").value(username));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void r1_6_refreshAfterResetPasswordAndDuringDeactivateRace_refusesNewSession() throws Exception {
+        String sfx = suffix();
+        String username = "r1.6.ref." + sfx;
+        UUID userId = createUserViaApi(username, "Valid@1234", "Refresh Race", null, null);
+
+        MvcResult login1 = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie rt1 = login1.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie xsrf1 = login1.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        // Admin resets password -> old refresh token cannot mint a new session
+        mockMvc.perform(post("/api/v1/admin/users/{id}/reset-password", userId)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"NewValid@1234\",\"mustChangePassword\":false,\"reason\":\"Revoke\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(rt1, xsrf1)
+                        .header(AuthCookieService.XSRF_HEADER, xsrf1.getValue()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+
+        // New login, then in-flight refresh race with deactivate -> refused, no Redis session left
+        MvcResult login2 = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"NewValid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie rt2 = login2.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie xsrf2 = login2.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        AtomicReference<String> rotatedSid = new AtomicReference<>();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            doAnswer(inv -> {
+                KeycloakIdentityClient.TokenResult tokens =
+                        (KeycloakIdentityClient.TokenResult) inv.callRealMethod();
+                rotatedSid.set(JWTParser.parse(tokens.accessToken()).getJWTClaimsSet().getStringClaim("sid"));
+                executor.submit(() -> {
+                    mockMvc.perform(post("/api/v1/admin/users/{id}/deactivate", userId)
+                                    .with(asUser(Permissions.USER_MODIFY))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"reason\":\"Race deactivate during refresh\"}"))
+                            .andExpect(status().isOk());
+                    return null;
+                }).get(10, TimeUnit.SECONDS);
+                return tokens;
+            }).when(keycloakClient).refresh(any(), eq(rt2.getValue()));
+
+            mockMvc.perform(post("/api/v1/auth/refresh")
+                            .cookie(rt2, xsrf2)
+                            .header(AuthCookieService.XSRF_HEADER, xsrf2.getValue()))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+
+            assertThat(rotatedSid.get()).isNotBlank();
+            assertThat(redisTemplate.hasKey("sess:" + rotatedSid.get())).isFalse();
+            assertThat(redisTemplate.opsForZSet().range("user-sess:" + userId, 0, -1)).isEmpty();
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private UUID createUserViaApi(

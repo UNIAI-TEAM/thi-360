@@ -18,15 +18,16 @@ public class SessionStore {
     private static final String SESSION_KEY_PREFIX = "sess:";
     private static final String USER_SESSIONS_PREFIX = "user-sess:";
     private static final String USER_SESSION_SEQ_PREFIX = "user-sess-seq:";
+    private static final String USER_REVOCATION_EPOCH_PREFIX = "user-revoked-epoch:";
     private static final String FIELD_USER_ID = "userId";
     private static final String FIELD_REALM = "realm";
     private static final String FIELD_CREATED_AT = "createdAt";
-
     private static final DefaultRedisScript<List> CREATE_SESSION_SCRIPT = createScript(
             """
             local sessKey = KEYS[1]
             local userSessKey = KEYS[2]
             local seqKey = KEYS[3]
+            local epochKey = KEYS[4]
             local sid = ARGV[1]
             local userId = ARGV[2]
             local realm = ARGV[3]
@@ -34,13 +35,21 @@ public class SessionStore {
             local ttlMs = tonumber(ARGV[5])
             local maxPerUser = tonumber(ARGV[6])
             local sessPrefix = ARGV[7]
+            local tokenIssuedAtMicros = tonumber(ARGV[8])
+
+            local rawEpoch = redis.call('GET', epochKey)
+            if rawEpoch then
+              local revokedEpoch = tonumber(rawEpoch)
+              if revokedEpoch and tokenIssuedAtMicros <= revokedEpoch then
+                return {0}
+              end
+            end
 
             local seq = redis.call('INCR', seqKey)
             redis.call('PEXPIRE', seqKey, ttlMs)
 
             redis.call('HSET', sessKey, 'userId', userId, 'realm', realm, 'createdAt', createdAt)
             redis.call('PEXPIRE', sessKey, ttlMs)
-
             redis.call('ZADD', userSessKey, seq, sid)
             redis.call('PEXPIRE', userSessKey, ttlMs)
 
@@ -56,17 +65,17 @@ public class SessionStore {
               end
             end
 
-            local evicted = {}
+            local result = {1}
             if liveCount > maxPerUser then
               local excess = liveCount - maxPerUser
               for i = 1, excess do
                 local oldSid = live[i]
                 redis.call('ZREM', userSessKey, oldSid)
                 redis.call('DEL', sessPrefix .. oldSid)
-                table.insert(evicted, oldSid)
+                table.insert(result, oldSid)
               end
             end
-            return evicted
+            return result
             """,
             List.class);
 
@@ -123,12 +132,55 @@ public class SessionStore {
 
     private static final DefaultRedisScript<Long> DELETE_ALL_SESSIONS_SCRIPT = createScript(
             """
-            local members = redis.call('ZRANGE', KEYS[1], 0, -1)
-            for _, sid in ipairs(members) do
-              redis.call('DEL', ARGV[1] .. sid)
+            local userSessKey = KEYS[1]
+            local epochKey = KEYS[2]
+            local sessPrefix = ARGV[1]
+            local epochMicros = tonumber(ARGV[2])
+            local ttlMs = tonumber(ARGV[3])
+
+            local rawEpoch = redis.call('GET', epochKey)
+            local currentEpoch = rawEpoch and tonumber(rawEpoch) or nil
+            if not currentEpoch or epochMicros > currentEpoch then
+              redis.call('SET', epochKey, ARGV[2], 'PX', ttlMs)
+            else
+              redis.call('PEXPIRE', epochKey, ttlMs)
             end
-            redis.call('DEL', KEYS[1])
+
+            local members = redis.call('ZRANGE', userSessKey, 0, -1)
+            for _, sid in ipairs(members) do
+              redis.call('DEL', sessPrefix .. sid)
+            end
+            redis.call('DEL', userSessKey)
             return #members
+            """,
+            Long.class);
+
+    private static final DefaultRedisScript<Long> CONFIRM_SESSION_ACTIVE_SCRIPT = createScript(
+            """
+            local sessKey = KEYS[1]
+            local userSessKey = KEYS[2]
+            local epochKey = KEYS[3]
+            local sid = ARGV[1]
+            local expectedUserId = ARGV[2]
+            local expectedRealm = ARGV[3]
+            local issuedAfterMicros = tonumber(ARGV[4])
+
+            local userId = redis.call('HGET', sessKey, 'userId')
+            local realm = redis.call('HGET', sessKey, 'realm')
+            if userId ~= expectedUserId or realm ~= expectedRealm then
+              return 0
+            end
+            if not redis.call('ZSCORE', userSessKey, sid) then
+              return 0
+            end
+            local rawEpoch = redis.call('GET', epochKey)
+            if rawEpoch then
+              local revokedEpoch = tonumber(rawEpoch)
+              if revokedEpoch and issuedAfterMicros <= revokedEpoch then
+                return 0
+              end
+            end
+            return 1
             """,
             Long.class);
 
@@ -138,6 +190,7 @@ public class SessionStore {
             local newSessKey = KEYS[2]
             local userSessKey = KEYS[3]
             local seqKey = KEYS[4]
+            local epochKey = KEYS[5]
             local oldSid = ARGV[1]
             local newSid = ARGV[2]
             local expectedUserId = ARGV[3]
@@ -146,6 +199,7 @@ public class SessionStore {
             local ttlMs = tonumber(ARGV[6])
             local maxPerUser = tonumber(ARGV[7])
             local sessPrefix = ARGV[8]
+            local tokenIssuedAtMicros = tonumber(ARGV[9])
 
             local userId = redis.call('HGET', oldSessKey, 'userId')
             local realm = redis.call('HGET', oldSessKey, 'realm')
@@ -155,7 +209,13 @@ public class SessionStore {
             if not redis.call('ZSCORE', userSessKey, oldSid) then
               return 0
             end
-
+            local rawEpoch = redis.call('GET', epochKey)
+            if rawEpoch then
+              local revokedEpoch = tonumber(rawEpoch)
+              if revokedEpoch and tokenIssuedAtMicros <= revokedEpoch then
+                return 0
+              end
+            end
             redis.call('DEL', oldSessKey)
             redis.call('ZREM', userSessKey, oldSid)
 
@@ -205,35 +265,54 @@ public class SessionStore {
     }
 
     public List<String> createSession(String sessionId, UUID userId, Realm realm) {
+        return createSessionIfNotRevoked(sessionId, userId, realm, Instant.now(clock)).evictedSessionIds();
+    }
+
+    public SessionCreateResult createSessionIfNotRevoked(
+            String sessionId, UUID userId, Realm realm, Instant tokenIssuedAt) {
         Objects.requireNonNull(sessionId, "sessionId must not be null");
         Objects.requireNonNull(userId, "userId must not be null");
         Objects.requireNonNull(realm, "realm must not be null");
+        Objects.requireNonNull(tokenIssuedAt, "tokenIssuedAt must not be null");
 
         long ttlMs = Math.max(1L, securityProperties.session().ttl().toMillis());
         int maxPerUser = Math.max(1, securityProperties.session().maxPerUser());
         Instant now = Instant.now(clock);
 
-        List<?> rawEvicted = redisTemplate.execute(
+        List<?> rawResult = redisTemplate.execute(
                 CREATE_SESSION_SCRIPT,
-                List.of(sessionKey(sessionId), userSessionsKey(userId), userSessionSeqKey(userId)),
+                List.of(
+                        sessionKey(sessionId),
+                        userSessionsKey(userId),
+                        userSessionSeqKey(userId),
+                        userRevocationEpochKey(userId)),
                 sessionId,
                 userId.toString(),
                 realm.name(),
                 Long.toString(now.toEpochMilli()),
                 Long.toString(ttlMs),
                 Integer.toString(maxPerUser),
-                SESSION_KEY_PREFIX);
+                SESSION_KEY_PREFIX,
+                Long.toString(toEpochMicros(tokenIssuedAt)));
 
-        if (rawEvicted == null || rawEvicted.isEmpty()) {
-            return List.of();
+        if (rawResult == null || rawResult.isEmpty()) {
+            return new SessionCreateResult(false, List.of());
         }
-        List<String> evicted = new ArrayList<>(rawEvicted.size());
-        for (Object item : rawEvicted) {
+        long acceptedFlag = Long.parseLong(String.valueOf(rawResult.get(0)));
+        if (acceptedFlag <= 0L) {
+            return new SessionCreateResult(false, List.of());
+        }
+        if (rawResult.size() == 1) {
+            return new SessionCreateResult(true, List.of());
+        }
+        List<String> evicted = new ArrayList<>(rawResult.size() - 1);
+        for (int i = 1; i < rawResult.size(); i++) {
+            Object item = rawResult.get(i);
             if (item != null) {
                 evicted.add(String.valueOf(item));
             }
         }
-        return List.copyOf(evicted);
+        return new SessionCreateResult(true, List.copyOf(evicted));
     }
 
     public Optional<SessionData> findSession(String sessionId) {
@@ -331,8 +410,13 @@ public class SessionStore {
     }
 
     public boolean rotateSession(String oldSid, String newSid, UUID userId, Realm realm) {
+        return rotateSession(oldSid, newSid, userId, realm, Instant.now(clock));
+    }
+
+    public boolean rotateSession(
+            String oldSid, String newSid, UUID userId, Realm realm, Instant refreshStartedAt) {
         if (oldSid == null || oldSid.isBlank() || newSid == null || newSid.isBlank()
-                || userId == null || realm == null) {
+                || userId == null || realm == null || refreshStartedAt == null) {
             return false;
         }
         long ttlMs = Math.max(1L, securityProperties.session().ttl().toMillis());
@@ -340,7 +424,12 @@ public class SessionStore {
         Instant now = Instant.now(clock);
         Long rotated = redisTemplate.execute(
                 ROTATE_SESSION_SCRIPT,
-                List.of(sessionKey(oldSid), sessionKey(newSid), userSessionsKey(userId), userSessionSeqKey(userId)),
+                List.of(
+                        sessionKey(oldSid),
+                        sessionKey(newSid),
+                        userSessionsKey(userId),
+                        userSessionSeqKey(userId),
+                        userRevocationEpochKey(userId)),
                 oldSid,
                 newSid,
                 userId.toString(),
@@ -348,18 +437,39 @@ public class SessionStore {
                 Long.toString(now.toEpochMilli()),
                 Long.toString(ttlMs),
                 Integer.toString(maxPerUser),
-                SESSION_KEY_PREFIX);
+                SESSION_KEY_PREFIX,
+                Long.toString(toEpochMicros(refreshStartedAt)));
         return rotated != null && rotated > 0L;
+    }
+
+    public boolean isSessionActiveAfterEpoch(
+            String sessionId, UUID expectedUserId, Realm expectedRealm, Instant issuedAfter) {
+        if (sessionId == null || sessionId.isBlank()
+                || expectedUserId == null || expectedRealm == null || issuedAfter == null) {
+            return false;
+        }
+        Long active = redisTemplate.execute(
+                CONFIRM_SESSION_ACTIVE_SCRIPT,
+                List.of(sessionKey(sessionId), userSessionsKey(expectedUserId), userRevocationEpochKey(expectedUserId)),
+                sessionId,
+                expectedUserId.toString(),
+                expectedRealm.name(),
+                Long.toString(toEpochMicros(issuedAfter)));
+        return active != null && active > 0L;
     }
 
     public void deleteAllSessions(UUID userId) {
         if (userId == null) {
             return;
         }
+        long ttlMs = Math.max(1L, securityProperties.session().ttl().toMillis());
+        long epochMicros = toEpochMicros(Instant.now(clock));
         redisTemplate.execute(
                 DELETE_ALL_SESSIONS_SCRIPT,
-                List.of(userSessionsKey(userId)),
-                SESSION_KEY_PREFIX);
+                List.of(userSessionsKey(userId), userRevocationEpochKey(userId)),
+                SESSION_KEY_PREFIX,
+                Long.toString(epochMicros),
+                Long.toString(ttlMs));
     }
 
     private static <T> DefaultRedisScript<T> createScript(String lua, Class<T> resultType) {
@@ -380,6 +490,22 @@ public class SessionStore {
     private static String userSessionSeqKey(UUID userId) {
         return USER_SESSION_SEQ_PREFIX + userId;
     }
+    private static String userRevocationEpochKey(UUID userId) {
+        return USER_REVOCATION_EPOCH_PREFIX + userId;
+    }
+
+    private static long toEpochMicros(Instant instant) {
+        return Math.addExact(
+                Math.multiplyExact(instant.getEpochSecond(), 1_000_000L),
+                instant.getNano() / 1_000L);
+    }
+
+    public record SessionCreateResult(
+            boolean accepted,
+            List<String> evictedSessionIds
+    ) {
+    }
+
     public record SessionData(
             String sessionId,
             UUID userId,
