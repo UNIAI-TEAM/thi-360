@@ -186,6 +186,52 @@ class LocaleErrorLocalizationIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void passwordPolicy_validAccountInputWithMissingUppercase_isLocalizedInEnNoneAndUnsupported() throws Exception {
+        String payload = """
+                {
+                  "username": "policy.user.01",
+                  "password": "abcd1234!",
+                  "fullName": "Policy Test User"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_WEAK"))
+                .andExpect(jsonPath("$.message").value("Password does not meet security requirements"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("password"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("PASSWORD_UPPERCASE"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Password must contain at least one uppercase letter"));
+
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_WEAK"))
+                .andExpect(jsonPath("$.message").value("Mật khẩu không đạt yêu cầu bảo mật"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("password"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("PASSWORD_UPPERCASE"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Mật khẩu phải có ít nhất một chữ hoa"));
+
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "fr")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_WEAK"))
+                .andExpect(jsonPath("$.message").value("Mật khẩu không đạt yêu cầu bảo mật"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("password"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("PASSWORD_UPPERCASE"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Mật khẩu phải có ít nhất một chữ hoa"));
+    }
+
+    @Test
     void permissionsMetadataAndUsersExport_areLocalizedByAcceptLanguage() throws Exception {
         UUID userViewId = permissionRepository.findByCode(Permissions.USER_VIEW).orElseThrow().getId();
 
