@@ -28,14 +28,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.time.WorkerSchedulingConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @ExtendWith(OutputCaptureExtension.class)
@@ -69,6 +76,12 @@ class OutboxRelayTests extends AbstractIntegrationTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    @Autowired
+    private Environment environment;
+
     @BeforeEach
     void setUp() {
         MDC.clear();
@@ -91,6 +104,14 @@ class OutboxRelayTests extends AbstractIntegrationTest {
         Set<UUID> publishedIds = ConcurrentHashMap.newKeySet();
         Map<UUID, AtomicInteger> handleCounts = new ConcurrentHashMap<>();
 
+        outboxRelay.register(TEST_TOPIC, event -> {
+            AtomicInteger counter = handleCounts.get(event.getId());
+            if (counter != null) {
+                counter.incrementAndGet();
+            }
+            Thread.sleep(15);
+        });
+
         transactionTemplate.executeWithoutResult(status -> {
             for (int i = 0; i < eventCount; i++) {
                 UUID id = Ids.newId();
@@ -98,14 +119,6 @@ class OutboxRelayTests extends AbstractIntegrationTest {
                 handleCounts.put(id, new AtomicInteger(0));
                 outboxPublisher.publish(id, TEST_TOPIC, Map.of("seq", i));
             }
-        });
-
-        outboxRelay.register(TEST_TOPIC, event -> {
-            AtomicInteger counter = handleCounts.get(event.getId());
-            if (counter != null) {
-                counter.incrementAndGet();
-            }
-            Thread.sleep(15);
         });
 
         CountDownLatch ready = new CountDownLatch(2);
@@ -149,6 +162,13 @@ class OutboxRelayTests extends AbstractIntegrationTest {
         UUID tracedEventId = Ids.newId();
         UUID untracedEventId = Ids.newId();
 
+        Map<UUID, String> observedMdcTraceByEvent = new ConcurrentHashMap<>();
+        outboxRelay.register(TRACE_TOPIC, event -> {
+            String mdcTrace = MDC.get(TraceIdFilter.MDC_TRACE_ID);
+            observedMdcTraceByEvent.put(event.getId(), mdcTrace);
+            handlerLog.info("Handled outbox event {}", event.getId());
+        });
+
         MDC.put(TraceIdFilter.MDC_TRACE_ID, "origin-trace-777");
         try {
             transactionTemplate.executeWithoutResult(
@@ -164,13 +184,6 @@ class OutboxRelayTests extends AbstractIntegrationTest {
                 .isEqualTo("origin-trace-777");
         assertThat(outboxEventRepository.findById(untracedEventId).orElseThrow().getTraceId())
                 .isNull();
-
-        Map<UUID, String> observedMdcTraceByEvent = new ConcurrentHashMap<>();
-        outboxRelay.register(TRACE_TOPIC, event -> {
-            String mdcTrace = MDC.get(TraceIdFilter.MDC_TRACE_ID);
-            observedMdcTraceByEvent.put(event.getId(), mdcTrace);
-            handlerLog.info("Handled outbox event {}", event.getId());
-        });
 
         int processed = outboxRelay.relayBatch(10);
         assertThat(processed).isEqualTo(2);
@@ -206,6 +219,7 @@ class OutboxRelayTests extends AbstractIntegrationTest {
     void publishesPlainStringPayloadAsValidJsonb_andReadsBackSameString() throws Exception {
         UUID id = Ids.newId();
         String rawMessage = "plain text outbox payload";
+        outboxRelay.register(STRING_TOPIC, event -> {});
 
         transactionTemplate.executeWithoutResult(
                 status -> outboxPublisher.publish(id, STRING_TOPIC, rawMessage));
@@ -221,13 +235,13 @@ class OutboxRelayTests extends AbstractIntegrationTest {
         UUID id = Ids.newId();
         AtomicInteger invocations = new AtomicInteger(0);
 
-        transactionTemplate.executeWithoutResult(
-                status -> outboxPublisher.publish(id, FAILING_TOPIC, Map.of("step", 1)));
-
         outboxRelay.register(FAILING_TOPIC, event -> {
             invocations.incrementAndGet();
             throw new IllegalStateException("downstream unavailable");
         });
+
+        transactionTemplate.executeWithoutResult(
+                status -> outboxPublisher.publish(id, FAILING_TOPIC, Map.of("step", 1)));
 
         // Poll 1: even with batchSize=10 and maxAttempts=3, failing event is attempted only once
         int processedPoll1 = outboxRelay.relayBatch(10, 3);
@@ -309,9 +323,6 @@ class OutboxRelayTests extends AbstractIntegrationTest {
     @Test
     void atLeastOnceDelivery_handlerDeduplicatingByEventIdAppliesExternalEffectOnceWhenFirstAttemptFailsAfterSideEffect() {
         UUID id = Ids.newId();
-        transactionTemplate.executeWithoutResult(
-                status -> outboxPublisher.publish(id, DEDUP_TOPIC, Map.of("action", "send-welcome")));
-
         AtomicInteger handlerInvocations = new AtomicInteger(0);
         Set<UUID> deduplicatedEventIds = ConcurrentHashMap.newKeySet();
         List<UUID> appliedExternalSideEffects = new ArrayList<>();
@@ -325,6 +336,9 @@ class OutboxRelayTests extends AbstractIntegrationTest {
                 throw new RuntimeException("Simulated commit/network failure after external side effect");
             }
         });
+
+        transactionTemplate.executeWithoutResult(
+                status -> outboxPublisher.publish(id, DEDUP_TOPIC, Map.of("action", "send-welcome")));
 
         // First poll fails after side effect
         assertThat(outboxRelay.relayBatch(10, 3)).isZero();
@@ -355,14 +369,14 @@ class OutboxRelayTests extends AbstractIntegrationTest {
         AtomicInteger failInvocations = new AtomicInteger(0);
         Duration handlerDuration = Duration.ofSeconds(10); // > INITIAL_BACKOFF (2s)
 
-        transactionTemplate.executeWithoutResult(
-                status -> timedPublisher.publish(slowFailId, slowFailTopic, Map.of("case", "slow-fail")));
-
         timedRelay.register(slowFailTopic, event -> {
             failInvocations.incrementAndGet();
             mutableClock.advance(handlerDuration);
             throw new IllegalStateException("slow downstream timeout");
         });
+
+        transactionTemplate.executeWithoutResult(
+                status -> timedPublisher.publish(slowFailId, slowFailTopic, Map.of("case", "slow-fail")));
 
         // Single poll with batchSize=10 must invoke the slow failing handler only once
         int processedPoll1 = timedRelay.relayBatch(10, 2);
@@ -403,15 +417,50 @@ class OutboxRelayTests extends AbstractIntegrationTest {
         String slowSuccessTopic = "test.slow.success.topic";
         Duration successDuration = Duration.ofSeconds(5);
 
+        timedRelay.register(slowSuccessTopic, event -> mutableClock.advance(successDuration));
+
         transactionTemplate.executeWithoutResult(
                 status -> timedPublisher.publish(slowSuccessId, slowSuccessTopic, Map.of("case", "slow-ok")));
 
-        timedRelay.register(slowSuccessTopic, event -> mutableClock.advance(successDuration));
         assertThat(timedRelay.relayBatch(10, 2)).isEqualTo(1);
 
         OutboxEvent processedEvent = outboxEventRepository.findById(slowSuccessId).orElseThrow();
         assertThat(processedEvent.getProcessedAt()).isEqualTo(t1.plus(successDuration));
         assertThat(processedEvent.getFailedAt()).isNull();
+    }
+
+    @Test
+    void outboxRelayWorker_isDisabledInTestProfileWhileWorkerProfileRemainsActive_andEnabledByDefaultInWorkerProfile() {
+        assertThat(environment.acceptsProfiles(Profiles.of("worker"))).isTrue();
+        assertThat(environment.acceptsProfiles(Profiles.of("test"))).isTrue();
+        assertThat(applicationContext.getBeansOfType(WorkerSchedulingConfig.class)).hasSize(1);
+        assertThat(applicationContext.getBeansOfType(OutboxRelay.OutboxRelayWorker.class)).isEmpty();
+
+        ApplicationContextRunner baseRunner = new ApplicationContextRunner()
+                .withBean(OutboxRelay.class, () -> Mockito.mock(OutboxRelay.class))
+                .withUserConfiguration(OutboxRelay.OutboxRelayWorker.class);
+
+        baseRunner
+                .withInitializer(ctx -> {
+                    ctx.getEnvironment().setActiveProfiles("worker");
+                    ConfigDataEnvironmentPostProcessor.applyTo(ctx.getEnvironment());
+                })
+                .run(ctx -> assertThat(ctx).hasSingleBean(OutboxRelay.OutboxRelayWorker.class));
+
+        baseRunner
+                .withInitializer(ctx -> {
+                    ctx.getEnvironment().setActiveProfiles("worker", "test");
+                    ConfigDataEnvironmentPostProcessor.applyTo(ctx.getEnvironment());
+                })
+                .run(ctx -> assertThat(ctx).doesNotHaveBean(OutboxRelay.OutboxRelayWorker.class));
+
+        baseRunner
+                .withPropertyValues("thi360.outbox.scheduling.enabled=false")
+                .withInitializer(ctx -> {
+                    ctx.getEnvironment().setActiveProfiles("worker");
+                    ConfigDataEnvironmentPostProcessor.applyTo(ctx.getEnvironment());
+                })
+                .run(ctx -> assertThat(ctx).doesNotHaveBean(OutboxRelay.OutboxRelayWorker.class));
     }
 
     private static final class MutableClock extends Clock {

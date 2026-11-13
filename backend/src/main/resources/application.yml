@@ -76,6 +76,9 @@ thi360:
     bucket: ${THI360_S3_BUCKET:thi360-private}
   file:
     enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
+  outbox:
+    scheduling:
+      enabled: true
 
 ---
 spring:
@@ -122,6 +125,9 @@ spring:
 thi360:
   keycloak:
     realm: ${THI360_KC_REALM:thi-360}
+  outbox:
+    scheduling:
+      enabled: false
 ---
 spring:
   config:

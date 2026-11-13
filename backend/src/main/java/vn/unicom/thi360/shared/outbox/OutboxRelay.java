@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -187,6 +188,10 @@ public class OutboxRelay {
     }
     @Component
     @Profile("worker")
+    @ConditionalOnProperty(
+            name = "thi360.outbox.scheduling.enabled",
+            havingValue = "true",
+            matchIfMissing = true)
     public static class OutboxRelayWorker {
 
         private final OutboxRelay outboxRelay;
