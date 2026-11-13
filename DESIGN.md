@@ -21,11 +21,11 @@ Sáng, sạch, thân thiện với học sinh. Nền trắng và xám rất nh�
 | `primary-100` | `#DCFCE7` | Nền nút phụ màu xanh, nền hero sáng |
 | `primary-200` | `#A7E3C2` | Viền nút viền xanh |
 | `primary-500` | `#10B981` | Điểm nhấn trong gradient |
-| `primary-600` | `#059669` | Màu thương hiệu: gradient, thanh dọc, viền focus, chấm màu, footer. Không dùng làm chữ hay nền nút có chữ |
+| `primary-600` | `#059669` | Màu thương hiệu: gradient, thanh dọc, viền focus, chấm màu. Không dùng làm chữ hay nền nút có chữ |
 | `primary-700` | `#047857` | Thanh trên cùng, chữ xanh dưới 14px trên nền trắng |
 | `primary-800` | `#065F46` | Đầu tối của gradient, chữ trên nền xanh nhạt |
 | `primary-900` | `#064E3B` | Tiêu đề lớn trên nền sáng |
-| `primary-text` | `#047857` (tối: `#059669`) | **Chữ màu chính**: liên kết, tab/mục nav/trang đang chọn, nút nhạt, icon trên nền `primary-50/100/200`. Đạt 5,21:1 trên `primary-50`, 4,99:1 trên `primary-100` |
+| `primary-text` | `#047857` (tối: `#10B981`) | **Chữ màu chính**: liên kết, tab/mục nav/trang đang chọn, nút nhạt, icon trên nền `primary-50/100/200`. Sáng: 5,21:1 trên `primary-50`, 4,99:1 trên `primary-100`. Tối: đạt từ 6,05:1 trên `subtle` đến 7,30:1 trên nền trang |
 | `primary-fill` | `#047857` | **Nền hành động chính**: nút chính, chip lọc đang chọn, ô logo, checkbox/switch bật. Đi với `on-primary` trắng (5,48:1) |
 | `primary-fill-hover` | `#065F46` | Nút chính khi hover (trắng 7,68:1) |
 | `primary-fill-active` | `#064E3B` | Nút chính khi bấm (trắng 9,72:1) |
@@ -144,7 +144,7 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 - Cao 40px (admin) hoặc 48px (web học viên, trang đăng nhập); bo góc 10–12px; nền trắng; viền `border`.
 - Focus: viền `primary-600` và vòng sáng `0 0 0 3px rgba(5,150,105,.15)`.
 - Nhãn đặt phía trên, 13/20 đậm 500, màu `text-secondary`. Có thể có icon dẫn đầu 16px màu `text-placeholder`.
-- Lỗi: viền `#DC2626`, dòng lỗi 12.5px màu `#DC2626` ngay dưới ô. Giữ nguyên dữ liệu người dùng đã nhập.
+- Lỗi: viền `danger` (`#B91C1C`), dòng lỗi 12.5px màu `danger` ngay dưới ô. Giữ nguyên dữ liệu người dùng đã nhập.
 
 ### 5.3 Chip và huy hiệu
 
@@ -171,8 +171,8 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 ### 5.7 Thanh điều hướng (web học viên)
 
 - Thanh trên cùng cao 32px, nền `primary-700`, chữ trắng 13px.
-- Thanh menu cao 64px, nền trắng, viền dưới `border`; mục menu 14/20 đậm 500 màu `text-secondary`, mục đang chọn màu `primary-600`.
-- Footer nền `primary-600`, chữ trắng.
+- Thanh menu cao 64px, nền trắng, viền dưới `border`; mục menu 14/20 đậm 500 màu `text-secondary`, mục đang chọn màu `primary-text`.
+- Footer nền `primary-fill`, chữ `on-primary`.
 
 ### 5.8 Khung trang admin
 
@@ -199,7 +199,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - Nằm trong thẻ trắng bo góc 12px. Hàng tiêu đề nền `#FAFAFB`, chữ 13px đậm 600 màu `text-muted`.
 - Dòng cao 48px, viền dưới `border`, hover nền `bg-subtle`. Dòng đang chọn nền `primary-50`.
 - **Cột Thao tác ưu tiên nút icon, không dùng nút chữ** (chốt 2026-11-13). Mỗi nút là một icon lucide 18px trong vùng bấm 40–44px, căn phải, có **tooltip** hiện tên thao tác khi rê chuột hoặc focus bàn phím, và có `aria-label` nêu rõ thao tác kèm đối tượng ("Sửa vai trò Vận hành").
-- Icon dùng thống nhất: bút chì = Sửa, thùng rác = Xóa, mắt = Xem/Chi tiết, hai mũi tên ngược chiều = Chuyển, người có dấu trừ = Loại khỏi lớp, vòng tròn có dấu trừ = Gỡ quyền. Thao tác nguy hiểm dùng màu `#DC2626`; thao tác bị khóa hiện mờ và tooltip nêu lý do.
+- Icon dùng thống nhất: bút chì = Sửa, thùng rác = Xóa, mắt = Xem/Chi tiết, hai mũi tên ngược chiều = Chuyển, người có dấu trừ = Loại khỏi lớp, vòng tròn có dấu trừ = Gỡ quyền. Thao tác nguy hiểm dùng màu `danger` (`#B91C1C`); thao tác bị khóa hiện mờ và tooltip nêu lý do.
 - Tối đa ba icon trên một dòng; nhiều hơn thì gom phần còn lại vào menu "⋯".
 - Phía trên bảng: tổng số bản ghi theo bộ lọc. Phía dưới: phân trang và chọn số dòng mỗi trang.
 - Trạng thái rỗng: icon, một câu giải thích, nút hành động (nếu có quyền).
@@ -262,7 +262,7 @@ Không có tùy chọn bố cục và kích thước: sidebar, toolbar, bo góc,
 
 - Thanh dưới cùng: **Khôi phục mặc định** (kiểu Phụ) và **Lưu và áp dụng** (kiểu Chính). Thay đổi chưa lưu chỉ hiện ở vùng xem trước.
 - Khi màu tự chọn làm chữ khó đọc (tương phản dưới 4,5:1), hiện cảnh báo ngay cạnh ô chọn màu; hệ thống tự chọn màu chữ trắng hoặc đen đọc được hơn trên nền màu chính.
-- Vì màu đổi được, thành phần **chỉ dùng token** (`primary-600`, `text`, `border`…), không viết mã màu. Chế độ tối định nghĩa lại các token trung tính; không viết kiểu riêng cho chế độ tối trong thành phần.
+- Vì màu đổi được, thành phần **chỉ dùng token** (`primary-text`, `primary-fill`, `text`, `border`…), không viết mã màu. Chế độ tối định nghĩa lại các token trung tính; không viết kiểu riêng cho chế độ tối trong thành phần.
 
 ## 10. Cài đặt token
 
