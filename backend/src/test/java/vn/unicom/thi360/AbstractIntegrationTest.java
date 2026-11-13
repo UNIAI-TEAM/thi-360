@@ -9,6 +9,7 @@ import java.util.Map;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,9 +108,17 @@ public abstract class AbstractIntegrationTest {
             client.setDirectAccessGrantsEnabled(true);
             client.setServiceAccountsEnabled(false);
             client.setAttributes(Map.of("access.token.lifespan", "300"));
+            ProtocolMapperRepresentation audienceMapper = new ProtocolMapperRepresentation();
+            audienceMapper.setName("thi360-platform-audience");
+            audienceMapper.setProtocol("openid-connect");
+            audienceMapper.setProtocolMapper("oidc-audience-mapper");
+            audienceMapper.setConfig(Map.of(
+                    "included.client.audience", "thi360-platform",
+                    "id.token.claim", "false",
+                    "access.token.claim", "true"));
+            client.setProtocolMappers(List.of(audienceMapper));
             master.clients().create(client).close();
         }
-
         ensureMasterUser(master, "platform", TEST_PLATFORM_PASSWORD, true);
         ensureMasterUser(master, TEST_MASTER_NO_ROLE_USER, TEST_MASTER_NO_ROLE_PASSWORD, false);
     }

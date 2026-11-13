@@ -14,11 +14,22 @@ import org.junit.jupiter.api.Test;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.JWTParser;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.userprofile.config.UPAttribute;
 import org.keycloak.representations.userprofile.config.UPConfig;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.keycloak.representations.idm.ProtocolMapperRepresentation;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -34,6 +45,9 @@ import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.Realm;
+import vn.unicom.thi360.shared.security.SessionStore;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 
 class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
 
@@ -74,8 +88,16 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
         client.setStandardFlowEnabled(false);
         client.setDirectAccessGrantsEnabled(true);
         client.setServiceAccountsEnabled(true);
+        ProtocolMapperRepresentation audienceMapper = new ProtocolMapperRepresentation();
+        audienceMapper.setName("thi360-api-audience");
+        audienceMapper.setProtocol("openid-connect");
+        audienceMapper.setProtocolMapper("oidc-audience-mapper");
+        audienceMapper.setConfig(Map.of(
+                "included.client.audience", "thi360-api",
+                "id.token.claim", "false",
+                "access.token.claim", "true"));
+        client.setProtocolMappers(List.of(audienceMapper));
         admin.realm(ALT_REALM).clients().create(client).close();
-
         String serviceAccountId = admin.realm(ALT_REALM).clients()
                 .findByClientId("thi360-api").getFirst().getId();
         var saUser = admin.realm(ALT_REALM).clients().get(serviceAccountId).getServiceAccountUser();
@@ -108,6 +130,23 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private SessionStore sessionStore;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void cleanupRateLimitBuckets() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + "203.0.113.110",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.111",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.112"));
+    }
 
     @Test
     void platformAdminOnMasterRealm_logsIn_meReturnsMasterManage_andDoesNotTouchUserAccount() throws Exception {
@@ -192,5 +231,142 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.realm").value("APP"))
                 .andExpect(jsonPath("$.access").value("EXAM"));
+    }
+
+    @Test
+    void sameIssuerTokenForWrongAudienceOrClient_andUnknownIssuer_return401EvenWithMatchingSession() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "auduser." + suffix;
+        UUID userId = keycloakClient.createUser(new CreateUserCommand(
+                username, null, "Aud", "User", "Valid@1234", true, false, true));
+        Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
+        userAccountRepository.save(new UserAccount(
+                userId,
+                String.format("U%06d", seq),
+                username,
+                "Aud User",
+                null,
+                null,
+                UserSource.ADMIN_CREATED,
+                UserStatus.ACTIVE,
+                false,
+                Instant.now(),
+                userId));
+
+        Keycloak admin = KEYCLOAK.getKeycloakAdminClient();
+        String wrongAudClientId = "other-app-" + suffix;
+        ensurePasswordClient(admin, ALT_REALM, wrongAudClientId, "other-secret", false, null);
+
+        String wrongAzpClientId = "other-azp-" + suffix;
+        ensurePasswordClient(admin, ALT_REALM, wrongAzpClientId, "other-secret", true, "thi360-api");
+
+        String wrongAudToken = fetchPasswordToken(ALT_REALM, wrongAudClientId, "other-secret", username, "Valid@1234");
+        String wrongAudSid = JWTParser.parse(wrongAudToken).getJWTClaimsSet().getStringClaim("sid");
+        sessionStore.createSession(wrongAudSid, userId, Realm.APP);
+
+        mockMvc.perform(get("/api/v1/me").cookie(new Cookie(AuthCookieService.ACCESS_TOKEN_COOKIE, wrongAudToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+
+        String wrongAzpToken = fetchPasswordToken(ALT_REALM, wrongAzpClientId, "other-secret", username, "Valid@1234");
+        String wrongAzpSid = JWTParser.parse(wrongAzpToken).getJWTClaimsSet().getStringClaim("sid");
+        sessionStore.createSession(wrongAzpSid, userId, Realm.APP);
+
+        mockMvc.perform(get("/api/v1/me").cookie(new Cookie(AuthCookieService.ACCESS_TOKEN_COOKIE, wrongAzpToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+
+        String wrongMasterClientId = "other-platform-" + suffix;
+        ensurePasswordClient(admin, "master", wrongMasterClientId, "other-secret", false, null);
+        String wrongMasterToken = fetchPasswordToken(
+                "master", wrongMasterClientId, "other-secret", "platform", TEST_PLATFORM_PASSWORD);
+        var masterClaims = JWTParser.parse(wrongMasterToken).getJWTClaimsSet();
+        UUID platformId = UUID.fromString(masterClaims.getSubject());
+        sessionStore.createSession(masterClaims.getStringClaim("sid"), platformId, Realm.MASTER);
+
+        mockMvc.perform(get("/api/v1/me").cookie(new Cookie(AuthCookieService.ACCESS_TOKEN_COOKIE, wrongMasterToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+
+        String origRealmUser = "origrealm." + suffix;
+        var origUserRep = new org.keycloak.representations.idm.UserRepresentation();
+        origUserRep.setUsername(origRealmUser);
+        origUserRep.setEnabled(true);
+        origUserRep.setEmailVerified(true);
+        var cred = new org.keycloak.representations.idm.CredentialRepresentation();
+        cred.setType(org.keycloak.representations.idm.CredentialRepresentation.PASSWORD);
+        cred.setTemporary(false);
+        cred.setValue("Valid@1234");
+        origUserRep.setCredentials(List.of(cred));
+        String origUserId;
+        try (var resp = admin.realm("thi-360").users().create(origUserRep)) {
+            String path = resp.getLocation().getPath();
+            origUserId = path.substring(path.lastIndexOf('/') + 1);
+        }
+        String unknownIssuerToken = fetchPasswordToken(
+                "thi-360", "thi360-api", TEST_APP_CLIENT_SECRET, origRealmUser, "Valid@1234");
+        String unknownIssuerSid = JWTParser.parse(unknownIssuerToken).getJWTClaimsSet().getStringClaim("sid");
+        sessionStore.createSession(unknownIssuerSid, UUID.fromString(origUserId), Realm.APP);
+
+        mockMvc.perform(get("/api/v1/me").cookie(new Cookie(AuthCookieService.ACCESS_TOKEN_COOKIE, unknownIssuerToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+    }
+
+    private static void ensurePasswordClient(
+            Keycloak admin,
+            String realmName,
+            String clientId,
+            String secret,
+            boolean addAudienceMapper,
+            String includedAudience) {
+        if (!admin.realm(realmName).clients().findByClientId(clientId).isEmpty()) {
+            return;
+        }
+        ClientRepresentation client = new ClientRepresentation();
+        client.setClientId(clientId);
+        client.setEnabled(true);
+        client.setProtocol("openid-connect");
+        client.setPublicClient(false);
+        client.setSecret(secret);
+        client.setStandardFlowEnabled(false);
+        client.setDirectAccessGrantsEnabled(true);
+        client.setServiceAccountsEnabled(false);
+        if (addAudienceMapper && includedAudience != null) {
+            ProtocolMapperRepresentation mapper = new ProtocolMapperRepresentation();
+            mapper.setName(includedAudience + "-audience");
+            mapper.setProtocol("openid-connect");
+            mapper.setProtocolMapper("oidc-audience-mapper");
+            mapper.setConfig(Map.of(
+                    "included.client.audience", includedAudience,
+                    "id.token.claim", "false",
+                    "access.token.claim", "true"));
+            client.setProtocolMappers(List.of(mapper));
+        }
+        admin.realm(realmName).clients().create(client).close();
+    }
+
+    private String fetchPasswordToken(
+            String realmName,
+            String clientId,
+            String clientSecret,
+            String username,
+            String password) throws Exception {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "password");
+        form.add("client_id", clientId);
+        form.add("client_secret", clientSecret);
+        form.add("username", username);
+        form.add("password", password);
+        form.add("scope", "openid");
+        String body = RestClient.create()
+                .post()
+                .uri(KEYCLOAK.getAuthServerUrl() + "/realms/" + realmName + "/protocol/openid-connect/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(form)
+                .retrieve()
+                .body(String.class);
+        JsonNode json = objectMapper.readTree(body);
+        return json.get("access_token").asText();
     }
 }

@@ -53,6 +53,8 @@ if [ -z "$CLIENT_UUID" ]; then
     -s "directAccessGrantsEnabled=true" \
     -s "serviceAccountsEnabled=false" \
     -s 'attributes={"access.token.lifespan":"300"}'
+  CLIENT_UUID=$("$KCADM" get clients -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
+    -q "clientId=${PLATFORM_CLIENT_ID}" --fields id --format csv --noquotes | head -n1 | tr -d '\r')
 else
   echo "Updating client ${PLATFORM_CLIENT_ID} in realm ${PLATFORM_REALM}..."
   "$KCADM" update "clients/${CLIENT_UUID}" -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
@@ -65,6 +67,17 @@ else
     -s 'attributes={"access.token.lifespan":"300"}'
 fi
 
+AUDIENCE_MAPPER_NAME="${PLATFORM_CLIENT_ID}-audience"
+if ! "$KCADM" get "clients/${CLIENT_UUID}/protocol-mappers/models" -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
+    --fields name --format csv --noquotes | tr -d '\r' | grep -qx "$AUDIENCE_MAPPER_NAME"; then
+  echo "Adding audience mapper ${AUDIENCE_MAPPER_NAME} to client ${PLATFORM_CLIENT_ID}..."
+  "$KCADM" create "clients/${CLIENT_UUID}/protocol-mappers/models" -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
+    -s "name=${AUDIENCE_MAPPER_NAME}" \
+    -s "protocol=openid-connect" \
+    -s "protocolMapper=oidc-audience-mapper" \
+    -s "consentRequired=false" \
+    -s "config={\"included.client.audience\":\"${PLATFORM_CLIENT_ID}\",\"id.token.claim\":\"false\",\"access.token.claim\":\"true\"}"
+fi
 USER_ID=$("$KCADM" get users -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
   -q "username=${DEV_PLATFORM_USER}" -q "exact=true" --fields id --format csv --noquotes | head -n1 | tr -d '\r')
 
