@@ -33,8 +33,10 @@
   "common": {
     "appName": "Thi 360",
     "backHome": "Back to home",
+    "closeToast": "Close toast",
     "loading": "Loading",
     "logoMark": "360",
+    "notificationsLabel": "Notifications",
     "retry": "Retry"
   },
   "errorPage": {

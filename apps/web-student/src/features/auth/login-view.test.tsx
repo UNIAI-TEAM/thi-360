@@ -71,6 +71,7 @@ describe("LoginView", () => {
     ["INVALID_CREDENTIALS", "Tên đăng nhập hoặc mật khẩu không đúng."],
     ["LOGIN_THROTTLED", "Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút."],
     ["ACCOUNT_INACTIVE", "Tài khoản đã ngừng hoạt động. Vui lòng liên hệ quản trị viên."],
+    ["SESSION_REVOKED", "Không thể đăng nhập. Vui lòng thử lại."],
   ])("hiển thị thông báo lỗi đúng cho mã %s và giữ nguyên tên đăng nhập", async (code, expected) => {
     mocks.loginWithPassword.mockRejectedValue(new ApiStatusError(401, "backend msg", { code }));
 
@@ -81,7 +82,10 @@ describe("LoginView", () => {
     await userEvent.type(screen.getByLabelText(/Mật khẩu/), "wrong");
     await userEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(expected);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(expected);
+    expect(alert).not.toHaveTextContent("backend msg");
+    expect(screen.queryByText(/backend msg/)).not.toBeInTheDocument();
     expect(identifierInput).toHaveValue("student01");
   });
 

@@ -41,6 +41,7 @@ export function QueryProvider({
   navigate?: (url: string) => void;
 }) {
   const t = useTranslations("errors");
+  const commonT = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -85,7 +86,10 @@ export function QueryProvider({
   return (
     <QueryClientProvider client={client}>
       {children}
-      <Toaster />
+      <Toaster
+        containerAriaLabel={commonT("notificationsLabel")}
+        closeButtonAriaLabel={commonT("closeToast")}
+      />
     </QueryClientProvider>
   );
 }

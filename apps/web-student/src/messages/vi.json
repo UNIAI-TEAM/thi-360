@@ -33,8 +33,10 @@
   "common": {
     "appName": "Thi 360",
     "backHome": "Về trang chủ",
+    "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
     "logoMark": "360",
+    "notificationsLabel": "Thông báo",
     "retry": "Thử lại"
   },
   "errorPage": {

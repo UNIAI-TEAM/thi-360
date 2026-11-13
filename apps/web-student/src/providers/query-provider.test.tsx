@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
+import en_messages from "@/messages/en.json";
 import vi_messages from "@/messages/vi.json";
 import { FORBIDDEN_PATH, QueryProvider } from "./query-provider";
 
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   pathname: { current: "/home" },
   toastError: vi.fn(),
+  toaster: vi.fn(),
   refreshSession: vi.fn(),
   clearSessionBestEffort: vi.fn(),
   navigate: vi.fn(),
@@ -20,7 +22,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
   usePathname: () => mocks.pathname.current,
 }));
-vi.mock("@thi360/ui", () => ({ notify: { error: mocks.toastError }, Toaster: () => null }));
+vi.mock("@thi360/ui", () => ({
+  notify: { error: mocks.toastError },
+  Toaster: (props: Record<string, unknown>) => {
+    mocks.toaster(props);
+    return null;
+  },
+}));
 vi.mock("@/features/session/api", async (importOriginal) => {
   const actual = await importOriginal<typeof SessionApi>();
   return {
@@ -68,6 +76,7 @@ afterEach(() => {
   queryFn.mockReset();
   mocks.replace.mockReset();
   mocks.toastError.mockReset();
+  mocks.toaster.mockReset();
   mocks.refreshSession.mockReset();
   mocks.clearSessionBestEffort.mockReset();
   mocks.navigate.mockReset();
@@ -148,5 +157,39 @@ describe("web-student QueryProvider", () => {
     await waitFor(() => expect(screen.getByTestId("c")).toHaveTextContent("error"));
     expect(mocks.replace).toHaveBeenCalledTimes(1);
     expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+
+  it("truyền nhãn aria đã dịch cho Toaster theo locale vi và en", () => {
+    render(
+      <NextIntlClientProvider locale="vi" messages={vi_messages} timeZone="Asia/Ho_Chi_Minh">
+        <QueryProvider navigate={mocks.navigate}>
+          <span />
+        </QueryProvider>
+      </NextIntlClientProvider>,
+    );
+
+    expect(mocks.toaster).toHaveBeenCalledWith(
+      expect.objectContaining({
+        containerAriaLabel: vi_messages.common.notificationsLabel,
+        closeButtonAriaLabel: vi_messages.common.closeToast,
+      }),
+    );
+
+    mocks.toaster.mockClear();
+
+    render(
+      <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
+        <QueryProvider navigate={mocks.navigate}>
+          <span />
+        </QueryProvider>
+      </NextIntlClientProvider>,
+    );
+
+    expect(mocks.toaster).toHaveBeenCalledWith(
+      expect.objectContaining({
+        containerAriaLabel: en_messages.common.notificationsLabel,
+        closeButtonAriaLabel: en_messages.common.closeToast,
+      }),
+    );
   });
 });
