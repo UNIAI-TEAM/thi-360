@@ -16,7 +16,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -67,7 +69,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
         HttpMessageNotReadableException.class,
         MethodArgumentTypeMismatchException.class,
-        MissingServletRequestParameterException.class
+        MissingServletRequestParameterException.class,
+        MissingRequestHeaderException.class
     })
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ApiError> handleBadRequest(Exception ex, HttpServletRequest request) {
@@ -104,6 +107,14 @@ public class GlobalExceptionHandler {
         String customMessage = ex instanceof NotFoundException ? ex.getMessage() : null;
         String message = resolveMessage(code, customMessage, "NOT_FOUND");
         return respond(HttpStatus.NOT_FOUND, code, message, List.of(), request);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    public ResponseEntity<ApiError> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        String message = resolveMessage("METHOD_NOT_ALLOWED", null, "METHOD_NOT_ALLOWED");
+        return respond(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", message, List.of(), request);
     }
 
     @ExceptionHandler(ConflictException.class)

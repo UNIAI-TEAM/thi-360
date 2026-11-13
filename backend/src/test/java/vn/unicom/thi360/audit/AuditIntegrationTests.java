@@ -527,6 +527,18 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
     }
 
     @Test
+    void listAuditEvents_requiresAuditViewPermission() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asUser("USER.VIEW")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asUser("AUDIT.VIEW")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void nonSuperuserAppRole_cannotMutateOrDetachPartitionsWithoutMaintenanceRole_andJobsSucceedWithIt() {
         String dbName = "audit_distinct_roles_test";
         String migratorRole = "thi360_migrator_test";

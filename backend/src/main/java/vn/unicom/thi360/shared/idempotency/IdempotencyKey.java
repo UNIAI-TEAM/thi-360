@@ -19,6 +19,9 @@ public class IdempotencyKey {
     @Column(name = "response", nullable = false, columnDefinition = "jsonb")
     private String response;
 
+    @Column(name = "request_digest")
+    private String requestDigest;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -26,8 +29,13 @@ public class IdempotencyKey {
     }
 
     public IdempotencyKey(IdempotencyKeyId id, String response, Instant createdAt) {
+        this(id, response, null, createdAt);
+    }
+
+    public IdempotencyKey(IdempotencyKeyId id, String response, String requestDigest, Instant createdAt) {
         this.id = id;
         this.response = response;
+        this.requestDigest = requestDigest;
         this.createdAt = createdAt;
     }
 
@@ -47,6 +55,10 @@ public class IdempotencyKey {
         return response;
     }
 
+
+    public String getRequestDigest() {
+        return requestDigest;
+    }
     public Instant getCreatedAt() {
         return createdAt;
     }

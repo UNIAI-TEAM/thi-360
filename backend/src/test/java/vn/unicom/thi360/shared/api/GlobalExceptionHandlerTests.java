@@ -77,7 +77,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
 
         @GetMapping("/403-unknown-code")
         void forbiddenUnknownCode() {
-            throw new ForbiddenException("PRIVILEGE_ESCALATION", null);
+            throw new ForbiddenException("UNREGISTERED_FORBIDDEN_CODE", null);
         }
 
         @GetMapping("/409-unknown-code")
@@ -283,7 +283,7 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
                         .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "req-403-unknown"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PRIVILEGE_ESCALATION"))
+                .andExpect(jsonPath("$.code").value("UNREGISTERED_FORBIDDEN_CODE"))
                 .andExpect(jsonPath("$.message").value("Không có quyền thực hiện thao tác này"))
                 .andExpect(jsonPath("$.fieldErrors").isEmpty())
                 .andExpect(jsonPath("$.traceId").value("req-403-unknown"));

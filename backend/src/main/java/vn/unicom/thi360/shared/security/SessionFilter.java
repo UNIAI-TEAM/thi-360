@@ -70,12 +70,17 @@ public class SessionFilter extends OncePerRequestFilter {
             return;
         }
 
-        Optional<SessionStore.SessionData> sessionOpt = sessionStore.findSession(sid);
-        if (sessionOpt.isEmpty() || !userId.equals(sessionOpt.get().userId())) {
+        String authzKey = authzResolver != null
+                ? authzResolver.cacheKey(userId)
+                : SessionAuthzResolver.AUTHZ_KEY_PREFIX + userId;
+        Optional<SessionStore.SessionWithAuthz> sessionResultOpt =
+                sessionStore.findSessionWithAuthz(sid, authzKey);
+        if (sessionResultOpt.isEmpty() || !userId.equals(sessionResultOpt.get().session().userId())) {
             rejectRevokedSession(request, response, userId, "session_not_found");
             return;
         }
 
+        SessionStore.SessionWithAuthz sessionResult = sessionResultOpt.get();
         String issuer = jwt.getIssuer() != null ? jwt.getIssuer().toString() : null;
         Realm realm = jwtDecoder.platformIssuer().equals(issuer) ? Realm.MASTER : Realm.APP;
         String username = jwt.getClaimAsString("preferred_username");
@@ -86,14 +91,14 @@ public class SessionFilter extends OncePerRequestFilter {
         Access access;
         PermissionSet permissions;
         if (authzResolver != null) {
-            SessionAuthzResolver.AuthzSnapshot snapshot = authzResolver.resolve(userId, realm);
+            SessionAuthzResolver.AuthzSnapshot snapshot =
+                    authzResolver.resolveFromCached(userId, realm, sessionResult.rawAuthzSnapshot());
             access = snapshot.access();
             permissions = snapshot.permissions();
         } else {
             access = realm == Realm.MASTER ? Access.MANAGE : Access.EXAM;
             permissions = PermissionSet.empty();
         }
-
         CurrentUser currentUser = new CurrentUser(userId, username, realm, access, permissions);
         SecurityContextHolder.getContext().setAuthentication(new CurrentUserAuthenticationToken(currentUser, sid));
         runWithUserMdc(currentUser, request, response, filterChain);

@@ -82,6 +82,19 @@ public class SessionStore {
             return vals
             """,
             List.class);
+    private static final DefaultRedisScript<List> FIND_SESSION_WITH_AUTHZ_SCRIPT = createScript(
+            """
+            local vals = redis.call('HMGET', KEYS[1], 'userId', 'realm', 'createdAt')
+            if not vals[1] or not vals[2] or not vals[3] then
+              return {}
+            end
+            if not redis.call('ZSCORE', ARGV[2] .. vals[1], ARGV[1]) then
+              return {}
+            end
+            local authz = redis.call('GET', KEYS[2])
+            return {vals[1], vals[2], vals[3], authz or ''}
+            """,
+            List.class);
 
     private static final DefaultRedisScript<Long> DELETE_SESSION_SCRIPT = createScript(
             """
@@ -247,6 +260,39 @@ public class SessionStore {
         }
     }
 
+    public Optional<SessionWithAuthz> findSessionWithAuthz(String sessionId, String authzKey) {
+        if (sessionId == null || sessionId.isBlank()) {
+            return Optional.empty();
+        }
+        if (authzKey == null || authzKey.isBlank()) {
+            return findSession(sessionId).map(session -> new SessionWithAuthz(session, null));
+        }
+        List<?> values = redisTemplate.execute(
+                FIND_SESSION_WITH_AUTHZ_SCRIPT,
+                List.of(sessionKey(sessionId), authzKey),
+                sessionId,
+                USER_SESSIONS_PREFIX);
+        if (values == null || values.size() < 4
+                || values.get(0) == null || values.get(1) == null || values.get(2) == null) {
+            return Optional.empty();
+        }
+        try {
+            SessionData session = new SessionData(
+                    sessionId,
+                    UUID.fromString(String.valueOf(values.get(0))),
+                    Realm.valueOf(String.valueOf(values.get(1))),
+                    Instant.ofEpochMilli(Long.parseLong(String.valueOf(values.get(2)))));
+            Object rawAuthzObj = values.get(3);
+            String rawAuthz = rawAuthzObj == null ? null : String.valueOf(rawAuthzObj);
+            if (rawAuthz != null && rawAuthz.isBlank()) {
+                rawAuthz = null;
+            }
+            return Optional.of(new SessionWithAuthz(session, rawAuthz));
+        } catch (RuntimeException ex) {
+            return Optional.empty();
+        }
+    }
+
     public boolean exists(String sessionId) {
         return findSession(sessionId).isPresent();
     }
@@ -339,6 +385,12 @@ public class SessionStore {
             UUID userId,
             Realm realm,
             Instant createdAt
+    ) {
+    }
+
+    public record SessionWithAuthz(
+            SessionData session,
+            String rawAuthzSnapshot
     ) {
     }
 }
