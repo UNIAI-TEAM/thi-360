@@ -278,6 +278,27 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
                 "AUTHZ_BULK_APPLIED".equals(e.action())
                         && batchId.equals(e.after().get("batchId"))));
 
+        // Verify R1-8: AUTHZ_BULK_APPLIED summary contains skipReasons counts both in event and persisted audit row
+        verify(auditRecorder, times(1)).record(argThat(e -> {
+            if (!"AUTHZ_BULK_APPLIED".equals(e.action()) || !batchId.equals(e.after().get("batchId"))) {
+                return false;
+            }
+            Object rawSkipReasons = e.after().get("skipReasons");
+            if (!(rawSkipReasons instanceof Map<?, ?> skipReasons)) {
+                return false;
+            }
+            return Integer.valueOf(1).equals(skipReasons.get("DIRECT_PERMISSION_REQUIRES_MANAGE"))
+                    && Integer.valueOf(2).equals(skipReasons.get("USER_NOT_AVAILABLE"));
+        }));
+        outboxRelay.relayBatch();
+        String persistedAfterJson = jdbcTemplate.queryForObject(
+                "SELECT after::text FROM audit.audit_event WHERE action = 'AUTHZ_BULK_APPLIED' AND target_id = ?",
+                String.class,
+                batchId);
+        JsonNode persistedAfter = objectMapper.readTree(persistedAfterJson);
+        assertThat(persistedAfter.get("skipReasons").get("DIRECT_PERMISSION_REQUIRES_MANAGE").asInt()).isEqualTo(1);
+        assertThat(persistedAfter.get("skipReasons").get("USER_NOT_AVAILABLE").asInt()).isEqualTo(2);
+
         // alreadyHasFromRole must NOT get a duplicate direct user_permission row
         assertThat(userPermissionRepository.findAllByIdUserId(alreadyHasFromRole.getId())).isEmpty();
         assertThat(userPermissionRepository.findAllByIdUserId(manageUser.getId())).hasSize(1);
@@ -596,6 +617,86 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.willChange").value(1))
                 .andExpect(jsonPath("$.items[0].removed", containsInAnyOrder("USER.VIEW", "USER.MODIFY")));
         assertThat(userPermissionRepository.findAllByIdUserId(directOnlyUser.getId())).isEmpty();
+    }
+
+    @Test
+    void bulkIdempotency_isScopedByActorAndDigest_andReplaysAfterTargetRoleDeleted() throws Exception {
+        UserAccount actorA = createUser("bulk.idem.a." + suffix(), UserStatus.ACTIVE, null);
+        UserAccount actorB = createUser("bulk.idem.b." + suffix(), UserStatus.ACTIVE, null);
+        UserAccount targetUser = createUser("bulk.idem.target." + suffix(), UserStatus.ACTIVE, null);
+        Role customRole = createCustomRole("IDEM_ROLE_" + suffix(), Access.MANAGE, RoleStatus.ACTIVE);
+        Role contentAdmin = roleRepository.findByCodeNormalized("content_admin").orElseThrow();
+
+        // No-op revoke against targetUser so customRole can later be deleted cleanly
+        String bodyOne = objectMapper.writeValueAsString(Map.of(
+                "userIds", List.of(targetUser.getId()),
+                "action", "REVOKE",
+                "target", "ROLE",
+                "roleIds", List.of(customRole.getId())));
+        String differentBody = objectMapper.writeValueAsString(Map.of(
+                "userIds", List.of(targetUser.getId()),
+                "action", "GRANT",
+                "target", "ROLE",
+                "roleIds", List.of(contentAdmin.getId())));
+
+        String sharedKey = "shared-idem-" + UUID.randomUUID();
+        var asActorA = asUser(actorA.getId(), actorA.getUsername(), Permissions.USER_ASSIGN, Permissions.USER_VIEW);
+        var asActorB = asUser(
+                actorB.getId(),
+                actorB.getUsername(),
+                Permissions.USER_ASSIGN,
+                Permissions.USER_VIEW,
+                Permissions.CATALOG_VIEW,
+                Permissions.CATALOG_MODIFY);
+
+        // 1. Actor A applies bodyOne
+        MvcResult resA1 = mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                        .with(asActorA)
+                        .header("Idempotency-Key", sharedKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bodyOne))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.noChange").value(1))
+                .andReturn();
+        String batchIdA = objectMapper.readTree(resA1.getResponse().getContentAsString()).get("batchId").asText();
+
+        // 2. Actor B uses same Idempotency-Key -> gets its own fresh execution and different batchId (and mutates target)
+        MvcResult resB = mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                        .with(asActorB)
+                        .header("Idempotency-Key", sharedKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(differentBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.willChange").value(1))
+                .andReturn();
+        String batchIdB = objectMapper.readTree(resB.getResponse().getContentAsString()).get("batchId").asText();
+        assertThat(batchIdB).isNotEqualTo(batchIdA);
+
+        // 3. Actor A reuses same Idempotency-Key with a DIFFERENT body -> 409 IDEMPOTENCY_KEY_REUSED
+        mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                        .with(asActorA)
+                        .header("Idempotency-Key", sharedKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(differentBody))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+
+        // 4. R1-7: Delete customRole, then Actor A retries bodyOne with sharedKey -> replays stored response instead of 404
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/admin/roles/{id}", customRole.getId())
+                        .with(asPlatformAdmin()))
+                .andExpect(status().isNoContent());
+        createdRoleIds.remove(customRole.getId());
+
+        MvcResult resA2 = mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                        .with(asActorA)
+                        .header("Idempotency-Key", sharedKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bodyOne))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(resA2.getResponse().getContentAsString())
+                .isEqualTo(resA1.getResponse().getContentAsString());
     }
 
     private UserAccount createUser(String username, UserStatus status, Instant deletedAt) {

@@ -1,6 +1,7 @@
 package vn.unicom.thi360.shared.idempotency;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.shared.api.ConflictException;
 
 class IdempotencyServiceTests extends AbstractIntegrationTest {
 
@@ -249,5 +251,30 @@ class IdempotencyServiceTests extends AbstractIntegrationTest {
         assertThat(replayedGenericDto.items())
                 .hasSize(1)
                 .allSatisfy(item -> assertThat(item).isInstanceOf(SampleResult.class));
+    }
+
+    @Test
+    void executeOnceWithDigest_rejectsMismatchedDigestAndIsolatesScopes() {
+        String key = "idem-digest-" + UUID.randomUUID();
+        String scopeActorA = "POST:/api/v1/admin/authz/bulk:APP:actor-a";
+        String scopeActorB = "POST:/api/v1/admin/authz/bulk:APP:actor-b";
+        String digestOne = "sha256-request-1";
+        String digestTwo = "sha256-request-2";
+
+        SampleResult actorAResult = idempotencyService.executeOnce(
+                key, scopeActorA, digestOne, SampleResult.class, () -> new SampleResult("batch-a", 3));
+        SampleResult actorAReplay = idempotencyService.executeOnce(
+                key, scopeActorA, digestOne, SampleResult.class, () -> new SampleResult("unexpected", 99));
+        assertThat(actorAReplay).isEqualTo(actorAResult);
+
+        assertThatThrownBy(() -> idempotencyService.executeOnce(
+                        key, scopeActorA, digestTwo, SampleResult.class, () -> new SampleResult("unexpected", 99)))
+                .isInstanceOf(ConflictException.class)
+                .extracting(ex -> ((ConflictException) ex).getCode())
+                .isEqualTo(IdempotencyService.ERROR_IDEMPOTENCY_KEY_REUSED);
+
+        SampleResult actorBResult = idempotencyService.executeOnce(
+                key, scopeActorB, digestTwo, SampleResult.class, () -> new SampleResult("batch-b", 5));
+        assertThat(actorBResult).isEqualTo(new SampleResult("batch-b", 5));
     }
 }

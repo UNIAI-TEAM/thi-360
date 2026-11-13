@@ -12,9 +12,12 @@ import java.util.function.Supplier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.shared.api.ConflictException;
 
 @Service
 public class IdempotencyService {
+
+    public static final String ERROR_IDEMPOTENCY_KEY_REUSED = "IDEMPOTENCY_KEY_REUSED";
 
     private final IdempotencyKeyRepository repository;
     private final JdbcTemplate jdbcTemplate;
@@ -35,17 +38,34 @@ public class IdempotencyService {
     @Transactional
     public <T> T executeOnce(String key, String scope, Class<T> resultType, Supplier<T> supplier) {
         Objects.requireNonNull(resultType, "resultType must not be null");
-        return executeOnceWithJavaType(key, scope, objectMapper.constructType(resultType), supplier);
+        return executeOnceWithJavaType(key, scope, null, objectMapper.constructType(resultType), supplier);
+    }
+
+    @Transactional
+    public <T> T executeOnce(
+            String key, String scope, String requestDigest, Class<T> resultType, Supplier<T> supplier) {
+        Objects.requireNonNull(resultType, "resultType must not be null");
+        return executeOnceWithJavaType(
+                key, scope, requestDigest, objectMapper.constructType(resultType), supplier);
     }
 
     @Transactional
     public <T> T executeOnce(String key, String scope, TypeReference<T> resultType, Supplier<T> supplier) {
         Objects.requireNonNull(resultType, "resultType must not be null");
-        return executeOnceWithJavaType(key, scope, objectMapper.constructType(resultType.getType()), supplier);
+        return executeOnceWithJavaType(
+                key, scope, null, objectMapper.constructType(resultType.getType()), supplier);
+    }
+
+    @Transactional
+    public <T> T executeOnce(
+            String key, String scope, String requestDigest, TypeReference<T> resultType, Supplier<T> supplier) {
+        Objects.requireNonNull(resultType, "resultType must not be null");
+        return executeOnceWithJavaType(
+                key, scope, requestDigest, objectMapper.constructType(resultType.getType()), supplier);
     }
 
     private <T> T executeOnceWithJavaType(
-            String key, String scope, JavaType javaType, Supplier<T> supplier) {
+            String key, String scope, String requestDigest, JavaType javaType, Supplier<T> supplier) {
         Objects.requireNonNull(key, "key must not be null");
         Objects.requireNonNull(scope, "scope must not be null");
         Objects.requireNonNull(javaType, "javaType must not be null");
@@ -56,12 +76,18 @@ public class IdempotencyService {
         IdempotencyKeyId id = new IdempotencyKeyId(scope, key);
         Optional<IdempotencyKey> existing = repository.findById(id);
         if (existing.isPresent()) {
-            return deserializeJson(existing.get().getResponse(), javaType);
+            IdempotencyKey record = existing.get();
+            String storedDigest = record.getRequestDigest();
+            if ((storedDigest != null || requestDigest != null)
+                    && !Objects.equals(storedDigest, requestDigest)) {
+                throw new ConflictException(ERROR_IDEMPOTENCY_KEY_REUSED);
+            }
+            return deserializeJson(record.getResponse(), javaType);
         }
 
         T result = supplier.get();
         String json = serializeJson(result);
-        repository.saveAndFlush(new IdempotencyKey(id, json, Instant.now(clock)));
+        repository.saveAndFlush(new IdempotencyKey(id, json, requestDigest, Instant.now(clock)));
         return result;
     }
 

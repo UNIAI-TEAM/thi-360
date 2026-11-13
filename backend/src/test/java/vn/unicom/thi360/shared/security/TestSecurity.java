@@ -23,6 +23,9 @@ import vn.unicom.thi360.shared.ids.Ids;
 
 @TestConfiguration
 public class TestSecurity {
+    private static final UUID PLATFORM_ADMIN_TEST_ID =
+            UUID.fromString("00000000-0000-7000-8000-0000000000ff");
+
 
     @Bean
     @ConditionalOnMissingBean(TestSecuritySupport.class)
@@ -228,7 +231,7 @@ public class TestSecurity {
 
     public static RequestPostProcessor asPlatformAdmin(TestSecuritySupport support) {
         SimulatedPrincipal principal = new SimulatedPrincipal(
-                Ids.newId(),
+                PLATFORM_ADMIN_TEST_ID,
                 "platform",
                 "PLATFORM_ADMIN",
                 true,

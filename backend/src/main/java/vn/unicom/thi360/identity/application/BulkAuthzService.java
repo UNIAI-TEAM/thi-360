@@ -1,5 +1,8 @@
 package vn.unicom.thi360.identity.application;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Array;
 import java.time.Clock;
 import java.time.Instant;
@@ -12,8 +15,10 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.HexFormat;
 import java.util.Set;
 import java.util.UUID;
+import java.util.TreeMap;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,7 +64,7 @@ public class BulkAuthzService {
             PermissionSetNormalizer.ERROR_PERMISSION_REQUIRES_VIEW;
 
     private static final String MODULE = "IDENTITY";
-    private static final String IDEMPOTENCY_SCOPE = "AUTHZ_BULK";
+    private static final String IDEMPOTENCY_ENDPOINT = "POST:/api/v1/admin/authz/bulk";
 
     private static final String LOAD_BATCH_AUTHZ_SQL =
             """
@@ -130,7 +135,8 @@ public class BulkAuthzService {
     @Transactional(readOnly = true)
     public BulkAuthzResponse preview(BulkAuthzRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        ValidatedTargets targets = validateAndLoadTargets(request);
+        List<UUID> distinctUserIds = validateRequestShape(request);
+        ValidatedTargets targets = loadTargets(request, distinctUserIds);
         BatchEvaluation evaluation = evaluateBatch(actor, request, targets);
         return evaluation.toResponse(null);
     }
@@ -141,10 +147,14 @@ public class BulkAuthzService {
                     new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", "Thiếu header Idempotency-Key")));
         }
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        ValidatedTargets targets = validateAndLoadTargets(request);
+        List<UUID> distinctUserIds = validateRequestShape(request);
 
         String trimmedKey = idempotencyKey.trim();
-        return idempotencyService.executeOnce(trimmedKey, IDEMPOTENCY_SCOPE, BulkAuthzResponse.class, () -> {
+        String scope = idempotencyScope(actor);
+        String requestDigest = computeRequestDigest(request, distinctUserIds);
+
+        return idempotencyService.executeOnce(trimmedKey, scope, requestDigest, BulkAuthzResponse.class, () -> {
+            ValidatedTargets targets = loadTargets(request, distinctUserIds);
             lockUserAuthzState(targets.userIds());
             BatchEvaluation evaluation = evaluateBatch(actor, request, targets);
             UUID batchId = Ids.newId();
@@ -156,7 +166,7 @@ public class BulkAuthzService {
         });
     }
 
-    private ValidatedTargets validateAndLoadTargets(BulkAuthzRequest request) {
+    private List<UUID> validateRequestShape(BulkAuthzRequest request) {
         if (request.userIds() == null || request.userIds().isEmpty()) {
             throw new ValidationException(List.of(
                     new FieldError("userIds", "NOT_EMPTY", "Danh sách tài khoản không được để trống")));
@@ -168,13 +178,27 @@ public class BulkAuthzService {
                     List.of(new FieldError(
                             "userIds", "BULK_LIMIT_EXCEEDED", "Số lượng tài khoản thao tác hàng loạt tối đa là 500")));
         }
-        List<UUID> distinctUserIds = List.copyOf(new LinkedHashSet<>(request.userIds()));
-
         if (request.target() == BulkAuthzTarget.ROLE) {
             if (request.roleIds() == null || request.roleIds().isEmpty()) {
                 throw new ValidationException(List.of(
                         new FieldError("roleIds", "NOT_EMPTY", "Danh sách vai trò không được để trống")));
             }
+        } else {
+            if (request.permissionIds() == null || request.permissionIds().isEmpty()) {
+                throw new ValidationException(List.of(
+                        new FieldError("permissionIds", "NOT_EMPTY", "Danh sách quyền không được để trống")));
+            }
+            if (request.action() == BulkAuthzAction.GRANT
+                    && (request.reason() == null || request.reason().isBlank())) {
+                throw new ValidationException(List.of(
+                        new FieldError("reason", "REASON_REQUIRED", "Vui lòng nhập lý do khi gán quyền trực tiếp")));
+            }
+        }
+        return List.copyOf(new LinkedHashSet<>(request.userIds()));
+    }
+
+    private ValidatedTargets loadTargets(BulkAuthzRequest request, List<UUID> distinctUserIds) {
+        if (request.target() == BulkAuthzTarget.ROLE) {
             List<UUID> distinctRoleIds = List.copyOf(new LinkedHashSet<>(request.roleIds()));
             Map<UUID, Role> rolesById = new LinkedHashMap<>();
             for (Role role : roleRepository.findAllById(distinctRoleIds)) {
@@ -189,15 +213,6 @@ public class BulkAuthzService {
         }
 
         // target == PERMISSION
-        if (request.permissionIds() == null || request.permissionIds().isEmpty()) {
-            throw new ValidationException(List.of(
-                    new FieldError("permissionIds", "NOT_EMPTY", "Danh sách quyền không được để trống")));
-        }
-        if (request.action() == BulkAuthzAction.GRANT
-                && (request.reason() == null || request.reason().isBlank())) {
-            throw new ValidationException(List.of(
-                    new FieldError("reason", "REASON_REQUIRED", "Vui lòng nhập lý do khi gán quyền trực tiếp")));
-        }
         List<UUID> distinctPermIds = List.copyOf(new LinkedHashSet<>(request.permissionIds()));
         Map<UUID, PermissionEntity> permsById = new LinkedHashMap<>();
         for (PermissionEntity pe : permissionRepository.findAllById(distinctPermIds)) {
@@ -212,6 +227,35 @@ public class BulkAuthzService {
         }
         List<PermissionEntity> orderedPerms = distinctPermIds.stream().map(permsById::get).toList();
         return new ValidatedTargets(distinctUserIds, List.of(), Map.of(), orderedPerms, allPermsByCode);
+    }
+
+    private static String idempotencyScope(CurrentUser actor) {
+        return IDEMPOTENCY_ENDPOINT + ":" + actor.realm().name() + ":" + actor.id();
+    }
+
+    private static String computeRequestDigest(BulkAuthzRequest request, List<UUID> distinctUserIds) {
+        List<UUID> sortedRoles = request.roleIds() == null
+                ? List.of()
+                : request.roleIds().stream().distinct().sorted().toList();
+        List<UUID> sortedPerms = request.permissionIds() == null
+                ? List.of()
+                : request.permissionIds().stream().distinct().sorted().toList();
+        String trimmedReason = request.reason() == null ? "" : request.reason().trim();
+
+        StringBuilder canonical = new StringBuilder();
+        canonical.append("action=").append(request.action().name())
+                .append("|target=").append(request.target().name())
+                .append("|users=").append(distinctUserIds)
+                .append("|roles=").append(sortedRoles)
+                .append("|perms=").append(sortedPerms)
+                .append("|reason=").append(trimmedReason.length()).append(':').append(trimmedReason);
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 not available", ex);
+        }
     }
 
     private BatchEvaluation evaluateBatch(
@@ -558,6 +602,13 @@ public class BulkAuthzService {
         summaryAfter.put("willChange", evaluation.willChange());
         summaryAfter.put("noChange", evaluation.noChange());
         summaryAfter.put("skipped", evaluation.skipped());
+        Map<String, Integer> skipReasons = new TreeMap<>();
+        for (UserEvaluation ev : evaluation.evaluations()) {
+            if (ev.item().outcome() == BulkAuthzOutcome.SKIPPED && ev.item().reasonCode() != null) {
+                skipReasons.merge(ev.item().reasonCode(), 1, Integer::sum);
+            }
+        }
+        summaryAfter.put("skipReasons", skipReasons);
 
         auditRecorder.record(AuditEvent.builder(MODULE, "AUTHZ_BULK_APPLIED")
                 .target("AUTHZ_BULK", batchId.toString(), request.action() + ":" + request.target())
