@@ -141,7 +141,8 @@
             "description" : "Mã định danh yêu cầu (X-Request-Id)",
             "example" : "019320a0-0000-7000-8000-000000000001"
           }
-        }
+        },
+        "required" : [ "code", "fieldErrors", "message", "traceId" ]
       },
       "FieldError" : {
         "type" : "object",
@@ -162,7 +163,8 @@
             "description" : "Thông báo lỗi tiếng Việt",
             "example" : "Tên đăng nhập đã tồn tại"
           }
-        }
+        },
+        "required" : [ "code", "field", "message" ]
       },
       "PingResponse" : {
         "type" : "object",
@@ -179,7 +181,8 @@
             "description" : "Thời gian máy chủ (UTC)",
             "example" : "2026-11-13T10:00:00Z"
           }
-        }
+        },
+        "required" : [ "status", "time" ]
       }
     }
   }

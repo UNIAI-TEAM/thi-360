@@ -29,9 +29,15 @@ public class PingController {
 
     @Schema(description = "Phản hồi kiểm tra kết nối")
     public record PingResponse(
-            @Schema(description = "Trạng thái dịch vụ", example = "ok")
+            @Schema(
+                    description = "Trạng thái dịch vụ",
+                    example = "ok",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
             String status,
-            @Schema(description = "Thời gian máy chủ (UTC)", example = "2026-11-13T10:00:00Z")
+            @Schema(
+                    description = "Thời gian máy chủ (UTC)",
+                    example = "2026-11-13T10:00:00Z",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
             Instant time
     ) {
     }

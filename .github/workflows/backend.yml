@@ -25,4 +25,4 @@ jobs:
           java-version: "21"
           cache: maven
       - run: ./mvnw -B -ntp verify
-      - run: git diff --exit-code ../packages/api-client/openapi.json
+      - run: diff -u ../packages/api-client/openapi.json target/openapi.json

@@ -54,8 +54,8 @@ Tài khoản và mật khẩu mặc định nằm trong `.env.example`, **chỉ 
 | Lệnh | Việc |
 |---|---|
 | `pnpm lint` / `pnpm typecheck` / `pnpm build` | Kiểm tra và build toàn bộ web |
-| `cd backend && ./mvnw verify` | Build và test backend |
-| `pnpm --filter @thi360/api-client generate` | Sinh lại `packages/api-client/src/schema.d.ts` từ `openapi.json` |
+| `cd backend && ./mvnw verify` | Build và test backend (xuất `backend/target/openapi.json`) |
+| `cp backend/target/openapi.json packages/api-client/openapi.json && pnpm --filter @thi360/api-client generate` | Cập nhật `openapi.json` đã commit và sinh lại `packages/api-client/src/schema.d.ts` sau khi đổi API backend |
 | `scripts/uniai.sh mine` | Issue đang mở của tôi |
 | `scripts/uniai.sh start UNI-123` | Nhận issue, tạo nhánh từ `develop` |
 | `scripts/uniai.sh pr UNI-123` | Push, mở PR, chuyển issue sang `in_review` |

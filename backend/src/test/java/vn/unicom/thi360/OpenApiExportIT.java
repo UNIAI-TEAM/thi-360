@@ -21,7 +21,7 @@ class OpenApiExportIT extends AbstractIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void exportsOpenApiJsonToTargetAndPackagesApiClient() throws Exception {
+    void exportsOpenApiJsonToTarget() throws Exception {
         String rawJson = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -41,10 +41,5 @@ class OpenApiExportIT extends AbstractIntegrationTest {
         Path targetOut = Path.of("target", "openapi.json");
         Files.createDirectories(targetOut.getParent());
         Files.writeString(targetOut, openApiJson + "\n", StandardCharsets.UTF_8);
-
-        Path apiClientOut = Path.of("..", "packages", "api-client", "openapi.json").normalize();
-        if (Files.isDirectory(apiClientOut.getParent())) {
-            Files.writeString(apiClientOut, openApiJson + "\n", StandardCharsets.UTF_8);
-        }
     }
 }

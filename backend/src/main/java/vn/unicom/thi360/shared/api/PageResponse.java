@@ -7,15 +7,29 @@ import org.springframework.data.domain.Page;
 
 @Schema(description = "Kết quả phân trang")
 public record PageResponse<T>(
-        @Schema(description = "Danh sách phần tử của trang hiện tại")
+        @Schema(
+                description = "Danh sách phần tử của trang hiện tại",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         List<T> items,
-        @Schema(description = "Chỉ số trang (bắt đầu từ 0)", example = "0")
+        @Schema(
+                description = "Chỉ số trang (bắt đầu từ 0)",
+                example = "0",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         int page,
-        @Schema(description = "Kích thước trang", example = "20")
+        @Schema(
+                description = "Kích thước trang",
+                example = "20",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         int size,
-        @Schema(description = "Tổng số phần tử", example = "0")
+        @Schema(
+                description = "Tổng số phần tử",
+                example = "0",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         long totalItems,
-        @Schema(description = "Tổng số trang", example = "0")
+        @Schema(
+                description = "Tổng số trang",
+                example = "0",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         int totalPages
 ) {
     public PageResponse {

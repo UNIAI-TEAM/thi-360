@@ -31,19 +31,19 @@ export interface components {
              * @description Mã lỗi nghiệp vụ hoặc hệ thống
              * @example VALIDATION_FAILED
              */
-            code?: string;
+            code: string;
             /**
              * @description Thông báo lỗi tiếng Việt
              * @example Dữ liệu không hợp lệ
              */
-            message?: string;
+            message: string;
             /** @description Danh sách lỗi theo từng trường */
-            fieldErrors?: components["schemas"]["FieldError"][];
+            fieldErrors: components["schemas"]["FieldError"][];
             /**
              * @description Mã định danh yêu cầu (X-Request-Id)
              * @example 019320a0-0000-7000-8000-000000000001
              */
-            traceId?: string;
+            traceId: string;
         };
         /** @description Chi tiết lỗi của một trường dữ liệu */
         FieldError: {
@@ -51,17 +51,17 @@ export interface components {
              * @description Tên trường dữ liệu
              * @example username
              */
-            field?: string;
+            field: string;
             /**
              * @description Mã lỗi của trường
              * @example TAKEN
              */
-            code?: string;
+            code: string;
             /**
              * @description Thông báo lỗi tiếng Việt
              * @example Tên đăng nhập đã tồn tại
              */
-            message?: string;
+            message: string;
         };
         /** @description Phản hồi kiểm tra kết nối */
         PingResponse: {
@@ -69,13 +69,13 @@ export interface components {
              * @description Trạng thái dịch vụ
              * @example ok
              */
-            status?: string;
+            status: string;
             /**
              * Format: date-time
              * @description Thời gian máy chủ (UTC)
              * @example 2026-11-13T10:00:00Z
              */
-            time?: string;
+            time: string;
         };
     };
     responses: never;
