@@ -83,4 +83,21 @@ describe("proxyApiRequest X-Forwarded-For", () => {
 
     expect(lastHeaders().get("x-forwarded-for")).toBe("198.51.100.77");
   });
+
+  it("chuyển tiếp Idempotency-Key tới upstream và vẫn chặn header ngoài danh sách", async () => {
+    await handlers.POST(
+      new NextRequest("http://localhost:3000/api/v1/admin/authz/bulk", {
+        method: "POST",
+        body: "{}",
+        headers: {
+          "idempotency-key": "bulk-req-123",
+          "x-unlisted-secret": "should-not-forward",
+        },
+      }),
+      context("v1", "admin", "authz", "bulk"),
+    );
+
+    expect(lastHeaders().get("idempotency-key")).toBe("bulk-req-123");
+    expect(lastHeaders().get("x-unlisted-secret")).toBeNull();
+  });
 });
