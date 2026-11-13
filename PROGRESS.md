@@ -14,6 +14,12 @@
 
 ## Đã làm
 
+### 2026-11-13 — Chỉnh menu và bổ sung phân quyền
+
+- Spec §5.2 viết lại (một menu Phân quyền, bốn tab), thêm §5.8 Người dùng theo quyền và §5.9 Gán hàng loạt; §7 Cấp hàng loạt thành nút trong màn Tài khoản; §13 Tùy chỉnh giao diện chuyển ra menu chính.
+- Plan: T04 thêm ba endpoint (`/permissions/{id}/users`, `/authz/bulk/preview`, `/authz/bulk`), T08 viết lại, T06/T09/T11/T17 chỉnh menu và lối vào.
+- Bản thiết kế màn hình (artifact) cập nhật theo.
+
 ### 2026-11-13 — Plan triển khai chi tiết
 
 - Viết lại `docs/plans/2026-11-13-base-port-pbi-01-02.md` thành plan tự đủ cho phiên Advisor: nhánh tích hợp `integration/dot-1`, phạm vi ủy quyền, trọng số 100 điểm, thư viện và quy ước chốt sẵn, bảng `bit_index` của quyền, hợp đồng T02–T18.
@@ -63,7 +69,8 @@ Danh sách đầy đủ ở `PRD.md` mục 6 (P1–P12) và spec mục 14. Tóm 
 | Lớp | Một học viên thuộc nhiều lớp |
 | Danh mục | Môi trường thật chỉ có nhóm; giá trị mẫu chỉ nạp ở `dev`, `test` |
 | Nhật ký | Lưu vĩnh viễn, phân vùng theo quý, lưu trữ theo năm |
-| Giao diện | Tùy chỉnh toàn hệ thống, mở từ menu profile, không có nút nổi; nút chính `#059669` |
+| Giao diện | Tùy chỉnh toàn hệ thống, là mục trong menu chính (không ở menu profile, không nút nổi); nút chính `#059669` |
+| Menu admin | Phân quyền là một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt); Cấp hàng loạt là nút trong màn Tài khoản |
 | Google | Backlog; khi bật thì gộp theo email |
 | Đăng nhập | Một nơi đăng nhập ở tên miền chính cho cả hai web; điều hướng theo `access` của vai trò hoặc `callbackUrl`; trang đích kiểm tra quyền (spec mục 15, T18) |
 

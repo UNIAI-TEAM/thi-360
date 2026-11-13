@@ -172,7 +172,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 ```
 ┌──────────┬───────────────────────────────────────────────┐
-│ Logo     │ Breadcrumb                      🔔  Avatar ▾  │  topbar 56px; menu avatar: Hồ sơ, Đổi mật khẩu, Tùy chỉnh giao diện, Đăng xuất
+│ Logo     │ Breadcrumb                      🔔  Avatar ▾  │  topbar 56px; menu avatar: Hồ sơ, Đổi mật khẩu, Đăng xuất
 │          ├───────────────────────────────────────────────┤
 │ Sidebar  │ Tiêu đề trang                 [Nút chính]     │
 │ 248px    │ Thanh lọc (thẻ trắng, bo 12px)                │
@@ -186,6 +186,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - Sidebar: mục cao 40px, bo góc 8px, icon lucide 18px; mục đang chọn nền `primary-50`, chữ và icon `primary-600`, đậm 600. Tên nhóm menu dùng kiểu `overline`.
 - Nền vùng nội dung `bg-page`.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
+- Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện, Nhật ký). Chức năng phụ của một mục là nút hoặc tab bên trong màn đó, không thành mục menu riêng: Cấp hàng loạt là nút trong màn Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền.
 
 ### 5.9 Bảng (admin)
 
@@ -233,7 +234,7 @@ Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-lig
 
 Giữ bộ cấu hình giao diện như reap, áp dụng **toàn hệ thống** (web admin và web học viên dùng chung một cấu hình). Chi tiết ở spec mục 13.
 
-- **Lối vào:** menu tài khoản ở góc trên phải (avatar → Hồ sơ, Đổi mật khẩu, **Tùy chỉnh giao diện**, Đăng xuất). Mục này chỉ hiện với người có quyền `APPEARANCE_MANAGE`. **Không dùng nút nổi** ở mép màn hình như reap.
+- **Lối vào:** một mục trong **menu chính** của trang quản trị (nhóm "Hệ thống" → "Tùy chỉnh giao diện"), chỉ hiện với người có quyền `APPEARANCE_MANAGE`. Không đặt trong menu avatar và **không dùng nút nổi** ở mép màn hình như reap.
 - **Trang tùy chỉnh:** cột trái là các nhóm tùy chọn, cột phải là vùng xem trước (nút, ô nhập, chip, bảng, thẻ, sidebar thu nhỏ).
 
 | Nhóm | Tùy chọn |

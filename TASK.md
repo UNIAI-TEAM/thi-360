@@ -12,11 +12,11 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T01 | UNI-2538 | Nền · Khởi tạo monorepo, CI, môi trường dev (Docker Compose) | — | in_progress (đã push, chờ duyệt) |
 | T02 | UNI-2539 | Nền · Khung backend modular monolith (Spring Boot, Flyway, OpenAPI, lỗi chuẩn) | T01 | todo |
 | T03 | UNI-2540 | Nền · Xác thực: Keycloak, đăng nhập/refresh/đăng xuất, phiên, chặn đăng nhập sai | T02 | todo |
-| T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user (API + engine) | T03 | todo |
+| T04 | UNI-2541 | PBI-01 · Phân quyền: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho user, người dùng theo quyền, gán hàng loạt (API + engine) | T03 | todo |
 | T05 | UNI-2542 | Nền · Nhật ký thao tác: bảng chỉ ghi thêm, outbox, worker, API tra cứu | T02 | todo |
 | T06 | UNI-2543 | Nền · Design system (`packages/ui`) và khung web admin | T01 | todo |
 | T07 | UNI-2544 | PBI-01 · API quản lý tài khoản | T03, T04, T05 | todo |
-| T08 | UNI-2545 | PBI-01 · UI phân quyền: màn Quyền, màn Vai trò, gán vai trò/quyền cho user | T04, T06, T18 | todo |
+| T08 | UNI-2545 | PBI-01 · UI phân quyền: một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt) | T04, T06, T18 | todo |
 | T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07, T18 | todo |
 | T10 | UNI-2547 | PBI-01 · Lớp học: API + UI | T07, T09 | todo |
 | T11 | UNI-2548 | PBI-01 · Cấp tài khoản hàng loạt | T07, T10 | todo |
@@ -24,7 +24,7 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T13 | UNI-2550 | PBI-02 · Danh mục: schema, dữ liệu mặc định, API nhóm và giá trị, API lựa chọn | T04, T05 | todo |
 | T14 | UNI-2551 | PBI-02 · Mã tổ hợp có phiên bản, nơi đang dùng, quy tắc ngừng và xóa | T13 | todo |
 | T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14, T18 | todo |
-| T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mở từ menu profile, port từ reap) | T04, T05, T06 | todo |
+| T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mục trong menu chính, port từ reap) | T04, T05, T06 | todo |
 | T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | todo |
 | T16 | UNI-2553 | Kiểm thử nghiệm thu PBI-01, PBI-02 và kiểm thử bảo mật gọi thẳng API | T07–T15, T17 | todo |
 

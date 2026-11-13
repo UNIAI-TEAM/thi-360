@@ -42,10 +42,10 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 **Có trong đợt 1**
 
 - Nền: monorepo, backend, Keycloak, PostgreSQL, Redis, nhật ký thao tác, design system, khung web admin.
-- Tùy chỉnh giao diện toàn hệ thống (bảng màu, sáng/tối, bố cục), mở từ menu tài khoản.
+- Tùy chỉnh giao diện toàn hệ thống (bảng màu, sáng/tối, bố cục), là một mục trong menu chính.
 - **PBI-01**:
   - Quản lý tài khoản: danh sách, tạo, sửa, ngừng hoạt động/kích hoạt lại, reset mật khẩu, xóa mềm.
-  - Phân quyền theo vai trò: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho từng user.
+  - Phân quyền theo vai trò: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho từng user, xem người dùng theo quyền, gán hàng loạt.
   - Lớp học: tạo/sửa, thêm, loại, chuyển học viên, có lịch sử.
   - Cấp tài khoản hàng loạt bằng file.
   - Hồ sơ học viên: phần tài khoản và lớp; phần học tập chờ module thi.
@@ -77,7 +77,9 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 | P8 | Tài khoản có ba mức: hoạt động → ngừng hoạt động → xóa mềm. Có giao dịch thì không xóa được, chỉ ngừng hoạt động. Không có giao dịch thì xóa mềm và tên đăng nhập, email dùng lại được. **Khác SRS** | M.Trường, 2026-11-13 |
 | P9 | Danh mục ở môi trường thật để trống giá trị, admin/BA tự nhập; local và test có bộ mẫu | M.Trường, 2026-11-13 |
 | P10 | Nhật ký lưu vĩnh viễn, không che; phân vùng theo quý, dữ liệu cũ chuyển sang bảng lưu trữ phân vùng theo năm | M.Trường, 2026-11-13 |
-| P11 | Giữ bộ tùy chỉnh giao diện như reap, mở từ menu trong profile (không dùng nút nổi), áp dụng toàn hệ thống | M.Trường, 2026-11-13 |
+| P11 | Giữ bộ tùy chỉnh giao diện như reap, áp dụng toàn hệ thống; là một mục trong menu chính của trang quản trị (không ở menu profile, không dùng nút nổi) | M.Trường, 2026-11-13 |
+| P15 | Quyền và vai trò gom thành một menu "Phân quyền" có bốn tab: Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt | M.Trường, 2026-11-13 |
+| P16 | Cấp tài khoản hàng loạt không có menu riêng; là nút trong màn Tài khoản | M.Trường, 2026-11-13 |
 | P13 | Hai web trên hai tên miền; landing và đăng nhập ở tên miền chính; đăng nhập một lần, điều hướng theo vai trò (admin → trang quản trị, học viên → `/home`) hoặc theo `callbackUrl`; trang đích kiểm tra quyền, sai thì ra trang mã lỗi | M.Trường, 2026-11-13 |
 | P14 | Vai trò có trường phạm vi truy cập `access` (`MANAGE` / `EXAM`), chọn trong biểu mẫu vai trò; đăng nhập điều hướng theo trường này. Tài khoản Thi 360 nằm ở realm riêng (`thi360`); realm `master` chỉ có `PLATFORM_ADMIN`, mặc định có mọi quyền và `MANAGE`, là người khởi tạo, không hiển thị trong danh sách user | M.Trường, 2026-11-13 |
 | P12 | Kiến trúc theo đề xuất: modular monolith, Keycloak, một UI kit Tailwind | M.Trường, 2026-11-13 |
