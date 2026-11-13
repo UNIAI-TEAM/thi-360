@@ -9,9 +9,4 @@ import org.springframework.validation.annotation.Validated;
 public record AuditProperties(
         @Min(0) int archiveAfterQuarters
 ) {
-    public AuditProperties {
-        if (archiveAfterQuarters < 0) {
-            archiveAfterQuarters = 8;
-        }
-    }
 }
