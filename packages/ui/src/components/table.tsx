@@ -17,13 +17,14 @@ import { focusRing } from "../lib/styles";
 import { Checkbox } from "./checkbox";
 import { Skeleton } from "./skeleton";
 
-export type TableSelection = {
+export type TableSelection<TData = unknown> = {
+  /** Id dòng đã chọn. Có thể chứa dòng ở trang khác hoặc bộ lọc khác: ô chọn tất cả chỉ xét dòng đang hiện. */
   state: RowSelectionState;
   onChange: OnChangeFn<RowSelectionState>;
   /** Tên ô chọn tất cả, ví dụ "Chọn tất cả dòng". */
   selectAllLabel: string;
   /** Tên ô chọn một dòng, ví dụ `Chọn tài khoản ${row.name}`. */
-  rowLabel: (index: number) => string;
+  rowLabel: (index: number, row: TData) => string;
 };
 
 export type TableSorting = {
@@ -41,7 +42,7 @@ export type TableProps<TData> = {
   /** Bật sắp xếp khi truyền. */
   sorting?: TableSorting;
   /** Bật cột chọn dòng khi truyền. */
-  selection?: TableSelection;
+  selection?: TableSelection<TData>;
   loading?: boolean;
   /** Số dòng khung xương khi đang tải. */
   loadingRows?: number;
@@ -95,6 +96,13 @@ export function Table<TData>({
 
   const columnCount = allColumns.length;
   const rows = table.getRowModel().rows;
+  const selectedOnPage = rows.reduce((count, row) => count + (row.getIsSelected() ? 1 : 0), 0);
+  const selectAllChecked =
+    rows.length > 0 && selectedOnPage === rows.length
+      ? true
+      : selectedOnPage > 0
+        ? "indeterminate"
+        : false;
 
   return (
     <div className={cn("overflow-x-auto", className)}>
@@ -123,14 +131,9 @@ export function Table<TData>({
                     {header.column.id === SELECT_COLUMN_ID && selection ? (
                       <Checkbox
                         aria-label={selection.selectAllLabel}
-                        checked={
-                          table.getIsAllRowsSelected()
-                            ? true
-                            : table.getIsSomeRowsSelected()
-                              ? "indeterminate"
-                              : false
-                        }
-                        onCheckedChange={(checked) => table.toggleAllRowsSelected(checked === true)}
+                        disabled={loading || Boolean(error) || rows.length === 0}
+                        checked={selectAllChecked}
+                        onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked === true)}
                       />
                     ) : header.isPlaceholder ? null : sortable ? (
                       <button
@@ -188,7 +191,7 @@ export function Table<TData>({
                   <td key={cell.id} className={bodyCell}>
                     {cell.column.id === SELECT_COLUMN_ID && selection ? (
                       <Checkbox
-                        aria-label={selection.rowLabel(row.index)}
+                        aria-label={selection.rowLabel(row.index, row.original)}
                         checked={row.getIsSelected()}
                         onCheckedChange={(checked) => row.toggleSelected(checked === true)}
                       />
