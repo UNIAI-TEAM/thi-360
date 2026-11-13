@@ -1,5 +1,6 @@
 package vn.unicom.thi360.shared.web;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
@@ -67,8 +68,7 @@ class MessageBundlesTest {
 
     @Test
     void localeResolverSupportsOnlyViAndEn_neverFallsBackToJvmLocale() {
-        Locale previousDefault = Locale.getDefault();
-        try {
+        withRestoredLocaleDefaults(() -> {
             Locale.setDefault(Locale.US);
             assertResolves(null, "vi");
             assertResolves("", "vi");
@@ -98,8 +98,45 @@ class MessageBundlesTest {
                     .isEqualTo("Không tìm thấy dữ liệu yêu cầu");
             assertThat(messages.get(LocaleConfig.ENGLISH_LOCALE, "NOT_FOUND"))
                     .isEqualTo("Requested resource was not found");
+        });
+    }
+
+    @Test
+    void localeMutationHelper_restoresGeneralDisplayAndFormatDefaultsOnNormalAndExceptionalPaths() {
+        withRestoredLocaleDefaults(() -> {
+            Locale.setDefault(Locale.CANADA);
+            Locale.setDefault(Locale.Category.DISPLAY, Locale.GERMANY);
+            Locale.setDefault(Locale.Category.FORMAT, Locale.JAPAN);
+
+            localeResolverSupportsOnlyViAndEn_neverFallsBackToJvmLocale();
+
+            assertThat(Locale.getDefault()).isEqualTo(Locale.CANADA);
+            assertThat(Locale.getDefault(Locale.Category.DISPLAY)).isEqualTo(Locale.GERMANY);
+            assertThat(Locale.getDefault(Locale.Category.FORMAT)).isEqualTo(Locale.JAPAN);
+
+            assertThatThrownBy(() -> withRestoredLocaleDefaults(() -> {
+                        Locale.setDefault(Locale.FRANCE);
+                        throw new IllegalStateException("simulated failure");
+                    }))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("simulated failure");
+
+            assertThat(Locale.getDefault()).isEqualTo(Locale.CANADA);
+            assertThat(Locale.getDefault(Locale.Category.DISPLAY)).isEqualTo(Locale.GERMANY);
+            assertThat(Locale.getDefault(Locale.Category.FORMAT)).isEqualTo(Locale.JAPAN);
+        });
+    }
+
+    private static void withRestoredLocaleDefaults(Runnable action) {
+        Locale previousDefault = Locale.getDefault();
+        Locale previousDisplay = Locale.getDefault(Locale.Category.DISPLAY);
+        Locale previousFormat = Locale.getDefault(Locale.Category.FORMAT);
+        try {
+            action.run();
         } finally {
             Locale.setDefault(previousDefault);
+            Locale.setDefault(Locale.Category.DISPLAY, previousDisplay);
+            Locale.setDefault(Locale.Category.FORMAT, previousFormat);
         }
     }
 
