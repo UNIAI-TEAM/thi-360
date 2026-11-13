@@ -12,7 +12,7 @@ export function Switch({ className, ...props }: SwitchProps) {
     <SwitchPrimitive.Root
       className={cn(
         "peer inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-border-strong p-0.5 transition-colors duration-150 motion-reduce:transition-none",
-        "data-[state=checked]:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50",
+        "data-[state=checked]:bg-primary-fill disabled:cursor-not-allowed disabled:opacity-50",
         focusRing,
         className,
       )}

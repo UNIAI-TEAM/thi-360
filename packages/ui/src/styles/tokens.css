@@ -17,13 +17,19 @@
   --color-primary-800: #065f46;
   --color-primary-900: #064e3b;
   --color-on-primary: #ffffff;
+  /* Chữ màu chính trên nền trắng và trên nền nhạt primary-50/100/200 (link, tab/mục đang chọn, nút nhạt): >= 4.5:1. */
+  --color-primary-text: #047857;
+  /* Nền nút chính, chip lọc đang chọn, ô logo, checkbox/switch bật: đi với on-primary (trắng). hover/pressed đậm dần một bậc. */
+  --color-primary-fill: #047857;
+  --color-primary-fill-hover: #065f46;
+  --color-primary-fill-active: #064e3b;
 
   /* 2.2 Màu nhấn */
   --color-accent-500: #f59223;
   --color-accent-700: #b45309;
   --color-amber-500: #f59e0b;
   --color-yellow-400: #ffd836;
-  --color-on-accent: #ffffff;
+  --color-on-accent: #1a1a1f;
   --color-gold-400: #fbbf24;
   --color-hero-tint: #f0fdf4;
 
@@ -46,7 +52,7 @@
   --color-success-bg: #ecfdf5;
   --color-warning: #b45309;
   --color-warning-bg: #fffbeb;
-  --color-danger: #dc2626;
+  --color-danger: #b91c1c;
   --color-danger-solid: #dc2626;
   --color-danger-solid-hover: #b91c1c;
   --color-danger-bg: #fef2f2;
@@ -163,14 +169,14 @@
   --color-overlay: rgb(0 0 0 / 0.6);
 
   /*
-   * Chữ xanh trên nền tối (F1): `primary-600` (#059669) được dùng đồng thời làm màu chữ
-   * (link, tab/mục đang chọn, chip) lẫn nền nút chính/chip/switch đi với `on-primary` trắng.
-   * Nút chính giữ trắng trên #059669 ở cả hai chế độ (lựa chọn thương hiệu, DESIGN mục 8),
-   * nên `primary-600` và `on-primary` không đổi; để chữ #059669 đạt >= 4.5:1 thì mọi nền
-   * nhạt primary-50/100/200 phải đủ tối (độ sáng <= ~0.012). Các token 700/800/900 chỉ làm
-   * màu chữ nên ánh xạ sang tông sáng (Tailwind 300–600). Cặp chữ/nền được kiểm bởi
+   * Chữ xanh trên nền tối (F1): chữ màu chính dùng `primary-text`, nền nút chính dùng
+   * `primary-fill` (T06b: nền đậm #047857 đi với `on-primary` trắng, nên `primary-fill*` giữ
+   * nguyên giá trị của chế độ sáng). `primary-text` giữ #059669 trên nền tối; để đạt >= 4.5:1
+   * thì mọi nền nhạt primary-50/100/200 phải đủ tối (độ sáng <= ~0.012). Các token 700/800/900
+   * chỉ làm màu chữ nên ánh xạ sang tông sáng (Tailwind 300–600). Cặp chữ/nền được kiểm bởi
    * tokens.test.ts.
    */
+  --color-primary-text: #059669;
   --color-primary-50: #0a1f19;
   --color-primary-100: #0c1f18;
   --color-primary-200: #101f1a;

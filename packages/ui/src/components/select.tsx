@@ -71,7 +71,7 @@ export function Select({
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
-                className="relative flex h-9 cursor-default items-center rounded-sm pr-8 pl-3 text-label font-medium text-text outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle data-[state=checked]:text-primary-600"
+                className="relative flex h-9 cursor-default items-center rounded-sm pr-8 pl-3 text-label font-medium text-text outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle data-[state=checked]:text-primary-text"
               >
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                 <SelectPrimitive.ItemIndicator className="absolute right-2.5">

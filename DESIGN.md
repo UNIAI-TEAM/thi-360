@@ -21,16 +21,22 @@ Sáng, sạch, thân thiện với học sinh. Nền trắng và xám rất nh�
 | `primary-100` | `#DCFCE7` | Nền nút phụ màu xanh, nền hero sáng |
 | `primary-200` | `#A7E3C2` | Viền nút viền xanh |
 | `primary-500` | `#10B981` | Điểm nhấn trong gradient |
-| `primary-600` | `#059669` | **Màu chính**: nút chính, liên kết, số liệu nổi bật, footer |
-| `primary-700` | `#047857` | Trạng thái hover của nút chính, thanh trên cùng |
+| `primary-600` | `#059669` | Màu thương hiệu: gradient, thanh dọc, viền focus, chấm màu, footer. Không dùng làm chữ hay nền nút có chữ |
+| `primary-700` | `#047857` | Thanh trên cùng, chữ xanh dưới 14px trên nền trắng |
 | `primary-800` | `#065F46` | Đầu tối của gradient, chữ trên nền xanh nhạt |
 | `primary-900` | `#064E3B` | Tiêu đề lớn trên nền sáng |
+| `primary-text` | `#047857` (tối: `#059669`) | **Chữ màu chính**: liên kết, tab/mục nav/trang đang chọn, nút nhạt, icon trên nền `primary-50/100/200`. Đạt 5,21:1 trên `primary-50`, 4,99:1 trên `primary-100` |
+| `primary-fill` | `#047857` | **Nền hành động chính**: nút chính, chip lọc đang chọn, ô logo, checkbox/switch bật. Đi với `on-primary` trắng (5,48:1) |
+| `primary-fill-hover` | `#065F46` | Nút chính khi hover (trắng 7,68:1) |
+| `primary-fill-active` | `#064E3B` | Nút chính khi bấm (trắng 9,72:1) |
+| `on-primary` | `#FFFFFF` | Chữ và icon trên `primary-fill` và nút nguy hiểm |
 
 ### 2.2 Màu nhấn
 
 | Token | Hex | Dùng cho |
 |---|---|---|
 | `accent-500` | `#F59223` | Nút hành động thi ("Vào thi ngay"), tối đa một nút trên mỗi thẻ |
+| `on-accent` | `#1A1A1F` | Chữ trên `accent-500` (7,44:1; trắng chỉ đạt 2,33:1) |
 | `accent-700` | `#B45309` | Chữ trên nền cam nhạt, nhãn nhóm |
 | `amber-500` | `#F59E0B` | Sao đánh giá, cảnh báo |
 | `yellow-400` | `#FFD836` | Nhãn "HOT", huy hiệu |
@@ -58,7 +64,7 @@ Trang tham khảo không có đủ bộ màu trạng thái cho trang quản tr�
 |---|---|---|---|
 | Thành công | `#047857` | `#ECFDF5` | Hoạt động, Thành công |
 | Cảnh báo | `#B45309` | `#FFFBEB` | Chưa kích hoạt, Đang xử lý |
-| Lỗi / nguy hiểm | `#DC2626` | `#FEF2F2` | Bị khóa, Thất bại, nút Xóa |
+| Lỗi / nguy hiểm | `#B91C1C` | `#FEF2F2` | Bị khóa, Thất bại, nút Xóa |
 | Thông tin | `#0E7490` | `#ECFEFF` | Hệ thống, ghi chú |
 | Trung tính | `#54545A` | `#F1F2F4` | Ngừng sử dụng, Nháp |
 
@@ -120,13 +126,13 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 
 | Kiểu | Nền | Chữ | Viền | Dùng cho |
 |---|---|---|---|---|
-| Chính | `primary-600`, hover `primary-700` | trắng | không | Hành động chính của màn (một nút) |
+| Chính | `primary-fill`, hover `primary-fill-hover`, bấm `primary-fill-active` | `on-primary` (trắng) | không | Hành động chính của màn (một nút) |
 | Phụ | trắng | `text-secondary` | `border` | Hủy, Quay lại, Đăng nhập |
 | Viền xanh | trắng | `primary-800` | `primary-200` | Hành động phụ có nhấn |
-| Nhạt | `primary-100` | `primary-600` | không | Hành động trong thẻ |
-| Thi | `accent-500` | trắng | không | Bắt đầu / tiếp tục thi |
+| Nhạt | `primary-100`, hover `primary-200` | `primary-text`, hover `primary-800` | không | Hành động trong thẻ |
+| Thi | `accent-500` | `on-accent` (`#1A1A1F`) | không | Bắt đầu / tiếp tục thi |
 | Nguy hiểm | `#DC2626` | trắng | không | Xóa, Khóa (trong dialog xác nhận) |
-| Chữ | trong suốt | `primary-600` | không | Liên kết trong dòng, "Xem tất cả →" |
+| Chữ | trong suốt | `primary-text` | không | Liên kết trong dòng, "Xem tất cả →" |
 
 - Cỡ: `sm` 36px, `md` 40px (mặc định), `lg` 48px, `xl` 52px (nút gửi ở trang đăng nhập).
 - Bo góc 12px, chữ 14/20 đậm 600, đệm ngang 16px (`md`) hoặc 28px (`lg`).
@@ -142,8 +148,8 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 
 ### 5.3 Chip và huy hiệu
 
-- **Chip lọc:** dạng viên thuốc, cao 40px (web học viên) hoặc 32px (admin), viền `border`, có chấm màu 8px phía trước. Đang chọn: nền `primary-600`, chữ trắng.
-- **Chip nhỏ:** cao 32px, chữ 12.5px, nền `primary-50`, viền và chữ `primary-600`.
+- **Chip lọc:** dạng viên thuốc, cao 40px (web học viên) hoặc 32px (admin), viền `border`, có chấm màu 8px phía trước. Đang chọn: nền `primary-fill`, chữ `on-primary`.
+- **Chip nhỏ:** cao 32px, chữ 12.5px, nền `primary-50`, viền `primary-600`, chữ `primary-text`.
 - **Chip trạng thái:** cao 24px, bo tròn, dùng cặp màu ở mục 2.4, có chấm màu.
 - **Huy hiệu đếm:** viên thuốc, viền `border`, chữ `text-muted` (ví dụ "3 đề").
 
@@ -155,8 +161,8 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 
 ### 5.5 Tab
 
-- **Tab phân đoạn** (đăng nhập/đăng ký, chuyển chế độ xem): thanh nền `bg-subtle` bo góc 12px, cao 48px; tab đang chọn nền trắng, `shadow-sm`, chữ `primary-600` đậm 600.
-- **Tab nội dung** (chi tiết tài khoản): tab đang chọn nền `primary-50`, chữ `primary-600`, bo góc 10px, cao 40px; tab khác chữ `#54545A`.
+- **Tab phân đoạn** (đăng nhập/đăng ký, chuyển chế độ xem): thanh nền `bg-subtle` bo góc 12px, cao 48px; tab đang chọn nền trắng, `shadow-sm`, chữ `primary-text` đậm 600.
+- **Tab nội dung** (chi tiết tài khoản): tab đang chọn nền `primary-50`, chữ `primary-text`, bo góc 10px, cao 40px; tab khác chữ `#54545A`.
 
 ### 5.6 Tiêu đề khối
 
@@ -183,7 +189,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 └──────────┴───────────────────────────────────────────────┘
 ```
 
-- Sidebar: mục cao 40px, bo góc 8px, icon lucide 18px; mục đang chọn nền `primary-50`, chữ và icon `primary-600`, đậm 600. Tên nhóm menu dùng kiểu `overline`.
+- Sidebar: mục cao 40px, bo góc 8px, icon lucide 18px; mục đang chọn nền `primary-50`, chữ và icon `primary-text`, đậm 600. Tên nhóm menu dùng kiểu `overline`.
 - Nền vùng nội dung `bg-page`.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
 - Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện, Nhật ký). Chức năng phụ của một mục là nút hoặc tab bên trong màn đó, không thành mục menu riêng: Cấp hàng loạt là nút trong màn Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền.
@@ -223,7 +229,7 @@ Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-lig
 ## 6. Icon và hình ảnh
 
 - Icon: **lucide-react**, nét 1.75–2px, 16px trong nút, 18px trong menu, 20px độc lập.
-- Ô icon: vuông 32–40px bo góc 10px, nền `primary-50`, icon `primary-600`.
+- Ô icon: vuông 32–40px bo góc 10px, nền `primary-50`, icon `primary-text`.
 - Ảnh thẻ bài thi tỉ lệ 16:9, bo hai góc trên theo thẻ.
 
 ## 7. Chuyển động
@@ -234,7 +240,8 @@ Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-lig
 
 ## 8. Truy cập và ngôn ngữ
 
-- Độ tương phản: chữ trắng trên `primary-600` đạt khoảng 3,8:1, đủ cho chữ lớn nhưng **chưa đạt AA (4,5:1) cho chữ 14px**. Đã chốt (2026-11-13) giữ nút chính `primary-600` để đúng phong cách tham khảo. Chữ xanh trên nền trắng dùng `primary-700` khi cỡ chữ dưới 14px. Không dùng `text-muted` cho chữ dưới 12px.
+- Độ tương phản: mọi chữ trên nền đặc hoặc nền nhạt phải đạt AA (4,5:1) ở cả hai chế độ sáng/tối; `packages/ui/src/styles/tokens.test.ts` liệt kê từng cặp và kiểm. Chữ màu chính dùng `primary-text`, nền nút chính dùng `primary-fill`, không dùng `primary-600` cho hai việc này. Không dùng `text-muted` cho chữ dưới 12px.
+- **Quyết định 2026-11-13 (UNI-2559, M.Trường chọn phương án 2 và màu nhấn A):** bản trước giữ `primary-600` làm nền nút chính để đúng trang tham khảo, nhưng đo thực tế chữ trắng trên `#059669` chỉ 3,77:1, chữ `primary-600` trên `primary-50/100` chỉ 3,58/3,43:1 và chữ trắng trên `#F59223` chỉ 2,33:1, đều dưới AA cho chữ 14px. Đổi thành: chữ màu chính và nền nút chính `#047857` (5,21/4,99:1 trên nền nhạt, 5,48:1 với chữ trắng), hover `#065F46`, bấm `#064E3B`; chữ trên nút nhấn `#1A1A1F` (7,44:1), nền `#F59223` giữ nguyên; chữ lỗi `#B91C1C` (nền `#FEF2F2` 5,9:1; `#DC2626` chỉ 4,41:1). Bảng token dưới đây thắng các bản vẽ `docs/design/*.dc.html` ở những màu này.
 - Mọi điều khiển dùng được bằng bàn phím, có vòng focus nhìn thấy được. Nút chỉ có icon phải có `aria-label`.
 - Không truyền đạt trạng thái chỉ bằng màu: chip trạng thái luôn có chữ.
 - Ngôn ngữ mặc định tiếng Việt, chuỗi hiển thị nằm trong file dịch (`next-intl`). Ngày `dd/MM/yyyy`, số dùng dấu chấm phân tách nghìn.
@@ -272,15 +279,21 @@ Token khai báo một lần trong `packages/ui/src/styles/tokens.css` bằng `@t
   --color-primary-700: #047857;
   --color-primary-800: #065F46;
   --color-primary-900: #064E3B;
+  --color-primary-text: #047857;
+  --color-primary-fill: #047857;
+  --color-primary-fill-hover: #065F46;
+  --color-primary-fill-active: #064E3B;
+  --color-on-primary: #FFFFFF;
   --color-accent-500: #F59223;
   --color-accent-700: #B45309;
+  --color-on-accent: #1A1A1F;
   --color-text: #11181C;
   --color-text-secondary: #3A3A42;
   --color-text-muted: #6B6B72;
   --color-page: #F7F8F9;
   --color-subtle: #F1F2F4;
   --color-border: #E8E8EC;
-  --color-danger: #DC2626;
+  --color-danger: #B91C1C;
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 16px;

@@ -16,8 +16,8 @@ export function Checkbox({ className, checked, ...props }: CheckboxProps) {
       className={cn(
         "peer grid size-5 shrink-0 place-items-center rounded-sm border border-border-strong bg-surface text-on-primary transition-colors duration-150 motion-reduce:transition-none",
         "hover:border-primary-600 disabled:cursor-not-allowed disabled:opacity-50",
-        "data-[state=checked]:border-primary-600 data-[state=checked]:bg-primary-600",
-        "data-[state=indeterminate]:border-primary-600 data-[state=indeterminate]:bg-primary-600",
+        "data-[state=checked]:border-primary-fill data-[state=checked]:bg-primary-fill",
+        "data-[state=indeterminate]:border-primary-fill data-[state=indeterminate]:bg-primary-fill",
         focusRing,
         className,
       )}

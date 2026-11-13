@@ -53,7 +53,7 @@ describe("Chip", () => {
     );
     const chip = screen.getByRole("button", { name: "Đang chọn" });
     const dot = chip.querySelector("[aria-hidden]");
-    expect(chip).toHaveClass("group", "aria-pressed:bg-primary-600");
+    expect(chip).toHaveClass("group", "aria-pressed:bg-primary-fill");
     expect(dot).toHaveClass("group-aria-pressed:bg-on-primary");
     // Lớp đổi màu phải đứng sau lớp nền của bên gọi để thắng khi cùng áp dụng.
     const classes = dot?.className.split(" ") ?? [];
