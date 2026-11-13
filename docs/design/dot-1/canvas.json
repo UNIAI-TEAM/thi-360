@@ -205,6 +205,70 @@
       "w": 640,
       "x": 4160,
       "y": 7700
+    },
+    "TaiKhoanChonNhieu.dc.html": {
+      "h": 1000,
+      "title": "Danh sách tài khoản · đang chọn nhiều dòng",
+      "w": 1440,
+      "x": 0,
+      "y": 9100,
+      "expand": "fill"
+    },
+    "ChiTietTaiKhoanThi.dc.html": {
+      "h": 900,
+      "title": "Chi tiết tài khoản · chỉ có vai trò Thi",
+      "w": 1440,
+      "x": 1520,
+      "y": 9100,
+      "expand": "fill"
+    },
+    "ChonQuyen.dc.html": {
+      "h": 980,
+      "title": "Dialog chọn quyền theo đối tượng (thêm quyền riêng, gán hàng loạt)",
+      "w": 1080,
+      "x": 3040,
+      "y": 9100,
+      "is_interactive": true
+    },
+    "CapBuoc1TaiTep.dc.html": {
+      "h": 900,
+      "title": "Cấp hàng loạt · bước 1 tải tệp",
+      "w": 1440,
+      "x": 4200,
+      "y": 9100,
+      "expand": "fill"
+    },
+    "CapBuoc3XacNhan.dc.html": {
+      "h": 860,
+      "title": "Cấp hàng loạt · bước 3 xác nhận",
+      "w": 1440,
+      "x": 5720,
+      "y": 9100,
+      "expand": "fill"
+    },
+    "CapBuoc4DangXuLy.dc.html": {
+      "h": 760,
+      "title": "Cấp hàng loạt · bước 4 đang xử lý",
+      "w": 1440,
+      "x": 7240,
+      "y": 9100,
+      "expand": "fill"
+    },
+    "CapBuoc4KetQua.dc.html": {
+      "h": 1000,
+      "title": "Cấp hàng loạt · bước 4 kết quả",
+      "w": 1440,
+      "x": 8760,
+      "y": 9100,
+      "expand": "fill"
+    },
+    "BangDieuKhien.dc.html": {
+      "h": 760,
+      "title": "Bảng điều khiển (trang chủ web admin)",
+      "w": 1440,
+      "x": 10280,
+      "y": 9100,
+      "expand": "fill"
     }
   },
   "createdOnFiles": {
@@ -263,6 +327,14 @@
       "w": 240,
       "x": 0,
       "y": 7400
+    },
+    "row-g": {
+      "kind": "title1",
+      "maxW": 11800,
+      "text": "Web admin · Bổ sung: trạng thái và bước còn thiếu (T06, T08, T09, T11)",
+      "w": 240,
+      "x": 0,
+      "y": 8800
     }
   },
   "order": [
@@ -291,7 +363,15 @@
     "ChuyenNhanhCay.dc.html",
     "NgungNutCay.dc.html",
     "NhapCayExcel.dc.html",
-    "ThemGiaTri.dc.html"
+    "ThemGiaTri.dc.html",
+    "TaiKhoanChonNhieu.dc.html",
+    "ChiTietTaiKhoanThi.dc.html",
+    "ChonQuyen.dc.html",
+    "CapBuoc1TaiTep.dc.html",
+    "CapBuoc3XacNhan.dc.html",
+    "CapBuoc4DangXuLy.dc.html",
+    "CapBuoc4KetQua.dc.html",
+    "BangDieuKhien.dc.html"
   ],
   "pages": [],
   "title": "Thi 360 — Thiết kế màn hình đợt 1"
