@@ -474,6 +474,121 @@
         "required" : [ "code", "createdAt", "id", "itemCount", "kind", "nameVi", "refGroups", "status", "system", "type", "updatedAt", "version" ],
         "type" : "object"
       },
+      "CatalogImportPreviewResponse" : {
+        "description" : "Kết quả xem trước khi nhập danh mục từ Excel",
+        "properties" : {
+          "canConfirm" : {
+            "description" : "Có thể xác nhận nhập hay không (true khi totalRows > 0 và errorRows == 0)",
+            "type" : "boolean"
+          },
+          "errorRows" : {
+            "description" : "Số dòng có lỗi",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "errors" : {
+            "description" : "Danh sách lỗi theo dòng",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogImportRowError"
+            },
+            "type" : "array"
+          },
+          "groupCode" : {
+            "description" : "Mã nhóm danh mục",
+            "type" : "string"
+          },
+          "groupId" : {
+            "description" : "ID nhóm danh mục",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "groupKind" : {
+            "description" : "Kiểu nhóm danh mục",
+            "enum" : [ "SIMPLE", "COMBINATION", "TREE" ],
+            "type" : "string"
+          },
+          "previewId" : {
+            "description" : "ID phiên xem trước để dùng khi xác nhận",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "totalRows" : {
+            "description" : "Tổng số dòng dữ liệu đọc được",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "validRows" : {
+            "description" : "Số dòng hợp lệ",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "canConfirm", "errorRows", "errors", "groupCode", "groupId", "groupKind", "previewId", "totalRows", "validRows" ],
+        "type" : "object"
+      },
+      "CatalogImportResultResponse" : {
+        "description" : "Kết quả sau khi xác nhận nhập danh mục từ Excel",
+        "properties" : {
+          "createdCount" : {
+            "description" : "Số giá trị mới được tạo",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "groupCode" : {
+            "description" : "Mã nhóm danh mục",
+            "type" : "string"
+          },
+          "groupId" : {
+            "description" : "ID nhóm danh mục",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "previewId" : {
+            "description" : "ID phiên xem trước đã xác nhận",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "reusedCount" : {
+            "description" : "Số nút sẵn có được dùng lại (đối với nhóm TREE)",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalRows" : {
+            "description" : "Tổng số dòng dữ liệu",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "createdCount", "groupCode", "groupId", "previewId", "reusedCount", "totalRows" ],
+        "type" : "object"
+      },
+      "CatalogImportRowError" : {
+        "description" : "Lỗi kiểm tra dữ liệu của một dòng trong tệp Excel",
+        "properties" : {
+          "code" : {
+            "description" : "Mã lỗi ổn định",
+            "example" : "CATALOG_CODE_TAKEN",
+            "type" : "string"
+          },
+          "column" : {
+            "description" : "Tên cột hoặc trường dữ liệu bị lỗi",
+            "example" : "code",
+            "type" : "string"
+          },
+          "message" : {
+            "description" : "Thông báo chi tiết",
+            "type" : "string"
+          },
+          "rowNo" : {
+            "description" : "Số dòng trong tệp Excel (1-based, dòng tiêu đề là 1)",
+            "example" : 2,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "column", "message", "rowNo" ],
+        "type" : "object"
+      },
       "CatalogInheritedRefResponse" : {
         "description" : "Giá trị liên kết kế thừa từ nút tổ tiên",
         "properties" : {
@@ -594,6 +709,10 @@
           "code" : {
             "description" : "Mã giá trị",
             "type" : "string"
+          },
+          "combination" : {
+            "$ref" : "#/components/schemas/CombinationVersionResponse",
+            "description" : "Thông tin phiên bản hiện hành của mã tổ hợp (chỉ có với nhóm COMBINATION)"
           },
           "createdAt" : {
             "description" : "Thời điểm tạo",
@@ -829,6 +948,69 @@
         "required" : [ "childCount", "code", "depth", "displayOrder", "effectiveStatus", "groupId", "hasChildren", "id", "inheritedRefs", "matched", "nameVi", "ownRefs", "path", "status", "value", "version" ],
         "type" : "object"
       },
+      "CatalogUsageResponse" : {
+        "description" : "Chi tiết nơi đang sử dụng giá trị danh mục theo nguồn",
+        "properties" : {
+          "blocking" : {
+            "description" : "Có chặn thao tác ngừng sử dụng hay không",
+            "type" : "boolean"
+          },
+          "count" : {
+            "description" : "Số lượng bản ghi đang tham chiếu",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "objectType" : {
+            "description" : "Loại đối tượng tham chiếu",
+            "type" : "string"
+          },
+          "sampleLabels" : {
+            "description" : "Một số nhãn ví dụ của đối tượng đang tham chiếu",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "source" : {
+            "description" : "Tên nguồn tham chiếu",
+            "type" : "string"
+          }
+        },
+        "required" : [ "blocking", "count", "objectType", "sampleLabels", "source" ],
+        "type" : "object"
+      },
+      "CatalogUsagesResponse" : {
+        "description" : "Tổng hợp nơi đang sử dụng của một giá trị hoặc nhóm danh mục",
+        "properties" : {
+          "blocking" : {
+            "description" : "Có nguồn nào chặn ngừng sử dụng hay không",
+            "type" : "boolean"
+          },
+          "targetCode" : {
+            "description" : "Mã giá trị hoặc nhóm danh mục",
+            "type" : "string"
+          },
+          "targetId" : {
+            "description" : "ID giá trị hoặc nhóm danh mục",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "totalCount" : {
+            "description" : "Tổng số tham chiếu",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "usages" : {
+            "description" : "Danh sách nơi đang sử dụng theo từng nguồn",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogUsageResponse"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "blocking", "targetCode", "targetId", "totalCount", "usages" ],
+        "type" : "object"
+      },
       "ChangePasswordRequest" : {
         "description" : "Yêu cầu đổi mật khẩu",
         "properties" : {
@@ -842,6 +1024,121 @@
           }
         },
         "required" : [ "newPassword", "oldPassword" ],
+        "type" : "object"
+      },
+      "CombinationSubjectResponse" : {
+        "description" : "Môn học trong một phiên bản mã tổ hợp",
+        "properties" : {
+          "code" : {
+            "description" : "Mã môn học",
+            "type" : "string"
+          },
+          "nameEn" : {
+            "description" : "Tên tiếng Anh của môn học",
+            "type" : "string"
+          },
+          "nameVi" : {
+            "description" : "Tên tiếng Việt của môn học",
+            "type" : "string"
+          },
+          "position" : {
+            "description" : "Thứ tự môn trong tổ hợp",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "status" : {
+            "description" : "Trạng thái hiện tại của môn học",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "subjectItemId" : {
+            "description" : "ID giá trị môn học",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "nameVi", "position", "status", "subjectItemId" ],
+        "type" : "object"
+      },
+      "CombinationVersionResponse" : {
+        "description" : "Phiên bản cấu hình của mã tổ hợp môn",
+        "properties" : {
+          "createdAt" : {
+            "description" : "Thời điểm tạo phiên bản",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "description" : "ID người tạo phiên bản",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examCode" : {
+            "description" : "Mã kỳ thi",
+            "type" : "string"
+          },
+          "examItemId" : {
+            "description" : "ID giá trị kỳ thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examNameEn" : {
+            "description" : "Tên tiếng Anh kỳ thi",
+            "type" : "string"
+          },
+          "examNameVi" : {
+            "description" : "Tên tiếng Việt kỳ thi",
+            "type" : "string"
+          },
+          "examStatus" : {
+            "description" : "Trạng thái hiện tại của kỳ thi",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID phiên bản tổ hợp",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "isCurrent" : {
+            "description" : "Có phải phiên bản hiện hành hay không",
+            "type" : "boolean"
+          },
+          "itemCode" : {
+            "description" : "Mã tổ hợp",
+            "type" : "string"
+          },
+          "itemId" : {
+            "description" : "ID giá trị mã tổ hợp",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "itemNameEn" : {
+            "description" : "Tên tiếng Anh mã tổ hợp",
+            "type" : "string"
+          },
+          "itemNameVi" : {
+            "description" : "Tên tiếng Việt mã tổ hợp",
+            "type" : "string"
+          },
+          "sourceNote" : {
+            "description" : "Nguồn quy ước",
+            "type" : "string"
+          },
+          "subjects" : {
+            "description" : "Danh sách môn học theo thứ tự",
+            "items" : {
+              "$ref" : "#/components/schemas/CombinationSubjectResponse"
+            },
+            "type" : "array"
+          },
+          "versionNo" : {
+            "description" : "Số thứ tự phiên bản",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "createdAt", "examCode", "examItemId", "examNameVi", "examStatus", "id", "isCurrent", "itemCode", "itemId", "itemNameVi", "subjects", "versionNo" ],
         "type" : "object"
       },
       "CreateCatalogGroupRequest" : {
@@ -925,6 +1222,11 @@
             "minimum" : 0,
             "type" : "integer"
           },
+          "examItemId" : {
+            "description" : "ID giá trị kỳ thi (bắt buộc cho nhóm COMBINATION)",
+            "format" : "uuid",
+            "type" : "string"
+          },
           "nameEn" : {
             "description" : "Tên tiếng Anh",
             "example" : "Mathematics",
@@ -952,10 +1254,24 @@
             },
             "type" : "array"
           },
+          "sourceNote" : {
+            "description" : "Ghi chú nguồn quy ước (tùy chọn cho nhóm COMBINATION)",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "status" : {
             "description" : "Trạng thái ban đầu (mặc định ACTIVE)",
             "enum" : [ "ACTIVE", "INACTIVE" ],
             "type" : "string"
+          },
+          "subjectItemIds" : {
+            "description" : "Danh sách ID môn học theo thứ tự (bắt buộc cho nhóm COMBINATION, không trùng)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "required" : [ "code", "nameVi" ],
@@ -1801,6 +2117,11 @@
             "minimum" : 0,
             "type" : "integer"
           },
+          "examItemId" : {
+            "description" : "ID giá trị kỳ thi mới (chỉ cho nhóm COMBINATION)",
+            "format" : "uuid",
+            "type" : "string"
+          },
           "nameEn" : {
             "description" : "Tên tiếng Anh mới",
             "maxLength" : 255,
@@ -1827,10 +2148,24 @@
             },
             "type" : "array"
           },
+          "sourceNote" : {
+            "description" : "Ghi chú nguồn quy ước mới (chỉ cho nhóm COMBINATION)",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "status" : {
             "description" : "Trạng thái mới",
             "enum" : [ "ACTIVE", "INACTIVE" ],
             "type" : "string"
+          },
+          "subjectItemIds" : {
+            "description" : "Danh sách ID môn học mới theo thứ tự (chỉ cho nhóm COMBINATION)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "version" : {
             "description" : "Phiên bản khóa lạc quan",
@@ -2755,6 +3090,124 @@
         },
         "summary" : "Xem trước kết quả gán/gỡ quyền hàng loạt",
         "tags" : [ "Admin Bulk Authz" ]
+      }
+    },
+    "/api/v1/admin/catalog/combination-versions/{versionId}" : {
+      "get" : {
+        "operationId" : "getCombinationVersion",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "versionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CombinationVersionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chi tiết một phiên bản lịch sử hoặc hiện hành của mã tổ hợp",
+        "tags" : [ "Admin Catalog" ]
       }
     },
     "/api/v1/admin/catalog/groups" : {
@@ -3694,6 +4147,392 @@
         "tags" : [ "Admin Catalog" ]
       }
     },
+    "/api/v1/admin/catalog/groups/{id}/items/export" : {
+      "get" : {
+        "operationId" : "exportItems",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xuất danh sách giá trị của nhóm danh mục ra tệp Excel",
+        "tags" : [ "Admin Catalog" ]
+      }
+    },
+    "/api/v1/admin/catalog/groups/{id}/items/import" : {
+      "post" : {
+        "operationId" : "previewImport",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CatalogImportPreviewResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải lên tệp Excel để kiểm tra và xem trước trước khi nhập danh mục",
+        "tags" : [ "Admin Catalog" ]
+      }
+    },
+    "/api/v1/admin/catalog/groups/{id}/items/import/{previewId}/confirm" : {
+      "post" : {
+        "operationId" : "confirmImport",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "previewId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CatalogImportResultResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xác nhận nhập danh mục từ phiên xem trước (hỗ trợ Idempotency-Key)",
+        "tags" : [ "Admin Catalog" ]
+      }
+    },
     "/api/v1/admin/catalog/groups/{id}/items/order" : {
       "put" : {
         "operationId" : "reorderItems",
@@ -4352,6 +5191,124 @@
           }
         },
         "summary" : "Tra cứu cây danh mục theo nút cha hoặc từ khóa tìm kiếm",
+        "tags" : [ "Admin Catalog" ]
+      }
+    },
+    "/api/v1/admin/catalog/groups/{id}/usages" : {
+      "get" : {
+        "operationId" : "getGroupUsages",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CatalogUsagesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách nơi đang sử dụng của toàn nhóm danh mục",
         "tags" : [ "Admin Catalog" ]
       }
     },
@@ -5083,6 +6040,245 @@
           }
         },
         "summary" : "Gắn thêm một liên kết giá trị cho nút cây",
+        "tags" : [ "Admin Catalog" ]
+      }
+    },
+    "/api/v1/admin/catalog/items/{id}/usages" : {
+      "get" : {
+        "operationId" : "getItemUsages",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CatalogUsagesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách nơi đang sử dụng của giá trị (nhóm cây gộp cả nhánh)",
+        "tags" : [ "Admin Catalog" ]
+      }
+    },
+    "/api/v1/admin/catalog/items/{id}/versions" : {
+      "get" : {
+        "operationId" : "listItemVersions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/CombinationVersionResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách phiên bản của mã tổ hợp môn",
         "tags" : [ "Admin Catalog" ]
       }
     },
