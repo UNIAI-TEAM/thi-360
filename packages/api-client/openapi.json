@@ -308,6 +308,64 @@
         "required" : [ "access", "code", "name" ],
         "type" : "object"
       },
+      "CreateUserRequest" : {
+        "description" : "Yêu cầu tạo tài khoản mới",
+        "properties" : {
+          "classIds" : {
+            "description" : "Danh sách ID lớp học (tạm thời chưa hỗ trợ trước T10)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "email" : {
+            "description" : "Email liên hệ",
+            "example" : "an@thi360.vn",
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên người dùng",
+            "example" : "Nguyễn Văn An",
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "mustChangePassword" : {
+            "description" : "Bắt buộc đổi mật khẩu ở lần đăng nhập đầu (mặc định false)",
+            "type" : "boolean"
+          },
+          "password" : {
+            "description" : "Mật khẩu ban đầu đạt quy tắc bảo mật",
+            "format" : "password",
+            "type" : "string"
+          },
+          "phone" : {
+            "description" : "Số điện thoại",
+            "example" : "0901234567",
+            "maxLength" : 30,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "roleIds" : {
+            "description" : "Danh sách ID vai trò (mặc định vai trò STUDENT; gán vai trò khác cần USER.ASSIGN)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập (4-30 ký tự, a-z0-9._@-, bắt đầu bằng chữ hoặc số)",
+            "example" : "nguyen.van.an",
+            "type" : "string"
+          }
+        },
+        "required" : [ "fullName", "password", "username" ],
+        "type" : "object"
+      },
       "EffectivePermissionItemResponse" : {
         "description" : "Quyền hiệu lực của tài khoản kèm nguồn gốc",
         "properties" : {
@@ -555,6 +613,44 @@
             "description" : "Danh sách phần tử của trang hiện tại",
             "items" : {
               "$ref" : "#/components/schemas/RoleSummaryResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "PageResponseUserSummaryResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/UserSummaryResponse"
             },
             "type" : "array"
           },
@@ -956,6 +1052,36 @@
         "required" : [ "permissionCodes" ],
         "type" : "object"
       },
+      "UpdateUserRequest" : {
+        "description" : "Yêu cầu cập nhật thông tin tài khoản",
+        "properties" : {
+          "email" : {
+            "description" : "Email mới (đổi email sẽ xóa trạng thái xác minh email)",
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên mới",
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "phone" : {
+            "description" : "Số điện thoại mới",
+            "maxLength" : 30,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version" ],
+        "type" : "object"
+      },
       "UpdateUserRolesRequest" : {
         "description" : "Yêu cầu thay thế toàn bộ danh sách vai trò của tài khoản",
         "properties" : {
@@ -969,6 +1095,123 @@
           }
         },
         "required" : [ "roleIds" ],
+        "type" : "object"
+      },
+      "UserDetailResponse" : {
+        "description" : "Thông tin chi tiết tài khoản",
+        "properties" : {
+          "code" : {
+            "description" : "Mã tài khoản",
+            "example" : "U000001",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "description" : "Thời điểm tạo",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "description" : "ID người tạo",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "deleteReason" : {
+            "description" : "Lý do xóa mềm",
+            "type" : "string"
+          },
+          "deletedAt" : {
+            "description" : "Thời điểm xóa mềm",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deletedBy" : {
+            "description" : "ID người xóa mềm",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "email" : {
+            "description" : "Email",
+            "type" : "string"
+          },
+          "emailVerifiedAt" : {
+            "description" : "Thời điểm xác minh email",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "inactivatedAt" : {
+            "description" : "Thời điểm ngừng hoạt động",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "inactivatedBy" : {
+            "description" : "ID người ngừng hoạt động",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "inactiveReason" : {
+            "description" : "Lý do ngừng hoạt động",
+            "type" : "string"
+          },
+          "lastLoginAt" : {
+            "description" : "Thời điểm đăng nhập gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "mustChangePassword" : {
+            "description" : "Bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp",
+            "type" : "boolean"
+          },
+          "phone" : {
+            "description" : "Số điện thoại",
+            "type" : "string"
+          },
+          "roles" : {
+            "description" : "Danh sách vai trò của tài khoản",
+            "items" : {
+              "$ref" : "#/components/schemas/UserRoleSummary"
+            },
+            "type" : "array"
+          },
+          "source" : {
+            "description" : "Nguồn tạo tài khoản",
+            "enum" : [ "ADMIN_CREATED", "BULK_IMPORT", "SELF_REGISTERED", "GOOGLE" ],
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái tài khoản",
+            "enum" : [ "PROVISIONING", "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "description" : "Thời điểm cập nhật gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "updatedBy" : {
+            "description" : "ID người cập nhật gần nhất",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập",
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "createdAt", "fullName", "id", "mustChangePassword", "roles", "source", "status", "updatedAt", "username", "version" ],
         "type" : "object"
       },
       "UserDirectPermissionItemResponse" : {
@@ -1088,6 +1331,31 @@
         "required" : [ "access", "assignedAt", "roleCode", "roleId", "roleName", "status", "system" ],
         "type" : "object"
       },
+      "UserRoleSummary" : {
+        "description" : "Thông tin tóm tắt vai trò của tài khoản",
+        "properties" : {
+          "access" : {
+            "description" : "Phạm vi truy cập của vai trò",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "code" : {
+            "description" : "Mã vai trò",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID vai trò",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên vai trò",
+            "type" : "string"
+          }
+        },
+        "required" : [ "access", "code", "id", "name" ],
+        "type" : "object"
+      },
       "UserRolesResponse" : {
         "description" : "Danh sách vai trò của tài khoản",
         "properties" : {
@@ -1110,6 +1378,101 @@
           }
         },
         "required" : [ "access", "roles", "userId" ],
+        "type" : "object"
+      },
+      "UserSummaryResponse" : {
+        "description" : "Thông tin tóm tắt tài khoản trong danh sách",
+        "properties" : {
+          "code" : {
+            "description" : "Mã tài khoản",
+            "example" : "U000001",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "description" : "Thời điểm tạo",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deletedAt" : {
+            "description" : "Thời điểm xóa mềm nếu đã xóa",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "email" : {
+            "description" : "Email",
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "lastLoginAt" : {
+            "description" : "Thời điểm đăng nhập gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "mustChangePassword" : {
+            "description" : "Bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp",
+            "type" : "boolean"
+          },
+          "phone" : {
+            "description" : "Số điện thoại",
+            "type" : "string"
+          },
+          "roles" : {
+            "description" : "Danh sách vai trò của tài khoản",
+            "items" : {
+              "$ref" : "#/components/schemas/UserRoleSummary"
+            },
+            "type" : "array"
+          },
+          "source" : {
+            "description" : "Nguồn tạo tài khoản",
+            "enum" : [ "ADMIN_CREATED", "BULK_IMPORT", "SELF_REGISTERED", "GOOGLE" ],
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái tài khoản",
+            "enum" : [ "PROVISIONING", "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "description" : "Thời điểm cập nhật gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập",
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "createdAt", "fullName", "id", "mustChangePassword", "roles", "source", "status", "updatedAt", "username", "version" ],
+        "type" : "object"
+      },
+      "UsernameAvailabilityResponse" : {
+        "description" : "Kết quả kiểm tra tính khả dụng của tên đăng nhập",
+        "properties" : {
+          "available" : {
+            "description" : "Tên đăng nhập hợp lệ và chưa được sử dụng",
+            "type" : "boolean"
+          },
+          "reasonCode" : {
+            "description" : "Mã lý do nếu không khả dụng",
+            "example" : "USERNAME_TAKEN",
+            "type" : "string"
+          }
+        },
+        "required" : [ "available" ],
         "type" : "object"
       }
     }
@@ -2764,6 +3127,678 @@
         "tags" : [ "Admin Roles" ]
       }
     },
+    "/api/v1/admin/users" : {
+      "get" : {
+        "operationId" : "listUsers",
+        "parameters" : [ {
+          "description" : "Tìm kiếm theo mã, tên đăng nhập, họ tên, email, số điện thoại",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo nguồn tạo tài khoản",
+          "in" : "query",
+          "name" : "source",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ADMIN_CREATED", "BULK_IMPORT", "SELF_REGISTERED", "GOOGLE" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo trạng thái tài khoản",
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "PROVISIONING", "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo vai trò",
+          "in" : "query",
+          "name" : "roleId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo lớp học (tạm thời chưa hỗ trợ trước T10)",
+          "in" : "query",
+          "name" : "classId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc tài khoản chưa từng đăng nhập",
+          "in" : "query",
+          "name" : "neverLoggedIn",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "description" : "Bao gồm tài khoản đã xóa mềm",
+          "in" : "query",
+          "name" : "includeDeleted",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseUserSummaryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách tài khoản người dùng",
+        "tags" : [ "Admin Users" ]
+      },
+      "post" : {
+        "operationId" : "createUser",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDetailResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tạo tài khoản người dùng mới",
+        "tags" : [ "Admin Users" ]
+      }
+    },
+    "/api/v1/admin/users/username-availability" : {
+      "get" : {
+        "operationId" : "checkUsernameAvailability",
+        "parameters" : [ {
+          "description" : "Tên đăng nhập cần kiểm tra",
+          "in" : "query",
+          "name" : "username",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UsernameAvailabilityResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Kiểm tra tính khả dụng và hợp lệ của tên đăng nhập",
+        "tags" : [ "Admin Users" ]
+      }
+    },
+    "/api/v1/admin/users/{id}" : {
+      "get" : {
+        "operationId" : "getUser",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chi tiết tài khoản người dùng",
+        "tags" : [ "Admin Users" ]
+      },
+      "patch" : {
+        "operationId" : "updateUser",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật thông tin tài khoản người dùng",
+        "tags" : [ "Admin Users" ]
+      }
+    },
     "/api/v1/admin/users/{id}/effective-permissions" : {
       "get" : {
         "operationId" : "getEffectivePermissions",
@@ -4073,6 +5108,9 @@
   }, {
     "description" : "Tra cứu danh mục quyền cố định và người dùng theo quyền",
     "name" : "Admin Permissions"
+  }, {
+    "description" : "Quản lý tài khoản người dùng",
+    "name" : "Admin Users"
   }, {
     "description" : "Xác thực và phiên đăng nhập",
     "name" : "Auth"

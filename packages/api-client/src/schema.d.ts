@@ -169,6 +169,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách tài khoản người dùng */
+        get: operations["listUsers"];
+        put?: never;
+        /** Tạo tài khoản người dùng mới */
+        post: operations["createUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/username-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kiểm tra tính khả dụng và hợp lệ của tên đăng nhập */
+        get: operations["checkUsernameAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết tài khoản người dùng */
+        get: operations["getUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cập nhật thông tin tài khoản người dùng */
+        patch: operations["updateUser"];
+        trace?: never;
+    };
     "/api/v1/admin/users/{id}/effective-permissions": {
         parameters: {
             query?: never;
@@ -516,6 +569,40 @@ export interface components {
              */
             status?: "ACTIVE" | "INACTIVE";
         };
+        /** @description Yêu cầu tạo tài khoản mới */
+        CreateUserRequest: {
+            /** @description Danh sách ID lớp học (tạm thời chưa hỗ trợ trước T10) */
+            classIds?: string[];
+            /**
+             * @description Email liên hệ
+             * @example an@thi360.vn
+             */
+            email?: string;
+            /**
+             * @description Họ và tên người dùng
+             * @example Nguyễn Văn An
+             */
+            fullName: string;
+            /** @description Bắt buộc đổi mật khẩu ở lần đăng nhập đầu (mặc định false) */
+            mustChangePassword?: boolean;
+            /**
+             * Format: password
+             * @description Mật khẩu ban đầu đạt quy tắc bảo mật
+             */
+            password: string;
+            /**
+             * @description Số điện thoại
+             * @example 0901234567
+             */
+            phone?: string;
+            /** @description Danh sách ID vai trò (mặc định vai trò STUDENT; gán vai trò khác cần USER.ASSIGN) */
+            roleIds?: string[];
+            /**
+             * @description Tên đăng nhập (4-30 ký tự, a-z0-9._@-, bắt đầu bằng chữ hoặc số)
+             * @example nguyen.van.an
+             */
+            username: string;
+        };
         /** @description Quyền hiệu lực của tài khoản kèm nguồn gốc */
         EffectivePermissionItemResponse: {
             /** @description Mã quyền */
@@ -676,6 +763,35 @@ export interface components {
         PageResponseRoleSummaryResponse: {
             /** @description Danh sách phần tử của trang hiện tại */
             items: components["schemas"]["RoleSummaryResponse"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseUserSummaryResponse: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["UserSummaryResponse"][];
             /**
              * Format: int32
              * @description Chỉ số trang (bắt đầu từ 0)
@@ -962,10 +1078,118 @@ export interface components {
             /** @description Lý do gán quyền trực tiếp (bắt buộc khi thêm quyền mới) */
             reason?: string;
         };
+        /** @description Yêu cầu cập nhật thông tin tài khoản */
+        UpdateUserRequest: {
+            /** @description Email mới (đổi email sẽ xóa trạng thái xác minh email) */
+            email?: string;
+            /** @description Họ và tên mới */
+            fullName?: string;
+            /** @description Số điện thoại mới */
+            phone?: string;
+            /**
+             * Format: int64
+             * @description Phiên bản khóa lạc quan
+             */
+            version: number;
+        };
         /** @description Yêu cầu thay thế toàn bộ danh sách vai trò của tài khoản */
         UpdateUserRolesRequest: {
             /** @description Danh sách ID vai trò mới */
             roleIds: string[];
+        };
+        /** @description Thông tin chi tiết tài khoản */
+        UserDetailResponse: {
+            /**
+             * @description Mã tài khoản
+             * @example U000001
+             */
+            code: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm tạo
+             */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description ID người tạo
+             */
+            createdBy?: string;
+            /** @description Lý do xóa mềm */
+            deleteReason?: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm xóa mềm
+             */
+            deletedAt?: string;
+            /**
+             * Format: uuid
+             * @description ID người xóa mềm
+             */
+            deletedBy?: string;
+            /** @description Email */
+            email?: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm xác minh email
+             */
+            emailVerifiedAt?: string;
+            /** @description Họ và tên */
+            fullName: string;
+            /**
+             * Format: uuid
+             * @description ID tài khoản
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm ngừng hoạt động
+             */
+            inactivatedAt?: string;
+            /**
+             * Format: uuid
+             * @description ID người ngừng hoạt động
+             */
+            inactivatedBy?: string;
+            /** @description Lý do ngừng hoạt động */
+            inactiveReason?: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm đăng nhập gần nhất
+             */
+            lastLoginAt?: string;
+            /** @description Bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp */
+            mustChangePassword: boolean;
+            /** @description Số điện thoại */
+            phone?: string;
+            /** @description Danh sách vai trò của tài khoản */
+            roles: components["schemas"]["UserRoleSummary"][];
+            /**
+             * @description Nguồn tạo tài khoản
+             * @enum {string}
+             */
+            source: "ADMIN_CREATED" | "BULK_IMPORT" | "SELF_REGISTERED" | "GOOGLE";
+            /**
+             * @description Trạng thái tài khoản
+             * @enum {string}
+             */
+            status: "PROVISIONING" | "ACTIVE" | "INACTIVE";
+            /**
+             * Format: date-time
+             * @description Thời điểm cập nhật gần nhất
+             */
+            updatedAt: string;
+            /**
+             * Format: uuid
+             * @description ID người cập nhật gần nhất
+             */
+            updatedBy?: string;
+            /** @description Tên đăng nhập */
+            username: string;
+            /**
+             * Format: int64
+             * @description Phiên bản khóa lạc quan
+             */
+            version: number;
         };
         /** @description Quyền được gán trực tiếp cho tài khoản */
         UserDirectPermissionItemResponse: {
@@ -1045,6 +1269,23 @@ export interface components {
             /** @description Vai trò hệ thống */
             system: boolean;
         };
+        /** @description Thông tin tóm tắt vai trò của tài khoản */
+        UserRoleSummary: {
+            /**
+             * @description Phạm vi truy cập của vai trò
+             * @enum {string}
+             */
+            access: "MANAGE" | "EXAM";
+            /** @description Mã vai trò */
+            code: string;
+            /**
+             * Format: uuid
+             * @description ID vai trò
+             */
+            id: string;
+            /** @description Tên vai trò */
+            name: string;
+        };
         /** @description Danh sách vai trò của tài khoản */
         UserRolesResponse: {
             /**
@@ -1059,6 +1300,76 @@ export interface components {
              * @description ID tài khoản
              */
             userId: string;
+        };
+        /** @description Thông tin tóm tắt tài khoản trong danh sách */
+        UserSummaryResponse: {
+            /**
+             * @description Mã tài khoản
+             * @example U000001
+             */
+            code: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm tạo
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm xóa mềm nếu đã xóa
+             */
+            deletedAt?: string;
+            /** @description Email */
+            email?: string;
+            /** @description Họ và tên */
+            fullName: string;
+            /**
+             * Format: uuid
+             * @description ID tài khoản
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm đăng nhập gần nhất
+             */
+            lastLoginAt?: string;
+            /** @description Bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp */
+            mustChangePassword: boolean;
+            /** @description Số điện thoại */
+            phone?: string;
+            /** @description Danh sách vai trò của tài khoản */
+            roles: components["schemas"]["UserRoleSummary"][];
+            /**
+             * @description Nguồn tạo tài khoản
+             * @enum {string}
+             */
+            source: "ADMIN_CREATED" | "BULK_IMPORT" | "SELF_REGISTERED" | "GOOGLE";
+            /**
+             * @description Trạng thái tài khoản
+             * @enum {string}
+             */
+            status: "PROVISIONING" | "ACTIVE" | "INACTIVE";
+            /**
+             * Format: date-time
+             * @description Thời điểm cập nhật gần nhất
+             */
+            updatedAt: string;
+            /** @description Tên đăng nhập */
+            username: string;
+            /**
+             * Format: int64
+             * @description Phiên bản khóa lạc quan
+             */
+            version: number;
+        };
+        /** @description Kết quả kiểm tra tính khả dụng của tên đăng nhập */
+        UsernameAvailabilityResponse: {
+            /** @description Tên đăng nhập hợp lệ và chưa được sử dụng */
+            available: boolean;
+            /**
+             * @description Mã lý do nếu không khả dụng
+             * @example USERNAME_TAKEN
+             */
+            reasonCode?: string;
         };
     };
     responses: never;
@@ -2274,6 +2585,544 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RoleDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: {
+                /** @description Tìm kiếm theo mã, tên đăng nhập, họ tên, email, số điện thoại */
+                q?: string;
+                /** @description Lọc theo nguồn tạo tài khoản */
+                source?: "ADMIN_CREATED" | "BULK_IMPORT" | "SELF_REGISTERED" | "GOOGLE";
+                /** @description Lọc theo trạng thái tài khoản */
+                status?: "PROVISIONING" | "ACTIVE" | "INACTIVE";
+                /** @description Lọc theo vai trò */
+                roleId?: string;
+                /** @description Lọc theo lớp học (tạm thời chưa hỗ trợ trước T10) */
+                classId?: string;
+                /** @description Lọc tài khoản chưa từng đăng nhập */
+                neverLoggedIn?: boolean;
+                /** @description Bao gồm tài khoản đã xóa mềm */
+                includeDeleted?: boolean;
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseUserSummaryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    checkUsernameAvailability: {
+        parameters: {
+            query?: {
+                /** @description Tên đăng nhập cần kiểm tra */
+                username?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UsernameAvailabilityResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserDetailResponse"];
                 };
             };
             /** @description Bad Request */
