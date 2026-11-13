@@ -250,6 +250,10 @@
       "users": "Users"
     },
     "items": {
+      "accounts": {
+        "description": "Admin and student accounts, statuses, and actions",
+        "label": "Accounts"
+      },
       "appearance": {
         "description": "Light/dark mode and system-wide color palette",
         "label": "Appearance"
@@ -279,6 +283,153 @@
       "logoutFailed": "Unable to sign out. Please try again.",
       "studentPortal": "Student portal",
       "trigger": "Account menu"
+    }
+  },
+  "users": {
+    "actions": {
+      "create": "+ Create account",
+      "rowMenu": "Actions for {username}",
+      "viewDetail": "View details"
+    },
+    "createDialog": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "description": "Creating an account does not grant access to paid exams.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Optional",
+      "fullNameLabel": "Full name",
+      "fullNamePlaceholder": "Nguyen Van An",
+      "mustChangePasswordLabel": "Require password change on first sign-in",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter or generate randomly",
+      "phoneLabel": "Phone number",
+      "phonePlaceholder": "Optional",
+      "roleDefaultValue": "Student (Exam)",
+      "roleHint": "You can only assign roles whose permissions are within your own permissions.",
+      "roleHintStudentOnly": "New accounts are assigned the default Student role.",
+      "roleLabel": "Role",
+      "submit": "Create account",
+      "success": "Created account {username}.",
+      "title": "Create account",
+      "usernameAvailable": "Available. 4–30 characters, ASCII, case-insensitive, cannot be changed after creation.",
+      "usernameChecking": "Checking username availability...",
+      "usernameHint": "4–30 characters (a-z, 0-9, ., _, @, -), starts with a letter or digit, cannot be changed after creation.",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "nguyen.van.an"
+    },
+    "errorCodes": {
+      "ALREADY_ACTIVE": "This account is already active.",
+      "ALREADY_INACTIVE": "This account is already inactive.",
+      "BULK_LIMIT_EXCEEDED": "You can process at most 500 accounts at once.",
+      "CLASS_NOT_SUPPORTED": "Class assignment is not supported yet.",
+      "EMAIL_INVALID": "Email address is invalid.",
+      "EMAIL_TAKEN": "Email address is already used by another account.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Missing idempotency key for this request.",
+      "IDENTITY_PROVIDER_ERROR": "Could not sync with the authentication service. Please try again.",
+      "INTERNAL_ERROR": "An unexpected server error occurred. Please try again.",
+      "NOTBLANK": "This field is required.",
+      "NOT_FOUND": "Account not found.",
+      "PASSWORD_DIGIT": "Password must contain at least one digit.",
+      "PASSWORD_LENGTH": "Password must be between 8 and 64 characters.",
+      "PASSWORD_LOWERCASE": "Password must contain at least one lowercase letter.",
+      "PASSWORD_SAME_AS_USERNAME": "Password must not match the username.",
+      "PASSWORD_SPECIAL": "Password must contain at least one special character.",
+      "PASSWORD_UPPERCASE": "Password must contain at least one uppercase letter.",
+      "PASSWORD_WEAK": "Password does not meet all security requirements.",
+      "PRIVILEGE_ESCALATION": "You cannot manage or grant permissions exceeding your own access.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "REASON_REQUIRED": "Please enter a reason for this action.",
+      "ROLE_INACTIVE": "The selected role is inactive.",
+      "SELF_DEACTIVATE": "You cannot deactivate your own account.",
+      "SELF_DELETE": "You cannot delete your own account.",
+      "SIZE": "Value exceeds maximum allowed length.",
+      "USERNAME_INVALID": "Username must be 4–30 characters, start with a letter or digit, and use only ASCII letters, digits, and . _ @ -.",
+      "USERNAME_REQUIRED": "Please enter a username.",
+      "USERNAME_RESERVED": "This username is reserved by the system.",
+      "USERNAME_TAKEN": "Username is already taken.",
+      "USER_HAS_TRANSACTIONS": "This account has transaction records and cannot be deleted.",
+      "USER_NOT_AVAILABLE": "Account does not exist or has already been deleted.",
+      "VALIDATION_FAILED": "Submitted data is invalid. Please review the form.",
+      "VERSION_CONFLICT": "This account was updated elsewhere. Please reload the latest data."
+    },
+    "filters": {
+      "all": "All",
+      "ariaLabel": "Account filters",
+      "classLabel": "Class",
+      "clear": "Clear filters",
+      "includeDeleted": "Show deleted accounts",
+      "neverLoggedIn": "Never signed in",
+      "roleLabel": "Role",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Code, username, full name, email, phone",
+      "sourceLabel": "Source",
+      "statusLabel": "Status"
+    },
+    "list": {
+      "description": "Admin-provisioned and self-registered accounts, including those that have never signed in.",
+      "emptyDescription": "No accounts exist in the system yet.",
+      "emptyFilteredDescription": "No accounts match the current filters.",
+      "emptyFilteredTitle": "No matching accounts",
+      "emptyTitle": "No accounts yet",
+      "errorDescription": "Could not load accounts. Please try again.",
+      "errorTitle": "Could not load list",
+      "filteredCount": "{count} matching accounts",
+      "hint": "Select multiple rows to deactivate, reactivate, delete, or assign roles and permissions in bulk",
+      "paginationNav": "Account list pagination",
+      "paginationNext": "Next",
+      "paginationPage": "Page {page}",
+      "paginationPrevious": "Previous",
+      "paginationRange": "Showing {from}–{to} of {total}",
+      "paginationRowsPerPage": "Rows per page",
+      "tableAriaLabel": "Accounts table",
+      "title": "Accounts"
+    },
+    "passwordField": {
+      "generate": "Generate random",
+      "hidePassword": "Hide password",
+      "ruleDigit": "Contains at least one digit",
+      "ruleLength": "8 to 64 characters",
+      "ruleLower": "Contains at least one lowercase letter",
+      "ruleSpecial": "Contains at least one special character",
+      "ruleUpper": "Contains at least one uppercase letter",
+      "rulesLabel": "Password requirements",
+      "showPassword": "Show password"
+    },
+    "sources": {
+      "ADMIN_CREATED": "Admin created",
+      "BULK_IMPORT": "Bulk import",
+      "GOOGLE": "Google",
+      "SELF_REGISTERED": "Self-registered"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "DELETED": "Deleted",
+      "INACTIVE": "Inactive",
+      "NEVER_LOGGED_IN": "Never signed in",
+      "PROVISIONING": "Provisioning"
+    },
+    "table": {
+      "actions": "Actions",
+      "email": "Email",
+      "fullName": "Full name",
+      "phone": "Phone",
+      "roles": "Roles",
+      "source": "Source",
+      "status": "Status",
+      "username": "Username"
+    },
+    "validation": {
+      "emailInvalid": "Email format is invalid.",
+      "emailMax": "Email must be at most 255 characters.",
+      "fullNameMax": "Full name must be at most 200 characters.",
+      "fullNameRequired": "Please enter a full name.",
+      "passwordSameAsUsername": "Password must not match the username.",
+      "passwordWeak": "Password must satisfy all 5 security requirements.",
+      "phoneMax": "Phone number must be at most 30 characters.",
+      "usernameInvalid": "Username must be 4–30 characters, start with a letter or digit, and use only ASCII letters, digits, and . _ @ -.",
+      "usernameRequired": "Please enter a username.",
+      "usernameReserved": "This username is reserved by the system."
     }
   }
 }

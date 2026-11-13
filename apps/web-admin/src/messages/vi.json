@@ -250,6 +250,10 @@
       "users": "Người dùng"
     },
     "items": {
+      "accounts": {
+        "description": "Tài khoản quản trị viên, học viên, trạng thái và thao tác",
+        "label": "Tài khoản"
+      },
       "appearance": {
         "description": "Chế độ sáng/tối và bộ phối màu toàn hệ thống",
         "label": "Tùy chỉnh giao diện"
@@ -279,6 +283,153 @@
       "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
       "studentPortal": "Trang học viên",
       "trigger": "Menu tài khoản"
+    }
+  },
+  "users": {
+    "actions": {
+      "create": "+ Tạo tài khoản",
+      "rowMenu": "Thao tác với {username}",
+      "viewDetail": "Xem chi tiết"
+    },
+    "createDialog": {
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "description": "Tạo tài khoản không tự cấp quyền dùng bài thi trả phí.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Không bắt buộc",
+      "fullNameLabel": "Họ và tên",
+      "fullNamePlaceholder": "Nguyễn Văn An",
+      "mustChangePasswordLabel": "Bắt đổi mật khẩu ở lần đăng nhập đầu",
+      "passwordLabel": "Mật khẩu",
+      "passwordPlaceholder": "Nhập hoặc tạo ngẫu nhiên",
+      "phoneLabel": "Số điện thoại",
+      "phonePlaceholder": "Không bắt buộc",
+      "roleDefaultValue": "Học viên (Thi)",
+      "roleHint": "Chỉ gán được vai trò có quyền nằm trong quyền của chính bạn.",
+      "roleHintStudentOnly": "Tài khoản mới được gán vai trò mặc định Học viên.",
+      "roleLabel": "Vai trò",
+      "submit": "Tạo tài khoản",
+      "success": "Đã tạo tài khoản {username}.",
+      "title": "Tạo tài khoản",
+      "usernameAvailable": "Có thể dùng. 4–30 ký tự, không dấu, không phân biệt hoa/thường, không sửa được sau khi tạo.",
+      "usernameChecking": "Đang kiểm tra tên đăng nhập...",
+      "usernameHint": "4–30 ký tự (a-z, 0-9, ., _, @, -), bắt đầu bằng chữ cái hoặc chữ số, không sửa được sau khi tạo.",
+      "usernameLabel": "Tên đăng nhập",
+      "usernamePlaceholder": "nguyen.van.an"
+    },
+    "errorCodes": {
+      "ALREADY_ACTIVE": "Tài khoản đang hoạt động.",
+      "ALREADY_INACTIVE": "Tài khoản đã ở trạng thái ngừng hoạt động.",
+      "BULK_LIMIT_EXCEEDED": "Chỉ có thể thao tác tối đa 500 tài khoản mỗi lần.",
+      "CLASS_NOT_SUPPORTED": "Chức năng lớp học chưa được hỗ trợ.",
+      "EMAIL_INVALID": "Email không đúng định dạng.",
+      "EMAIL_TAKEN": "Email đã được tài khoản khác sử dụng.",
+      "FORBIDDEN": "Bạn không có quyền thực hiện thao tác này.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Thiếu khóa chống trùng lặp thao tác.",
+      "IDENTITY_PROVIDER_ERROR": "Không đồng bộ được với hệ thống xác thực. Vui lòng thử lại.",
+      "INTERNAL_ERROR": "Đã có lỗi hệ thống xảy ra. Vui lòng thử lại.",
+      "NOTBLANK": "Trường này không được để trống.",
+      "NOT_FOUND": "Không tìm thấy tài khoản.",
+      "PASSWORD_DIGIT": "Mật khẩu phải có ít nhất một chữ số.",
+      "PASSWORD_LENGTH": "Mật khẩu phải từ 8 đến 64 ký tự.",
+      "PASSWORD_LOWERCASE": "Mật khẩu phải có ít nhất một chữ thường.",
+      "PASSWORD_SAME_AS_USERNAME": "Mật khẩu không được trùng tên đăng nhập.",
+      "PASSWORD_SPECIAL": "Mật khẩu phải có ít nhất một ký tự đặc biệt.",
+      "PASSWORD_UPPERCASE": "Mật khẩu phải có ít nhất một chữ hoa.",
+      "PASSWORD_WEAK": "Mật khẩu chưa đạt đủ các điều kiện bảo mật.",
+      "PRIVILEGE_ESCALATION": "Bạn không thể thao tác hoặc gán quyền vượt quá quyền của chính mình.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+      "REASON_REQUIRED": "Vui lòng nhập lý do thực hiện thao tác.",
+      "ROLE_INACTIVE": "Vai trò được chọn đã ngừng hoạt động.",
+      "SELF_DEACTIVATE": "Bạn không thể tự ngừng hoạt động tài khoản của chính mình.",
+      "SELF_DELETE": "Bạn không thể tự xóa tài khoản của chính mình.",
+      "SIZE": "Giá trị vượt quá độ dài cho phép.",
+      "USERNAME_INVALID": "Tên đăng nhập gồm 4–30 ký tự, bắt đầu bằng chữ hoặc số, chỉ dùng chữ không dấu, số và . _ @ -.",
+      "USERNAME_REQUIRED": "Vui lòng nhập tên đăng nhập.",
+      "USERNAME_RESERVED": "Tên đăng nhập này thuộc danh sách tên dành riêng của hệ thống.",
+      "USERNAME_TAKEN": "Tên đăng nhập đã được sử dụng.",
+      "USER_HAS_TRANSACTIONS": "Tài khoản đang có dữ liệu giao dịch cần đối soát, không thể xóa.",
+      "USER_NOT_AVAILABLE": "Tài khoản không tồn tại hoặc đã bị xóa.",
+      "VALIDATION_FAILED": "Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.",
+      "VERSION_CONFLICT": "Tài khoản vừa được cập nhật ở nơi khác. Hãy tải lại dữ liệu mới nhất."
+    },
+    "filters": {
+      "all": "Tất cả",
+      "ariaLabel": "Bộ lọc tài khoản",
+      "classLabel": "Lớp",
+      "clear": "Xóa bộ lọc",
+      "includeDeleted": "Hiện tài khoản đã xóa",
+      "neverLoggedIn": "Chưa đăng nhập",
+      "roleLabel": "Vai trò",
+      "searchLabel": "Tìm kiếm",
+      "searchPlaceholder": "Mã, tên đăng nhập, họ tên, email, số điện thoại",
+      "sourceLabel": "Nguồn",
+      "statusLabel": "Trạng thái"
+    },
+    "list": {
+      "description": "Tài khoản do quản trị viên cấp và tài khoản tự đăng ký, kể cả chưa từng đăng nhập.",
+      "emptyDescription": "Chưa có tài khoản nào trong hệ thống.",
+      "emptyFilteredDescription": "Không có tài khoản nào khớp với bộ lọc hiện tại.",
+      "emptyFilteredTitle": "Không tìm thấy tài khoản",
+      "emptyTitle": "Chưa có tài khoản",
+      "errorDescription": "Không tải được danh sách tài khoản. Hãy thử lại.",
+      "errorTitle": "Không tải được danh sách",
+      "filteredCount": "{count} tài khoản khớp bộ lọc",
+      "hint": "Chọn nhiều dòng để ngừng hoạt động, kích hoạt lại, xóa hoặc gán vai trò và quyền hàng loạt",
+      "paginationNav": "Phân trang danh sách tài khoản",
+      "paginationNext": "Sau",
+      "paginationPage": "Trang {page}",
+      "paginationPrevious": "Trước",
+      "paginationRange": "Hiển thị {from}–{to} trên {total}",
+      "paginationRowsPerPage": "Số dòng mỗi trang",
+      "tableAriaLabel": "Danh sách tài khoản",
+      "title": "Tài khoản"
+    },
+    "passwordField": {
+      "generate": "Tạo ngẫu nhiên",
+      "hidePassword": "Ẩn mật khẩu",
+      "ruleDigit": "Có ít nhất một chữ số",
+      "ruleLength": "Từ 8 đến 64 ký tự",
+      "ruleLower": "Có ít nhất một chữ thường",
+      "ruleSpecial": "Có ít nhất một ký tự đặc biệt",
+      "ruleUpper": "Có ít nhất một chữ hoa",
+      "rulesLabel": "Điều kiện mật khẩu",
+      "showPassword": "Hiện mật khẩu"
+    },
+    "sources": {
+      "ADMIN_CREATED": "Admin tạo",
+      "BULK_IMPORT": "Cấp hàng loạt",
+      "GOOGLE": "Google",
+      "SELF_REGISTERED": "Tự đăng ký"
+    },
+    "statuses": {
+      "ACTIVE": "Hoạt động",
+      "DELETED": "Đã xóa",
+      "INACTIVE": "Ngừng hoạt động",
+      "NEVER_LOGGED_IN": "Chưa đăng nhập",
+      "PROVISIONING": "Đang khởi tạo"
+    },
+    "table": {
+      "actions": "Thao tác",
+      "email": "Email",
+      "fullName": "Họ và tên",
+      "phone": "Số điện thoại",
+      "roles": "Vai trò",
+      "source": "Nguồn",
+      "status": "Trạng thái",
+      "username": "Tên đăng nhập"
+    },
+    "validation": {
+      "emailInvalid": "Email không đúng định dạng.",
+      "emailMax": "Email tối đa 255 ký tự.",
+      "fullNameMax": "Họ và tên tối đa 200 ký tự.",
+      "fullNameRequired": "Vui lòng nhập họ và tên.",
+      "passwordSameAsUsername": "Mật khẩu không được trùng tên đăng nhập.",
+      "passwordWeak": "Mật khẩu phải đạt đủ 5 điều kiện bảo mật.",
+      "phoneMax": "Số điện thoại tối đa 30 ký tự.",
+      "usernameInvalid": "Tên đăng nhập 4–30 ký tự, bắt đầu bằng chữ hoặc số, chỉ gồm chữ không dấu, số và . _ @ -.",
+      "usernameRequired": "Vui lòng nhập tên đăng nhập.",
+      "usernameReserved": "Tên đăng nhập này thuộc danh sách tên dành riêng của hệ thống."
     }
   }
 }
