@@ -17,6 +17,7 @@
 ### 2026-11-13 — Sửa theo góp ý của BA trên bản thiết kế
 
 - Danh sách tài khoản bỏ cột Mã và cột Đăng nhập cuối.
+- Cấp hàng loạt: bỏ ô lớp chung, bỏ danh sách lịch sử đợt cấp, thêm nút Tải file lỗi. Biểu mẫu vai trò chỉ hiện tên quyền.
 - Mật khẩu do người tạo nhập, có quy tắc độ mạnh áp chung; cấp hàng loạt thêm cột Mật khẩu. Spec §4.3, §7, §14; plan B12, T07, T09, T11, T18.
 
 ### 2026-11-13 — Chỉnh menu và bổ sung phân quyền
