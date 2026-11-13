@@ -25,6 +25,8 @@ import vn.unicom.thi360.audit.spi.AuditOutcome;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
+import vn.unicom.thi360.shared.security.CurrentUser;
+import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @Service
@@ -101,8 +103,13 @@ public class AuditRecorderImpl implements AuditRecorder {
             UUID actorId = null;
             String actorUsername = auth.getName();
             boolean isPlatform = roles.contains("ROLE_PLATFORM_ADMIN") || roles.contains("PLATFORM_ADMIN");
+            AuditActorType actorType;
 
-            if (auth.getPrincipal() instanceof Jwt jwt) {
+            if (auth.getPrincipal() instanceof CurrentUser currentUser) {
+                actorId = currentUser.id();
+                actorUsername = currentUser.username();
+                actorType = currentUser.realm() == Realm.MASTER ? AuditActorType.PLATFORM : AuditActorType.USER;
+            } else if (auth.getPrincipal() instanceof Jwt jwt) {
                 actorId = parseUuidOrNull(jwt.getSubject());
                 String preferred = jwt.getClaimAsString("preferred_username");
                 if (preferred != null && !preferred.isBlank()) {
@@ -111,11 +118,12 @@ public class AuditRecorderImpl implements AuditRecorder {
                 if (!isPlatform && jwt.getIssuer() != null && jwt.getIssuer().toString().endsWith("/realms/master")) {
                     isPlatform = true;
                 }
+                actorType = isPlatform ? AuditActorType.PLATFORM : AuditActorType.USER;
             } else {
                 actorId = parseUuidOrNull(auth.getName());
+                actorType = isPlatform ? AuditActorType.PLATFORM : AuditActorType.USER;
             }
 
-            AuditActorType actorType = isPlatform ? AuditActorType.PLATFORM : AuditActorType.USER;
             return new ResolvedActor(actorId, actorUsername, roles, actorType);
         }
 
