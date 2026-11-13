@@ -21,7 +21,7 @@
 - `backend/src/main/resources/logback-spring.xml`: console dạng chữ ở dev/test, JSON ở môi trường khác, ghi tệp khi bật profile `logfile`; mẫu dòng có `trace=` và `user=` ở vị trí cố định; bốn logger theo mục đích (`thi360.access`, `.security`, `.job`, `.external`).
 - `LoggingConfigTests` (3 test) kiểm hai định dạng và mức log mặc định. Lệnh đã chạy: `cd backend && ./mvnw -B -ntp verify` → xanh (4 test).
 - Plan thêm mục B15 (quy ước ghi log, khóa MDC); T02 bổ sung việc của `TraceIdFilter`.
-- **Chưa commit**: thay đổi nằm trên nhánh local `feature/UNI-2558-quy-hoach-logback`, chờ M.Trường yêu cầu.
+- Đã merge vào `develop` qua PR #3 theo yêu cầu của M.Trường (2026-11-13).
 
 ### 2026-11-13 — Chốt thiết kế, hoãn phần danh mục
 
