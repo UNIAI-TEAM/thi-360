@@ -490,9 +490,9 @@ public class ClassService {
 
         ClassRoom classRoom = classRoomRepository.findByIdAndDeletedAtIsNullForUpdate(classId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        classMemberLock.lockUser(userId);
         ClassMember member = classMemberRepository.findByIdClassIdAndIdUserId(classId, userId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-
         classMemberRepository.delete(member);
         classMemberRepository.flush();
 
@@ -537,10 +537,9 @@ public class ClassService {
 
         classMemberLock.lockUser(userId);
 
-        UserDirectory.UserDetailSummary userSummary = userDirectory.findDetailById(userId)
-                .filter(u -> !u.deleted() && !u.platformAdmin() && !"PROVISIONING".equals(u.status()))
+        userDirectory.findDetailById(userId)
+                .filter(UserDirectory.UserDetailSummary::isAvailableForMembership)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        Objects.requireNonNull(userSummary);
 
         ClassMember sourceMember = classMemberRepository.findByIdClassIdAndIdUserId(sourceClassId, userId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));

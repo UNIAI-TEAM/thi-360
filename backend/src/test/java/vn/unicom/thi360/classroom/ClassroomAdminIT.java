@@ -809,6 +809,84 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void userDeletedCleanup_serializesWithRemoveMemberWithoutDuplicateLeaveOrAudit() throws Exception {
+        String sfx = suffix();
+        UUID actorId = insertUser("rm.actor." + sfx, "Admin RM");
+        UUID student = insertUser("rm.sv." + sfx, "SV RM");
+        UUID classId = createClassViaApi("RMCONC-" + sfx, "Lớp RM Conc", null);
+
+        mockMvc.perform(post("/api/v1/admin/classes/{id}/members", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userIds\":[\"%s\"]}".formatted(student)))
+                .andExpect(status().isOk());
+
+        while (outboxRelay.relayBatch() > 0) {
+            // drain outbox backlog
+        }
+
+        Instant deletedAt = Instant.now();
+        jdbcTemplate.update(
+                "UPDATE identity.user_account SET deleted_at = ?, status = 3, delete_reason = ? WHERE id = ?",
+                java.sql.Timestamp.from(deletedAt),
+                "Tài khoản vi phạm",
+                student);
+
+        CountDownLatch cleanupLockedLatch = new CountDownLatch(1);
+        UserDeleted deletedPayload = new UserDeleted(student, "rm.sv." + sfx, deletedAt, actorId);
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> cleanupFuture = pool.submit(() ->
+                    new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                        userDeletedClassCleanupListener.onUserDeleted(deletedPayload);
+                        cleanupLockedLatch.countDown();
+                        awaitUngrantedAdvisoryLock();
+                    }));
+
+            Future<Throwable> blockedRemoveFuture = pool.submit(() -> {
+                try {
+                    assertThat(cleanupLockedLatch.await(5, TimeUnit.SECONDS)).isTrue();
+                    setTestSecurityContext(actorId, "rm.actor." + sfx, Permissions.CLASS_MODIFY);
+                    classService.removeMember(classId, student, "Loại thủ công");
+                    return null;
+                } catch (Throwable ex) {
+                    return ex;
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            });
+
+            cleanupFuture.get(15, TimeUnit.SECONDS);
+            Throwable removeError = blockedRemoveFuture.get(15, TimeUnit.SECONDS);
+            assertThat(removeError).isInstanceOf(NotFoundException.class);
+
+            while (outboxRelay.relayBatch() > 0) {
+                // materialize audit rows
+            }
+
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM classroom.class_member WHERE user_id = ?",
+                    Integer.class,
+                    student)).isZero();
+
+            List<String> leaveReasons = jdbcTemplate.queryForList(
+                    "SELECT reason FROM classroom.class_member_history WHERE user_id = ? AND action = 2",
+                    String.class,
+                    student);
+            assertThat(leaveReasons).containsExactly("Tài khoản vi phạm");
+
+            List<String> auditReasons = jdbcTemplate.queryForList(
+                    "SELECT reason FROM audit.audit_event WHERE action = 'CLASS_MEMBER_REMOVED' AND target_id = ?",
+                    String.class,
+                    classId.toString());
+            assertThat(auditReasons).containsExactly("Tài khoản vi phạm");
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     private void awaitUngrantedAdvisoryLock() {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (System.nanoTime() < deadline) {
@@ -908,6 +986,44 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
                                 """.formatted(platformAdminId)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // Existing member becomes INACTIVE -> transfer to active target class is rejected (404 NOT_FOUND) and source remains unchanged
+        UUID memberToDeactivate = insertUser("tr.ina." + sfx, "Member Becoming Inactive");
+        UUID targetClassId = createClassViaApi("TR-TGT-" + sfx, "Lớp đích", null);
+        mockMvc.perform(post("/api/v1/admin/classes/{id}/members", classId)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userIds\":[\"%s\"]}".formatted(memberToDeactivate)))
+                .andExpect(status().isOk());
+
+        jdbcTemplate.update("UPDATE identity.user_account SET status = 3 WHERE id = ?", memberToDeactivate);
+
+        mockMvc.perform(post("/api/v1/admin/classes/{id}/members/{userId}/transfer", classId, memberToDeactivate)
+                        .with(asUser(Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetClassId": "%s",
+                                  "reason": "Thử chuyển học viên ngừng hoạt động"
+                                }
+                                """.formatted(targetClassId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM classroom.class_member WHERE class_id = ? AND user_id = ?",
+                Integer.class,
+                classId,
+                memberToDeactivate)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM classroom.class_member WHERE class_id = ? AND user_id = ?",
+                Integer.class,
+                targetClassId,
+                memberToDeactivate)).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM classroom.class_member_history WHERE user_id = ? AND action IN (3, 4)",
+                Integer.class,
+                memberToDeactivate)).isZero();
     }
 
     private UUID createClassViaApi(String code, String name, UUID ownerUserId) throws Exception {
