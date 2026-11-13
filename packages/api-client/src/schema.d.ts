@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/admin/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Lưu và áp dụng cấu hình giao diện toàn hệ thống */
+        put: operations["updateAppearance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/appearance/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Khôi phục cấu hình giao diện mặc định */
+        post: operations["resetAppearance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/audit-events": {
         parameters: {
             query?: never;
@@ -222,6 +256,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lấy cấu hình giao diện toàn hệ thống (công khai) */
+        get: operations["getAppearance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -347,6 +398,47 @@ export interface components {
              * @example 019320a0-0000-7000-8000-000000000001
              */
             traceId: string;
+        };
+        /** @description Cặp màu tùy chỉnh gồm màu chính và màu nhấn */
+        AppearanceCustomColorsDto: {
+            /**
+             * @description Mã màu nhấn định dạng #RRGGBB
+             * @example #F59223
+             */
+            accent: string;
+            /**
+             * @description Mã màu chính định dạng #RRGGBB
+             * @example #059669
+             */
+            primary: string;
+        };
+        /** @description Cấu hình bộ phối màu giao diện */
+        AppearancePaletteDto: {
+            /** @description Màu tùy chỉnh; bắt buộc khi presetId = 'custom' và được giữ lại khi chọn bộ cố định */
+            custom?: components["schemas"]["AppearanceCustomColorsDto"];
+            /**
+             * @description Mã bộ phối màu cố định hoặc 'custom'
+             * @example thi360-green
+             * @enum {string}
+             */
+            presetId: "thi360-green" | "emerald-gold" | "charcoal-teal" | "navy-teal" | "blue-silver" | "sky-orange" | "indigo-amber" | "indigo-coral" | "slate-crimson" | "custom";
+        };
+        /** @description Cấu hình giao diện toàn hệ thống */
+        AppearanceResponse: {
+            /**
+             * @description Chế độ sáng hoặc tối
+             * @example light
+             * @enum {string}
+             */
+            mode: "light" | "dark";
+            /** @description Bộ phối màu đang áp dụng */
+            palette: components["schemas"]["AppearancePaletteDto"];
+            /**
+             * Format: int64
+             * @description Phiên bản cấu hình phục vụ khóa lạc quan và ETag
+             * @example 0
+             */
+            version: number;
         };
         /** @description Bản ghi nhật ký thao tác */
         AuditEventResponse: {
@@ -817,6 +909,15 @@ export interface components {
              */
             time: string;
         };
+        /** @description Yêu cầu khôi phục cấu hình giao diện mặc định */
+        ResetAppearanceRequest: {
+            /**
+             * Format: int64
+             * @description Phiên bản hiện tại để kiểm tra khóa lạc quan (tùy chọn)
+             * @example 1
+             */
+            version?: number;
+        };
         /** @description Chi tiết vai trò kèm danh sách quyền */
         RoleDetailResponse: {
             /**
@@ -918,6 +1019,23 @@ export interface components {
             /**
              * Format: int64
              * @description Phiên bản khóa lạc quan
+             */
+            version: number;
+        };
+        /** @description Yêu cầu cập nhật cấu hình giao diện toàn hệ thống */
+        UpdateAppearanceRequest: {
+            /**
+             * @description Chế độ sáng hoặc tối
+             * @example light
+             * @enum {string}
+             */
+            mode: "light" | "dark";
+            /** @description Bộ phối màu mới */
+            palette: components["schemas"]["AppearancePaletteDto"];
+            /**
+             * Format: int64
+             * @description Phiên bản hiện tại để kiểm tra khóa lạc quan
+             * @example 0
              */
             version: number;
         };
@@ -1069,6 +1187,216 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    updateAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAppearanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resetAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ResetAppearanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listAuditEvents: {
         parameters: {
             query?: {
@@ -2797,6 +3125,109 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserRolesResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAppearance: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceResponse"];
                 };
             };
             /** @description Bad Request */
