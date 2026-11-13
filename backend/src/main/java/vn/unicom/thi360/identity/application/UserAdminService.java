@@ -806,7 +806,10 @@ public class UserAdminService {
             } else {
                 UserAccount ua = accountsById.get(uid);
                 skipped.add(new BulkUserSkippedItem(
-                        uid, ua == null ? null : ua.getUsername(), decision.code(), decision.message()));
+                        uid,
+                        ua == null ? null : ua.getUsername(),
+                        decision.code(),
+                        localizeReason(decision.messageKey(), decision.messageArgs(), decision.code())));
             }
         }
         return new BulkUserActionPreviewResponse(distinctIds.size(), affected, List.copyOf(skipped));
@@ -829,26 +832,27 @@ public class UserAdminService {
         String scope = BULK_IDEMPOTENCY_ENDPOINT + ":" + actor.realm().name() + ":" + actor.id();
         String digest = computeBulkDigest(request.action(), distinctIds, trimmedReason);
 
-        return idempotencyService.executeOnce(
+        StoredBulkUserActionResponse stored = idempotencyService.executeOnce(
                 idempotencyKey.trim(),
                 scope,
                 digest,
-                BulkUserActionResponse.class,
+                StoredBulkUserActionResponse.class,
                 () -> executeBulkItems(actor, request.action(), distinctIds, trimmedReason));
+        return localizeBulkResponse(stored);
     }
 
-    private BulkUserActionResponse executeBulkItems(
+    private StoredBulkUserActionResponse executeBulkItems(
             CurrentUser actor, UserBulkAction action, List<UUID> distinctIds, String trimmedReason) {
         UUID batchId = Ids.newId();
         Instant now = Instant.now(clock);
 
-        List<BulkUserActionItemResult> results = new ArrayList<>(distinctIds.size());
+        List<StoredBulkUserActionItemResult> results = new ArrayList<>(distinctIds.size());
         int succeeded = 0;
         int skipped = 0;
         int failed = 0;
 
         for (UUID uid : distinctIds) {
-            BulkUserActionItemResult item = executeSingleBulkItem(actor, action, uid, trimmedReason, now);
+            StoredBulkUserActionItemResult item = executeSingleBulkItem(actor, action, uid, trimmedReason, now);
             results.add(item);
             switch (item.outcome()) {
                 case SUCCEEDED -> succeeded++;
@@ -857,16 +861,16 @@ public class UserAdminService {
             }
         }
 
-        return new BulkUserActionResponse(
+        return new StoredBulkUserActionResponse(
                 batchId, action, distinctIds.size(), succeeded, skipped, failed, List.copyOf(results));
     }
 
-    private BulkUserActionItemResult executeSingleBulkItem(
+    private StoredBulkUserActionItemResult executeSingleBulkItem(
             CurrentUser actor, UserBulkAction action, UUID uid, String trimmedReason, Instant now) {
         String[] knownUsername = {null};
         Boolean[] restoreKcEnabledOnRollback = {null};
         try {
-            BulkUserActionItemResult committed = requiresNewTx.execute(status -> {
+            StoredBulkUserActionItemResult committed = requiresNewTx.execute(status -> {
                 jdbcTemplate.query(
                         "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE",
                         rs -> {},
@@ -875,10 +879,15 @@ public class UserAdminService {
                 knownUsername[0] = user == null ? null : user.getUsername();
                 BulkSkipDecision skip = evaluateBulkEligibility(actor, action, uid, user);
                 if (skip != null) {
-                    return new BulkUserActionItemResult(
-                            uid, knownUsername[0], BulkUserItemOutcome.SKIPPED, skip.code(), skip.message());
+                    return new StoredBulkUserActionItemResult(
+                            uid,
+                            knownUsername[0],
+                            BulkUserItemOutcome.SKIPPED,
+                            skip.code(),
+                            skip.messageKey(),
+                            skip.messageArgs(),
+                            null);
                 }
-
                 switch (action) {
                     case DEACTIVATE -> {
                         UserStatus oldStatus = user.getStatus();
@@ -921,8 +930,8 @@ public class UserAdminService {
                     }
                     case DELETE -> performSoftDeleteLocal(actor, user, trimmedReason, now);
                 }
-                return new BulkUserActionItemResult(
-                        uid, user.getUsername(), BulkUserItemOutcome.SUCCEEDED, null, null);
+                return new StoredBulkUserActionItemResult(
+                        uid, user.getUsername(), BulkUserItemOutcome.SUCCEEDED, null, null, List.of(), null);
             });
             if (committed != null
                     && committed.outcome() == BulkUserItemOutcome.SUCCEEDED
@@ -934,8 +943,8 @@ public class UserAdminService {
             if (restoreKcEnabledOnRollback[0] != null) {
                 compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
             }
-            return new BulkUserActionItemResult(
-                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), messages.get("bulk.user.fail.idpError"));
+            return new StoredBulkUserActionItemResult(
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), "bulk.user.fail.idpError", List.of(), null);
         } catch (RuntimeException ex) {
             if (restoreKcEnabledOnRollback[0] != null) {
                 compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
@@ -945,9 +954,46 @@ public class UserAdminService {
                     .addKeyValue("userId", uid.toString())
                     .addKeyValue("action", action.name())
                     .log("Bulk user action item failed; transaction rolled back");
-            return new BulkUserActionItemResult(
-                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, "INTERNAL_ERROR", messages.get("bulk.user.fail.internal"));
+            return new StoredBulkUserActionItemResult(
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, "INTERNAL_ERROR", "bulk.user.fail.internal", List.of(), null);
         }
+    }
+
+    private BulkUserActionResponse localizeBulkResponse(StoredBulkUserActionResponse stored) {
+        List<BulkUserActionItemResult> localizedResults = stored.results().stream()
+                .map(item -> new BulkUserActionItemResult(
+                        item.id(),
+                        item.username(),
+                        item.outcome(),
+                        item.reasonCode(),
+                        localizeBulkItemReason(item)))
+                .toList();
+        return new BulkUserActionResponse(
+                stored.batchId(),
+                stored.action(),
+                stored.total(),
+                stored.succeeded(),
+                stored.skipped(),
+                stored.failed(),
+                localizedResults);
+    }
+
+    private String localizeBulkItemReason(StoredBulkUserActionItemResult item) {
+        if (item.outcome() == BulkUserItemOutcome.SUCCEEDED) {
+            return null;
+        }
+        if (item.reasonKey() != null && !item.reasonKey().isBlank()) {
+            return localizeReason(item.reasonKey(), item.reasonArgs(), item.reasonCode());
+        }
+        return item.reason();
+    }
+
+    private String localizeReason(String messageKey, List<String> messageArgs, String fallback) {
+        if (messageKey == null || messageKey.isBlank()) {
+            return fallback;
+        }
+        Object[] args = messageArgs == null || messageArgs.isEmpty() ? new Object[0] : messageArgs.toArray();
+        return messages.get(messageKey, args);
     }
 
     private void performSoftDeleteLocal(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
@@ -1124,29 +1170,29 @@ public class UserAdminService {
     private BulkSkipDecision evaluateBulkEligibility(
             CurrentUser actor, UserBulkAction action, UUID userId, UserAccount user) {
         if (user == null || user.isDeleted() || user.getStatus() == UserStatus.PROVISIONING) {
-            return new BulkSkipDecision("USER_NOT_AVAILABLE", messages.get("bulk.user.skip.notAvailable"));
+            return new BulkSkipDecision("USER_NOT_AVAILABLE", "bulk.user.skip.notAvailable");
         }
         if (action == UserBulkAction.DEACTIVATE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
-            return new BulkSkipDecision(ERROR_SELF_DEACTIVATE, messages.get(ERROR_SELF_DEACTIVATE));
+            return new BulkSkipDecision(ERROR_SELF_DEACTIVATE, ERROR_SELF_DEACTIVATE);
         }
         if (action == UserBulkAction.DELETE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
-            return new BulkSkipDecision(ERROR_SELF_DELETE, messages.get(ERROR_SELF_DELETE));
+            return new BulkSkipDecision(ERROR_SELF_DELETE, ERROR_SELF_DELETE);
         }
         if (action == UserBulkAction.DEACTIVATE && user.getStatus() == UserStatus.INACTIVE) {
-            return new BulkSkipDecision("ALREADY_INACTIVE", messages.get("bulk.user.skip.alreadyInactive"));
+            return new BulkSkipDecision("ALREADY_INACTIVE", "bulk.user.skip.alreadyInactive");
         }
         if (action == UserBulkAction.ACTIVATE && user.getStatus() == UserStatus.ACTIVE) {
-            return new BulkSkipDecision("ALREADY_ACTIVE", messages.get("bulk.user.skip.alreadyActive"));
+            return new BulkSkipDecision("ALREADY_ACTIVE", "bulk.user.skip.alreadyActive");
         }
         Set<Permission> targetPermissions = authzSnapshotService.computeEffectivePermissions(userId);
         if (!privilegeGuard.canGrant(actor, targetPermissions)) {
-            return new BulkSkipDecision("PRIVILEGE_ESCALATION", messages.get("bulk.user.skip.privilegeEscalation"));
+            return new BulkSkipDecision("PRIVILEGE_ESCALATION", "bulk.user.skip.privilegeEscalation");
         }
         if (action == UserBulkAction.DELETE) {
             List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
             if (!blockers.isEmpty()) {
                 String sources = blockers.stream().map(AccountDeletionGuard.Blocker::source).distinct().reduce((a, b) -> a + ", " + b).orElse("");
-                return new BulkSkipDecision(ERROR_USER_HAS_TRANSACTIONS, messages.get("bulk.user.skip.hasTransactions", sources));
+                return new BulkSkipDecision(ERROR_USER_HAS_TRANSACTIONS, "bulk.user.skip.hasTransactions", List.of(sources));
             }
         }
         return null;
@@ -1213,7 +1259,32 @@ public class UserAdminService {
         return trimmed;
     }
 
-    private record BulkSkipDecision(String code, String message) {
+    private record BulkSkipDecision(String code, String messageKey, List<String> messageArgs) {
+        private BulkSkipDecision(String code, String messageKey) {
+            this(code, messageKey, List.of());
+        }
+    }
+
+    record StoredBulkUserActionResponse(
+            UUID batchId,
+            UserBulkAction action,
+            int total,
+            int succeeded,
+            int skipped,
+            int failed,
+            List<StoredBulkUserActionItemResult> results
+    ) {
+    }
+
+    record StoredBulkUserActionItemResult(
+            UUID id,
+            String username,
+            BulkUserItemOutcome outcome,
+            String reasonCode,
+            String reasonKey,
+            List<String> reasonArgs,
+            String reason
+    ) {
     }
 
     private List<Role> resolveTargetRoles(CurrentUser actor, List<UUID> requestedRoleIds) {
