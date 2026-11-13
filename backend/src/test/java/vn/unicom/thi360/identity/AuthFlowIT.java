@@ -83,7 +83,9 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                 RateLimitFilter.KEY_PREFIX + "203.0.113.63",
                 RateLimitFilter.KEY_PREFIX + "203.0.113.64",
                 RateLimitFilter.KEY_PREFIX + "203.0.113.65",
-                RateLimitFilter.KEY_PREFIX + "203.0.113.66"));
+                RateLimitFilter.KEY_PREFIX + "203.0.113.66",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.67",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.68"));
     }
     @Test
     void loginWithUsernameEmailAndMixedCase_setsCookies_andMeReturnsAppExamUser() throws Exception {
@@ -467,6 +469,113 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                         .header(AuthCookieService.XSRF_HEADER, rotatedXsrf.getValue()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+    }
+
+    @Test
+    void refreshOnlyLogout_revokesOwnedSessionAndRejectsRefresh_whileForgedRefreshLeavesVictimIntactAndUnlogged()
+            throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String ownedUsername = "owned.rtlogout." + suffix;
+        UserAccount ownedAccount = createProvisionedUser(
+                ownedUsername, null, "Owned RT Logout", "Valid@1234", UserStatus.ACTIVE, false);
+
+        MvcResult ownedLogin = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.67")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + ownedUsername + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie ownedAt = ownedLogin.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie ownedRt = ownedLogin.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie ownedXsrf = ownedLogin.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        mockMvc.perform(get("/api/v1/me").cookie(ownedAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(ownedUsername));
+
+        MvcResult ownedLogout = mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(ownedRt, ownedXsrf)
+                        .header(AuthCookieService.XSRF_HEADER, ownedXsrf.getValue()))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        assertThat(ownedLogout.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE).getMaxAge()).isZero();
+        assertThat(ownedLogout.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE).getMaxAge()).isZero();
+        assertThat(ownedLogout.getResponse().getCookie(AuthCookieService.CTX_COOKIE).getMaxAge()).isZero();
+        assertThat(ownedLogout.getResponse().getCookie(AuthCookieService.XSRF_COOKIE).getMaxAge()).isZero();
+
+        mockMvc.perform(get("/api/v1/me").cookie(ownedAt))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(ownedRt, ownedXsrf)
+                        .header(AuthCookieService.XSRF_HEADER, ownedXsrf.getValue()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+
+        verify(auditRecorder).record(argThat(event ->
+                event != null
+                        && "LOGOUT".equals(event.action())
+                        && ownedAccount.getId().toString().equals(event.targetId())));
+
+        String victimUsername = "victim.rtlogout." + suffix;
+        UserAccount victimAccount = createProvisionedUser(
+                victimUsername, null, "Victim RT Logout", "Valid@1234", UserStatus.ACTIVE, false);
+
+        MvcResult victimLogin = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.68")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + victimUsername + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie victimAt = victimLogin.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie victimRt = victimLogin.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie victimXsrf = victimLogin.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        JWTClaimsSet victimAtClaims = JWTParser.parse(victimAt.getValue()).getJWTClaimsSet();
+        JWTClaimsSet forgedClaims = new JWTClaimsSet.Builder()
+                .issuer(victimAtClaims.getIssuer())
+                .subject(victimAtClaims.getSubject())
+                .claim("sid", victimAtClaims.getStringClaim("sid"))
+                .build();
+        String unsignedRt = new PlainJWT(forgedClaims).serialize();
+        String tamperedRt = tamperSignature(victimRt.getValue());
+        RSAKey rogueKey = new RSAKeyGenerator(2048).keyID("rogue-rt-" + suffix).generate();
+        SignedJWT rogueSigned = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("rogue-rt-" + suffix).build(),
+                forgedClaims);
+        rogueSigned.sign(new RSASSASigner(rogueKey));
+        String rogueRt = rogueSigned.serialize();
+
+        String callerXsrf = "attacker-rt-logout-xsrf-" + suffix;
+        for (String forgedRt : List.of(unsignedRt, tamperedRt, rogueRt)) {
+            MvcResult forgedLogout = mockMvc.perform(post("/api/v1/auth/logout")
+                            .cookie(
+                                    new Cookie(AuthCookieService.REFRESH_TOKEN_COOKIE, forgedRt),
+                                    new Cookie(AuthCookieService.XSRF_COOKIE, callerXsrf))
+                            .header(AuthCookieService.XSRF_HEADER, callerXsrf))
+                    .andExpect(status().isNoContent())
+                    .andReturn();
+            assertThat(forgedLogout.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE).getMaxAge()).isZero();
+        }
+
+        mockMvc.perform(get("/api/v1/me").cookie(victimAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(victimUsername));
+
+        verify(auditRecorder, never()).record(argThat(event ->
+                event != null
+                        && "LOGOUT".equals(event.action())
+                        && victimAccount.getId().toString().equals(event.targetId())));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(victimRt, victimXsrf)
+                        .header(AuthCookieService.XSRF_HEADER, victimXsrf.getValue()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redirectTo").value("/"));
     }
 
     private static String tamperSignature(String token) {
