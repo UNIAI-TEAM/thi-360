@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import vn.unicom.thi360.shared.web.TraceIdFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class SessionFilter extends OncePerRequestFilter {
@@ -107,6 +108,7 @@ public class SessionFilter extends OncePerRequestFilter {
         String mdcUserId = user.realm() == Realm.MASTER
                 ? "platform:" + user.id()
                 : user.id().toString();
+        request.setAttribute(TraceIdFilter.USER_ID_ATTRIBUTE, mdcUserId);
         MDC.put(MDC_USER_ID, mdcUserId);
         try {
             filterChain.doFilter(request, response);
