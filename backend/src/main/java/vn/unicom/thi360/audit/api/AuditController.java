@@ -18,6 +18,7 @@ import vn.unicom.thi360.audit.spi.AuditQuery;
 import vn.unicom.thi360.audit.spi.AuditQueryCriteria;
 import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
+import vn.unicom.thi360.shared.security.RequirePermission;
 
 @RestController
 @RequestMapping(value = "/api/v1/admin/audit-events", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -34,6 +35,7 @@ public class AuditController {
     }
 
     @GetMapping
+    @RequirePermission("AUDIT.VIEW")
     @Operation(summary = "Tra cứu danh sách sự kiện nhật ký thao tác")
     public PageResponse<AuditEventResponse> listAuditEvents(
             @Parameter(description = "Loại đối tượng")
