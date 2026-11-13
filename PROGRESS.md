@@ -4,17 +4,31 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1. **T01 (UNI-2538) cùng toàn bộ tài liệu, thiết kế đã merge vào `develop`** (PR của nhánh `feature/UNI-2538-khoi-tao-monorepo-ci-moi-truong-dev`, 2026-11-13). Đang dừng chờ M.Trường mở phiên Advisor.
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 9/83 điểm (T01, T02).
 
-**Thiết kế màn hình đã chốt** (2026-11-13, M.Trường). **Phần danh mục (PBI-02: T13, T14, T15) hoãn**, chưa làm trong đợt chạy này vì còn có thể thiết kế lại; plan mục A7 ghi rõ việc không làm và việc vẫn làm.
+- T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
+- T06 (UNI-2543) đang làm: đã sửa xong lỗi review vòng 1, đang test lại.
+- Sóng 2 mở ngay: T03 (UNI-2540) và T05 (UNI-2542).
 
 **Bước tiếp theo**
 
-1. M.Trường giao một phiên Advisor chạy `zone17-cook-plan` (phạm vi: nền + PBI-01, không có T13–T15) với plan `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Plan đã có đủ cấu hình đợt chạy (Phần A), quy ước kỹ thuật (Phần B), sóng thực thi (Phần C) và hợp đồng từng task (Phần D).
-2. Bước 0 của Advisor: tạo `integration/dot-1` từ đầu `develop` (đã gồm T01 và toàn bộ tài liệu).
-3. Sóng 1: T02 (UNI-2539) và T06 (UNI-2543) chạy song song.
+1. T03 và T05 chạy song song; T04 bắt đầu khi T03 merge.
+2. Nghiệm thu T06 gồm hai tiêu chí giao diện (AC-2, AC-4) chạy trên trình duyệt.
+
+**Vướng / việc treo**
+
+- DB dev dùng chung: migration `V202611131020` đã sửa trong lúc review, nên DB dev cũ lệch checksum Flyway. Cách xử lý: xóa các schema `shared`, `identity`, `catalog`, `audit` trong DB dev rồi chạy lại backend (chỉ có bảng khung rỗng).
+- Bộ xuất OpenAPI ghi xuống dòng theo hệ điều hành (CRLF trên Windows), nên kiểm tra lệch `diff` chạy trên Windows báo lệch giả. CI chạy Linux không bị. Sửa trong T05.
+- Keycloak dev: tệp realm phải đổi tên thành `thi-360-realm.json` (Keycloak 26.4 từ chối nhập khi tên tệp khác tên realm). Sửa trong T03.
 
 ## Đã làm
+
+### 2026-11-13 — T02 (UNI-2539) khung backend modular monolith, merge vào integration/dot-1
+
+- Khung Spring Modulith (shared, identity, catalog, audit; `ModularityTest`), Flyway theo B3 với migration `shared` (outbox_event, idempotency_key, system_setting), `ApiError` + `GlobalExceptionHandler` (mã B4), `TraceIdFilter` (B15), `IdempotencyService`, outbox (publisher, relay `SKIP LOCKED`, backoff), `GET /api/v1/ping`, xuất OpenAPI cố định trong `verify`, `packages/api-client` cùng kiểm tra lệch trong CI.
+- Review: vòng đầu 15 lỗi đã sửa, hai vòng review lại không còn lỗi. Nghiệm thu lần 1 của Advisor bắt được test outbox không ổn định (bộ quét theo lịch chạy chen vào test); đã tắt bộ quét trong profile test.
+- Lệnh đã chạy trên `3aedeb1` (bằng chứng nghiệm thu): Cursor cloud runner `./mvnw -B -ntp verify` + diff openapi → exit 0; `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build` + api-client generate/diff → exit 0. Advisor chạy lại trên Windows: `OutboxRelayTests` 3 lần liên tiếp xanh, `verify` xanh, web xanh.
+- Merge squash qua PR #4 (`dda1504`).
 
 ### 2026-11-13 — Quy hoạch log của backend (UNI-2558, con của UNI-2539)
 

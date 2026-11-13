@@ -1,6 +1,35 @@
 spring:
   application:
     name: thi360-api
+  datasource:
+    url: ${THI360_DB_URL:jdbc:postgresql://localhost:${THI360_DB_PORT:54360}/${THI360_DB_NAME:thi360}}
+    username: ${THI360_DB_USER:thi360}
+    password: ${THI360_DB_PASSWORD:thi360-dev-only}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: shared
+  flyway:
+    enabled: true
+    default-schema: shared
+    schemas:
+      - shared
+      - identity
+      - catalog
+      - audit
+    table: flyway_schema_history
+    locations:
+      - classpath:db/migration
+  data:
+    redis:
+      host: ${THI360_REDIS_HOST:localhost}
+      port: ${THI360_REDIS_PORT:63790}
+      repositories:
+        enabled: false
 
 server:
   port: ${THI360_API_PORT:8080}
@@ -21,3 +50,88 @@ management:
     health:
       probes:
         enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+
+thi360:
+  keycloak:
+    url: ${THI360_KC_URL:http://localhost:${THI360_KC_PORT:8360}}
+    realm: ${THI360_KC_REALM:}
+    client-id: ${THI360_KC_CLIENT_ID:thi360-api}
+    client-secret: ${THI360_KC_CLIENT_SECRET:thi360-api-dev-only}
+    platform-realm: ${THI360_KC_PLATFORM_REALM:master}
+    platform-role: ${THI360_KC_PLATFORM_ROLE:PLATFORM_ADMIN}
+    platform-client-id: ${THI360_KC_PLATFORM_CLIENT_ID:thi360-platform}
+    platform-client-secret: ${THI360_KC_PLATFORM_CLIENT_SECRET:thi360-platform-dev-only}
+  web-url: ${THI360_WEB_URL:http://localhost:3000}
+  admin-url: ${THI360_ADMIN_URL:http://localhost:3001}
+  cookie:
+    domain: ${THI360_COOKIE_DOMAIN:}
+  ctx:
+    secret: ${THI360_CTX_SECRET:ctx-dev-only-change-me-32-bytes!!}
+  s3:
+    endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}
+    bucket: ${THI360_S3_BUCKET:thi360-private}
+  file:
+    enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
+  outbox:
+    scheduling:
+      enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: worker & !api
+  main:
+    web-application-type: none
+
+---
+spring:
+  config:
+    activate:
+      on-profile: api
+  main:
+    web-application-type: servlet
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  flyway:
+    fail-on-missing-locations: false
+    locations:
+      - classpath:db/migration
+      - classpath:db/devdata
+
+thi360:
+  keycloak:
+    realm: ${THI360_KC_REALM:thi-360}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  flyway:
+    fail-on-missing-locations: false
+    locations:
+      - classpath:db/migration
+      - classpath:db/devdata
+
+thi360:
+  keycloak:
+    realm: ${THI360_KC_REALM:thi-360}
+  outbox:
+    scheduling:
+      enabled: false
+---
+spring:
+  config:
+    activate:
+      on-profile: openapi
+  main:
+    web-application-type: servlet
