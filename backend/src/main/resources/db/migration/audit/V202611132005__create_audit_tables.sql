@@ -65,12 +65,6 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF current_setting('thi360.audit_maintenance', true) = 'on' THEN
-        IF TG_OP = 'DELETE' THEN
-            RETURN OLD;
-        END IF;
-        RETURN NEW;
-    END IF;
     RAISE EXCEPTION 'audit.% is append-only (% is not allowed)', TG_TABLE_NAME, TG_OP;
 END;
 $$;
@@ -157,5 +151,41 @@ BEGIN
             y_end
         );
     END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+    app_role text := current_user;
+    child_name text;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_audit_maint') THEN
+        CREATE ROLE thi360_audit_maint NOLOGIN;
+    END IF;
+
+    EXECUTE format('GRANT thi360_audit_maint TO %I WITH INHERIT FALSE, SET TRUE', app_role);
+    GRANT USAGE, CREATE ON SCHEMA audit TO thi360_audit_maint;
+
+    ALTER TABLE audit.audit_event OWNER TO thi360_audit_maint;
+    ALTER TABLE audit.audit_event_archive OWNER TO thi360_audit_maint;
+
+    FOR child_name IN
+        SELECT child.relname
+        FROM pg_inherits inh
+        JOIN pg_class parent ON parent.oid = inh.inhparent
+        JOIN pg_namespace parent_ns ON parent_ns.oid = parent.relnamespace
+        JOIN pg_class child ON child.oid = inh.inhrelid
+        WHERE parent_ns.nspname = 'audit'
+          AND parent.relname IN ('audit_event', 'audit_event_archive')
+    LOOP
+        EXECUTE format('ALTER TABLE audit.%I OWNER TO thi360_audit_maint', child_name);
+        EXECUTE format('REVOKE ALL ON TABLE audit.%I FROM %I', child_name, app_role);
+    END LOOP;
+
+    REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM PUBLIC;
+    EXECUTE format('REVOKE ALL ON SCHEMA audit FROM %I', app_role);
+    EXECUTE format('GRANT USAGE ON SCHEMA audit TO %I', app_role);
+    EXECUTE format('REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM %I', app_role);
+    EXECUTE format('GRANT SELECT, INSERT ON TABLE audit.audit_event, audit.audit_event_archive TO %I', app_role);
 END;
 $$;

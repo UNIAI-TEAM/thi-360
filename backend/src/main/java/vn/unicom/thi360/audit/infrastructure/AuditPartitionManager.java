@@ -114,8 +114,12 @@ public class AuditPartitionManager {
         return isPartitionAttached(AUDIT_ARCHIVE_TABLE, archivePartitionName(year));
     }
 
-    public void enableMaintenanceBypassForTransaction() {
-        jdbc.execute("SET LOCAL thi360.audit_maintenance = 'on'");
+    public void assumeMaintenanceRoleForTransaction() {
+        jdbc.execute("SET LOCAL ROLE thi360_audit_maint");
+    }
+
+    public void resetRole() {
+        jdbc.execute("RESET ROLE");
     }
 
     public long countQuarterPartitionRows(QuarterPartition partition) {

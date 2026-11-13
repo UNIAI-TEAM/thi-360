@@ -11,7 +11,8 @@ import org.slf4j.MDC;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.infrastructure.AuditPartitionManager;
 import vn.unicom.thi360.audit.infrastructure.AuditPartitionManager.QuarterPartition;
 import vn.unicom.thi360.shared.ids.Ids;
@@ -25,15 +26,19 @@ public class AuditPartitionJob {
     public static final String JOB_NAME = "audit-partition";
 
     private final AuditPartitionManager partitionManager;
+    private final TransactionTemplate txTemplate;
     private final Clock clock;
 
-    public AuditPartitionJob(AuditPartitionManager partitionManager, Clock clock) {
+    public AuditPartitionJob(
+            AuditPartitionManager partitionManager,
+            PlatformTransactionManager transactionManager,
+            Clock clock) {
         this.partitionManager = partitionManager;
+        this.txTemplate = new TransactionTemplate(transactionManager);
         this.clock = clock;
     }
 
     @Scheduled(cron = "${thi360.audit.partition-cron:0 5 0 * * *}", zone = "UTC")
-    @Transactional
     public PartitionRunResult run() {
         String prevTraceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         String prevJob = MDC.get("job");
@@ -52,26 +57,32 @@ public class AuditPartitionJob {
             int nextYear = currentQuarter == 4 ? currentYear + 1 : currentYear;
             int nextQuarter = currentQuarter == 4 ? 1 : currentQuarter + 1;
 
-            List<String> created = new ArrayList<>();
-            if (partitionManager.ensureQuarterPartition(currentYear, currentQuarter)) {
-                created.add(QuarterPartition.of(currentYear, currentQuarter).tableName());
-            }
-            if (partitionManager.ensureQuarterPartition(nextYear, nextQuarter)) {
-                created.add(QuarterPartition.of(nextYear, nextQuarter).tableName());
-            }
-            if (partitionManager.ensureArchiveYearPartition(currentYear)) {
-                created.add("audit_event_archive_" + currentYear);
-            }
-            if (nextYear != currentYear && partitionManager.ensureArchiveYearPartition(nextYear)) {
-                created.add("audit_event_archive_" + nextYear);
-            }
+            List<String> created = txTemplate.execute(status -> {
+                partitionManager.assumeMaintenanceRoleForTransaction();
+                List<String> createdNames = new ArrayList<>();
+                if (partitionManager.ensureQuarterPartition(currentYear, currentQuarter)) {
+                    createdNames.add(QuarterPartition.of(currentYear, currentQuarter).tableName());
+                }
+                if (partitionManager.ensureQuarterPartition(nextYear, nextQuarter)) {
+                    createdNames.add(QuarterPartition.of(nextYear, nextQuarter).tableName());
+                }
+                if (partitionManager.ensureArchiveYearPartition(currentYear)) {
+                    createdNames.add("audit_event_archive_" + currentYear);
+                }
+                if (nextYear != currentYear && partitionManager.ensureArchiveYearPartition(nextYear)) {
+                    createdNames.add("audit_event_archive_" + nextYear);
+                }
+                partitionManager.resetRole();
+                return List.copyOf(createdNames);
+            });
+            List<String> createdList = created == null ? List.of() : created;
 
             jobLog.atInfo()
                     .addKeyValue("currentQuarter", currentYear + "q" + currentQuarter)
-                    .addKeyValue("createdCount", created.size())
+                    .addKeyValue("createdCount", createdList.size())
                     .log("Audit partition maintenance completed");
 
-            return new PartitionRunResult(List.copyOf(created));
+            return new PartitionRunResult(createdList);
         } finally {
             restoreMdc(TraceIdFilter.MDC_TRACE_ID, prevTraceId);
             restoreMdc("job", prevJob);

@@ -121,7 +121,7 @@ public class AuditArchiveJob {
             throw new IllegalArgumentException("Non-canonical quarter partition: " + partition);
         }
         Long archivedCount = requiresNewTx.execute(status -> {
-            partitionManager.enableMaintenanceBypassForTransaction();
+            partitionManager.assumeMaintenanceRoleForTransaction();
             partitionManager.ensureArchiveYearPartition(partition.year());
 
             long sourceCount = partitionManager.countQuarterPartitionRows(partition);
@@ -138,6 +138,7 @@ public class AuditArchiveJob {
             }
 
             partitionManager.detachAndDropQuarterPartition(partition);
+            partitionManager.resetRole();
 
             auditRecorder.record(AuditEvent.builder("audit", ACTION_AUDIT_ARCHIVED)
                     .target("AUDIT_PARTITION", partition.tableName(), partition.tableName())
