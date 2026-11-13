@@ -121,18 +121,7 @@ public class CatalogLookupImpl implements CatalogLookup {
                 || group.getStatus() != CatalogStatus.ACTIVE) {
             return List.of();
         }
-        List<UUID> refs = refItemIds == null ? List.of() : new ArrayList<>(refItemIds);
-        if (refs.isEmpty()) {
-            int leafDepth = group.getLevels() == null ? 1 : group.getLevels().size();
-            return catalogQueryService.getPublicDescendants(null, normGroup, true, List.of())
-                    .stream()
-                    .map(CatalogDescendantNodeResponse::id)
-                    .toList();
-        }
-        return catalogQueryService.getPublicDescendants(null, normGroup, true, refs)
-                .stream()
-                .map(CatalogDescendantNodeResponse::id)
-                .toList();
+        return catalogQueryService.findActiveLeafIds(group, refItemIds);
     }
 
     private static CatalogItemView toView(

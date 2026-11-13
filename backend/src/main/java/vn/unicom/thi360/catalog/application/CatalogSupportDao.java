@@ -20,12 +20,23 @@ import vn.unicom.thi360.catalog.spi.CatalogStatus;
 @Component
 public class CatalogSupportDao {
 
+    public static final String ACTIVE_EFFECTIVE_ITEM_PREDICATE =
+            """
+            n.status = 1
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM catalog.catalog_item anc
+                  WHERE anc.group_id = n.group_id
+                    AND n.path LIKE anc.path || '%'
+                    AND anc.status <> 1
+              )
+            """;
+
     private final JdbcTemplate jdbcTemplate;
 
     public CatalogSupportDao(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
-
     public Map<UUID, List<CatalogGroupRefResponse>> loadGroupRefs(Collection<UUID> groupIds) {
         if (groupIds == null || groupIds.isEmpty()) {
             return Map.of();

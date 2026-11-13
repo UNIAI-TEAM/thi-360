@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -26,13 +27,45 @@ public class CatalogCacheService {
 
     public static final String OPT_KEY_PREFIX = "catalog:opt:";
     public static final String TREE_KEY_PREFIX = "catalog:tree:";
+    public static final String GEN_KEY_PREFIX = "catalog:gen:";
     private static final Duration CACHE_TTL = Duration.ofHours(6);
+    private static final Duration GEN_TTL = Duration.ofHours(24);
 
     private static final Logger log = LoggerFactory.getLogger(CatalogCacheService.class);
 
     private static final TypeReference<List<CatalogOptionResponse>> OPTIONS_TYPE = new TypeReference<>() {};
     private static final TypeReference<List<CatalogTreeNodeResponse>> TREE_NODES_TYPE = new TypeReference<>() {};
     private static final TypeReference<List<CatalogDescendantNodeResponse>> DESCENDANTS_TYPE = new TypeReference<>() {};
+
+    private static final DefaultRedisScript<Long> EVICT_GROUP_SCRIPT = new DefaultRedisScript<>(
+            """
+            redis.call('INCR', KEYS[1])
+            redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+            redis.call('DEL', KEYS[2], KEYS[3])
+            return 1
+            """,
+            Long.class);
+
+    private static final DefaultRedisScript<Long> PUT_VALUE_IF_GEN_SCRIPT = new DefaultRedisScript<>(
+            """
+            local cur = redis.call('GET', KEYS[1])
+            if cur == false then cur = '0' end
+            if cur ~= ARGV[1] then return 0 end
+            redis.call('SET', KEYS[2], ARGV[2], 'EX', tonumber(ARGV[3]))
+            return 1
+            """,
+            Long.class);
+
+    private static final DefaultRedisScript<Long> PUT_HASH_IF_GEN_SCRIPT = new DefaultRedisScript<>(
+            """
+            local cur = redis.call('GET', KEYS[1])
+            if cur == false then cur = '0' end
+            if cur ~= ARGV[1] then return 0 end
+            redis.call('HSET', KEYS[2], ARGV[2], ARGV[3])
+            redis.call('EXPIRE', KEYS[2], tonumber(ARGV[4]))
+            return 1
+            """,
+            Long.class);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -55,12 +88,43 @@ public class CatalogCacheService {
         return TREE_KEY_PREFIX + groupCodeNormalized;
     }
 
+    public static String genKey(String groupCodeNormalized) {
+        return GEN_KEY_PREFIX + groupCodeNormalized;
+    }
+
+    public Long readGeneration(String groupCodeNormalized) {
+        if (groupCodeNormalized == null || groupCodeNormalized.isBlank()) {
+            return null;
+        }
+        try {
+            String raw = redisTemplate.opsForValue().get(genKey(groupCodeNormalized));
+            if (raw == null || raw.isBlank()) {
+                return 0L;
+            }
+            return Long.parseLong(raw);
+        } catch (RuntimeException ex) {
+            log.atWarn()
+                    .setCause(ex)
+                    .addKeyValue("group", groupCodeNormalized)
+                    .log("Failed to read catalog cache generation from Redis");
+            return null;
+        }
+    }
+
     public List<CatalogOptionResponse> getOptions(String groupCodeNormalized) {
         return readValue(optionsKey(groupCodeNormalized), OPTIONS_TYPE);
     }
 
-    public void putOptions(String groupCodeNormalized, List<CatalogOptionResponse> options) {
-        writeValue(optionsKey(groupCodeNormalized), options);
+    public void putOptions(
+            String groupCodeNormalized, Long expectedGen, List<CatalogOptionResponse> options) {
+        if (expectedGen == null) {
+            return;
+        }
+        writeValueIfGen(
+                genKey(groupCodeNormalized),
+                optionsKey(groupCodeNormalized),
+                expectedGen,
+                options);
     }
 
     public List<CatalogTreeNodeResponse> getTreeNodes(String groupCodeNormalized, String field) {
@@ -68,8 +132,19 @@ public class CatalogCacheService {
     }
 
     public void putTreeNodes(
-            String groupCodeNormalized, String field, List<CatalogTreeNodeResponse> nodes) {
-        writeHashValue(treeKey(groupCodeNormalized), field, nodes);
+            String groupCodeNormalized,
+            String field,
+            Long expectedGen,
+            List<CatalogTreeNodeResponse> nodes) {
+        if (expectedGen == null) {
+            return;
+        }
+        writeHashValueIfGen(
+                genKey(groupCodeNormalized),
+                treeKey(groupCodeNormalized),
+                field,
+                expectedGen,
+                nodes);
     }
 
     public List<CatalogDescendantNodeResponse> getDescendants(String groupCodeNormalized, String field) {
@@ -77,17 +152,27 @@ public class CatalogCacheService {
     }
 
     public void putDescendants(
-            String groupCodeNormalized, String field, List<CatalogDescendantNodeResponse> nodes) {
-        writeHashValue(treeKey(groupCodeNormalized), field, nodes);
+            String groupCodeNormalized,
+            String field,
+            Long expectedGen,
+            List<CatalogDescendantNodeResponse> nodes) {
+        if (expectedGen == null) {
+            return;
+        }
+        writeHashValueIfGen(
+                genKey(groupCodeNormalized),
+                treeKey(groupCodeNormalized),
+                field,
+                expectedGen,
+                nodes);
     }
 
     public void evictGroupAndDependents(UUID groupId, String... groupCodesNormalized) {
-        Set<String> keysToDelete = new LinkedHashSet<>();
+        Set<String> codesToEvict = new LinkedHashSet<>();
         if (groupCodesNormalized != null) {
             for (String code : groupCodesNormalized) {
                 if (code != null && !code.isBlank()) {
-                    keysToDelete.add(optionsKey(code));
-                    keysToDelete.add(treeKey(code));
+                    codesToEvict.add(code);
                 }
             }
         }
@@ -103,38 +188,44 @@ public class CatalogCacheService {
                     groupId);
             for (String treeCode : referencingTreeCodes) {
                 if (treeCode != null && !treeCode.isBlank()) {
-                    keysToDelete.add(treeKey(treeCode));
+                    codesToEvict.add(treeCode);
                 }
             }
         }
-        evictKeysAfterCommit(keysToDelete);
+        evictCodesAfterCommit(codesToEvict);
     }
 
-    private void evictKeysAfterCommit(Collection<String> keys) {
-        if (keys == null || keys.isEmpty()) {
+    private void evictCodesAfterCommit(Collection<String> codes) {
+        if (codes == null || codes.isEmpty()) {
             return;
         }
-        List<String> copy = List.copyOf(keys);
+        List<String> copy = List.copyOf(codes);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    deleteKeys(copy);
+                    evictCodes(copy);
                 }
             });
         } else {
-            deleteKeys(copy);
+            evictCodes(copy);
         }
     }
 
-    private void deleteKeys(List<String> keys) {
-        try {
-            redisTemplate.delete(keys);
-        } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("keys", String.join(",", keys))
-                    .log("Failed to evict catalog cache keys from Redis");
+    private void evictCodes(List<String> codes) {
+        String genTtlSeconds = String.valueOf(GEN_TTL.toSeconds());
+        for (String code : codes) {
+            try {
+                redisTemplate.execute(
+                        EVICT_GROUP_SCRIPT,
+                        List.of(genKey(code), optionsKey(code), treeKey(code)),
+                        genTtlSeconds);
+            } catch (RuntimeException ex) {
+                log.atWarn()
+                        .setCause(ex)
+                        .addKeyValue("group", code)
+                        .log("Failed to evict catalog cache keys from Redis");
+            }
         }
     }
 
@@ -154,10 +245,15 @@ public class CatalogCacheService {
         }
     }
 
-    private void writeValue(String key, Object value) {
+    private void writeValueIfGen(String genKey, String key, long expectedGen, Object value) {
         try {
             String encoded = objectMapper.writeValueAsString(Objects.requireNonNull(value));
-            redisTemplate.opsForValue().set(key, encoded, CACHE_TTL);
+            redisTemplate.execute(
+                    PUT_VALUE_IF_GEN_SCRIPT,
+                    List.of(genKey, key),
+                    String.valueOf(expectedGen),
+                    encoded,
+                    String.valueOf(CACHE_TTL.toSeconds()));
         } catch (RuntimeException | JsonProcessingException ex) {
             log.atWarn()
                     .setCause(ex)
@@ -183,11 +279,17 @@ public class CatalogCacheService {
         }
     }
 
-    private void writeHashValue(String key, String field, Object value) {
+    private void writeHashValueIfGen(
+            String genKey, String key, String field, long expectedGen, Object value) {
         try {
             String encoded = objectMapper.writeValueAsString(Objects.requireNonNull(value));
-            redisTemplate.opsForHash().put(key, field, encoded);
-            redisTemplate.expire(key, CACHE_TTL);
+            redisTemplate.execute(
+                    PUT_HASH_IF_GEN_SCRIPT,
+                    List.of(genKey, key),
+                    String.valueOf(expectedGen),
+                    field,
+                    encoded,
+                    String.valueOf(CACHE_TTL.toSeconds()));
         } catch (RuntimeException | JsonProcessingException ex) {
             log.atWarn()
                     .setCause(ex)

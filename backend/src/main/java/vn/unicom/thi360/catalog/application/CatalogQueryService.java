@@ -1,6 +1,7 @@
 package vn.unicom.thi360.catalog.application;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -60,18 +61,21 @@ public class CatalogQueryService {
         if (cached != null) {
             return cached;
         }
+        Long generation = catalogCacheService.readGeneration(normalized);
         CatalogGroup group = catalogGroupRepository.findByCodeNormalized(normalized).orElse(null);
         if (group == null || group.getStatus() != CatalogStatus.ACTIVE) {
             return List.of();
         }
-        List<CatalogOptionResponse> options = jdbcTemplate.query(
+        String sql =
                 """
-                SELECT id, code, value, name_vi, name_en, description, display_order
-                FROM catalog.catalog_item
-                WHERE group_id = ?
-                  AND status = 1
-                ORDER BY display_order ASC, code_normalized ASC, id ASC
-                """,
+                SELECT n.id, n.code, n.value, n.name_vi, n.name_en, n.description, n.display_order
+                FROM catalog.catalog_item n
+                WHERE n.group_id = ?
+                  AND\s"""
+                        + CatalogSupportDao.ACTIVE_EFFECTIVE_ITEM_PREDICATE
+                        + " ORDER BY n.display_order ASC, n.code_normalized ASC, n.id ASC";
+        List<CatalogOptionResponse> options = jdbcTemplate.query(
+                sql,
                 (rs, rowNum) -> new CatalogOptionResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("code"),
@@ -81,7 +85,9 @@ public class CatalogQueryService {
                         rs.getString("description"),
                         rs.getInt("display_order")),
                 group.getId());
-        catalogCacheService.putOptions(normalized, options);
+        if (group.getCodeNormalized().equals(normalized)) {
+            catalogCacheService.putOptions(normalized, generation, options);
+        }
         return options;
     }
 
@@ -136,11 +142,13 @@ public class CatalogQueryService {
         }
         boolean hasRefFilter = refItemIds != null && !refItemIds.isEmpty();
         String cacheField = parentId == null ? "root" : parentId.toString();
+        Long generation = null;
         if (!hasRefFilter) {
             List<CatalogTreeNodeResponse> cached = catalogCacheService.getTreeNodes(normalized, cacheField);
             if (cached != null) {
                 return cached;
             }
+            generation = catalogCacheService.readGeneration(normalized);
         }
 
         CatalogGroup group = catalogGroupRepository.findByCodeNormalized(normalized).orElse(null);
@@ -239,8 +247,8 @@ public class CatalogQueryService {
                 params.toArray());
 
         if (rows.isEmpty()) {
-            if (!hasRefFilter) {
-                catalogCacheService.putTreeNodes(normalized, cacheField, List.of());
+            if (!hasRefFilter && group.getCodeNormalized().equals(normalized)) {
+                catalogCacheService.putTreeNodes(normalized, cacheField, generation, List.of());
             }
             return List.of();
         }
@@ -277,8 +285,8 @@ public class CatalogQueryService {
                 })
                 .toList();
 
-        if (!hasRefFilter) {
-            catalogCacheService.putTreeNodes(normalized, cacheField, result);
+        if (!hasRefFilter && group.getCodeNormalized().equals(normalized)) {
+            catalogCacheService.putTreeNodes(normalized, cacheField, generation, result);
         }
         return result;
     }
@@ -290,6 +298,20 @@ public class CatalogQueryService {
         if (nodeId == null && !hasRefFilter) {
             throw new ValidationException(List.of(
                     new FieldError("nodeId", "REQUIRED", "Phải truyền nodeId hoặc tham số lọc ref")));
+        }
+
+        String cacheField = nodeId != null ? "desc:" + nodeId + ":" + leafOnly : null;
+        String initialGroupCode = null;
+        Long generation = null;
+        if (!hasRefFilter && cacheField != null) {
+            initialGroupCode = catalogItemRepository.findGroupCodeNormalizedById(nodeId)
+                    .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+            List<CatalogDescendantNodeResponse> cached =
+                    catalogCacheService.getDescendants(initialGroupCode, cacheField);
+            if (cached != null) {
+                return cached;
+            }
+            generation = catalogCacheService.readGeneration(initialGroupCode);
         }
 
         CatalogGroup group;
@@ -322,36 +344,56 @@ public class CatalogQueryService {
             }
         }
 
-        String cacheField = nodeId != null ? "desc:" + nodeId + ":" + leafOnly : null;
-        if (!hasRefFilter && cacheField != null) {
-            List<CatalogDescendantNodeResponse> cached =
-                    catalogCacheService.getDescendants(group.getCodeNormalized(), cacheField);
-            if (cached != null) {
-                return cached;
-            }
-        }
+        List<CatalogDescendantNodeResponse> result =
+                queryDescendantsInternal(group, rootNode, leafOnly, refItemIds);
 
-        CatalogSupportDao.RefFilterCriteria refFilter =
-                catalogSupportDao.resolveRefFilter(group.getId(), refItemIds);
-        if (refFilter.impossible()) {
+        if (!hasRefFilter && cacheField != null && group.getCodeNormalized().equals(initialGroupCode)) {
+            catalogCacheService.putDescendants(group.getCodeNormalized(), cacheField, generation, result);
+        }
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> findActiveLeafIds(CatalogGroup group, Collection<UUID> refItemIds) {
+        if (group == null
+                || group.getStatus() != CatalogStatus.ACTIVE
+                || group.getKind() != CatalogGroupKind.TREE) {
             return List.of();
         }
+        List<UUID> refs = refItemIds == null ? List.of() : new ArrayList<>(refItemIds);
+        return queryDescendantsInternal(group, null, true, refs)
+                .stream()
+                .map(CatalogDescendantNodeResponse::id)
+                .toList();
+    }
 
+    private List<CatalogDescendantNodeResponse> queryDescendantsInternal(
+            CatalogGroup group, CatalogItem rootNode, boolean leafOnly, List<UUID> refItemIds) {
+        boolean hasRefFilter = refItemIds != null && !refItemIds.isEmpty();
+        if (hasRefFilter) {
+            CatalogSupportDao.RefFilterCriteria refFilter =
+                    catalogSupportDao.resolveRefFilter(group.getId(), refItemIds);
+            if (refFilter.impossible()) {
+                return List.of();
+            }
+            return executeDescendantsQuery(group, rootNode, leafOnly, refFilter);
+        }
+        return executeDescendantsQuery(group, rootNode, leafOnly, null);
+    }
+
+    private List<CatalogDescendantNodeResponse> executeDescendantsQuery(
+            CatalogGroup group,
+            CatalogItem rootNode,
+            boolean leafOnly,
+            CatalogSupportDao.RefFilterCriteria refFilter) {
         int leafDepth = group.getLevels() != null ? group.getLevels().size() : 1;
         StringBuilder sql = new StringBuilder(
                 """
                 SELECT n.id, n.code, n.value, n.name_vi, n.name_en, n.parent_id, n.depth, n.path
                 FROM catalog.catalog_item n
                 WHERE n.group_id = ?
-                  AND n.status = 1
-                  AND NOT EXISTS (
-                      SELECT 1
-                      FROM catalog.catalog_item anc
-                      WHERE anc.group_id = n.group_id
-                        AND n.path LIKE anc.path || '%'
-                        AND anc.status <> 1
-                  )
-                """);
+                  AND\s"""
+                        + CatalogSupportDao.ACTIVE_EFFECTIVE_ITEM_PREDICATE);
         List<Object> params = new ArrayList<>();
         params.add(group.getId());
 
@@ -368,7 +410,7 @@ public class CatalogQueryService {
             params.add((short) leafDepth);
         }
 
-        if (hasRefFilter) {
+        if (refFilter != null) {
             String refPlaceholders =
                     String.join(",", Collections.nCopies(refFilter.refItemIds().size(), "?"));
             sql.append(
@@ -389,7 +431,7 @@ public class CatalogQueryService {
 
         sql.append(" ORDER BY n.depth ASC, n.display_order ASC, n.code_normalized ASC, n.id ASC");
 
-        List<CatalogDescendantNodeResponse> result = jdbcTemplate.query(
+        return jdbcTemplate.query(
                 sql.toString(),
                 (rs, rowNum) -> new CatalogDescendantNodeResponse(
                         rs.getObject("id", UUID.class),
@@ -401,11 +443,6 @@ public class CatalogQueryService {
                         rs.getShort("depth"),
                         rs.getString("path")),
                 params.toArray());
-
-        if (!hasRefFilter && cacheField != null) {
-            catalogCacheService.putDescendants(group.getCodeNormalized(), cacheField, result);
-        }
-        return result;
     }
 
     private record TreeRow(
