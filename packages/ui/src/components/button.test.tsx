@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button";
@@ -47,5 +47,47 @@ describe("Button", () => {
     const link = screen.getByRole("link", { name: "Hồ sơ" });
     expect(link).toHaveAttribute("href", "/ho-so");
     expect(link).toHaveClass("h-10");
+  });
+
+  it("asChild + disabled: phần tử con aria-disabled, ra khỏi thứ tự Tab và không nhận bấm", async () => {
+    const onClick = vi.fn();
+    render(
+      <>
+        <Button asChild disabled>
+          <a href="/ho-so" onClick={onClick}>
+            Hồ sơ
+          </a>
+        </Button>
+        <Button asChild disabled>
+          <button type="button" onClick={onClick}>
+            Nút
+          </button>
+        </Button>
+      </>,
+    );
+    const link = screen.getByRole("link", { name: "Hồ sơ" });
+    expect(link).toHaveAttribute("aria-disabled", "true");
+    expect(link).toHaveAttribute("tabindex", "-1");
+    // fireEvent.click trả false khi sự kiện bị preventDefault: liên kết không điều hướng.
+    expect(fireEvent.click(link)).toBe(false);
+    await userEvent.click(screen.getByRole("button", { name: "Nút" }));
+    expect(onClick).not.toHaveBeenCalled();
+    await userEvent.tab();
+    expect(link).not.toHaveFocus();
+  });
+
+  it("asChild không disabled: không thêm aria-disabled và vẫn nhận bấm", async () => {
+    const onClick = vi.fn();
+    render(
+      <Button asChild>
+        <button type="button" onClick={onClick}>
+          Nút
+        </button>
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Nút" });
+    expect(button).not.toHaveAttribute("aria-disabled");
+    await userEvent.click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

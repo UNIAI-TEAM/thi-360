@@ -1,7 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { LoaderCircle } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 
@@ -9,7 +9,7 @@ export const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 items-center justify-center rounded-lg text-label font-semibold whitespace-nowrap",
     "transition-colors duration-150 motion-reduce:transition-none",
-    "disabled:pointer-events-none disabled:opacity-50",
+    "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
     focusRing,
   ],
   {
@@ -50,7 +50,11 @@ export type ButtonProps = ButtonBaseProps &
         loading?: boolean;
         asChild?: false;
       }
-    | { asChild: true; loading?: never }
+    | {
+        /** Phần tử con nhận kiểu nút. `disabled` thành `aria-disabled`, bỏ khỏi thứ tự Tab và chặn bấm. */
+        asChild: true;
+        loading?: never;
+      }
   );
 
 export function Button({
@@ -68,7 +72,18 @@ export function Button({
 
   if (asChild) {
     return (
-      <Slot className={classes} {...props}>
+      <Slot
+        className={classes}
+        {...props}
+        {...(disabled && {
+          "aria-disabled": true,
+          tabIndex: -1,
+          onClickCapture: (event: MouseEvent<HTMLElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+          },
+        })}
+      >
         {children}
       </Slot>
     );
