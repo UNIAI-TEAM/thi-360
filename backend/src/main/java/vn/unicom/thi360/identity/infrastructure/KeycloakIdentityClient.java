@@ -86,7 +86,8 @@ public class KeycloakIdentityClient {
                 rep.setLastName(command.lastName().trim());
             }
             rep.setEnabled(command.enabled());
-            rep.setEmailVerified(command.emailVerified());
+            rep.setEmailVerified(command.email() != null && !command.email().isBlank() && command.emailVerified());
+            rep.setRequiredActions(List.of());
             if (command.password() != null && !command.password().isBlank()) {
                 rep.setCredentials(List.of(passwordCredential(command.password(), command.temporaryPassword())));
             }

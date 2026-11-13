@@ -440,16 +440,17 @@ public class AuthService {
 
     public MeResult me() {
         CurrentUser currentUser = currentUserProvider.requireCurrentUser();
+        String username = currentUser.username();
         String fullName = currentUser.username();
         if (currentUser.realm() == Realm.APP) {
-            fullName = userAccountRepository.findById(currentUser.id())
-                    .map(UserAccount::getFullName)
-                    .orElse(currentUser.username());
+            Optional<UserAccount> account = userAccountRepository.findById(currentUser.id());
+            username = account.map(UserAccount::getUsername).orElse(username);
+            fullName = account.map(UserAccount::getFullName).orElse(fullName);
         }
         List<String> permissions = currentUser.permissions().codes().stream().sorted().toList();
         return new MeResult(
                 currentUser.id(),
-                currentUser.username(),
+                username,
                 fullName,
                 currentUser.realm(),
                 currentUser.access(),

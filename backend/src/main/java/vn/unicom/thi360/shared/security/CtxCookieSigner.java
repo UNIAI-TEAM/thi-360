@@ -18,7 +18,6 @@ public class CtxCookieSigner {
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
-    private static final Base64.Decoder URL_DECODER = Base64.getUrlDecoder();
 
     private final byte[] secretBytes;
     private final CtxProperties ctxProperties;
@@ -65,18 +64,13 @@ public class CtxCookieSigner {
         String payload = token.substring(0, lastDot);
         String signaturePart = token.substring(lastDot + 1);
 
-        byte[] providedSig;
-        try {
-            providedSig = URL_DECODER.decode(signaturePart);
-        } catch (IllegalArgumentException ex) {
-            return Optional.empty();
-        }
-
         byte[] expectedSig = hmacSha256(payload);
-        if (!MessageDigest.isEqual(expectedSig, providedSig)) {
+        String expectedEncoded = URL_ENCODER.encodeToString(expectedSig);
+        if (!MessageDigest.isEqual(
+                expectedEncoded.getBytes(StandardCharsets.US_ASCII),
+                signaturePart.getBytes(StandardCharsets.US_ASCII))) {
             return Optional.empty();
         }
-
         String[] parts = payload.split("\\.");
         if (parts.length != 5) {
             return Optional.empty();

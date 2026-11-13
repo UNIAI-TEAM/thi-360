@@ -1,0 +1,293 @@
+package vn.unicom.thi360.identity;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MvcResult;
+import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
+import vn.unicom.thi360.identity.domain.UserAccount;
+import vn.unicom.thi360.identity.domain.UserSource;
+import vn.unicom.thi360.identity.domain.UserStatus;
+import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
+import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUserCommand;
+import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
+import vn.unicom.thi360.identity.spi.UserDirectory;
+import vn.unicom.thi360.shared.security.AuthCookieService;
+import vn.unicom.thi360.shared.security.SessionStore;
+
+class AuthFlowIT extends AbstractKeycloakIntegrationTest {
+    @Autowired
+    private KeycloakIdentityClient keycloakClient;
+
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
+    @Autowired
+    private SessionStore sessionStore;
+
+    @Autowired
+    private UserDirectory userDirectory;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    void loginWithUsernameEmailAndMixedCase_setsCookies_andMeReturnsAppExamUser() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "Student.Flow." + suffix;
+        String email = "Student.Flow." + suffix + "@thi360.vn";
+        UserAccount account = createProvisionedUser(username, email, "Nguyễn Văn A", "Valid@1234", UserStatus.ACTIVE, false);
+
+        for (String identifier : List.of(username, username.toLowerCase(), username.toUpperCase(), email, email.toUpperCase())) {
+            MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"identifier\":\"" + identifier + "\",\"password\":\"Valid@1234\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.redirectTo").value("/"))
+                    .andExpect(jsonPath("$.mustChangePassword").value(false))
+                    .andReturn();
+
+            Cookie atCookie = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+            Cookie rtCookie = loginRes.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+            Cookie ctxCookie = loginRes.getResponse().getCookie(AuthCookieService.CTX_COOKIE);
+            Cookie xsrfCookie = loginRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+            assertThat(atCookie).isNotNull();
+            assertThat(rtCookie).isNotNull();
+            assertThat(ctxCookie).isNotNull();
+            assertThat(xsrfCookie).isNotNull();
+            assertThat(atCookie.isHttpOnly()).isTrue();
+            assertThat(rtCookie.isHttpOnly()).isTrue();
+            assertThat(ctxCookie.isHttpOnly()).isTrue();
+            assertThat(xsrfCookie.isHttpOnly()).isFalse();
+
+            mockMvc.perform(get("/api/v1/me").cookie(atCookie))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(account.getId().toString()))
+                    .andExpect(jsonPath("$.username").value(username))
+                    .andExpect(jsonPath("$.fullName").value("Nguyễn Văn A"))
+                    .andExpect(jsonPath("$.realm").value("APP"))
+                    .andExpect(jsonPath("$.access").value("EXAM"))
+                    .andExpect(jsonPath("$.permissions").isArray())
+                    .andExpect(jsonPath("$.permissions").isEmpty());
+        }
+
+        UserAccount reloaded = userAccountRepository.findById(account.getId()).orElseThrow();
+        assertThat(reloaded.getLastLoginAt()).isNotNull();
+    }
+
+    @Test
+    void wrongPasswordAndUnknownUsername_returnIdenticalInvalidCredentialsBody() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "wrongpw." + suffix;
+        createProvisionedUser(username, null, "Wrong PW", "Valid@1234", UserStatus.ACTIVE, false);
+
+        MvcResult wrongPwRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Wrong@9999\"}"))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+
+        MvcResult unknownRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"unknown." + suffix + "\",\"password\":\"Wrong@9999\"}"))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+
+        JsonNode wrongPwJson = objectMapper.readTree(wrongPwRes.getResponse().getContentAsString());
+        JsonNode unknownJson = objectMapper.readTree(unknownRes.getResponse().getContentAsString());
+
+        assertThat(wrongPwJson.get("code").asText()).isEqualTo("INVALID_CREDENTIALS");
+        assertThat(unknownJson.get("code").asText()).isEqualTo("INVALID_CREDENTIALS");
+        assertThat(wrongPwJson.get("message").asText()).isEqualTo(unknownJson.get("message").asText());
+        assertThat(wrongPwJson.get("fieldErrors")).isEqualTo(unknownJson.get("fieldErrors"));
+    }
+
+    @Test
+    void inactiveUser_refusedOnlyWhenPasswordCorrect_andRevokedLiveSessionReturns401() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String inactiveUser = "inactive." + suffix;
+        createProvisionedUser(inactiveUser, null, "Inactive User", "Valid@1234", UserStatus.INACTIVE, false);
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + inactiveUser + "\",\"password\":\"Wrong@9999\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + inactiveUser + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_INACTIVE"));
+
+        String activeUser = "revoked." + suffix;
+        UserAccount activeAccount = createProvisionedUser(activeUser, null, "Revoked Live", "Valid@1234", UserStatus.ACTIVE, false);
+
+        MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + activeUser + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie atCookie = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        mockMvc.perform(get("/api/v1/me").cookie(atCookie))
+                .andExpect(status().isOk());
+
+        sessionStore.deleteAllSessions(activeAccount.getId());
+
+        mockMvc.perform(get("/api/v1/me").cookie(atCookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+    }
+
+    @Test
+    void mustChangePasswordTrue_clearedByChangePassword_afterValidatingPolicyAndOldPassword() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "chgpwd." + suffix;
+        createProvisionedUser(username, null, "Must Change", "OldPass@123", UserStatus.ACTIVE, true);
+
+        MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"OldPass@123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mustChangePassword").value(true))
+                .andReturn();
+
+        Cookie atCookie = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie xsrfCookie = loginRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(atCookie, xsrfCookie)
+                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"WrongOld@123\",\"newPassword\":\"NewPass@1234\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("WRONG_OLD_PASSWORD"));
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(atCookie, xsrfCookie)
+                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"OldPass@123\",\"newPassword\":\"weak\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_WEAK"));
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(atCookie, xsrfCookie)
+                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"OldPass@123\",\"newPassword\":\"NewPass@1234\"}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"NewPass@1234\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mustChangePassword").value(false));
+    }
+
+    @Test
+    void refreshAndLogout_rotateAndInvalidateSession_andUserDirectoryResolvesUser() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "refresh." + suffix;
+        UserAccount account = createProvisionedUser(username, null, "Refresh User", "Valid@1234", UserStatus.ACTIVE, false);
+
+        assertThat(userDirectory.findById(account.getId()))
+                .isPresent()
+                .get()
+                .satisfies(summary -> {
+                    assertThat(summary.username()).isEqualTo(username);
+                    assertThat(summary.displayName()).isEqualTo("Refresh User");
+                    assertThat(summary.platformAdmin()).isFalse();
+                });
+
+        MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie at1 = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie rt1 = loginRes.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie xsrf1 = loginRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        MvcResult refreshRes = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(at1, rt1, xsrf1)
+                        .header(AuthCookieService.XSRF_HEADER, xsrf1.getValue()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redirectTo").value("/"))
+                .andReturn();
+
+        Cookie at2 = refreshRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie rt2 = refreshRes.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie xsrf2 = refreshRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        mockMvc.perform(get("/api/v1/me").cookie(at2))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(username));
+
+        MvcResult logoutRes = mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(at2, rt2, xsrf2)
+                        .header(AuthCookieService.XSRF_HEADER, xsrf2.getValue()))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        assertThat(logoutRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE).getMaxAge()).isZero();
+        assertThat(logoutRes.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE).getMaxAge()).isZero();
+        assertThat(logoutRes.getResponse().getCookie(AuthCookieService.CTX_COOKIE).getMaxAge()).isZero();
+        assertThat(logoutRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE).getMaxAge()).isZero();
+
+        mockMvc.perform(get("/api/v1/me").cookie(at2))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(rt2, xsrf2)
+                        .header(AuthCookieService.XSRF_HEADER, xsrf2.getValue()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+    }
+
+    private UserAccount createProvisionedUser(
+            String username,
+            String email,
+            String fullName,
+            String password,
+            UserStatus status,
+            boolean mustChangePassword) {
+        UUID userId = keycloakClient.createUser(new CreateUserCommand(
+                username, email, fullName, "User", password, true, false, true));
+        Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
+        String code = String.format("U%06d", seq);
+        UserAccount account = new UserAccount(
+                userId,
+                code,
+                username,
+                fullName,
+                email,
+                null,
+                UserSource.ADMIN_CREATED,
+                status,
+                mustChangePassword,
+                Instant.now(),
+                userId);
+        return userAccountRepository.save(account);
+    }
+}

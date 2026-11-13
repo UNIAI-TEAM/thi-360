@@ -60,8 +60,8 @@ Trên máy chủ Keycloak thật (dùng chung với các dự án khác), ứng 
 
 1. **Trong realm ứng dụng** (`THI360_KC_REALM`, tên cấu hình qua biến môi trường):
    - Bật `Login with email`, tắt `Duplicate emails`, tắt `User registration` và `Forgot password` (quản lý qua ứng dụng).
+   - Trong **Realm settings → User profile**, bỏ đánh dấu bắt buộc (`Required`) cho `email`, `firstName`, `lastName` (học viên có thể tạo không có email). Nếu bật `Brute force detection`, đặt `Quick login check = 0 ms` và `Failure factor >= 30` để không chặn nhầm trước giới hạn 5 lần/15 phút của ứng dụng.
    - Đặt **Password Policy**: `length(8) and maxLength(64) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername`.
-   - Đặt thời hạn phiên/token: `Access Token Lifespan = 5 phút (300s)`, `SSO Session Idle = 8 giờ (28800s)`, `SSO Session Max = 30 ngày (2592000s)`.
    - Tạo client confidential (`THI360_KC_CLIENT_ID`, mặc định `thi360-api`): bật **Client authentication**, **Direct access grants**, **Service accounts roles**; tắt **Standard flow**; cấu hình secret vào `THI360_KC_CLIENT_SECRET`.
    - Trong tab **Service account roles** của client trên, gán đúng 3 role của client `realm-management`: `manage-users`, `view-users`, `query-users` (chỉ trong realm ứng dụng; không cấp quyền ở realm khác).
 2. **Trong realm nền tảng** (`THI360_KC_PLATFORM_REALM`, mặc định `master`):
