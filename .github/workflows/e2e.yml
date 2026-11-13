@@ -50,7 +50,12 @@ jobs:
       - name: Start Compose dev services
         run: |
           docker compose -f infra/docker-compose.yml up -d
-          docker wait thi360-keycloak-init-1 || true
+          init_cid="$(docker compose -f infra/docker-compose.yml ps -a -q keycloak-init)"
+          if [ -z "$init_cid" ] || [ "$(docker wait "$init_cid")" != "0" ]; then
+            docker compose -f infra/docker-compose.yml logs keycloak-init || true
+            docker compose -f infra/docker-compose.yml ps
+            exit 1
+          fi
           docker compose -f infra/docker-compose.yml ps
       - name: Build backend and webs
         run: |
