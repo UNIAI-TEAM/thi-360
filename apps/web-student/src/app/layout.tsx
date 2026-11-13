@@ -1,6 +1,12 @@
+import {
+  buildThemeVars,
+  DEFAULT_APPEARANCE_CONFIG,
+  parseAppearanceConfig,
+  type AppearanceConfig,
+} from "@thi360/ui";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -15,9 +21,33 @@ export const metadata: Metadata = {
   description: "Cổng luyện thi đánh giá năng lực HSA và QDA",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+async function loadAppearance(): Promise<AppearanceConfig> {
+  const apiBase =
+    process.env.THI360_API_URL?.trim().replace(/\/+$/, "") ||
+    (process.env.NODE_ENV === "production" ? "" : "http://localhost:8080");
+  if (!apiBase) return DEFAULT_APPEARANCE_CONFIG;
+  try {
+    const response = await fetch(`${apiBase}/api/v1/appearance`, {
+      next: { revalidate: 60, tags: ["appearance"] },
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!response.ok) return DEFAULT_APPEARANCE_CONFIG;
+    return parseAppearanceConfig(await response.json());
+  } catch {
+    return DEFAULT_APPEARANCE_CONFIG;
+  }
+}
+
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const appearance = await loadAppearance();
+  const themeVars = buildThemeVars(appearance) as CSSProperties;
   return (
-    <html lang="vi" className={beVietnamPro.variable}>
+    <html
+      lang="vi"
+      className={beVietnamPro.variable}
+      data-theme={appearance.mode}
+      style={themeVars}
+    >
       <body className="font-sans antialiased">{children}</body>
     </html>
   );
