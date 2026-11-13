@@ -5,6 +5,13 @@ spring:
 server:
   port: ${THI360_API_PORT:8080}
 
+# Log: bố cục và mức log nằm ở logback-spring.xml. Dòng dưới thêm tên dịch vụ vào mỗi bản ghi JSON.
+logging:
+  structured:
+    json:
+      add:
+        service: ${spring.application.name}
+
 management:
   endpoints:
     web:

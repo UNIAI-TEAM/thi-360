@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Cấu hình log của Thi 360. Quy ước đầy đủ: docs/plans/2026-11-13-base-port-pbi-01-02.md mục B15.
+
+  Bố cục file (đọc từ trên xuống):
+    1. Biến lấy từ cấu hình
+    2. Mẫu dòng log dạng chữ
+    3. Nơi ghi (appender): console chữ, console JSON, tệp (tùy chọn)
+    4. Mức log theo nhóm logger
+    5. Gắn nơi ghi theo profile
+
+  Trace một yêu cầu: mọi dòng log của cùng một yêu cầu mang cùng traceId (cũng là
+  giá trị header X-Request-Id trả về cho trình duyệt và trường traceId trong ApiError).
+    - Log dạng chữ:  grep "trace=<giá trị>"
+    - Log JSON:      lọc theo trường traceId
+-->
+<configuration>
+
+    <!-- Lấy bộ tô màu %clr của Spring Boot: tự tắt màu khi đầu ra không phải terminal (CI, ống dẫn, tệp). -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- ============ 1. Biến lấy từ cấu hình ============ -->
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="thi360-api"/>
+    <!-- Mức log của mã ứng dụng (vn.unicom.thi360). -->
+    <springProperty name="appLevel" source="THI360_LOG_LEVEL" defaultValue="INFO"/>
+    <!-- Đặt DEBUG để thấy câu SQL; TRACE cho cả tham số. Mặc định tắt. -->
+    <springProperty name="sqlLevel" source="THI360_LOG_SQL" defaultValue="WARN"/>
+    <!-- Thư mục tệp log, chỉ dùng khi bật profile "logfile". -->
+    <springProperty name="logDir" source="THI360_LOG_DIR" defaultValue="logs"/>
+
+    <!-- ============ 2. Mẫu dòng log dạng chữ ============
+         giờ  mức  [trace=… user=…]  logger : nội dung  {cặp khóa-giá trị}
+         Khóa MDC chưa có giá trị hiện dấu "-". Danh sách khóa MDC: mục B15 của plan. -->
+    <property name="TEXT_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS,Asia/Ho_Chi_Minh} %-5level [trace=%X{traceId:--} user=%X{userId:--}] %-36.36logger{35} : %msg %kvp%n%ex"/>
+    <property name="TEXT_PATTERN_COLOR"
+              value="%clr(%d{HH:mm:ss.SSS,Asia/Ho_Chi_Minh}){faint} %clr(%-5level) %clr([trace=%X{traceId:--} user=%X{userId:--}]){cyan} %-36.36logger{35} : %msg %kvp%n%ex"/>
+
+    <!-- ============ 3. Nơi ghi ============ -->
+
+    <!-- 3a. Console dạng chữ, có màu khi chạy trong terminal: cho người đọc trực tiếp khi phát triển. -->
+    <appender name="CONSOLE_TEXT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${TEXT_PATTERN_COLOR}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 3b. Console dạng JSON, mỗi dòng một bản ghi: cho hệ thống gom log.
+         Dùng bộ mã hóa có sẵn của Spring Boot; tự đưa mọi khóa MDC và cặp khóa-giá trị vào bản ghi. -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 3c. Tệp, chỉ khi bật profile "logfile" (chạy không có hệ thống gom log).
+         app.log: mọi dòng. error.log: chỉ WARN và ERROR, để xem lỗi mà không phải lọc. -->
+    <springProfile name="logfile">
+        <appender name="FILE_ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${logDir}/${appName}.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${logDir}/${appName}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>14</maxHistory>
+                <totalSizeCap>2GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>${TEXT_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+        <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${logDir}/${appName}.error.log</file>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>WARN</level>
+            </filter>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${logDir}/${appName}.error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>1GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>${TEXT_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- ============ 4. Mức log theo nhóm logger ============ -->
+
+    <!-- 4a. Mã ứng dụng. -->
+    <logger name="vn.unicom.thi360" level="${appLevel}"/>
+
+    <!-- 4b. Logger theo mục đích: tên cố định để lọc nhanh, không phụ thuộc tên lớp.
+         thi360.access   một dòng cho mỗi yêu cầu HTTP: phương thức, đường dẫn, mã trả về, thời gian
+         thi360.security đăng nhập sai, bị chặn, thiếu quyền (403), phiên bị thu hồi
+         thi360.job      việc chạy nền của worker: outbox, cấp hàng loạt, lưu trữ nhật ký
+         thi360.external lời gọi ra ngoài: Keycloak, kho tệp, thư -->
+    <logger name="thi360.access" level="INFO"/>
+    <logger name="thi360.security" level="INFO"/>
+    <logger name="thi360.job" level="INFO"/>
+    <logger name="thi360.external" level="INFO"/>
+
+    <!-- 4c. Câu SQL: tắt mặc định, bật bằng THI360_LOG_SQL. -->
+    <logger name="org.hibernate.SQL" level="${sqlLevel}"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="${sqlLevel}"/>
+
+    <!-- 4d. Thư viện hay ghi nhiều: chỉ giữ cảnh báo. -->
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <logger name="org.apache.http" level="WARN"/>
+    <logger name="org.apache.hc" level="WARN"/>
+    <logger name="io.lettuce" level="WARN"/>
+    <logger name="org.keycloak" level="WARN"/>
+
+    <!-- ============ 5. Gắn nơi ghi theo profile ============
+         dev, test hoặc không khai báo profile: console dạng chữ.
+         Mọi profile khác (môi trường triển khai): console dạng JSON.
+         Thêm profile "logfile" ở bất kỳ môi trường nào để ghi thêm ra tệp. -->
+    <root level="INFO">
+        <springProfile name="dev | test | default">
+            <appender-ref ref="CONSOLE_TEXT"/>
+        </springProfile>
+        <springProfile name="!dev &amp; !test &amp; !default">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </springProfile>
+        <springProfile name="logfile">
+            <appender-ref ref="FILE_ALL"/>
+            <appender-ref ref="FILE_ERROR"/>
+        </springProfile>
+    </root>
+
+</configuration>
