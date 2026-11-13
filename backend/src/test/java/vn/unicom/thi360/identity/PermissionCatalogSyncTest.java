@@ -1,6 +1,7 @@
 package vn.unicom.thi360.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -126,6 +127,33 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
                 .andExpect(status().is(org.hamcrest.Matchers.anyOf(
                         org.hamcrest.Matchers.is(404),
                         org.hamcrest.Matchers.is(405))));
+    }
+
+    @Test
+    void sync_whenExistingPermissionBitIndexDrifts_failsWithoutChangingStoredBit() {
+        int originalBit = Permission.AUDIT_VIEW.bitIndex();
+        int driftedBit = 998;
+        jdbcTemplate.update(
+                "UPDATE identity.permission SET bit_index = ? WHERE code = ?",
+                driftedBit,
+                Permission.AUDIT_VIEW.code());
+        try {
+            assertThatThrownBy(() -> permissionCatalogSync.sync())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining(Permission.AUDIT_VIEW.code())
+                    .hasMessageContaining("bit_index");
+
+            Integer storedBit = jdbcTemplate.queryForObject(
+                    "SELECT bit_index FROM identity.permission WHERE code = ?",
+                    Integer.class,
+                    Permission.AUDIT_VIEW.code());
+            assertThat(storedBit).isEqualTo(driftedBit);
+        } finally {
+            jdbcTemplate.update(
+                    "UPDATE identity.permission SET bit_index = ? WHERE code = ?",
+                    originalBit,
+                    Permission.AUDIT_VIEW.code());
+        }
     }
 
     private void assertSystemRole(String normalizedCode, Access expectedAccess, int expectedCount, String... expectedCodes) {

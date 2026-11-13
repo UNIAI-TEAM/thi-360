@@ -64,19 +64,42 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
         transactionTemplate.executeWithoutResult(status -> {
             Instant now = Instant.now(clock);
             Map<String, PermissionEntity> existingByCode = new HashMap<>();
+            Map<Integer, PermissionEntity> existingByBit = new HashMap<>();
             for (PermissionEntity entity : permissionRepository.findAll()) {
                 existingByCode.put(entity.getCode(), entity);
+                existingByBit.put(entity.getBitIndex(), entity);
             }
 
             Map<String, UUID> idByCode = new HashMap<>();
             for (Permission p : Permission.values()) {
                 PermissionEntity existing = existingByCode.get(p.code());
                 if (existing != null) {
+                    if (existing.getBitIndex() != p.bitIndex()) {
+                        throw new IllegalStateException(
+                                "Permission bit_index drift detected for code '"
+                                        + p.code()
+                                        + "': database has bit_index="
+                                        + existing.getBitIndex()
+                                        + " but enum defines bit_index="
+                                        + p.bitIndex()
+                                        + ". Add a Flyway migration to reconcile bit_index before startup.");
+                    }
                     if (existing.syncMetadata(p.scope(), p.displayName(), p.object().code(), p.description(), now)) {
                         permissionRepository.save(existing);
                     }
                     idByCode.put(p.code(), existing.getId());
                 } else {
+                    PermissionEntity bitOwner = existingByBit.get(p.bitIndex());
+                    if (bitOwner != null) {
+                        throw new IllegalStateException(
+                                "Permission bit_index conflict for code '"
+                                        + p.code()
+                                        + "' at bit_index="
+                                        + p.bitIndex()
+                                        + ": already occupied by '"
+                                        + bitOwner.getCode()
+                                        + "'");
+                    }
                     PermissionEntity created = new PermissionEntity(
                             Ids.newId(),
                             p.code(),
