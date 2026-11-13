@@ -24,18 +24,24 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "Lớn" })).toHaveClass("h-12");
   });
 
-  it("đang xử lý: khóa nút, không gọi onClick, giữ nhãn trong DOM để không đổi chiều rộng", async () => {
+  it("đang xử lý: đặt aria-disabled và aria-busy, giữ nguyên opacity và chặn onClick/submit", async () => {
     const onClick = vi.fn();
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
     render(
-      <Button loading onClick={onClick}>
-        Lưu
-      </Button>,
+      <form onSubmit={onSubmit}>
+        <Button type="submit" loading onClick={onClick}>
+          Lưu
+        </Button>
+      </form>,
     );
     const button = screen.getByRole("button", { name: "Lưu" });
-    expect(button).toBeDisabled();
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button.className).not.toContain("aria-disabled:opacity-50");
     await userEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("asChild đưa kiểu nút cho phần tử con", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Circle, Eye, EyeOff, RefreshCw } from "lucide-react";
-import { type ComponentProps, type ReactNode, useState } from "react";
+import { type ComponentProps, type ReactNode, useId, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import { fieldBase, focusRing } from "../lib/styles";
 
@@ -109,16 +109,29 @@ export function PasswordField({
   onChange,
   onValueChange,
   labels,
+  ref,
+  "aria-describedby": ariaDescribedBy,
   ...props
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
   const [uncontrolledValue, setUncontrolledValue] = useState(
     typeof defaultValue === "string" ? defaultValue : "",
   );
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const rulesId = useId();
   const resolvedValue = typeof value === "string" ? value : uncontrolledValue;
   const mergedLabels = { ...DEFAULT_LABELS, ...labels };
   const rules = showRules ? evaluatePasswordRules(resolvedValue, mergedLabels) : null;
+  const describedBy = [ariaDescribedBy, rules && rulesId].filter(Boolean).join(" ") || undefined;
 
+  function setRefs(node: HTMLInputElement | null) {
+    inputRef.current = node;
+    if (typeof ref === "function") {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+  }
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     if (typeof value !== "string") {
       setUncontrolledValue(event.target.value);
@@ -129,6 +142,13 @@ export function PasswordField({
 
   function handleGenerate() {
     const next = generateStrongPassword(12);
+    const input = inputRef.current;
+    if (input) {
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      valueSetter?.call(input, next);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
     if (typeof value !== "string") {
       setUncontrolledValue(next);
     }
@@ -148,10 +168,12 @@ export function PasswordField({
             </span>
           )}
           <input
+            ref={setRefs}
             type={visible ? "text" : "password"}
             value={value}
             defaultValue={value === undefined ? defaultValue : undefined}
             onChange={handleChange}
+            aria-describedby={describedBy}
             className={cn(
               fieldBase,
               size === "lg" ? "h-12" : "h-10",
@@ -191,7 +213,7 @@ export function PasswordField({
       </div>
 
       {rules && (
-        <ul aria-label={mergedLabels.rulesLabel} className="grid gap-1 text-caption">
+        <ul id={rulesId} aria-label={mergedLabels.rulesLabel} className="grid gap-1 text-caption">
           {rules.map((rule) => (
             <li
               key={rule.key}

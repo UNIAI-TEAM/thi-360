@@ -9,7 +9,7 @@ export const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 items-center justify-center rounded-lg text-label font-semibold whitespace-nowrap",
     "transition-colors duration-150 motion-reduce:transition-none",
-    "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+    "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none [&[aria-disabled='true']:not([aria-busy='true'])]:opacity-50",
     focusRing,
   ],
   {
@@ -65,6 +65,7 @@ export function Button({
   loading = false,
   asChild = false,
   disabled,
+  onClick,
   children,
   type = "button",
   ...props
@@ -94,8 +95,17 @@ export function Button({
     <button
       type={type}
       className={classes}
-      disabled={disabled || loading}
+      disabled={disabled}
+      aria-disabled={disabled || loading || undefined}
       aria-busy={loading || undefined}
+      onClick={(event) => {
+        if (disabled || loading) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onClick?.(event);
+      }}
       {...props}
     >
       {loading && (

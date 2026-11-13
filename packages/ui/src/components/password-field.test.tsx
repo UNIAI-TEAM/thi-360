@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   evaluatePasswordRules,
@@ -41,5 +42,40 @@ describe("PasswordField", () => {
     expect(generated).not.toMatch(/[0Oo1lI]/);
     expect(isPasswordStrong(generated)).toBe(true);
     expect(evaluatePasswordRules(generateStrongPassword(12)).every((r) => r.met)).toBe(true);
+  });
+
+  it("nút Tạo ngẫu nhiên cập nhật onChange khi dùng controlled và gắn aria-describedby tới danh sách điều kiện", async () => {
+    const onChange = vi.fn();
+    function ControlledProbe() {
+      const [val, setVal] = useState("");
+      return (
+        <PasswordField
+          aria-label="Mật khẩu mới"
+          aria-describedby="field-error"
+          value={val}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setVal(event.target.value);
+          }}
+          showRules
+          allowGenerate
+        />
+      );
+    }
+
+    render(<ControlledProbe />);
+    const input = screen.getByLabelText("Mật khẩu mới");
+    const rulesList = screen.getByRole("list", { name: "Điều kiện mật khẩu" });
+    expect(rulesList.id).not.toBe("");
+    expect(input.getAttribute("aria-describedby")).toBe(`field-error ${rulesList.id}`);
+
+    await userEvent.click(screen.getByRole("button", { name: "Tạo ngẫu nhiên" }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const generated = onChange.mock.calls[0]?.[0] as string;
+    expect(input).toHaveValue(generated);
+    expect(isPasswordStrong(generated)).toBe(true);
+    for (const item of rulesList.querySelectorAll("li")) {
+      expect(item).toHaveAttribute("data-met", "true");
+    }
   });
 });
