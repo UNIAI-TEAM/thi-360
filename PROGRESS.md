@@ -9,7 +9,8 @@
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
 - T03 (UNI-2540) đã nghiệm thu và merge vào `integration/dot-1` (PR #6, `a996ab4`).
-- Đang chạy: T04 (UNI-2541) trên VPS, T05 (UNI-2542) và UNI-2559 (tương phản màu chế độ sáng, con của UNI-2543) trên máy Windows.
+- UNI-2559 (tương phản màu chế độ sáng, con của UNI-2543, ngoài điểm plan) đã nghiệm thu và merge vào `integration/dot-1` (PR #7, `dec8d5b`).
+- Đang chạy: T04 (UNI-2541) trên VPS, T05 (UNI-2542) trên máy Windows.
 
 **Bước tiếp theo**
 
@@ -22,6 +23,14 @@
 - Bộ xuất OpenAPI ghi xuống dòng theo hệ điều hành (CRLF trên Windows), nên kiểm tra lệch `diff` chạy trên Windows báo lệch giả. CI chạy Linux không bị. Sửa trong T05.
 
 ## Đã làm
+
+### 2026-11-13 — UNI-2559 tương phản màu chế độ sáng, merge vào integration/dot-1
+
+- Người dùng chọn phương án 2 (D-USER-CONTRAST): chữ màu chính trên nền nhạt và nền nút chính dùng `#047857`; nút nhấn giữ `#F59223`, chữ `#1A1A1F`; chữ lỗi `#b91c1c`; chữ màu chính chế độ tối `#10b981`.
+- `packages/ui`: token `primary-text`, `primary-fill`, `on-accent`, cập nhật các thành phần dùng màu; `tokens.test.ts` liệt kê mọi cặp chữ/nền đang dùng và kiểm tra >= 4,5:1 cả sáng lẫn tối. `DESIGN.md` và spec mục 13, 13.1, 14 sửa cho khớp.
+- Review FE hai vòng không còn lỗi; nghiệm thu giao diện hai vòng, 0 phần tử dưới 4,5:1.
+- Lệnh đã chạy trên `f457153`: Cursor cloud runner `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows (Node 22) cùng các lệnh → exit 0.
+- Merge squash qua PR #7 (`dec8d5b`).
 
 ### 2026-11-13 — T03 (UNI-2540) xác thực, merge vào integration/dot-1
 
