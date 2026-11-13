@@ -356,6 +356,15 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
                     .andExpect(jsonPath("$.totalItems").value(1))
                     .andExpect(jsonPath("$.items[0].id").value(oldEventId.toString()))
                     .andExpect(jsonPath("$.items[0].actorUsername").value("legacy.user"));
+
+            // API query with only an old 'to' reads archive and returns the 2023 Q1 row
+            mockMvc.perform(get("/api/v1/admin/audit-events")
+                            .param("targetId", "u-2023")
+                            .param("to", "2023-12-31T23:59:59Z"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalItems").value(1))
+                    .andExpect(jsonPath("$.items[0].id").value(oldEventId.toString()))
+                    .andExpect(jsonPath("$.items[0].actorUsername").value("legacy.user"));
         } finally {
             transactionTemplate.executeWithoutResult(status -> {
                 jdbcTemplate.execute("SET LOCAL thi360.audit_maintenance = 'on'");

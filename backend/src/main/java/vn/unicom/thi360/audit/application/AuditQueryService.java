@@ -67,7 +67,7 @@ public class AuditQueryService implements AuditQuery {
                     new FieldError("to", "INVALID_TIME_RANGE", "Thời điểm kết thúc phải sau thời điểm bắt đầu")));
         }
 
-        boolean includeArchive = shouldIncludeArchive(effectiveCriteria.from());
+        boolean includeArchive = shouldIncludeArchive(effectiveCriteria.from(), effectiveCriteria.to());
         return PageResponse.from(repository.findEvents(effectiveCriteria, includeArchive, pageQuery.toPageable()));
     }
 
@@ -80,10 +80,14 @@ public class AuditQueryService implements AuditQuery {
         return currentQuarterStart.minusMonths(properties.archiveAfterQuarters() * 3L).toInstant();
     }
 
-    private boolean shouldIncludeArchive(Instant from) {
-        if (from == null) {
-            return false;
+    private boolean shouldIncludeArchive(Instant from, Instant to) {
+        Instant cutoff = archiveCutoffInstant();
+        if (from != null) {
+            return from.isBefore(cutoff);
         }
-        return from.isBefore(archiveCutoffInstant());
+        if (to != null) {
+            return to.isBefore(cutoff);
+        }
+        return false;
     }
 }
