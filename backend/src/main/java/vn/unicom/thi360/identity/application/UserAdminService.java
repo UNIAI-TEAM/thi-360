@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEvent;
@@ -134,6 +137,7 @@ public class UserAdminService {
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
+    private final TransactionTemplate requiresNewTx;
     private final Clock clock;
 
     public UserAdminService(
@@ -154,7 +158,7 @@ public class UserAdminService {
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
-            TransactionTemplate transactionTemplate,
+            PlatformTransactionManager transactionManager,
             Clock clock) {
         this.userAccountRepository = userAccountRepository;
         this.userIdentityRepository = userIdentityRepository;
@@ -173,7 +177,9 @@ public class UserAdminService {
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
         this.jdbcTemplate = jdbcTemplate;
-        this.transactionTemplate = transactionTemplate;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.requiresNewTx = new TransactionTemplate(transactionManager);
+        this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
     }
     @Transactional(readOnly = true)
@@ -341,6 +347,9 @@ public class UserAdminService {
 
         UUID provisionalId = Ids.newId();
         Instant now = Instant.now(clock);
+        String roleIdsIntent = targetRoles.stream()
+                .map(role -> role.getId().toString())
+                .collect(Collectors.joining(","));
         try {
             transactionTemplate.executeWithoutResult(status -> {
                 Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
@@ -357,6 +366,7 @@ public class UserAdminService {
                         mustChangePassword,
                         now,
                         actor.id());
+                provisional.setProvisioningRoleIds(roleIdsIntent);
                 userAccountRepository.saveAndFlush(provisional);
             });
         } catch (DataIntegrityViolationException ex) {
@@ -389,8 +399,11 @@ public class UserAdminService {
         try {
             keycloakClient.setPassword(keycloakUserId, request.password(), false);
         } catch (ValidationException ex) {
-            deleteKeycloakUserQuietly(keycloakUserId);
-            deleteProvisionalUserQuietly(provisionalId);
+            if (deleteKeycloakUserQuietly(keycloakUserId)) {
+                deleteProvisionalUserQuietly(provisionalId);
+            } else {
+                markProvisionalIdpCleanupPendingQuietly(provisionalId);
+            }
             throw ex;
         } catch (ExternalServiceException ex) {
             log.atError()
@@ -451,7 +464,11 @@ public class UserAdminService {
                 return toDetailResponse(account, toRoleSummaries(targetRoles));
             });
         } catch (RuntimeException ex) {
-            deleteKeycloakUserQuietly(keycloakUserId);
+            if (deleteKeycloakUserQuietly(keycloakUserId)) {
+                deleteProvisionalUserQuietly(provisionalId);
+            } else {
+                markProvisionalIdpCleanupPendingQuietly(provisionalId);
+            }
             throw ex;
         }
     }
@@ -653,29 +670,29 @@ public class UserAdminService {
         return toDetailResponse(user, roles);
     }
 
-    @Transactional
     public void deleteUser(UUID userId, String reason) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
             throw new ConflictException(ERROR_SELF_DELETE);
         }
         String trimmedReason = validateReason("reason", reason, "Vui lòng nhập lý do xóa tài khoản");
-        UserAccount user = lockActiveManageableUser(actor, userId);
-
-        List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
-        if (!blockers.isEmpty()) {
-            List<FieldError> fieldErrors = blockers.stream()
-                    .map(b -> new FieldError(
-                            b.source(),
-                            b.code() == null || b.code().isBlank() ? ERROR_USER_HAS_TRANSACTIONS : b.code(),
-                            b.message() == null || b.message().isBlank()
-                                    ? "Tài khoản đang có dữ liệu giao dịch cần đối soát, không thể xóa"
-                                    : b.message()))
-                    .toList();
-            throw new ConflictException(ERROR_USER_HAS_TRANSACTIONS, null, fieldErrors);
-        }
-
-        performSoftDelete(actor, user, trimmedReason, Instant.now(clock));
+        transactionTemplate.executeWithoutResult(status -> {
+            UserAccount user = lockActiveManageableUser(actor, userId);
+            List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
+            if (!blockers.isEmpty()) {
+                List<FieldError> fieldErrors = blockers.stream()
+                        .map(b -> new FieldError(
+                                b.source(),
+                                b.code() == null || b.code().isBlank() ? ERROR_USER_HAS_TRANSACTIONS : b.code(),
+                                b.message() == null || b.message().isBlank()
+                                        ? "Tài khoản đang có dữ liệu giao dịch cần đối soát, không thể xóa"
+                                        : b.message()))
+                        .toList();
+                throw new ConflictException(ERROR_USER_HAS_TRANSACTIONS, null, fieldErrors);
+            }
+            performSoftDeleteLocal(actor, user, trimmedReason, Instant.now(clock));
+        });
+        cleanupDeletedUserInKeycloak(userId);
     }
 
     @Transactional(readOnly = true)
@@ -799,7 +816,7 @@ public class UserAdminService {
                         }
                         recordAudit(actor, "USER_ACTIVATED", uid, user.getUsername(), before, after, null);
                     }
-                    case DELETE -> performSoftDelete(actor, user, trimmedReason, now);
+                    case DELETE -> performSoftDeleteLocal(actor, user, trimmedReason, now);
                 }
                 succeeded++;
                 results.add(new BulkUserActionItemResult(
@@ -815,13 +832,13 @@ public class UserAdminService {
                 batchId, action, distinctIds.size(), succeeded, skipped, failed, List.copyOf(results));
     }
 
-    private void performSoftDelete(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
+    private void performSoftDeleteLocal(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
         UUID userId = user.getId();
         UserStatus oldStatus = user.getStatus();
-        keycloakClient.deleteUser(userId);
         user.softDelete(trimmedReason, now, actor.id());
         user = userAccountRepository.saveAndFlush(user);
-        revokeUserSessionsAndSnapshot(userId);
+        sessionStore.deleteAllSessions(userId);
+        authzSnapshotService.evict(userId);
         outboxPublisher.publish(
                 UserDeleted.OUTBOX_TOPIC,
                 new UserDeleted(userId, user.getUsername(), now, actor.id()));
@@ -838,6 +855,18 @@ public class UserAdminService {
         recordAudit(actor, "USER_DELETED", userId, user.getUsername(), before, after, trimmedReason);
     }
 
+    private void cleanupDeletedUserInKeycloak(UUID userId) {
+        try {
+            keycloakClient.deleteUser(userId);
+            requiresNewTx.executeWithoutResult(status ->
+                    userAccountRepository.updateIdpCleanupPending(userId, false, Instant.now(clock)));
+        } catch (RuntimeException ex) {
+            log.atWarn()
+                    .setCause(ex)
+                    .addKeyValue("userId", userId.toString())
+                    .log("Keycloak deleteUser failed after local soft-delete; leaving idp_cleanup_pending=true");
+        }
+    }
     private void revokeUserSessionsAndSnapshot(UUID userId) {
         sessionStore.deleteAllSessions(userId);
         authzSnapshotService.evict(userId);
@@ -1115,7 +1144,7 @@ public class UserAdminService {
 
     private void deleteProvisionalUserQuietly(UUID provisionalId) {
         try {
-            transactionTemplate.executeWithoutResult(status -> userAccountRepository.deleteById(provisionalId));
+            requiresNewTx.executeWithoutResult(status -> userAccountRepository.deleteById(provisionalId));
         } catch (RuntimeException ex) {
             log.atWarn()
                     .setCause(ex)
@@ -1124,14 +1153,28 @@ public class UserAdminService {
         }
     }
 
-    private void deleteKeycloakUserQuietly(UUID keycloakUserId) {
+    private void markProvisionalIdpCleanupPendingQuietly(UUID provisionalId) {
+        try {
+            requiresNewTx.executeWithoutResult(status ->
+                    userAccountRepository.updateIdpCleanupPending(provisionalId, true, Instant.now(clock)));
+        } catch (RuntimeException ex) {
+            log.atWarn()
+                    .setCause(ex)
+                    .addKeyValue("provisionalUserId", provisionalId.toString())
+                    .log("Failed to mark PROVISIONING user for IdP cleanup");
+        }
+    }
+
+    private boolean deleteKeycloakUserQuietly(UUID keycloakUserId) {
         try {
             keycloakClient.deleteUser(keycloakUserId);
+            return true;
         } catch (RuntimeException ex) {
             log.atWarn()
                     .setCause(ex)
                     .addKeyValue("keycloakUserId", keycloakUserId.toString())
                     .log("Failed to clean up Keycloak user during rollback");
+            return false;
         }
     }
 

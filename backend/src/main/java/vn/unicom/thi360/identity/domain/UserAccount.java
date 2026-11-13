@@ -68,6 +68,12 @@ public class UserAccount {
     @Column(name = "delete_reason")
     private String deleteReason;
 
+    @Column(name = "provisioning_role_ids")
+    private String provisioningRoleIds;
+
+    @Column(name = "idp_cleanup_pending", nullable = false)
+    private boolean idpCleanupPending;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -197,8 +203,20 @@ public class UserAccount {
         this.deletedAt = Objects.requireNonNull(now, "now must not be null");
         this.deletedBy = actorId;
         this.deleteReason = reason == null || reason.isBlank() ? null : reason.trim();
+        this.idpCleanupPending = true;
         this.updatedAt = now;
         this.updatedBy = actorId;
+    }
+
+    public void setProvisioningRoleIds(String provisioningRoleIds) {
+        this.provisioningRoleIds = provisioningRoleIds == null || provisioningRoleIds.isBlank()
+                ? null
+                : provisioningRoleIds.trim();
+    }
+
+    public void markIdpCleanupPending(boolean pending, Instant now) {
+        this.idpCleanupPending = pending;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
     public boolean isDeleted() {
@@ -280,6 +298,14 @@ public class UserAccount {
     public String getDeleteReason() {
         return deleteReason;
     }
+    public String getProvisioningRoleIds() {
+        return provisioningRoleIds;
+    }
+
+    public boolean isIdpCleanupPending() {
+        return idpCleanupPending;
+    }
+
 
     public Instant getCreatedAt() {
         return createdAt;

@@ -4,10 +4,13 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +27,7 @@ import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.domain.IdentityProvider;
 import vn.unicom.thi360.identity.domain.Role;
+import vn.unicom.thi360.identity.domain.RoleStatus;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.domain.UserIdentity;
 import vn.unicom.thi360.identity.domain.UserRole;
@@ -126,10 +130,36 @@ public class ProvisioningReconcilerJob {
                             .log("Failed to reconcile stuck PROVISIONING account");
                 }
             }
+            List<UUID> cleanupIds = jdbcTemplate.queryForList(
+                    """
+                    SELECT id
+                    FROM identity.user_account
+                    WHERE idp_cleanup_pending = true
+                      AND deleted_at IS NOT NULL
+                    ORDER BY updated_at ASC
+                    LIMIT ?
+                    """,
+                    UUID.class,
+                    BATCH_LIMIT);
 
-            if (!staleIds.isEmpty()) {
+            for (UUID cleanupId : cleanupIds) {
+                try {
+                    if (reconcilePendingDeletion(cleanupId)) {
+                        deleted++;
+                    }
+                } catch (RuntimeException ex) {
+                    failed++;
+                    jobLog.atWarn()
+                            .setCause(ex)
+                            .addKeyValue("userId", cleanupId.toString())
+                            .log("Failed to reconcile pending Keycloak deletion");
+                }
+            }
+
+            if (!staleIds.isEmpty() || !cleanupIds.isEmpty()) {
                 jobLog.atInfo()
                         .addKeyValue("scanned", staleIds.size())
+                        .addKeyValue("pendingDeletions", cleanupIds.size())
                         .addKeyValue("promoted", promoted)
                         .addKeyValue("deleted", deleted)
                         .addKeyValue("failed", failed)
@@ -167,9 +197,26 @@ public class ProvisioningReconcilerJob {
             }
 
             Optional<UUID> kcIdOpt = keycloakClient.findUserIdByUsername(account.getUsername());
+            if (account.isIdpCleanupPending()) {
+                kcIdOpt.ifPresent(keycloakClient::deleteUser);
+                userAccountRepository.deleteById(provisionalId);
+                return ItemOutcome.DELETED;
+            }
+
             if (kcIdOpt.isPresent()) {
                 UUID kcId = kcIdOpt.get();
                 if (keycloakClient.hasPasswordCredential(kcId)) {
+                    List<Role> intendedRoles = resolveIntendedRoles(account.getProvisioningRoleIds());
+                    if (intendedRoles == null) {
+                        jobLog.atWarn()
+                                .addKeyValue("provisionalUserId", provisionalId.toString())
+                                .addKeyValue("keycloakUserId", kcId.toString())
+                                .log("Cleaning up PROVISIONING account with missing or invalid role intent");
+                        keycloakClient.deleteUser(kcId);
+                        userAccountRepository.deleteById(provisionalId);
+                        return ItemOutcome.DELETED;
+                    }
+
                     Instant now = Instant.now(clock);
                     int updated = userAccountRepository.promoteProvisionedUser(
                             provisionalId,
@@ -177,7 +224,7 @@ public class ProvisioningReconcilerJob {
                             UserStatus.PROVISIONING.code(),
                             UserStatus.ACTIVE.code(),
                             now,
-                            null);
+                            account.getCreatedBy());
                     if (updated != 1) {
                         return ItemOutcome.SKIPPED;
                     }
@@ -195,21 +242,24 @@ public class ProvisioningReconcilerJob {
                                 now));
                     }
                     if (userRoleRepository.findAllByIdUserId(kcId).isEmpty()) {
-                        Role studentRole = roleRepository.findByCodeNormalized("student").orElse(null);
-                        if (studentRole != null) {
-                            userRoleRepository.save(new UserRole(kcId, studentRole.getId(), null, now));
-                        }
+                        List<UserRole> assignments = intendedRoles.stream()
+                                .map(role -> new UserRole(kcId, role.getId(), account.getCreatedBy(), now))
+                                .toList();
+                        userRoleRepository.saveAll(assignments);
+                        userRoleRepository.flush();
                     }
 
                     Map<String, Object> after = new LinkedHashMap<>();
                     after.put("code", active.getCode());
                     after.put("username", active.getUsername());
                     after.put("status", active.getStatus().name());
+                    after.put("mustChangePassword", active.isMustChangePassword());
+                    after.put("roleCodes", intendedRoles.stream().map(Role::getCode).toList());
                     auditRecorder.record(AuditEvent.builder("IDENTITY", "USER_CREATED")
                             .target("USER", kcId.toString(), active.getUsername())
                             .after(after)
                             .reason("Reconciled from PROVISIONING")
-                            .actor(null, "system", List.of(), AuditActorType.SYSTEM)
+                            .actor(account.getCreatedBy(), "system", List.of(), AuditActorType.SYSTEM)
                             .build());
                     return ItemOutcome.PROMOTED;
                 }
@@ -221,6 +271,65 @@ public class ProvisioningReconcilerJob {
             userAccountRepository.deleteById(provisionalId);
             return ItemOutcome.DELETED;
         });
+    }
+
+    private boolean reconcilePendingDeletion(UUID userId) {
+        return Boolean.TRUE.equals(requiresNewTx.execute(status -> {
+            List<UUID> locked = jdbcTemplate.queryForList(
+                    """
+                    SELECT id
+                    FROM identity.user_account
+                    WHERE id = ?
+                      AND idp_cleanup_pending = true
+                      AND deleted_at IS NOT NULL
+                    FOR UPDATE SKIP LOCKED
+                    """,
+                    UUID.class,
+                    userId);
+            if (locked.isEmpty()) {
+                return false;
+            }
+            keycloakClient.deleteUser(userId);
+            userAccountRepository.updateIdpCleanupPending(userId, false, Instant.now(clock));
+            return true;
+        }));
+    }
+
+    private List<Role> resolveIntendedRoles(String rawRoleIds) {
+        if (rawRoleIds == null || rawRoleIds.isBlank()) {
+            return null;
+        }
+        Set<UUID> orderedIds = new LinkedHashSet<>();
+        for (String token : rawRoleIds.split(",")) {
+            String trimmed = token.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            try {
+                orderedIds.add(UUID.fromString(trimmed));
+            } catch (IllegalArgumentException ex) {
+                return null;
+            }
+        }
+        if (orderedIds.isEmpty()) {
+            return null;
+        }
+        Map<UUID, Role> byId = new LinkedHashMap<>();
+        for (Role role : roleRepository.findAllById(orderedIds)) {
+            byId.put(role.getId(), role);
+        }
+        if (byId.size() != orderedIds.size()) {
+            return null;
+        }
+        List<Role> roles = new ArrayList<>(orderedIds.size());
+        for (UUID id : orderedIds) {
+            Role role = byId.get(id);
+            if (role == null || role.getStatus() != RoleStatus.ACTIVE) {
+                return null;
+            }
+            roles.add(role);
+        }
+        return List.copyOf(roles);
     }
 
     private static void restoreMdc(String key, String previousValue) {
