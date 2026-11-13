@@ -1,7 +1,92 @@
 {
+  "appearance": {
+    "accentHelper": "Dùng cho nút hành động nổi bật và huy hiệu.",
+    "accentInvalid": "Mã màu phải có dạng #RRGGBB, ví dụ #F59223.",
+    "accentLabel": "Màu nhấn",
+    "accentPickerAria": "Chọn màu nhấn",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "contrastLinkLabel": "Liên kết trên nền",
+    "contrastOnAccentLabel": "Chữ trên nút nhấn",
+    "contrastOnPrimaryLabel": "Chữ trên nút chính",
+    "contrastValue": "{tone} · tương phản {ratio}",
+    "customCardDescription": "Tự chọn màu chính và màu nhấn",
+    "customCardTitle": "Tự tùy chỉnh",
+    "darkText": "Chữ tối",
+    "description": "Cấu hình áp dụng cho toàn hệ thống: trang quản trị, trang học viên và trang đăng nhập. Thay đổi chỉ hiện ở vùng xem trước cho đến khi bấm Lưu và áp dụng.",
+    "emptyAction": "Khôi phục mặc định",
+    "emptyDescription": "Chưa có cấu hình giao diện trên máy chủ. Bạn có thể áp dụng cấu hình mặc định ngay.",
+    "emptyTitle": "Chưa có cấu hình giao diện",
+    "errorCodes": {
+      "INTERNAL_ERROR": "Đã xảy ra lỗi hệ thống. Hãy thử lại sau.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Hãy thử lại sau.",
+      "VALIDATION_FAILED": "Dữ liệu màu hoặc bộ phối màu không hợp lệ.",
+      "VERSION_CONFLICT": "Cấu hình giao diện đã được cập nhật từ nơi khác. Hãy tải lại cấu hình mới nhất trước khi lưu."
+    },
+    "errorDescription": "Không tải được cấu hình giao diện. Hãy thử lại.",
+    "errorTitle": "Không tải được trang",
+    "modeDark": "Tối",
+    "modeDescription": "Áp dụng cho người chưa tự chọn chế độ ở thanh trên cùng",
+    "modeLight": "Sáng",
+    "modeSection": "Chế độ mặc định",
+    "paletteDescription": "Mỗi bộ gồm màu chính và màu nhấn. Các màu còn lại do hệ thống suy ra.",
+    "paletteSection": "Bộ phối màu",
+    "presets": {
+      "blue-silver": "Xanh dương & Bạc",
+      "charcoal-teal": "Xanh rêu & Xanh cổ vịt",
+      "emerald-gold": "Ngọc lục bảo & Vàng",
+      "indigo-amber": "Chàm & Hổ phách",
+      "indigo-coral": "Chàm & San hô",
+      "navy-teal": "Xanh hải quân & Ngọc lam",
+      "sky-orange": "Xanh da trời & Cam",
+      "slate-crimson": "Xám đá & Đỏ thẫm",
+      "thi360-green": "Thi 360 Xanh lá"
+    },
+    "previewAccentButton": "Vào thi ngay",
+    "previewActiveChip": "Hoạt động",
+    "previewBrand": "Thi 360",
+    "previewDangerChip": "Lỗi",
+    "previewFootnote": "Nhãn trạng thái (Hoạt động, Lỗi) giữ nguyên màu ở mọi bộ phối màu. Mỗi lần lưu được ghi vào nhật ký kèm giá trị trước và sau.",
+    "previewHeading": "Luyện đề như thi thật",
+    "previewInputValue": "Ô nhập đang được chọn",
+    "previewLink": "Liên kết màu chính",
+    "previewLogoMark": "360",
+    "previewMuted": "Chữ phụ dùng cho mô tả và chú thích.",
+    "previewNavItem": "Mục menu đang chọn",
+    "previewPrimaryButton": "Nút chính",
+    "previewScaleLabel": "Dải màu chính suy ra từ màu gốc (bậc 600)",
+    "previewSecondaryButton": "Nút phụ",
+    "previewSubtitle": "{palette} · chế độ {mode}",
+    "previewTitle": "Xem trước",
+    "primaryHelper": "Dùng cho nút chính, liên kết, mục đang chọn.",
+    "primaryInvalid": "Mã màu phải có dạng #RRGGBB, ví dụ #059669.",
+    "primaryLabel": "Màu chính",
+    "primaryPickerAria": "Chọn màu chính",
+    "reloadLatest": "Tải lại cấu hình mới nhất",
+    "resetAction": "Khôi phục mặc định",
+    "resetConfirmDescription": "Giao diện toàn hệ thống (trang quản trị, trang học viên và trang đăng nhập) sẽ trở về bộ Thi 360 Xanh lá và chế độ Sáng.",
+    "resetConfirmTitle": "Khôi phục giao diện mặc định?",
+    "resetFailed": "Không khôi phục được giao diện mặc định. Hãy thử lại.",
+    "resetSuccess": "Đã khôi phục giao diện mặc định.",
+    "saveAction": "Lưu và áp dụng",
+    "saveFailed": "Không lưu được cấu hình giao diện. Hãy thử lại.",
+    "saveSuccess": "Đã lưu và áp dụng giao diện mới cho toàn hệ thống.",
+    "title": "Tùy chỉnh giao diện",
+    "warnings": {
+      "NEAR_DANGER_COLOR_accent": "Màu nhấn dễ nhầm với màu báo lỗi",
+      "NEAR_DANGER_COLOR_both": "Màu chính và màu nhấn dễ nhầm với màu báo lỗi",
+      "NEAR_DANGER_COLOR_primary": "Màu chính dễ nhầm với màu báo lỗi",
+      "PRIMARY_ACCENT_SIMILAR": "Nút nhấn sẽ không nổi bật so với nút chính",
+      "PRIMARY_USES_DARK_TEXT": "Nút chính sẽ dùng chữ tối (tương phản {ratio})"
+    },
+    "warningsOk": "Hai màu dùng được. Chữ trên nút đều đạt mức tương phản 4,5:1 trở lên.",
+    "whiteText": "Chữ trắng"
+  },
   "common": {
     "backHome": "Về trang chủ",
+    "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
+    "notificationsLabel": "Thông báo",
     "retry": "Thử lại"
   },
   "dashboard": {
@@ -165,6 +250,10 @@
       "users": "Người dùng"
     },
     "items": {
+      "appearance": {
+        "description": "Chế độ sáng/tối và bộ phối màu toàn hệ thống",
+        "label": "Tùy chỉnh giao diện"
+      },
       "dashboard": {
         "description": "Lời chào và các lối tắt theo quyền",
         "label": "Bảng điều khiển"

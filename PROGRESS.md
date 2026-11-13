@@ -4,7 +4,7 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 38/105 điểm (T01–T06); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 43/105 điểm (T01–T06, T17); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
@@ -12,7 +12,8 @@
 - UNI-2559 (tương phản màu chế độ sáng, con của UNI-2543, ngoài điểm plan) đã nghiệm thu và merge vào `integration/dot-1` (PR #7, `dec8d5b`).
 - T05 (UNI-2542) đã nghiệm thu và merge vào `integration/dot-1` (PR #8, `457b80d`).
 - T04 (UNI-2541) đã nghiệm thu và merge vào `integration/dot-1` (PR #9, `b252db2`).
-- Đang mở: T07 (UNI-2544) trên VPS; T18 (UNI-2556) và T17 (UNI-2555) trên máy Windows.
+- T17 (UNI-2555) đã nghiệm thu và merge vào `integration/dot-1` (PR #11, `feece8f`).
+- Đang mở: T07 (UNI-2544), T13 (UNI-2550) trên VPS; T18 (UNI-2556) trên máy Windows.
 - 2026-11-14: M.Trường yêu cầu làm luôn phần danh mục đã hoãn (PBI-02: T13, T14, T15). Plan mục A7, A4, Phần C, hợp đồng T13–T15 và T16 đã sửa theo; T13 (UNI-2550) mở ngay trên VPS, T14 sau T13, T15 sau T13, T14, T18.
 - 2026-11-14: M.Trường yêu cầu đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh). Thêm T19 (UNI-2561) vào plan, chạy sau T17 và T18; mọi lane có giao diện thêm khóa tiếng Anh cho chuỗi của mình ngay từ bây giờ (`en.json` cùng bộ khóa với `vi.json`).
 - 2026-11-14: M.Trường chốt chế độ sáng/tối **theo từng người**, bật tắt bằng nút ở thanh trên cùng (cạnh nút ngôn ngữ, bên trái avatar). Cấu hình hệ thống của T17 chỉ còn giữ chế độ mặc định. Nút và cookie `thi360_theme` làm trong T19. Spec §13, `DESIGN.md` §5/§8/§9 và plan T17/T19 đã sửa.
@@ -28,6 +29,16 @@
 - Việc còn lại sau T05 (không chặn): tách login role riêng cho job nhật ký (hiện tài khoản ứng dụng có thể `SET ROLE` sang vai trò bảo trì); thiếu test đầu-cuối ghi người thực hiện khi đăng nhập realm APP. Ghi thành issue con của UNI-2542.
 
 ## Đã làm
+
+### 2026-11-14 — T17 (UNI-2555) tùy chỉnh giao diện toàn hệ thống, merge vào integration/dot-1
+
+- Backend: `AppearanceService` trên `system_setting('appearance')`; `GET /api/v1/appearance` công khai có cache và ETag, `PUT /api/v1/admin/appearance` và `POST …/reset` cần `APPEARANCE.MODIFY`, bắt buộc `version` (412 khi cũ), ghi nhật ký `APPEARANCE_UPDATED`.
+- `packages/ui/src/theme`: 9 bộ màu, `deriveTokens` (OKLCH), kiểm tra tương phản, `buildThemeVars`. Hai web sinh biến màu của cả hai chế độ trong một thẻ `<style>` phía máy chủ (không đặt trên `<html style>`), nên đổi `data-theme` là đổi chế độ, không nháy màu.
+- Web admin: màn `/tuy-chinh-giao-dien` (chế độ mặc định, 9 thẻ bộ màu, tự tùy chỉnh, xem trước, lưu, khôi phục). Hai app dùng `@thi360/api-client`; có `en.json` cùng bộ khóa với `vi.json`.
+- Review BE (7 lỗi) và FE (9 lỗi) đã sửa, vòng 2 sạch; kiểm tra giao diện hai vòng ở cả sáng và tối.
+- Lệnh đã chạy: Cursor cloud runner trên `5522345` `./mvnw -B -ntp verify` (101 + 59 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows trên `4492e9d` các lệnh đó và kiểm tra lệch openapi/api-client → exit 0.
+- Còn lại: kiểm tra HTML phía máy chủ của `/dang-nhap` chờ T18; tương phản nền nút chính ở chế độ tối (UNI-2562) chờ quyết định.
+- Merge squash qua PR #11 (`feece8f`).
 
 ### 2026-11-13 — T04 (UNI-2541) phân quyền, merge vào integration/dot-1
 

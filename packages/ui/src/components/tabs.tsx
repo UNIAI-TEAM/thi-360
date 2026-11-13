@@ -44,7 +44,7 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
         "inline-flex h-10 items-center justify-center rounded-md px-4 text-label font-medium whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none",
         "disabled:pointer-events-none disabled:opacity-50 data-[state=active]:font-semibold",
         variant === "segmented"
-          ? "flex-1 text-text-muted data-[state=active]:bg-surface data-[state=active]:text-primary-text data-[state=active]:shadow-sm"
+          ? "relative flex-1 text-text-muted data-[state=active]:bg-surface data-[state=active]:text-primary-text data-[state=active]:shadow-sm data-[state=active]:after:absolute data-[state=active]:after:inset-x-3 data-[state=active]:after:bottom-1 data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary-text"
           : "text-neutral hover:bg-subtle data-[state=active]:bg-primary-50 data-[state=active]:text-primary-text",
         focusRing,
         className,

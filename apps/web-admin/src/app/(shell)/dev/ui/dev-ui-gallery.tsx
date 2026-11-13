@@ -87,11 +87,18 @@ export function DevUiGallery() {
   const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
-    if (theme === "dark") document.documentElement.dataset.theme = "dark";
-    else delete document.documentElement.dataset.theme;
+    const previousTheme = document.documentElement.dataset.theme;
     return () => {
-      delete document.documentElement.dataset.theme;
+      if (previousTheme === undefined) {
+        delete document.documentElement.dataset.theme;
+      } else {
+        document.documentElement.dataset.theme = previousTheme;
+      }
     };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
   }, [theme]);
 
   const columns: TableProps<SampleAccount>["columns"] = [

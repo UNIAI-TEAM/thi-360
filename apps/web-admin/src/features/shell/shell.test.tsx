@@ -55,6 +55,7 @@ describe("AppShell", () => {
     );
     expect(nav).toContainElement(dashboardLink);
     expect(dashboardLink).toHaveAttribute("aria-current", "page");
+    expect(dashboardLink).toHaveClass("before:w-0.5", "before:bg-primary-text");
 
     const breadcrumb = screen.getByRole("navigation", { name: "Vị trí hiện tại" });
     expect(breadcrumb).toHaveTextContent("Tổng quan");

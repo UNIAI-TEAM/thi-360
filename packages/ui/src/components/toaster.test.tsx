@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { notify, Toaster } from "./toaster";
+import { notify, toast, Toaster } from "./toaster";
 
 async function advance(ms: number) {
   await act(async () => {
@@ -13,6 +13,9 @@ describe("Toaster", () => {
     vi.useFakeTimers();
   });
   afterEach(() => {
+    act(() => {
+      toast.dismiss();
+    });
     vi.useRealTimers();
   });
 
@@ -38,5 +41,20 @@ describe("Toaster", () => {
 
     await advance(60_000);
     expect(screen.getByText("Không lưu được")).toBeInTheDocument();
+  });
+
+  it("truyền containerAriaLabel và closeButtonAriaLabel cho sonner", async () => {
+    render(
+      <Toaster
+        containerAriaLabel="Thông báo"
+        closeButtonAriaLabel="Đóng thông báo"
+      />,
+    );
+    act(() => {
+      notify.success("Đã lưu");
+    });
+    await advance(100);
+    expect(screen.getByRole("region", { name: /Thông báo/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Đóng thông báo" })).toBeInTheDocument();
   });
 });
