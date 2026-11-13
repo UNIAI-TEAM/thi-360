@@ -47,7 +47,8 @@
   --color-warning: #b45309;
   --color-warning-bg: #fffbeb;
   --color-danger: #dc2626;
-  --color-danger-hover: #b91c1c;
+  --color-danger-solid: #dc2626;
+  --color-danger-solid-hover: #b91c1c;
   --color-danger-bg: #fef2f2;
   --color-info: #0e7490;
   --color-info-bg: #ecfeff;
@@ -120,13 +121,13 @@
   @keyframes dialog-in {
     from {
       opacity: 0;
-      transform: translate(-50%, -48%) scale(0.97);
+      scale: 0.97;
     }
   }
   @keyframes dialog-out {
     to {
       opacity: 0;
-      transform: translate(-50%, -48%) scale(0.97);
+      scale: 0.97;
     }
   }
   @keyframes drawer-in {
@@ -169,7 +170,6 @@
   --color-warning: #fbbf24;
   --color-warning-bg: #2b2210;
   --color-danger: #f87171;
-  --color-danger-hover: #fca5a5;
   --color-danger-bg: #2e1517;
   --color-info: #22d3ee;
   --color-info-bg: #0f2a30;
