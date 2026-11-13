@@ -34,13 +34,17 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.catalog.application.CatalogCacheService;
 import vn.unicom.thi360.identity.spi.Permissions;
 
 class CatalogExcelIT extends AbstractIntegrationTest {
@@ -61,6 +65,43 @@ class CatalogExcelIT extends AbstractIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    private Set<UUID> baselineItemIds = Set.of();
+
+    @BeforeEach
+    void snapshotBaseline() {
+        baselineItemIds = new java.util.HashSet<>(
+                jdbcTemplate.queryForList("SELECT id FROM catalog.catalog_item", UUID.class));
+    }
+
+    @AfterEach
+    void cleanupCreatedItems() {
+        List<UUID> extraIds = jdbcTemplate.queryForList("SELECT id FROM catalog.catalog_item", UUID.class).stream()
+                .filter(id -> !baselineItemIds.contains(id))
+                .toList();
+        if (!extraIds.isEmpty()) {
+            for (UUID id : extraIds) {
+                jdbcTemplate.update(
+                        "DELETE FROM catalog.combination_subject WHERE combination_version_id IN (SELECT id FROM catalog.combination_version WHERE item_id = ?)",
+                        id);
+                jdbcTemplate.update("DELETE FROM catalog.combination_version WHERE item_id = ?", id);
+                jdbcTemplate.update("DELETE FROM catalog.catalog_item_ref WHERE item_id = ? OR ref_item_id = ?", id, id);
+            }
+            for (short d = 6; d >= 1; d--) {
+                for (UUID id : extraIds) {
+                    jdbcTemplate.update("DELETE FROM catalog.catalog_item WHERE id = ? AND depth = ?", id, d);
+                }
+            }
+        }
+        jdbcTemplate.update("DELETE FROM catalog.catalog_import_preview");
+        for (String code : List.of("subject_combination", "knowledge", "question_tag", "exam", "subject")) {
+            redisTemplate.delete(CatalogCacheService.optionsKey(code));
+            redisTemplate.delete(CatalogCacheService.treeKey(code));
+        }
+    }
 
     @Test
     void exportSimpleCombinationAndTreeProduceExpectedSheets() throws Exception {
@@ -225,6 +266,11 @@ class CatalogExcelIT extends AbstractIntegrationTest {
         UUID previewId = UUID.fromString(
                 objectMapper.readTree(previewRes.getResponse().getContentAsString()).get("previewId").asText());
 
+        // CATALOG.VIEW cannot confirm (403)
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items/import/{previewId}/confirm",
+                        QUESTION_TAG_GROUP_ID, previewId)
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isForbidden());
         String idemKey = "idem-" + UUID.randomUUID();
         mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items/import/{previewId}/confirm",
                         QUESTION_TAG_GROUP_ID, previewId)
@@ -266,26 +312,35 @@ class CatalogExcelIT extends AbstractIntegrationTest {
 
     @Test
     void simpleImportValidationErrorsAndRecheckOnConfirm() throws Exception {
+        String existingCode = "EXIST_" + shortCode();
         String dupCode = "DUP_" + shortCode();
         String raceCode = "RACE_" + shortCode();
 
-        // Preview with row errors: blank name, bad code, duplicate in file
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", QUESTION_TAG_GROUP_ID)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("code", existingCode, "nameVi", "Already in DB"))))
+                .andExpect(status().isCreated());
+
+        // Preview with row errors: blank name, bad code, duplicate in file, existing code in DB
         byte[] badXlsx = buildXlsx(List.of(
                 List.of("Mã", "Tên tiếng Việt", "Trạng thái"),
                 List.of(dupCode, "Valid", "ACTIVE"),
                 List.of(dupCode, "Dup in file", "ACTIVE"),
-                List.of("bad code!", "", "UNKNOWN")
+                List.of("bad code!", "", "UNKNOWN"),
+                List.of(existingCode, "Existing in DB", "ACTIVE")
         ));
 
         MvcResult badPreviewRes = mockMvc.perform(multipart("/api/v1/admin/catalog/groups/{id}/items/import", QUESTION_TAG_GROUP_ID)
                         .file(new MockMultipartFile("file", "bad.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", badXlsx))
                         .with(asUser(Permissions.CATALOG_MODIFY)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalRows").value(3))
+                .andExpect(jsonPath("$.totalRows").value(4))
                 .andExpect(jsonPath("$.validRows").value(1))
-                .andExpect(jsonPath("$.errorRows").value(2))
+                .andExpect(jsonPath("$.errorRows").value(3))
                 .andExpect(jsonPath("$.canConfirm").value(false))
                 .andExpect(jsonPath("$.errors[*].code", hasItem("CATALOG_CODE_DUPLICATE_IN_FILE")))
+                .andExpect(jsonPath("$.errors[*].code", hasItem("CATALOG_CODE_TAKEN")))
                 .andExpect(jsonPath("$.errors[*].code", hasItem("CODE_INVALID")))
                 .andExpect(jsonPath("$.errors[*].code", hasItem("REQUIRED")))
                 .andExpect(jsonPath("$.errors[*].code", hasItem("STATUS_INVALID")))
