@@ -3,7 +3,6 @@ package vn.unicom.thi360.identity.application;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -571,11 +570,10 @@ public class UserAdminService {
         String oldReason = user.getInactiveReason();
         Instant now = Instant.now(clock);
 
+        revokeAllSessionsFailClosed(userId);
         keycloakClient.setEnabled(userId, false);
         user.deactivate(trimmedReason, now, actor.id());
         user = userAccountRepository.saveAndFlush(user);
-
-        revokeUserSessionsAndSnapshot(userId);
 
         Map<String, Object> before = new LinkedHashMap<>();
         Map<String, Object> after = new LinkedHashMap<>();
@@ -626,12 +624,8 @@ public class UserAdminService {
         return toDetailResponse(user, roles);
     }
 
-    @Transactional
     public UserDetailResponse resetPassword(UUID userId, ResetPasswordRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        UserAccount user = lockActiveManageableUser(actor, userId);
-
-        passwordPolicy.validate("password", request.password(), user.getUsername());
         boolean mustChange = Boolean.TRUE.equals(request.mustChangePassword());
         String trimmedReason = request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
         if (trimmedReason != null && trimmedReason.length() > 500) {
@@ -639,35 +633,41 @@ public class UserAdminService {
                     new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
         }
 
-        boolean oldMustChange = user.isMustChangePassword();
-        Instant now = Instant.now(clock);
+        transactionTemplate.executeWithoutResult(status -> {
+            UserAccount user = lockActiveManageableUser(actor, userId);
+            passwordPolicy.validate("password", request.password(), user.getUsername());
+        });
 
+        revokeAllSessionsFailClosed(userId);
         keycloakClient.setPassword(userId, request.password(), false);
-        if (oldMustChange != mustChange) {
-            user.updateMustChangePassword(mustChange, now, actor.id());
-            user = userAccountRepository.saveAndFlush(user);
-        }
 
-        sessionStore.deleteAllSessions(userId);
-        keycloakClient.logoutAllSessions(userId);
+        return transactionTemplate.execute(status -> {
+            UserAccount user = lockActiveManageableUser(actor, userId);
+            boolean oldMustChange = user.isMustChangePassword();
+            Instant now = Instant.now(clock);
+            if (oldMustChange != mustChange) {
+                user.updateMustChangePassword(mustChange, now, actor.id());
+                user = userAccountRepository.saveAndFlush(user);
+            }
 
-        Map<String, Object> before = new LinkedHashMap<>();
-        Map<String, Object> after = new LinkedHashMap<>();
-        if (oldMustChange != mustChange) {
-            before.put("mustChangePassword", oldMustChange);
-            after.put("mustChangePassword", mustChange);
-        }
-        recordAudit(
-                actor,
-                "USER_PASSWORD_RESET",
-                userId,
-                user.getUsername(),
-                before.isEmpty() ? null : before,
-                after.isEmpty() ? null : after,
-                trimmedReason);
+            Map<String, Object> before = new LinkedHashMap<>();
+            Map<String, Object> after = new LinkedHashMap<>();
+            if (oldMustChange != mustChange) {
+                before.put("mustChangePassword", oldMustChange);
+                after.put("mustChangePassword", mustChange);
+            }
+            recordAudit(
+                    actor,
+                    "USER_PASSWORD_RESET",
+                    userId,
+                    user.getUsername(),
+                    before.isEmpty() ? null : before,
+                    after.isEmpty() ? null : after,
+                    trimmedReason);
 
-        List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
-        return toDetailResponse(user, roles);
+            List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
+            return toDetailResponse(user, roles);
+        });
     }
 
     public void deleteUser(UUID userId, String reason) {
@@ -752,13 +752,11 @@ public class UserAdminService {
                 scope,
                 digest,
                 BulkUserActionResponse.class,
-                () -> executeBulkInTx(actor, request.action(), distinctIds, trimmedReason));
+                () -> executeBulkItems(actor, request.action(), distinctIds, trimmedReason));
     }
 
-    private BulkUserActionResponse executeBulkInTx(
+    private BulkUserActionResponse executeBulkItems(
             CurrentUser actor, UserBulkAction action, List<UUID> distinctIds, String trimmedReason) {
-        lockUserRowsOrdered(distinctIds);
-        Map<UUID, UserAccount> accountsById = loadAccountsById(distinctIds);
         UUID batchId = Ids.newId();
         Instant now = Instant.now(clock);
 
@@ -768,68 +766,107 @@ public class UserAdminService {
         int failed = 0;
 
         for (UUID uid : distinctIds) {
-            UserAccount user = accountsById.get(uid);
-            BulkSkipDecision skip = evaluateBulkEligibility(actor, action, uid, user);
-            if (skip != null) {
-                skipped++;
-                results.add(new BulkUserActionItemResult(
-                        uid, user == null ? null : user.getUsername(), BulkUserItemOutcome.SKIPPED, skip.code(), skip.message()));
-                continue;
-            }
-
-            try {
-                switch (action) {
-                    case DEACTIVATE -> {
-                        UserStatus oldStatus = user.getStatus();
-                        String oldReason = user.getInactiveReason();
-                        keycloakClient.setEnabled(uid, false);
-                        user.deactivate(trimmedReason, now, actor.id());
-                        user = userAccountRepository.saveAndFlush(user);
-                        revokeUserSessionsAndSnapshot(uid);
-                        Map<String, Object> before = new LinkedHashMap<>();
-                        Map<String, Object> after = new LinkedHashMap<>();
-                        if (oldStatus != UserStatus.INACTIVE) {
-                            before.put("status", oldStatus.name());
-                            after.put("status", UserStatus.INACTIVE.name());
-                        }
-                        if (!Objects.equals(oldReason, user.getInactiveReason())) {
-                            before.put("inactiveReason", oldReason);
-                            after.put("inactiveReason", user.getInactiveReason());
-                        }
-                        recordAudit(actor, "USER_DEACTIVATED", uid, user.getUsername(), before, after, trimmedReason);
-                    }
-                    case ACTIVATE -> {
-                        UserStatus oldStatus = user.getStatus();
-                        String oldReason = user.getInactiveReason();
-                        keycloakClient.setEnabled(uid, true);
-                        user.activate(now, actor.id());
-                        user = userAccountRepository.saveAndFlush(user);
-                        Map<String, Object> before = new LinkedHashMap<>();
-                        Map<String, Object> after = new LinkedHashMap<>();
-                        if (oldStatus != UserStatus.ACTIVE) {
-                            before.put("status", oldStatus.name());
-                            after.put("status", UserStatus.ACTIVE.name());
-                        }
-                        if (oldReason != null) {
-                            before.put("inactiveReason", oldReason);
-                            after.put("inactiveReason", null);
-                        }
-                        recordAudit(actor, "USER_ACTIVATED", uid, user.getUsername(), before, after, null);
-                    }
-                    case DELETE -> performSoftDeleteLocal(actor, user, trimmedReason, now);
-                }
-                succeeded++;
-                results.add(new BulkUserActionItemResult(
-                        uid, user.getUsername(), BulkUserItemOutcome.SUCCEEDED, null, null));
-            } catch (ExternalServiceException ex) {
-                failed++;
-                results.add(new BulkUserActionItemResult(
-                        uid, user.getUsername(), BulkUserItemOutcome.FAILED, ex.getCode(), "Lỗi kết nối dịch vụ xác thực"));
+            BulkUserActionItemResult item = executeSingleBulkItem(actor, action, uid, trimmedReason, now);
+            results.add(item);
+            switch (item.outcome()) {
+                case SUCCEEDED -> succeeded++;
+                case SKIPPED -> skipped++;
+                case FAILED -> failed++;
             }
         }
 
         return new BulkUserActionResponse(
                 batchId, action, distinctIds.size(), succeeded, skipped, failed, List.copyOf(results));
+    }
+
+    private BulkUserActionItemResult executeSingleBulkItem(
+            CurrentUser actor, UserBulkAction action, UUID uid, String trimmedReason, Instant now) {
+        String[] knownUsername = {null};
+        try {
+            BulkUserActionItemResult committed = requiresNewTx.execute(status -> {
+                jdbcTemplate.query(
+                        "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE",
+                        rs -> {},
+                        uid);
+                UserAccount user = userAccountRepository.findById(uid).orElse(null);
+                knownUsername[0] = user == null ? null : user.getUsername();
+                BulkSkipDecision skip = evaluateBulkEligibility(actor, action, uid, user);
+                if (skip != null) {
+                    return new BulkUserActionItemResult(
+                            uid, knownUsername[0], BulkUserItemOutcome.SKIPPED, skip.code(), skip.message());
+                }
+
+                switch (action) {
+                    case DEACTIVATE -> {
+                        UserStatus oldStatus = user.getStatus();
+                        String oldReason = user.getInactiveReason();
+                        revokeAllSessionsFailClosed(uid);
+                        keycloakClient.setEnabled(uid, false);
+                        try {
+                            user.deactivate(trimmedReason, now, actor.id());
+                            user = userAccountRepository.saveAndFlush(user);
+                            Map<String, Object> before = new LinkedHashMap<>();
+                            Map<String, Object> after = new LinkedHashMap<>();
+                            if (oldStatus != UserStatus.INACTIVE) {
+                                before.put("status", oldStatus.name());
+                                after.put("status", UserStatus.INACTIVE.name());
+                            }
+                            if (!Objects.equals(oldReason, user.getInactiveReason())) {
+                                before.put("inactiveReason", oldReason);
+                                after.put("inactiveReason", user.getInactiveReason());
+                            }
+                            recordAudit(actor, "USER_DEACTIVATED", uid, user.getUsername(), before, after, trimmedReason);
+                        } catch (RuntimeException ex) {
+                            setEnabledQuietly(uid, true);
+                            throw ex;
+                        }
+                    }
+                    case ACTIVATE -> {
+                        UserStatus oldStatus = user.getStatus();
+                        String oldReason = user.getInactiveReason();
+                        keycloakClient.setEnabled(uid, true);
+                        try {
+                            user.activate(now, actor.id());
+                            user = userAccountRepository.saveAndFlush(user);
+                            Map<String, Object> before = new LinkedHashMap<>();
+                            Map<String, Object> after = new LinkedHashMap<>();
+                            if (oldStatus != UserStatus.ACTIVE) {
+                                before.put("status", oldStatus.name());
+                                after.put("status", UserStatus.ACTIVE.name());
+                            }
+                            if (oldReason != null) {
+                                before.put("inactiveReason", oldReason);
+                                after.put("inactiveReason", null);
+                            }
+                            recordAudit(actor, "USER_ACTIVATED", uid, user.getUsername(), before, after, null);
+                        } catch (RuntimeException ex) {
+                            setEnabledQuietly(uid, false);
+                            throw ex;
+                        }
+                    }
+                    case DELETE -> performSoftDeleteLocal(actor, user, trimmedReason, now);
+                }
+                return new BulkUserActionItemResult(
+                        uid, user.getUsername(), BulkUserItemOutcome.SUCCEEDED, null, null);
+            });
+            if (committed != null
+                    && committed.outcome() == BulkUserItemOutcome.SUCCEEDED
+                    && action == UserBulkAction.DELETE) {
+                cleanupDeletedUserInKeycloak(uid);
+            }
+            return committed;
+        } catch (ExternalServiceException ex) {
+            return new BulkUserActionItemResult(
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), "Lỗi kết nối dịch vụ xác thực");
+        } catch (RuntimeException ex) {
+            log.atError()
+                    .setCause(ex)
+                    .addKeyValue("userId", uid.toString())
+                    .addKeyValue("action", action.name())
+                    .log("Bulk user action item failed; transaction rolled back");
+            return new BulkUserActionItemResult(
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, "INTERNAL_ERROR", "Không thể xử lý tài khoản");
+        }
     }
 
     private void performSoftDeleteLocal(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
@@ -867,10 +904,45 @@ public class UserAdminService {
                     .log("Keycloak deleteUser failed after local soft-delete; leaving idp_cleanup_pending=true");
         }
     }
-    private void revokeUserSessionsAndSnapshot(UUID userId) {
-        sessionStore.deleteAllSessions(userId);
-        authzSnapshotService.evict(userId);
-        keycloakClient.logoutAllSessions(userId);
+    private void revokeAllSessionsFailClosed(UUID userId) {
+        RuntimeException firstFailure = null;
+        try {
+            sessionStore.deleteAllSessions(userId);
+        } catch (RuntimeException ex) {
+            firstFailure = ex;
+        }
+        try {
+            authzSnapshotService.evict(userId);
+        } catch (RuntimeException ex) {
+            if (firstFailure == null) {
+                firstFailure = ex;
+            }
+        }
+        try {
+            keycloakClient.logoutAllSessions(userId);
+        } catch (RuntimeException ex) {
+            if (firstFailure == null) {
+                firstFailure = ex;
+            }
+        }
+        if (firstFailure != null) {
+            if (firstFailure instanceof ExternalServiceException ese) {
+                throw ese;
+            }
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, firstFailure);
+        }
+    }
+
+    private void setEnabledQuietly(UUID userId, boolean enabled) {
+        try {
+            keycloakClient.setEnabled(userId, enabled);
+        } catch (RuntimeException ex) {
+            log.atWarn()
+                    .setCause(ex)
+                    .addKeyValue("userId", userId.toString())
+                    .addKeyValue("enabled", enabled)
+                    .log("Failed to compensate Keycloak enabled state after rollback");
+        }
     }
 
     private UserAccount lockActiveManageableUser(CurrentUser actor, UUID userId) {
@@ -943,18 +1015,6 @@ public class UserAdminService {
         return map;
     }
 
-    private void lockUserRowsOrdered(List<UUID> userIds) {
-        List<UUID> sorted = userIds.stream().distinct().sorted().toList();
-        jdbcTemplate.execute((java.sql.Connection con) -> {
-            Array sqlArray = con.createArrayOf("uuid", sorted.toArray(UUID[]::new));
-            try (var ps = con.prepareStatement(
-                    "SELECT id FROM identity.user_account WHERE id = ANY(?) ORDER BY id FOR UPDATE")) {
-                ps.setArray(1, sqlArray);
-                ps.executeQuery().close();
-            }
-            return null;
-        });
-    }
 
     private static List<UUID> validateBulkUserIds(List<UUID> userIds) {
         if (userIds == null || userIds.isEmpty()) {
