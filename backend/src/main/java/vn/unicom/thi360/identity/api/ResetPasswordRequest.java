@@ -13,4 +13,12 @@ public record ResetPasswordRequest(
         @Size(max = 500, message = "Lý do tối đa 500 ký tự")
         String reason
 ) {
+    @Override
+    public String toString() {
+        return "ResetPasswordRequest["
+                + "password=" + (password == null ? "null" : "[REDACTED]")
+                + ", mustChangePassword=" + mustChangePassword
+                + ", reason=" + reason
+                + ']';
+    }
 }

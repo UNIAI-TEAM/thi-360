@@ -38,4 +38,17 @@ public record CreateUserRequest(
         @Schema(description = "Bắt buộc đổi mật khẩu ở lần đăng nhập đầu (mặc định false)")
         Boolean mustChangePassword
 ) {
+    @Override
+    public String toString() {
+        return "CreateUserRequest["
+                + "username=" + username
+                + ", password=" + (password == null ? "null" : "[REDACTED]")
+                + ", fullName=" + fullName
+                + ", email=" + email
+                + ", phone=" + phone
+                + ", roleIds=" + roleIds
+                + ", classIds=" + classIds
+                + ", mustChangePassword=" + mustChangePassword
+                + ']';
+    }
 }

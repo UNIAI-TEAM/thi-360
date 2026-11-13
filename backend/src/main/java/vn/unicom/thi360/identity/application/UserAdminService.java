@@ -510,8 +510,8 @@ public class UserAdminService {
                 keycloakClient.updateUserProfile(
                         userId,
                         emailChanged ? (user.getEmail() == null ? "" : user.getEmail()) : null,
-                        fullNameChanged ? names[0] : null,
-                        fullNameChanged ? names[1] : null,
+                        fullNameChanged ? (names[0] == null ? "" : names[0]) : null,
+                        fullNameChanged ? (names[1] == null ? "" : names[1]) : null,
                         false);
             }
 
@@ -850,7 +850,7 @@ public class UserAdminService {
                 rs -> {},
                 userId);
         UserAccount user = requireExistingNonDeletedUser(userId);
-        Set<Permission> targetPermissions = loadUserEffectivePermissions(userId);
+        Set<Permission> targetPermissions = authzSnapshotService.computeEffectivePermissions(userId);
         privilegeGuard.assertCanGrant(actor, targetPermissions);
         return user;
     }
@@ -875,31 +875,6 @@ public class UserAdminService {
         return List.copyOf(all);
     }
 
-    private Set<Permission> loadUserEffectivePermissions(UUID userId) {
-        EnumSet<Permission> perms = EnumSet.noneOf(Permission.class);
-        jdbcTemplate.query(
-                """
-                SELECT DISTINCT p.code
-                FROM identity.user_role ur
-                JOIN identity.role r ON r.id = ur.role_id
-                JOIN identity.role_permission rp ON rp.role_id = r.id
-                JOIN identity.permission p ON p.id = rp.permission_id
-                WHERE ur.user_id = ?
-                  AND r.status = 1
-                UNION
-                SELECT DISTINCT p.code
-                FROM identity.user_permission up
-                JOIN identity.permission p ON p.id = up.permission_id
-                WHERE up.user_id = ?
-                """,
-                rs -> {
-                    Permission.findByCode(rs.getString("code")).ifPresent(perms::add);
-                },
-                userId,
-                userId);
-        return perms;
-    }
-
     private BulkSkipDecision evaluateBulkEligibility(
             CurrentUser actor, UserBulkAction action, UUID userId, UserAccount user) {
         if (user == null || user.isDeleted() || user.getStatus() == UserStatus.PROVISIONING) {
@@ -917,7 +892,7 @@ public class UserAdminService {
         if (action == UserBulkAction.ACTIVATE && user.getStatus() == UserStatus.ACTIVE) {
             return new BulkSkipDecision("ALREADY_ACTIVE", "Tài khoản đang hoạt động");
         }
-        Set<Permission> targetPermissions = loadUserEffectivePermissions(userId);
+        Set<Permission> targetPermissions = authzSnapshotService.computeEffectivePermissions(userId);
         if (!privilegeGuard.canGrant(actor, targetPermissions)) {
             return new BulkSkipDecision("PRIVILEGE_ESCALATION", "Tài khoản có quyền vượt quá phạm vi của bạn");
         }
