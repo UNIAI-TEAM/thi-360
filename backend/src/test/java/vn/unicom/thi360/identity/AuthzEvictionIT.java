@@ -335,7 +335,7 @@ class AuthzEvictionIT extends AbstractKeycloakIntegrationTest {
 
         // 4. Redis recovers -> next relay run succeeds, marks processed_at, and deletes snapshot key
         jdbcTemplate.update(
-                "UPDATE shared.outbox_event SET next_attempt_at = now() WHERE topic = ? AND payload::text LIKE ? AND processed_at IS NULL",
+                "UPDATE shared.outbox_event SET next_attempt_at = now() - interval '1 hour' WHERE topic = ? AND payload::text LIKE ? AND processed_at IS NULL",
                 AuthzSnapshotService.OUTBOX_TOPIC_EVICT,
                 "%" + user.getId() + "%");
         int processed = outboxRelay.relayBatch();
