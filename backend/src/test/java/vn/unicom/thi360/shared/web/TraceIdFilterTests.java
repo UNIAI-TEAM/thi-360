@@ -92,4 +92,34 @@ class TraceIdFilterTests extends AbstractIntegrationTest {
                 .doesNotContain("GET /actuator/health")
                 .doesNotContain("trace=actuator-trace-99");
     }
+
+    @Test
+    void rejectsInvalidOrOversizedRequestId_andGeneratesSafeReplacement() throws Exception {
+        for (String invalidHeader : new String[] {
+            "bad id with spaces",
+            "-starts-with-dash",
+            "   ",
+            "a".repeat(129)
+        }) {
+            OBSERVED_MDC_TRACE_ID.set(null);
+            var res = mockMvc.perform(get("/api/v1/trace-probe/fail")
+                            .header(TraceIdFilter.REQUEST_ID_HEADER, invalidHeader))
+                    .andExpect(status().isNotFound())
+                    .andReturn();
+
+            String generated = res.getResponse().getHeader(TraceIdFilter.REQUEST_ID_HEADER);
+            assertThat(generated)
+                    .isNotBlank()
+                    .isNotEqualTo(invalidHeader.trim())
+                    .hasSizeLessThanOrEqualTo(128);
+            assertThat(OBSERVED_MDC_TRACE_ID.get()).isEqualTo(generated);
+            assertThat(res.getResponse().getContentAsString()).contains("\"traceId\":\"" + generated + "\"");
+        }
+
+        String maxValidId = "a".repeat(128);
+        mockMvc.perform(get("/api/v1/trace-probe/ok")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, maxValidId))
+                .andExpect(status().isOk())
+                .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, maxValidId));
+    }
 }

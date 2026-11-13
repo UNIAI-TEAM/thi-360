@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
@@ -70,9 +71,28 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
             throw new RateLimitedException("RATE_LIMITED");
         }
 
+        @GetMapping("/400-param")
+        void requiredIntParam(@RequestParam int count) {
+        }
+
+        @GetMapping("/403-unknown-code")
+        void forbiddenUnknownCode() {
+            throw new ForbiddenException("PRIVILEGE_ESCALATION", null);
+        }
+
+        @GetMapping("/409-unknown-code")
+        void conflictUnknownCode() {
+            throw new ConflictException("USER_LOCKED");
+        }
+
         @GetMapping("/500")
         void internalError() {
             throw new IllegalStateException("Sensitive SQL detail that must not leak");
+        }
+
+        @GetMapping("/500-illegal-arg")
+        void internalIllegalArgument() {
+            throw new IllegalArgumentException("Internal serialization defect that must not be 400");
         }
     }
 
@@ -176,5 +196,80 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau"))
                 .andExpect(jsonPath("$.fieldErrors").isEmpty())
                 .andExpect(jsonPath("$.traceId").value("req-500"));
+    }
+
+    @Test
+    void returns400ValidationFailed_forMalformedBody_typeMismatch_andMissingParameter() throws Exception {
+        mockMvc.perform(post("/api/v1/test-errors/400-bean")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-json")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{malformed-json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-400-json"))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Dữ liệu không hợp lệ"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.traceId").value("req-400-json"));
+
+        mockMvc.perform(get("/api/v1/test-errors/400-param?count=not-a-number")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-mismatch"))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-400-mismatch"))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Dữ liệu không hợp lệ"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.traceId").value("req-400-mismatch"));
+
+        mockMvc.perform(get("/api/v1/test-errors/400-param")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-400-missing"))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-400-missing"))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Dữ liệu không hợp lệ"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.traceId").value("req-400-missing"));
+    }
+
+    @Test
+    void returns500InternalError_whenApplicationThrowsIllegalArgumentException() throws Exception {
+        mockMvc.perform(get("/api/v1/test-errors/500-illegal-arg")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-500-ia"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-500-ia"))
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.message").value("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.traceId").value("req-500-ia"));
+    }
+
+    @Test
+    void returns404NotFound_forUnmappedApiRoute() throws Exception {
+        mockMvc.perform(get("/api/v1/unmapped-route-does-not-exist")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-404-unmapped"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-404-unmapped"))
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Không tìm thấy dữ liệu yêu cầu"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.traceId").value("req-404-unmapped"));
+    }
+
+    @Test
+    void usesLocalizedVietnameseFallbackMessage_whenDomainExceptionCodeIsUnregistered() throws Exception {
+        mockMvc.perform(get("/api/v1/test-errors/409-unknown-code")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-409-unknown"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_LOCKED"))
+                .andExpect(jsonPath("$.message").value("Xung đột dữ liệu nghiệp vụ"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.traceId").value("req-409-unknown"));
+
+        mockMvc.perform(get("/api/v1/test-errors/403-unknown-code")
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-403-unknown"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PRIVILEGE_ESCALATION"))
+                .andExpect(jsonPath("$.message").value("Không có quyền thực hiện thao tác này"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.traceId").value("req-403-unknown"));
     }
 }

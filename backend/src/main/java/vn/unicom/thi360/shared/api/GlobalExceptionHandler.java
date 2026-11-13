@@ -19,9 +19,11 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @RestControllerAdvice
@@ -41,7 +43,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleValidationException(
             ValidationException ex, HttpServletRequest request) {
         String code = ex.getCode();
-        String message = resolveMessage(code, ex.getMessage());
+        String message = resolveMessage(code, ex.getMessage(), "VALIDATION_FAILED");
         return respond(HttpStatus.BAD_REQUEST, code, message, ex.getFieldErrors(), request);
     }
 
@@ -53,24 +55,23 @@ public class GlobalExceptionHandler {
                 .map(fe -> {
                     String fieldCode = fe.getCode() == null ? "INVALID" : fe.getCode().toUpperCase(Locale.ROOT);
                     String fieldMsg = fe.getDefaultMessage() == null
-                            ? resolveMessage(fieldCode, "Giá trị không hợp lệ")
+                            ? resolveMessage(fieldCode, null, "VALIDATION_FAILED")
                             : fe.getDefaultMessage();
                     return new FieldError(fe.getField(), fieldCode, fieldMsg);
                 })
                 .toList();
-        String message = resolveMessage("VALIDATION_FAILED", null);
+        String message = resolveMessage("VALIDATION_FAILED", null, "VALIDATION_FAILED");
         return respond(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", message, fieldErrors, request);
     }
 
     @ExceptionHandler({
         HttpMessageNotReadableException.class,
         MethodArgumentTypeMismatchException.class,
-        MissingServletRequestParameterException.class,
-        IllegalArgumentException.class
+        MissingServletRequestParameterException.class
     })
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ApiError> handleBadRequest(Exception ex, HttpServletRequest request) {
-        String message = resolveMessage("VALIDATION_FAILED", null);
+        String message = resolveMessage("VALIDATION_FAILED", null, "VALIDATION_FAILED");
         return respond(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", message, List.of(), request);
     }
 
@@ -78,8 +79,8 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ApiError> handleUnauthenticated(Exception ex, HttpServletRequest request) {
         String code = ex instanceof UnauthenticatedException ue ? ue.getCode() : "UNAUTHENTICATED";
-        String fallback = ex instanceof UnauthenticatedException ? ex.getMessage() : null;
-        String message = resolveMessage(code, fallback);
+        String customMessage = ex instanceof UnauthenticatedException ? ex.getMessage() : null;
+        String message = resolveMessage(code, customMessage, "UNAUTHENTICATED");
         return respond(HttpStatus.UNAUTHORIZED, code, message, List.of(), request);
     }
 
@@ -87,16 +88,21 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ResponseEntity<ApiError> handleForbidden(Exception ex, HttpServletRequest request) {
         String code = ex instanceof ForbiddenException fe ? fe.getCode() : "FORBIDDEN";
-        String fallback = ex instanceof ForbiddenException ? ex.getMessage() : null;
-        String message = resolveMessage(code, fallback);
+        String customMessage = ex instanceof ForbiddenException ? ex.getMessage() : null;
+        String message = resolveMessage(code, customMessage, "FORBIDDEN");
         return respond(HttpStatus.FORBIDDEN, code, message, List.of(), request);
     }
 
-    @ExceptionHandler(NotFoundException.class)
+    @ExceptionHandler({
+        NotFoundException.class,
+        NoHandlerFoundException.class,
+        NoResourceFoundException.class
+    })
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ResponseEntity<ApiError> handleNotFound(NotFoundException ex, HttpServletRequest request) {
-        String code = ex.getCode();
-        String message = resolveMessage(code, ex.getMessage());
+    public ResponseEntity<ApiError> handleNotFound(Exception ex, HttpServletRequest request) {
+        String code = ex instanceof NotFoundException nfe ? nfe.getCode() : "NOT_FOUND";
+        String customMessage = ex instanceof NotFoundException ? ex.getMessage() : null;
+        String message = resolveMessage(code, customMessage, "NOT_FOUND");
         return respond(HttpStatus.NOT_FOUND, code, message, List.of(), request);
     }
 
@@ -104,8 +110,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ResponseEntity<ApiError> handleConflict(ConflictException ex, HttpServletRequest request) {
         String code = ex.getCode();
-        String fallback = code.equals(ex.getMessage()) ? resolveMessage("CONFLICT", code) : ex.getMessage();
-        String message = resolveMessage(code, fallback);
+        String message = resolveMessage(code, ex.getMessage(), "CONFLICT");
         return respond(HttpStatus.CONFLICT, code, message, List.of(), request);
     }
 
@@ -117,8 +122,8 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.PRECONDITION_FAILED)
     public ResponseEntity<ApiError> handleVersionConflict(Exception ex, HttpServletRequest request) {
         String code = ex instanceof VersionConflictException vce ? vce.getCode() : "VERSION_CONFLICT";
-        String fallback = ex instanceof VersionConflictException ? ex.getMessage() : null;
-        String message = resolveMessage(code, fallback);
+        String customMessage = ex instanceof VersionConflictException ? ex.getMessage() : null;
+        String message = resolveMessage(code, customMessage, "VERSION_CONFLICT");
         return respond(HttpStatus.PRECONDITION_FAILED, code, message, List.of(), request);
     }
 
@@ -126,8 +131,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public ResponseEntity<ApiError> handleRateLimited(RateLimitedException ex, HttpServletRequest request) {
         String code = ex.getCode();
-        String fallback = ex.getMessage() != null ? ex.getMessage() : resolveMessage("RATE_LIMITED", code);
-        String message = resolveMessage(code, fallback);
+        String message = resolveMessage(code, ex.getMessage(), "RATE_LIMITED");
         return respond(HttpStatus.TOO_MANY_REQUESTS, code, message, List.of(), request);
     }
 
@@ -138,15 +142,25 @@ public class GlobalExceptionHandler {
                 .setCause(ex)
                 .addKeyValue("code", "INTERNAL_ERROR")
                 .log("Unhandled exception processing HTTP request");
-        String message = resolveMessage("INTERNAL_ERROR", "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau");
+        String message = resolveMessage("INTERNAL_ERROR", null, "INTERNAL_ERROR");
         return respond(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", message, List.of(), request);
     }
 
-    private String resolveMessage(String code, String customMessage) {
+    private String resolveMessage(String code, String customMessage, String fallbackCode) {
         if (customMessage != null && !customMessage.isBlank() && !customMessage.equals(code)) {
             return customMessage;
         }
-        return messageSource.getMessage(code, null, customMessage != null ? customMessage : code, DEFAULT_LOCALE);
+        String resolvedByCode = messageSource.getMessage(code, null, null, DEFAULT_LOCALE);
+        if (resolvedByCode != null && !resolvedByCode.isBlank()) {
+            return resolvedByCode;
+        }
+        if (fallbackCode != null) {
+            String resolvedFallback = messageSource.getMessage(fallbackCode, null, null, DEFAULT_LOCALE);
+            if (resolvedFallback != null && !resolvedFallback.isBlank()) {
+                return resolvedFallback;
+            }
+        }
+        return "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau";
     }
 
     private static ResponseEntity<ApiError> respond(

@@ -9,7 +9,7 @@ public class ConflictException extends RuntimeException {
     }
 
     public ConflictException(String code, String message) {
-        super(message == null ? code : message);
+        super(message);
         this.code = code == null || code.isBlank() ? "CONFLICT" : code;
     }
 
