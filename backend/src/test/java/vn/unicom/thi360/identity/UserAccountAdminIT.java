@@ -1768,6 +1768,75 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         }
     }
 
+    @Test
+    void r2_1_immediateRecreateSameUsernameAndEmail_beforeReconciler_cleansPendingIdpAndSucceeds_and502WhenStillFailing()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r2.1." + sfx;
+        String email = "r2.1." + sfx + "@thi360.vn";
+        UUID oldId = createUserViaApi(username, "Valid@1234", "First User", email, null);
+        String oldCode = userAccountRepository.findById(oldId).orElseThrow().getCode();
+
+        // Force Keycloak deleteUser failure during DELETE so idp_cleanup_pending=true remains
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null))
+                .when(keycloakClient)
+                .deleteUser(oldId);
+
+        mockMvc.perform(delete("/api/v1/admin/users/{id}", oldId)
+                        .param("reason", "R2-1 pending cleanup reuse")
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        UserAccount deletedOld = userAccountRepository.findById(oldId).orElseThrow();
+        assertThat(deletedOld.isDeleted()).isTrue();
+        assertThat(deletedOld.isIdpCleanupPending()).isTrue();
+        assertThat(keycloakClient.findUserIdByUsername(username)).contains(oldId);
+
+        // If Keycloak delete still fails during recreate, return 502 IDENTITY_PROVIDER_ERROR (not 409 USERNAME_TAKEN)
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asPlatformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "Valid@1234",
+                                  "fullName": "Recreated Fail",
+                                  "email": "%s"
+                                }
+                                """.formatted(username, email)))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("IDENTITY_PROVIDER_ERROR"));
+        assertThat(userAccountRepository.findActiveByUsernameNormalized(username)).isEmpty();
+
+        // Reconciler still has NOT run; Keycloak recovers -> immediate recreate succeeds with 201 and new code
+        reset(keycloakClient);
+        MvcResult recreateRes = mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asPlatformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "NewValid@1234",
+                                  "fullName": "Recreated User",
+                                  "email": "%s"
+                                }
+                                """.formatted(username, email)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value(username))
+                .andExpect(jsonPath("$.email").value(email))
+                .andReturn();
+
+        JsonNode createdBody = objectMapper.readTree(recreateRes.getResponse().getContentAsString());
+        UUID newId = UUID.fromString(createdBody.get("id").asText());
+        String newCode = createdBody.get("code").asText();
+        createdUserIds.add(newId);
+        createdKeycloakUserIds.add(newId);
+
+        assertThat(newId).isNotEqualTo(oldId);
+        assertThat(newCode).isNotEqualTo(oldCode);
+        assertThat(userAccountRepository.findById(oldId).orElseThrow().isIdpCleanupPending()).isFalse();
+    }
+
     private UUID createUserViaApi(
             String username, String password, String fullName, String email, List<UUID> roleIds)
             throws Exception {

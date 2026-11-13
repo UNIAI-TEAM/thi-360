@@ -24,6 +24,18 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
               AND u.deletedAt IS NULL
             """)
     Optional<UserAccount> findActiveByEmailNormalized(@Param("emailNormalized") String emailNormalized);
+
+    @Query("""
+            SELECT u FROM UserAccount u
+            WHERE u.deletedAt IS NOT NULL
+              AND u.idpCleanupPending = true
+              AND (u.usernameNormalized = :usernameNormalized
+                   OR (:emailNormalized IS NOT NULL AND u.emailNormalized = :emailNormalized))
+            ORDER BY u.deletedAt DESC
+            """)
+    List<UserAccount> findPendingIdpCleanupByUsernameOrEmail(
+            @Param("usernameNormalized") String usernameNormalized,
+            @Param("emailNormalized") String emailNormalized);
     List<UserAccount> findAllByIdIn(Collection<UUID> ids);
 
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)

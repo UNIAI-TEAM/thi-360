@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -375,26 +376,26 @@ public class UserAdminService {
         String[] names = splitFullName(trimmedFullName);
         UUID keycloakUserId;
         try {
-            keycloakUserId = keycloakClient.createUser(new KeycloakIdentityClient.CreateUserCommand(
+            keycloakUserId = createKeycloakUserWithPendingCleanupRetry(
+                    provisionalId,
                     trimmedUsername,
+                    normalizedUsername,
                     trimmedEmail,
+                    normalizedEmail,
                     names[0],
-                    names[1],
-                    null,
-                    true,
-                    false,
-                    false));
+                    names[1]);
         } catch (ConflictException | ValidationException ex) {
             deleteProvisionalUserQuietly(provisionalId);
             throw ex;
         } catch (ExternalServiceException ex) {
-            log.atError()
-                    .addKeyValue("event", "user.create.keycloak_failed")
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
-                    .log("Keycloak createUser failed while user remains PROVISIONING");
+            if (userAccountRepository.findById(provisionalId).isPresent()) {
+                log.atError()
+                        .addKeyValue("event", "user.create.keycloak_failed")
+                        .addKeyValue("provisionalUserId", provisionalId.toString())
+                        .log("Keycloak createUser failed while user remains PROVISIONING");
+            }
             throw ex;
         }
-
         try {
             keycloakClient.setPassword(keycloakUserId, request.password(), false);
         } catch (ValidationException ex) {
@@ -902,6 +903,57 @@ public class UserAdminService {
                     .setCause(ex)
                     .addKeyValue("userId", userId.toString())
                     .log("Keycloak deleteUser failed after local soft-delete; leaving idp_cleanup_pending=true");
+        }
+    }
+
+    private UUID createKeycloakUserWithPendingCleanupRetry(
+            UUID provisionalId,
+            String trimmedUsername,
+            String normalizedUsername,
+            String trimmedEmail,
+            String normalizedEmail,
+            String firstName,
+            String lastName) {
+        KeycloakIdentityClient.CreateUserCommand cmd = new KeycloakIdentityClient.CreateUserCommand(
+                trimmedUsername,
+                trimmedEmail,
+                firstName,
+                lastName,
+                null,
+                true,
+                false,
+                false);
+        try {
+            return keycloakClient.createUser(cmd);
+        } catch (ConflictException conflictEx) {
+            List<UserAccount> pendingRows = userAccountRepository.findPendingIdpCleanupByUsernameOrEmail(
+                    normalizedUsername, normalizedEmail);
+            if (pendingRows.isEmpty()) {
+                throw conflictEx;
+            }
+            for (UserAccount pending : pendingRows) {
+                try {
+                    if (pending.getStatus() != UserStatus.PROVISIONING) {
+                        keycloakClient.deleteUser(pending.getId());
+                        requiresNewTx.executeWithoutResult(status ->
+                                userAccountRepository.updateIdpCleanupPending(
+                                        pending.getId(), false, Instant.now(clock)));
+                    } else {
+                        Optional<UUID> orphanKcId = keycloakClient.findUserIdByUsername(pending.getUsername());
+                        if (orphanKcId.isPresent()) {
+                            keycloakClient.deleteUser(orphanKcId.get());
+                        }
+                        deleteProvisionalUserQuietly(pending.getId());
+                    }
+                } catch (ExternalServiceException ex) {
+                    deleteProvisionalUserQuietly(provisionalId);
+                    throw ex;
+                } catch (RuntimeException ex) {
+                    deleteProvisionalUserQuietly(provisionalId);
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+                }
+            }
+            return keycloakClient.createUser(cmd);
         }
     }
     private void revokeAllSessionsFailClosed(UUID userId) {
