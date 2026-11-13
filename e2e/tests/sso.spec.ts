@@ -49,7 +49,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
     await expect(page).toHaveURL(`${ADMIN_URL}/forbidden`);
     await expect(page.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
 
-    const apiResponse = await page.request.get(`${ADMIN_URL}/api/v1/admin/roles`);
+    const apiResponse = await page.request.get(`${ADMIN_URL}/api/v1/admin/users`);
     expect(apiResponse.status()).toBe(403);
   });
 
