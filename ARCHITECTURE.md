@@ -124,7 +124,7 @@ Request ─► CookieAuthFilter (xác minh JWT bằng khóa công khai Keycloak)
         ─► SessionFilter: một lệnh MGET tới Redis lấy cả phiên lẫn authz:{userId}
               └─ authz:{userId} = { access, dãy bit quyền, ver }   (chưa có thì dựng bằng một câu SQL)
         ─► kiểm tra cổng quản trị: access == MANAGE
-        ─► @RequirePermission("USER_LOCK"): thử một bit trong dãy bit quyền
+        ─► @RequirePermission("USER.MODIFY"): thử một bit trong dãy bit quyền
         ─► use case ─► PostgreSQL + outbox_event (cùng transaction)
 ```
 
@@ -165,7 +165,7 @@ Module khác ─► cài đặt CatalogUsageProvider ─► catalog hỏi "giá 
 ### 5.6 Giao diện toàn hệ thống
 
 ```
-Người có APPEARANCE_MANAGE ─► PUT /api/v1/admin/appearance ─► shared.system_setting('appearance') + audit, xóa cache
+Người có APPEARANCE.MODIFY ─► PUT /api/v1/admin/appearance ─► shared.system_setting('appearance') + audit, xóa cache
 Mọi trang (kể cả đăng nhập, web học viên) ─► GET /api/v1/appearance (công khai, cache)
                                           ─► layout phía máy chủ của Next.js chèn biến CSS vào <html> ─► không nháy màu
 ```

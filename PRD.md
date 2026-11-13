@@ -79,6 +79,7 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 | P9 | Danh mục ở môi trường thật để trống giá trị, admin/BA tự nhập; local và test có bộ mẫu | M.Trường, 2026-11-13 |
 | P10 | Nhật ký lưu vĩnh viễn, không che; phân vùng theo quý, dữ liệu cũ chuyển sang bảng lưu trữ phân vùng theo năm | M.Trường, 2026-11-13 |
 | P11 | Giữ bộ tùy chỉnh giao diện như reap, áp dụng toàn hệ thống; là một mục trong menu chính của trang quản trị (không ở menu profile, không dùng nút nổi) | M.Trường, 2026-11-13 |
+| P19 | Quyền theo mô hình đối tượng × mức: mỗi đối tượng hai mức Xem / Xem và sửa, cộng quyền riêng cho việc nhạy cảm. Đợt 1 có 7 đối tượng, 13 quyền. Thêm vai trò mặc định "Quản trị hệ thống" | M.Trường, 2026-11-13 |
 | P18 | Quyền là danh sách cố định theo phần mềm (không tạo, sửa, xóa trên giao diện); vai trò do admin tự do tạo và gán | M.Trường, 2026-11-13 |
 | P15 | Quyền và vai trò gom thành một menu "Phân quyền" có bốn tab: Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt | M.Trường, 2026-11-13 |
 | P16 | Cấp tài khoản hàng loạt không có menu riêng; là nút trong màn Tài khoản | M.Trường, 2026-11-13 |
