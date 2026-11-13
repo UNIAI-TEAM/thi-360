@@ -171,12 +171,13 @@
   /*
    * Chữ xanh trên nền tối (F1): chữ màu chính dùng `primary-text`, nền nút chính dùng
    * `primary-fill` (T06b: nền đậm #047857 đi với `on-primary` trắng, nên `primary-fill*` giữ
-   * nguyên giá trị của chế độ sáng). `primary-text` giữ #059669 trên nền tối; để đạt >= 4.5:1
-   * thì mọi nền nhạt primary-50/100/200 phải đủ tối (độ sáng <= ~0.012). Các token 700/800/900
+   * nguyên giá trị của chế độ sáng). `primary-text` dùng emerald-500 #10b981 trên nền tối: đạt
+   * >= 4.5:1 trên page/surface/subtle/primary-50/100/200 (#059669 chỉ đạt 4,07:1 trên subtle,
+   * nơi mục select đang chọn được tô sáng). Các token 700/800/900
    * chỉ làm màu chữ nên ánh xạ sang tông sáng (Tailwind 300–600). Cặp chữ/nền được kiểm bởi
    * tokens.test.ts.
    */
-  --color-primary-text: #059669;
+  --color-primary-text: #10b981;
   --color-primary-50: #0a1f19;
   --color-primary-100: #0c1f18;
   --color-primary-200: #101f1a;

@@ -45,7 +45,7 @@ describe("Chip", () => {
     expect(screen.getByRole("button", { name: "Cam" }).querySelector("[aria-hidden]")).not.toBeNull();
   });
 
-  it("chip lọc đang chọn: chấm đổi sang màu on-primary để không chìm vào nền primary-600", () => {
+  it("chip lọc đang chọn: chấm đổi sang màu on-primary để không chìm vào nền primary-fill", () => {
     render(
       <Chip selected dotClassName="bg-primary-600">
         Đang chọn

@@ -60,6 +60,7 @@ const LIGHT_PAIRS: Pair[] = [
   { fg: "--color-primary-800", bg: "--color-primary-200", note: "nút nhạt hover (chữ primary-800)" },
   { fg: "--color-primary-text", bg: "--color-surface", note: "link, tab phân đoạn, mục select đang chọn" },
   { fg: "--color-primary-text", bg: "--color-page", note: "link trên nền trang" },
+  { fg: "--color-primary-text", bg: "--color-subtle", note: "mục select đang chọn được tô sáng" },
   // Chữ trên nền đặc của màu chính
   { fg: "--color-on-primary", bg: "--color-primary-fill", note: "nút chính, chip lọc đang chọn, ô logo" },
   { fg: "--color-on-primary", bg: "--color-primary-fill-hover", note: "nút chính hover" },
@@ -68,6 +69,12 @@ const LIGHT_PAIRS: Pair[] = [
   { fg: "--color-on-accent", bg: "--color-accent-500", note: "nút exam" },
   { fg: "--color-on-primary", bg: "--color-danger-solid", note: "nút nguy hiểm" },
   { fg: "--color-on-primary", bg: "--color-danger-solid-hover", note: "nút nguy hiểm hover" },
+  // Cặp còn lại mà thành phần dùng (R1-2)
+  { fg: "--color-text-muted", bg: "--color-subtle", note: "tab phân đoạn thường" },
+  { fg: "--color-text-muted", bg: "--color-table-head", note: "tiêu đề bảng" },
+  { fg: "--color-danger", bg: "--color-surface", note: "lỗi form, dấu * bắt buộc, nút icon nguy hiểm, mục menu hủy" },
+  { fg: "--color-neutral", bg: "--color-surface", note: "tab nội dung thường" },
+  { fg: "--color-text-secondary", bg: "--color-subtle", note: "mục sidebar/dropdown hover" },
 ];
 
 /**
