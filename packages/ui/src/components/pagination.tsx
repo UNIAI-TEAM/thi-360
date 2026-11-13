@@ -62,10 +62,13 @@ export function Pagination({
   labels,
   className,
 }: PaginationProps) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const current = Math.min(Math.max(page, 1), pageCount);
-  const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
-  const to = Math.min(current * pageSize, total);
+  // pageSize <= 0 hoặc total < 0 là dữ liệu hỏng: coi như một dòng mỗi trang, không có bản ghi.
+  const size = Number.isFinite(pageSize) && pageSize >= 1 ? Math.floor(pageSize) : 1;
+  const count = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
+  const pageCount = Math.max(1, Math.ceil(count / size));
+  const current = Math.min(Math.max(Number.isFinite(page) ? page : 1, 1), pageCount);
+  const from = count === 0 ? 0 : (current - 1) * size + 1;
+  const to = Math.min(current * size, count);
 
   return (
     <nav
@@ -73,12 +76,12 @@ export function Pagination({
       className={cn("flex flex-wrap items-center justify-between gap-4", className)}
     >
       <div className="flex items-center gap-3 text-body text-text-muted">
-        <span className="tabular-nums">{labels.range({ from, to, total })}</span>
+        <span className="tabular-nums">{labels.range({ from, to, total: count })}</span>
         {pageSizeOptions && onPageSizeChange && (
           <Select
             aria-label={labels.rowsPerPage}
             className="h-9 w-24"
-            value={String(pageSize)}
+            value={String(size)}
             onValueChange={(value) => onPageSizeChange(Number(value))}
             options={pageSizeOptions.map((size) => ({ value: String(size), label: String(size) }))}
           />

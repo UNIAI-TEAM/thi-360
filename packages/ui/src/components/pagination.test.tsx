@@ -46,6 +46,31 @@ describe("Pagination", () => {
     expect(screen.getByRole("button", { name: "Trang sau" })).toBeDisabled();
   });
 
+  it.each([0, -5, Number.NaN])("pageSize=%s: không ra Infinity/NaN, không phát trang hỏng", async (pageSize) => {
+    const onPageChange = vi.fn();
+    render(<Pagination page={1} pageSize={pageSize} total={3} onPageChange={onPageChange} labels={labels} />);
+    expect(document.body).not.toHaveTextContent(/Infinity|NaN/);
+    expect(screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Trang trước",
+      "Trang 1",
+      "Trang 2",
+      "Trang 3",
+      "Trang sau",
+    ]);
+    await userEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    expect(onPageChange).toHaveBeenCalledWith(2);
+  });
+
+  it("total âm hoặc NaN: coi như không có dữ liệu", () => {
+    const { rerender } = render(
+      <Pagination page={1} pageSize={20} total={-4} onPageChange={() => {}} labels={labels} />,
+    );
+    expect(screen.getByText("0–0 / 0")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trang sau" })).toBeDisabled();
+    rerender(<Pagination page={1} pageSize={20} total={Number.NaN} onPageChange={() => {}} labels={labels} />);
+    expect(screen.getByText("0–0 / 0")).toBeInTheDocument();
+  });
+
   it("đổi số dòng mỗi trang", async () => {
     const onPageSizeChange = vi.fn();
     render(
