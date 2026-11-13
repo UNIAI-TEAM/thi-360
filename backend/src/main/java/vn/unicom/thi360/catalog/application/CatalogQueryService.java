@@ -26,6 +26,7 @@ import vn.unicom.thi360.catalog.spi.CatalogStatus;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.api.ValidationException;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Service
 public class CatalogQueryService {
@@ -37,18 +38,21 @@ public class CatalogQueryService {
     private final CatalogCacheService catalogCacheService;
     private final CatalogSupportDao catalogSupportDao;
     private final JdbcTemplate jdbcTemplate;
+    private final AppMessages messages;
 
     public CatalogQueryService(
             CatalogGroupRepository catalogGroupRepository,
             CatalogItemRepository catalogItemRepository,
             CatalogCacheService catalogCacheService,
             CatalogSupportDao catalogSupportDao,
-            JdbcTemplate jdbcTemplate) {
+            JdbcTemplate jdbcTemplate,
+            AppMessages messages) {
         this.catalogGroupRepository = catalogGroupRepository;
         this.catalogItemRepository = catalogItemRepository;
         this.catalogCacheService = catalogCacheService;
         this.catalogSupportDao = catalogSupportDao;
         this.jdbcTemplate = jdbcTemplate;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
@@ -297,7 +301,7 @@ public class CatalogQueryService {
         boolean hasRefFilter = refItemIds != null && !refItemIds.isEmpty();
         if (nodeId == null && !hasRefFilter) {
             throw new ValidationException(List.of(
-                    new FieldError("nodeId", "REQUIRED", "Phải truyền nodeId hoặc tham số lọc ref")));
+                    new FieldError("nodeId", "REQUIRED", messages.get("validation.catalog.descendants.nodeOrRefRequired"))));
         }
 
         String cacheField = nodeId != null ? "desc:" + nodeId + ":" + leafOnly : null;
@@ -323,7 +327,7 @@ public class CatalogQueryService {
                     .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
             if (group.getKind() != CatalogGroupKind.TREE) {
                 throw new ValidationException(List.of(
-                        new FieldError("nodeId", "NOT_TREE", "Nhóm của nút này không phải danh mục cây")));
+                        new FieldError("nodeId", "NOT_TREE", messages.get("validation.catalog.node.notTree"))));
             }
             if (group.getStatus() != CatalogStatus.ACTIVE) {
                 return List.of();

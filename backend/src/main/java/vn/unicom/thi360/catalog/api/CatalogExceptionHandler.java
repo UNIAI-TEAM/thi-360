@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Set;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -16,8 +17,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.LocaleResolver;
 import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.api.GlobalExceptionHandler;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @RestControllerAdvice(assignableTypes = {AdminCatalogController.class, CatalogPublicController.class})
@@ -25,17 +28,26 @@ import vn.unicom.thi360.shared.web.TraceIdFilter;
 public class CatalogExceptionHandler {
 
     private static final String ERR_CODE_TAKEN = "CATALOG_CODE_TAKEN";
-    private static final Locale DEFAULT_LOCALE = Locale.of("vi");
     private static final Set<String> CODE_UNIQUE_CONSTRAINTS =
             Set.of("uq_catalog_group_code_normalized", "uq_catalog_item_group_code_normalized");
 
     private final MessageSource messageSource;
     private final GlobalExceptionHandler globalExceptionHandler;
+    private final LocaleResolver localeResolver;
 
     public CatalogExceptionHandler(
             MessageSource messageSource, GlobalExceptionHandler globalExceptionHandler) {
+        this(messageSource, globalExceptionHandler, LocaleConfig.createLocaleResolver());
+    }
+
+    @Autowired
+    public CatalogExceptionHandler(
+            MessageSource messageSource,
+            GlobalExceptionHandler globalExceptionHandler,
+            LocaleResolver localeResolver) {
         this.messageSource = messageSource;
         this.globalExceptionHandler = globalExceptionHandler;
+        this.localeResolver = localeResolver;
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -44,14 +56,13 @@ public class CatalogExceptionHandler {
         if (!isCatalogCodeUniqueViolation(ex)) {
             return globalExceptionHandler.handleUnexpected(ex, request);
         }
-        String message = messageSource.getMessage(
-                ERR_CODE_TAKEN, null, "Mã danh mục hoặc giá trị đã tồn tại", DEFAULT_LOCALE);
+        Locale locale = LocaleConfig.normalizeSupported(localeResolver.resolveLocale(request));
+        String message = messageSource.getMessage(ERR_CODE_TAKEN, null, ERR_CODE_TAKEN, locale);
         String traceId = resolveTraceId(request);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ApiError.of(ERR_CODE_TAKEN, message, List.of(), traceId));
     }
-
     private static boolean isCatalogCodeUniqueViolation(Throwable throwable) {
         for (Throwable cur = throwable; cur != null; cur = cur.getCause()) {
             if (cur instanceof ConstraintViolationException cve
