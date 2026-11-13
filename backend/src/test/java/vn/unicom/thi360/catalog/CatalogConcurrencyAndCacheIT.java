@@ -40,6 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -311,40 +312,25 @@ class CatalogConcurrencyAndCacheIT extends AbstractIntegrationTest {
         UUID ch2Id = createItemId(groupId, null, "CH2", "Chương 2");
         UUID l1Id = createItemId(groupId, ch1Id, "L1", "Bài 1");
 
-        CountDownLatch moveHoldingLockLatch = new CountDownLatch(1);
-        CountDownLatch releaseMoveLatch = new CountDownLatch(1);
-        CountDownLatch createEnteringLockLatch = new CountDownLatch(1);
-        AtomicBoolean armMovePause = new AtomicBoolean(true);
-        AtomicBoolean armCreateSignal = new AtomicBoolean(false);
+        CountDownLatch createReadOldParentReadyToInsert = new CountDownLatch(1);
+        CountDownLatch moveCompletedLatch = new CountDownLatch(1);
+        AtomicBoolean armCreatePause = new AtomicBoolean(true);
+        AtomicBoolean moverBypassedLock = new AtomicBoolean(false);
 
-        doAnswer(inv -> {
-            Object res = inv.callRealMethod();
-            if (armMovePause.compareAndSet(true, false)) {
-                moveHoldingLockLatch.countDown();
-                assertThat(releaseMoveLatch.await(10, TimeUnit.SECONDS)).isTrue();
+        HOOKS.put("CatalogItemRepository#findMaxDisplayOrder", (args, proceed) -> {
+            Object res = proceed.call();
+            if (groupId.equals(args[0]) && l1Id.equals(args[1]) && armCreatePause.compareAndSet(true, false)) {
+                // Parent L1's old path (/ch1/l1/) has already been read and copied for K_NEW, before saveAndFlush.
+                createReadOldParentReadyToInsert.countDown();
+                if (moveCompletedLatch.await(400, TimeUnit.MILLISECONDS)) {
+                    moverBypassedLock.set(true);
+                }
             }
             return res;
-        }).when(catalogSupportDao).findInactiveEffectiveItemIds(eq(groupId), any());
-
-        HOOKS.put("CatalogGroupRepository#findByIdForUpdate", (args, proceed) -> {
-            if (groupId.equals(args[0]) && armCreateSignal.compareAndSet(true, false)) {
-                createEnteringLockLatch.countDown();
-            }
-            return proceed.call();
         });
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Future<MvcResult> moveFuture = pool.submit(() -> mockMvc.perform(
-                            put("/api/v1/admin/catalog/items/{id}/parent", l1Id)
-                                    .with(asUser(Permissions.CATALOG_MODIFY))
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(Map.of("parentId", ch2Id))))
-                    .andReturn());
-
-            assertThat(moveHoldingLockLatch.await(10, TimeUnit.SECONDS)).isTrue();
-            armCreateSignal.set(true);
-
             Future<MvcResult> createFuture = pool.submit(() -> mockMvc.perform(
                             post("/api/v1/admin/catalog/groups/{id}/items", groupId)
                                     .with(asUser(Permissions.CATALOG_MODIFY))
@@ -355,18 +341,32 @@ class CatalogConcurrencyAndCacheIT extends AbstractIntegrationTest {
                                             "parentId", l1Id))))
                     .andReturn());
 
-            assertThat(createEnteringLockLatch.await(10, TimeUnit.SECONDS)).isTrue();
-            releaseMoveLatch.countDown();
+            assertThat(createReadOldParentReadyToInsert.await(10, TimeUnit.SECONDS)).isTrue();
 
-            MvcResult moveRes = moveFuture.get(15, TimeUnit.SECONDS);
+            Future<MvcResult> moveFuture = pool.submit(() -> {
+                MvcResult res = mockMvc.perform(
+                                put("/api/v1/admin/catalog/items/{id}/parent", l1Id)
+                                        .with(asUser(Permissions.CATALOG_MODIFY))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(Map.of("parentId", ch2Id))))
+                        .andReturn();
+                moveCompletedLatch.countDown();
+                return res;
+            });
+
             MvcResult createRes = createFuture.get(15, TimeUnit.SECONDS);
-            assertThat(moveRes.getResponse().getStatus()).isEqualTo(200);
+            MvcResult moveRes = moveFuture.get(15, TimeUnit.SECONDS);
+            assertThat(moverBypassedLock.get()).isFalse();
             assertThat(createRes.getResponse().getStatus()).isEqualTo(201);
+            assertThat(moveRes.getResponse().getStatus()).isEqualTo(200);
 
-            JsonNode created = objectMapper.readTree(createRes.getResponse().getContentAsString());
-            UUID kNewId = UUID.fromString(created.get("id").asText());
-            assertThat(created.get("path").asText())
-                    .isEqualTo("/" + ch2Id + "/" + l1Id + "/" + kNewId + "/");
+            UUID kNewId = UUID.fromString(
+                    objectMapper.readTree(createRes.getResponse().getContentAsString()).get("id").asText());
+
+            mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", kNewId)
+                            .with(asUser(Permissions.CATALOG_VIEW)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.path").value("/" + ch2Id + "/" + l1Id + "/" + kNewId + "/"));
 
             mockMvc.perform(get("/api/v1/catalog/tree/descendants")
                             .param("nodeId", ch2Id.toString())
@@ -374,6 +374,12 @@ class CatalogConcurrencyAndCacheIT extends AbstractIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(1)))
                     .andExpect(jsonPath("$[0].id").value(kNewId.toString()));
+
+            mockMvc.perform(get("/api/v1/catalog/tree/descendants")
+                            .param("nodeId", ch1Id.toString())
+                            .with(asStudent()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(0)));
         } finally {
             pool.shutdownNow();
         }
@@ -599,6 +605,28 @@ class CatalogConcurrencyAndCacheIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void nonCodeDataIntegrityViolationUsesStandardGlobal500ErrorAndTraceId() throws Exception {
+        String code = "NON_CODE_DIV_" + suffix();
+        HOOKS.put("CatalogGroupRepository#saveAndFlush", (args, proceed) -> {
+            throw new DataIntegrityViolationException("simulated non-code constraint violation");
+        });
+
+        MvcResult res = mockMvc.perform(post("/api/v1/admin/catalog/groups")
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("code", code, "nameVi", "Nhóm lỗi khác"))))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors", hasSize(0)))
+                .andReturn();
+
+        String headerTraceId = res.getResponse().getHeader("X-Request-Id");
+        assertThat(headerTraceId).isNotBlank();
+        JsonNode body = objectMapper.readTree(res.getResponse().getContentAsString());
+        assertThat(body.get("traceId").asText()).isEqualTo(headerTraceId);
+    }
     private UUID createGroup(String code, String kind, List<String> levels) throws Exception {
         var body = new java.util.LinkedHashMap<String, Object>();
         body.put("code", code);

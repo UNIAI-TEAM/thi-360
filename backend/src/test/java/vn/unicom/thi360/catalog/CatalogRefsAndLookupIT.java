@@ -440,6 +440,11 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version").value(treeVer + 2));
 
+        // Warm public tree immediately before renaming target item (no intervening tree mutation)
+        mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.treeCode()).with(asStudent()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ownRefs[?(@.code=='TOAN')].nameVi", hasItem("Toán")));
+
         // Renaming referenced item in subjGroup evicts dependent tree cache
         long toanVer = objectMapper.readTree(
                 mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", fx.toanId())
@@ -454,7 +459,6 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/catalog/tree").param("group", fx.treeCode()).with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].ownRefs[?(@.code=='TOAN')].nameVi", hasItem("Toán nâng cao")));
-
         // Deactivate subjGroup: new refs to toanId/lyId are rejected on create, update, and inline PUT,
         // while existing ch1Id link remains readable and editable if retained
         long subjVer = objectMapper.readTree(

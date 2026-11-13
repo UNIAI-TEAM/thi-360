@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import vn.unicom.thi360.shared.api.ApiError;
+import vn.unicom.thi360.shared.api.GlobalExceptionHandler;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @RestControllerAdvice(assignableTypes = {AdminCatalogController.class, CatalogPublicController.class})
@@ -29,16 +30,19 @@ public class CatalogExceptionHandler {
             Set.of("uq_catalog_group_code_normalized", "uq_catalog_item_group_code_normalized");
 
     private final MessageSource messageSource;
+    private final GlobalExceptionHandler globalExceptionHandler;
 
-    public CatalogExceptionHandler(MessageSource messageSource) {
+    public CatalogExceptionHandler(
+            MessageSource messageSource, GlobalExceptionHandler globalExceptionHandler) {
         this.messageSource = messageSource;
+        this.globalExceptionHandler = globalExceptionHandler;
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrityViolation(
             DataIntegrityViolationException ex, HttpServletRequest request) {
         if (!isCatalogCodeUniqueViolation(ex)) {
-            throw ex;
+            return globalExceptionHandler.handleUnexpected(ex, request);
         }
         String message = messageSource.getMessage(
                 ERR_CODE_TAKEN, null, "Mã danh mục hoặc giá trị đã tồn tại", DEFAULT_LOCALE);
