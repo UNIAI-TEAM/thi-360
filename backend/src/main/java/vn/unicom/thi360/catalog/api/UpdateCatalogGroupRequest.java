@@ -27,6 +27,9 @@ public record UpdateCatalogGroupRequest(
         List<String> levels,
         @Schema(description = "Danh sách ID nhóm danh mục liên kết mới (chỉ cho nhóm TREE)")
         List<UUID> refGroupIds,
+        @Schema(description = "Lý do ngừng sử dụng hoặc cập nhật (bắt buộc khi chuyển sang INACTIVE, ghi nhật ký)")
+        @Size(max = 500, message = "Lý do tối đa 500 ký tự")
+        String reason,
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "Phiên bản cập nhật là bắt buộc")
         Long version

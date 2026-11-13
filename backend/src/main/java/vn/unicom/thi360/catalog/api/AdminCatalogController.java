@@ -81,8 +81,10 @@ public class AdminCatalogController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequirePermission(Permissions.CATALOG_MODIFY)
     @Operation(summary = "Xóa nhóm danh mục tùy chỉnh chưa có giá trị")
-    public void deleteGroup(@PathVariable UUID id) {
-        catalogAdminService.deleteGroup(id);
+    public void deleteGroup(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        catalogAdminService.deleteGroup(id, reason);
     }
 
     @GetMapping("/groups/{id}/items")
@@ -138,8 +140,10 @@ public class AdminCatalogController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequirePermission(Permissions.CATALOG_MODIFY)
     @Operation(summary = "Xóa giá trị danh mục")
-    public void deleteItem(@PathVariable UUID id) {
-        catalogAdminService.deleteItem(id);
+    public void deleteItem(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        catalogAdminService.deleteItem(id, reason);
     }
 
     @GetMapping("/groups/{id}/tree")

@@ -52,7 +52,7 @@ public class CatalogGroup {
     @Column(name = "is_system", nullable = false)
     private boolean system;
 
-    @Column(name = "last_value", nullable = false)
+    @Column(name = "last_value", nullable = false, updatable = false)
     private int lastValue;
 
     @Column(name = "created_at", nullable = false)
@@ -132,13 +132,20 @@ public class CatalogGroup {
         if (levels != null) {
             this.levels = List.copyOf(levels);
         }
-        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedAt = advanceUpdatedAt(now);
         this.updatedBy = actorId;
     }
 
     public void markUpdated(Instant now, UUID actorId) {
-        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedAt = advanceUpdatedAt(now);
         this.updatedBy = actorId;
+    }
+
+    private Instant advanceUpdatedAt(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        return this.updatedAt != null && !now.isAfter(this.updatedAt)
+                ? this.updatedAt.plusNanos(1000)
+                : now;
     }
 
     public UUID getId() {

@@ -138,19 +138,26 @@ public class CatalogItem {
         if (status != null) {
             this.status = status;
         }
-        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedAt = advanceUpdatedAt(now);
         this.updatedBy = actorId;
     }
 
     public void updateDisplayOrder(int displayOrder, Instant now, UUID actorId) {
         this.displayOrder = displayOrder;
-        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedAt = advanceUpdatedAt(now);
         this.updatedBy = actorId;
     }
 
     public void markUpdated(Instant now, UUID actorId) {
-        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedAt = advanceUpdatedAt(now);
         this.updatedBy = actorId;
+    }
+
+    private Instant advanceUpdatedAt(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        return this.updatedAt != null && !now.isAfter(this.updatedAt)
+                ? this.updatedAt.plusNanos(1000)
+                : now;
     }
 
     public UUID getId() {

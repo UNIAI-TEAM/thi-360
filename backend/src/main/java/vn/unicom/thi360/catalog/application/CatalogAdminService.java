@@ -22,7 +22,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.api.CatalogGroupRefResponse;
@@ -60,7 +59,6 @@ import vn.unicom.thi360.shared.api.VersionConflictException;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
-import vn.unicom.thi360.shared.security.Realm;
 
 @Service
 public class CatalogAdminService {
@@ -286,7 +284,6 @@ public class CatalogAdminService {
 
         catalogCacheService.evictGroupAndDependents(group.getId(), group.getCodeNormalized());
         recordAudit(
-                actor,
                 "CATALOG_GROUP_CREATED",
                 "CATALOG_GROUP",
                 group.getId(),
@@ -301,7 +298,7 @@ public class CatalogAdminService {
     @Transactional
     public CatalogGroupResponse updateGroup(UUID groupId, UpdateCatalogGroupRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogGroup group = catalogGroupRepository.findById(groupId)
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
         if (group.getType() == CatalogGroupType.SYSTEM || group.isSystem()) {
@@ -310,6 +307,12 @@ public class CatalogAdminService {
         if (!Objects.equals(group.getVersion(), request.version())) {
             throw new VersionConflictException();
         }
+
+        CatalogStatus previousStatus = group.getStatus();
+        boolean deactivating = previousStatus == CatalogStatus.ACTIVE && request.status() == CatalogStatus.INACTIVE;
+        String trimmedReason = deactivating
+                ? requireReason(request.reason(), "Vui lòng nhập lý do khi ngừng sử dụng nhóm danh mục")
+                : CatalogNormalizer.trimToNull(request.reason());
 
         List<CatalogGroupRefResponse> existingRefs =
                 catalogSupportDao.loadGroupRefs(List.of(groupId)).getOrDefault(groupId, List.of());
@@ -373,26 +376,26 @@ public class CatalogAdminService {
         long itemCount = catalogItemRepository.countByGroupId(groupId);
         List<CatalogGroupRefResponse> updatedRefs =
                 catalogSupportDao.loadGroupRefs(List.of(groupId)).getOrDefault(groupId, List.of());
+        String action = deactivating ? "CATALOG_GROUP_DEACTIVATED" : "CATALOG_GROUP_UPDATED";
 
         catalogCacheService.evictGroupAndDependents(
                 group.getId(), oldCodeNormalized, group.getCodeNormalized());
         recordAudit(
-                actor,
-                "CATALOG_GROUP_UPDATED",
+                action,
                 "CATALOG_GROUP",
                 group.getId(),
                 group.getCode(),
                 before,
                 groupAuditState(group, updatedRefs),
-                null);
+                trimmedReason);
 
         return toGroupResponse(group, itemCount, updatedRefs);
     }
 
     @Transactional
-    public void deleteGroup(UUID groupId) {
-        CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogGroup group = catalogGroupRepository.findById(groupId)
+    public void deleteGroup(UUID groupId, String reason) {
+        currentUserProvider.requireCurrentUser();
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
         if (group.getType() == CatalogGroupType.SYSTEM || group.isSystem()) {
@@ -404,6 +407,7 @@ public class CatalogAdminService {
         if (catalogGroupRefRepository.existsByIdRefGroupId(groupId)) {
             throw new ConflictException(ERR_REF_GROUP_IN_USE);
         }
+        String trimmedReason = requireReason(reason, "Vui lòng nhập lý do khi xóa nhóm danh mục");
 
         List<CatalogGroupRefResponse> existingRefs =
                 catalogSupportDao.loadGroupRefs(List.of(groupId)).getOrDefault(groupId, List.of());
@@ -416,14 +420,13 @@ public class CatalogAdminService {
 
         catalogCacheService.evictGroupAndDependents(groupId, codeNormalized);
         recordAudit(
-                actor,
                 "CATALOG_GROUP_DELETED",
                 "CATALOG_GROUP",
                 groupId,
                 group.getCode(),
                 before,
                 null,
-                null);
+                trimmedReason);
     }
 
     @Transactional(readOnly = true)
@@ -573,8 +576,7 @@ public class CatalogAdminService {
 
         int maxExistingValue = catalogItemRepository.findMaxValueByGroupId(groupId);
         int nextValue = Math.max(group.getLastValue(), maxExistingValue) + 1;
-        catalogGroupRepository.updateLastValue(groupId, nextValue);
-
+        catalogGroupRepository.advanceLastValue(groupId, nextValue);
         int displayOrder = request.displayOrder() != null
                 ? request.displayOrder()
                 : catalogItemRepository.findMaxDisplayOrder(groupId, parentId) + 1;
@@ -611,7 +613,6 @@ public class CatalogAdminService {
         CatalogItemResponse response = toItemResponses(group, List.of(item)).getFirst();
         catalogCacheService.evictGroupAndDependents(groupId, group.getCodeNormalized());
         recordAudit(
-                actor,
                 "CATALOG_ITEM_CREATED",
                 "CATALOG_ITEM",
                 item.getId(),
@@ -626,19 +627,26 @@ public class CatalogAdminService {
     @Transactional
     public CatalogItemResponse updateItem(UUID itemId, UpdateCatalogItemRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
+        UUID groupId = catalogItemRepository.findGroupIdById(itemId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         CatalogItem item = catalogItemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (!Objects.equals(item.getVersion(), request.version())) {
             throw new VersionConflictException();
         }
 
-        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
-                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogStatus previousStatus = item.getStatus();
+        boolean deactivating = previousStatus == CatalogStatus.ACTIVE && request.status() == CatalogStatus.INACTIVE;
+        String trimmedReason = deactivating
+                ? requireReason(request.reason(), "Vui lòng nhập lý do khi ngừng sử dụng giá trị danh mục")
+                : CatalogNormalizer.trimToNull(request.reason());
+
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
         Map<String, Object> before = itemAuditState(item, beforeRefs);
 
-        CatalogStatus previousStatus = item.getStatus();
         String newCode = null;
         if (request.code() != null) {
             String trimmed = validateAndTrimCode(request.code());
@@ -701,20 +709,17 @@ public class CatalogAdminService {
         item = catalogItemRepository.saveAndFlush(item);
 
         CatalogItemResponse response = toItemResponses(group, List.of(item)).getFirst();
-        String action = previousStatus == CatalogStatus.ACTIVE && item.getStatus() == CatalogStatus.INACTIVE
-                ? "CATALOG_ITEM_DEACTIVATED"
-                : "CATALOG_ITEM_UPDATED";
+        String action = deactivating ? "CATALOG_ITEM_DEACTIVATED" : "CATALOG_ITEM_UPDATED";
 
         catalogCacheService.evictGroupAndDependents(group.getId(), group.getCodeNormalized());
         recordAudit(
-                actor,
                 action,
                 "CATALOG_ITEM",
                 item.getId(),
                 item.getCode(),
                 before,
                 itemAuditState(item, response.ownRefs()),
-                CatalogNormalizer.trimToNull(request.reason()));
+                trimmedReason);
 
         return response;
     }
@@ -722,9 +727,8 @@ public class CatalogAdminService {
     @Transactional
     public List<CatalogItemResponse> reorderItems(UUID groupId, ReorderCatalogItemsRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogGroup group = catalogGroupRepository.findById(groupId)
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-
         List<UUID> requestedIds = request.itemIds();
         if (requestedIds == null || requestedIds.isEmpty()) {
             throw new ValidationException(List.of(
@@ -818,7 +822,6 @@ public class CatalogAdminService {
         catalogItemRepository.flush();
         catalogCacheService.evictGroupAndDependents(groupId, group.getCodeNormalized());
         recordAudit(
-                actor,
                 "CATALOG_ITEM_REORDERED",
                 "CATALOG_GROUP",
                 groupId,
@@ -831,8 +834,12 @@ public class CatalogAdminService {
     }
 
     @Transactional
-    public void deleteItem(UUID itemId) {
-        CurrentUser actor = currentUserProvider.requireCurrentUser();
+    public void deleteItem(UUID itemId, String reason) {
+        currentUserProvider.requireCurrentUser();
+        UUID groupId = catalogItemRepository.findGroupIdById(itemId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         CatalogItem item = catalogItemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
@@ -842,9 +849,8 @@ public class CatalogAdminService {
         if (catalogItemRepository.existsByParentId(itemId)) {
             throw new ConflictException(ERR_NODE_HAS_CHILDREN);
         }
+        String trimmedReason = requireReason(reason, "Vui lòng nhập lý do khi xóa giá trị danh mục");
 
-        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
-                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
         Map<String, Object> before = itemAuditState(item, beforeRefs);
@@ -855,14 +861,13 @@ public class CatalogAdminService {
 
         catalogCacheService.evictGroupAndDependents(group.getId(), group.getCodeNormalized());
         recordAudit(
-                actor,
                 "CATALOG_ITEM_DELETED",
                 "CATALOG_ITEM",
                 itemId,
                 item.getCode(),
                 before,
                 null,
-                null);
+                trimmedReason);
     }
 
     @Transactional(readOnly = true)
@@ -1034,9 +1039,11 @@ public class CatalogAdminService {
     @Transactional
     public CatalogItemResponse moveItem(UUID itemId, MoveCatalogItemRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogItem item = catalogItemRepository.findById(itemId)
+        UUID groupId = catalogItemRepository.findGroupIdById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogItem item = catalogItemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
         if (group.getKind() != CatalogGroupKind.TREE) {
@@ -1076,26 +1083,31 @@ public class CatalogAdminService {
         Instant now = Instant.now(clock);
 
         int newOrder = catalogItemRepository.findMaxDisplayOrder(group.getId(), newParentId) + 1;
-        jdbcTemplate.update(
+        int updatedRoot = jdbcTemplate.update(
                 """
                 UPDATE catalog.catalog_item
                 SET parent_id = ?,
                     display_order = ?,
-                    version = version + 1,
                     updated_at = ?,
                     updated_by = ?
                 WHERE id = ?
+                  AND version = ?
                 """,
                 newParentId,
                 newOrder,
                 java.sql.Timestamp.from(now),
                 actor.id(),
-                itemId);
+                itemId,
+                item.getVersion());
+        if (updatedRoot == 0) {
+            throw new VersionConflictException();
+        }
 
         jdbcTemplate.update(
                 """
                 UPDATE catalog.catalog_item
                 SET path = ? || substring(path FROM ?),
+                    version = version + 1,
                     updated_at = ?,
                     updated_by = ?
                 WHERE group_id = ?
@@ -1116,7 +1128,6 @@ public class CatalogAdminService {
 
         catalogCacheService.evictGroupAndDependents(group.getId(), group.getCodeNormalized());
         recordAudit(
-                actor,
                 "CATALOG_ITEM_MOVED",
                 "CATALOG_ITEM",
                 itemId,
@@ -1139,7 +1150,7 @@ public class CatalogAdminService {
     @Transactional
     public List<CatalogGroupRefResponse> addGroupRefGroup(UUID groupId, UUID refGroupId) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogGroup group = catalogGroupRepository.findById(groupId)
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (group.getKind() != CatalogGroupKind.TREE) {
             throw new ValidationException(
@@ -1157,9 +1168,10 @@ public class CatalogAdminService {
         if (!alreadyExists) {
             int nextPos = existing.stream().mapToInt(CatalogGroupRef::getPosition).max().orElse(-1) + 1;
             catalogGroupRefRepository.saveAndFlush(new CatalogGroupRef(groupId, refGroupId, nextPos, false));
+            group.markUpdated(Instant.now(clock), actor.id());
+            catalogGroupRepository.saveAndFlush(group);
             catalogCacheService.evictGroupAndDependents(groupId, group.getCodeNormalized());
             recordAudit(
-                    actor,
                     "CATALOG_GROUP_UPDATED",
                     "CATALOG_GROUP",
                     groupId,
@@ -1174,7 +1186,7 @@ public class CatalogAdminService {
     @Transactional
     public void removeGroupRefGroup(UUID groupId, UUID refGroupId) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogGroup group = catalogGroupRepository.findById(groupId)
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         List<CatalogGroupRef> existing =
                 catalogGroupRefRepository.findByIdGroupIdOrderByPositionAsc(groupId);
@@ -1193,10 +1205,11 @@ public class CatalogAdminService {
         }
         catalogGroupRefRepository.delete(target);
         catalogGroupRefRepository.flush();
+        group.markUpdated(Instant.now(clock), actor.id());
+        catalogGroupRepository.saveAndFlush(group);
 
         catalogCacheService.evictGroupAndDependents(groupId, group.getCodeNormalized());
         recordAudit(
-                actor,
                 "CATALOG_GROUP_UPDATED",
                 "CATALOG_GROUP",
                 groupId,
@@ -1209,9 +1222,11 @@ public class CatalogAdminService {
     @Transactional
     public CatalogItemResponse addItemRef(UUID itemId, UUID refItemId) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogItem item = catalogItemRepository.findById(itemId)
+        UUID groupId = catalogItemRepository.findGroupIdById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogItem item = catalogItemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (group.getKind() != CatalogGroupKind.TREE) {
             throw new ValidationException(
@@ -1220,18 +1235,19 @@ public class CatalogAdminService {
                     List.of(new FieldError("itemId", ERR_REF_INVALID, "Chỉ nút thuộc nhóm TREE mới gắn liên kết")));
         }
 
-        validateItemRefsForAdd(group.getId(), List.of(refItemId), Set.of());
         CatalogItemRefId refId = new CatalogItemRefId(itemId, refItemId);
         if (!catalogItemRefRepository.existsById(refId)) {
+            validateItemRefsForAdd(group.getId(), List.of(refItemId), Set.of());
             List<CatalogItemRefResponse> beforeRefs =
                     catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
             Instant now = Instant.now(clock);
             catalogItemRefRepository.saveAndFlush(new CatalogItemRef(itemId, refItemId, actor.id(), now));
+            item.markUpdated(now, actor.id());
+            item = catalogItemRepository.saveAndFlush(item);
             List<CatalogItemRefResponse> afterRefs =
                     catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
             catalogCacheService.evictGroupAndDependents(group.getId(), group.getCodeNormalized());
             recordAudit(
-                    actor,
                     "CATALOG_ITEM_REFS_UPDATED",
                     "CATALOG_ITEM",
                     itemId,
@@ -1246,9 +1262,11 @@ public class CatalogAdminService {
     @Transactional
     public void removeItemRef(UUID itemId, UUID refItemId) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        CatalogItem item = catalogItemRepository.findById(itemId)
+        UUID groupId = catalogItemRepository.findGroupIdById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
+        CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogItem item = catalogItemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
         CatalogItemRefId refId = new CatalogItemRefId(itemId, refItemId);
@@ -1259,12 +1277,13 @@ public class CatalogAdminService {
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
         catalogItemRefRepository.deleteById(refId);
         catalogItemRefRepository.flush();
+        item.markUpdated(Instant.now(clock), actor.id());
+        catalogItemRepository.saveAndFlush(item);
         List<CatalogItemRefResponse> afterRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
 
         catalogCacheService.evictGroupAndDependents(group.getId(), group.getCodeNormalized());
         recordAudit(
-                actor,
                 "CATALOG_ITEM_REFS_UPDATED",
                 "CATALOG_ITEM",
                 itemId,
@@ -1358,8 +1377,16 @@ public class CatalogAdminService {
             allowedRefGroupIds.add(ref.getRefGroupId());
         }
         Map<UUID, CatalogItem> refItemsById = new HashMap<>();
+        Set<UUID> refGroupIds = new HashSet<>();
         for (CatalogItem refItem : catalogItemRepository.findAllById(refItemIds)) {
             refItemsById.put(refItem.getId(), refItem);
+            refGroupIds.add(refItem.getGroupId());
+        }
+        Map<UUID, CatalogGroup> refGroupsById = new HashMap<>();
+        if (!refGroupIds.isEmpty()) {
+            for (CatalogGroup refGroup : catalogGroupRepository.findAllById(refGroupIds)) {
+                refGroupsById.put(refGroup.getId(), refGroup);
+            }
         }
         for (UUID refItemId : refItemIds) {
             CatalogItem refItem = refItemsById.get(refItemId);
@@ -1370,11 +1397,19 @@ public class CatalogAdminService {
                         List.of(new FieldError("refItemIds", ERR_REF_INVALID, "Giá trị liên kết không thuộc nhóm đã khai báo")));
             }
             boolean alreadyLinked = existingOwnRefIds.contains(refItemId);
-            if (!alreadyLinked && refItem.getStatus() != CatalogStatus.ACTIVE) {
-                throw new ValidationException(
-                        ERR_REF_INVALID,
-                        null,
-                        List.of(new FieldError("refItemIds", ERR_REF_INVALID, "Không thể gắn liên kết tới giá trị đã ngừng sử dụng")));
+            if (!alreadyLinked) {
+                CatalogGroup refGroup = refGroupsById.get(refItem.getGroupId());
+                if (refItem.getStatus() != CatalogStatus.ACTIVE
+                        || refGroup == null
+                        || refGroup.getStatus() != CatalogStatus.ACTIVE) {
+                    throw new ValidationException(
+                            ERR_REF_INVALID,
+                            null,
+                            List.of(new FieldError(
+                                    "refItemIds",
+                                    ERR_REF_INVALID,
+                                    "Không thể gắn liên kết tới giá trị hoặc nhóm đã ngừng sử dụng")));
+                }
             }
         }
     }
@@ -1495,9 +1530,20 @@ public class CatalogAdminService {
         }
         return List.copyOf(seen);
     }
+    private static String requireReason(String rawReason, String message) {
+        String trimmed = CatalogNormalizer.trimToNull(rawReason);
+        if (trimmed == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("reason", "REASON_REQUIRED", message)));
+        }
+        if (trimmed.length() > 500) {
+            throw new ValidationException(List.of(
+                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+        }
+        return trimmed;
+    }
 
     private void recordAudit(
-            CurrentUser actor,
             String action,
             String targetType,
             UUID targetId,
@@ -1505,13 +1551,11 @@ public class CatalogAdminService {
             Map<String, Object> before,
             Map<String, Object> after,
             String reason) {
-        AuditActorType actorType = actor.realm() == Realm.MASTER ? AuditActorType.PLATFORM : AuditActorType.USER;
         auditRecorder.record(AuditEvent.builder(MODULE, action)
                 .target(targetType, targetId.toString(), targetLabel)
                 .before(before)
                 .after(after)
                 .reason(reason)
-                .actor(actor.id(), actor.username(), null, actorType)
                 .build());
     }
 

@@ -23,6 +23,6 @@ public interface CatalogGroupRepository extends JpaRepository<CatalogGroup, UUID
     Optional<CatalogGroup> findByIdForUpdate(@Param("id") UUID id);
 
     @Modifying
-    @Query("UPDATE CatalogGroup g SET g.lastValue = :lastValue WHERE g.id = :id")
-    void updateLastValue(@Param("id") UUID id, @Param("lastValue") int lastValue);
+    @Query("UPDATE CatalogGroup g SET g.lastValue = :lastValue WHERE g.id = :id AND g.lastValue < :lastValue")
+    void advanceLastValue(@Param("id") UUID id, @Param("lastValue") int lastValue);
 }

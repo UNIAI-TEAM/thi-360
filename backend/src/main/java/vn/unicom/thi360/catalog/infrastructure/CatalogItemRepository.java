@@ -21,10 +21,14 @@ public interface CatalogItemRepository extends JpaRepository<CatalogItem, UUID> 
 
     long countByGroupId(UUID groupId);
 
+    @Query("SELECT i.groupId FROM CatalogItem i WHERE i.id = :id")
+    Optional<UUID> findGroupIdById(@Param("id") UUID id);
+
+    @Query("SELECT g.codeNormalized FROM CatalogItem i JOIN CatalogGroup g ON g.id = i.groupId WHERE i.id = :id")
+    Optional<String> findGroupCodeNormalizedById(@Param("id") UUID id);
     Optional<CatalogItem> findByGroupIdAndCodeNormalized(UUID groupId, String codeNormalized);
 
     List<CatalogItem> findByGroupIdAndIdIn(UUID groupId, Collection<UUID> ids);
-
     @Query("SELECT COALESCE(MAX(i.value), 0) FROM CatalogItem i WHERE i.groupId = :groupId")
     int findMaxValueByGroupId(@Param("groupId") UUID groupId);
 
