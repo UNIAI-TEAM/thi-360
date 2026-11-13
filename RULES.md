@@ -39,7 +39,7 @@ UniAI (workspace `uni2026`, project **Thi 360** `9c107463-64c7-4a3a-bb62-d4466e8
 ## 3. Quy tắc viết code chung
 
 - Thay đổi nhỏ nhất đáp ứng được yêu cầu. Không sửa "tiện tay" phần ngoài phạm vi issue.
-- Tên trong mã (class, biến, bảng, cột, mã quyền, mã lỗi) bằng tiếng Anh. Chuỗi hiển thị cho người dùng bằng tiếng Việt, nằm trong file dịch.
+- Tên trong mã (class, biến, bảng, cột, mã quyền, mã lỗi) bằng tiếng Anh. Chuỗi hiển thị cho người dùng nằm trong file dịch: tiếng Việt là mặc định, tiếng Anh là ngôn ngữ thứ hai (quyết định 2026-11-14); mỗi khóa phải có ở cả `vi.json` và `en.json`.
 - Không để mã chết, `TODO` không có mã issue, hoặc mã bị comment lại.
 - Mỗi hành vi mới có test. Sửa lỗi thì thêm test tái hiện lỗi trước.
 - Bí mật (mật khẩu, khóa, token) chỉ nằm trong biến môi trường. Cập nhật `.env.example` khi thêm biến.
