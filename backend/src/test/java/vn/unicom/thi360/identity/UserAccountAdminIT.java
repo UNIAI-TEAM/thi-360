@@ -1969,6 +1969,106 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void r2_4_deactivateAndActivate_compensationSetEnabledFailure_persistsSyncFlag_andReconcilerRestoresKeycloak()
+            throws Exception {
+        String sfx = suffix();
+        String username = "r2.4.sync." + sfx;
+        UUID userId = createUserViaApi(username, "Valid@1234", "Sync Pending User", null, null);
+
+        // 1. Bulk DEACTIVATE: Keycloak setEnabled(false) succeeds, local audit fails -> rollback,
+        // compensating setEnabled(true) ALSO fails -> item FAILED, idp_enabled_sync_pending=true persisted
+        doThrow(new RuntimeException("Audit store unavailable"))
+                .when(auditRecorder)
+                .record(argThat(ev -> ev != null && "USER_DEACTIVATED".equals(ev.action())
+                        && userId.toString().equals(ev.targetId())));
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR"))
+                .when(keycloakClient)
+                .setEnabled(userId, true);
+
+        try {
+            mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                            .header("Idempotency-Key", "r2-4-deact-" + sfx)
+                            .with(asUser(Permissions.USER_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "action": "DEACTIVATE",
+                                      "userIds": ["%s"],
+                                      "reason": "Simulated post-save failure"
+                                    }
+                                    """.formatted(userId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.succeeded").value(0))
+                    .andExpect(jsonPath("$.failed").value(1))
+                    .andExpect(jsonPath("$.results[0].outcome").value("FAILED"));
+        } finally {
+            reset(auditRecorder, keycloakClient);
+        }
+
+        UserAccount afterBulkFail = userAccountRepository.findById(userId).orElseThrow();
+        assertThat(afterBulkFail.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(afterBulkFail.isIdpEnabledSyncPending()).isTrue();
+
+        // Before reconciler: Keycloak is still disabled so login fails even though DB is ACTIVE
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.79")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isUnauthorized());
+
+        // Reconciler restores Keycloak enabled=true to match ACTIVE DB status and clears flag
+        ProvisioningReconcilerJob.ReconcileResult activeReconcile = provisioningReconcilerJob.reconcile();
+        assertThat(activeReconcile.enabledSynced()).isGreaterThanOrEqualTo(1);
+        assertThat(activeReconcile.failed()).isZero();
+
+        UserAccount afterReconcileActive = userAccountRepository.findById(userId).orElseThrow();
+        assertThat(afterReconcileActive.isIdpEnabledSyncPending()).isFalse();
+        assertThat(afterReconcileActive.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.79")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
+                .andExpect(status().isOk());
+
+        // 2. Single ACTIVATE on INACTIVE user: Keycloak setEnabled(true) succeeds, local audit fails,
+        // compensating setEnabled(false) fails -> 500, idp_enabled_sync_pending=true -> reconciler disables KC
+        mockMvc.perform(post("/api/v1/admin/users/{id}/deactivate", userId)
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Prepare inactive user\"}"))
+                .andExpect(status().isOk());
+
+        doThrow(new RuntimeException("Audit store unavailable"))
+                .when(auditRecorder)
+                .record(argThat(ev -> ev != null && "USER_ACTIVATED".equals(ev.action())
+                        && userId.toString().equals(ev.targetId())));
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR"))
+                .when(keycloakClient)
+                .setEnabled(userId, false);
+
+        try {
+            mockMvc.perform(post("/api/v1/admin/users/{id}/activate", userId)
+                            .with(asUser(Permissions.USER_MODIFY)))
+                    .andExpect(status().isInternalServerError());
+        } finally {
+            reset(auditRecorder, keycloakClient);
+        }
+
+        UserAccount afterSingleFail = userAccountRepository.findById(userId).orElseThrow();
+        assertThat(afterSingleFail.getStatus()).isEqualTo(UserStatus.INACTIVE);
+        assertThat(afterSingleFail.isIdpEnabledSyncPending()).isTrue();
+
+        ProvisioningReconcilerJob.ReconcileResult inactiveReconcile = provisioningReconcilerJob.reconcile();
+        assertThat(inactiveReconcile.enabledSynced()).isGreaterThanOrEqualTo(1);
+        assertThat(inactiveReconcile.failed()).isZero();
+
+        UserAccount afterReconcileInactive = userAccountRepository.findById(userId).orElseThrow();
+        assertThat(afterReconcileInactive.isIdpEnabledSyncPending()).isFalse();
+        assertThat(afterReconcileInactive.getStatus()).isEqualTo(UserStatus.INACTIVE);
+        verify(keycloakClient).setEnabled(userId, false);
+    }
+
     private UUID createUserViaApi(
             String username, String password, String fullName, String email, List<UUID> roleIds)
             throws Exception {

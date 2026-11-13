@@ -73,6 +73,8 @@ public class UserAccount {
 
     @Column(name = "idp_cleanup_pending", nullable = false)
     private boolean idpCleanupPending;
+    @Column(name = "idp_enabled_sync_pending", nullable = false)
+    private boolean idpEnabledSyncPending;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -179,6 +181,7 @@ public class UserAccount {
         this.inactiveReason = reason == null || reason.isBlank() ? null : reason.trim();
         this.inactivatedAt = Objects.requireNonNull(now, "now must not be null");
         this.inactivatedBy = actorId;
+        this.idpEnabledSyncPending = false;
         this.updatedAt = now;
         this.updatedBy = actorId;
     }
@@ -188,6 +191,7 @@ public class UserAccount {
         this.inactiveReason = null;
         this.inactivatedAt = null;
         this.inactivatedBy = null;
+        this.idpEnabledSyncPending = false;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedBy = actorId;
     }
@@ -204,6 +208,7 @@ public class UserAccount {
         this.deletedBy = actorId;
         this.deleteReason = reason == null || reason.isBlank() ? null : reason.trim();
         this.idpCleanupPending = true;
+        this.idpEnabledSyncPending = false;
         this.updatedAt = now;
         this.updatedBy = actorId;
     }
@@ -304,6 +309,9 @@ public class UserAccount {
 
     public boolean isIdpCleanupPending() {
         return idpCleanupPending;
+    }
+    public boolean isIdpEnabledSyncPending() {
+        return idpEnabledSyncPending;
     }
 
 

@@ -559,71 +559,93 @@ public class UserAdminService {
         return toDetailResponse(user, roles);
     }
 
-    @Transactional
     public UserDetailResponse deactivateUser(UUID userId, DeactivateUserRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
             throw new ConflictException(ERROR_SELF_DEACTIVATE);
         }
         String trimmedReason = validateReason("reason", request.reason(), "Vui lòng nhập lý do ngừng hoạt động");
-        UserAccount user = lockActiveManageableUser(actor, userId);
+        Boolean[] restoreKcEnabledOnRollback = {null};
+        try {
+            return transactionTemplate.execute(status -> {
+                UserAccount user = lockActiveManageableUser(actor, userId);
 
-        UserStatus oldStatus = user.getStatus();
-        String oldReason = user.getInactiveReason();
-        Instant now = Instant.now(clock);
+                UserStatus oldStatus = user.getStatus();
+                String oldReason = user.getInactiveReason();
+                Instant now = Instant.now(clock);
 
-        revokeAllSessionsFailClosed(userId);
-        keycloakClient.setEnabled(userId, false);
-        user.deactivate(trimmedReason, now, actor.id());
-        user = userAccountRepository.saveAndFlush(user);
+                revokeAllSessionsFailClosed(userId);
+                keycloakClient.setEnabled(userId, false);
+                restoreKcEnabledOnRollback[0] = oldStatus == UserStatus.ACTIVE;
 
-        Map<String, Object> before = new LinkedHashMap<>();
-        Map<String, Object> after = new LinkedHashMap<>();
-        if (oldStatus != UserStatus.INACTIVE) {
-            before.put("status", oldStatus.name());
-            after.put("status", UserStatus.INACTIVE.name());
+                user.deactivate(trimmedReason, now, actor.id());
+                user = userAccountRepository.saveAndFlush(user);
+
+                Map<String, Object> before = new LinkedHashMap<>();
+                Map<String, Object> after = new LinkedHashMap<>();
+                if (oldStatus != UserStatus.INACTIVE) {
+                    before.put("status", oldStatus.name());
+                    after.put("status", UserStatus.INACTIVE.name());
+                }
+                if (!Objects.equals(oldReason, user.getInactiveReason())) {
+                    before.put("inactiveReason", oldReason);
+                    after.put("inactiveReason", user.getInactiveReason());
+                }
+                if (!after.isEmpty()) {
+                    recordAudit(actor, "USER_DEACTIVATED", userId, user.getUsername(), before, after, trimmedReason);
+                }
+
+                List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
+                return toDetailResponse(user, roles);
+            });
+        } catch (RuntimeException ex) {
+            if (restoreKcEnabledOnRollback[0] != null) {
+                compensateKeycloakEnabled(userId, restoreKcEnabledOnRollback[0]);
+            }
+            throw ex;
         }
-        if (!Objects.equals(oldReason, user.getInactiveReason())) {
-            before.put("inactiveReason", oldReason);
-            after.put("inactiveReason", user.getInactiveReason());
-        }
-        if (!after.isEmpty()) {
-            recordAudit(actor, "USER_DEACTIVATED", userId, user.getUsername(), before, after, trimmedReason);
-        }
-
-        List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
-        return toDetailResponse(user, roles);
     }
 
-    @Transactional
     public UserDetailResponse activateUser(UUID userId) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        UserAccount user = lockActiveManageableUser(actor, userId);
+        Boolean[] restoreKcEnabledOnRollback = {null};
+        try {
+            return transactionTemplate.execute(status -> {
+                UserAccount user = lockActiveManageableUser(actor, userId);
 
-        UserStatus oldStatus = user.getStatus();
-        String oldReason = user.getInactiveReason();
-        Instant now = Instant.now(clock);
+                UserStatus oldStatus = user.getStatus();
+                String oldReason = user.getInactiveReason();
+                Instant now = Instant.now(clock);
 
-        keycloakClient.setEnabled(userId, true);
-        user.activate(now, actor.id());
-        user = userAccountRepository.saveAndFlush(user);
+                keycloakClient.setEnabled(userId, true);
+                restoreKcEnabledOnRollback[0] = oldStatus == UserStatus.ACTIVE;
 
-        Map<String, Object> before = new LinkedHashMap<>();
-        Map<String, Object> after = new LinkedHashMap<>();
-        if (oldStatus != UserStatus.ACTIVE) {
-            before.put("status", oldStatus.name());
-            after.put("status", UserStatus.ACTIVE.name());
+                user.activate(now, actor.id());
+                user = userAccountRepository.saveAndFlush(user);
+
+                Map<String, Object> before = new LinkedHashMap<>();
+                Map<String, Object> after = new LinkedHashMap<>();
+                if (oldStatus != UserStatus.ACTIVE) {
+                    before.put("status", oldStatus.name());
+                    after.put("status", UserStatus.ACTIVE.name());
+                }
+                if (oldReason != null) {
+                    before.put("inactiveReason", oldReason);
+                    after.put("inactiveReason", null);
+                }
+                if (!after.isEmpty()) {
+                    recordAudit(actor, "USER_ACTIVATED", userId, user.getUsername(), before, after, null);
+                }
+
+                List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
+                return toDetailResponse(user, roles);
+            });
+        } catch (RuntimeException ex) {
+            if (restoreKcEnabledOnRollback[0] != null) {
+                compensateKeycloakEnabled(userId, restoreKcEnabledOnRollback[0]);
+            }
+            throw ex;
         }
-        if (oldReason != null) {
-            before.put("inactiveReason", oldReason);
-            after.put("inactiveReason", null);
-        }
-        if (!after.isEmpty()) {
-            recordAudit(actor, "USER_ACTIVATED", userId, user.getUsername(), before, after, null);
-        }
-
-        List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
-        return toDetailResponse(user, roles);
     }
 
     public UserDetailResponse resetPassword(UUID userId, ResetPasswordRequest request) {
@@ -838,6 +860,7 @@ public class UserAdminService {
     private BulkUserActionItemResult executeSingleBulkItem(
             CurrentUser actor, UserBulkAction action, UUID uid, String trimmedReason, Instant now) {
         String[] knownUsername = {null};
+        Boolean[] restoreKcEnabledOnRollback = {null};
         try {
             BulkUserActionItemResult committed = requiresNewTx.execute(status -> {
                 jdbcTemplate.query(
@@ -858,47 +881,39 @@ public class UserAdminService {
                         String oldReason = user.getInactiveReason();
                         revokeAllSessionsFailClosed(uid);
                         keycloakClient.setEnabled(uid, false);
-                        try {
-                            user.deactivate(trimmedReason, now, actor.id());
-                            user = userAccountRepository.saveAndFlush(user);
-                            Map<String, Object> before = new LinkedHashMap<>();
-                            Map<String, Object> after = new LinkedHashMap<>();
-                            if (oldStatus != UserStatus.INACTIVE) {
-                                before.put("status", oldStatus.name());
-                                after.put("status", UserStatus.INACTIVE.name());
-                            }
-                            if (!Objects.equals(oldReason, user.getInactiveReason())) {
-                                before.put("inactiveReason", oldReason);
-                                after.put("inactiveReason", user.getInactiveReason());
-                            }
-                            recordAudit(actor, "USER_DEACTIVATED", uid, user.getUsername(), before, after, trimmedReason);
-                        } catch (RuntimeException ex) {
-                            setEnabledQuietly(uid, true);
-                            throw ex;
+                        restoreKcEnabledOnRollback[0] = oldStatus == UserStatus.ACTIVE;
+                        user.deactivate(trimmedReason, now, actor.id());
+                        user = userAccountRepository.saveAndFlush(user);
+                        Map<String, Object> before = new LinkedHashMap<>();
+                        Map<String, Object> after = new LinkedHashMap<>();
+                        if (oldStatus != UserStatus.INACTIVE) {
+                            before.put("status", oldStatus.name());
+                            after.put("status", UserStatus.INACTIVE.name());
                         }
+                        if (!Objects.equals(oldReason, user.getInactiveReason())) {
+                            before.put("inactiveReason", oldReason);
+                            after.put("inactiveReason", user.getInactiveReason());
+                        }
+                        recordAudit(actor, "USER_DEACTIVATED", uid, user.getUsername(), before, after, trimmedReason);
                     }
                     case ACTIVATE -> {
                         UserStatus oldStatus = user.getStatus();
                         String oldReason = user.getInactiveReason();
                         keycloakClient.setEnabled(uid, true);
-                        try {
-                            user.activate(now, actor.id());
-                            user = userAccountRepository.saveAndFlush(user);
-                            Map<String, Object> before = new LinkedHashMap<>();
-                            Map<String, Object> after = new LinkedHashMap<>();
-                            if (oldStatus != UserStatus.ACTIVE) {
-                                before.put("status", oldStatus.name());
-                                after.put("status", UserStatus.ACTIVE.name());
-                            }
-                            if (oldReason != null) {
-                                before.put("inactiveReason", oldReason);
-                                after.put("inactiveReason", null);
-                            }
-                            recordAudit(actor, "USER_ACTIVATED", uid, user.getUsername(), before, after, null);
-                        } catch (RuntimeException ex) {
-                            setEnabledQuietly(uid, false);
-                            throw ex;
+                        restoreKcEnabledOnRollback[0] = oldStatus == UserStatus.ACTIVE;
+                        user.activate(now, actor.id());
+                        user = userAccountRepository.saveAndFlush(user);
+                        Map<String, Object> before = new LinkedHashMap<>();
+                        Map<String, Object> after = new LinkedHashMap<>();
+                        if (oldStatus != UserStatus.ACTIVE) {
+                            before.put("status", oldStatus.name());
+                            after.put("status", UserStatus.ACTIVE.name());
                         }
+                        if (oldReason != null) {
+                            before.put("inactiveReason", oldReason);
+                            after.put("inactiveReason", null);
+                        }
+                        recordAudit(actor, "USER_ACTIVATED", uid, user.getUsername(), before, after, null);
                     }
                     case DELETE -> performSoftDeleteLocal(actor, user, trimmedReason, now);
                 }
@@ -912,9 +927,15 @@ public class UserAdminService {
             }
             return committed;
         } catch (ExternalServiceException ex) {
+            if (restoreKcEnabledOnRollback[0] != null) {
+                compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
+            }
             return new BulkUserActionItemResult(
                     uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), "Lỗi kết nối dịch vụ xác thực");
         } catch (RuntimeException ex) {
+            if (restoreKcEnabledOnRollback[0] != null) {
+                compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
+            }
             log.atError()
                     .setCause(ex)
                     .addKeyValue("userId", uid.toString())
@@ -1040,15 +1061,28 @@ public class UserAdminService {
         }
     }
 
-    private void setEnabledQuietly(UUID userId, boolean enabled) {
+    private void compensateKeycloakEnabled(UUID userId, boolean restoreEnabled) {
         try {
-            keycloakClient.setEnabled(userId, enabled);
+            keycloakClient.setEnabled(userId, restoreEnabled);
         } catch (RuntimeException ex) {
             log.atWarn()
                     .setCause(ex)
                     .addKeyValue("userId", userId.toString())
-                    .addKeyValue("enabled", enabled)
-                    .log("Failed to compensate Keycloak enabled state after rollback");
+                    .addKeyValue("enabled", restoreEnabled)
+                    .log("Failed to compensate Keycloak enabled state after rollback; persisting idp_enabled_sync_pending");
+            markIdpEnabledSyncPendingQuietly(userId);
+        }
+    }
+
+    private void markIdpEnabledSyncPendingQuietly(UUID userId) {
+        try {
+            requiresNewTx.executeWithoutResult(status ->
+                    userAccountRepository.updateIdpEnabledSyncPending(userId, true, Instant.now(clock)));
+        } catch (RuntimeException ex) {
+            log.atError()
+                    .setCause(ex)
+                    .addKeyValue("userId", userId.toString())
+                    .log("Failed to persist idp_enabled_sync_pending after Keycloak compensation failure");
         }
     }
 

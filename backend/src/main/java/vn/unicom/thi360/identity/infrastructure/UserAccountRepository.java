@@ -73,4 +73,18 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
             @Param("userId") UUID userId,
             @Param("pending") boolean pending,
             @Param("now") java.time.Instant now);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+            value = """
+                    UPDATE identity.user_account
+                    SET idp_enabled_sync_pending = :pending,
+                        updated_at = :now
+                    WHERE id = :userId
+                    """,
+            nativeQuery = true)
+    int updateIdpEnabledSyncPending(
+            @Param("userId") UUID userId,
+            @Param("pending") boolean pending,
+            @Param("now") java.time.Instant now);
 }

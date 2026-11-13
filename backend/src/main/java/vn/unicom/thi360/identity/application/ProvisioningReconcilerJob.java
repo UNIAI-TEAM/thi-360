@@ -97,6 +97,7 @@ public class ProvisioningReconcilerJob {
         int promoted = 0;
         int deleted = 0;
         int failed = 0;
+        int enabledSynced = 0;
         try {
             Instant cutoff = Instant.now(clock).minus(STALE_AGE);
             List<UUID> staleIds = jdbcTemplate.queryForList(
@@ -156,16 +157,44 @@ public class ProvisioningReconcilerJob {
                 }
             }
 
-            if (!staleIds.isEmpty() || !cleanupIds.isEmpty()) {
+            List<UUID> enabledSyncIds = jdbcTemplate.queryForList(
+                    """
+                    SELECT id
+                    FROM identity.user_account
+                    WHERE idp_enabled_sync_pending = true
+                      AND deleted_at IS NULL
+                    ORDER BY updated_at ASC
+                    LIMIT ?
+                    """,
+                    UUID.class,
+                    BATCH_LIMIT);
+
+            for (UUID syncId : enabledSyncIds) {
+                try {
+                    if (reconcilePendingEnabledSync(syncId)) {
+                        enabledSynced++;
+                    }
+                } catch (RuntimeException ex) {
+                    failed++;
+                    jobLog.atWarn()
+                            .setCause(ex)
+                            .addKeyValue("userId", syncId.toString())
+                            .log("Failed to reconcile pending Keycloak enabled state sync");
+                }
+            }
+
+            if (!staleIds.isEmpty() || !cleanupIds.isEmpty() || !enabledSyncIds.isEmpty()) {
                 jobLog.atInfo()
                         .addKeyValue("scanned", staleIds.size())
                         .addKeyValue("pendingDeletions", cleanupIds.size())
+                        .addKeyValue("pendingEnabledSync", enabledSyncIds.size())
                         .addKeyValue("promoted", promoted)
                         .addKeyValue("deleted", deleted)
+                        .addKeyValue("enabledSynced", enabledSynced)
                         .addKeyValue("failed", failed)
                         .log("Provisioning reconciler completed");
             }
-            return new ReconcileResult(promoted, deleted, failed);
+            return new ReconcileResult(promoted, deleted, failed, enabledSynced);
         } finally {
             restoreMdc(TraceIdFilter.MDC_TRACE_ID, prevTraceId);
             restoreMdc("job", prevJob);
@@ -295,6 +324,36 @@ public class ProvisioningReconcilerJob {
         }));
     }
 
+    private boolean reconcilePendingEnabledSync(UUID userId) {
+        return Boolean.TRUE.equals(requiresNewTx.execute(status -> {
+            List<UUID> locked = jdbcTemplate.queryForList(
+                    """
+                    SELECT id
+                    FROM identity.user_account
+                    WHERE id = ?
+                      AND idp_enabled_sync_pending = true
+                      AND deleted_at IS NULL
+                    FOR UPDATE SKIP LOCKED
+                    """,
+                    UUID.class,
+                    userId);
+            if (locked.isEmpty()) {
+                return false;
+            }
+            UserAccount account = userAccountRepository.findById(userId).orElse(null);
+            if (account == null || account.isDeleted() || !account.isIdpEnabledSyncPending()) {
+                return false;
+            }
+            if (account.getStatus() == UserStatus.PROVISIONING) {
+                return false;
+            }
+            boolean targetEnabled = account.getStatus() == UserStatus.ACTIVE;
+            keycloakClient.setEnabled(userId, targetEnabled);
+            userAccountRepository.updateIdpEnabledSyncPending(userId, false, Instant.now(clock));
+            return true;
+        }));
+    }
+
     private List<Role> resolveIntendedRoles(String rawRoleIds) {
         if (rawRoleIds == null || rawRoleIds.isBlank()) {
             return null;
@@ -346,6 +405,9 @@ public class ProvisioningReconcilerJob {
         SKIPPED
     }
 
-    public record ReconcileResult(int promoted, int deleted, int failed) {
+    public record ReconcileResult(int promoted, int deleted, int failed, int enabledSynced) {
+        public ReconcileResult(int promoted, int deleted, int failed) {
+            this(promoted, deleted, failed, 0);
+        }
     }
 }
