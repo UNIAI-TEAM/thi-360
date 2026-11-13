@@ -123,6 +123,9 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT pg_has_role(current_user, 'thi360_audit_maint', 'MEMBER')",
                 Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT rolcanlogin FROM pg_roles WHERE rolname = 'thi360_audit_maint'",
+                Boolean.class)).isFalse();
     }
 
     @Test
@@ -797,6 +800,40 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
                     END;
                     $$;
                     """);
+        }
+    }
+
+    @Test
+    void migration_normalizesPreExistingLoginMaintenanceRoleToNoLogin() {
+        String dbName = "audit_nologin_maint_test";
+        terminateConnectionsAndDropDatabase(dbName);
+        jdbcTemplate.execute("CREATE DATABASE " + dbName);
+
+        try {
+            jdbcTemplate.execute("ALTER ROLE thi360_audit_maint LOGIN");
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT rolcanlogin FROM pg_roles WHERE rolname = 'thi360_audit_maint'",
+                    Boolean.class)).isTrue();
+
+            Flyway.configure()
+                    .dataSource(
+                            postgresJdbcUrl(dbName),
+                            AbstractIntegrationTest.POSTGRES.getUsername(),
+                            AbstractIntegrationTest.POSTGRES.getPassword())
+                    .defaultSchema("shared")
+                    .schemas("shared", "identity", "catalog", "audit")
+                    .table("flyway_schema_history")
+                    .locations("classpath:db/migration")
+                    .placeholders(Map.of("auditAppRole", AbstractIntegrationTest.POSTGRES.getUsername()))
+                    .load()
+                    .migrate();
+
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT rolcanlogin FROM pg_roles WHERE rolname = 'thi360_audit_maint'",
+                    Boolean.class)).isFalse();
+        } finally {
+            jdbcTemplate.execute("ALTER ROLE thi360_audit_maint NOLOGIN");
+            terminateConnectionsAndDropDatabase(dbName);
         }
     }
 

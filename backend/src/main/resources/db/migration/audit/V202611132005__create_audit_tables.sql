@@ -169,6 +169,10 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_audit_maint') THEN
         CREATE ROLE thi360_audit_maint NOLOGIN;
     END IF;
+    ALTER ROLE thi360_audit_maint NOLOGIN;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_audit_maint' AND rolcanlogin) THEN
+        RAISE EXCEPTION 'thi360_audit_maint must remain NOLOGIN';
+    END IF;
 
     EXECUTE format('GRANT thi360_audit_maint TO %I WITH INHERIT FALSE, SET TRUE', app_role);
     GRANT USAGE, CREATE ON SCHEMA audit TO thi360_audit_maint;
