@@ -11,8 +11,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,6 +29,8 @@ import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUse
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.shared.security.CtxCookieSigner;
+import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 
 class SessionIT extends AbstractKeycloakIntegrationTest {
     @Autowired
@@ -40,6 +45,17 @@ class SessionIT extends AbstractKeycloakIntegrationTest {
     @Autowired
     private CtxCookieSigner ctxCookieSigner;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void cleanupRateLimitBuckets() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + "203.0.113.70",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.71"));
+    }
+
     @Test
     void sixthLoginEvictsOldestSession_andKeepsLatestFiveActive() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
@@ -49,6 +65,7 @@ class SessionIT extends AbstractKeycloakIntegrationTest {
         List<MvcResult> logins = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
             MvcResult res = mockMvc.perform(post("/api/v1/auth/login")
+                            .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.70")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
                     .andExpect(status().isOk())
@@ -81,6 +98,7 @@ class SessionIT extends AbstractKeycloakIntegrationTest {
     @Test
     void writeRequestWithAuthCookie_requiresMatchingXsrfToken_andAdminOriginCheck() throws Exception {
         MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.71")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"platform\",\"password\":\"" + TEST_PLATFORM_PASSWORD + "\"}"))
                 .andExpect(status().isOk())

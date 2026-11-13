@@ -32,7 +32,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
     private static final String LOGIN_PATH = "/api/v1/auth/login";
-    private static final String KEY_PREFIX = "rl:login:ip:";
+    public static final String KEY_PREFIX = "rl:login:ip:";
 
     private final ClientIpResolver clientIpResolver;
     private final SecurityProperties securityProperties;

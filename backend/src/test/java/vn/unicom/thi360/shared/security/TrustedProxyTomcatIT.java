@@ -3,11 +3,13 @@ package vn.unicom.thi360.shared.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -19,14 +21,27 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class TrustedProxyTomcatIT extends AbstractIntegrationTest {
 
+    private static final String CLIENT_A = "198.51.100.20";
+    private static final String CLIENT_B = "198.51.100.21";
+
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void cleanupRateLimitBuckets() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + CLIENT_A,
+                RateLimitFilter.KEY_PREFIX + CLIENT_B));
+    }
+
     @Test
     void remoteIpValveAndRateLimitFilterAgreeOnRealTomcatPort() {
-        String clientA = "198.51.100." + (10 + Math.abs(UUID.randomUUID().hashCode()) % 100);
-        String clientB = "198.51.100." + (120 + Math.abs(UUID.randomUUID().hashCode()) % 100);
-
+        String clientA = CLIENT_A;
+        String clientB = CLIENT_B;
         for (int i = 1; i <= 20; i++) {
             ResponseEntity<String> res = postLogin(clientA + ", 172.18.0.5");
             assertThat(res.getStatusCode()).isNotEqualTo(HttpStatus.TOO_MANY_REQUESTS);

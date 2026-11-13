@@ -5,9 +5,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
@@ -18,6 +22,7 @@ import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUserCommand;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 
 class LoginThrottleIT extends AbstractKeycloakIntegrationTest {
     @Autowired
@@ -29,6 +34,16 @@ class LoginThrottleIT extends AbstractKeycloakIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void cleanupRateLimitBuckets() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + "203.0.113.101",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.102"));
+    }
     @Test
     void sixthFailureIn15Minutes_returns429LoginThrottled_caseInsensitive() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);

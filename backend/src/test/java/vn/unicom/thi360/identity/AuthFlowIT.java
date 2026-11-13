@@ -94,6 +94,7 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
 
         for (String identifier : List.of(username, username.toLowerCase(), username.toUpperCase(), email, email.toUpperCase())) {
             MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                            .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.60")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"identifier\":\"" + identifier + "\",\"password\":\"Valid@1234\"}"))
                     .andExpect(status().isOk())
@@ -137,12 +138,14 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
         createProvisionedUser(username, null, "Wrong PW", "Valid@1234", UserStatus.ACTIVE, false);
 
         MvcResult wrongPwRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.64")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"" + username + "\",\"password\":\"Wrong@9999\"}"))
                 .andExpect(status().isUnauthorized())
                 .andReturn();
 
         MvcResult unknownRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.64")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"unknown." + suffix + "\",\"password\":\"Wrong@9999\"}"))
                 .andExpect(status().isUnauthorized())
@@ -164,12 +167,14 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
         createProvisionedUser(inactiveUser, null, "Inactive User", "Valid@1234", UserStatus.INACTIVE, false);
 
         mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.65")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"" + inactiveUser + "\",\"password\":\"Wrong@9999\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
 
         mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.65")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"" + inactiveUser + "\",\"password\":\"Valid@1234\"}"))
                 .andExpect(status().isForbidden())
@@ -179,6 +184,7 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
         UserAccount activeAccount = createProvisionedUser(activeUser, null, "Revoked Live", "Valid@1234", UserStatus.ACTIVE, false);
 
         MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.65")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"" + activeUser + "\",\"password\":\"Valid@1234\"}"))
                 .andExpect(status().isOk())
@@ -195,50 +201,6 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
     }
 
-    @Test
-    void mustChangePasswordTrue_clearedByChangePassword_afterValidatingPolicyAndOldPassword() throws Exception {
-        String suffix = UUID.randomUUID().toString().substring(0, 8);
-        String username = "chgpwd." + suffix;
-        createProvisionedUser(username, null, "Must Change", "OldPass@123", UserStatus.ACTIVE, true);
-
-        MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"identifier\":\"" + username + "\",\"password\":\"OldPass@123\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mustChangePassword").value(true))
-                .andReturn();
-
-        Cookie atCookie = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
-        Cookie xsrfCookie = loginRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
-
-        mockMvc.perform(post("/api/v1/auth/change-password")
-                        .cookie(atCookie, xsrfCookie)
-                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"WrongOld@123\",\"newPassword\":\"NewPass@1234\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("WRONG_OLD_PASSWORD"));
-
-        mockMvc.perform(post("/api/v1/auth/change-password")
-                        .cookie(atCookie, xsrfCookie)
-                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"OldPass@123\",\"newPassword\":\"weak\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("PASSWORD_WEAK"));
-
-        mockMvc.perform(post("/api/v1/auth/change-password")
-                        .cookie(atCookie, xsrfCookie)
-                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"OldPass@123\",\"newPassword\":\"NewPass@1234\"}"))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"identifier\":\"" + username + "\",\"password\":\"NewPass@1234\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mustChangePassword").value(false));
     @Test
     void disabledKeycloakUserWithInactiveRow_returnsSameInvalidCredentialsAsUnknown_andThrottlesOnSixthFailure()
             throws Exception {
@@ -275,6 +237,52 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.code").value("LOGIN_THROTTLED"));
     }
 
+    @Test
+    void mustChangePasswordTrue_clearedByChangePassword_afterValidatingPolicyAndOldPassword() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String username = "chgpwd." + suffix;
+        createProvisionedUser(username, null, "Must Change", "OldPass@123", UserStatus.ACTIVE, true);
+
+        MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.66")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"OldPass@123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mustChangePassword").value(true))
+                .andReturn();
+
+        Cookie atCookie = loginRes.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie xsrfCookie = loginRes.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(atCookie, xsrfCookie)
+                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"WrongOld@123\",\"newPassword\":\"NewPass@1234\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("WRONG_OLD_PASSWORD"));
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(atCookie, xsrfCookie)
+                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"OldPass@123\",\"newPassword\":\"weak\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_WEAK"));
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(atCookie, xsrfCookie)
+                        .header(AuthCookieService.XSRF_HEADER, xsrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"OldPass@123\",\"newPassword\":\"NewPass@1234\"}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.66")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\"NewPass@1234\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mustChangePassword").value(false));
     }
 
     @Test
@@ -293,6 +301,7 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                 });
 
         MvcResult loginRes = mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.66")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"" + username + "\",\"password\":\"Valid@1234\"}"))
                 .andExpect(status().isOk())
@@ -339,15 +348,6 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
     }
 
-    private UserAccount createProvisionedUser(
-            String username,
-            String email,
-            String fullName,
-            String password,
-            UserStatus status,
-            boolean mustChangePassword) {
-        UUID userId = keycloakClient.createUser(new CreateUserCommand(
-                username, email, fullName, "User", password, enabledInKeycloak, false, true));
     @Test
     void forgedOrUnsignedLogoutCookie_doesNotRevokeVictimSessionOrRecordLogoutAudit() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
@@ -477,6 +477,26 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
         return token.substring(0, mid) + replacement + token.substring(mid + 1);
     }
 
+    private UserAccount createProvisionedUser(
+            String username,
+            String email,
+            String fullName,
+            String password,
+            UserStatus status,
+            boolean mustChangePassword) {
+        return createProvisionedUser(username, email, fullName, password, status, mustChangePassword, true);
+    }
+
+    private UserAccount createProvisionedUser(
+            String username,
+            String email,
+            String fullName,
+            String password,
+            UserStatus status,
+            boolean mustChangePassword,
+            boolean enabledInKeycloak) {
+        UUID userId = keycloakClient.createUser(new CreateUserCommand(
+                username, email, fullName, "User", password, enabledInKeycloak, false, true));
         Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
         String code = String.format("U%06d", seq);
         UserAccount account = new UserAccount(
@@ -494,14 +514,3 @@ class AuthFlowIT extends AbstractKeycloakIntegrationTest {
         return userAccountRepository.save(account);
     }
 }
-        return createProvisionedUser(username, email, fullName, password, status, mustChangePassword, true);
-    }
-
-    private UserAccount createProvisionedUser(
-            String username,
-            String email,
-            String fullName,
-            String password,
-            UserStatus status,
-            boolean mustChangePassword,
-            boolean enabledInKeycloak) {

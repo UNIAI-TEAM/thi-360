@@ -5,16 +5,36 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.UUID;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import vn.unicom.thi360.AbstractIntegrationTest;
 
 class RateLimitFilterIT extends AbstractIntegrationTest {
 
+    private static final String UNTRUSTED_PEER = "198.51.100.10";
+    private static final String CLIENT_A = "203.0.113.10";
+    private static final String CLIENT_B = "203.0.113.11";
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void cleanupRateLimitBuckets() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + UNTRUSTED_PEER,
+                RateLimitFilter.KEY_PREFIX + CLIENT_A,
+                RateLimitFilter.KEY_PREFIX + CLIENT_B));
+    }
+
     @Test
     void ignoresSpoofedXffFromUntrustedPeer_andTripsAt21stAttemptOnRemoteAddr() throws Exception {
-        String untrustedPeer = "198.51.100." + (10 + Math.abs(UUID.randomUUID().hashCode()) % 200);
+        String untrustedPeer = UNTRUSTED_PEER;
         for (int i = 1; i <= 20; i++) {
             mockMvc.perform(post("/api/v1/auth/login")
                             .with(req -> {
@@ -42,9 +62,8 @@ class RateLimitFilterIT extends AbstractIntegrationTest {
 
     @Test
     void usesUntrustedClientAddressFromTrustedPeer_andIsolatesDifferentClients() throws Exception {
-        String clientA = "203.0.113." + (10 + Math.abs(UUID.randomUUID().hashCode()) % 100);
-        String clientB = "203.0.113." + (120 + Math.abs(UUID.randomUUID().hashCode()) % 100);
-
+        String clientA = CLIENT_A;
+        String clientB = CLIENT_B;
         for (int i = 1; i <= 20; i++) {
             mockMvc.perform(post("/api/v1/auth/login")
                             .with(req -> {
