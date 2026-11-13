@@ -4,13 +4,13 @@ import {
   parseAppearanceConfig,
   THEME_STYLE_ELEMENT_ID,
   themeStyleTag,
-  type AppearanceConfig,
-  type ThemeMode,
 } from "@thi360/ui";
+import { resolveTheme, THEME_COOKIE_NAME } from "@thi360/web-kit/preferences";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { SessionProvider } from "@/features/session/session-provider";
 import { QueryProvider } from "@/providers/query-provider";
@@ -52,13 +52,22 @@ async function loadAppearance(): Promise<AppearanceConfig> {
   }
 }
 
-function resolveTheme(appearanceMode: ThemeMode): ThemeMode {
-  return appearanceMode;
+async function readThemeCookie(): Promise<string | undefined> {
+  try {
+    const store = await cookies();
+    return store.get(THEME_COOKIE_NAME)?.value;
+  } catch {
+    return undefined;
+  }
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const [locale, appearance] = await Promise.all([getLocale(), loadAppearance()]);
-  const themeMode = resolveTheme(appearance.mode);
+  const [locale, appearance, themeCookie] = await Promise.all([
+    getLocale(),
+    loadAppearance(),
+    readThemeCookie(),
+  ]);
+  const themeMode = resolveTheme(appearance.mode, themeCookie);
   const themeCss = themeStyleTag(appearance);
   return (
     <html lang={locale} className={beVietnamPro.variable} data-theme={themeMode}>
