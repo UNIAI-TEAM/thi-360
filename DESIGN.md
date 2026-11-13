@@ -178,7 +178,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 ```
 ┌──────────┬───────────────────────────────────────────────┐
-│ Logo     │ Breadcrumb                      🔔  Avatar ▾  │  topbar 56px; menu avatar: Hồ sơ, Đổi mật khẩu, Đăng xuất
+│ Logo     │ Breadcrumb                 🔔 ☀ 文  Avatar ▾  │  topbar 56px; ☀ chuyển sáng/tối, 文 chọn ngôn ngữ (theo từng người); menu avatar: Hồ sơ, Đổi mật khẩu, Đăng xuất
 │          ├───────────────────────────────────────────────┤
 │ Sidebar  │ Tiêu đề trang                 [Nút chính]     │
 │ 248px    │ Thanh lọc (thẻ trắng, bo 12px)                │
@@ -244,7 +244,7 @@ Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-lig
 - **Quyết định 2026-11-13 (UNI-2559, M.Trường chọn phương án 2 và màu nhấn A):** bản trước giữ `primary-600` làm nền nút chính để đúng trang tham khảo, nhưng đo thực tế chữ trắng trên `#059669` chỉ 3,77:1, chữ `primary-600` trên `primary-50/100` chỉ 3,58/3,43:1 và chữ trắng trên `#F59223` chỉ 2,33:1, đều dưới AA cho chữ 14px. Đổi thành: chữ màu chính và nền nút chính `#047857` (5,21/4,99:1 trên nền nhạt, 5,48:1 với chữ trắng), hover `#065F46`, bấm `#064E3B`; chữ trên nút nhấn `#1A1A1F` (7,44:1), nền `#F59223` giữ nguyên; chữ lỗi `#B91C1C` (nền `#FEF2F2` 5,9:1; `#DC2626` chỉ 4,41:1). Bảng token dưới đây thắng các bản vẽ `docs/design/*.dc.html` ở những màu này.
 - Mọi điều khiển dùng được bằng bàn phím, có vòng focus nhìn thấy được. Nút chỉ có icon phải có `aria-label`.
 - Không truyền đạt trạng thái chỉ bằng màu: chip trạng thái luôn có chữ.
-- Ngôn ngữ mặc định tiếng Việt, chuỗi hiển thị nằm trong file dịch (`next-intl`). Ngày `dd/MM/yyyy`, số dùng dấu chấm phân tách nghìn.
+- Ngôn ngữ mặc định tiếng Việt, có thêm tiếng Anh (quyết định 2026-11-14). Thanh trên cùng có hai nút icon 36px ngay bên trái avatar: chuyển sáng/tối (mặt trời khi đang sáng, mặt trăng khi đang tối) và chọn ngôn ngữ (icon dịch, mở danh sách Tiếng Việt / English); cả hai có `aria-label` và tooltip, lưu theo từng người bằng cookie. Trang đăng nhập và landing có hai nút này ở góc trên phải. Chuỗi hiển thị nằm trong file dịch (`next-intl`), hai tệp `vi.json` và `en.json` cùng bộ khóa. Ngày `dd/MM/yyyy`, số dùng dấu chấm phân tách nghìn.
 
 ## 9. Tùy chỉnh giao diện
 
@@ -255,7 +255,7 @@ Giữ bộ cấu hình giao diện như reap, áp dụng **toàn hệ thống** 
 
 | Nhóm | Tùy chọn |
 |---|---|
-| Chế độ | Sáng, tối (tab phân đoạn). Nằm trên cùng |
+| Chế độ mặc định | Sáng, tối (tab phân đoạn). Nằm trên cùng; chú thích: "Áp dụng cho người chưa tự chọn chế độ ở thanh trên cùng" |
 | Bộ phối màu | 9 thẻ bộ cố định để chọn nhanh (mỗi thẻ: hai ô màu, tên, dải thu nhỏ nút chính và nút nhấn); thẻ đang dùng có viền `primary-600` và dấu tích. Thẻ thứ mười "Tự tùy chỉnh" mở hai ô Màu chính và Màu nhấn (bảng chọn màu + ô nhập mã). Danh sách bộ, cách suy ra token và các kiểm tra: spec mục 13.1 |
 
 Không có tùy chọn bố cục và kích thước: sidebar, toolbar, bo góc, chiều cao điều khiển cố định theo tài liệu này.
