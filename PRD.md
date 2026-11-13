@@ -73,7 +73,8 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 | P4 | Màn danh mục dùng chung làm đầy đủ hơn bản "Cấu hình chung" của reap: thêm nơi đang dùng, lịch sử, phiên bản tổ hợp, sắp xếp kéo thả, nhập/xuất Excel | M.Trường, 2026-11-13 |
 | P5 | Giao diện tham khảo phong cách hsavnu.edu.vn (xem `DESIGN.md`); nút chính giữ màu `#059669` | M.Trường, 2026-11-13 |
 | P6 | Một học viên được thuộc nhiều lớp | M.Trường, 2026-11-13 |
-| P7 | Tài khoản do admin cấp dùng mật khẩu hệ thống sinh; bắt đổi ở lần đăng nhập đầu là tùy chọn của người tạo, mặc định không. File kết quả cấp hàng loạt không hết hạn. **Khác SRS** | M.Trường, 2026-11-13 |
+| P7 | Tài khoản do admin cấp: **người tạo nhập mật khẩu** theo quy tắc (≥ 8 ký tự, đủ chữ hoa, chữ thường, số, ký tự đặc biệt); cấp hàng loạt lấy từ cột Mật khẩu trong tệp, dòng trống thì hệ thống sinh. Bắt đổi ở lần đăng nhập đầu là tùy chọn, mặc định không. File kết quả cấp hàng loạt không hết hạn | M.Trường, 2026-11-13 (sửa theo góp ý của BA) |
+| P17 | Danh sách tài khoản không có cột Mã và cột Đăng nhập cuối | BA góp ý, M.Trường duyệt, 2026-11-13 |
 | P8 | Tài khoản có ba mức: hoạt động → ngừng hoạt động → xóa mềm. Có giao dịch thì không xóa được, chỉ ngừng hoạt động. Không có giao dịch thì xóa mềm và tên đăng nhập, email dùng lại được. **Khác SRS** | M.Trường, 2026-11-13 |
 | P9 | Danh mục ở môi trường thật để trống giá trị, admin/BA tự nhập; local và test có bộ mẫu | M.Trường, 2026-11-13 |
 | P10 | Nhật ký lưu vĩnh viễn, không che; phân vùng theo quý, dữ liệu cũ chuyển sang bảng lưu trữ phân vùng theo năm | M.Trường, 2026-11-13 |
