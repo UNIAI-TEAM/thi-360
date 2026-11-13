@@ -1,0 +1,186 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "tags" : [ {
+    "name" : "System",
+    "description" : "Kiểm tra trạng thái hệ thống"
+  } ],
+  "paths" : {
+    "/api/v1/ping" : {
+      "get" : {
+        "tags" : [ "System" ],
+        "summary" : "Kiểm tra kết nối API",
+        "operationId" : "ping",
+        "responses" : {
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Conflict",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "412" : {
+            "description" : "Precondition Failed",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too Many Requests",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "ApiError" : {
+        "type" : "object",
+        "description" : "Định dạng lỗi chuẩn của API",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "description" : "Mã lỗi nghiệp vụ hoặc hệ thống",
+            "example" : "VALIDATION_FAILED"
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Thông báo lỗi tiếng Việt",
+            "example" : "Dữ liệu không hợp lệ"
+          },
+          "fieldErrors" : {
+            "type" : "array",
+            "description" : "Danh sách lỗi theo từng trường",
+            "items" : {
+              "$ref" : "#/components/schemas/FieldError"
+            }
+          },
+          "traceId" : {
+            "type" : "string",
+            "description" : "Mã định danh yêu cầu (X-Request-Id)",
+            "example" : "019320a0-0000-7000-8000-000000000001"
+          }
+        }
+      },
+      "FieldError" : {
+        "type" : "object",
+        "description" : "Chi tiết lỗi của một trường dữ liệu",
+        "properties" : {
+          "field" : {
+            "type" : "string",
+            "description" : "Tên trường dữ liệu",
+            "example" : "username"
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Mã lỗi của trường",
+            "example" : "TAKEN"
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Thông báo lỗi tiếng Việt",
+            "example" : "Tên đăng nhập đã tồn tại"
+          }
+        }
+      },
+      "PingResponse" : {
+        "type" : "object",
+        "description" : "Phản hồi kiểm tra kết nối",
+        "properties" : {
+          "status" : {
+            "type" : "string",
+            "description" : "Trạng thái dịch vụ",
+            "example" : "ok"
+          },
+          "time" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Thời gian máy chủ (UTC)",
+            "example" : "2026-11-13T10:00:00Z"
+          }
+        }
+      }
+    }
+  }
+}
