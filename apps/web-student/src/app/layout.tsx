@@ -1,14 +1,15 @@
 import { createApiClient } from "@thi360/api-client";
 import {
-  buildThemeVars,
   DEFAULT_APPEARANCE_CONFIG,
   parseAppearanceConfig,
+  THEME_STYLE_ELEMENT_ID,
+  themeStyleTag,
   type AppearanceConfig,
   type ThemeMode,
 } from "@thi360/ui";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -51,14 +52,12 @@ function resolveTheme(appearanceMode: ThemeMode): ThemeMode {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const appearance = await loadAppearance();
   const themeMode = resolveTheme(appearance.mode);
-  const themeVars = buildThemeVars({ ...appearance, mode: themeMode }) as CSSProperties;
+  const themeCss = themeStyleTag(appearance);
   return (
-    <html
-      lang="vi"
-      className={beVietnamPro.variable}
-      data-theme={themeMode}
-      style={themeVars}
-    >
+    <html lang="vi" className={beVietnamPro.variable} data-theme={themeMode}>
+      <head>
+        <style id={THEME_STYLE_ELEMENT_ID} dangerouslySetInnerHTML={{ __html: themeCss }} />
+      </head>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );
