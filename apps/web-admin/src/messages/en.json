@@ -26,8 +26,9 @@
     "errorDescription": "Could not load appearance settings. Please try again.",
     "errorTitle": "Could not load page",
     "modeDark": "Dark",
+    "modeDescription": "Applied to users who have not selected a mode in the top bar",
     "modeLight": "Light",
-    "modeSection": "Mode",
+    "modeSection": "Default mode",
     "paletteDescription": "Each palette pairs a primary and an accent color. Remaining tokens are derived automatically.",
     "paletteSection": "Color palette",
     "presets": {

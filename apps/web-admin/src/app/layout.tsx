@@ -4,6 +4,7 @@ import {
   DEFAULT_APPEARANCE_CONFIG,
   parseAppearanceConfig,
   type AppearanceConfig,
+  type ThemeMode,
 } from "@thi360/ui";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
@@ -50,14 +51,19 @@ async function loadAppearance(): Promise<AppearanceConfig> {
   }
 }
 
+function resolveTheme(appearanceMode: ThemeMode): ThemeMode {
+  return appearanceMode;
+}
+
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const [locale, appearance] = await Promise.all([getLocale(), loadAppearance()]);
-  const themeVars = buildThemeVars(appearance) as CSSProperties;
+  const themeMode = resolveTheme(appearance.mode);
+  const themeVars = buildThemeVars({ ...appearance, mode: themeMode }) as CSSProperties;
   return (
     <html
       lang={locale}
       className={beVietnamPro.variable}
-      data-theme={appearance.mode}
+      data-theme={themeMode}
       style={themeVars}
     >
       <body className="font-sans antialiased">

@@ -104,6 +104,10 @@ describe("AppearanceView", () => {
     renderAppearance();
 
     await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
+    expect(screen.getByRole("heading", { name: "Chế độ mặc định" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Áp dụng cho người chưa tự chọn chế độ ở thanh trên cùng"),
+    ).toBeInTheDocument();
     for (const preset of PRESET_PALETTES) {
       expect(screen.getByRole("button", { name: new RegExp(preset.name) })).toBeInTheDocument();
     }

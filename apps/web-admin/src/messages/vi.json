@@ -26,8 +26,9 @@
     "errorDescription": "Không tải được cấu hình giao diện. Hãy thử lại.",
     "errorTitle": "Không tải được trang",
     "modeDark": "Tối",
+    "modeDescription": "Áp dụng cho người chưa tự chọn chế độ ở thanh trên cùng",
     "modeLight": "Sáng",
-    "modeSection": "Chế độ",
+    "modeSection": "Chế độ mặc định",
     "paletteDescription": "Mỗi bộ gồm màu chính và màu nhấn. Các màu còn lại do hệ thống suy ra.",
     "paletteSection": "Bộ phối màu",
     "presets": {

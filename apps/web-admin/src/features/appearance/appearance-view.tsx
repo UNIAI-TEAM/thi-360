@@ -415,9 +415,12 @@ function AppearanceEditor({
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex min-w-0 flex-[3_1_520px] flex-col gap-4">
           <Card padding="md" className="flex flex-wrap items-center justify-between gap-3 p-5">
-            <h2 id="sec-mode" className="text-title font-semibold text-text">
-              {t("modeSection")}
-            </h2>
+            <div>
+              <h2 id="sec-mode" className="text-title font-semibold text-text">
+                {t("modeSection")}
+              </h2>
+              <p className="mt-0.5 text-body text-text-muted">{t("modeDescription")}</p>
+            </div>
             <Tabs
               variant="segmented"
               value={activeDraft.mode}
