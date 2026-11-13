@@ -23,6 +23,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.ApplicationContext;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -36,6 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.audit.application.AuditArchiveJob;
 import vn.unicom.thi360.audit.application.AuditPartitionJob;
+import vn.unicom.thi360.audit.application.AuditRecorderImpl;
 import vn.unicom.thi360.audit.infrastructure.AuditPartitionManager;
 import vn.unicom.thi360.audit.infrastructure.AuditPartitionManager.QuarterPartition;
 import vn.unicom.thi360.audit.infrastructure.AuditProperties;
@@ -85,12 +87,22 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private ApplicationContext applicationContext;
+
 
     @BeforeEach
     void cleanTables() {
         SecurityContextHolder.clearContext();
         MDC.clear();
         outboxEventRepository.deleteAll();
+    }
+
+    @Test
+    void contextRegistersExactlyOneAuditRecorderBean_ofTypeAuditRecorderImpl() {
+        Map<String, AuditRecorder> beans = applicationContext.getBeansOfType(AuditRecorder.class);
+        assertThat(beans).hasSize(1);
+        assertThat(beans.values().iterator().next()).isInstanceOf(AuditRecorderImpl.class);
     }
 
     @Test
@@ -382,12 +394,14 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
 
             // Default API query without 'from' reads active table only (2023 Q1 row is not in active table)
             mockMvc.perform(get("/api/v1/admin/audit-events")
+                            .with(asPlatformAdmin())
                             .param("targetId", "u-2023"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalItems").value(0));
 
             // API query with old 'from' reads archive and returns the 2023 Q1 row
             mockMvc.perform(get("/api/v1/admin/audit-events")
+                            .with(asPlatformAdmin())
                             .param("targetId", "u-2023")
                             .param("from", "2023-01-01T00:00:00Z")
                             .param("to", "2023-12-31T23:59:59Z"))
@@ -398,6 +412,7 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
 
             // API query with only an old 'to' reads archive and returns the 2023 Q1 row
             mockMvc.perform(get("/api/v1/admin/audit-events")
+                            .with(asPlatformAdmin())
                             .param("targetId", "u-2023")
                             .param("to", "2023-12-31T23:59:59Z"))
                     .andExpect(status().isOk())
@@ -487,6 +502,7 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
         assertThat(outboxRelay.relayBatch()).isEqualTo(1);
 
         mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asPlatformAdmin())
                         .param("action", "LOGIN")
                         .param("actorId", actorId.toString())
                         .param("targetType", "USER")
@@ -503,6 +519,7 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
 
         // Invalid time range returns 400 VALIDATION_FAILED
         mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asPlatformAdmin())
                         .param("from", "2026-11-10T00:00:00Z")
                         .param("to", "2026-11-01T00:00:00Z"))
                 .andExpect(status().isBadRequest())
