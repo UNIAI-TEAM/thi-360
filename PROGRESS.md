@@ -36,7 +36,7 @@ Danh sách đầy đủ ở `PRD.md` mục 6 (P1–P12) và spec mục 14. Tóm 
 | Điểm | Chốt |
 |---|---|
 | Kiến trúc | Modular monolith + worker; Keycloak chỉ xác thực; outbox trong PostgreSQL; một UI kit Tailwind |
-| Phân quyền | Vai trò → quyền, có gán quyền trực tiếp cho user. Vai trò có trường `access` (`MANAGE`/`EXAM`). `PLATFORM_ADMIN` là tài khoản khởi tạo, mọi quyền, ẩn khỏi danh sách user |
+| Phân quyền | Vai trò → quyền, có gán quyền trực tiếp cho user. Vai trò có trường `access` (`MANAGE`/`EXAM`). `PLATFORM_ADMIN` nằm ở realm `master` của Keycloak (realm `thi360` chứa mọi tài khoản còn lại), là người khởi tạo, mọi quyền, không có trong danh sách user |
 | Trạng thái tài khoản | `ACTIVE` / `INACTIVE` / xóa mềm. Có giao dịch thì không xóa được |
 | Dùng lại tên đăng nhập, email | Được, sau khi xóa mềm (chỉ mục duy nhất `WHERE deleted_at IS NULL`) |
 | Mật khẩu | Hệ thống sinh; bắt đổi lần đầu là tùy chọn, mặc định không; file kết quả cấp hàng loạt không hết hạn |

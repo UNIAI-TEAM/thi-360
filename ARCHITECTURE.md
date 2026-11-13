@@ -131,7 +131,7 @@ Request ─► CookieAuthFilter (xác minh JWT bằng khóa công khai Keycloak)
 - JWT chỉ dùng để biết **ai**. Quyền và `access` luôn đọc từ ảnh chụp của ứng dụng, không nằm trong token.
 - Mỗi request thông thường: **một lần gọi Redis, không truy vấn cơ sở dữ liệu** cho phần xác thực và phân quyền.
 - Khi đổi phân quyền, use case xóa `authz:{userId}` của các user liên quan, nên thay đổi có hiệu lực ở request kế tiếp (spec mục 5.7).
-- Vai trò `PLATFORM_ADMIN` có mọi quyền (dãy bit toàn 1); tài khoản giữ vai trò này ẩn khỏi danh sách user.
+- `PLATFORM_ADMIN` (tài khoản realm `master`) có mọi quyền (dãy bit toàn 1) và không có trong danh sách user.
 - Middleware của hai web dùng cookie `thi360_ctx` có chữ ký để điều hướng mà không gọi backend; cookie này không thay cho kiểm tra ở API.
 
 ### 5.3 Ghi nhật ký
@@ -174,7 +174,16 @@ Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không 
 
 ## 6. Đồng bộ với Keycloak
 
-`identity.user_account` là nguồn dữ liệu nghiệp vụ; `id` trùng với `sub` của Keycloak.
+Keycloak có hai realm:
+
+| Realm | Chứa | Ứng dụng làm gì với nó |
+|---|---|---|
+| `thi360` | Mọi tài khoản Thi 360 (học viên, quản trị viên) | Tạo, vô hiệu, xóa user qua service account; xác thực đăng nhập |
+| `master` | Chỉ tài khoản `PLATFORM_ADMIN` (realm role `platform_admin`) | Chỉ xác thực đăng nhập. Không tạo, không sửa |
+
+Backend chấp nhận token của cả hai nguồn phát hành; token của `master` phải có role `platform_admin`. Khi đăng nhập, máy chủ chọn realm theo việc tên đăng nhập có trong `user_account` hay không (spec mục 15.1a).
+
+`identity.user_account` là nguồn dữ liệu nghiệp vụ của realm `thi360`; `id` trùng với `sub` của Keycloak. `PLATFORM_ADMIN` không có dòng trong `user_account`.
 
 - **Tạo:** ghi `user_account` trạng thái `PROVISIONING` → tạo user ở Keycloak → cập nhật trạng thái. Job đối soát xử lý bản ghi kẹt ở `PROVISIONING`.
 - **Ngừng hoạt động:** đổi trạng thái trong `user_account`, vô hiệu user ở Keycloak, thu hồi phiên.
@@ -193,6 +202,7 @@ Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không 
 | A6 | Bảng `user_identity` có từ đầu dù chưa bật Google | Bật Google sau không phải đổi mô hình dữ liệu |
 | A7 | Giao diện là cấu hình toàn hệ thống lưu ở máy chủ, áp bằng biến CSS | Giữ khả năng tùy chỉnh như reap mà không phụ thuộc MUI |
 | A8 | Nhật ký phân vùng theo quý, lưu trữ theo năm | Lưu vĩnh viễn nhưng bảng chính vẫn gọn |
+| A10 | Hai realm: `thi360` cho mọi tài khoản ứng dụng, `master` chỉ cho `PLATFORM_ADMIN` | Người khởi tạo tách khỏi dữ liệu người dùng; đánh đổi là backend phải xác thực với hai realm |
 | A9 | Hai web trên hai tên miền, một nơi đăng nhập, cookie phiên dùng chung tên miền cha | Người dùng đăng nhập một lần; đánh đổi là hai web không còn tách phiên, bù bằng `HttpOnly`, XSRF, kiểm tra `Origin` cho API quản trị, CSP |
 
 ## 8. Bảo mật
