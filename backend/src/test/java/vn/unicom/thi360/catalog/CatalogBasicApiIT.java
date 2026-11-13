@@ -279,6 +279,40 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void groupSearchMatchesNameEnCaseInsensitivelyAndBlankNameEnStoresNull() throws Exception {
+        String searchGroupCode = "SRCH_GRP_" + suffix();
+        cacheGroupCodes.add(searchGroupCode.toLowerCase());
+        MvcResult searchRes = mockMvc.perform(post("/api/v1/admin/catalog/groups")
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "code", searchGroupCode,
+                                "nameVi", "Nhóm tìm kiếm",
+                                "nameEn", "UniqueEnglishPhrase"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode searchNode = objectMapper.readTree(searchRes.getResponse().getContentAsString());
+        UUID searchGroupId = UUID.fromString(searchNode.get("id").asText());
+        long searchGroupVer = searchNode.get("version").asLong();
+        createdGroupIds.add(searchGroupId);
+
+        mockMvc.perform(get("/api/v1/admin/catalog/groups")
+                        .param("q", "englishphrase")
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.code=='" + searchGroupCode + "')]", hasSize(1)));
+
+        mockMvc.perform(patch("/api/v1/admin/catalog/groups/{id}", searchGroupId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "nameEn", "   ",
+                                "version", searchGroupVer))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nameEn").doesNotExist());
+    }
+
+    @Test
     void itemsValueNeverReusedCaseInsensitiveUniquenessInactiveGroupAndOptionsCache() throws Exception {
         String groupCode = "OPT_GRP_" + suffix();
         cacheGroupCodes.add(groupCode.toLowerCase());
