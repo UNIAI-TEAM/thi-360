@@ -27,6 +27,7 @@ public class RedirectResolver {
     private static final Pattern DOUBLE_ENCODED_HEX = Pattern.compile("%25[0-9a-fA-F]{2}");
 
     private final String webBaseUrl;
+    private final String webOrigin;
     private final String adminBaseUrl;
     private final Set<String> allowedOrigins;
 
@@ -40,6 +41,7 @@ public class RedirectResolver {
 
     public RedirectResolver(String webUrl, String adminUrl, List<String> extraAllowedOrigins) {
         this.webBaseUrl = stripTrailingSlashes(Objects.requireNonNull(webUrl, "webUrl must not be null"));
+        this.webOrigin = parseNormalizedOrigin(this.webBaseUrl);
         this.adminBaseUrl = stripTrailingSlashes(Objects.requireNonNull(adminUrl, "adminUrl must not be null"));
 
         Set<String> origins = new LinkedHashSet<>();
@@ -69,8 +71,9 @@ public class RedirectResolver {
 
         if (mustChangePassword) {
             String base = webBaseUrl + CHANGE_PASSWORD_PATH;
-            if (validCallback.isPresent() && !isChangePasswordTarget(validCallback.get())) {
-                return base + "?callbackUrl=" + URLEncoder.encode(validCallback.get(), StandardCharsets.UTF_8);
+            Optional<String> continuation = resolvePasswordChangeContinuation(validCallback.orElse(null));
+            if (continuation.isPresent()) {
+                return base + "?callbackUrl=" + URLEncoder.encode(continuation.get(), StandardCharsets.UTF_8);
             }
             return base;
         }
@@ -182,12 +185,68 @@ public class RedirectResolver {
         return !decoded.startsWith("//") && !decoded.startsWith("/\\");
     }
 
-    private boolean isChangePasswordTarget(String validCallback) {
-        if (validCallback.equals(CHANGE_PASSWORD_PATH) || validCallback.startsWith(CHANGE_PASSWORD_PATH + "?")) {
-            return true;
+    private Optional<String> resolvePasswordChangeContinuation(String validCallback) {
+        if (validCallback == null) {
+            return Optional.empty();
         }
-        String fullChangePassword = webBaseUrl + CHANGE_PASSWORD_PATH;
-        return validCallback.equals(fullChangePassword) || validCallback.startsWith(fullChangePassword + "?");
+        if (!isChangePasswordTarget(validCallback)) {
+            return Optional.of(validCallback);
+        }
+        Optional<String> nestedRaw = extractCallbackQueryParam(validCallback);
+        if (nestedRaw.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<String> nestedValid = validateCallbackUrl(nestedRaw.get());
+        if (nestedValid.isEmpty() || isChangePasswordTarget(nestedValid.get())) {
+            return Optional.empty();
+        }
+        return nestedValid;
+    }
+
+    private boolean isChangePasswordTarget(String validCallback) {
+        URI uri;
+        try {
+            uri = URI.create(validCallback);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+        if (uri.getScheme() != null && !Objects.equals(normalizeOrigin(uri), webOrigin)) {
+            return false;
+        }
+        return CHANGE_PASSWORD_PATH.equals(uri.getRawPath());
+    }
+
+    private static Optional<String> extractCallbackQueryParam(String validCallback) {
+        String rawQuery = URI.create(validCallback).getRawQuery();
+        if (rawQuery == null || rawQuery.isEmpty()) {
+            return Optional.empty();
+        }
+        String found = null;
+        for (String pair : rawQuery.split("&")) {
+            if (pair.isEmpty()) {
+                continue;
+            }
+            int eq = pair.indexOf('=');
+            String rawKey = eq >= 0 ? pair.substring(0, eq) : pair;
+            String key;
+            try {
+                key = URLDecoder.decode(rawKey, StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException ex) {
+                return Optional.empty();
+            }
+            if ("callbackUrl".equals(key)) {
+                if (eq < 0 || found != null) {
+                    return Optional.empty();
+                }
+                String rawValue = pair.substring(eq + 1);
+                try {
+                    found = URLDecoder.decode(rawValue, StandardCharsets.UTF_8);
+                } catch (IllegalArgumentException ex) {
+                    return Optional.empty();
+                }
+            }
+        }
+        return Optional.ofNullable(found);
     }
 
     private static String rawPathPart(String raw) {
@@ -224,6 +283,14 @@ public class RedirectResolver {
             }
         } catch (IllegalArgumentException ignored) {
             // Invalid config entry ignored.
+        }
+    }
+
+    private static String parseNormalizedOrigin(String rawUrl) {
+        try {
+            return normalizeOrigin(URI.create(rawUrl));
+        } catch (IllegalArgumentException ex) {
+            return null;
         }
     }
 

@@ -98,5 +98,33 @@ class RedirectResolverTest {
 
         assertThat(prodResolver.resolve(new RedirectUser(Access.EXAM, true), "/doi-mat-khau"))
                 .isEqualTo(WEB_URL + "/doi-mat-khau");
+
+        assertThat(prodResolver.resolve(new RedirectUser(Access.EXAM, true), "https://thi360.vn/doi-mat-khau"))
+                .isEqualTo(WEB_URL + "/doi-mat-khau");
+
+        assertThat(prodResolver.resolve(
+                        new RedirectUser(Access.MANAGE, true),
+                        "https://thi360.vn/doi-mat-khau?callbackUrl=https://admin.thi360.vn/users"))
+                .isEqualTo(WEB_URL + "/doi-mat-khau?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers");
+
+        assertThat(prodResolver.resolve(
+                        new RedirectUser(Access.MANAGE, true),
+                        "/doi-mat-khau?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Ftab%3Droles"))
+                .isEqualTo(WEB_URL + "/doi-mat-khau?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Ftab%3Droles");
+
+        assertThat(prodResolver.resolve(
+                        new RedirectUser(Access.MANAGE, true),
+                        "/doi-mat-khau?callbackUrl=https%3A%2F%2Fevil.example%2Fphish"))
+                .isEqualTo(WEB_URL + "/doi-mat-khau");
+
+        assertThat(prodResolver.resolve(
+                        new RedirectUser(Access.EXAM, true),
+                        "/doi-mat-khau?callbackUrl=%2Fdoi-mat-khau"))
+                .isEqualTo(WEB_URL + "/doi-mat-khau");
+
+        assertThat(prodResolver.resolve(
+                        new RedirectUser(Access.EXAM, true),
+                        "/doi-mat-khau?callbackUrl=%2Fdoi-mat-khau%3FcallbackUrl%3D%2Fhome"))
+                .isEqualTo(WEB_URL + "/doi-mat-khau");
     }
 }
