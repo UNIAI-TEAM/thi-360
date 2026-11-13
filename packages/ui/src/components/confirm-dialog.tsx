@@ -51,43 +51,75 @@ export function ConfirmDialog({
   reasonLabel,
   requireReason = false,
 }: ConfirmDialogProps) {
-  const [reason, setReason] = useState("");
-  const trimmed = reason.trim();
-  const blocked = requireReason && trimmed === "";
-
-  function handleOpenChange(next: boolean) {
-    if (!next) setReason("");
-    onOpenChange(next);
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent closeLabel={closeLabel}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {reasonLabel && (
-          <FormField label={reasonLabel} required={requireReason}>
-            {(field) => (
-              <Textarea {...field} value={reason} onChange={(event) => setReason(event.target.value)} />
-            )}
-          </FormField>
-        )}
-        <DialogFooter>
-          <Button variant="secondary" disabled={loading} onClick={() => handleOpenChange(false)}>
-            {cancelLabel}
-          </Button>
-          <Button
-            variant={tone}
-            loading={loading}
-            disabled={blocked}
-            onClick={() => onConfirm(trimmed)}
-          >
-            {confirmLabel}
-          </Button>
-        </DialogFooter>
+        <ConfirmBody
+          reasonLabel={reasonLabel}
+          requireReason={requireReason}
+          confirmLabel={confirmLabel}
+          cancelLabel={cancelLabel}
+          tone={tone}
+          loading={loading}
+          onCancel={() => onOpenChange(false)}
+          onConfirm={onConfirm}
+        />
       </DialogContent>
     </Dialog>
+  );
+}
+
+type ConfirmBodyProps = {
+  reasonLabel?: string;
+  requireReason: boolean;
+  confirmLabel: string;
+  cancelLabel: string;
+  tone: "danger" | "primary";
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: (reason: string) => void;
+};
+
+/** Giữ lý do trong phần nội dung hộp thoại, nên mỗi lần mở lại là một ô lý do trống. */
+function ConfirmBody({
+  reasonLabel,
+  requireReason,
+  confirmLabel,
+  cancelLabel,
+  tone,
+  loading,
+  onCancel,
+  onConfirm,
+}: ConfirmBodyProps) {
+  const [reason, setReason] = useState("");
+  const trimmed = reason.trim();
+
+  return (
+    <>
+      {reasonLabel && (
+        <FormField label={reasonLabel} required={requireReason}>
+          {(field) => (
+            <Textarea {...field} value={reason} onChange={(event) => setReason(event.target.value)} />
+          )}
+        </FormField>
+      )}
+      <DialogFooter>
+        <Button variant="secondary" disabled={loading} onClick={onCancel}>
+          {cancelLabel}
+        </Button>
+        <Button
+          variant={tone}
+          loading={loading}
+          disabled={requireReason && trimmed === ""}
+          onClick={() => onConfirm(trimmed)}
+        >
+          {confirmLabel}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

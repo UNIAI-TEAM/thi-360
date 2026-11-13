@@ -57,6 +57,39 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledWith("nghỉ học");
   });
 
+  it("mở lại sau khi đóng thì ô lý do trống", async () => {
+    const { rerender } = render(
+      <ConfirmDialog
+        open
+        onOpenChange={() => {}}
+        title="Khóa"
+        description="Mô tả"
+        confirmLabel="Khóa"
+        cancelLabel="Hủy"
+        closeLabel="Đóng"
+        reasonLabel="Lý do"
+        onConfirm={() => {}}
+      />,
+    );
+    await userEvent.type(screen.getByRole("textbox", { name: "Lý do" }), "nghỉ học");
+    const closed = (open: boolean) => (
+      <ConfirmDialog
+        open={open}
+        onOpenChange={() => {}}
+        title="Khóa"
+        description="Mô tả"
+        confirmLabel="Khóa"
+        cancelLabel="Hủy"
+        closeLabel="Đóng"
+        reasonLabel="Lý do"
+        onConfirm={() => {}}
+      />
+    );
+    rerender(closed(false));
+    rerender(closed(true));
+    expect(screen.getByRole("textbox", { name: "Lý do" })).toHaveValue("");
+  });
+
   it("hủy gọi onOpenChange(false) và không gọi onConfirm", async () => {
     const { onConfirm, onOpenChange } = setup();
     await userEvent.click(screen.getByRole("button", { name: "Hủy" }));
