@@ -8,9 +8,11 @@ import { ForbiddenView } from "@/features/session/forbidden-view";
 import { hasPermission } from "@/features/session/permissions";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import type { RbacTabKey } from "../types";
+import { BulkAssignTab, type BulkAssignTabProps } from "./bulk-assign-tab";
 import { PermissionUsersTab, type PermissionUsersTabProps } from "./permission-users-tab";
 import { PermissionsTab, type PermissionsTabProps } from "./permissions-tab";
 import { RolesTab, type RolesTabProps } from "./roles-tab";
+
 export const RBAC_TAB_ORDER: readonly RbacTabKey[] = [
   "vai-tro",
   "quyen",
@@ -53,12 +55,14 @@ export interface RbacPageViewProps {
     PermissionUsersTabProps,
     "selectedPermissionCode" | "onSelectPermission" | "onAssignMany" | "onViewRoles"
   >;
+  bulkAssignTabProps?: Omit<BulkAssignTabProps, "initialPermissionCode">;
 }
 
 export function RbacPageView({
   rolesTabProps,
   permissionsTabProps,
   permissionUsersTabProps,
+  bulkAssignTabProps,
 }: RbacPageViewProps = {}) {
   const t = useTranslations("rbac");
   const commonT = useTranslations("common");
@@ -180,7 +184,10 @@ export function RbacPageView({
         )}
         {allowedTabs.includes("gan-hang-loat") && (
           <TabsContent value="gan-hang-loat">
-            <div />
+            <BulkAssignTab
+              {...bulkAssignTabProps}
+              initialPermissionCode={requestedPermission}
+            />
           </TabsContent>
         )}
       </Tabs>
