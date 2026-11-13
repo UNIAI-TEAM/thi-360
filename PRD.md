@@ -79,6 +79,7 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 | P9 | Danh mục ở môi trường thật để trống giá trị, admin/BA tự nhập; local và test có bộ mẫu | M.Trường, 2026-11-13 |
 | P10 | Nhật ký lưu vĩnh viễn, không che; phân vùng theo quý, dữ liệu cũ chuyển sang bảng lưu trữ phân vùng theo năm | M.Trường, 2026-11-13 |
 | P11 | Giữ bộ tùy chỉnh giao diện như reap, áp dụng toàn hệ thống; là một mục trong menu chính của trang quản trị (không ở menu profile, không dùng nút nổi) | M.Trường, 2026-11-13 |
+| P18 | Quyền là danh sách cố định theo phần mềm (không tạo, sửa, xóa trên giao diện); vai trò do admin tự do tạo và gán | M.Trường, 2026-11-13 |
 | P15 | Quyền và vai trò gom thành một menu "Phân quyền" có bốn tab: Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt | M.Trường, 2026-11-13 |
 | P16 | Cấp tài khoản hàng loạt không có menu riêng; là nút trong màn Tài khoản | M.Trường, 2026-11-13 |
 | P13 | Hai web trên hai tên miền; landing và đăng nhập ở tên miền chính; đăng nhập một lần, điều hướng theo vai trò (admin → trang quản trị, học viên → `/home`) hoặc theo `callbackUrl`; trang đích kiểm tra quyền, sai thì ra trang mã lỗi | M.Trường, 2026-11-13 |
