@@ -156,9 +156,16 @@ $$;
 
 DO $$
 DECLARE
-    app_role text := current_user;
+    app_role text := NULLIF(btrim('${auditAppRole}'), '');
     child_name text;
 BEGIN
+    IF app_role IS NULL THEN
+        RAISE EXCEPTION 'Flyway placeholder auditAppRole must not be blank';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
+        RAISE EXCEPTION 'Audit app role "%" does not exist', app_role;
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_audit_maint') THEN
         CREATE ROLE thi360_audit_maint NOLOGIN;
     END IF;
@@ -166,8 +173,11 @@ BEGIN
     EXECUTE format('GRANT thi360_audit_maint TO %I WITH INHERIT FALSE, SET TRUE', app_role);
     GRANT USAGE, CREATE ON SCHEMA audit TO thi360_audit_maint;
 
-    ALTER TABLE audit.audit_event OWNER TO thi360_audit_maint;
-    ALTER TABLE audit.audit_event_archive OWNER TO thi360_audit_maint;
+    REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM PUBLIC;
+    EXECUTE format('REVOKE ALL ON SCHEMA audit FROM %I', app_role);
+    EXECUTE format('GRANT USAGE ON SCHEMA audit TO %I', app_role);
+    EXECUTE format('REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM %I', app_role);
+    EXECUTE format('GRANT SELECT, INSERT ON TABLE audit.audit_event, audit.audit_event_archive TO %I', app_role);
 
     FOR child_name IN
         SELECT child.relname
@@ -178,14 +188,11 @@ BEGIN
         WHERE parent_ns.nspname = 'audit'
           AND parent.relname IN ('audit_event', 'audit_event_archive')
     LOOP
-        EXECUTE format('ALTER TABLE audit.%I OWNER TO thi360_audit_maint', child_name);
         EXECUTE format('REVOKE ALL ON TABLE audit.%I FROM %I', child_name, app_role);
+        EXECUTE format('ALTER TABLE audit.%I OWNER TO thi360_audit_maint', child_name);
     END LOOP;
 
-    REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM PUBLIC;
-    EXECUTE format('REVOKE ALL ON SCHEMA audit FROM %I', app_role);
-    EXECUTE format('GRANT USAGE ON SCHEMA audit TO %I', app_role);
-    EXECUTE format('REVOKE ALL ON TABLE audit.audit_event, audit.audit_event_archive FROM %I', app_role);
-    EXECUTE format('GRANT SELECT, INSERT ON TABLE audit.audit_event, audit.audit_event_archive TO %I', app_role);
+    ALTER TABLE audit.audit_event OWNER TO thi360_audit_maint;
+    ALTER TABLE audit.audit_event_archive OWNER TO thi360_audit_maint;
 END;
 $$;

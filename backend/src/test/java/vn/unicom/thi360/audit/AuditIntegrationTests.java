@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -103,6 +104,25 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
         assertThat(partitionManager.isQuarterPartitionAttached(year, quarter)).isTrue();
         assertThat(partitionManager.isQuarterPartitionAttached(nextYear, nextQuarter)).isTrue();
         assertThat(partitionManager.isArchiveYearPartitionAttached(year)).isTrue();
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_schema_privilege(current_user, 'audit', 'USAGE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event', 'SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event', 'INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event_archive', 'SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event_archive', 'INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT pg_has_role(current_user, 'thi360_audit_maint', 'MEMBER')",
+                Boolean.class)).isTrue();
     }
 
     @Test
@@ -488,67 +508,146 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
 
     @Test
     void nonSuperuserAppRole_cannotMutateOrDetachPartitionsWithoutMaintenanceRole_andJobsSucceedWithIt() {
+        String dbName = "audit_distinct_roles_test";
+        String migratorRole = "thi360_migrator_test";
+        String migratorPass = "thi360-migrator-test";
+        String appRole = "thi360_app_test";
+        String appPass = "thi360-app-test";
+
         jdbcTemplate.execute("""
                 DO $$
                 BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_migrator_test') THEN
+                        CREATE ROLE thi360_migrator_test LOGIN PASSWORD 'thi360-migrator-test' SUPERUSER;
+                    END IF;
                     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_app_test') THEN
                         CREATE ROLE thi360_app_test LOGIN PASSWORD 'thi360-app-test' NOSUPERUSER NOCREATEDB NOCREATEROLE;
                     END IF;
                 END;
                 $$;
                 """);
-        jdbcTemplate.execute("GRANT USAGE ON SCHEMA audit TO thi360_app_test");
-        jdbcTemplate.execute("GRANT SELECT, INSERT ON TABLE audit.audit_event, audit.audit_event_archive TO thi360_app_test");
-        jdbcTemplate.execute("GRANT thi360_audit_maint TO thi360_app_test WITH INHERIT FALSE, SET TRUE");
-
-        SimpleDriverDataSource appDataSource = new SimpleDriverDataSource(
-                new org.postgresql.Driver(),
-                AbstractIntegrationTest.POSTGRES.getJdbcUrl(),
-                "thi360_app_test",
-                "thi360-app-test");
-        JdbcTemplate appJdbc = new JdbcTemplate(appDataSource);
-        NamedParameterJdbcTemplate appNamedJdbc = new NamedParameterJdbcTemplate(appDataSource);
-        DataSourceTransactionManager appTxManager = new DataSourceTransactionManager(appDataSource);
-        AuditPartitionManager appPartitionManager = new AuditPartitionManager(appJdbc, appNamedJdbc);
-
-        Boolean isSuper = appJdbc.queryForObject(
-                "SELECT rolsuper FROM pg_roles WHERE rolname = current_user",
-                Boolean.class);
-        assertThat(isSuper).isFalse();
-
-        transactionTemplate.executeWithoutResult(status -> {
-            partitionManager.assumeMaintenanceRoleForTransaction();
-            partitionManager.ensureQuarterPartition(2020, 1);
-            partitionManager.ensureArchiveYearPartition(2020);
-            partitionManager.resetRole();
-        });
-
-        UUID eventId = Ids.newId();
-        String targetId = "u-2020-" + Ids.newId();
-        Instant oldOccurredAt = Instant.parse("2020-02-10T09:00:00Z");
-        appJdbc.update(
-                """
-                INSERT INTO audit.audit_event (
-                    id, occurred_at, actor_username, actor_type, module, action,
-                    target_type, target_id, outcome
-                ) VALUES (?, ?, 'app.user', 1, 'identity', 'LOGIN', 'USER', ?, 1)
-                """,
-                eventId,
-                Timestamp.from(oldOccurredAt),
-                targetId);
-
-        UUID archiveRowId = Ids.newId();
-        appJdbc.update(
-                """
-                INSERT INTO audit.audit_event_archive (
-                    id, occurred_at, actor_type, module, action, target_type, target_id, outcome
-                ) VALUES (?, ?, 3, 'audit', 'TEST', 'USER', ?, 1)
-                """,
-                archiveRowId,
-                Timestamp.from(Instant.parse("2020-01-15T00:00:00Z")),
-                targetId);
+        terminateConnectionsAndDropDatabase(dbName);
+        jdbcTemplate.execute("CREATE DATABASE " + dbName + " OWNER " + migratorRole);
 
         try {
+            String isolatedJdbcUrl = postgresJdbcUrl(dbName);
+            Flyway.configure()
+                    .dataSource(isolatedJdbcUrl, migratorRole, migratorPass)
+                    .defaultSchema("shared")
+                    .schemas("shared", "identity", "catalog", "audit")
+                    .table("flyway_schema_history")
+                    .locations("classpath:db/migration")
+                    .placeholders(Map.of("auditAppRole", appRole))
+                    .load()
+                    .migrate();
+
+            SimpleDriverDataSource appDataSource = new SimpleDriverDataSource(
+                    new org.postgresql.Driver(),
+                    isolatedJdbcUrl,
+                    appRole,
+                    appPass);
+            JdbcTemplate appJdbc = new JdbcTemplate(appDataSource);
+            NamedParameterJdbcTemplate appNamedJdbc = new NamedParameterJdbcTemplate(appDataSource);
+            DataSourceTransactionManager appTxManager = new DataSourceTransactionManager(appDataSource);
+            TransactionTemplate appTxTemplate = new TransactionTemplate(appTxManager);
+            AuditPartitionManager appPartitionManager = new AuditPartitionManager(appJdbc, appNamedJdbc);
+
+            assertThat(appJdbc.queryForObject(
+                    "SELECT rolsuper FROM pg_roles WHERE rolname = current_user",
+                    Boolean.class)).isFalse();
+            assertThat(appJdbc.queryForObject("SELECT current_user", String.class)).isEqualTo(appRole);
+
+            // Grants came solely from V202611132005 placeholder target, not the migrator role
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_schema_privilege(?, 'audit', 'USAGE')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_schema_privilege(?, 'audit', 'CREATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT pg_has_role(?, 'thi360_audit_maint', 'MEMBER')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_auth_members m
+                        JOIN pg_roles r ON r.oid = m.roleid
+                        JOIN pg_roles u ON u.oid = m.member
+                        WHERE r.rolname = 'thi360_audit_maint'
+                          AND u.rolname = ?
+                    )
+                    """,
+                    Boolean.class,
+                    migratorRole)).isFalse();
+
+            appTxTemplate.executeWithoutResult(status -> {
+                appPartitionManager.assumeMaintenanceRoleForTransaction();
+                appPartitionManager.ensureQuarterPartition(2020, 1);
+                appPartitionManager.ensureArchiveYearPartition(2020);
+                appPartitionManager.resetRole();
+            });
+
+            UUID eventId = Ids.newId();
+            String targetId = "u-2020-" + Ids.newId();
+            Instant oldOccurredAt = Instant.parse("2020-02-10T09:00:00Z");
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event (
+                        id, occurred_at, actor_username, actor_type, module, action,
+                        target_type, target_id, outcome
+                    ) VALUES (?, ?, 'app.user', 1, 'identity', 'LOGIN', 'USER', ?, 1)
+                    """,
+                    eventId,
+                    Timestamp.from(oldOccurredAt),
+                    targetId);
+
+            UUID archiveRowId = Ids.newId();
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event_archive (
+                        id, occurred_at, actor_type, module, action, target_type, target_id, outcome
+                    ) VALUES (?, ?, 3, 'audit', 'TEST', 'USER', ?, 1)
+                    """,
+                    archiveRowId,
+                    Timestamp.from(Instant.parse("2020-01-15T00:00:00Z")),
+                    targetId);
+
             // App role cannot UPDATE, DELETE, or TRUNCATE either audit table
             assertThatThrownBy(() -> appJdbc.update(
                     "UPDATE audit.audit_event SET reason = 'tamper' WHERE id = ?",
@@ -598,7 +697,7 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
             // Archive job succeeds as non-superuser app role: copies rows, compares counts, detaches & drops, resets role, emits AUDIT_ARCHIVED
             Clock archiveClock = Clock.fixed(Instant.parse("2026-11-13T10:00:00Z"), ZoneOffset.UTC);
             AuditRecorder appAuditRecorder = event -> {
-                assertThat(appJdbc.queryForObject("SELECT current_user", String.class)).isEqualTo("thi360_app_test");
+                assertThat(appJdbc.queryForObject("SELECT current_user", String.class)).isEqualTo(appRole);
                 transactionTemplate.executeWithoutResult(s -> auditRecorder.record(event));
             };
             AuditArchiveJob appArchiveJob = new AuditArchiveJob(
@@ -621,17 +720,38 @@ class AuditIntegrationTests extends AbstractIntegrationTest {
             assertThat(archivedAuditEvents.items()).isNotEmpty();
             assertThat(archivedAuditEvents.items().getFirst().action()).isEqualTo("AUDIT_ARCHIVED");
         } finally {
-            transactionTemplate.executeWithoutResult(status -> {
-                partitionManager.assumeMaintenanceRoleForTransaction();
-                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_2020q1");
-                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2020");
-                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_2033q4");
-                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_2034q1");
-                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2033");
-                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2034");
-                partitionManager.resetRole();
-            });
+            terminateConnectionsAndDropDatabase(dbName);
+            jdbcTemplate.execute("""
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_app_test') THEN
+                            REVOKE thi360_audit_maint FROM thi360_app_test;
+                            DROP ROLE thi360_app_test;
+                        END IF;
+                        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_migrator_test') THEN
+                            DROP ROLE thi360_migrator_test;
+                        END IF;
+                    END;
+                    $$;
+                    """);
         }
+    }
+
+    private static String postgresJdbcUrl(String dbName) {
+        return "jdbc:postgresql://"
+                + AbstractIntegrationTest.POSTGRES.getHost()
+                + ":"
+                + AbstractIntegrationTest.POSTGRES.getMappedPort(5432)
+                + "/"
+                + dbName;
+    }
+
+    private void terminateConnectionsAndDropDatabase(String dbName) {
+        jdbcTemplate.queryForList(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = ? AND pid <> pg_backend_pid()",
+                Boolean.class,
+                dbName);
+        jdbcTemplate.execute("DROP DATABASE IF EXISTS " + dbName);
     }
 
     private void insertAuditRowDirectly(
