@@ -58,7 +58,7 @@ springdoc:
 thi360:
   keycloak:
     url: ${THI360_KC_URL:http://localhost:${THI360_KC_PORT:8360}}
-    realm: ${THI360_KC_REALM:thi-360}
+    realm: ${THI360_KC_REALM:}
     client-id: ${THI360_KC_CLIENT_ID:thi360-api}
     client-secret: ${THI360_KC_CLIENT_SECRET:thi360-api-dev-only}
     platform-realm: ${THI360_KC_PLATFORM_REALM:master}
@@ -104,6 +104,10 @@ spring:
       - classpath:db/migration
       - classpath:db/devdata
 
+thi360:
+  keycloak:
+    realm: ${THI360_KC_REALM:thi-360}
+
 ---
 spring:
   config:
@@ -114,6 +118,10 @@ spring:
     locations:
       - classpath:db/migration
       - classpath:db/devdata
+
+thi360:
+  keycloak:
+    realm: ${THI360_KC_REALM:thi-360}
 ---
 spring:
   config:
