@@ -8,8 +8,9 @@ import { ForbiddenView } from "@/features/session/forbidden-view";
 import { hasPermission } from "@/features/session/permissions";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import type { RbacTabKey } from "../types";
+import { PermissionUsersTab, type PermissionUsersTabProps } from "./permission-users-tab";
+import { PermissionsTab, type PermissionsTabProps } from "./permissions-tab";
 import { RolesTab, type RolesTabProps } from "./roles-tab";
-
 export const RBAC_TAB_ORDER: readonly RbacTabKey[] = [
   "vai-tro",
   "quyen",
@@ -47,9 +48,18 @@ export function resolveActiveRbacTab(
 
 export interface RbacPageViewProps {
   rolesTabProps?: Omit<RolesTabProps, "createRequestNonce">;
+  permissionsTabProps?: Omit<PermissionsTabProps, "onSelectPermissionUsers">;
+  permissionUsersTabProps?: Omit<
+    PermissionUsersTabProps,
+    "selectedPermissionCode" | "onSelectPermission" | "onAssignMany" | "onViewRoles"
+  >;
 }
 
-export function RbacPageView({ rolesTabProps }: RbacPageViewProps = {}) {
+export function RbacPageView({
+  rolesTabProps,
+  permissionsTabProps,
+  permissionUsersTabProps,
+}: RbacPageViewProps = {}) {
   const t = useTranslations("rbac");
   const commonT = useTranslations("common");
   const sessionState = useSession();
@@ -66,6 +76,7 @@ export function RbacPageView({ rolesTabProps }: RbacPageViewProps = {}) {
   );
 
   const requestedTab = searchParams.get("tab");
+  const requestedPermission = searchParams.get("permission");
   const activeTab = resolveActiveRbacTab(requestedTab, allowedTabs);
 
   useEffect(() => {
@@ -74,12 +85,11 @@ export function RbacPageView({ rolesTabProps }: RbacPageViewProps = {}) {
 
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set("tab", activeTab);
-    if (activeTab !== "nguoi-dung") {
+    if (activeTab !== "nguoi-dung" && activeTab !== "gan-hang-loat") {
       nextParams.delete("permission");
     }
     router.replace(`${pathname}?${nextParams.toString()}`);
   }, [activeTab, pathname, requestedTab, router, searchParams, sessionState.status]);
-
   if (sessionState.status === "loading") {
     return (
       <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-4">
@@ -98,16 +108,23 @@ export function RbacPageView({ rolesTabProps }: RbacPageViewProps = {}) {
   const currentTab = activeTab ?? allowedTabs[0]!;
   const canCreateRole = currentTab === "vai-tro" && can("ROLE.MODIFY");
 
-  function handleTabChange(nextTab: string) {
+  function navigateToTab(nextTab: RbacTabKey, permissionCode?: string) {
     if (!(allowedTabs as readonly string[]).includes(nextTab)) return;
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set("tab", nextTab);
-    if (nextTab !== "nguoi-dung") {
+    if (permissionCode) {
+      nextParams.set("permission", permissionCode);
+    } else if (nextTab !== "nguoi-dung" && nextTab !== "gan-hang-loat") {
+      nextParams.delete("permission");
+    } else if (nextTab === "gan-hang-loat" && currentTab !== "nguoi-dung") {
       nextParams.delete("permission");
     }
     router.replace(`${pathname}?${nextParams.toString()}`);
   }
 
+  function handleTabChange(nextTab: string) {
+    navigateToTab(nextTab as RbacTabKey);
+  }
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -143,16 +160,24 @@ export function RbacPageView({ rolesTabProps }: RbacPageViewProps = {}) {
 
         {allowedTabs.includes("quyen") && (
           <TabsContent value="quyen">
-            <div />
+            <PermissionsTab
+              {...permissionsTabProps}
+              onSelectPermissionUsers={(code) => navigateToTab("nguoi-dung", code)}
+            />
           </TabsContent>
         )}
 
         {allowedTabs.includes("nguoi-dung") && (
           <TabsContent value="nguoi-dung">
-            <div />
+            <PermissionUsersTab
+              {...permissionUsersTabProps}
+              selectedPermissionCode={requestedPermission}
+              onSelectPermission={(code) => navigateToTab("nguoi-dung", code)}
+              onAssignMany={(code) => navigateToTab("gan-hang-loat", code)}
+              onViewRoles={() => navigateToTab("vai-tro")}
+            />
           </TabsContent>
         )}
-
         {allowedTabs.includes("gan-hang-loat") && (
           <TabsContent value="gan-hang-loat">
             <div />
