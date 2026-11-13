@@ -17,6 +17,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.107.1
         version: 5.107.1(@types/react@19.3.0)(react@19.2.4)
+      '@thi360/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@thi360/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -87,6 +90,9 @@ importers:
 
   apps/web-student:
     dependencies:
+      '@thi360/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@thi360/ui':
         specifier: workspace:*
         version: link:../../packages/ui
