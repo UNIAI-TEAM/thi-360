@@ -117,7 +117,7 @@ export function DevUiGallery() {
             tone="danger"
             aria-label={t("table.deleteAction", { name: row.original.username })}
             icon={<Trash2 />}
-            aria-disabled={row.original.id === "1" || undefined}
+            disabled={row.original.id === "1"}
             tooltip={row.original.id === "1" ? t("table.deleteBlockedReason") : undefined}
           />
         </div>
@@ -360,7 +360,7 @@ export function DevUiGallery() {
             state: selection,
             onChange: setSelection,
             selectAllLabel: t("table.selectAll"),
-            rowLabel: (i) => t("table.selectRow", { name: SAMPLE_ROWS[i]?.username ?? String(i) }),
+            rowLabel: (_index, row) => t("table.selectRow", { name: row.username }),
           }}
         />
         <div className="border-t border-border p-4">

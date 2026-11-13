@@ -93,4 +93,21 @@ describe("AppShell", () => {
     expect(nav).toHaveClass("w-62", "shrink-0");
     await waitFor(() => screen.getByRole("link", { name: "Bảng điều khiển" }));
   });
+
+  it("trang ngoài menu không có breadcrumb: menu avatar vẫn nằm bên phải thanh trên", async () => {
+    mocks.pathname.current = "/trang-khong-co-trong-menu";
+    renderWithProviders(
+      <SessionProvider loadSession={async () => FAKE_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <p>Nội dung trang</p>
+        </AppShell>
+      </SessionProvider>,
+    );
+
+    expect(screen.queryByRole("navigation", { name: "Vị trí hiện tại" })).not.toBeInTheDocument();
+    const trigger = await screen.findByRole("button", { name: "Menu tài khoản" });
+    // jsdom không dàn trang: `justify-end` là thứ giữ menu bên phải khi chỉ còn một phần tử.
+    expect(screen.getByRole("banner")).toHaveClass("justify-end");
+    expect(screen.getByRole("banner")).toContainElement(trigger);
+  });
 });
