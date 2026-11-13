@@ -2,12 +2,22 @@
 
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { notify, Toaster } from "@thi360/ui";
+import {
+  clearStaleUnauthorizedMarker,
+  createRouteGuard,
+  createUnauthorizedRecovery,
+  navigateOrReload,
+} from "@thi360/web-kit/client";
 import { buildLoginUrl } from "@thi360/web-kit/redirect";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
+import { clearSessionBestEffort, refreshSession } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { webUrl } from "@/lib/env";
+
+export const FORBIDDEN_PATH = "/forbidden";
+export const LOGIN_PATH = "/dang-nhap";
 
 function getErrorStatus(error: unknown): number | null {
   if (error instanceof ApiStatusError) return error.status;
@@ -23,23 +33,44 @@ function shouldRetry(failureCount: number, error: unknown): boolean {
   return failureCount < 2;
 }
 
-export function QueryProvider({ children }: { children: ReactNode }) {
+export function QueryProvider({
+  children,
+  navigate = navigateOrReload,
+}: {
+  children: ReactNode;
+  navigate?: (url: string) => void;
+}) {
   const t = useTranslations("errors");
   const router = useRouter();
   const pathname = usePathname();
 
+  const [guard] = useState(() =>
+    createRouteGuard(pathname, { forbiddenPath: FORBIDDEN_PATH, ignoredPaths: [LOGIN_PATH] }),
+  );
+  useEffect(() => {
+    guard.arrive(pathname);
+    if (typeof window !== "undefined") {
+      clearStaleUnauthorizedMarker(window.location.href);
+    }
+  }, [guard, pathname]);
+
   const [client] = useState(() => {
     const forbiddenMessage = t("forbiddenToast");
-    let redirecting = false;
+    const recovery = createUnauthorizedRecovery({
+      refreshSession,
+      clearSessionBestEffort,
+      getErrorStatus,
+      onReload: (url) => navigate(url),
+      onRedirectLogin: (currentHref) => navigate(buildLoginUrl(webUrl(), currentHref)),
+    });
+
     const handleError = (error: unknown) => {
       const status = getErrorStatus(error);
-      if (status === 401 && pathname !== "/dang-nhap") {
-        if (redirecting) return;
-        redirecting = true;
-        window.location.assign(buildLoginUrl(webUrl(), window.location.href));
-      } else if (status === 403 && pathname !== "/dang-nhap" && pathname !== "/forbidden") {
+      if (status === 401 && guard.pathname() !== LOGIN_PATH) {
+        void recovery.handleUnauthorized();
+      } else if (status === 403 && guard.claimForbidden()) {
         notify.error(forbiddenMessage);
-        router.replace("/forbidden");
+        router.replace(FORBIDDEN_PATH);
       }
     };
     return new QueryClient({

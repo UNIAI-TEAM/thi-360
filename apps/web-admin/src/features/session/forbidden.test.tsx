@@ -1,6 +1,8 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { notify } from "@thi360/ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import vi_messages from "@/messages/vi.json";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
 import type * as SessionApi from "./api";
@@ -12,7 +14,6 @@ vi.mock("./api", async (importOriginal) => {
   const actual = await importOriginal<typeof SessionApi>();
   return { ...actual, logout: mocks.logout };
 });
-
 afterEach(() => {
   mocks.logout.mockReset();
 });
@@ -41,5 +42,21 @@ describe("ForbiddenView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Đăng nhập bằng tài khoản khác" }));
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
+  });
+
+  it("báo lỗi bằng toast khi đăng xuất đổi tài khoản thất bại", async () => {
+    const toastError = vi.spyOn(notify, "error").mockImplementation(() => "");
+    mocks.logout.mockRejectedValueOnce(new Error("network"));
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <ForbiddenView />
+      </SessionProvider>,
+    );
+    await screen.findByText("ops.admin");
+
+    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập bằng tài khoản khác" }));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(vi_messages.errors.logoutFailed));
+    toastError.mockRestore();
   });
 });

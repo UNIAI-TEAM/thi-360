@@ -7,10 +7,11 @@ import {
   EmptyState,
   FormField,
   isPasswordStrong,
+  notify,
   PasswordField,
   Skeleton,
 } from "@thi360/ui";
-import { validateCallbackUrl } from "@thi360/web-kit/redirect";
+import { buildLoginUrl, validateCallbackUrl } from "@thi360/web-kit/redirect";
 import { AlertCircle, Lock, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -19,8 +20,10 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import {
   changeAccountPassword,
+  clearSessionBestEffort,
   loadSession,
   logoutSession,
+  refreshSession,
   SESSION_QUERY_KEY,
   type SessionLoader,
 } from "@/features/session/api";
@@ -42,6 +45,7 @@ export function ChangePasswordView({
 }) {
   const t = useTranslations("changePassword");
   const common = useTranslations("common");
+  const errT = useTranslations("errors");
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl");
 
@@ -87,31 +91,84 @@ export function ChangePasswordView({
     defaultValues: { oldPassword: "", newPassword: "", confirmPassword: "" },
   });
 
+  function isAuthRouteContinuation(url: string, webBase: string): boolean {
+    try {
+      const parsed = new URL(url, webBase);
+      const webOrigin = new URL(webBase).origin.toLowerCase();
+      if (parsed.origin.toLowerCase() !== webOrigin) return false;
+      const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+      return normalizedPath === "/doi-mat-khau" || normalizedPath === "/dang-nhap";
+    } catch {
+      return true;
+    }
+  }
+
+  function resolveSuccessTarget(): string {
+    const webBase = webUrl();
+    const safeCallback = validateCallbackUrl(rawCallbackUrl, [webBase, adminUrl()]);
+    if (safeCallback && !isAuthRouteContinuation(safeCallback, webBase)) {
+      return safeCallback;
+    }
+    return sessionQuery.data?.homeUrl ?? "/home";
+  }
+
+  function applyPasswordFieldError(error: ApiStatusError): boolean {
+    if (error.code === "WRONG_OLD_PASSWORD") {
+      setError("oldPassword", { message: t("wrongOldPassword") });
+      return true;
+    }
+    if (error.code === "PASSWORD_WEAK") {
+      const fieldCode = error.fieldErrors[0]?.code;
+      if (fieldCode === "PASSWORD_SAME_AS_USERNAME") {
+        setError("newPassword", { message: t("newPasswordSameAsUsername") });
+      } else {
+        setError("newPassword", { message: t("newPasswordWeak") });
+      }
+      return true;
+    }
+    return false;
+  }
+
   async function onSubmit(values: ChangePasswordValues) {
     setServerError(null);
+    const payload = {
+      oldPassword: values.oldPassword,
+      newPassword: values.newPassword,
+    };
     try {
-      await changeAccountPassword({
-        oldPassword: values.oldPassword,
-        newPassword: values.newPassword,
-      });
-      const safeCallback = validateCallbackUrl(rawCallbackUrl, [webUrl(), adminUrl()]);
-      const target = safeCallback ?? sessionQuery.data?.homeUrl ?? "/home";
-      navigate(target);
+      await changeAccountPassword(payload);
+      navigate(resolveSuccessTarget());
     } catch (error) {
-      if (error instanceof ApiStatusError) {
-        if (error.code === "WRONG_OLD_PASSWORD") {
-          setError("oldPassword", { message: t("wrongOldPassword") });
-          return;
-        }
-        if (error.code === "PASSWORD_WEAK") {
-          const fieldCode = error.fieldErrors[0]?.code;
-          if (fieldCode === "PASSWORD_SAME_AS_USERNAME") {
-            setError("newPassword", { message: t("newPasswordSameAsUsername") });
-          } else {
-            setError("newPassword", { message: t("newPasswordWeak") });
+      if (error instanceof ApiStatusError && error.status === 401) {
+        const currentHref =
+          typeof window !== "undefined" ? window.location.href : `${webUrl()}/doi-mat-khau`;
+        try {
+          await refreshSession();
+        } catch (refreshError) {
+          if (!(refreshError instanceof ApiStatusError && refreshError.status === 401)) {
+            await clearSessionBestEffort();
           }
+          navigate(buildLoginUrl(webUrl(), currentHref));
           return;
         }
+        try {
+          await changeAccountPassword(payload);
+          navigate(resolveSuccessTarget());
+        } catch (retryError) {
+          if (retryError instanceof ApiStatusError) {
+            if (retryError.status === 401) {
+              await clearSessionBestEffort();
+              navigate(buildLoginUrl(webUrl(), currentHref));
+              return;
+            }
+            if (applyPasswordFieldError(retryError)) return;
+          }
+          setServerError(t("genericError"));
+        }
+        return;
+      }
+      if (error instanceof ApiStatusError && applyPasswordFieldError(error)) {
+        return;
       }
       setServerError(t("genericError"));
     }
@@ -122,6 +179,8 @@ export function ChangePasswordView({
     try {
       await logoutSession();
       navigate("/dang-nhap");
+    } catch {
+      notify.error(errT("logoutFailed"));
     } finally {
       setLeaving(false);
     }

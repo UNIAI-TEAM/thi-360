@@ -46,6 +46,7 @@
   },
   "errors": {
     "forbiddenToast": "Bạn không có quyền thực hiện thao tác này.",
+    "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
     "notFound": "Không tìm thấy.",
     "proxyNotConfigured": "Máy chủ web chưa được cấu hình địa chỉ API.",
     "upstreamTimeout": "Máy chủ xử lý quá lâu. Hãy thử lại sau.",

@@ -46,6 +46,7 @@
   },
   "errors": {
     "forbiddenToast": "You do not have permission to perform this action.",
+    "logoutFailed": "Unable to sign out. Please try again.",
     "notFound": "Not found.",
     "proxyNotConfigured": "Web server API address is not configured.",
     "upstreamTimeout": "The server took too long to respond. Please try again later.",

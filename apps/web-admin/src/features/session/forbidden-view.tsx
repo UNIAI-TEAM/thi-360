@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@thi360/ui";
+import { Button, notify } from "@thi360/ui";
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,6 +13,7 @@ import { useSession } from "./session-provider";
 export function ForbiddenView() {
   const t = useTranslations("forbidden");
   const common = useTranslations("common");
+  const errors = useTranslations("errors");
   const state = useSession();
   const [leaving, setLeaving] = useState(false);
 
@@ -20,6 +21,8 @@ export function ForbiddenView() {
     setLeaving(true);
     try {
       await logout();
+    } catch {
+      notify.error(errors("logoutFailed"));
     } finally {
       setLeaving(false);
     }

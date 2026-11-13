@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, StatusPage } from "@thi360/ui";
+import { Button, notify, StatusPage } from "@thi360/ui";
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -16,6 +16,7 @@ export function StudentForbiddenView({
 }) {
   const t = useTranslations("forbidden");
   const common = useTranslations("common");
+  const errors = useTranslations("errors");
   const [leaving, setLeaving] = useState(false);
 
   const sessionQuery = useQuery({
@@ -30,6 +31,8 @@ export function StudentForbiddenView({
     try {
       await logoutSession();
       navigate("/dang-nhap");
+    } catch {
+      notify.error(errors("logoutFailed"));
     } finally {
       setLeaving(false);
     }

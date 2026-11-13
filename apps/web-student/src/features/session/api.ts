@@ -42,3 +42,20 @@ export async function logoutSession(): Promise<void> {
     throw toApiStatusError(response.status, error);
   }
 }
+
+export async function refreshSession(): Promise<void> {
+  const client = createBrowserApiClient();
+  const { error, response } = await client.POST("/api/v1/auth/refresh");
+  if (!response.ok) {
+    throw toApiStatusError(response.status, error);
+  }
+}
+
+export async function clearSessionBestEffort(): Promise<void> {
+  try {
+    const client = createBrowserApiClient();
+    await client.POST("/api/v1/auth/logout");
+  } catch {
+    // Xóa cookie tối đa trước khi chuyển về trang đăng nhập
+  }
+}

@@ -1,8 +1,10 @@
+import { notify } from "@thi360/ui";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
+import vi_messages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
 import { ChangePasswordView } from "./change-password-view";
 
@@ -10,9 +12,10 @@ const mocks = vi.hoisted(() => ({
   callbackUrl: null as string | null,
   changeAccountPassword: vi.fn(),
   logoutSession: vi.fn(),
+  refreshSession: vi.fn(),
+  clearSessionBestEffort: vi.fn(),
   navigate: vi.fn(),
 }));
-
 vi.mock("next/navigation", () => ({
   useSearchParams: () =>
     new URLSearchParams(mocks.callbackUrl ? { callbackUrl: mocks.callbackUrl } : {}),
@@ -24,6 +27,8 @@ vi.mock("@/features/session/api", async () => {
     ...actual,
     changeAccountPassword: mocks.changeAccountPassword,
     logoutSession: mocks.logoutSession,
+    refreshSession: mocks.refreshSession,
+    clearSessionBestEffort: mocks.clearSessionBestEffort,
   };
 });
 
@@ -44,9 +49,10 @@ beforeEach(() => {
 afterEach(() => {
   mocks.changeAccountPassword.mockReset();
   mocks.logoutSession.mockReset();
+  mocks.refreshSession.mockReset();
+  mocks.clearSessionBestEffort.mockReset();
   mocks.navigate.mockReset();
 });
-
 describe("ChangePasswordView", () => {
   it("kiểm tra 5 điều kiện mật khẩu và điều hướng tới callbackUrl hợp lệ sau khi đổi thành công", async () => {
     mocks.callbackUrl = "http://localhost:3001/users";
@@ -95,5 +101,69 @@ describe("ChangePasswordView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("http://localhost:3000/home"));
+  });
+
+  it("bỏ qua callbackUrl trỏ về /doi-mat-khau hoặc /dang-nhap để tránh vòng lặp", async () => {
+    mocks.callbackUrl = "http://localhost:3000/doi-mat-khau?callbackUrl=%2Fhome";
+    mocks.changeAccountPassword.mockResolvedValue(undefined);
+
+    renderWithProviders(
+      <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/Mật khẩu hiện tại/), "OldPass1!");
+    await userEvent.type(screen.getByLabelText(/^Mật khẩu mới/), "NewPass1!");
+    await userEvent.type(screen.getByLabelText(/Nhập lại mật khẩu mới/), "NewPass1!");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("http://localhost:3000/home"));
+  });
+
+  it("401 khi gửi biểu mẫu: gọi /auth/refresh một lần rồi thử lại, hoặc về /dang-nhap nếu refresh trả 401", async () => {
+    mocks.changeAccountPassword
+      .mockRejectedValueOnce(new ApiStatusError(401, "expired"))
+      .mockResolvedValueOnce(undefined);
+    mocks.refreshSession.mockResolvedValueOnce(undefined);
+
+    renderWithProviders(
+      <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/Mật khẩu hiện tại/), "OldPass1!");
+    await userEvent.type(screen.getByLabelText(/^Mật khẩu mới/), "NewPass1!");
+    await userEvent.type(screen.getByLabelText(/Nhập lại mật khẩu mới/), "NewPass1!");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("http://localhost:3000/home"));
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
+    expect(mocks.changeAccountPassword).toHaveBeenCalledTimes(2);
+
+    mocks.navigate.mockReset();
+    mocks.changeAccountPassword.mockRejectedValueOnce(new ApiStatusError(401, "revoked"));
+    mocks.refreshSession.mockRejectedValueOnce(new ApiStatusError(401, "revoked"));
+    await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
+
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        `http://localhost:3000/dang-nhap?callbackUrl=${encodeURIComponent(window.location.href)}`,
+      ),
+    );
+    expect(mocks.clearSessionBestEffort).not.toHaveBeenCalled();
+  });
+
+  it("hiện thông báo lỗi khi Đăng nhập bằng tài khoản khác thất bại", async () => {
+    const toastError = vi.spyOn(notify, "error").mockImplementation(() => "");
+    mocks.logoutSession.mockRejectedValueOnce(new Error("network"));
+
+    renderWithProviders(
+      <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập bằng tài khoản khác" }));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(vi_messages.errors.logoutFailed));
+    toastError.mockRestore();
   });
 });

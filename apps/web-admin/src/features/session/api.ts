@@ -31,3 +31,12 @@ export async function logout(): Promise<void> {
   }
   redirectToLogin({ returnHere: false });
 }
+
+export async function clearSessionBestEffort(): Promise<void> {
+  try {
+    const client = createBrowserApiClient();
+    await client.POST("/api/v1/auth/logout");
+  } catch {
+    // Xóa cookie tối đa trước khi chuyển về trang đăng nhập
+  }
+}
