@@ -1,63 +1,61 @@
 # PROGRESS — Thi 360
 
-> Cập nhật mỗi lần dừng việc. Mới nhất ở trên. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
+> Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** lập kế hoạch đợt 1. Chưa có dòng mã nào.
+**Giai đoạn:** đợt 1, đang làm **T01 (UNI-2538)** — khởi tạo monorepo, CI, môi trường dev.
 
 **Bước tiếp theo**
 
-1. Người duyệt spec `docs/specs/2026-11-13-base-port-pbi-01-02.md` và các quyết định kiến trúc trong `ARCHITECTURE.md` mục 7.
-2. Commit bộ tài liệu này lên `https://github.com/UNIAI-TEAM/thi-360.git` (repo đang trống; chưa commit, chưa push).
-3. Bắt đầu T01 (UNI-2538): khởi tạo monorepo, CI, Docker Compose.
+1. Hoàn tất T01 và mở PR vào `develop`.
+2. T02 (UNI-2539) khung backend và T06 (UNI-2543) design system chạy song song được.
 
 ## Đã làm
+
+### 2026-11-13 — Chốt câu hỏi mở, cập nhật tài liệu
+
+- M.Trường duyệt kiến trúc theo đề xuất và chốt 6 câu hỏi mở cùng phạm vi tùy chỉnh giao diện (spec mục 14, `PRD.md` mục 6).
+- Cập nhật spec, plan, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `TASK.md` theo các điểm đã chốt.
+- Thêm task T17 **UNI-2555** (tùy chỉnh giao diện toàn hệ thống). Bình luận "phạm vi đổi" trên UNI-2537, 2540, 2542, 2544, 2547, 2548, 2550, 2554.
+- Repo: đã push `main` và `develop` lên `UNIAI-TEAM/thi-360`; `develop` là nhánh mặc định. Commit đầu `7eec907`.
 
 ### 2026-11-13 — Khảo sát và lập kế hoạch
 
 - Đọc UNI-1630 (PBI-01) kèm UniNote "Quản lý User", UNI-1631 (PBI-02) kèm UniNote "Quản lý danh mục dùng chung", và tóm tắt 26 PBI của project Thi 360 trên uniworkos.
-- Khảo sát `reap-elearning`: xác định phần port được (xác thực, bộ lọc bảo mật, quy tắc tên đăng nhập, lớp học, import có kiểm tra trước, nhật ký, danh mục `global_list`, đơn hàng VNPAY) và phần phải làm mới (phân quyền vai trò → quyền, mật khẩu tạm, lưu đợt cấp hàng loạt, phiên bản mã tổ hợp, ngân hàng câu hỏi).
-- Đo phong cách giao diện từ hsavnu.edu.vn (trang chủ, Thi thử, Khóa học, chi tiết khóa học, Tin tức, Đăng nhập) → `DESIGN.md`.
+- Khảo sát `reap-elearning`: phần port được (xác thực, bộ lọc bảo mật, quy tắc tên đăng nhập, lớp học, import có kiểm tra trước, nhật ký, danh mục `global_list`, bộ tùy chỉnh giao diện, đơn hàng VNPAY) và phần phải làm mới (phân quyền vai trò → quyền, lưu đợt cấp hàng loạt, phiên bản mã tổ hợp, ngân hàng câu hỏi).
+- Đo phong cách giao diện từ hsavnu.edu.vn → `DESIGN.md`.
 - Viết `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `RULES.md`, `TASK.md`, spec và plan đợt 1.
-- Tạo trên UniAI (project Thi 360): issue cha **UNI-2537** và 17 sub-issue **UNI-2538 → UNI-2554** (T01–T16 ở `todo`, đăng nhập Google ở `backlog`).
+- Tạo trên UniAI (project Thi 360): issue cha **UNI-2537**, sub-issue **UNI-2538 → UNI-2553** (T01–T16), **UNI-2554** (đăng nhập Google, backlog).
 
 ## Quyết định đã chốt
 
-| Ngày | Quyết định | Ai |
-|---|---|---|
-| 2026-11-13 | Phân quyền theo vai trò → quyền, có gán quyền trực tiếp cho user | M.Trường |
-| 2026-11-13 | Đăng nhập Google để backlog; khi bật thì gộp vào tài khoản đã có cùng email | M.Trường |
-| 2026-11-13 | Màn danh mục dùng chung làm đầy đủ hơn bản của reap | M.Trường |
-| 2026-11-13 | Giao diện tham khảo hsavnu.edu.vn | M.Trường |
+Danh sách đầy đủ ở `PRD.md` mục 6 (P1–P12) và spec mục 14. Tóm tắt các điểm ảnh hưởng tới cách viết mã:
 
-## Đề xuất đang dùng làm mặc định, chờ xác nhận
+| Điểm | Chốt |
+|---|---|
+| Kiến trúc | Modular monolith + worker; Keycloak chỉ xác thực; outbox trong PostgreSQL; một UI kit Tailwind |
+| Phân quyền | Vai trò → quyền, có gán quyền trực tiếp cho user |
+| Trạng thái tài khoản | `ACTIVE` / `INACTIVE` / xóa mềm. Có giao dịch thì không xóa được |
+| Dùng lại tên đăng nhập, email | Được, sau khi xóa mềm (chỉ mục duy nhất `WHERE deleted_at IS NULL`) |
+| Mật khẩu | Hệ thống sinh; bắt đổi lần đầu là tùy chọn, mặc định không; file kết quả cấp hàng loạt không hết hạn |
+| Lớp | Một học viên thuộc nhiều lớp |
+| Danh mục | Môi trường thật chỉ có nhóm; giá trị mẫu chỉ nạp ở `dev`, `test` |
+| Nhật ký | Lưu vĩnh viễn, phân vùng theo quý, lưu trữ theo năm |
+| Giao diện | Tùy chỉnh toàn hệ thống, mở từ menu profile, không có nút nổi; nút chính `#059669` |
+| Google | Backlog; khi bật thì gộp theo email |
 
-Các điểm này do agent đề xuất và đã đưa vào tài liệu; chưa có xác nhận rõ ràng của người.
+## Chờ người khác
 
-| Điểm | Đang dùng | Ghi ở đâu |
-|---|---|---|
-| Kiến trúc backend | Modular monolith + worker, không microservice | `ARCHITECTURE.md` A1 |
-| Xác thực | Giữ Keycloak, quyền do ứng dụng giữ | A2 |
-| Hàng đợi | Outbox trong PostgreSQL, chưa dùng Kafka | A3 |
-| Giao diện | Một UI kit Tailwind cho cả hai web, không dùng MUI | A4 |
-| Mobile | React Native (Expo), làm ở đợt sau | `ARCHITECTURE.md` mục 2 |
-| Quyền tự tạo trên màn Quyền | Tạo được, nhưng chỉ có tác dụng khi mã nguồn hoặc menu kiểm tra mã quyền đó | Spec mục 5.2 |
-
-## Vướng mắc và câu hỏi mở
-
-| # | Nội dung | Chờ ai |
-|---|---|---|
-| Q1 | Học viên thuộc một hay nhiều lớp | BA |
-| Q2 | Bàn giao tài khoản hàng loạt: mật khẩu tạm hay link kích hoạt | BA |
-| Q3 | Tên đăng nhập, email của tài khoản đã xóa có dùng lại được không | BA |
-| Q4 | Giá trị Dạng câu, Dạng bài; danh sách môn của QĐ01–QĐ05; tổ hợp của HSA | BA |
-| Q5 | Thời hạn lưu và ẩn dữ liệu cá nhân trong nhật ký (D15) | BA |
-| Q6 | Quy tắc gộp Google theo email **khác SRS gốc** ("không tự gộp theo email"); cần BA cập nhật SRS mục 4.1, 5.2, AC-19 | M.Trường báo BA |
+| Việc | Ai |
+|---|---|
+| Báo BA cập nhật SRS ở 4 điểm khác bản gốc (`PRD.md` mục 7) | M.Trường |
+| Giá trị danh mục thật (dạng câu, dạng bài, môn của từng tổ hợp) nhập trên web khi có màn Cấu hình chung | Admin / BA |
+| Logo Thi 360 (không dùng logo HSA Education) | Chưa có người nhận |
 
 ## Lỗi đã gặp
 
-Chưa có (chưa viết mã).
+Chưa có.
 
 ## Ghi chú cho phiên sau
 

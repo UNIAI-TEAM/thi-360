@@ -172,7 +172,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 ```
 ┌──────────┬───────────────────────────────────────────────┐
-│ Logo     │ Breadcrumb                      🔔  Tài khoản │  topbar 56px, nền trắng, viền dưới
+│ Logo     │ Breadcrumb                      🔔  Avatar ▾  │  topbar 56px; menu avatar: Hồ sơ, Đổi mật khẩu, Tùy chỉnh giao diện, Đăng xuất
 │          ├───────────────────────────────────────────────┤
 │ Sidebar  │ Tiêu đề trang                 [Nút chính]     │
 │ 248px    │ Thanh lọc (thẻ trắng, bo 12px)                │
@@ -224,14 +224,32 @@ Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-lig
 
 ## 8. Truy cập và ngôn ngữ
 
-- Độ tương phản: chữ trắng trên `primary-600` đạt khoảng 3,8:1, đủ cho chữ lớn nhưng **chưa đạt AA (4,5:1) cho chữ 14px**. Nút chính giữ `primary-600` để đúng phong cách tham khảo; nếu cần đạt AA đầy đủ thì đổi nền nút chính sang `primary-700` (khoảng 5,5:1). Chữ xanh trên nền trắng dùng `primary-700` khi cỡ chữ dưới 14px. Không dùng `text-muted` cho chữ dưới 12px.
+- Độ tương phản: chữ trắng trên `primary-600` đạt khoảng 3,8:1, đủ cho chữ lớn nhưng **chưa đạt AA (4,5:1) cho chữ 14px**. Đã chốt (2026-11-13) giữ nút chính `primary-600` để đúng phong cách tham khảo. Chữ xanh trên nền trắng dùng `primary-700` khi cỡ chữ dưới 14px. Không dùng `text-muted` cho chữ dưới 12px.
 - Mọi điều khiển dùng được bằng bàn phím, có vòng focus nhìn thấy được. Nút chỉ có icon phải có `aria-label`.
 - Không truyền đạt trạng thái chỉ bằng màu: chip trạng thái luôn có chữ.
 - Ngôn ngữ mặc định tiếng Việt, chuỗi hiển thị nằm trong file dịch (`next-intl`). Ngày `dd/MM/yyyy`, số dùng dấu chấm phân tách nghìn.
 
-## 9. Cài đặt token
+## 9. Tùy chỉnh giao diện
 
-Token khai báo một lần trong `packages/ui/src/styles/tokens.css` bằng `@theme` của Tailwind 4, hai app cùng nhập. Không viết mã màu trực tiếp trong thành phần.
+Giữ bộ cấu hình giao diện như reap, áp dụng **toàn hệ thống** (web admin và web học viên dùng chung một cấu hình). Chi tiết ở spec mục 13.
+
+- **Lối vào:** menu tài khoản ở góc trên phải (avatar → Hồ sơ, Đổi mật khẩu, **Tùy chỉnh giao diện**, Đăng xuất). Mục này chỉ hiện với người có quyền `APPEARANCE_MANAGE`. **Không dùng nút nổi** ở mép màn hình như reap.
+- **Trang tùy chỉnh:** cột trái là các nhóm tùy chọn, cột phải là vùng xem trước (nút, ô nhập, chip, bảng, thẻ, sidebar thu nhỏ).
+
+| Nhóm | Tùy chọn |
+|---|---|
+| Bảng màu | Lưới thẻ xem trước các bảng có sẵn; bảng đang dùng có viền `primary-600` và dấu tích. Mặc định là "Thi 360 Xanh lá" (toàn bộ giá trị ở mục 2). Có "Tự tạo": chọn màu chính và màu nhấn, hệ thống sinh dải 50–900 |
+| Chế độ | Sáng, tối (tab phân đoạn) |
+| Bố cục admin | Vị trí sidebar, kiểu đầy đủ/thu gọn, hiện/ẩn toolbar và footer, độ rộng nội dung |
+| Kích thước | Bo góc và chiều cao điều khiển |
+
+- Thanh dưới cùng: **Khôi phục mặc định** (kiểu Phụ) và **Lưu và áp dụng** (kiểu Chính). Thay đổi chưa lưu chỉ hiện ở vùng xem trước.
+- Khi màu tự chọn làm chữ khó đọc (tương phản dưới 4,5:1), hiện cảnh báo ngay cạnh ô chọn màu; hệ thống tự chọn màu chữ trắng hoặc đen đọc được hơn trên nền màu chính.
+- Vì màu đổi được, thành phần **chỉ dùng token** (`primary-600`, `text`, `border`…), không viết mã màu. Chế độ tối định nghĩa lại các token trung tính; không viết kiểu riêng cho chế độ tối trong thành phần.
+
+## 10. Cài đặt token
+
+Token khai báo một lần trong `packages/ui/src/styles/tokens.css` bằng `@theme` của Tailwind 4, hai app cùng nhập. Không viết mã màu trực tiếp trong thành phần. Giá trị dưới đây là bảng màu mặc định; cấu hình giao diện đang áp dụng ghi đè các biến này trên thẻ `<html>` khi render.
 
 ```css
 @theme {

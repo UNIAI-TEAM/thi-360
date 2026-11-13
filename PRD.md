@@ -42,8 +42,9 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 **Có trong đợt 1**
 
 - Nền: monorepo, backend, Keycloak, PostgreSQL, Redis, nhật ký thao tác, design system, khung web admin.
+- Tùy chỉnh giao diện toàn hệ thống (bảng màu, sáng/tối, bố cục), mở từ menu tài khoản.
 - **PBI-01**:
-  - Quản lý tài khoản: danh sách, tạo, sửa, khóa/mở, reset mật khẩu, xóa mềm.
+  - Quản lý tài khoản: danh sách, tạo, sửa, ngừng hoạt động/kích hoạt lại, reset mật khẩu, xóa mềm.
   - Phân quyền theo vai trò: bảng quyền, vai trò gán quyền, gán vai trò và quyền cho từng user.
   - Lớp học: tạo/sửa, thêm, loại, chuyển học viên, có lịch sử.
   - Cấp tài khoản hàng loạt bằng file.
@@ -70,14 +71,20 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 | P2 | Đăng nhập Google để backlog | M.Trường, 2026-11-13 |
 | P3 | Khi bật Google: đăng nhập Google bằng email X sẽ vào **đúng tài khoản đã có email X** (gộp theo email), không tạo tài khoản thứ hai. Điểm này **khác SRS gốc** ("không tự gộp theo email"), cần BA cập nhật SRS mục 5.2 và AC-19 | M.Trường, 2026-11-13 |
 | P4 | Màn danh mục dùng chung làm đầy đủ hơn bản "Cấu hình chung" của reap: thêm nơi đang dùng, lịch sử, phiên bản tổ hợp, sắp xếp kéo thả, nhập/xuất Excel | M.Trường, 2026-11-13 |
-| P5 | Giao diện tham khảo phong cách hsavnu.edu.vn (xem `DESIGN.md`) | M.Trường, 2026-11-13 |
+| P5 | Giao diện tham khảo phong cách hsavnu.edu.vn (xem `DESIGN.md`); nút chính giữ màu `#059669` | M.Trường, 2026-11-13 |
+| P6 | Một học viên được thuộc nhiều lớp | M.Trường, 2026-11-13 |
+| P7 | Tài khoản do admin cấp dùng mật khẩu hệ thống sinh; bắt đổi ở lần đăng nhập đầu là tùy chọn của người tạo, mặc định không. File kết quả cấp hàng loạt không hết hạn. **Khác SRS** | M.Trường, 2026-11-13 |
+| P8 | Tài khoản có ba mức: hoạt động → ngừng hoạt động → xóa mềm. Có giao dịch thì không xóa được, chỉ ngừng hoạt động. Không có giao dịch thì xóa mềm và tên đăng nhập, email dùng lại được. **Khác SRS** | M.Trường, 2026-11-13 |
+| P9 | Danh mục ở môi trường thật để trống giá trị, admin/BA tự nhập; local và test có bộ mẫu | M.Trường, 2026-11-13 |
+| P10 | Nhật ký lưu vĩnh viễn, không che; phân vùng theo quý, dữ liệu cũ chuyển sang bảng lưu trữ phân vùng theo năm | M.Trường, 2026-11-13 |
+| P11 | Giữ bộ tùy chỉnh giao diện như reap, mở từ menu trong profile (không dùng nút nổi), áp dụng toàn hệ thống | M.Trường, 2026-11-13 |
+| P12 | Kiến trúc theo đề xuất: modular monolith, Keycloak, một UI kit Tailwind | M.Trường, 2026-11-13 |
 
-## 7. Câu hỏi còn mở (cần BA trả lời)
+## 7. Việc cần BA cập nhật trong SRS
 
-| # | Câu hỏi | Mặc định đang dùng cho đến khi có câu trả lời |
-|---|---|---|
-| Q1 | Một học viên thuộc một hay nhiều lớp cùng lúc? | Nhiều lớp |
-| Q2 | Bàn giao tài khoản cấp hàng loạt bằng mật khẩu tạm hay link kích hoạt? | Mật khẩu tạm riêng từng tài khoản, bắt đổi ở lần đăng nhập đầu |
-| Q3 | Tên đăng nhập và email của tài khoản đã xóa mềm có được dùng lại không? | Không dùng lại |
-| Q4 | Giá trị mặc định của nhóm Dạng câu, Dạng bài và danh sách môn của QĐ01–QĐ05 | Seed mã nhóm và khung; giá trị chi tiết chờ BA cung cấp |
-| Q5 | Thời hạn lưu và chính sách ẩn dữ liệu cá nhân trong nhật ký (D15) | Lưu không thời hạn, chưa ẩn |
+Sáu câu hỏi mở của đợt 1 đã được M.Trường chốt ngày 2026-11-13 (xem mục 6 và spec mục 14). Bốn điểm khác SRS gốc, M.Trường tự báo BA:
+
+1. Đăng nhập Google gộp theo email (P3).
+2. Không bắt buộc đổi mật khẩu ở lần đăng nhập đầu (P7).
+3. Tên đăng nhập và email dùng lại được sau khi xóa mềm (P8).
+4. Trạng thái tài khoản còn hai mức hiển thị: hoạt động, ngừng hoạt động (P8).

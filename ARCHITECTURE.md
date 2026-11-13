@@ -1,6 +1,6 @@
 # ARCHITECTURE — Thi 360
 
-> Cập nhật: 2026-11-13 · Trạng thái: đề xuất, áp dụng cho đợt 1 (UNI-2537). Mục nào đổi thì sửa file này trong cùng PR.
+> Cập nhật: 2026-11-13 · Trạng thái: đã duyệt (M.Trường, 2026-11-13), áp dụng cho đợt 1 (UNI-2537). Mục nào đổi thì sửa file này trong cùng PR.
 
 ## 1. Tổng quan
 
@@ -91,10 +91,10 @@ Module khác chỉ được dùng `spi/` và sự kiện đã công bố. Test `
 
 | Module | Schema | Bảng chính | Đợt |
 |---|---|---|---|
-| `shared` | `shared` | `outbox_event`, `idempotency_key` | 1 |
+| `shared` | `shared` | `outbox_event`, `idempotency_key`, `system_setting` (cấu hình giao diện) | 1 |
 | `identity` | `identity` | `user_account`, `user_identity`, `permission`, `role`, `role_permission`, `user_role`, `user_permission`, `class_room`, `class_member`, `class_member_history`, `import_batch`, `import_row` | 1 |
 | `catalog` | `catalog` | `catalog_group`, `catalog_item`, `combination_version`, `combination_subject` | 1 |
-| `audit` | `audit` | `audit_event` (chỉ ghi thêm) | 1 |
+| `audit` | `audit` | `audit_event` (chỉ ghi thêm, phân vùng theo quý), `audit_event_archive` (phân vùng theo năm) | 1 |
 | `questionbank`, `exam`, `attempt`, `scoring`, `commerce`, `ai`, `support`, `report` | theo tên | — | sau |
 
 ## 5. Luồng dữ liệu
@@ -111,8 +111,8 @@ Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF ────�
 ```
 
 - Trình duyệt không bao giờ giữ token trong JavaScript.
-- Tài khoản `LOCKED` hoặc đã xóa mềm bị từ chối ở bước 3, kể cả khi Keycloak trả token.
-- Khóa tài khoản: vô hiệu ở Keycloak, xóa phiên trong Redis, request kế tiếp của phiên cũ nhận 401.
+- Tài khoản `INACTIVE` hoặc đã xóa mềm bị từ chối ở bước 3, kể cả khi Keycloak trả token.
+- Ngừng hoạt động tài khoản: vô hiệu ở Keycloak, xóa phiên trong Redis, request kế tiếp của phiên cũ nhận 401.
 
 ### 5.2 Kiểm tra quyền cho một request quản trị
 
@@ -139,6 +139,8 @@ thi360-worker ── đọc outbox (SELECT … FOR UPDATE SKIP LOCKED) ──►
 
 Thao tác nghiệp vụ và sự kiện nhật ký thành công hoặc thất bại cùng nhau. `audit_event` có trigger chặn `UPDATE` và `DELETE`.
 
+**Phân vùng và lưu trữ:** `audit_event` phân vùng theo quý trên `occurred_at`; job tạo sẵn phân vùng quý kế tiếp. Phân vùng cũ hơn ngưỡng (mặc định 8 quý) được job lưu trữ chép sang `audit_event_archive` (phân vùng theo năm), đối chiếu số dòng rồi tách bỏ. Nhật ký lưu vĩnh viễn.
+
 ### 5.4 Cấp tài khoản hàng loạt
 
 ```
@@ -156,12 +158,23 @@ Module khác / web ─► GET /api/v1/catalog/options?group=SUBJECT ─► chỉ
 Module khác ─► cài đặt CatalogUsageProvider ─► catalog hỏi "giá trị này đang được dùng ở đâu" trước khi cho ngừng hoặc xóa
 ```
 
+### 5.6 Giao diện toàn hệ thống
+
+```
+Người có APPEARANCE_MANAGE ─► PUT /api/v1/admin/appearance ─► shared.system_setting('appearance') + audit, xóa cache
+Mọi trang (kể cả đăng nhập, web học viên) ─► GET /api/v1/appearance (công khai, cache)
+                                          ─► layout phía máy chủ của Next.js chèn biến CSS vào <html> ─► không nháy màu
+```
+
+Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không cần build lại.
+
 ## 6. Đồng bộ với Keycloak
 
 `identity.user_account` là nguồn dữ liệu nghiệp vụ; `id` trùng với `sub` của Keycloak.
 
 - **Tạo:** ghi `user_account` trạng thái `PROVISIONING` → tạo user ở Keycloak → cập nhật trạng thái. Job đối soát xử lý bản ghi kẹt ở `PROVISIONING`.
-- **Khóa / xóa mềm:** đổi trạng thái trong `user_account`, vô hiệu user ở Keycloak, thu hồi phiên.
+- **Ngừng hoạt động:** đổi trạng thái trong `user_account`, vô hiệu user ở Keycloak, thu hồi phiên.
+- **Xóa mềm** (chỉ khi không có giao dịch): đặt `deleted_at`, **xóa user ở Keycloak** để giải phóng tên đăng nhập và email. Tính duy nhất trong `user_account` dùng chỉ mục có điều kiện `WHERE deleted_at IS NULL`.
 - **Không** truy vấn trực tiếp bảng của Keycloak (reap làm vậy, không port sang).
 
 ## 7. Quyết định kiến trúc
@@ -174,6 +187,8 @@ Module khác ─► cài đặt CatalogUsageProvider ─► catalog hỏi "giá 
 | A4 | Một UI kit Tailwind dùng cho cả admin và học viên | Một phong cách theo `DESIGN.md`; màn của reap (MUI) chỉ port luồng và logic |
 | A5 | Không đa tenant | Thi 360 là một sản phẩm, một đơn vị vận hành |
 | A6 | Bảng `user_identity` có từ đầu dù chưa bật Google | Bật Google sau không phải đổi mô hình dữ liệu |
+| A7 | Giao diện là cấu hình toàn hệ thống lưu ở máy chủ, áp bằng biến CSS | Giữ khả năng tùy chỉnh như reap mà không phụ thuộc MUI |
+| A8 | Nhật ký phân vùng theo quý, lưu trữ theo năm | Lưu vĩnh viễn nhưng bảng chính vẫn gọn |
 
 ## 8. Bảo mật
 
