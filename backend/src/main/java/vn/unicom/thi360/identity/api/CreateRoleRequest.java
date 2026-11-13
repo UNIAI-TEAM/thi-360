@@ -12,19 +12,19 @@ import vn.unicom.thi360.shared.security.Access;
 @Schema(description = "Yêu cầu tạo vai trò mới")
 public record CreateRoleRequest(
         @Schema(description = "Mã vai trò duy nhất", example = "REVIEWER", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Mã vai trò không được để trống")
-        @Size(max = 64, message = "Mã vai trò tối đa 64 ký tự")
-        @Pattern(regexp = "^[A-Za-z0-9_.-]+$", message = "Mã vai trò chỉ gồm chữ cái, số và ký tự _ . -")
+        @NotBlank(message = "{validation.role.code.notBlank}")
+        @Size(max = 64, message = "{validation.role.code.size}")
+        @Pattern(regexp = "^[A-Za-z0-9_.-]+$", message = "{validation.role.code.pattern}")
         String code,
         @Schema(description = "Tên hiển thị vai trò", example = "Kiểm duyệt viên", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Tên vai trò không được để trống")
-        @Size(max = 150, message = "Tên vai trò tối đa 150 ký tự")
+        @NotBlank(message = "{validation.role.name.notBlank}")
+        @Size(max = 150, message = "{validation.role.name.size}")
         String name,
         @Schema(description = "Mô tả vai trò")
-        @Size(max = 500, message = "Mô tả tối đa 500 ký tự")
+        @Size(max = 500, message = "{validation.role.description.size}")
         String description,
         @Schema(description = "Phạm vi truy cập bắt buộc", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "Phạm vi truy cập là bắt buộc")
+        @NotNull(message = "{validation.role.access.notNull}")
         Access access,
         @Schema(description = "Trạng thái ban đầu (mặc định ACTIVE)")
         RoleStatus status,

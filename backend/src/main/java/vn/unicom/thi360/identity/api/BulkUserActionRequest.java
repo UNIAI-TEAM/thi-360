@@ -10,13 +10,13 @@ import java.util.UUID;
 @Schema(description = "Yêu cầu xem trước hoặc thực thi thao tác hàng loạt trên tài khoản")
 public record BulkUserActionRequest(
         @Schema(description = "Hành động thực hiện", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "Hành động là bắt buộc")
+        @NotNull(message = "{validation.bulkUser.action.notNull}")
         UserBulkAction action,
         @Schema(description = "Danh sách ID tài khoản (tối đa 500)", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotEmpty(message = "Danh sách tài khoản không được để trống")
+        @NotEmpty(message = "{validation.userIds.notEmpty}")
         List<UUID> userIds,
         @Schema(description = "Lý do thực hiện (bắt buộc khi áp dụng DEACTIVATE hoặc DELETE)")
-        @Size(max = 500, message = "Lý do tối đa 500 ký tự")
+        @Size(max = 500, message = "{validation.reason.size}")
         String reason
 ) {
 }

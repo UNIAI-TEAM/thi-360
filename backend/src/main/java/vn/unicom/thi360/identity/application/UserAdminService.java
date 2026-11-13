@@ -96,6 +96,7 @@ import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.security.SessionStore;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Service
 public class UserAdminService {
@@ -140,6 +141,7 @@ public class UserAdminService {
     private final TransactionTemplate transactionTemplate;
     private final TransactionTemplate requiresNewTx;
     private final Clock clock;
+    private final AppMessages messages;
 
     public UserAdminService(
             UserAccountRepository userAccountRepository,
@@ -160,7 +162,8 @@ public class UserAdminService {
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
-            Clock clock) {
+            Clock clock,
+            AppMessages messages) {
         this.userAccountRepository = userAccountRepository;
         this.userIdentityRepository = userIdentityRepository;
         this.roleRepository = roleRepository;
@@ -182,6 +185,7 @@ public class UserAdminService {
         this.requiresNewTx = new TransactionTemplate(transactionManager);
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
+        this.messages = messages;
     }
     @Transactional(readOnly = true)
     public PageResponse<UserSummaryResponse> listUsers(
@@ -197,7 +201,7 @@ public class UserAdminService {
             throw new ValidationException(
                     ERROR_CLASS_NOT_SUPPORTED,
                     null,
-                    List.of(new FieldError("classId", ERROR_CLASS_NOT_SUPPORTED, "Chức năng lớp học chưa được hỗ trợ")));
+                    List.of(new FieldError("classId", ERROR_CLASS_NOT_SUPPORTED, messages.get(ERROR_CLASS_NOT_SUPPORTED))));
         }
 
         StringBuilder where = new StringBuilder("u.status <> ?");
@@ -325,7 +329,7 @@ public class UserAdminService {
             throw new ValidationException(
                     ERROR_CLASS_NOT_SUPPORTED,
                     null,
-                    List.of(new FieldError("classIds", ERROR_CLASS_NOT_SUPPORTED, "Chức năng lớp học chưa được hỗ trợ")));
+                    List.of(new FieldError("classIds", ERROR_CLASS_NOT_SUPPORTED, messages.get(ERROR_CLASS_NOT_SUPPORTED))));
         }
 
         String trimmedUsername = usernamePolicy.validate("username", request.username());
@@ -564,7 +568,7 @@ public class UserAdminService {
         if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
             throw new ConflictException(ERROR_SELF_DEACTIVATE);
         }
-        String trimmedReason = validateReason("reason", request.reason(), "Vui lòng nhập lý do ngừng hoạt động");
+        String trimmedReason = validateReason("reason", request.reason(), "validation.user.deactivateReason.required");
         Boolean[] restoreKcEnabledOnRollback = {null};
         try {
             return transactionTemplate.execute(status -> {
@@ -654,7 +658,7 @@ public class UserAdminService {
         String trimmedReason = request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
         if (trimmedReason != null && trimmedReason.length() > 500) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+                    new FieldError("reason", "SIZE", messages.get("validation.reason.size"))));
         }
 
         transactionTemplate.executeWithoutResult(status -> {
@@ -753,7 +757,7 @@ public class UserAdminService {
         if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
             throw new ConflictException(ERROR_SELF_DELETE);
         }
-        String trimmedReason = validateReason("reason", reason, "Vui lòng nhập lý do xóa tài khoản");
+        String trimmedReason = validateReason("reason", reason, "validation.user.deleteReason.required");
         transactionTemplate.executeWithoutResult(status -> {
             UserAccount user = lockActiveManageableUser(actor, userId);
             List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
@@ -763,7 +767,7 @@ public class UserAdminService {
                                 b.source(),
                                 b.code() == null || b.code().isBlank() ? ERROR_USER_HAS_TRANSACTIONS : b.code(),
                                 b.message() == null || b.message().isBlank()
-                                        ? "Tài khoản đang có dữ liệu giao dịch cần đối soát, không thể xóa"
+                                        ? messages.get(ERROR_USER_HAS_TRANSACTIONS)
                                         : b.message()))
                         .toList();
                 throw new ConflictException(ERROR_USER_HAS_TRANSACTIONS, null, fieldErrors);
@@ -811,7 +815,7 @@ public class UserAdminService {
     public BulkUserActionResponse applyBulkActions(BulkUserActionRequest request, String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", "Thiếu khóa Idempotency-Key")));
+                    new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", messages.get("validation.idempotencyKey.required"))));
         }
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         List<UUID> distinctIds = validateBulkUserIds(request.userIds());
@@ -819,7 +823,7 @@ public class UserAdminService {
         if ((request.action() == UserBulkAction.DEACTIVATE || request.action() == UserBulkAction.DELETE)
                 && trimmedReason == null) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "REASON_REQUIRED", "Vui lòng nhập lý do thực hiện thao tác hàng loạt")));
+                    new FieldError("reason", "REASON_REQUIRED", messages.get("validation.user.bulkReason.required"))));
         }
 
         String scope = BULK_IDEMPOTENCY_ENDPOINT + ":" + actor.realm().name() + ":" + actor.id();
@@ -931,7 +935,7 @@ public class UserAdminService {
                 compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
             }
             return new BulkUserActionItemResult(
-                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), "Lỗi kết nối dịch vụ xác thực");
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), messages.get("bulk.user.fail.idpError"));
         } catch (RuntimeException ex) {
             if (restoreKcEnabledOnRollback[0] != null) {
                 compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
@@ -942,7 +946,7 @@ public class UserAdminService {
                     .addKeyValue("action", action.name())
                     .log("Bulk user action item failed; transaction rolled back");
             return new BulkUserActionItemResult(
-                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, "INTERNAL_ERROR", "Không thể xử lý tài khoản");
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, "INTERNAL_ERROR", messages.get("bulk.user.fail.internal"));
         }
     }
 
@@ -1120,29 +1124,29 @@ public class UserAdminService {
     private BulkSkipDecision evaluateBulkEligibility(
             CurrentUser actor, UserBulkAction action, UUID userId, UserAccount user) {
         if (user == null || user.isDeleted() || user.getStatus() == UserStatus.PROVISIONING) {
-            return new BulkSkipDecision("USER_NOT_AVAILABLE", "Tài khoản không tồn tại hoặc đã bị xóa");
+            return new BulkSkipDecision("USER_NOT_AVAILABLE", messages.get("bulk.user.skip.notAvailable"));
         }
         if (action == UserBulkAction.DEACTIVATE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
-            return new BulkSkipDecision(ERROR_SELF_DEACTIVATE, "Không thể tự ngừng hoạt động tài khoản của chính mình");
+            return new BulkSkipDecision(ERROR_SELF_DEACTIVATE, messages.get(ERROR_SELF_DEACTIVATE));
         }
         if (action == UserBulkAction.DELETE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
-            return new BulkSkipDecision(ERROR_SELF_DELETE, "Không thể tự xóa tài khoản của chính mình");
+            return new BulkSkipDecision(ERROR_SELF_DELETE, messages.get(ERROR_SELF_DELETE));
         }
         if (action == UserBulkAction.DEACTIVATE && user.getStatus() == UserStatus.INACTIVE) {
-            return new BulkSkipDecision("ALREADY_INACTIVE", "Tài khoản đã ở trạng thái ngừng hoạt động");
+            return new BulkSkipDecision("ALREADY_INACTIVE", messages.get("bulk.user.skip.alreadyInactive"));
         }
         if (action == UserBulkAction.ACTIVATE && user.getStatus() == UserStatus.ACTIVE) {
-            return new BulkSkipDecision("ALREADY_ACTIVE", "Tài khoản đang hoạt động");
+            return new BulkSkipDecision("ALREADY_ACTIVE", messages.get("bulk.user.skip.alreadyActive"));
         }
         Set<Permission> targetPermissions = authzSnapshotService.computeEffectivePermissions(userId);
         if (!privilegeGuard.canGrant(actor, targetPermissions)) {
-            return new BulkSkipDecision("PRIVILEGE_ESCALATION", "Tài khoản có quyền vượt quá phạm vi của bạn");
+            return new BulkSkipDecision("PRIVILEGE_ESCALATION", messages.get("bulk.user.skip.privilegeEscalation"));
         }
         if (action == UserBulkAction.DELETE) {
             List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
             if (!blockers.isEmpty()) {
                 String sources = blockers.stream().map(AccountDeletionGuard.Blocker::source).distinct().reduce((a, b) -> a + ", " + b).orElse("");
-                return new BulkSkipDecision(ERROR_USER_HAS_TRANSACTIONS, "Tài khoản có dữ liệu giao dịch (" + sources + ")");
+                return new BulkSkipDecision(ERROR_USER_HAS_TRANSACTIONS, messages.get("bulk.user.skip.hasTransactions", sources));
             }
         }
         return null;
@@ -1157,17 +1161,17 @@ public class UserAdminService {
     }
 
 
-    private static List<UUID> validateBulkUserIds(List<UUID> userIds) {
+    private List<UUID> validateBulkUserIds(List<UUID> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("userIds", "NOTEMPTY", "Danh sách tài khoản không được để trống")));
+                    new FieldError("userIds", "NOTEMPTY", messages.get("validation.userIds.notEmpty"))));
         }
         if (userIds.size() > MAX_BULK_USERS) {
             throw new ValidationException(
                     "BULK_LIMIT_EXCEEDED",
                     null,
                     List.of(new FieldError(
-                            "userIds", "BULK_LIMIT_EXCEEDED", "Số lượng tài khoản thao tác hàng loạt tối đa là 500")));
+                            "userIds", "BULK_LIMIT_EXCEEDED", messages.get("BULK_LIMIT_EXCEEDED"))));
         }
         Set<UUID> seen = new LinkedHashSet<>();
         for (UUID id : userIds) {
@@ -1177,7 +1181,7 @@ public class UserAdminService {
         }
         if (seen.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("userIds", "NOTEMPTY", "Danh sách tài khoản không được để trống")));
+                    new FieldError("userIds", "NOTEMPTY", messages.get("validation.userIds.notEmpty"))));
         }
         return List.copyOf(seen);
     }
@@ -1196,15 +1200,15 @@ public class UserAdminService {
         }
     }
 
-    private static String validateReason(String field, String reason, String emptyMessage) {
+    private String validateReason(String field, String reason, String emptyMessageKey) {
         if (reason == null || reason.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError(field, "REASON_REQUIRED", emptyMessage)));
+                    new FieldError(field, "REASON_REQUIRED", messages.get(emptyMessageKey))));
         }
         String trimmed = reason.trim();
         if (trimmed.length() > 500) {
             throw new ValidationException(List.of(
-                    new FieldError(field, "SIZE", "Lý do tối đa 500 ký tự")));
+                    new FieldError(field, "SIZE", messages.get("validation.reason.size"))));
         }
         return trimmed;
     }
@@ -1406,43 +1410,43 @@ public class UserAdminService {
         return ex;
     }
 
-    private static String validateRequiredFullName(String fullName) {
+    private String validateRequiredFullName(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("fullName", "NOTBLANK", "Họ và tên không được để trống")));
+                    new FieldError("fullName", "NOTBLANK", messages.get("validation.user.fullName.notBlank"))));
         }
         String trimmed = fullName.trim();
         if (trimmed.length() > 200) {
             throw new ValidationException(List.of(
-                    new FieldError("fullName", "SIZE", "Họ và tên tối đa 200 ký tự")));
+                    new FieldError("fullName", "SIZE", messages.get("validation.user.fullName.size"))));
         }
         return trimmed;
     }
 
-    private static String normalizeAndValidateEmail(String email) {
+    private String normalizeAndValidateEmail(String email) {
         if (email == null || email.isBlank()) {
             return null;
         }
         String trimmed = email.trim();
         if (trimmed.length() > 255) {
             throw new ValidationException(List.of(
-                    new FieldError("email", "SIZE", "Email tối đa 255 ký tự")));
+                    new FieldError("email", "SIZE", messages.get("validation.user.email.size"))));
         }
         if (!EMAIL_PATTERN.matcher(trimmed).matches()) {
             throw new ValidationException(List.of(
-                    new FieldError("email", "EMAIL_INVALID", "Email không đúng định dạng")));
+                    new FieldError("email", "EMAIL_INVALID", messages.get("validation.user.email.invalid"))));
         }
         return trimmed;
     }
 
-    private static String normalizeAndValidatePhone(String phone) {
+    private String normalizeAndValidatePhone(String phone) {
         if (phone == null || phone.isBlank()) {
             return null;
         }
         String trimmed = phone.trim();
         if (trimmed.length() > 30) {
             throw new ValidationException(List.of(
-                    new FieldError("phone", "SIZE", "Số điện thoại tối đa 30 ký tự")));
+                    new FieldError("phone", "SIZE", messages.get("validation.user.phone.size"))));
         }
         return trimmed;
     }

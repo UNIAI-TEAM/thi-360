@@ -48,7 +48,7 @@ import vn.unicom.thi360.shared.security.Access;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.Realm;
-
+import vn.unicom.thi360.shared.web.AppMessages;
 @Service
 public class RoleService {
 
@@ -93,6 +93,7 @@ public class RoleService {
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final AppMessages messages;
 
     public RoleService(
             RoleRepository roleRepository,
@@ -104,7 +105,8 @@ public class RoleService {
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
-            Clock clock) {
+            Clock clock,
+            AppMessages messages) {
         this.roleRepository = roleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
         this.permissionRepository = permissionRepository;
@@ -115,6 +117,7 @@ public class RoleService {
         this.auditRecorder = auditRecorder;
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
@@ -199,7 +202,7 @@ public class RoleService {
             throw new ConflictException(ERROR_ROLE_CODE_TAKEN);
         }
 
-        Set<Permission> requested = parsePermissions(request.permissionCodes());
+        Set<Permission> requested = parsePermissions(request.permissionCodes(), messages);
         validateScope(request.access(), requested);
         Set<Permission> normalized = permissionSetNormalizer.normalize(requested);
         privilegeGuard.assertCanGrant(actor, normalized);
@@ -258,7 +261,7 @@ public class RoleService {
             String trimmed = request.code().trim();
             if (trimmed.isEmpty()) {
                 throw new ValidationException(List.of(
-                        new FieldError("code", "NOT_BLANK", "Mã vai trò không được để trống")));
+                        new FieldError("code", "NOT_BLANK", messages.get("validation.role.code.notBlank"))));
             }
             if (!trimmed.equals(role.getCode())) {
                 if (role.isSystem()) {
@@ -276,7 +279,7 @@ public class RoleService {
         if (request.name() != null) {
             if (request.name().isBlank()) {
                 throw new ValidationException(List.of(
-                        new FieldError("name", "NOT_BLANK", "Tên vai trò không được để trống")));
+                        new FieldError("name", "NOT_BLANK", messages.get("validation.role.name.notBlank"))));
             }
             newName = request.name();
         }
@@ -369,12 +372,12 @@ public class RoleService {
             throw new VersionConflictException();
         }
 
-        Set<Permission> requested = parsePermissions(request.permissionCodes());
+        Set<Permission> requested = parsePermissions(request.permissionCodes(), messages);
         validateScope(role.getAccess(), requested);
 
         List<String> beforeCodes = findRolePermissionCodes(roleId);
         Set<Permission> currentKnown = parseKnownCodesIgnoreObsolete(beforeCodes);
-        validateNoViewDroppedWhileDependentRemains(currentKnown, requested);
+        validateNoViewDroppedWhileDependentRemains(currentKnown, requested, messages);
 
         Set<Permission> normalized = permissionSetNormalizer.normalize(requested);
         privilegeGuard.assertCanGrant(actor, normalized);
@@ -420,6 +423,10 @@ public class RoleService {
     }
 
     static Set<Permission> parsePermissions(List<String> codes) {
+        return parsePermissions(codes, AppMessages.defaultInstance());
+    }
+
+    static Set<Permission> parsePermissions(List<String> codes, AppMessages messages) {
         if (codes == null || codes.isEmpty()) {
             return Set.of();
         }
@@ -427,11 +434,11 @@ public class RoleService {
         for (String raw : codes) {
             if (raw == null || raw.isBlank()) {
                 throw new ValidationException(List.of(
-                        new FieldError("permissionCodes", "INVALID_PERMISSION", "Mã quyền không được để trống")));
+                        new FieldError("permissionCodes", "INVALID_PERMISSION", messages.get("validation.permission.code.notBlank"))));
             }
             Permission p = Permission.findByCode(raw)
                     .orElseThrow(() -> new ValidationException(List.of(
-                            new FieldError("permissionCodes", "UNKNOWN_PERMISSION", "Mã quyền không hợp lệ: " + raw))));
+                            new FieldError("permissionCodes", "UNKNOWN_PERMISSION", messages.get("validation.permission.code.unknown", raw)))));
             parsed.add(p);
         }
         return parsed;
@@ -439,6 +446,11 @@ public class RoleService {
 
     static void validateNoViewDroppedWhileDependentRemains(
             Set<Permission> current, Set<Permission> requested) {
+        validateNoViewDroppedWhileDependentRemains(current, requested, AppMessages.defaultInstance());
+    }
+
+    static void validateNoViewDroppedWhileDependentRemains(
+            Set<Permission> current, Set<Permission> requested, AppMessages messages) {
         if (current == null || current.isEmpty() || requested == null || requested.isEmpty()) {
             return;
         }
@@ -454,7 +466,7 @@ public class RoleService {
                             List.of(new FieldError(
                                     "permissionCodes",
                                     PermissionSetNormalizer.ERROR_PERMISSION_REQUIRES_VIEW,
-                                    "Phải giữ quyền " + requiredView.code() + " khi còn quyền " + p.code())));
+                                    messages.get("validation.permission.keepView", requiredView.code(), p.code()))));
                 }
             }
         }
