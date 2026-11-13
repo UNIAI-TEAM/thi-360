@@ -25,6 +25,7 @@ public class RedirectResolver {
     private static final String CHANGE_PASSWORD_PATH = "/doi-mat-khau";
     private static final String STUDENT_HOME_PATH = "/home";
     private static final Pattern DOUBLE_ENCODED_HEX = Pattern.compile("%25[0-9a-fA-F]{2}");
+    private static final Pattern PERCENT_ENCODED_HEX = Pattern.compile("%[0-9a-fA-F]{2}");
 
     private final String webBaseUrl;
     private final String webOrigin;
@@ -100,16 +101,16 @@ public class RedirectResolver {
             logRejected("unsafe_characters");
             return Optional.empty();
         }
-        if (DOUBLE_ENCODED_HEX.matcher(callbackUrl).find()) {
-            logRejected("double_encoded");
-            return Optional.empty();
-        }
 
         URI uri;
         try {
             uri = URI.create(callbackUrl);
         } catch (IllegalArgumentException ex) {
             logRejected("invalid_uri");
+            return Optional.empty();
+        }
+        if (!hasNoNestedEncoding(callbackUrl)) {
+            logRejected("double_encoded");
             return Optional.empty();
         }
 
@@ -183,6 +184,19 @@ public class RedirectResolver {
             return false;
         }
         return !decoded.startsWith("//") && !decoded.startsWith("/\\");
+    }
+
+    private static boolean hasNoNestedEncoding(String raw) {
+        if (DOUBLE_ENCODED_HEX.matcher(raw).find()) {
+            return false;
+        }
+        String decoded;
+        try {
+            decoded = URLDecoder.decode(raw.replace("+", "%2B"), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+        return !PERCENT_ENCODED_HEX.matcher(decoded).find();
     }
 
     private Optional<String> resolvePasswordChangeContinuation(String validCallback) {
