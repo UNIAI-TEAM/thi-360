@@ -1,5 +1,7 @@
 import { isIP } from "node:net";
 import { type NextRequest, NextResponse } from "next/server";
+import { readCookieValue } from "./client";
+import { type AppLocale, LOCALE_COOKIE_NAME, parseLocaleCookie } from "./preferences";
 
 const DEV_API_URL = "http://localhost:8080";
 const UPSTREAM_HEADERS_TIMEOUT_MS = 60_000;
@@ -42,6 +44,7 @@ export interface ProxyRouteContext {
 export interface ProxyOptions {
   messages: ProxyErrorMessages;
   resolveClientIp?: (request: NextRequest) => string | null;
+  messagesByLocale?: Record<AppLocale, ProxyErrorMessages>;
 }
 
 function normalizeIpLiteral(raw: string | null | undefined): string | null {
@@ -106,24 +109,30 @@ export async function proxyApiRequest(
   options: ProxyOptions,
 ): Promise<NextResponse> {
   const requestId = resolveRequestId(request);
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const rawLocale =
+    request.cookies.get(LOCALE_COOKIE_NAME)?.value ?? readCookieValue(cookieHeader, LOCALE_COOKIE_NAME);
+  const locale = parseLocaleCookie(rawLocale);
+  const messages = options.messagesByLocale?.[locale] ?? options.messages;
   const base = resolveApiBase();
   if (!base) {
-    return errorResponse(500, "INTERNAL_ERROR", options.messages.proxyNotConfigured, requestId);
+    return errorResponse(500, "INTERNAL_ERROR", messages.proxyNotConfigured, requestId);
   }
 
   const { path } = await params;
   if (!path.every(isSafeSegment)) {
-    return errorResponse(404, "NOT_FOUND", options.messages.notFound, requestId);
+    return errorResponse(404, "NOT_FOUND", messages.notFound, requestId);
   }
   const target = `${base}/api/${path.map(encodeURIComponent).join("/")}${request.nextUrl.search}`;
 
   const headers = new Headers();
   const requestHopOnly = connectionNominated(request.headers);
   for (const name of FORWARDED_REQUEST_HEADERS) {
-    if (requestHopOnly.has(name)) continue;
+    if (name === "accept-language" || requestHopOnly.has(name)) continue;
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  headers.set("accept-language", locale);
   headers.set("x-request-id", requestId);
 
   const clientIp = normalizeIpLiteral(
@@ -132,7 +141,6 @@ export async function proxyApiRequest(
   if (clientIp) {
     headers.set("x-forwarded-for", clientIp);
   }
-
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const timeout = new AbortController();
   const timer = setTimeout(() => timeout.abort(), UPSTREAM_HEADERS_TIMEOUT_MS);
@@ -151,9 +159,9 @@ export async function proxyApiRequest(
   } catch {
     if (request.signal.aborted) return new NextResponse(null, { status: 499 });
     if (timeout.signal.aborted) {
-      return errorResponse(504, "UPSTREAM_TIMEOUT", options.messages.upstreamTimeout, requestId);
+      return errorResponse(504, "UPSTREAM_TIMEOUT", messages.upstreamTimeout, requestId);
     }
-    return errorResponse(502, "UPSTREAM_UNAVAILABLE", options.messages.upstreamUnavailable, requestId);
+    return errorResponse(502, "UPSTREAM_UNAVAILABLE", messages.upstreamUnavailable, requestId);
   } finally {
     clearTimeout(timer);
   }
