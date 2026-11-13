@@ -4,7 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +33,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
@@ -60,6 +65,9 @@ class OutboxRelayTests extends AbstractIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void setUp() {
@@ -333,6 +341,115 @@ class OutboxRelayTests extends AbstractIntegrationTest {
         assertThat(saved.getProcessedAt()).isNotNull();
         assertThat(saved.getFailedAt()).isNull();
         assertThat(saved.getAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    void slowFailingHandlerSchedulesBackoffFromFailureCompletion_staysIneligibleInSamePollAndUntilDeadline_andUsesCompletionTimestamps() {
+        Instant t0 = Instant.parse("2026-11-13T10:00:00Z");
+        MutableClock mutableClock = new MutableClock(t0);
+        OutboxPublisher timedPublisher = new OutboxPublisher(outboxEventRepository, objectMapper, mutableClock);
+        OutboxRelay timedRelay = new OutboxRelay(outboxEventRepository, transactionManager, mutableClock);
+
+        UUID slowFailId = Ids.newId();
+        String slowFailTopic = "test.slow.fail.topic";
+        AtomicInteger failInvocations = new AtomicInteger(0);
+        Duration handlerDuration = Duration.ofSeconds(10); // > INITIAL_BACKOFF (2s)
+
+        transactionTemplate.executeWithoutResult(
+                status -> timedPublisher.publish(slowFailId, slowFailTopic, Map.of("case", "slow-fail")));
+
+        timedRelay.register(slowFailTopic, event -> {
+            failInvocations.incrementAndGet();
+            mutableClock.advance(handlerDuration);
+            throw new IllegalStateException("slow downstream timeout");
+        });
+
+        // Single poll with batchSize=10 must invoke the slow failing handler only once
+        int processedPoll1 = timedRelay.relayBatch(10, 2);
+        assertThat(processedPoll1).isZero();
+        assertThat(failInvocations.get()).isEqualTo(1);
+
+        Instant failure1At = t0.plus(handlerDuration);
+        Instant expectedNextAttempt = failure1At.plus(OutboxRelay.INITIAL_BACKOFF);
+        OutboxEvent afterAttempt1 = outboxEventRepository.findById(slowFailId).orElseThrow();
+        assertThat(afterAttempt1.getAttempts()).isEqualTo(1);
+        assertThat(afterAttempt1.getFailedAt()).isNull();
+        assertThat(afterAttempt1.getNextAttemptAt()).isEqualTo(expectedNextAttempt);
+
+        // Still ineligible after t0 + INITIAL_BACKOFF (10:00:02) and just before failure1At + INITIAL_BACKOFF (10:00:12)
+        mutableClock.setInstant(t0.plus(OutboxRelay.INITIAL_BACKOFF).plusSeconds(1));
+        timedRelay.relayBatch(10, 2);
+        assertThat(failInvocations.get()).isEqualTo(1);
+
+        mutableClock.setInstant(expectedNextAttempt.minusMillis(1));
+        timedRelay.relayBatch(10, 2);
+        assertThat(failInvocations.get()).isEqualTo(1);
+
+        // Eligible at failure completion + backoff -> fails again and records terminal failedAt at completion time
+        mutableClock.setInstant(expectedNextAttempt);
+        timedRelay.relayBatch(10, 2);
+        assertThat(failInvocations.get()).isEqualTo(2);
+
+        Instant failure2At = expectedNextAttempt.plus(handlerDuration);
+        OutboxEvent afterAttempt2 = outboxEventRepository.findById(slowFailId).orElseThrow();
+        assertThat(afterAttempt2.getAttempts()).isEqualTo(2);
+        assertThat(afterAttempt2.getFailedAt()).isEqualTo(failure2At);
+        assertThat(afterAttempt2.getProcessedAt()).isNull();
+
+        // Successful slow handler also records processedAt at completion time
+        Instant t1 = failure2At.plusSeconds(10);
+        mutableClock.setInstant(t1);
+        UUID slowSuccessId = Ids.newId();
+        String slowSuccessTopic = "test.slow.success.topic";
+        Duration successDuration = Duration.ofSeconds(5);
+
+        transactionTemplate.executeWithoutResult(
+                status -> timedPublisher.publish(slowSuccessId, slowSuccessTopic, Map.of("case", "slow-ok")));
+
+        timedRelay.register(slowSuccessTopic, event -> mutableClock.advance(successDuration));
+        assertThat(timedRelay.relayBatch(10, 2)).isEqualTo(1);
+
+        OutboxEvent processedEvent = outboxEventRepository.findById(slowSuccessId).orElseThrow();
+        assertThat(processedEvent.getProcessedAt()).isEqualTo(t1.plus(successDuration));
+        assertThat(processedEvent.getFailedAt()).isNull();
+    }
+
+    private static final class MutableClock extends Clock {
+
+        private Instant current;
+        private final ZoneId zone;
+
+        private MutableClock(Instant initial) {
+            this(initial, ZoneOffset.UTC);
+        }
+
+        private MutableClock(Instant initial, ZoneId zone) {
+            this.current = initial;
+            this.zone = zone;
+        }
+
+        void advance(Duration duration) {
+            this.current = this.current.plus(duration);
+        }
+
+        void setInstant(Instant instant) {
+            this.current = instant;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return new MutableClock(current, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return current;
+        }
     }
 
     private void rewindNextAttemptAt(UUID id, Instant nextAttemptAt) {

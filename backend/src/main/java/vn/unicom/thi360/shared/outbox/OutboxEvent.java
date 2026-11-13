@@ -109,13 +109,13 @@ public class OutboxEvent {
         return lastError;
     }
 
-    public void recordFailure(String error, Instant now, int maxAttempts, Duration retryBackoff) {
+    public void recordFailure(String error, Instant failureTime, int maxAttempts, Duration retryBackoff) {
         this.attempts++;
         this.lastError = error;
         if (this.attempts >= maxAttempts) {
-            this.failedAt = now;
+            this.failedAt = failureTime;
         } else {
-            this.nextAttemptAt = now.plus(retryBackoff);
+            this.nextAttemptAt = failureTime.plus(retryBackoff);
         }
     }
 

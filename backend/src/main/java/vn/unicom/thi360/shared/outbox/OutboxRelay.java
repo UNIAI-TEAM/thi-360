@@ -110,8 +110,8 @@ public class OutboxRelay {
     }
 
     private StepResult processNextAvailable(int maxAttempts, String workerTraceId) {
-        Instant now = Instant.now(clock);
-        List<OutboxEvent> batch = repository.findNextPendingBatchForUpdate(1, maxAttempts, now);
+        Instant pollNow = Instant.now(clock);
+        List<OutboxEvent> batch = repository.findNextPendingBatchForUpdate(1, maxAttempts, pollNow);
         if (batch.isEmpty()) {
             return StepResult.EMPTY;
         }
@@ -124,7 +124,7 @@ public class OutboxRelay {
             OutboxHandler handler = handlers.get(event.getTopic());
             if (handler == null) {
                 String msg = "No OutboxHandler registered for topic: " + event.getTopic();
-                event.markFailedPermanently(msg, now);
+                event.markFailedPermanently(msg, Instant.now(clock));
                 repository.save(event);
                 jobLog.atError()
                         .addKeyValue("eventId", event.getId())
@@ -136,7 +136,7 @@ public class OutboxRelay {
 
             try {
                 handler.handle(event);
-                event.markProcessed(now);
+                event.markProcessed(Instant.now(clock));
                 repository.save(event);
                 jobLog.atInfo()
                         .addKeyValue("eventId", event.getId())
@@ -144,9 +144,10 @@ public class OutboxRelay {
                         .log("Outbox event processed");
                 return StepResult.PROCESSED;
             } catch (Exception ex) {
+                Instant failureTime = Instant.now(clock);
                 String errorMsg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                 Duration backoff = computeBackoff(event.getAttempts() + 1);
-                event.recordFailure(errorMsg, now, maxAttempts, backoff);
+                event.recordFailure(errorMsg, failureTime, maxAttempts, backoff);
                 repository.save(event);
                 if (event.getFailedAt() != null) {
                     jobLog.atError()
