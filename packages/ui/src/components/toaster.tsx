@@ -1,3 +1,5 @@
+"use client";
+
 import type { ComponentProps, CSSProperties } from "react";
 import { Toaster as Sonner, toast } from "sonner";
 
