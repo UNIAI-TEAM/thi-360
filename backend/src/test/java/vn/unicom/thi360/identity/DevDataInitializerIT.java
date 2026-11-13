@@ -1,10 +1,15 @@
 package vn.unicom.thi360.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -13,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
@@ -35,6 +41,7 @@ import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.outbox.OutboxEventRepository;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.AuthCookieService;
 
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles({"api", "worker", "test", "dev"})
@@ -52,6 +59,9 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
 
     @Autowired
     private ApplicationContext applicationContext;
+    @Autowired
+    private ObjectMapper objectMapper;
+
 
     @Autowired
     private DevDataInitializer devDataInitializer;
@@ -125,13 +135,37 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
         assertThat(student05Events.stream().filter(e -> "USER_CREATED".equals(e.action()))).hasSize(1);
         assertThat(student05Events.stream().filter(e -> "USER_ROLES_CHANGED".equals(e.action()))).hasSize(2);
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult opsLogin = mockMvc.perform(post("/api/v1/auth/login")
                         .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.150")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"ops.admin\",\"password\":\"Thi360@dev\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mustChangePassword").value(false))
-                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3001"));
+                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3001"))
+                .andReturn();
+
+        Cookie opsAccessCookie = opsLogin.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        assertThat(opsAccessCookie).isNotNull();
+
+        MvcResult usersResult = mockMvc.perform(get("/api/v1/admin/users")
+                        .param("size", "100")
+                        .cookie(opsAccessCookie))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode usersBody = objectMapper.readTree(usersResult.getResponse().getContentAsString());
+        Map<String, JsonNode> listedByUsername = new HashMap<>();
+        for (JsonNode item : usersBody.path("items")) {
+            listedByUsername.put(item.path("username").asText(), item);
+        }
+        for (String seededUsername : EXPECTED_ROLES.keySet()) {
+            JsonNode listed = listedByUsername.get(seededUsername);
+            assertThat(listed)
+                    .as("Seeded user %s must appear in GET /api/v1/admin/users", seededUsername)
+                    .isNotNull();
+            assertThat(listed.path("status").asText()).isEqualTo("ACTIVE");
+            assertThat(listed.path("source").asText()).isEqualTo("ADMIN_CREATED");
+        }
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.151")
