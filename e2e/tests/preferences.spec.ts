@@ -28,17 +28,23 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
       await expect(page.locator("html")).toHaveAttribute("lang", "vi");
       await expect(page.getByRole("heading", { name: "Đăng nhập" })).toBeVisible();
 
-      // Đổi sang English bằng nút chọn ngôn ngữ trên /dang-nhap
-      await page.getByRole("button", { name: "Chọn ngôn ngữ" }).click();
-      await page.getByRole("menuitem", { name: "English" }).click();
+      // Điền trước tên đăng nhập rồi đổi sang English bằng bàn phím -> giữ nguyên input và focus trên nút
+      const identifierInput = page.getByLabel(/Tên đăng nhập hoặc email|Username or email/);
+      await identifierInput.fill("ops.admin");
+      const localeButton = page.getByRole("button", { name: "Chọn ngôn ngữ" });
+      await localeButton.focus();
+      await page.keyboard.press("Enter");
+      const englishItem = page.getByRole("menuitem", { name: "English" });
+      await englishItem.focus();
+      await page.keyboard.press("Enter");
 
       await expect(page.locator("html")).toHaveAttribute("lang", "en");
       await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-      await expect(page.getByLabel(/Username or email/)).toBeVisible();
+      await expect(page.getByLabel(/Username or email/)).toHaveValue("ops.admin");
+      await expect(page.getByRole("button", { name: "Change language" })).toBeFocused();
       await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 
       // Đăng nhập ops.admin -> điều hướng sang web-admin vẫn giữ tiếng Anh qua cookie dùng chung
-      await page.getByLabel(/Username or email/).fill("ops.admin");
       await page.getByLabel(/Password/).fill(DEV_PASSWORD);
       await page.getByRole("button", { name: "Sign in" }).click();
 
