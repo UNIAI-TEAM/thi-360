@@ -63,6 +63,35 @@ public record AuditEvent(
                 null);
     }
 
+    public static AuditEvent success(
+            String module,
+            String action,
+            String targetType,
+            String targetId,
+            String targetLabel) {
+        return of(module, action, targetType, targetId, targetLabel, null, null, null, AuditOutcome.SUCCESS, null);
+    }
+
+    public static AuditEvent success(
+            String module,
+            String action,
+            String targetType,
+            String targetId,
+            String targetLabel,
+            Map<String, Object> after) {
+        return of(module, action, targetType, targetId, targetLabel, null, after, null, AuditOutcome.SUCCESS, null);
+    }
+
+    public static AuditEvent failure(
+            String module,
+            String action,
+            String targetType,
+            String targetId,
+            String targetLabel,
+            String errorCode) {
+        return of(module, action, targetType, targetId, targetLabel, null, null, null, AuditOutcome.FAILURE, errorCode);
+    }
+
     public static Builder builder(String module, String action) {
         return new Builder(module, action);
     }
