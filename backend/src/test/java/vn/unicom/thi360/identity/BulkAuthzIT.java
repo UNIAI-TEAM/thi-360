@@ -290,7 +290,9 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
             return Integer.valueOf(1).equals(skipReasons.get("DIRECT_PERMISSION_REQUIRES_MANAGE"))
                     && Integer.valueOf(2).equals(skipReasons.get("USER_NOT_AVAILABLE"));
         }));
-        outboxRelay.relayBatch();
+        while (outboxRelay.relayBatch() > 0) {
+            // drain backlog from earlier ITs
+        }
         String persistedAfterJson = jdbcTemplate.queryForObject(
                 "SELECT after::text FROM audit.audit_event WHERE action = 'AUTHZ_BULK_APPLIED' AND target_id = ?",
                 String.class,
@@ -543,7 +545,9 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
             UUID survivingRoleId = remainingRoleIds.getFirst();
             assertThat(survivingRoleId).isIn(roleA.getId(), roleB.getId());
 
-            outboxRelay.relayBatch();
+            while (outboxRelay.relayBatch() > 0) {
+                // drain backlog from earlier ITs
+            }
             Integer roleChangedEvents = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM audit.audit_event WHERE target_id = ? AND action = 'USER_ROLES_CHANGED'",
                     Integer.class,
