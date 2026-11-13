@@ -9,7 +9,10 @@ import {
 } from "@thi360/ui";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -19,10 +22,13 @@ const beVietnamPro = Be_Vietnam_Pro({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Thi 360 — Luyện thi HSA, QDA",
-  description: "Cổng luyện thi đánh giá năng lực HSA và QDA",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 async function loadAppearance(): Promise<AppearanceConfig> {
   const apiBase =
@@ -50,15 +56,19 @@ function resolveTheme(appearanceMode: ThemeMode): ThemeMode {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const appearance = await loadAppearance();
+  const [locale, appearance] = await Promise.all([getLocale(), loadAppearance()]);
   const themeMode = resolveTheme(appearance.mode);
   const themeCss = themeStyleTag(appearance);
   return (
-    <html lang="vi" className={beVietnamPro.variable} data-theme={themeMode}>
+    <html lang={locale} className={beVietnamPro.variable} data-theme={themeMode}>
       <head>
         <style id={THEME_STYLE_ELEMENT_ID} dangerouslySetInnerHTML={{ __html: themeCss }} />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <NextIntlClientProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </NextIntlClientProvider>
+      </body>
     </html>
   );
 }

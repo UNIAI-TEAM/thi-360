@@ -13,8 +13,9 @@ const ADMIN: Session = {
   id: "u1",
   username: "content.admin",
   fullName: "Quản trị nội dung",
-  realm: "THI360",
+  realm: "APP",
   access: "MANAGE",
+  homeUrl: "http://localhost:3001",
   permissions: ["USER.VIEW", "ROLE.VIEW"],
 };
 
@@ -82,17 +83,36 @@ describe("SessionProvider", () => {
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("ready"));
   });
 
-  it("nguồn mặc định dùng phiên giả khi NEXT_PUBLIC_DEV_FAKE_SESSION=1 ở môi trường dev", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEV_FAKE_SESSION", "1");
+  it("nguồn mặc định gọi GET /api/v1/me và trả phiên hợp lệ", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        id: "u2",
+        username: "ops.admin",
+        fullName: "Vận hành",
+        realm: "APP",
+        access: "MANAGE",
+        homeUrl: "http://localhost:3001",
+        permissions: ["USER.VIEW"],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
     render(<Probe />, { wrapper: wrapper(newClient()) });
 
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("ready"));
+    expect(screen.getByTestId("name")).toHaveTextContent("Vận hành");
     expect(screen.getByTestId("can-user-view")).toHaveTextContent("true");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("nguồn mặc định bỏ qua phiên giả ở production và báo 401 để QueryProvider chuyển đăng nhập", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEV_FAKE_SESSION", "1");
-    vi.stubEnv("NODE_ENV", "production");
+  it("nguồn mặc định báo 401 khi /api/v1/me trả 401", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({ code: "UNAUTHENTICATED", message: "Chưa đăng nhập", fieldErrors: [], traceId: "t1" }, { status: 401 }),
+      ),
+    );
+
     const client = newClient();
     render(<Probe />, { wrapper: wrapper(client) });
 

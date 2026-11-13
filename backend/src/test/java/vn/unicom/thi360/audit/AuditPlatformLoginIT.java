@@ -53,7 +53,7 @@ class AuditPlatformLoginIT extends AbstractKeycloakIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"platform\",\"password\":\"" + TEST_PLATFORM_PASSWORD + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.redirectTo").value("/"))
+                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3001"))
                 .andExpect(jsonPath("$.mustChangePassword").value(false))
                 .andReturn();
 
@@ -65,6 +65,7 @@ class AuditPlatformLoginIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.username").value("platform"))
                 .andExpect(jsonPath("$.realm").value("MASTER"))
                 .andExpect(jsonPath("$.access").value("MANAGE"))
+                .andExpect(jsonPath("$.homeUrl").value("http://localhost:3001"))
                 .andReturn();
 
         String platformId = objectMapper.readTree(meRes.getResponse().getContentAsString()).get("id").asText();

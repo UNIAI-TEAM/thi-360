@@ -4,7 +4,7 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 55/105 điểm (T01–T07, T13, T17); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 61/105 điểm (T01–T07, T13, T17, T18); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
@@ -15,7 +15,8 @@
 - T17 (UNI-2555) đã nghiệm thu và merge vào `integration/dot-1` (PR #11, `feece8f`).
 - T13 (UNI-2550) đã nghiệm thu và merge vào `integration/dot-1` (PR #10, `8f1a579`).
 - T07 (UNI-2544) đã nghiệm thu và merge vào `integration/dot-1` (PR #12).
-- Đang mở: T14 (UNI-2551) và T10 (UNI-2547, pha API trước; pha UI chờ T09 và T18) trên VPS; T18 (UNI-2556) trên máy Windows.
+- T18 (UNI-2556) đã nghiệm thu và merge vào `integration/dot-1` (PR #13, `27d4984`).
+- Đang mở: T14 (UNI-2551) và T10 (UNI-2547, pha API trước; pha UI chờ T09) trên VPS; T09 (UNI-2546), T08 (UNI-2545), T19 (UNI-2561) trên máy Windows.
 - 2026-11-14: M.Trường yêu cầu làm luôn phần danh mục đã hoãn (PBI-02: T13, T14, T15). Plan mục A7, A4, Phần C, hợp đồng T13–T15 và T16 đã sửa theo; T13 (UNI-2550) mở ngay trên VPS, T14 sau T13, T15 sau T13, T14, T18.
 - 2026-11-14: M.Trường yêu cầu đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh). Thêm T19 (UNI-2561) vào plan, chạy sau T17 và T18; mọi lane có giao diện thêm khóa tiếng Anh cho chuỗi của mình ngay từ bây giờ (`en.json` cùng bộ khóa với `vi.json`).
 - 2026-11-14: M.Trường chốt chế độ sáng/tối **theo từng người**, bật tắt bằng nút ở thanh trên cùng (cạnh nút ngôn ngữ, bên trái avatar). Cấu hình hệ thống của T17 chỉ còn giữ chế độ mặc định. Nút và cookie `thi360_theme` làm trong T19. Spec §13, `DESIGN.md` §5/§8/§9 và plan T17/T19 đã sửa.
@@ -32,6 +33,17 @@
 - Việc còn lại sau T05 (không chặn): tách login role riêng cho job nhật ký (hiện tài khoản ứng dụng có thể `SET ROLE` sang vai trò bảo trì); thiếu test đầu-cuối ghi người thực hiện khi đăng nhập realm APP. Ghi thành issue con của UNI-2542.
 
 ## Đã làm
+
+### 2026-11-14 — T18 (UNI-2556) đăng nhập một nơi và điều hướng theo vai trò, merge vào integration/dot-1
+
+- Backend: `RedirectResolver` (thứ tự spec §15.2, kiểm tra `callbackUrl` §15.3), `redirectTo` khi đăng nhập, `homeUrl` ở `/me`, đăng xuất xóa đủ cookie; `DevDataInitializer` tạo tài khoản mẫu B13 (chỉ profile `dev`): `sys.admin`, `content.admin`, `ops.admin`, `student01`…`05`, mật khẩu `Thi360@dev`.
+- `packages/web-kit` (kiểm tra `thi360_ctx` bằng HMAC); web học viên: proxy, landing, `/dang-nhap`, `/doi-mat-khau`, `/home`, `/forbidden`, 404, trang lỗi; web admin: `proxy.ts` chuyển về trang đăng nhập của web học viên, `/forbidden`, làm mới phiên khi 403; bỏ phiên giả cho dev. Hai route proxy ghi đè `X-Forwarded-For`.
+- Package `e2e/` (Playwright) và `e2e.yml`. Chặn chung cho test backend: Hikari tối đa 4, giữ tối đa 8 ngữ cảnh Spring.
+- Review BE sạch; review FE có 1 lỗi high (vòng lặp chuyển hướng khi 401) và 8 medium, đã sửa; kiểm tra giao diện hai vòng ở cả sáng và tối, có màn 390px và trang lỗi 500.
+- Lệnh đã chạy: Cursor cloud runner trên `b5ab706` `./mvnw -B -ntp verify` (177 + 135 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows trên `b9e1fc5` các lệnh đó, kiểm tra lệch openapi/api-client → exit 0, và `THI360_DB_PORT=54320 E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test` bằng Node 22 → 6/6 qua.
+- Lệch thiết kế: mục "Hồ sơ" trong menu avatar đang ẩn (chưa có trang hồ sơ). Việc nhỏ còn lại ghi thành issue con của UNI-2556.
+- Chạy e2e trên Windows: nếu môi trường có biến `NoDefaultCurrentDirectoryInExePath` thì Playwright không tìm thấy `mvnw.cmd`; bỏ biến đó hoặc đặt `E2E_BACKEND_CMD`.
+- Merge squash qua PR #13 (`27d4984`).
 
 ### 2026-11-14 — T07 (UNI-2544) API quản lý tài khoản, merge vào integration/dot-1
 

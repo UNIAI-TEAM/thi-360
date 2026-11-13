@@ -222,14 +222,15 @@
     "themeDark": "Dark",
     "themeLabel": "Color mode",
     "themeLight": "Light",
-    "title": "UI Components (/dev/ui)"
+    "title": "UI components (/dev/ui)"
   },
   "errors": {
     "forbiddenToast": "You do not have permission to perform this action.",
+    "logoutFailed": "Unable to sign out. Please try again.",
     "notFound": "Not found.",
-    "proxyNotConfigured": "The web server API URL is not configured.",
+    "proxyNotConfigured": "Web server API address is not configured.",
     "upstreamTimeout": "The server took too long to respond. Please try again later.",
-    "upstreamUnavailable": "Could not connect to the server. Please try again later."
+    "upstreamUnavailable": "Unable to connect to the server. Please try again later."
   },
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
@@ -272,10 +273,11 @@
     "menuLoading": "Loading menu",
     "skipToContent": "Skip to main content",
     "userMenu": {
+      "adminPortal": "Admin portal",
       "changePassword": "Change password",
       "logout": "Sign out",
-      "logoutFailed": "Could not sign out. Please try again.",
-      "profile": "Profile",
+      "logoutFailed": "Unable to sign out. Please try again.",
+      "studentPortal": "Student portal",
       "trigger": "Account menu"
     }
   }
