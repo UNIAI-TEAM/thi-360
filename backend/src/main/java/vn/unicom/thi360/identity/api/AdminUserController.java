@@ -7,11 +7,13 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -96,5 +98,71 @@ public class AdminUserController {
     public UserDetailResponse updateUser(
             @PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request) {
         return userAdminService.updateUser(id, request);
+    }
+
+    @PostMapping("/{id}/deactivate")
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Ngừng hoạt động tài khoản và thu hồi toàn bộ phiên")
+    public UserDetailResponse deactivateUser(
+            @PathVariable UUID id, @Valid @RequestBody DeactivateUserRequest request) {
+        return userAdminService.deactivateUser(id, request);
+    }
+
+    @PostMapping("/{id}/activate")
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Kích hoạt lại tài khoản đang ngừng hoạt động")
+    public UserDetailResponse activateUser(@PathVariable UUID id) {
+        return userAdminService.activateUser(id);
+    }
+
+    @PostMapping("/{id}/reset-password")
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Đặt lại mật khẩu cho tài khoản và thu hồi toàn bộ phiên")
+    public UserDetailResponse resetPassword(
+            @PathVariable UUID id, @Valid @RequestBody ResetPasswordRequest request) {
+        return userAdminService.resetPassword(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Xóa mềm tài khoản (kiểm tra giao dịch qua AccountDeletionGuard)")
+    public void deleteUser(
+            @PathVariable UUID id,
+            @Parameter(description = "Lý do xóa tài khoản (bắt buộc)", required = true)
+            @RequestParam(required = false) String reason) {
+        userAdminService.deleteUser(id, reason);
+    }
+
+    @GetMapping("/{id}/deletion-check")
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Kiểm tra điều kiện xóa tài khoản")
+    public DeletionCheckResponse checkDeletion(@PathVariable UUID id) {
+        return userAdminService.checkDeletion(id);
+    }
+
+    @GetMapping("/{id}/deactivation-check")
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Kiểm tra lượt thi đang làm trước khi ngừng hoạt động")
+    public DeactivationCheckResponse checkDeactivation(@PathVariable UUID id) {
+        return userAdminService.checkDeactivation(id);
+    }
+
+    @PostMapping("/bulk-actions/preview")
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Xem trước thao tác hàng loạt trên nhiều tài khoản")
+    public BulkUserActionPreviewResponse previewBulkActions(
+            @Valid @RequestBody BulkUserActionRequest request) {
+        return userAdminService.previewBulkActions(request);
+    }
+
+    @PostMapping("/bulk-actions")
+    @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Thực thi thao tác hàng loạt trên nhiều tài khoản (idempotent)")
+    public BulkUserActionResponse applyBulkActions(
+            @Parameter(description = "Khóa chống trùng lặp thao tác", required = true)
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody BulkUserActionRequest request) {
+        return userAdminService.applyBulkActions(request, idempotencyKey);
     }
 }

@@ -122,7 +122,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleConflict(ConflictException ex, HttpServletRequest request) {
         String code = ex.getCode();
         String message = resolveMessage(code, ex.getMessage(), "CONFLICT");
-        return respond(HttpStatus.CONFLICT, code, message, List.of(), request);
+        return respond(HttpStatus.CONFLICT, code, message, ex.getFieldErrors(), request);
     }
 
     @ExceptionHandler({

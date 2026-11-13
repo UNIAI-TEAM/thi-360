@@ -1,5 +1,9 @@
 package vn.unicom.thi360.identity.application;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -10,6 +14,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -32,8 +37,19 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.identity.api.BulkUserActionItemResult;
+import vn.unicom.thi360.identity.api.BulkUserActionPreviewResponse;
+import vn.unicom.thi360.identity.api.BulkUserActionRequest;
+import vn.unicom.thi360.identity.api.BulkUserActionResponse;
+import vn.unicom.thi360.identity.api.BulkUserItemOutcome;
+import vn.unicom.thi360.identity.api.BulkUserSkippedItem;
 import vn.unicom.thi360.identity.api.CreateUserRequest;
+import vn.unicom.thi360.identity.api.DeactivateUserRequest;
+import vn.unicom.thi360.identity.api.DeactivationCheckResponse;
+import vn.unicom.thi360.identity.api.DeletionCheckResponse;
+import vn.unicom.thi360.identity.api.ResetPasswordRequest;
 import vn.unicom.thi360.identity.api.UpdateUserRequest;
+import vn.unicom.thi360.identity.api.UserBulkAction;
 import vn.unicom.thi360.identity.api.UserDetailResponse;
 import vn.unicom.thi360.identity.api.UserRoleSummary;
 import vn.unicom.thi360.identity.api.UserSummaryResponse;
@@ -54,8 +70,11 @@ import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.infrastructure.UserIdentityRepository;
 import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
+import vn.unicom.thi360.identity.spi.AccountDeletionGuard;
+import vn.unicom.thi360.identity.spi.ActiveAttemptChecker;
 import vn.unicom.thi360.identity.spi.Permission;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.identity.spi.UserDeleted;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.api.FieldError;
@@ -65,17 +84,21 @@ import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.api.VersionConflictException;
+import vn.unicom.thi360.shared.idempotency.IdempotencyService;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 import vn.unicom.thi360.shared.security.Access;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.Realm;
+import vn.unicom.thi360.shared.security.SessionStore;
 
 @Service
 public class UserAdminService {
 
     public static final Set<String> ALLOWED_SORT_FIELDS =
             Set.of("createdAt", "username", "fullName", "lastLoginAt");
+    public static final int MAX_BULK_USERS = 500;
 
     private static final Logger log = LoggerFactory.getLogger(UserAdminService.class);
     private static final String MODULE = "IDENTITY";
@@ -85,6 +108,10 @@ public class UserAdminService {
     private static final String ERROR_EMAIL_TAKEN = "EMAIL_TAKEN";
     private static final String ERROR_ROLE_INACTIVE = "ROLE_INACTIVE";
     private static final String ERROR_CLASS_NOT_SUPPORTED = "CLASS_NOT_SUPPORTED";
+    private static final String ERROR_SELF_DEACTIVATE = "SELF_DEACTIVATE";
+    private static final String ERROR_SELF_DELETE = "SELF_DELETE";
+    private static final String ERROR_USER_HAS_TRANSACTIONS = "USER_HAS_TRANSACTIONS";
+    private static final String BULK_IDEMPOTENCY_ENDPOINT = "POST:/api/v1/admin/users/bulk-actions";
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$");
@@ -96,6 +123,12 @@ public class UserAdminService {
     private final UsernamePolicy usernamePolicy;
     private final PasswordPolicy passwordPolicy;
     private final PrivilegeGuard privilegeGuard;
+    private final AuthzSnapshotService authzSnapshotService;
+    private final SessionStore sessionStore;
+    private final IdempotencyService idempotencyService;
+    private final OutboxPublisher outboxPublisher;
+    private final List<AccountDeletionGuard> deletionGuards;
+    private final List<ActiveAttemptChecker> activeAttemptCheckers;
     private final KeycloakIdentityClient keycloakClient;
     private final CurrentUserProvider currentUserProvider;
     private final AuditRecorder auditRecorder;
@@ -111,6 +144,12 @@ public class UserAdminService {
             UsernamePolicy usernamePolicy,
             PasswordPolicy passwordPolicy,
             PrivilegeGuard privilegeGuard,
+            AuthzSnapshotService authzSnapshotService,
+            SessionStore sessionStore,
+            IdempotencyService idempotencyService,
+            OutboxPublisher outboxPublisher,
+            List<AccountDeletionGuard> deletionGuards,
+            List<ActiveAttemptChecker> activeAttemptCheckers,
             KeycloakIdentityClient keycloakClient,
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
@@ -124,6 +163,12 @@ public class UserAdminService {
         this.usernamePolicy = usernamePolicy;
         this.passwordPolicy = passwordPolicy;
         this.privilegeGuard = privilegeGuard;
+        this.authzSnapshotService = authzSnapshotService;
+        this.sessionStore = sessionStore;
+        this.idempotencyService = idempotencyService;
+        this.outboxPublisher = outboxPublisher;
+        this.deletionGuards = deletionGuards == null ? List.of() : List.copyOf(deletionGuards);
+        this.activeAttemptCheckers = activeAttemptCheckers == null ? List.of() : List.copyOf(activeAttemptCheckers);
         this.keycloakClient = keycloakClient;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
@@ -131,7 +176,6 @@ public class UserAdminService {
         this.transactionTemplate = transactionTemplate;
         this.clock = clock;
     }
-
     @Transactional(readOnly = true)
     public PageResponse<UserSummaryResponse> listUsers(
             String q,
@@ -343,7 +387,7 @@ public class UserAdminService {
         }
 
         try {
-            keycloakClient.setPassword(keycloakUserId, request.password(), mustChangePassword);
+            keycloakClient.setPassword(keycloakUserId, request.password(), false);
         } catch (ValidationException ex) {
             deleteKeycloakUserQuietly(keycloakUserId);
             deleteProvisionalUserQuietly(provisionalId);
@@ -416,14 +460,7 @@ public class UserAdminService {
     public UserDetailResponse updateUser(UUID userId, UpdateUserRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
 
-        jdbcTemplate.query(
-                "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE",
-                rs -> {},
-                userId);
-
-        UserAccount user = userAccountRepository.findById(userId)
-                .filter(u -> !u.isDeleted() && u.getStatus() != UserStatus.PROVISIONING)
-                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        UserAccount user = lockActiveManageableUser(actor, userId);
 
         if (!Objects.equals(user.getVersion(), request.version())) {
             throw new VersionConflictException();
@@ -502,6 +539,472 @@ public class UserAdminService {
 
         List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
         return toDetailResponse(user, roles);
+    }
+
+    @Transactional
+    public UserDetailResponse deactivateUser(UUID userId, DeactivateUserRequest request) {
+        CurrentUser actor = currentUserProvider.requireCurrentUser();
+        if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
+            throw new ConflictException(ERROR_SELF_DEACTIVATE);
+        }
+        String trimmedReason = validateReason("reason", request.reason(), "Vui lòng nhập lý do ngừng hoạt động");
+        UserAccount user = lockActiveManageableUser(actor, userId);
+
+        UserStatus oldStatus = user.getStatus();
+        String oldReason = user.getInactiveReason();
+        Instant now = Instant.now(clock);
+
+        keycloakClient.setEnabled(userId, false);
+        user.deactivate(trimmedReason, now, actor.id());
+        user = userAccountRepository.saveAndFlush(user);
+
+        revokeUserSessionsAndSnapshot(userId);
+
+        Map<String, Object> before = new LinkedHashMap<>();
+        Map<String, Object> after = new LinkedHashMap<>();
+        if (oldStatus != UserStatus.INACTIVE) {
+            before.put("status", oldStatus.name());
+            after.put("status", UserStatus.INACTIVE.name());
+        }
+        if (!Objects.equals(oldReason, user.getInactiveReason())) {
+            before.put("inactiveReason", oldReason);
+            after.put("inactiveReason", user.getInactiveReason());
+        }
+        if (!after.isEmpty()) {
+            recordAudit(actor, "USER_DEACTIVATED", userId, user.getUsername(), before, after, trimmedReason);
+        }
+
+        List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
+        return toDetailResponse(user, roles);
+    }
+
+    @Transactional
+    public UserDetailResponse activateUser(UUID userId) {
+        CurrentUser actor = currentUserProvider.requireCurrentUser();
+        UserAccount user = lockActiveManageableUser(actor, userId);
+
+        UserStatus oldStatus = user.getStatus();
+        String oldReason = user.getInactiveReason();
+        Instant now = Instant.now(clock);
+
+        keycloakClient.setEnabled(userId, true);
+        user.activate(now, actor.id());
+        user = userAccountRepository.saveAndFlush(user);
+
+        Map<String, Object> before = new LinkedHashMap<>();
+        Map<String, Object> after = new LinkedHashMap<>();
+        if (oldStatus != UserStatus.ACTIVE) {
+            before.put("status", oldStatus.name());
+            after.put("status", UserStatus.ACTIVE.name());
+        }
+        if (oldReason != null) {
+            before.put("inactiveReason", oldReason);
+            after.put("inactiveReason", null);
+        }
+        if (!after.isEmpty()) {
+            recordAudit(actor, "USER_ACTIVATED", userId, user.getUsername(), before, after, null);
+        }
+
+        List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
+        return toDetailResponse(user, roles);
+    }
+
+    @Transactional
+    public UserDetailResponse resetPassword(UUID userId, ResetPasswordRequest request) {
+        CurrentUser actor = currentUserProvider.requireCurrentUser();
+        UserAccount user = lockActiveManageableUser(actor, userId);
+
+        passwordPolicy.validate("password", request.password(), user.getUsername());
+        boolean mustChange = Boolean.TRUE.equals(request.mustChangePassword());
+        String trimmedReason = request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
+        if (trimmedReason != null && trimmedReason.length() > 500) {
+            throw new ValidationException(List.of(
+                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+        }
+
+        boolean oldMustChange = user.isMustChangePassword();
+        Instant now = Instant.now(clock);
+
+        keycloakClient.setPassword(userId, request.password(), false);
+        if (oldMustChange != mustChange) {
+            user.updateMustChangePassword(mustChange, now, actor.id());
+            user = userAccountRepository.saveAndFlush(user);
+        }
+
+        sessionStore.deleteAllSessions(userId);
+        keycloakClient.logoutAllSessions(userId);
+
+        Map<String, Object> before = new LinkedHashMap<>();
+        Map<String, Object> after = new LinkedHashMap<>();
+        if (oldMustChange != mustChange) {
+            before.put("mustChangePassword", oldMustChange);
+            after.put("mustChangePassword", mustChange);
+        }
+        recordAudit(
+                actor,
+                "USER_PASSWORD_RESET",
+                userId,
+                user.getUsername(),
+                before.isEmpty() ? null : before,
+                after.isEmpty() ? null : after,
+                trimmedReason);
+
+        List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
+        return toDetailResponse(user, roles);
+    }
+
+    @Transactional
+    public void deleteUser(UUID userId, String reason) {
+        CurrentUser actor = currentUserProvider.requireCurrentUser();
+        if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
+            throw new ConflictException(ERROR_SELF_DELETE);
+        }
+        String trimmedReason = validateReason("reason", reason, "Vui lòng nhập lý do xóa tài khoản");
+        UserAccount user = lockActiveManageableUser(actor, userId);
+
+        List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
+        if (!blockers.isEmpty()) {
+            List<FieldError> fieldErrors = blockers.stream()
+                    .map(b -> new FieldError(
+                            b.source(),
+                            b.code() == null || b.code().isBlank() ? ERROR_USER_HAS_TRANSACTIONS : b.code(),
+                            b.message() == null || b.message().isBlank()
+                                    ? "Tài khoản đang có dữ liệu giao dịch cần đối soát, không thể xóa"
+                                    : b.message()))
+                    .toList();
+            throw new ConflictException(ERROR_USER_HAS_TRANSACTIONS, null, fieldErrors);
+        }
+
+        performSoftDelete(actor, user, trimmedReason, Instant.now(clock));
+    }
+
+    @Transactional(readOnly = true)
+    public DeletionCheckResponse checkDeletion(UUID userId) {
+        requireExistingNonDeletedUser(userId);
+        List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
+        return new DeletionCheckResponse(blockers.isEmpty(), blockers);
+    }
+
+    @Transactional(readOnly = true)
+    public DeactivationCheckResponse checkDeactivation(UUID userId) {
+        requireExistingNonDeletedUser(userId);
+        boolean activeAttempt = activeAttemptCheckers.stream().anyMatch(checker -> checker.hasActiveAttempt(userId));
+        return new DeactivationCheckResponse(activeAttempt);
+    }
+
+    @Transactional(readOnly = true)
+    public BulkUserActionPreviewResponse previewBulkActions(BulkUserActionRequest request) {
+        CurrentUser actor = currentUserProvider.requireCurrentUser();
+        List<UUID> distinctIds = validateBulkUserIds(request.userIds());
+        Map<UUID, UserAccount> accountsById = loadAccountsById(distinctIds);
+
+        int affected = 0;
+        List<BulkUserSkippedItem> skipped = new ArrayList<>();
+        for (UUID uid : distinctIds) {
+            BulkSkipDecision decision = evaluateBulkEligibility(actor, request.action(), uid, accountsById.get(uid));
+            if (decision == null) {
+                affected++;
+            } else {
+                UserAccount ua = accountsById.get(uid);
+                skipped.add(new BulkUserSkippedItem(
+                        uid, ua == null ? null : ua.getUsername(), decision.code(), decision.message()));
+            }
+        }
+        return new BulkUserActionPreviewResponse(distinctIds.size(), affected, List.copyOf(skipped));
+    }
+
+    public BulkUserActionResponse applyBulkActions(BulkUserActionRequest request, String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new ValidationException(List.of(
+                    new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", "Thiếu khóa Idempotency-Key")));
+        }
+        CurrentUser actor = currentUserProvider.requireCurrentUser();
+        List<UUID> distinctIds = validateBulkUserIds(request.userIds());
+        String trimmedReason = request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
+        if ((request.action() == UserBulkAction.DEACTIVATE || request.action() == UserBulkAction.DELETE)
+                && trimmedReason == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("reason", "REASON_REQUIRED", "Vui lòng nhập lý do thực hiện thao tác hàng loạt")));
+        }
+
+        String scope = BULK_IDEMPOTENCY_ENDPOINT + ":" + actor.realm().name() + ":" + actor.id();
+        String digest = computeBulkDigest(request.action(), distinctIds, trimmedReason);
+
+        return idempotencyService.executeOnce(
+                idempotencyKey.trim(),
+                scope,
+                digest,
+                BulkUserActionResponse.class,
+                () -> executeBulkInTx(actor, request.action(), distinctIds, trimmedReason));
+    }
+
+    private BulkUserActionResponse executeBulkInTx(
+            CurrentUser actor, UserBulkAction action, List<UUID> distinctIds, String trimmedReason) {
+        lockUserRowsOrdered(distinctIds);
+        Map<UUID, UserAccount> accountsById = loadAccountsById(distinctIds);
+        UUID batchId = Ids.newId();
+        Instant now = Instant.now(clock);
+
+        List<BulkUserActionItemResult> results = new ArrayList<>(distinctIds.size());
+        int succeeded = 0;
+        int skipped = 0;
+        int failed = 0;
+
+        for (UUID uid : distinctIds) {
+            UserAccount user = accountsById.get(uid);
+            BulkSkipDecision skip = evaluateBulkEligibility(actor, action, uid, user);
+            if (skip != null) {
+                skipped++;
+                results.add(new BulkUserActionItemResult(
+                        uid, user == null ? null : user.getUsername(), BulkUserItemOutcome.SKIPPED, skip.code(), skip.message()));
+                continue;
+            }
+
+            try {
+                switch (action) {
+                    case DEACTIVATE -> {
+                        UserStatus oldStatus = user.getStatus();
+                        String oldReason = user.getInactiveReason();
+                        keycloakClient.setEnabled(uid, false);
+                        user.deactivate(trimmedReason, now, actor.id());
+                        user = userAccountRepository.saveAndFlush(user);
+                        revokeUserSessionsAndSnapshot(uid);
+                        Map<String, Object> before = new LinkedHashMap<>();
+                        Map<String, Object> after = new LinkedHashMap<>();
+                        if (oldStatus != UserStatus.INACTIVE) {
+                            before.put("status", oldStatus.name());
+                            after.put("status", UserStatus.INACTIVE.name());
+                        }
+                        if (!Objects.equals(oldReason, user.getInactiveReason())) {
+                            before.put("inactiveReason", oldReason);
+                            after.put("inactiveReason", user.getInactiveReason());
+                        }
+                        recordAudit(actor, "USER_DEACTIVATED", uid, user.getUsername(), before, after, trimmedReason);
+                    }
+                    case ACTIVATE -> {
+                        UserStatus oldStatus = user.getStatus();
+                        String oldReason = user.getInactiveReason();
+                        keycloakClient.setEnabled(uid, true);
+                        user.activate(now, actor.id());
+                        user = userAccountRepository.saveAndFlush(user);
+                        Map<String, Object> before = new LinkedHashMap<>();
+                        Map<String, Object> after = new LinkedHashMap<>();
+                        if (oldStatus != UserStatus.ACTIVE) {
+                            before.put("status", oldStatus.name());
+                            after.put("status", UserStatus.ACTIVE.name());
+                        }
+                        if (oldReason != null) {
+                            before.put("inactiveReason", oldReason);
+                            after.put("inactiveReason", null);
+                        }
+                        recordAudit(actor, "USER_ACTIVATED", uid, user.getUsername(), before, after, null);
+                    }
+                    case DELETE -> performSoftDelete(actor, user, trimmedReason, now);
+                }
+                succeeded++;
+                results.add(new BulkUserActionItemResult(
+                        uid, user.getUsername(), BulkUserItemOutcome.SUCCEEDED, null, null));
+            } catch (ExternalServiceException ex) {
+                failed++;
+                results.add(new BulkUserActionItemResult(
+                        uid, user.getUsername(), BulkUserItemOutcome.FAILED, ex.getCode(), "Lỗi kết nối dịch vụ xác thực"));
+            }
+        }
+
+        return new BulkUserActionResponse(
+                batchId, action, distinctIds.size(), succeeded, skipped, failed, List.copyOf(results));
+    }
+
+    private void performSoftDelete(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
+        UUID userId = user.getId();
+        UserStatus oldStatus = user.getStatus();
+        keycloakClient.deleteUser(userId);
+        user.softDelete(trimmedReason, now, actor.id());
+        user = userAccountRepository.saveAndFlush(user);
+        revokeUserSessionsAndSnapshot(userId);
+        outboxPublisher.publish(
+                UserDeleted.OUTBOX_TOPIC,
+                new UserDeleted(userId, user.getUsername(), now, actor.id()));
+
+        Map<String, Object> before = new LinkedHashMap<>();
+        Map<String, Object> after = new LinkedHashMap<>();
+        if (oldStatus != UserStatus.INACTIVE) {
+            before.put("status", oldStatus.name());
+            after.put("status", UserStatus.INACTIVE.name());
+        }
+        before.put("deletedAt", null);
+        after.put("deletedAt", now.toString());
+        after.put("deleteReason", trimmedReason);
+        recordAudit(actor, "USER_DELETED", userId, user.getUsername(), before, after, trimmedReason);
+    }
+
+    private void revokeUserSessionsAndSnapshot(UUID userId) {
+        sessionStore.deleteAllSessions(userId);
+        authzSnapshotService.evict(userId);
+        keycloakClient.logoutAllSessions(userId);
+    }
+
+    private UserAccount lockActiveManageableUser(CurrentUser actor, UUID userId) {
+        jdbcTemplate.query(
+                "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE",
+                rs -> {},
+                userId);
+        UserAccount user = requireExistingNonDeletedUser(userId);
+        Set<Permission> targetPermissions = loadUserEffectivePermissions(userId);
+        privilegeGuard.assertCanGrant(actor, targetPermissions);
+        return user;
+    }
+
+    private UserAccount requireExistingNonDeletedUser(UUID userId) {
+        return userAccountRepository.findById(userId)
+                .filter(u -> !u.isDeleted() && u.getStatus() != UserStatus.PROVISIONING)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+    }
+
+    private List<AccountDeletionGuard.Blocker> collectDeletionBlockers(UUID userId) {
+        if (deletionGuards.isEmpty()) {
+            return List.of();
+        }
+        List<AccountDeletionGuard.Blocker> all = new ArrayList<>();
+        for (AccountDeletionGuard guard : deletionGuards) {
+            List<AccountDeletionGuard.Blocker> found = guard.check(userId);
+            if (found != null && !found.isEmpty()) {
+                all.addAll(found);
+            }
+        }
+        return List.copyOf(all);
+    }
+
+    private Set<Permission> loadUserEffectivePermissions(UUID userId) {
+        EnumSet<Permission> perms = EnumSet.noneOf(Permission.class);
+        jdbcTemplate.query(
+                """
+                SELECT DISTINCT p.code
+                FROM identity.user_role ur
+                JOIN identity.role r ON r.id = ur.role_id
+                JOIN identity.role_permission rp ON rp.role_id = r.id
+                JOIN identity.permission p ON p.id = rp.permission_id
+                WHERE ur.user_id = ?
+                  AND r.status = 1
+                UNION
+                SELECT DISTINCT p.code
+                FROM identity.user_permission up
+                JOIN identity.permission p ON p.id = up.permission_id
+                WHERE up.user_id = ?
+                """,
+                rs -> {
+                    Permission.findByCode(rs.getString("code")).ifPresent(perms::add);
+                },
+                userId,
+                userId);
+        return perms;
+    }
+
+    private BulkSkipDecision evaluateBulkEligibility(
+            CurrentUser actor, UserBulkAction action, UUID userId, UserAccount user) {
+        if (user == null || user.isDeleted() || user.getStatus() == UserStatus.PROVISIONING) {
+            return new BulkSkipDecision("USER_NOT_AVAILABLE", "Tài khoản không tồn tại hoặc đã bị xóa");
+        }
+        if (action == UserBulkAction.DEACTIVATE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
+            return new BulkSkipDecision(ERROR_SELF_DEACTIVATE, "Không thể tự ngừng hoạt động tài khoản của chính mình");
+        }
+        if (action == UserBulkAction.DELETE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
+            return new BulkSkipDecision(ERROR_SELF_DELETE, "Không thể tự xóa tài khoản của chính mình");
+        }
+        if (action == UserBulkAction.DEACTIVATE && user.getStatus() == UserStatus.INACTIVE) {
+            return new BulkSkipDecision("ALREADY_INACTIVE", "Tài khoản đã ở trạng thái ngừng hoạt động");
+        }
+        if (action == UserBulkAction.ACTIVATE && user.getStatus() == UserStatus.ACTIVE) {
+            return new BulkSkipDecision("ALREADY_ACTIVE", "Tài khoản đang hoạt động");
+        }
+        Set<Permission> targetPermissions = loadUserEffectivePermissions(userId);
+        if (!privilegeGuard.canGrant(actor, targetPermissions)) {
+            return new BulkSkipDecision("PRIVILEGE_ESCALATION", "Tài khoản có quyền vượt quá phạm vi của bạn");
+        }
+        if (action == UserBulkAction.DELETE) {
+            List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
+            if (!blockers.isEmpty()) {
+                String sources = blockers.stream().map(AccountDeletionGuard.Blocker::source).distinct().reduce((a, b) -> a + ", " + b).orElse("");
+                return new BulkSkipDecision(ERROR_USER_HAS_TRANSACTIONS, "Tài khoản có dữ liệu giao dịch (" + sources + ")");
+            }
+        }
+        return null;
+    }
+
+    private Map<UUID, UserAccount> loadAccountsById(List<UUID> userIds) {
+        Map<UUID, UserAccount> map = new HashMap<>();
+        for (UserAccount ua : userAccountRepository.findAllByIdIn(userIds)) {
+            map.put(ua.getId(), ua);
+        }
+        return map;
+    }
+
+    private void lockUserRowsOrdered(List<UUID> userIds) {
+        List<UUID> sorted = userIds.stream().distinct().sorted().toList();
+        jdbcTemplate.execute((java.sql.Connection con) -> {
+            Array sqlArray = con.createArrayOf("uuid", sorted.toArray(UUID[]::new));
+            try (var ps = con.prepareStatement(
+                    "SELECT id FROM identity.user_account WHERE id = ANY(?) ORDER BY id FOR UPDATE")) {
+                ps.setArray(1, sqlArray);
+                ps.executeQuery().close();
+            }
+            return null;
+        });
+    }
+
+    private static List<UUID> validateBulkUserIds(List<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            throw new ValidationException(List.of(
+                    new FieldError("userIds", "NOTEMPTY", "Danh sách tài khoản không được để trống")));
+        }
+        if (userIds.size() > MAX_BULK_USERS) {
+            throw new ValidationException(
+                    "BULK_LIMIT_EXCEEDED",
+                    null,
+                    List.of(new FieldError(
+                            "userIds", "BULK_LIMIT_EXCEEDED", "Số lượng tài khoản thao tác hàng loạt tối đa là 500")));
+        }
+        Set<UUID> seen = new LinkedHashSet<>();
+        for (UUID id : userIds) {
+            if (id != null) {
+                seen.add(id);
+            }
+        }
+        if (seen.isEmpty()) {
+            throw new ValidationException(List.of(
+                    new FieldError("userIds", "NOTEMPTY", "Danh sách tài khoản không được để trống")));
+        }
+        return List.copyOf(seen);
+    }
+
+    private static String computeBulkDigest(UserBulkAction action, List<UUID> distinctIds, String trimmedReason) {
+        String reasonPart = trimmedReason == null ? "" : trimmedReason;
+        String canonical = "action=" + action.name()
+                + "|users=" + distinctIds
+                + "|reason=" + reasonPart.length() + ':' + reasonPart;
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 not available", ex);
+        }
+    }
+
+    private static String validateReason(String field, String reason, String emptyMessage) {
+        if (reason == null || reason.isBlank()) {
+            throw new ValidationException(List.of(
+                    new FieldError(field, "REASON_REQUIRED", emptyMessage)));
+        }
+        String trimmed = reason.trim();
+        if (trimmed.length() > 500) {
+            throw new ValidationException(List.of(
+                    new FieldError(field, "SIZE", "Lý do tối đa 500 ký tự")));
+        }
+        return trimmed;
+    }
+
+    private record BulkSkipDecision(String code, String message) {
     }
 
     private List<Role> resolveTargetRoles(CurrentUser actor, List<UUID> requestedRoleIds) {
@@ -687,7 +1190,7 @@ public class UserAdminService {
     private static String validateRequiredFullName(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("fullName", "NOT_BLANK", "Họ và tên không được để trống")));
+                    new FieldError("fullName", "NOTBLANK", "Họ và tên không được để trống")));
         }
         String trimmed = fullName.trim();
         if (trimmed.length() > 200) {

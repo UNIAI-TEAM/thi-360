@@ -107,15 +107,15 @@ public class KeycloakIdentityClient {
                                 null,
                                 List.of(new FieldError("password", "PASSWORD_WEAK", "Mật khẩu không đạt quy tắc bảo mật")));
                     }
-                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak rejected createUser: status=" + status, null);
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
                 }
                 if (status >= 300) {
                     logExternal("createUser", targetRealm, "error_" + status, startNanos);
-                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak createUser failed: status=" + status, null);
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
                 }
                 URI location = response.getLocation();
                 if (location == null || location.getPath() == null) {
-                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak createUser returned no Location", null);
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
                 }
                 String path = location.getPath();
                 String idPart = path.substring(path.lastIndexOf('/') + 1);
@@ -127,7 +127,7 @@ public class KeycloakIdentityClient {
             throw ex;
         } catch (RuntimeException ex) {
             logExternal("createUser", targetRealm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak createUser failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -149,10 +149,10 @@ public class KeycloakIdentityClient {
                         null,
                         List.of(new FieldError("password", "PASSWORD_WEAK", "Mật khẩu không đạt quy tắc bảo mật")));
             }
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak setPassword failed: status=" + status, ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (RuntimeException ex) {
             logExternal("setPassword", targetRealm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak setPassword failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -168,10 +168,10 @@ public class KeycloakIdentityClient {
             logExternal("setEnabled", targetRealm, "success", startNanos);
         } catch (NotFoundException ex) {
             logExternal("setEnabled", targetRealm, "not_found", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak user not found", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (RuntimeException ex) {
             logExternal("setEnabled", targetRealm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak setEnabled failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -200,18 +200,17 @@ public class KeycloakIdentityClient {
             logExternal("updateUserProfile", targetRealm, "success", startNanos);
         } catch (NotFoundException ex) {
             logExternal("updateUserProfile", targetRealm, "not_found", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak user not found", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (WebApplicationException ex) {
             int status = ex.getResponse() != null ? ex.getResponse().getStatus() : 500;
             logExternal("updateUserProfile", targetRealm, "error_" + status, startNanos);
             if (status == 409) {
                 throw new ConflictException("EMAIL_TAKEN");
             }
-            throw new ExternalServiceException(
-                    "IDENTITY_PROVIDER_ERROR", "Keycloak updateUserProfile failed: status=" + status, ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (RuntimeException ex) {
             logExternal("updateUserProfile", targetRealm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak updateUserProfile failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -227,14 +226,14 @@ public class KeycloakIdentityClient {
             }
             if (status >= 300) {
                 logExternal("deleteUser", targetRealm, "error_" + status, startNanos);
-                throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak deleteUser failed: status=" + status, null);
+                throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
             }
             logExternal("deleteUser", targetRealm, "success", startNanos);
         } catch (ExternalServiceException ex) {
             throw ex;
         } catch (RuntimeException ex) {
             logExternal("deleteUser", targetRealm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak deleteUser failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -249,7 +248,7 @@ public class KeycloakIdentityClient {
             logExternal("logoutAllSessions", targetRealm, "not_found_ignored", startNanos);
         } catch (RuntimeException ex) {
             logExternal("logoutAllSessions", targetRealm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak logoutAllSessions failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -268,7 +267,29 @@ public class KeycloakIdentityClient {
             return Optional.of(UUID.fromString(users.getFirst().getId()));
         } catch (RuntimeException ex) {
             logExternal("findUserIdByUsername", targetRealm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak findUserIdByUsername failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+
+    public boolean hasPasswordCredential(UUID userId) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        long startNanos = System.nanoTime();
+        String targetRealm = properties.realm();
+        try {
+            List<CredentialRepresentation> credentials =
+                    appRealm().users().get(userId.toString()).credentials();
+            logExternal("listCredentials", targetRealm, "success", startNanos);
+            if (credentials == null) {
+                return false;
+            }
+            return credentials.stream()
+                    .anyMatch(c -> CredentialRepresentation.PASSWORD.equalsIgnoreCase(c.getType()));
+        } catch (NotFoundException ex) {
+            logExternal("listCredentials", targetRealm, "not_found", startNanos);
+            return false;
+        } catch (RuntimeException ex) {
+            logExternal("listCredentials", targetRealm, "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -333,7 +354,7 @@ public class KeycloakIdentityClient {
                     .body(TokenPayload.class);
             if (payload == null || payload.accessToken() == null || payload.accessToken().isBlank()) {
                 logExternal(operation, realm, "empty_response", startNanos);
-                throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Empty token response from Keycloak", null);
+                throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
             }
             logExternal(operation, realm, "success", startNanos);
             return new TokenResult(
@@ -347,7 +368,7 @@ public class KeycloakIdentityClient {
             throw mapTokenError(operation, ex);
         } catch (RestClientException ex) {
             logExternal(operation, realm, "exception", startNanos);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak token request failed", ex);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
 
@@ -389,10 +410,7 @@ public class KeycloakIdentityClient {
             return new KeycloakAuthException(AuthFailureReason.ACCOUNT_LOCKED);
         }
 
-        return new ExternalServiceException(
-                "IDENTITY_PROVIDER_ERROR",
-                "Keycloak token endpoint error: status=" + status,
-                ex);
+        return new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
     }
 
     private RealmResource appRealm() {

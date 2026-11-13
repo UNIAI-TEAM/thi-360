@@ -168,6 +168,39 @@ public class UserAccount {
         return changed;
     }
 
+    public void deactivate(String reason, Instant now, UUID actorId) {
+        this.status = UserStatus.INACTIVE;
+        this.inactiveReason = reason == null || reason.isBlank() ? null : reason.trim();
+        this.inactivatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.inactivatedBy = actorId;
+        this.updatedAt = now;
+        this.updatedBy = actorId;
+    }
+
+    public void activate(Instant now, UUID actorId) {
+        this.status = UserStatus.ACTIVE;
+        this.inactiveReason = null;
+        this.inactivatedAt = null;
+        this.inactivatedBy = null;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = actorId;
+    }
+
+    public void updateMustChangePassword(boolean mustChangePassword, Instant now, UUID actorId) {
+        this.mustChangePassword = mustChangePassword;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = actorId;
+    }
+
+    public void softDelete(String reason, Instant now, UUID actorId) {
+        this.status = UserStatus.INACTIVE;
+        this.deletedAt = Objects.requireNonNull(now, "now must not be null");
+        this.deletedBy = actorId;
+        this.deleteReason = reason == null || reason.isBlank() ? null : reason.trim();
+        this.updatedAt = now;
+        this.updatedBy = actorId;
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }
