@@ -74,4 +74,23 @@ describe("AppShell", () => {
       expect(mocks.redirectToLogin).toHaveBeenCalledWith({ returnHere: false }),
     );
   });
+
+  it("cửa sổ hẹp: vùng nội dung cuộn ngang còn sidebar nằm ngoài vùng cuộn và không bị co", async () => {
+    // jsdom không dàn trang nên chỉ kiểm cấu trúc: nội dung trong vùng cuộn ngang, sidebar thì không.
+    renderWithProviders(
+      <SessionProvider loadSession={async () => FAKE_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <p>Nội dung trang</p>
+        </AppShell>
+      </SessionProvider>,
+    );
+
+    const scroller = screen.getByTestId("content-scroll");
+    expect(scroller).toHaveClass("overflow-x-auto", "min-w-0");
+    expect(scroller).toContainElement(screen.getByRole("main"));
+    const nav = screen.getByRole("navigation", { name: "Menu chính" });
+    expect(scroller).not.toContainElement(nav);
+    expect(nav).toHaveClass("w-62", "shrink-0");
+    await waitFor(() => screen.getByRole("link", { name: "Bảng điều khiển" }));
+  });
 });
