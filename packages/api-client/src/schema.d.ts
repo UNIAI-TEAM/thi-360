@@ -32,13 +32,13 @@ export interface components {
              * @example VALIDATION_FAILED
              */
             code: string;
+            /** @description Danh sách lỗi theo từng trường */
+            fieldErrors: components["schemas"]["FieldError"][];
             /**
              * @description Thông báo lỗi tiếng Việt
              * @example Dữ liệu không hợp lệ
              */
             message: string;
-            /** @description Danh sách lỗi theo từng trường */
-            fieldErrors: components["schemas"]["FieldError"][];
             /**
              * @description Mã định danh yêu cầu (X-Request-Id)
              * @example 019320a0-0000-7000-8000-000000000001
@@ -48,15 +48,15 @@ export interface components {
         /** @description Chi tiết lỗi của một trường dữ liệu */
         FieldError: {
             /**
-             * @description Tên trường dữ liệu
-             * @example username
-             */
-            field: string;
-            /**
              * @description Mã lỗi của trường
              * @example TAKEN
              */
             code: string;
+            /**
+             * @description Tên trường dữ liệu
+             * @example username
+             */
+            field: string;
             /**
              * @description Thông báo lỗi tiếng Việt
              * @example Tên đăng nhập đã tồn tại
