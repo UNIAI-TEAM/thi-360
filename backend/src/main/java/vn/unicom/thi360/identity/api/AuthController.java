@@ -75,6 +75,7 @@ public class AuthController {
                 result.fullName(),
                 result.realm(),
                 result.access(),
-                result.permissions());
+                result.permissions(),
+                result.homeUrl());
     }
 }

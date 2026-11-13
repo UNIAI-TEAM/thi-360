@@ -13,3 +13,5 @@ next-env.d.ts
 .vscode/
 .DS_Store
 .tmp-uniai/
+e2e/playwright-report/
+e2e/test-results/

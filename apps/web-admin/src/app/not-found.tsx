@@ -1,14 +1,18 @@
-"use client";
-
+import type { Metadata } from "next";
 import { SearchX } from "lucide-react";
 import { Button } from "@thi360/ui";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { StatusPage } from "@/components/status-page";
 
-export default function NotFound() {
-  const t = useTranslations("notFound");
-  const common = useTranslations("common");
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("notFound");
+  return { title: t("title") };
+}
+
+export default async function NotFound() {
+  const t = await getTranslations("notFound");
+  const common = await getTranslations("common");
   return (
     <StatusPage
       icon={SearchX}

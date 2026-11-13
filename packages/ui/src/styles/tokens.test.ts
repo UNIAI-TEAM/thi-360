@@ -75,6 +75,8 @@ const LIGHT_PAIRS: Pair[] = [
   { fg: "--color-danger", bg: "--color-surface", note: "lỗi form, dấu * bắt buộc, nút icon nguy hiểm, mục menu hủy" },
   { fg: "--color-neutral", bg: "--color-surface", note: "tab nội dung thường" },
   { fg: "--color-text-secondary", bg: "--color-subtle", note: "mục sidebar/dropdown hover" },
+  { fg: "--color-text-placeholder", bg: "--color-surface", note: "placeholder và icon dẫn đầu trên nền input" },
+  { fg: "--color-text-placeholder", bg: "--color-subtle", note: "placeholder trên nền input bị khóa" },
 ];
 
 /**

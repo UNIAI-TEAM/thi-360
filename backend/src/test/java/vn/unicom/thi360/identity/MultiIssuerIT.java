@@ -157,7 +157,7 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"platform\",\"password\":\"" + TEST_PLATFORM_PASSWORD + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.redirectTo").value("/"))
+                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3001"))
                 .andExpect(jsonPath("$.mustChangePassword").value(false))
                 .andReturn();
 
@@ -172,6 +172,7 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.permissions.length()").value(13))
                 .andExpect(jsonPath("$.permissions", org.hamcrest.Matchers.hasItems(
                         "USER.VIEW", "USER.MODIFY", "ROLE.MODIFY", "CATALOG.VIEW", "APPEARANCE.MODIFY")))
+                .andExpect(jsonPath("$.homeUrl").value("http://localhost:3001"))
                 .andReturn();
 
         String idStr = com.jayway.jsonpath.JsonPath.read(meRes.getResponse().getContentAsString(), "$.id");
@@ -232,7 +233,8 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.realm").value("APP"))
-                .andExpect(jsonPath("$.access").value("EXAM"));
+                .andExpect(jsonPath("$.access").value("EXAM"))
+                .andExpect(jsonPath("$.homeUrl").value("http://localhost:3000/home"));
     }
 
     @Test

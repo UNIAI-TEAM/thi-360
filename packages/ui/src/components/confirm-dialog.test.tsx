@@ -97,9 +97,11 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it("đang xử lý: cả hai nút bị khóa", () => {
+  it("đang xử lý: nút xác nhận đặt aria-disabled/aria-busy và nút hủy bị khóa", () => {
     setup({ loading: true });
-    expect(screen.getByRole("button", { name: "Khóa" })).toBeDisabled();
+    const confirm = screen.getByRole("button", { name: "Khóa" });
+    expect(confirm).toHaveAttribute("aria-disabled", "true");
+    expect(confirm).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("button", { name: "Hủy" })).toBeDisabled();
   });
 

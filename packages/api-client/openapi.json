@@ -1396,7 +1396,7 @@
           },
           "redirectTo" : {
             "description" : "Đường dẫn chuyển hướng sau đăng nhập",
-            "example" : "/",
+            "example" : "http://localhost:3000/home",
             "type" : "string"
           }
         },
@@ -1413,6 +1413,11 @@
           },
           "fullName" : {
             "description" : "Họ và tên hiển thị",
+            "type" : "string"
+          },
+          "homeUrl" : {
+            "description" : "Trang chủ mặc định theo vai trò",
+            "example" : "http://localhost:3000/home",
             "type" : "string"
           },
           "id" : {
@@ -1437,7 +1442,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "access", "fullName", "id", "permissions", "realm", "username" ],
+        "required" : [ "access", "fullName", "homeUrl", "id", "permissions", "realm", "username" ],
         "type" : "object"
       },
       "MoveCatalogItemRequest" : {

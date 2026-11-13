@@ -54,6 +54,15 @@ export {
   type PaginationLabels,
   type PaginationProps,
 } from "./components/pagination";
+export {
+  PasswordField,
+  evaluatePasswordRules,
+  generateStrongPassword,
+  isPasswordStrong,
+  type PasswordFieldLabels,
+  type PasswordFieldProps,
+  type PasswordRuleStatus,
+} from "./components/password-field";
 export { SectionTitle, type SectionTitleProps } from "./components/section-title";
 export { Select, type SelectOption, type SelectProps } from "./components/select";
 export { Skeleton } from "./components/skeleton";
@@ -63,6 +72,7 @@ export {
   type StatusChipProps,
   type StatusTone,
 } from "./components/status-chip";
+export { StatusPage, type StatusPageProps } from "./components/status-page";
 export { Switch, type SwitchProps } from "./components/switch";
 export {
   Tabs,

@@ -226,6 +226,7 @@
   },
   "errors": {
     "forbiddenToast": "Bạn không có quyền thực hiện thao tác này.",
+    "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
     "notFound": "Không tìm thấy.",
     "proxyNotConfigured": "Máy chủ web chưa được cấu hình địa chỉ API.",
     "upstreamTimeout": "Máy chủ xử lý quá lâu. Hãy thử lại sau.",
@@ -272,10 +273,11 @@
     "menuLoading": "Đang tải menu",
     "skipToContent": "Chuyển tới nội dung chính",
     "userMenu": {
+      "adminPortal": "Trang quản trị",
       "changePassword": "Đổi mật khẩu",
       "logout": "Đăng xuất",
       "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
-      "profile": "Hồ sơ",
+      "studentPortal": "Trang học viên",
       "trigger": "Menu tài khoản"
     }
   }
