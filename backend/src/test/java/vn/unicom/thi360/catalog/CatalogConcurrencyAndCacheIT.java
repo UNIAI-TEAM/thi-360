@@ -44,6 +44,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
@@ -54,6 +56,11 @@ import vn.unicom.thi360.catalog.infrastructure.CatalogItemRefRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogItemRepository;
 import vn.unicom.thi360.identity.spi.Permissions;
 
+// Own context (RepoHookConfig): concurrent scenarios hold several connections at once (paused
+// transactions plus the competing request), above the run-wide test pool of 4; close the
+// context and its pool after the class so it does not count against the shared Postgres limit.
+@TestPropertySource(properties = "spring.datasource.hikari.maximum-pool-size=8")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CatalogConcurrencyAndCacheIT extends AbstractIntegrationTest {
 
     @FunctionalInterface
