@@ -45,6 +45,7 @@ Danh sách đầy đủ ở `PRD.md` mục 6 (P1–P12) và spec mục 14. Tóm 
 | Nhật ký | Lưu vĩnh viễn, phân vùng theo quý, lưu trữ theo năm |
 | Giao diện | Tùy chỉnh toàn hệ thống, mở từ menu profile, không có nút nổi; nút chính `#059669` |
 | Google | Backlog; khi bật thì gộp theo email |
+| Đăng nhập | Một nơi đăng nhập ở tên miền chính cho cả hai web; điều hướng theo vai trò hoặc `callbackUrl`; trang đích kiểm tra quyền (spec mục 15, T18) |
 
 ## Chờ người khác
 

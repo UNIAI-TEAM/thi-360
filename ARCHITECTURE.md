@@ -7,7 +7,7 @@
 Một backend chia module (modular monolith), chạy hai vai trò từ cùng một codebase, phục vụ ba loại client.
 
 ```
- Web học viên (Next.js) ─┐
+ Web học viên (Next.js) ─┐   thi360.vn: landing, đăng nhập duy nhất, trang học viên
  Web admin (Next.js) ────┼─ HTTPS / nginx ─► thi360-api (Spring Boot) ◄──► Keycloak (chỉ lo xác thực)
  App Android/iOS (sau) ──┘                        │
                                     ┌─────────────┼─────────────┐
@@ -107,10 +107,13 @@ Trình duyệt ──POST /api/auth/login──► Next.js (route proxy) ──�
                                                                │ 2. đổi tên đăng nhập/mật khẩu lấy token ở Keycloak
                                                                │ 3. đọc identity.user_account: trạng thái, bắt đổi mật khẩu
                                                                │ 4. ghi phiên vào Redis, ghi audit LOGIN
-Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF ──────┘
+Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF + redirectTo ─┘
 ```
 
 - Trình duyệt không bao giờ giữ token trong JavaScript.
+- **Một nơi đăng nhập cho cả hai web** (spec mục 15): biểu mẫu đăng nhập chỉ có ở web học viên (tên miền chính). Cookie đặt cho tên miền cha (`THI360_COOKIE_DOMAIN`, ví dụ `.thi360.vn`) nên web admin (`admin.thi360.vn`) dùng chung phiên.
+- Máy chủ trả `redirectTo`: `callbackUrl` nếu hợp lệ (đường dẫn tương đối hoặc tên miền trong danh sách cho phép), nếu không thì theo vai trò: có `ADMIN_PORTAL_ACCESS` → web admin, còn lại → `/home` của web học viên.
+- Web admin không có trang đăng nhập: chưa đăng nhập thì chuyển về trang đăng nhập kèm `callbackUrl`; thiếu quyền thì hiện trang 403.
 - Tài khoản `INACTIVE` hoặc đã xóa mềm bị từ chối ở bước 3, kể cả khi Keycloak trả token.
 - Ngừng hoạt động tài khoản: vô hiệu ở Keycloak, xóa phiên trong Redis, request kế tiếp của phiên cũ nhận 401.
 
@@ -189,11 +192,14 @@ Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không 
 | A6 | Bảng `user_identity` có từ đầu dù chưa bật Google | Bật Google sau không phải đổi mô hình dữ liệu |
 | A7 | Giao diện là cấu hình toàn hệ thống lưu ở máy chủ, áp bằng biến CSS | Giữ khả năng tùy chỉnh như reap mà không phụ thuộc MUI |
 | A8 | Nhật ký phân vùng theo quý, lưu trữ theo năm | Lưu vĩnh viễn nhưng bảng chính vẫn gọn |
+| A9 | Hai web trên hai tên miền, một nơi đăng nhập, cookie phiên dùng chung tên miền cha | Người dùng đăng nhập một lần; đánh đổi là hai web không còn tách phiên, bù bằng `HttpOnly`, XSRF, kiểm tra `Origin` cho API quản trị, CSP |
 
 ## 8. Bảo mật
 
 - Mọi endpoint dưới `/api/v1/admin/**` bắt buộc có `@RequirePermission`; có test quét và làm hỏng build nếu thiếu.
 - Cookie `HttpOnly`, `Secure`, `SameSite=Lax`; kiểm tra XSRF cho request ghi.
 - Giới hạn tần suất cho đăng nhập, reset mật khẩu, upload file.
+- `callbackUrl` sau đăng nhập chỉ được là đường dẫn tương đối hoặc URL thuộc `THI360_WEB_URL`, `THI360_ADMIN_URL`; trường hợp khác bị bỏ qua (chống chuyển hướng tới trang giả mạo).
+- API quản trị (`/api/v1/admin/**`) chỉ nhận request ghi có `Origin` là `THI360_ADMIN_URL`.
 - Không ghi mật khẩu, token, link reset vào log hay nhật ký.
 - Bí mật nằm trong biến môi trường, không commit (`.env` nằm trong `.gitignore`, có `.env.example`).

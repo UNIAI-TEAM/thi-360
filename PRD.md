@@ -78,6 +78,7 @@ Sản phẩm kế thừa một phần mã từ **reap-elearning** (xác thực, 
 | P9 | Danh mục ở môi trường thật để trống giá trị, admin/BA tự nhập; local và test có bộ mẫu | M.Trường, 2026-11-13 |
 | P10 | Nhật ký lưu vĩnh viễn, không che; phân vùng theo quý, dữ liệu cũ chuyển sang bảng lưu trữ phân vùng theo năm | M.Trường, 2026-11-13 |
 | P11 | Giữ bộ tùy chỉnh giao diện như reap, mở từ menu trong profile (không dùng nút nổi), áp dụng toàn hệ thống | M.Trường, 2026-11-13 |
+| P13 | Hai web trên hai tên miền; landing và đăng nhập ở tên miền chính; đăng nhập một lần, điều hướng theo vai trò (admin → trang quản trị, học viên → `/home`) hoặc theo `callbackUrl`; trang đích kiểm tra quyền, sai thì ra trang mã lỗi | M.Trường, 2026-11-13 |
 | P12 | Kiến trúc theo đề xuất: modular monolith, Keycloak, một UI kit Tailwind | M.Trường, 2026-11-13 |
 
 ## 7. Việc cần BA cập nhật trong SRS

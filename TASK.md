@@ -25,6 +25,7 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T14 | UNI-2551 | PBI-02 · Mã tổ hợp có phiên bản, nơi đang dùng, quy tắc ngừng và xóa | T13 | todo |
 | T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14 | todo |
 | T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mở từ menu profile, port từ reap) | T04, T05, T06 | todo |
+| T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | todo |
 | T16 | UNI-2553 | Kiểm thử nghiệm thu PBI-01, PBI-02 và kiểm thử bảo mật gọi thẳng API | T07–T15, T17 | todo |
 
 ### Thứ tự làm đề xuất
