@@ -1,0 +1,164 @@
+"use client";
+
+import { Button, PageHeader, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@thi360/ui";
+import { useTranslations } from "next-intl";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { ForbiddenView } from "@/features/session/forbidden-view";
+import { hasPermission } from "@/features/session/permissions";
+import { usePermissions, useSession } from "@/features/session/session-provider";
+import type { RbacTabKey } from "../types";
+import { RolesTab, type RolesTabProps } from "./roles-tab";
+
+export const RBAC_TAB_ORDER: readonly RbacTabKey[] = [
+  "vai-tro",
+  "quyen",
+  "nguoi-dung",
+  "gan-hang-loat",
+];
+
+export function getAllowedRbacTabs(permissions: ReadonlySet<string>): RbacTabKey[] {
+  const allowed: RbacTabKey[] = [];
+  if (hasPermission(permissions, "ROLE.VIEW")) allowed.push("vai-tro");
+  if (hasPermission(permissions, "PERMISSION.VIEW")) allowed.push("quyen");
+  if (
+    hasPermission(permissions, "PERMISSION.VIEW") &&
+    hasPermission(permissions, "USER.VIEW")
+  ) {
+    allowed.push("nguoi-dung");
+  }
+  if (hasPermission(permissions, "USER.ASSIGN")) allowed.push("gan-hang-loat");
+  return allowed;
+}
+
+export function resolveActiveRbacTab(
+  requestedTab: string | null,
+  allowedTabs: readonly RbacTabKey[],
+): RbacTabKey | null {
+  if (allowedTabs.length === 0) return null;
+  if (
+    requestedTab &&
+    (allowedTabs as readonly string[]).includes(requestedTab)
+  ) {
+    return requestedTab as RbacTabKey;
+  }
+  return allowedTabs[0]!;
+}
+
+export interface RbacPageViewProps {
+  rolesTabProps?: Omit<RolesTabProps, "createRequestNonce">;
+}
+
+export function RbacPageView({ rolesTabProps }: RbacPageViewProps = {}) {
+  const t = useTranslations("rbac");
+  const commonT = useTranslations("common");
+  const sessionState = useSession();
+  const { permissions, can } = usePermissions();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [createRoleNonce, setCreateRoleNonce] = useState(0);
+
+  const allowedTabs = useMemo(
+    () => getAllowedRbacTabs(permissions),
+    [permissions],
+  );
+
+  const requestedTab = searchParams.get("tab");
+  const activeTab = resolveActiveRbacTab(requestedTab, allowedTabs);
+
+  useEffect(() => {
+    if (sessionState.status !== "ready" || !activeTab) return;
+    if (requestedTab === activeTab) return;
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("tab", activeTab);
+    if (activeTab !== "nguoi-dung") {
+      nextParams.delete("permission");
+    }
+    router.replace(`${pathname}?${nextParams.toString()}`);
+  }, [activeTab, pathname, requestedTab, router, searchParams, sessionState.status]);
+
+  if (sessionState.status === "loading") {
+    return (
+      <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-4">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-5 w-96 max-w-full" />
+        <Skeleton className="h-10 w-80" />
+        <Skeleton className="h-72" />
+      </div>
+    );
+  }
+
+  if (sessionState.status === "ready" && allowedTabs.length === 0) {
+    return <ForbiddenView />;
+  }
+
+  const currentTab = activeTab ?? allowedTabs[0]!;
+  const canCreateRole = currentTab === "vai-tro" && can("ROLE.MODIFY");
+
+  function handleTabChange(nextTab: string) {
+    if (!(allowedTabs as readonly string[]).includes(nextTab)) return;
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("tab", nextTab);
+    if (nextTab !== "nguoi-dung") {
+      nextParams.delete("permission");
+    }
+    router.replace(`${pathname}?${nextParams.toString()}`);
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title={t("title")}
+        description={t(`tabsDescription.${currentTab}`)}
+        actions={
+          canCreateRole ? (
+            <Button onClick={() => setCreateRoleNonce((prev) => prev + 1)}>
+              {t("rolesTab.createButton")}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <Tabs
+        variant="content"
+        value={currentTab}
+        onValueChange={handleTabChange}
+      >
+        <TabsList aria-label={t("tabs.ariaLabel")} className="flex-wrap">
+          {allowedTabs.map((tabKey) => (
+            <TabsTrigger key={tabKey} value={tabKey}>
+              {t(`tabs.${tabKey}`)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {allowedTabs.includes("vai-tro") && (
+          <TabsContent value="vai-tro">
+            <RolesTab createRequestNonce={createRoleNonce} {...rolesTabProps} />
+          </TabsContent>
+        )}
+
+        {allowedTabs.includes("quyen") && (
+          <TabsContent value="quyen">
+            <div />
+          </TabsContent>
+        )}
+
+        {allowedTabs.includes("nguoi-dung") && (
+          <TabsContent value="nguoi-dung">
+            <div />
+          </TabsContent>
+        )}
+
+        {allowedTabs.includes("gan-hang-loat") && (
+          <TabsContent value="gan-hang-loat">
+            <div />
+          </TabsContent>
+        )}
+      </Tabs>
+    </div>
+  );
+}
