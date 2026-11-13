@@ -127,6 +127,47 @@ public class UserAccount {
         this.updatedBy = actorId;
     }
 
+    public boolean updateProfile(
+            String fullName,
+            String email,
+            String phone,
+            Instant now,
+            UUID actorId) {
+        boolean changed = false;
+        if (fullName != null) {
+            String trimmedFullName = fullName.trim();
+            if (!Objects.equals(this.fullName, trimmedFullName)) {
+                this.fullName = trimmedFullName;
+                changed = true;
+            }
+        }
+        if (email != null) {
+            String trimmedEmail = email.isBlank() ? null : email.trim();
+            String normalizedEmail = Normalizer.normalize(trimmedEmail);
+            if (!Objects.equals(this.email, trimmedEmail)
+                    || !Objects.equals(this.emailNormalized, normalizedEmail)) {
+                if (!Objects.equals(this.emailNormalized, normalizedEmail)) {
+                    this.emailVerifiedAt = null;
+                }
+                this.email = trimmedEmail;
+                this.emailNormalized = normalizedEmail;
+                changed = true;
+            }
+        }
+        if (phone != null) {
+            String trimmedPhone = phone.isBlank() ? null : phone.trim();
+            if (!Objects.equals(this.phone, trimmedPhone)) {
+                this.phone = trimmedPhone;
+                changed = true;
+            }
+        }
+        if (changed) {
+            this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+            this.updatedBy = actorId;
+        }
+        return changed;
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }

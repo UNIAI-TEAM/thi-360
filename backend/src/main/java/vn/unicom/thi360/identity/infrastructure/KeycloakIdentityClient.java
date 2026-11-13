@@ -175,6 +175,46 @@ public class KeycloakIdentityClient {
         }
     }
 
+    public void updateUserProfile(
+            UUID userId, String email, String firstName, String lastName, boolean emailVerified) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        long startNanos = System.nanoTime();
+        String targetRealm = properties.realm();
+        try {
+            var userResource = appRealm().users().get(userId.toString());
+            UserRepresentation rep = userResource.toRepresentation();
+            if (email != null) {
+                String trimmedEmail = email.trim();
+                rep.setEmail(trimmedEmail.isEmpty() ? "" : trimmedEmail);
+                rep.setEmailVerified(!trimmedEmail.isEmpty() && emailVerified);
+            }
+            if (firstName != null) {
+                String trimmedFirst = firstName.trim();
+                rep.setFirstName(trimmedFirst.isEmpty() ? "" : trimmedFirst);
+            }
+            if (lastName != null) {
+                String trimmedLast = lastName.trim();
+                rep.setLastName(trimmedLast.isEmpty() ? "" : trimmedLast);
+            }
+            userResource.update(rep);
+            logExternal("updateUserProfile", targetRealm, "success", startNanos);
+        } catch (NotFoundException ex) {
+            logExternal("updateUserProfile", targetRealm, "not_found", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak user not found", ex);
+        } catch (WebApplicationException ex) {
+            int status = ex.getResponse() != null ? ex.getResponse().getStatus() : 500;
+            logExternal("updateUserProfile", targetRealm, "error_" + status, startNanos);
+            if (status == 409) {
+                throw new ConflictException("EMAIL_TAKEN");
+            }
+            throw new ExternalServiceException(
+                    "IDENTITY_PROVIDER_ERROR", "Keycloak updateUserProfile failed: status=" + status, ex);
+        } catch (RuntimeException ex) {
+            logExternal("updateUserProfile", targetRealm, "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Keycloak updateUserProfile failed", ex);
+        }
+    }
+
     public void deleteUser(UUID userId) {
         Objects.requireNonNull(userId, "userId must not be null");
         long startNanos = System.nanoTime();
