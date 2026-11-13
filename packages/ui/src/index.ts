@@ -79,7 +79,7 @@ export {
   type TableSorting,
 } from "./components/table";
 export { Textarea, type TextareaProps } from "./components/textarea";
-export { notify, Toaster, toast } from "./components/toaster";
+export { notify, Toaster, toast, type ToasterProps } from "./components/toaster";
 export { Tooltip, type TooltipProps } from "./components/tooltip";
 export {
   buildScale,
@@ -113,6 +113,7 @@ export {
   SCALE_STEPS,
   SIMILAR_COLORS_DELTA_E,
   TEXT_CONTRAST_RATIO,
+  THEME_STYLE_ELEMENT_ID,
   themeStyleTag,
   UI_CONTRAST_RATIO,
   WHITE_COLOR,

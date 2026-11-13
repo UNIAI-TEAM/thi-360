@@ -13,7 +13,6 @@ export type AppearanceWarningCode =
 export interface AppearanceWarning {
   code: AppearanceWarningCode;
   target: "primary" | "accent" | "both";
-  message: string;
 }
 
 /**
@@ -40,7 +39,6 @@ export function checkPaletteWarnings({
     warnings.push({
       code: "PRIMARY_USES_DARK_TEXT",
       target: "primary",
-      message: "Nút chính sẽ dùng chữ tối",
     });
   }
 
@@ -51,7 +49,6 @@ export function checkPaletteWarnings({
       code: "NEAR_DANGER_COLOR",
       target:
         primaryNearDanger && accentNearDanger ? "both" : primaryNearDanger ? "primary" : "accent",
-      message: "Dễ nhầm với màu báo lỗi",
     });
   }
 
@@ -59,7 +56,6 @@ export function checkPaletteWarnings({
     warnings.push({
       code: "PRIMARY_ACCENT_SIMILAR",
       target: "both",
-      message: "Nút nhấn sẽ không nổi bật so với nút chính",
     });
   }
 

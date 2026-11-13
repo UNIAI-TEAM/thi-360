@@ -6,6 +6,7 @@ import {
   checkPaletteWarnings,
   DEFAULT_APPEARANCE_CONFIG,
   deriveTokens,
+  formatContrastRatio,
   getContrastRatio,
   parseAppearanceConfig,
   PRESET_PALETTES,
@@ -140,6 +141,28 @@ describe("palettes & deriveTokens", () => {
         getContrastRatio(dark.primaryText, dark.subtle),
         `${item.label} dark primaryText/subtle`,
       ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        getContrastRatio(dark.primaryText, dark.primary50),
+        `${item.label} dark primaryText/primary50`,
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        getContrastRatio(dark.primaryText, dark.primary100),
+        `${item.label} dark primaryText/primary100`,
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        getContrastRatio(dark.primaryText, dark.page),
+        `${item.label} dark primaryText/page`,
+      ).toBeGreaterThanOrEqual(4.5);
+      for (const stepToken of [dark.primary700, dark.primary800, dark.primary900]) {
+        expect(
+          getContrastRatio(stepToken, dark.surface),
+          `${item.label} dark primary700..900/surface`,
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          getContrastRatio(stepToken, dark.primary50),
+          `${item.label} dark primary700..900/primary50`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
     }
   });
 });
@@ -147,13 +170,13 @@ describe("palettes & deriveTokens", () => {
 describe("checks & vars", () => {
   it("cảnh báo chữ tối trên nút, gần màu lỗi ΔE và hai màu quá giống nhau", () => {
     const brightWarnings = checkPaletteWarnings({ primary: "#FDE047", accent: "#0F3C6E" });
-    expect(brightWarnings.map((w) => w.code)).toContain("PRIMARY_USES_DARK_TEXT");
+    expect(brightWarnings).toEqual([{ code: "PRIMARY_USES_DARK_TEXT", target: "primary" }]);
 
     const dangerWarnings = checkPaletteWarnings({ primary: "#0F3C6E", accent: "#D32F2F" });
-    expect(dangerWarnings.map((w) => w.code)).toContain("NEAR_DANGER_COLOR");
+    expect(dangerWarnings).toEqual([{ code: "NEAR_DANGER_COLOR", target: "accent" }]);
 
     const similarWarnings = checkPaletteWarnings({ primary: "#059669", accent: "#009688" });
-    expect(similarWarnings.map((w) => w.code)).toContain("PRIMARY_ACCENT_SIMILAR");
+    expect(similarWarnings).toEqual([{ code: "PRIMARY_ACCENT_SIMILAR", target: "both" }]);
 
     const clean = checkPaletteWarnings({ primary: "#059669", accent: "#F59223" });
     expect(clean).toEqual([]);
@@ -167,11 +190,25 @@ describe("checks & vars", () => {
     expect(vars["--color-primary-600"]).toBe("#0f3c6e");
     expect(vars["--color-accent-500"]).toBe("#00b4a6");
 
-    const style = themeStyleTag({
+    const styleLight = themeStyleTag({
       palette: { presetId: "navy-teal" },
       mode: "light",
     });
-    expect(style).toContain("--color-primary-600: #0f3c6e;");
+    const styleDark = themeStyleTag({
+      palette: { presetId: "navy-teal" },
+      mode: "dark",
+    });
+    expect(styleLight).toContain(':root[data-theme="light"]');
+    expect(styleLight).toContain(':root[data-theme="dark"]');
+    expect(styleLight).toContain("--color-page: #f7f8f9;");
+    expect(styleLight).toContain("--color-page: #0f1418;");
+    expect(styleLight).toContain("--color-primary-600: #0f3c6e;");
+    expect(styleLight).toBe(styleDark);
+    expect(themeStyleTag({ palette: { presetId: "navy-teal" }, mode: "light" })).toBe(styleLight);
+
+    expect(formatContrastRatio(5.48)).toBe("5,5:1");
+    expect(formatContrastRatio(5.48, "vi")).toBe("5,5:1");
+    expect(formatContrastRatio(5.48, "en")).toBe("5.5:1");
 
     expect(parseAppearanceConfig(null)).toEqual(DEFAULT_APPEARANCE_CONFIG);
     expect(

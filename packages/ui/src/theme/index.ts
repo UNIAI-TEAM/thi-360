@@ -53,4 +53,4 @@ export {
   type OklchColor,
   type ScaleStep,
 } from "./scale";
-export { buildThemeVars, themeStyleTag } from "./vars";
+export { buildThemeVars, THEME_STYLE_ELEMENT_ID, themeStyleTag } from "./vars";

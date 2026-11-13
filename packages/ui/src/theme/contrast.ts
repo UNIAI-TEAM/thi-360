@@ -137,6 +137,7 @@ export function pickOnColor(backgroundHex: string): string {
   return cBlack >= cWhite ? "#000000" : "#ffffff";
 }
 
-export function formatContrastRatio(ratio: number): string {
-  return `${(Math.round(ratio * 10) / 10).toString().replace(".", ",")}:1`;
+export function formatContrastRatio(ratio: number, locale = "vi"): string {
+  const rounded = Math.round(ratio * 10) / 10;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(rounded)}:1`;
 }
