@@ -36,24 +36,12 @@ function shouldRetry(failureCount: number, error: unknown): boolean {
   return failureCount < 2;
 }
 
-export interface ManagedQueryClient {
-  client: QueryClient;
-  setHandlers: (next: Partial<ApiErrorHandlers>) => void;
-}
-
-export function createQueryClient(initial: ApiErrorHandlers): ManagedQueryClient {
-  let handlers = initial;
-  const client = new QueryClient({
+export function createQueryClient(handlers: ApiErrorHandlers): QueryClient {
+  return new QueryClient({
     queryCache: new QueryCache({ onError: (error) => handleApiError(error, handlers) }),
     mutationCache: new MutationCache({ onError: (error) => handleApiError(error, handlers) }),
     defaultOptions: {
       queries: { retry: shouldRetry, refetchOnWindowFocus: false },
     },
   });
-  return {
-    client,
-    setHandlers: (next) => {
-      handlers = { ...handlers, ...next };
-    },
-  };
 }

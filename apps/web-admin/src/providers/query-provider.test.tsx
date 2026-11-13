@@ -87,6 +87,17 @@ describe("QueryProvider: lỗi toàn cục", () => {
     expect(mocks.redirectToLogin).not.toHaveBeenCalled();
   });
 
+  it("nhiều request cùng 403 chỉ hiện một toast và chuyển trang một lần", async () => {
+    queryFn.mockRejectedValue(new ApiStatusError(403));
+    renderProbe(["a", "b", "c"]);
+
+    await waitFor(() => {
+      for (const key of ["a", "b", "c"]) expect(screen.getByTestId(key)).toHaveTextContent("error");
+    });
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+    expect(mocks.replace).toHaveBeenCalledTimes(1);
+  });
+
   it("đang ở /forbidden thì 403 không lặp toast và điều hướng", async () => {
     mocks.pathname.current = "/forbidden";
     queryFn.mockRejectedValue(new ApiStatusError(403));
