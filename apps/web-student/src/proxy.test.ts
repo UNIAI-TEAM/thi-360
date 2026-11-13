@@ -2,7 +2,7 @@
 import { CTX_COOKIE_NAME, signCtxCookie } from "@thi360/web-kit/ctx";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { proxy } from "./proxy";
+import { config, proxy } from "./proxy";
 
 const SECRET = "ctx-dev-only-change-me-32-bytes!!";
 const USER_ID = "00000000-0000-4000-8000-000000000001";
@@ -76,5 +76,25 @@ describe("web-student proxy.ts", () => {
       }),
     );
     expect(home.status).toBe(200);
+  });
+
+  it("dựng callbackUrl từ THI360_WEB_URL khi request đến qua origin nội bộ http", async () => {
+    vi.stubEnv("THI360_WEB_URL", "https://thi360.vn");
+    vi.stubEnv("THI360_ADMIN_URL", "https://admin.thi360.vn");
+
+    const response = await proxy(new NextRequest("http://127.0.0.1:3000/home?tab=2"));
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://thi360.vn/dang-nhap?callbackUrl=https%3A%2F%2Fthi360.vn%2Fhome%3Ftab%3D2",
+    );
+  });
+
+  it("matcher khớp route có dấu chấm như /users/ops.admin nhưng bỏ qua tài nguyên tĩnh", () => {
+    const matcher = new RegExp(`^${config.matcher[0]}$`);
+    expect(matcher.test("/users/ops.admin")).toBe(true);
+    expect(matcher.test("/home")).toBe(true);
+    expect(matcher.test("/logo.svg")).toBe(false);
+    expect(matcher.test("/_next/static/chunks/app.js")).toBe(false);
+    expect(matcher.test("/api/v1/me")).toBe(false);
   });
 });

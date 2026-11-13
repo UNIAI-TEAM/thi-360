@@ -8,7 +8,7 @@ const PUBLIC_PATHS: Record<string, true> = {
 };
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const urls = getEnvUrls();
   const claims = await verifyCtxCookie(request.cookies.get(CTX_COOKIE_NAME)?.value);
 
@@ -24,12 +24,15 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!claims) {
-    return NextResponse.redirect(buildLoginUrl(request.nextUrl.origin, request.nextUrl.href));
+    const publicUrl = `${urls.webUrl}${pathname}${search}`;
+    return NextResponse.redirect(buildLoginUrl(urls.webUrl, publicUrl));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|css|js|map|txt|xml|woff2?)$).*)",
+  ],
 };
