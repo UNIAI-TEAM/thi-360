@@ -1,0 +1,161 @@
+CREATE TABLE audit.audit_event (
+    id uuid NOT NULL,
+    occurred_at timestamptz NOT NULL DEFAULT now(),
+    actor_id uuid,
+    actor_username text,
+    actor_roles text[] NOT NULL DEFAULT ARRAY[]::text[],
+    actor_type smallint NOT NULL CHECK (actor_type IN (1, 2, 3)),
+    module text NOT NULL,
+    action text NOT NULL,
+    target_type text,
+    target_id text,
+    target_label text,
+    before jsonb,
+    after jsonb,
+    reason text,
+    outcome smallint NOT NULL CHECK (outcome IN (1, 2)),
+    error_code text,
+    trace_id text,
+    ip text,
+    CONSTRAINT pk_audit_event PRIMARY KEY (id, occurred_at)
+) PARTITION BY RANGE (occurred_at);
+
+CREATE INDEX idx_audit_event_target
+    ON audit.audit_event (target_type, target_id, occurred_at DESC);
+CREATE INDEX idx_audit_event_actor
+    ON audit.audit_event (actor_id, occurred_at DESC);
+CREATE INDEX idx_audit_event_action
+    ON audit.audit_event (action, occurred_at DESC);
+CREATE INDEX idx_audit_event_occurred_at
+    ON audit.audit_event (occurred_at DESC);
+
+CREATE TABLE audit.audit_event_archive (
+    id uuid NOT NULL,
+    occurred_at timestamptz NOT NULL DEFAULT now(),
+    actor_id uuid,
+    actor_username text,
+    actor_roles text[] NOT NULL DEFAULT ARRAY[]::text[],
+    actor_type smallint NOT NULL CHECK (actor_type IN (1, 2, 3)),
+    module text NOT NULL,
+    action text NOT NULL,
+    target_type text,
+    target_id text,
+    target_label text,
+    before jsonb,
+    after jsonb,
+    reason text,
+    outcome smallint NOT NULL CHECK (outcome IN (1, 2)),
+    error_code text,
+    trace_id text,
+    ip text,
+    CONSTRAINT pk_audit_event_archive PRIMARY KEY (id, occurred_at)
+) PARTITION BY RANGE (occurred_at);
+
+CREATE INDEX idx_audit_event_archive_target
+    ON audit.audit_event_archive (target_type, target_id, occurred_at DESC);
+CREATE INDEX idx_audit_event_archive_actor
+    ON audit.audit_event_archive (actor_id, occurred_at DESC);
+CREATE INDEX idx_audit_event_archive_action
+    ON audit.audit_event_archive (action, occurred_at DESC);
+CREATE INDEX idx_audit_event_archive_occurred_at
+    ON audit.audit_event_archive (occurred_at DESC);
+
+CREATE OR REPLACE FUNCTION audit.prevent_audit_mutation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF current_setting('thi360.audit_maintenance', true) = 'on' THEN
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        END IF;
+        RETURN NEW;
+    END IF;
+    RAISE EXCEPTION 'audit.% is append-only (% is not allowed)', TG_TABLE_NAME, TG_OP;
+END;
+$$;
+
+CREATE TRIGGER trg_audit_event_append_only
+    BEFORE UPDATE OR DELETE ON audit.audit_event
+    FOR EACH ROW
+    EXECUTE FUNCTION audit.prevent_audit_mutation();
+
+CREATE TRIGGER trg_audit_event_archive_append_only
+    BEFORE UPDATE OR DELETE ON audit.audit_event_archive
+    FOR EACH ROW
+    EXECUTE FUNCTION audit.prevent_audit_mutation();
+
+DO $$
+DECLARE
+    utc_now timestamp := CURRENT_TIMESTAMP AT TIME ZONE 'UTC';
+    cur_year integer := EXTRACT(YEAR FROM utc_now)::integer;
+    cur_quarter integer := EXTRACT(QUARTER FROM utc_now)::integer;
+    next_year integer;
+    next_quarter integer;
+    end_year integer;
+    end_month integer;
+    q_start timestamptz;
+    q_end timestamptz;
+    nq_start timestamptz;
+    nq_end timestamptz;
+    y_start timestamptz;
+    y_end timestamptz;
+BEGIN
+    IF cur_quarter = 4 THEN
+        next_year := cur_year + 1;
+        next_quarter := 1;
+        end_year := cur_year + 1;
+        end_month := 1;
+    ELSE
+        next_year := cur_year;
+        next_quarter := cur_quarter + 1;
+        end_year := cur_year;
+        end_month := cur_quarter * 3 + 1;
+    END IF;
+
+    q_start := make_timestamptz(cur_year, (cur_quarter - 1) * 3 + 1, 1, 0, 0, 0, 'UTC');
+    q_end := make_timestamptz(end_year, end_month, 1, 0, 0, 0, 'UTC');
+    EXECUTE format(
+        'CREATE TABLE IF NOT EXISTS audit.%I PARTITION OF audit.audit_event FOR VALUES FROM (%L) TO (%L)',
+        format('audit_event_%sq%s', cur_year, cur_quarter),
+        q_start,
+        q_end
+    );
+
+    IF next_quarter = 4 THEN
+        end_year := next_year + 1;
+        end_month := 1;
+    ELSE
+        end_year := next_year;
+        end_month := next_quarter * 3 + 1;
+    END IF;
+    nq_start := make_timestamptz(next_year, (next_quarter - 1) * 3 + 1, 1, 0, 0, 0, 'UTC');
+    nq_end := make_timestamptz(end_year, end_month, 1, 0, 0, 0, 'UTC');
+    EXECUTE format(
+        'CREATE TABLE IF NOT EXISTS audit.%I PARTITION OF audit.audit_event FOR VALUES FROM (%L) TO (%L)',
+        format('audit_event_%sq%s', next_year, next_quarter),
+        nq_start,
+        nq_end
+    );
+
+    y_start := make_timestamptz(cur_year, 1, 1, 0, 0, 0, 'UTC');
+    y_end := make_timestamptz(cur_year + 1, 1, 1, 0, 0, 0, 'UTC');
+    EXECUTE format(
+        'CREATE TABLE IF NOT EXISTS audit.%I PARTITION OF audit.audit_event_archive FOR VALUES FROM (%L) TO (%L)',
+        format('audit_event_archive_%s', cur_year),
+        y_start,
+        y_end
+    );
+
+    IF next_year <> cur_year THEN
+        y_start := make_timestamptz(next_year, 1, 1, 0, 0, 0, 'UTC');
+        y_end := make_timestamptz(next_year + 1, 1, 1, 0, 0, 0, 'UTC');
+        EXECUTE format(
+            'CREATE TABLE IF NOT EXISTS audit.%I PARTITION OF audit.audit_event_archive FOR VALUES FROM (%L) TO (%L)',
+            format('audit_event_archive_%s', next_year),
+            y_start,
+            y_end
+        );
+    END IF;
+END;
+$$;

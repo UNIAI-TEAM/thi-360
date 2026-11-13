@@ -79,6 +79,8 @@ thi360:
   outbox:
     scheduling:
       enabled: true
+  audit:
+    archive-after-quarters: ${THI360_AUDIT_ARCHIVE_AFTER_QUARTERS:8}
 
 ---
 spring:

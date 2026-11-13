@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/admin/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tra cứu danh sách sự kiện nhật ký thao tác */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ping": {
         parameters: {
             query?: never;
@@ -45,6 +62,73 @@ export interface components {
              */
             traceId: string;
         };
+        /** @description Bản ghi nhật ký thao tác */
+        AuditEventResponse: {
+            /**
+             * @description Mã hành động
+             * @example LOGIN
+             */
+            action: string;
+            /**
+             * Format: uuid
+             * @description ID người thực hiện
+             */
+            actorId?: string;
+            /** @description Danh sách vai trò tại thời điểm thao tác */
+            actorRoles: string[];
+            /**
+             * @description Loại tác nhân thực hiện
+             * @enum {string}
+             */
+            actorType: "USER" | "PLATFORM" | "SYSTEM";
+            /** @description Tên đăng nhập người thực hiện đã lưu */
+            actorUsername?: string;
+            /** @description Giá trị sau khi thay đổi */
+            after?: {
+                [key: string]: Record<string, never>;
+            };
+            /** @description Giá trị trước khi thay đổi */
+            before?: {
+                [key: string]: Record<string, never>;
+            };
+            /** @description Mã lỗi nếu thất bại */
+            errorCode?: string;
+            /**
+             * Format: uuid
+             * @description ID sự kiện (UUID v7)
+             */
+            id: string;
+            /** @description Địa chỉ IP nguồn */
+            ip?: string;
+            /**
+             * @description Tên module phát sinh
+             * @example identity
+             */
+            module: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm phát sinh (UTC)
+             */
+            occurredAt: string;
+            /**
+             * @description Kết quả thao tác
+             * @enum {string}
+             */
+            outcome: "SUCCESS" | "FAILURE";
+            /** @description Lý do thao tác */
+            reason?: string;
+            /** @description ID đối tượng tác động */
+            targetId?: string;
+            /** @description Nhãn hiển thị của đối tượng */
+            targetLabel?: string;
+            /**
+             * @description Loại đối tượng tác động
+             * @example USER
+             */
+            targetType?: string;
+            /** @description Mã truy vết yêu cầu (X-Request-Id) */
+            traceId?: string;
+        };
         /** @description Chi tiết lỗi của một trường dữ liệu */
         FieldError: {
             /**
@@ -62,6 +146,35 @@ export interface components {
              * @example Tên đăng nhập đã tồn tại
              */
             message: string;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseAuditEventResponse: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["AuditEventResponse"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
         };
         /** @description Phản hồi kiểm tra kết nối */
         PingResponse: {
@@ -86,6 +199,117 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Loại đối tượng */
+                targetType?: string;
+                /** @description ID đối tượng */
+                targetId?: string;
+                /** @description ID người thực hiện */
+                actorId?: string;
+                /** @description Mã hành động */
+                action?: string;
+                /** @description Từ thời điểm (ISO-8601 UTC) */
+                from?: string;
+                /** @description Đến thời điểm (ISO-8601 UTC) */
+                to?: string;
+                /** @description Chỉ số trang (bắt đầu từ 0) */
+                page?: number;
+                /** @description Kích thước trang (tối đa 100) */
+                size?: number;
+                /** @description Sắp xếp theo trường,vd: occurredAt,desc */
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseAuditEventResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     ping: {
         parameters: {
             query?: never;
