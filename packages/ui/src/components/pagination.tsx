@@ -48,7 +48,7 @@ export function pageItems(page: number, pageCount: number): (number | null)[] {
 
 const pageButton = cn(
   "inline-flex size-9 items-center justify-center rounded-md text-label font-medium text-text-secondary tabular-nums transition-colors duration-150 motion-reduce:transition-none",
-  "hover:bg-subtle disabled:pointer-events-none disabled:opacity-40 aria-[current=page]:bg-primary-50 aria-[current=page]:font-semibold aria-[current=page]:text-primary-600",
+  "hover:bg-subtle disabled:pointer-events-none disabled:opacity-40 aria-[current=page]:bg-primary-50 aria-[current=page]:font-semibold aria-[current=page]:text-primary-text",
   focusRing,
 );
 
