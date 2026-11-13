@@ -586,7 +586,7 @@ export interface components {
             mustChangePassword: boolean;
             /**
              * @description Đường dẫn chuyển hướng sau đăng nhập
-             * @example /
+             * @example http://localhost:3000/home
              */
             redirectTo: string;
         };
@@ -599,6 +599,11 @@ export interface components {
             access: "MANAGE" | "EXAM";
             /** @description Họ và tên hiển thị */
             fullName: string;
+            /**
+             * @description Trang chủ mặc định theo vai trò
+             * @example http://localhost:3000/home
+             */
+            homeUrl: string;
             /**
              * Format: uuid
              * @description ID người dùng (UUID)
