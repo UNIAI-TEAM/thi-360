@@ -30,6 +30,128 @@
         "required" : [ "code", "fieldErrors", "message", "traceId" ],
         "type" : "object"
       },
+      "BulkAuthzItemResponse" : {
+        "description" : "Kết quả xử lý từng tài khoản trong thao tác gán hàng loạt",
+        "properties" : {
+          "added" : {
+            "description" : "Danh sách mã vai trò/quyền sẽ thêm hoặc đã thêm",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "outcome" : {
+            "description" : "Kết quả (WILL_CHANGE, NO_CHANGE, SKIPPED)",
+            "enum" : [ "WILL_CHANGE", "NO_CHANGE", "SKIPPED" ],
+            "type" : "string"
+          },
+          "reasonCode" : {
+            "description" : "Mã lý do bỏ qua (khi outcome = SKIPPED)",
+            "type" : "string"
+          },
+          "removed" : {
+            "description" : "Danh sách mã vai trò/quyền sẽ gỡ hoặc đã gỡ",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "userId" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập (null nếu tài khoản không tồn tại)",
+            "type" : "string"
+          }
+        },
+        "required" : [ "added", "outcome", "removed", "userId" ],
+        "type" : "object"
+      },
+      "BulkAuthzRequest" : {
+        "description" : "Yêu cầu xem trước hoặc áp dụng gán/gỡ quyền hàng loạt",
+        "properties" : {
+          "action" : {
+            "description" : "Hành động (GRANT hoặc REVOKE)",
+            "enum" : [ "GRANT", "REVOKE" ],
+            "type" : "string"
+          },
+          "permissionIds" : {
+            "description" : "Danh sách ID quyền (khi target = PERMISSION)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "reason" : {
+            "description" : "Lý do (bắt buộc khi action = GRANT và target = PERMISSION)",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "roleIds" : {
+            "description" : "Danh sách ID vai trò (khi target = ROLE)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "target" : {
+            "description" : "Đối tượng áp dụng (ROLE hoặc PERMISSION)",
+            "enum" : [ "ROLE", "PERMISSION" ],
+            "type" : "string"
+          },
+          "userIds" : {
+            "description" : "Danh sách ID tài khoản (tối đa 500)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "maxItems" : 500,
+            "minItems" : 0,
+            "type" : "array"
+          }
+        },
+        "required" : [ "action", "target", "userIds" ],
+        "type" : "object"
+      },
+      "BulkAuthzResponse" : {
+        "description" : "Kết quả xem trước hoặc áp dụng phân quyền hàng loạt",
+        "properties" : {
+          "batchId" : {
+            "description" : "Mã lô áp dụng (null ở bước xem trước)",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "items" : {
+            "description" : "Chi tiết từng tài khoản",
+            "items" : {
+              "$ref" : "#/components/schemas/BulkAuthzItemResponse"
+            },
+            "type" : "array"
+          },
+          "noChange" : {
+            "description" : "Số tài khoản không đổi",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "skipped" : {
+            "description" : "Số tài khoản bị bỏ qua",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "willChange" : {
+            "description" : "Số tài khoản sẽ thay đổi / đã thay đổi",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "noChange", "skipped", "willChange" ],
+        "type" : "object"
+      },
       "ChangePasswordRequest" : {
         "description" : "Yêu cầu đổi mật khẩu",
         "properties" : {
@@ -43,6 +165,121 @@
           }
         },
         "required" : [ "newPassword", "oldPassword" ],
+        "type" : "object"
+      },
+      "CreateRoleRequest" : {
+        "description" : "Yêu cầu tạo vai trò mới",
+        "properties" : {
+          "access" : {
+            "description" : "Phạm vi truy cập bắt buộc",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "code" : {
+            "description" : "Mã vai trò duy nhất",
+            "example" : "REVIEWER",
+            "maxLength" : 64,
+            "minLength" : 0,
+            "pattern" : "^[A-Za-z0-9_.-]+$",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả vai trò",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên hiển thị vai trò",
+            "example" : "Kiểm duyệt viên",
+            "maxLength" : 150,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "permissionCodes" : {
+            "description" : "Danh sách mã quyền ban đầu",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "description" : "Trạng thái ban đầu (mặc định ACTIVE)",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "access", "code", "name" ],
+        "type" : "object"
+      },
+      "EffectivePermissionItemResponse" : {
+        "description" : "Quyền hiệu lực của tài khoản kèm nguồn gốc",
+        "properties" : {
+          "code" : {
+            "description" : "Mã quyền",
+            "type" : "string"
+          },
+          "groupCode" : {
+            "description" : "Mã nhóm đối tượng",
+            "type" : "string"
+          },
+          "groupName" : {
+            "description" : "Tên nhóm đối tượng",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên quyền",
+            "type" : "string"
+          },
+          "permissionId" : {
+            "description" : "ID quyền",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "sources" : {
+            "description" : "Danh sách nguồn cấp quyền (từ vai trò hoặc trực tiếp)",
+            "items" : {
+              "$ref" : "#/components/schemas/PermissionSourceResponse"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "code", "groupCode", "groupName", "name", "permissionId", "sources" ],
+        "type" : "object"
+      },
+      "EffectivePermissionsResponse" : {
+        "description" : "Tổng hợp quyền hiệu lực và quyền trực tiếp tạm không hiệu lực của tài khoản",
+        "properties" : {
+          "effectiveAccess" : {
+            "description" : "Phạm vi truy cập hiệu lực",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "hasManageRole" : {
+            "description" : "Có vai trò MANAGE đang hoạt động hay không",
+            "type" : "boolean"
+          },
+          "inactiveDirectPermissions" : {
+            "description" : "Các quyền gán trực tiếp đang tạm không hiệu lực (khi không có vai trò MANAGE)",
+            "items" : {
+              "$ref" : "#/components/schemas/UserDirectPermissionItemResponse"
+            },
+            "type" : "array"
+          },
+          "permissions" : {
+            "description" : "Danh sách quyền đang có hiệu lực kèm nguồn",
+            "items" : {
+              "$ref" : "#/components/schemas/EffectivePermissionItemResponse"
+            },
+            "type" : "array"
+          },
+          "userId" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "effectiveAccess", "hasManageRole", "inactiveDirectPermissions", "permissions", "userId" ],
         "type" : "object"
       },
       "FieldError" : {
@@ -139,6 +376,221 @@
         "required" : [ "access", "fullName", "id", "permissions", "realm", "username" ],
         "type" : "object"
       },
+      "PageResponsePermissionUserResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/PermissionUserResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "PageResponseRoleSummaryResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/RoleSummaryResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "PermissionResponse" : {
+        "description" : "Thông tin quyền hệ thống",
+        "properties" : {
+          "bitIndex" : {
+            "description" : "Chỉ số bit cố định",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "code" : {
+            "description" : "Mã quyền cố định",
+            "example" : "USER.VIEW",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả chi tiết quyền",
+            "type" : "string"
+          },
+          "groupCode" : {
+            "description" : "Mã đối tượng nhóm quyền",
+            "example" : "USER",
+            "type" : "string"
+          },
+          "groupName" : {
+            "description" : "Tên đối tượng nhóm quyền",
+            "example" : "Tài khoản",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID quyền",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên hiển thị tiếng Việt",
+            "type" : "string"
+          },
+          "roleCount" : {
+            "description" : "Số vai trò đang chứa quyền này",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "scope" : {
+            "description" : "Phạm vi quyền",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "userCount" : {
+            "description" : "Số tài khoản đang có hiệu lực quyền này",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "bitIndex", "code", "groupCode", "groupName", "id", "name", "roleCount", "scope", "userCount" ],
+        "type" : "object"
+      },
+      "PermissionSourceResponse" : {
+        "description" : "Nguồn gốc cấp quyền cho tài khoản",
+        "properties" : {
+          "grantedAt" : {
+            "description" : "Thời điểm gán trực tiếp (khi type = DIRECT)",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "grantedBy" : {
+            "description" : "ID người gán (khi type = DIRECT)",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "grantedByUsername" : {
+            "description" : "Tên đăng nhập người gán (khi type = DIRECT)",
+            "type" : "string"
+          },
+          "reason" : {
+            "description" : "Lý do gán trực tiếp (khi type = DIRECT)",
+            "type" : "string"
+          },
+          "roleCode" : {
+            "description" : "Mã vai trò (khi type = ROLE)",
+            "type" : "string"
+          },
+          "roleId" : {
+            "description" : "ID vai trò (khi type = ROLE)",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "roleName" : {
+            "description" : "Tên vai trò (khi type = ROLE)",
+            "type" : "string"
+          },
+          "type" : {
+            "description" : "Loại nguồn (ROLE hoặc DIRECT)",
+            "enum" : [ "ROLE", "DIRECT" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "PermissionUserResponse" : {
+        "description" : "Tài khoản đang sở hữu quyền kèm các nguồn quyền",
+        "properties" : {
+          "code" : {
+            "description" : "Mã tài khoản",
+            "type" : "string"
+          },
+          "email" : {
+            "description" : "Email",
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên",
+            "type" : "string"
+          },
+          "sources" : {
+            "description" : "Danh sách nguồn cấp quyền",
+            "items" : {
+              "$ref" : "#/components/schemas/PermissionSourceResponse"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "description" : "Trạng thái tài khoản",
+            "enum" : [ "PROVISIONING", "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "userId" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "fullName", "sources", "status", "userId", "username" ],
+        "type" : "object"
+      },
       "PingResponse" : {
         "description" : "Phản hồi kiểm tra kết nối",
         "properties" : {
@@ -156,6 +608,375 @@
         },
         "required" : [ "status", "time" ],
         "type" : "object"
+      },
+      "RoleDetailResponse" : {
+        "description" : "Chi tiết vai trò kèm danh sách quyền",
+        "properties" : {
+          "access" : {
+            "description" : "Phạm vi truy cập",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "code" : {
+            "description" : "Mã vai trò",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "description" : "Thời điểm tạo",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả vai trò",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID vai trò",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên vai trò",
+            "type" : "string"
+          },
+          "permissionCodes" : {
+            "description" : "Danh sách mã quyền của vai trò",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "permissionCount" : {
+            "description" : "Số lượng quyền thuộc vai trò",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "description" : "Trạng thái vai trò",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "system" : {
+            "description" : "Vai trò hệ thống mặc định",
+            "type" : "boolean"
+          },
+          "updatedAt" : {
+            "description" : "Thời điểm cập nhật gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "userCount" : {
+            "description" : "Số lượng tài khoản đang giữ vai trò",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "access", "code", "createdAt", "id", "name", "permissionCodes", "permissionCount", "status", "system", "updatedAt", "userCount", "version" ],
+        "type" : "object"
+      },
+      "RoleSummaryResponse" : {
+        "description" : "Thông tin tóm tắt vai trò",
+        "properties" : {
+          "access" : {
+            "description" : "Phạm vi truy cập",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "code" : {
+            "description" : "Mã vai trò",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "description" : "Thời điểm tạo",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả vai trò",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID vai trò",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên vai trò",
+            "type" : "string"
+          },
+          "permissionCount" : {
+            "description" : "Số lượng quyền thuộc vai trò",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "description" : "Trạng thái vai trò",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "system" : {
+            "description" : "Vai trò hệ thống mặc định",
+            "type" : "boolean"
+          },
+          "updatedAt" : {
+            "description" : "Thời điểm cập nhật gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "userCount" : {
+            "description" : "Số lượng tài khoản đang giữ vai trò",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "access", "code", "createdAt", "id", "name", "permissionCount", "status", "system", "updatedAt", "userCount", "version" ],
+        "type" : "object"
+      },
+      "UpdateRolePermissionsRequest" : {
+        "description" : "Yêu cầu cập nhật toàn bộ danh sách quyền của vai trò",
+        "properties" : {
+          "permissionCodes" : {
+            "description" : "Danh sách mã quyền mới",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan tùy chọn",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "permissionCodes" ],
+        "type" : "object"
+      },
+      "UpdateRoleRequest" : {
+        "description" : "Yêu cầu cập nhật vai trò",
+        "properties" : {
+          "access" : {
+            "description" : "Phạm vi truy cập (chỉ đổi được khi không phải vai trò hệ thống và chưa có người dùng giữ)",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "code" : {
+            "description" : "Mã vai trò mới (không đổi được đối với vai trò hệ thống)",
+            "maxLength" : 64,
+            "minLength" : 0,
+            "pattern" : "^[A-Za-z0-9_.-]+$",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả vai trò",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên hiển thị vai trò",
+            "maxLength" : 150,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái vai trò",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version" ],
+        "type" : "object"
+      },
+      "UpdateUserPermissionsRequest" : {
+        "description" : "Yêu cầu cập nhật danh sách quyền gán trực tiếp của tài khoản",
+        "properties" : {
+          "permissionCodes" : {
+            "description" : "Danh sách mã quyền trực tiếp mới",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "reason" : {
+            "description" : "Lý do gán quyền trực tiếp (bắt buộc khi thêm quyền mới)",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "permissionCodes" ],
+        "type" : "object"
+      },
+      "UpdateUserRolesRequest" : {
+        "description" : "Yêu cầu thay thế toàn bộ danh sách vai trò của tài khoản",
+        "properties" : {
+          "roleIds" : {
+            "description" : "Danh sách ID vai trò mới",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "roleIds" ],
+        "type" : "object"
+      },
+      "UserDirectPermissionItemResponse" : {
+        "description" : "Quyền được gán trực tiếp cho tài khoản",
+        "properties" : {
+          "effective" : {
+            "description" : "Có đang có hiệu lực hay tạm không hiệu lực do thiếu vai trò MANAGE",
+            "type" : "boolean"
+          },
+          "grantedAt" : {
+            "description" : "Thời điểm gán",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "grantedBy" : {
+            "description" : "ID người gán",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "grantedByUsername" : {
+            "description" : "Tên đăng nhập người gán",
+            "type" : "string"
+          },
+          "groupCode" : {
+            "description" : "Mã nhóm đối tượng",
+            "type" : "string"
+          },
+          "groupName" : {
+            "description" : "Tên nhóm đối tượng",
+            "type" : "string"
+          },
+          "permissionCode" : {
+            "description" : "Mã quyền",
+            "type" : "string"
+          },
+          "permissionId" : {
+            "description" : "ID quyền",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "permissionName" : {
+            "description" : "Tên quyền",
+            "type" : "string"
+          },
+          "reason" : {
+            "description" : "Lý do gán trực tiếp",
+            "type" : "string"
+          }
+        },
+        "required" : [ "effective", "grantedAt", "groupCode", "groupName", "permissionCode", "permissionId", "permissionName", "reason" ],
+        "type" : "object"
+      },
+      "UserDirectPermissionsResponse" : {
+        "description" : "Danh sách quyền gán trực tiếp của tài khoản",
+        "properties" : {
+          "hasManageRole" : {
+            "description" : "Tài khoản đang có ít nhất một vai trò MANAGE hoạt động hay không",
+            "type" : "boolean"
+          },
+          "permissions" : {
+            "description" : "Danh sách quyền gán trực tiếp",
+            "items" : {
+              "$ref" : "#/components/schemas/UserDirectPermissionItemResponse"
+            },
+            "type" : "array"
+          },
+          "userId" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "hasManageRole", "permissions", "userId" ],
+        "type" : "object"
+      },
+      "UserRoleItemResponse" : {
+        "description" : "Vai trò đang gán cho tài khoản",
+        "properties" : {
+          "access" : {
+            "description" : "Phạm vi truy cập",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "assignedAt" : {
+            "description" : "Thời điểm gán",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "assignedBy" : {
+            "description" : "ID người gán",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "roleCode" : {
+            "description" : "Mã vai trò",
+            "type" : "string"
+          },
+          "roleId" : {
+            "description" : "ID vai trò",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "roleName" : {
+            "description" : "Tên vai trò",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái vai trò",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "system" : {
+            "description" : "Vai trò hệ thống",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "access", "assignedAt", "roleCode", "roleId", "roleName", "status", "system" ],
+        "type" : "object"
+      },
+      "UserRolesResponse" : {
+        "description" : "Danh sách vai trò của tài khoản",
+        "properties" : {
+          "access" : {
+            "description" : "Phạm vi truy cập hiệu lực hiện tại",
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          },
+          "roles" : {
+            "description" : "Các vai trò đang giữ",
+            "items" : {
+              "$ref" : "#/components/schemas/UserRoleItemResponse"
+            },
+            "type" : "array"
+          },
+          "userId" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "access", "roles", "userId" ],
+        "type" : "object"
       }
     }
   },
@@ -165,6 +986,2069 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/api/v1/admin/authz/bulk" : {
+      "post" : {
+        "operationId" : "apply",
+        "parameters" : [ {
+          "description" : "Khóa chống trùng lặp thao tác",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkAuthzRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BulkAuthzResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Áp dụng gán/gỡ quyền hàng loạt (idempotent)",
+        "tags" : [ "Admin Bulk Authz" ]
+      }
+    },
+    "/api/v1/admin/authz/bulk/preview" : {
+      "post" : {
+        "operationId" : "preview",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkAuthzRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BulkAuthzResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem trước kết quả gán/gỡ quyền hàng loạt",
+        "tags" : [ "Admin Bulk Authz" ]
+      }
+    },
+    "/api/v1/admin/permissions" : {
+      "get" : {
+        "description" : "Chỉ đọc; lọc theo từ khóa, nhóm đối tượng và phạm vi",
+        "operationId" : "listPermissions",
+        "parameters" : [ {
+          "description" : "Từ khóa tìm kiếm theo mã, tên, mô tả",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Mã đối tượng nhóm quyền (vd: USER, ROLE)",
+          "in" : "query",
+          "name" : "group",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Phạm vi quyền",
+          "in" : "query",
+          "name" : "scope",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/PermissionResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách quyền cố định",
+        "tags" : [ "Admin Permissions" ]
+      }
+    },
+    "/api/v1/admin/permissions/{id}/users" : {
+      "get" : {
+        "description" : "Trả về các tài khoản kèm nguồn quyền (vai trò hoặc gán trực tiếp)",
+        "operationId" : "listUsersByPermission",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "source",
+          "required" : false,
+          "schema" : {
+            "description" : "Loại nguồn cấp quyền",
+            "enum" : [ "ROLE", "DIRECT" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "PROVISIONING", "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponsePermissionUserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách tài khoản đang sở hữu quyền",
+        "tags" : [ "Admin Permissions" ]
+      }
+    },
+    "/api/v1/admin/permissions/{id}/users/export" : {
+      "get" : {
+        "description" : "Xuất file .xlsx theo đúng bộ lọc đang xem",
+        "operationId" : "exportUsersByPermission",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "source",
+          "required" : false,
+          "schema" : {
+            "description" : "Loại nguồn cấp quyền",
+            "enum" : [ "ROLE", "DIRECT" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "PROVISIONING", "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xuất Excel tài khoản theo quyền",
+        "tags" : [ "Admin Permissions" ]
+      }
+    },
+    "/api/v1/admin/roles" : {
+      "get" : {
+        "operationId" : "listRoles",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "access",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "MANAGE", "EXAM" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseRoleSummaryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách vai trò",
+        "tags" : [ "Admin Roles" ]
+      },
+      "post" : {
+        "operationId" : "createRole",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoleDetailResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tạo vai trò mới",
+        "tags" : [ "Admin Roles" ]
+      }
+    },
+    "/api/v1/admin/roles/{id}" : {
+      "delete" : {
+        "operationId" : "deleteRole",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xóa vai trò",
+        "tags" : [ "Admin Roles" ]
+      },
+      "get" : {
+        "operationId" : "getRole",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoleDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chi tiết vai trò",
+        "tags" : [ "Admin Roles" ]
+      },
+      "patch" : {
+        "operationId" : "updateRole",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoleDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật thông tin vai trò",
+        "tags" : [ "Admin Roles" ]
+      }
+    },
+    "/api/v1/admin/roles/{id}/permissions" : {
+      "put" : {
+        "operationId" : "updateRolePermissions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateRolePermissionsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoleDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật toàn bộ quyền của vai trò",
+        "tags" : [ "Admin Roles" ]
+      }
+    },
+    "/api/v1/admin/users/{id}/effective-permissions" : {
+      "get" : {
+        "operationId" : "getEffectivePermissions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EffectivePermissionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách quyền hiệu lực và nguồn cấp của tài khoản",
+        "tags" : [ "Admin User Authz" ]
+      }
+    },
+    "/api/v1/admin/users/{id}/permissions" : {
+      "get" : {
+        "operationId" : "getUserPermissions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDirectPermissionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách quyền gán trực tiếp của tài khoản",
+        "tags" : [ "Admin User Authz" ]
+      },
+      "put" : {
+        "operationId" : "updateUserPermissions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateUserPermissionsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDirectPermissionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Thay thế toàn bộ quyền gán trực tiếp của tài khoản",
+        "tags" : [ "Admin User Authz" ]
+      }
+    },
+    "/api/v1/admin/users/{id}/roles" : {
+      "get" : {
+        "operationId" : "getUserRoles",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserRolesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách vai trò của tài khoản",
+        "tags" : [ "Admin User Authz" ]
+      },
+      "put" : {
+        "operationId" : "updateUserRoles",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateUserRolesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserRolesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Thay thế toàn bộ vai trò của tài khoản",
+        "tags" : [ "Admin User Authz" ]
+      }
+    },
     "/api/v1/auth/change-password" : {
       "post" : {
         "operationId" : "changePassword",
@@ -854,10 +3738,22 @@
     "url" : "http://localhost"
   } ],
   "tags" : [ {
+    "description" : "Gán hoặc gỡ vai trò, quyền trực tiếp hàng loạt",
+    "name" : "Admin Bulk Authz"
+  }, {
     "description" : "Kiểm tra trạng thái hệ thống",
     "name" : "System"
   }, {
+    "description" : "Quản lý vai trò và tập quyền của vai trò",
+    "name" : "Admin Roles"
+  }, {
+    "description" : "Tra cứu danh mục quyền cố định và người dùng theo quyền",
+    "name" : "Admin Permissions"
+  }, {
     "description" : "Xác thực và phiên đăng nhập",
     "name" : "Auth"
+  }, {
+    "description" : "Gán vai trò, quyền trực tiếp và xem quyền hiệu lực của tài khoản",
+    "name" : "Admin User Authz"
   } ]
 }
