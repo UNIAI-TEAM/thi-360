@@ -24,19 +24,36 @@ const FORWARDED_REQUEST_HEADERS = [
   "content-type",
   "cookie",
   "origin",
-  "x-forwarded-for",
   "x-xsrf-token",
 ] as const;
 
-/** Header của kết nối hoặc đã bị `fetch` giải nén/đặt lại, không được chép sang phản hồi. */
+/**
+ * Header của kết nối (RFC 9110 mục 7.6.1 và RFC 9112) cộng với header đã bị `fetch` giải nén/đặt lại:
+ * không được chép sang phản hồi. `set-cookie` được chép riêng, từng dòng một.
+ */
 const DROPPED_RESPONSE_HEADERS: Record<string, true> = {
   connection: true,
   "content-encoding": true,
   "content-length": true,
   "keep-alive": true,
+  "proxy-authenticate": true,
+  "proxy-authorization": true,
   "set-cookie": true,
+  te: true,
+  trailer: true,
   "transfer-encoding": true,
+  upgrade: true,
 };
+
+/** Tên header mà `Connection` chỉ định là của riêng kết nối này (không phân biệt hoa thường, bỏ khoảng trắng). */
+function connectionNominated(headers: Headers): Set<string> {
+  const nominated = new Set<string>();
+  for (const token of (headers.get("connection") ?? "").split(",")) {
+    const name = token.trim().toLowerCase();
+    if (name) nominated.add(name);
+  }
+  return nominated;
+}
 
 function resolveApiBase(): string | null {
   const configured = process.env.THI360_API_URL?.trim();
@@ -81,7 +98,9 @@ async function proxy(request: NextRequest, { params }: RouteContext): Promise<Ne
   const target = `${base}/api/${path.map(encodeURIComponent).join("/")}${request.nextUrl.search}`;
 
   const headers = new Headers();
+  const requestHopOnly = connectionNominated(request.headers);
   for (const name of FORWARDED_REQUEST_HEADERS) {
+    if (requestHopOnly.has(name)) continue;
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
@@ -114,13 +133,18 @@ async function proxy(request: NextRequest, { params }: RouteContext): Promise<Ne
     clearTimeout(timer);
   }
 
+  const responseHopOnly = connectionNominated(upstream.headers);
   const responseHeaders = new Headers();
   upstream.headers.forEach((value, name) => {
-    if (!Object.hasOwn(DROPPED_RESPONSE_HEADERS, name)) responseHeaders.set(name, value);
+    if (!Object.hasOwn(DROPPED_RESPONSE_HEADERS, name) && !responseHopOnly.has(name)) {
+      responseHeaders.set(name, value);
+    }
   });
   // Mỗi Set-Cookie là một header riêng; gộp bằng dấu phẩy sẽ làm hỏng thuộc tính Expires.
-  for (const cookie of upstream.headers.getSetCookie()) {
-    responseHeaders.append("set-cookie", cookie);
+  if (!responseHopOnly.has("set-cookie")) {
+    for (const cookie of upstream.headers.getSetCookie()) {
+      responseHeaders.append("set-cookie", cookie);
+    }
   }
   if (!responseHeaders.has("x-request-id")) responseHeaders.set("x-request-id", requestId);
 

@@ -79,6 +79,41 @@ describe("proxy /api/[...path]", () => {
     expect(headers.get("x-custom")).toBeNull();
   });
 
+  it("không chuyển tiếp X-Forwarded-For của trình duyệt (danh sách chuyển tiếp chỉ gồm B10)", async () => {
+    await GET(
+      request("v1/me", { headers: { "x-forwarded-for": "203.0.113.9", cookie: "thi360_at=at" } }),
+      context("v1", "me"),
+    );
+
+    const { headers } = lastCall();
+    expect(headers.get("x-forwarded-for")).toBeNull();
+    expect(headers.get("cookie")).toBe("thi360_at=at");
+  });
+
+  it("bỏ header cho phép mà request nêu trong Connection, giữ phần còn lại", async () => {
+    await POST(
+      request("v1/admin/users", {
+        method: "POST",
+        body: "{}",
+        headers: {
+          connection: "Keep-Alive, ORIGIN ,x-xsrf-token",
+          origin: "http://localhost:3102",
+          "x-xsrf-token": "xs",
+          cookie: "thi360_xsrf=xs",
+          "accept-language": "vi",
+        },
+      }),
+      context("v1", "admin", "users"),
+    );
+
+    const { headers } = lastCall();
+    expect(headers.get("origin")).toBeNull();
+    expect(headers.get("x-xsrf-token")).toBeNull();
+    expect(headers.get("connection")).toBeNull();
+    expect(headers.get("cookie")).toBe("thi360_xsrf=xs");
+    expect(headers.get("accept-language")).toBe("vi");
+  });
+
   it("giữ nguyên Origin lạ để backend từ chối, và không tự đặt Origin khi trình duyệt không gửi", async () => {
     await POST(
       request("v1/admin/users", { method: "POST", body: "{}", headers: { origin: "https://evil.example" } }),
@@ -96,8 +131,10 @@ describe("proxy /api/[...path]", () => {
     ["PATCH", PATCH],
     ["DELETE", DELETE],
   ] as const)("%s chuyển tiếp phương thức và thân", async (method, handler) => {
-    fetchMock.mockImplementation(async (_url, init) => {
-      const received = await new Response(init?.body as BodyInit).text();
+    // Mô phỏng fetch thật của Node: dựng Request gốc từ (target, init) trước khi đọc thân.
+    // Thiếu `duplex: "half"` với thân dạng stream thì dòng này ném lỗi và proxy trả 502.
+    fetchMock.mockImplementation(async (url, init) => {
+      const received = await new Request(url, init).text();
       return Response.json({ received }, { status: 201 });
     });
 
@@ -162,6 +199,47 @@ describe("proxy /api/[...path]", () => {
     expect(response.headers.get("content-encoding")).toBeNull();
     expect(response.headers.get("content-length")).not.toBe("20");
     expect(response.headers.get("x-keep")).toBe("yes");
+  });
+
+  it.each(["connection", "keep-alive", "te", "trailer", "transfer-encoding", "upgrade", "proxy-authenticate", "proxy-authorization"])(
+    "không chép header hop-by-hop chuẩn %s của backend sang phản hồi",
+    async (name) => {
+      fetchMock.mockResolvedValue(new Response("{}", { headers: { [name]: "value", "x-keep": "yes" } }));
+
+      const response = await GET(request("v1/x"), context("v1", "x"));
+
+      expect(response.headers.get(name)).toBeNull();
+      expect(response.headers.get("x-keep")).toBe("yes");
+    },
+  );
+
+  it("bỏ header backend nêu trong Connection (không phân biệt hoa thường, có khoảng trắng), giữ header end-to-end", async () => {
+    const upstream = new Response("{}", {
+      headers: {
+        connection: "Close,  X-Hop-Only ,SET-COOKIE",
+        "x-hop-only": "secret",
+        "x-keep": "yes",
+      },
+    });
+    upstream.headers.append("set-cookie", "thi360_at=a; Path=/");
+    fetchMock.mockResolvedValue(upstream);
+
+    const response = await GET(request("v1/x"), context("v1", "x"));
+
+    expect(response.headers.get("connection")).toBeNull();
+    expect(response.headers.get("x-hop-only")).toBeNull();
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(response.headers.get("x-keep")).toBe("yes");
+  });
+
+  it("vẫn trả Set-Cookie khi backend không nêu nó trong Connection", async () => {
+    const upstream = new Response("{}", { headers: { connection: "close" } });
+    upstream.headers.append("set-cookie", "thi360_at=a; Path=/; HttpOnly");
+    fetchMock.mockResolvedValue(upstream);
+
+    const response = await GET(request("v1/x"), context("v1", "x"));
+
+    expect(response.headers.getSetCookie()).toEqual(["thi360_at=a; Path=/; HttpOnly"]);
   });
 
   it("sinh X-Request-Id khi trình duyệt không gửi hoặc gửi giá trị không hợp lệ", async () => {
