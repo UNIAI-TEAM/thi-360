@@ -112,7 +112,7 @@ Trình duyệt ◄── cookie HttpOnly (access, refresh) + XSRF + redirectTo �
 
 - Trình duyệt không bao giờ giữ token trong JavaScript.
 - **Một nơi đăng nhập cho cả hai web** (spec mục 15): biểu mẫu đăng nhập chỉ có ở web học viên (tên miền chính). Cookie đặt cho tên miền cha (`THI360_COOKIE_DOMAIN`, ví dụ `.thi360.vn`) nên web admin (`admin.thi360.vn`) dùng chung phiên.
-- Máy chủ trả `redirectTo`: `callbackUrl` nếu hợp lệ (đường dẫn tương đối hoặc tên miền trong danh sách cho phép), nếu không thì theo vai trò: có `ADMIN_PORTAL_ACCESS` → web admin, còn lại → `/home` của web học viên.
+- Máy chủ trả `redirectTo`: `callbackUrl` nếu hợp lệ (đường dẫn tương đối hoặc tên miền trong danh sách cho phép), nếu không thì theo trường `access` của vai trò: có vai trò `MANAGE` → web admin, còn lại → `/home` của web học viên.
 - Web admin không có trang đăng nhập: chưa đăng nhập thì chuyển về trang đăng nhập kèm `callbackUrl`; thiếu quyền thì hiện trang 403.
 - Tài khoản `INACTIVE` hoặc đã xóa mềm bị từ chối ở bước 3, kể cả khi Keycloak trả token.
 - Ngừng hoạt động tài khoản: vô hiệu ở Keycloak, xóa phiên trong Redis, request kế tiếp của phiên cũ nhận 401.
@@ -131,7 +131,7 @@ Request ─► CookieAuthFilter (xác minh JWT bằng khóa công khai Keycloak)
 
 - JWT chỉ dùng để biết **ai**. Quyền luôn đọc từ dữ liệu của ứng dụng, nên đổi vai trò có hiệu lực ở request kế tiếp.
 - Khi đổi `role_permission`, `user_role`, `user_permission`: xóa khóa Redis của các user liên quan trong cùng use case.
-- Vai trò `SUPER_ADMIN` có mọi quyền, không cần liệt kê.
+- Vai trò `PLATFORM_ADMIN` có mọi quyền, không cần liệt kê; tài khoản giữ vai trò này ẩn khỏi danh sách user.
 
 ### 5.3 Ghi nhật ký
 
