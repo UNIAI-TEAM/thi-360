@@ -859,6 +859,13 @@ public class CatalogExcelService {
                                 raw.code(),
                                 raw.nameVi() != null ? raw.nameVi() : prevLevels[d].nameVi(),
                                 raw.nameEn() != null ? raw.nameEn() : prevLevels[d].nameEn());
+                    } else if (raw.code() == null
+                            && prevLevels[d].code() != null
+                            && matchesPrecedingName(raw, prevLevels[d])) {
+                        resolved[d] = new LevelCell(
+                                prevLevels[d].code(),
+                                raw.nameVi() != null ? raw.nameVi() : prevLevels[d].nameVi(),
+                                raw.nameEn() != null ? raw.nameEn() : prevLevels[d].nameEn());
                     } else {
                         resolved[d] = raw;
                     }
@@ -1587,6 +1594,19 @@ public class CatalogExcelService {
             if (!rc.equals(pc)) {
                 return false;
             }
+        }
+        return true;
+    }
+
+    private static boolean matchesPrecedingName(LevelCell raw, LevelCell prev) {
+        if (raw.nameVi() == null && raw.nameEn() == null) {
+            return false;
+        }
+        if (raw.nameVi() != null && !Objects.equals(raw.nameVi(), prev.nameVi())) {
+            return false;
+        }
+        if (raw.nameEn() != null && !Objects.equals(raw.nameEn(), prev.nameEn())) {
+            return false;
         }
         return true;
     }

@@ -847,6 +847,129 @@ class CatalogExcelIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void treeImportInheritsBlankUpperCodeWhenNameMatchesAndRejectsDifferentOrMissingPreceding() throws Exception {
+        String root = "INV_ROOT_" + shortCode();
+        String root2 = "INV_ROOT2_" + shortCode();
+        String ch1 = "INV_CH1_" + shortCode();
+        String ch2 = "INV_CH2_" + shortCode();
+        String b1 = "INV_B1_" + shortCode();
+        String b2 = "INV_B2_" + shortCode();
+        String b3 = "INV_B3_" + shortCode();
+        String b4 = "INV_B4_" + shortCode();
+        String b5 = "INV_B5_" + shortCode();
+        String b6 = "INV_B6_" + shortCode();
+        String k1 = "INV_K1_" + shortCode();
+        String k2 = "INV_K2_" + shortCode();
+        String k3 = "INV_K3_" + shortCode();
+
+        // 1. Blank upper code + matching name inherits preceding code and places children under preceding ancestor
+        byte[] validInverseXlsx = buildXlsx(List.of(
+                List.of("Mã Chương", "Chương (Tiếng Việt)", "Mã Bài", "Bài (Tiếng Việt)", "Mã Kiến thức", "Kiến thức (Tiếng Việt)"),
+                List.of(root, "Root", b1, "Lesson one", "", ""),
+                List.of("", "Root", b2, "Lesson two", "", ""),
+                List.of("", "Root", "", "Lesson two", k1, "Knowledge one")
+        ));
+        MvcResult previewRes = mockMvc.perform(multipart("/api/v1/admin/catalog/groups/{id}/items/import", KNOWLEDGE_GROUP_ID)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "inverse-blank-code.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                validInverseXlsx))
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRows").value(3))
+                .andExpect(jsonPath("$.validRows").value(3))
+                .andExpect(jsonPath("$.errorRows").value(0))
+                .andExpect(jsonPath("$.canConfirm").value(true))
+                .andReturn();
+
+        UUID previewId = UUID.fromString(
+                objectMapper.readTree(previewRes.getResponse().getContentAsString()).get("previewId").asText());
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items/import/{previewId}/confirm",
+                        KNOWLEDGE_GROUP_ID, previewId)
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdCount").value(4));
+
+        UUID rootId = jdbcTemplate.queryForObject(
+                "SELECT id FROM catalog.catalog_item WHERE group_id = ? AND code = ?", UUID.class, KNOWLEDGE_GROUP_ID, root);
+        UUID b2Id = jdbcTemplate.queryForObject(
+                "SELECT id FROM catalog.catalog_item WHERE group_id = ? AND code = ?", UUID.class, KNOWLEDGE_GROUP_ID, b2);
+        UUID k1Id = jdbcTemplate.queryForObject(
+                "SELECT id FROM catalog.catalog_item WHERE group_id = ? AND code = ?", UUID.class, KNOWLEDGE_GROUP_ID, k1);
+        UUID b2ParentId = jdbcTemplate.queryForObject(
+                "SELECT parent_id FROM catalog.catalog_item WHERE id = ?", UUID.class, b2Id);
+        UUID k1ParentId = jdbcTemplate.queryForObject(
+                "SELECT parent_id FROM catalog.catalog_item WHERE id = ?", UUID.class, k1Id);
+        assertThat(b2ParentId).isEqualTo(rootId);
+        assertThat(k1ParentId).isEqualTo(b2Id);
+        assertThat(queryPath(b2Id)).isEqualTo("/" + rootId + "/" + b2Id + "/");
+        assertThat(queryPath(k1Id)).isEqualTo("/" + rootId + "/" + b2Id + "/" + k1Id + "/");
+
+        // 2. Blank upper code + different name -> REQUIRED on level1Code
+        byte[] differentNameXlsx = buildXlsx(List.of(
+                List.of("Mã Chương", "Chương (Tiếng Việt)", "Mã Bài", "Bài (Tiếng Việt)", "Mã Kiến thức", "Kiến thức (Tiếng Việt)"),
+                List.of(root2, "Root", b3, "Lesson three", "", ""),
+                List.of("", "Other", b4, "Lesson four", "", "")
+        ));
+        mockMvc.perform(multipart("/api/v1/admin/catalog/groups/{id}/items/import", KNOWLEDGE_GROUP_ID)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "blank-code-diff-name.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                differentNameXlsx))
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canConfirm").value(false))
+                .andExpect(jsonPath("$.errorRows").value(1))
+                .andExpect(jsonPath("$.errors[0].rowNo").value(3))
+                .andExpect(jsonPath("$.errors[0].column").value("level1Code"))
+                .andExpect(jsonPath("$.errors[0].code").value("REQUIRED"));
+        assertCodeNotCreated(b4);
+
+        // 3. Blank upper code + name on first data row (no preceding row) -> REQUIRED on level1Code
+        byte[] noPrecedingRowXlsx = buildXlsx(List.of(
+                List.of("Mã Chương", "Chương (Tiếng Việt)", "Mã Bài", "Bài (Tiếng Việt)", "Mã Kiến thức", "Kiến thức (Tiếng Việt)"),
+                List.of("", "Root", b5, "Lesson five", "", "")
+        ));
+        mockMvc.perform(multipart("/api/v1/admin/catalog/groups/{id}/items/import", KNOWLEDGE_GROUP_ID)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "blank-code-first-row.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                noPrecedingRowXlsx))
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canConfirm").value(false))
+                .andExpect(jsonPath("$.errorRows").value(1))
+                .andExpect(jsonPath("$.errors[0].rowNo").value(2))
+                .andExpect(jsonPath("$.errors[0].column").value("level1Code"))
+                .andExpect(jsonPath("$.errors[0].code").value("REQUIRED"));
+        assertCodeNotCreated(b5);
+
+        // 4. Blank level-2 code + matching level-2 name when level-1 ancestor changed -> REQUIRED on level2Code
+        byte[] changedAncestorXlsx = buildXlsx(List.of(
+                List.of("Mã Chương", "Chương (Tiếng Việt)", "Mã Bài", "Bài (Tiếng Việt)", "Mã Kiến thức", "Kiến thức (Tiếng Việt)"),
+                List.of(ch1, "Chương A", b6, "Bài chung", k2, "KT 2"),
+                List.of(ch2, "Chương B", "", "Bài chung", k3, "KT 3")
+        ));
+        mockMvc.perform(multipart("/api/v1/admin/catalog/groups/{id}/items/import", KNOWLEDGE_GROUP_ID)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "blank-code-changed-ancestor.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                changedAncestorXlsx))
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canConfirm").value(false))
+                .andExpect(jsonPath("$.errorRows").value(1))
+                .andExpect(jsonPath("$.errors[0].rowNo").value(3))
+                .andExpect(jsonPath("$.errors[0].column").value("level2Code"))
+                .andExpect(jsonPath("$.errors[0].code").value("REQUIRED"));
+        assertCodeNotCreated(k3);
+    }
+
+    @Test
     void treeImportDetectsRowLocalDuplicateCodeInPreviewWithExactCoordinates() throws Exception {
         String sameCode = "ROW_DUP_" + shortCode();
         byte[] xlsx = buildXlsx(List.of(
