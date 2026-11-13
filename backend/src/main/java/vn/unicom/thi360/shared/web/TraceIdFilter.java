@@ -22,8 +22,9 @@ public class TraceIdFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID_HEADER = "X-Request-Id";
     public static final String MDC_TRACE_ID = "traceId";
+    public static final String MDC_USER_ID = "userId";
     public static final String TRACE_ID_ATTRIBUTE = TraceIdFilter.class.getName() + ".traceId";
-
+    public static final String USER_ID_ATTRIBUTE = TraceIdFilter.class.getName() + ".userId";
     private static final Logger accessLog = LoggerFactory.getLogger("thi360.access");
     private static final int MAX_REQUEST_ID_LENGTH = 128;
     private static final Pattern SAFE_REQUEST_ID =
@@ -59,15 +60,24 @@ public class TraceIdFilter extends OncePerRequestFilter {
                     }
                     long durationMs = Math.max(0L, (System.nanoTime() - startedNanos) / 1_000_000L);
                     String method = request.getMethod();
-                    accessLog.atInfo()
-                            .addKeyValue("method", method)
-                            .addKeyValue("path", path)
-                            .addKeyValue("status", status)
-                            .addKeyValue("durationMs", durationMs)
-                            .log("{} {}", method, path);
+                    Object attrUserId = request.getAttribute(USER_ID_ATTRIBUTE);
+                    if (attrUserId instanceof String userId && !userId.isBlank()) {
+                        MDC.put(MDC_USER_ID, userId);
+                    }
+                    try {
+                        accessLog.atInfo()
+                                .addKeyValue("method", method)
+                                .addKeyValue("path", path)
+                                .addKeyValue("status", status)
+                                .addKeyValue("durationMs", durationMs)
+                                .log("{} {}", method, path);
+                    } finally {
+                        MDC.remove(MDC_USER_ID);
+                    }
                 }
             } finally {
                 MDC.remove(MDC_TRACE_ID);
+                MDC.remove(MDC_USER_ID);
             }
         }
     }

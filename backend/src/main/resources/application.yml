@@ -33,6 +33,7 @@ spring:
 
 server:
   port: ${THI360_API_PORT:8080}
+  forward-headers-strategy: NATIVE
 
 # Log: bố cục và mức log nằm ở logback-spring.xml. Dòng dưới thêm tên dịch vụ vào mỗi bản ghi JSON.
 logging:
@@ -69,8 +70,14 @@ thi360:
   admin-url: ${THI360_ADMIN_URL:http://localhost:3001}
   cookie:
     domain: ${THI360_COOKIE_DOMAIN:}
+    secure: ${THI360_COOKIE_SECURE:true}
   ctx:
-    secret: ${THI360_CTX_SECRET:ctx-dev-only-change-me-32-bytes!!}
+    secret: ${THI360_CTX_SECRET:}
+    ttl: PT5M
+  security:
+    admin-origins:
+      - ${THI360_ADMIN_URL:http://localhost:3001}
+    trusted-proxies: ${THI360_TRUSTED_PROXIES:127.0.0.1,::1,172.16.0.0/12}
   s3:
     endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}
     bucket: ${THI360_S3_BUCKET:thi360-private}
@@ -110,7 +117,10 @@ spring:
 thi360:
   keycloak:
     realm: ${THI360_KC_REALM:thi-360}
-
+  ctx:
+    secret: ${THI360_CTX_SECRET:ctx-dev-only-change-me-32-bytes!!}
+  cookie:
+    secure: ${THI360_COOKIE_SECURE:false}
 ---
 spring:
   config:
@@ -125,9 +135,13 @@ spring:
 thi360:
   keycloak:
     realm: ${THI360_KC_REALM:thi-360}
+  ctx:
+    secret: ${THI360_CTX_SECRET:ctx-dev-only-change-me-32-bytes!!}
   outbox:
     scheduling:
       enabled: false
+  cookie:
+    secure: ${THI360_COOKIE_SECURE:false}
 ---
 spring:
   config:
