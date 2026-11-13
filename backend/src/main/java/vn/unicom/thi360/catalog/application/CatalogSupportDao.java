@@ -12,9 +12,13 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import java.sql.Timestamp;
+import java.time.Instant;
 import vn.unicom.thi360.catalog.api.CatalogGroupRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
+import vn.unicom.thi360.catalog.api.CombinationSubjectResponse;
+import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Component
@@ -316,5 +320,250 @@ public class CatalogSupportDao {
             return new RefFilterCriteria(List.of(), 0, true);
         }
         return new RefFilterCriteria(uniqueIds, groupIds.size(), false);
+    }
+    public Map<UUID, CombinationVersionResponse> loadCurrentCombinations(Collection<UUID> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = List.copyOf(new LinkedHashSet<>(itemIds));
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql =
+                """
+                SELECT cv.id,
+                       cv.item_id,
+                       ci.code AS item_code,
+                       ci.name_vi AS item_name_vi,
+                       ci.name_en AS item_name_en,
+                       cv.version_no,
+                       cv.exam_item_id,
+                       ex.code AS exam_code,
+                       ex.name_vi AS exam_name_vi,
+                       ex.name_en AS exam_name_en,
+                       ex.status AS exam_status,
+                       cv.source_note,
+                       cv.is_current,
+                       cv.created_by,
+                       cv.created_at
+                FROM catalog.combination_version cv
+                JOIN catalog.catalog_item ci ON ci.id = cv.item_id
+                JOIN catalog.catalog_item ex ON ex.id = cv.exam_item_id
+                WHERE cv.is_current = true
+                  AND cv.item_id IN (%s)
+                """.formatted(placeholders);
+        List<CombinationVersionHeader> headers = jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new CombinationVersionHeader(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("item_id", UUID.class),
+                        rs.getString("item_code"),
+                        rs.getString("item_name_vi"),
+                        rs.getString("item_name_en"),
+                        rs.getInt("version_no"),
+                        rs.getObject("exam_item_id", UUID.class),
+                        rs.getString("exam_code"),
+                        rs.getString("exam_name_vi"),
+                        rs.getString("exam_name_en"),
+                        CatalogStatus.fromCode(rs.getShort("exam_status")),
+                        rs.getString("source_note"),
+                        rs.getBoolean("is_current"),
+                        rs.getObject("created_by", UUID.class),
+                        toInstant(rs.getTimestamp("created_at"))),
+                ids.toArray());
+        if (headers.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<CombinationSubjectResponse>> subjectsByVersion =
+                loadCombinationSubjects(headers.stream().map(CombinationVersionHeader::id).toList());
+        Map<UUID, CombinationVersionResponse> result = new LinkedHashMap<>();
+        for (CombinationVersionHeader h : headers) {
+            result.put(h.itemId(), toCombinationVersionResponse(h, subjectsByVersion.getOrDefault(h.id(), List.of())));
+        }
+        return result;
+    }
+
+    public List<CombinationVersionResponse> loadCombinationVersionsByItemId(UUID itemId) {
+        String sql =
+                """
+                SELECT cv.id,
+                       cv.item_id,
+                       ci.code AS item_code,
+                       ci.name_vi AS item_name_vi,
+                       ci.name_en AS item_name_en,
+                       cv.version_no,
+                       cv.exam_item_id,
+                       ex.code AS exam_code,
+                       ex.name_vi AS exam_name_vi,
+                       ex.name_en AS exam_name_en,
+                       ex.status AS exam_status,
+                       cv.source_note,
+                       cv.is_current,
+                       cv.created_by,
+                       cv.created_at
+                FROM catalog.combination_version cv
+                JOIN catalog.catalog_item ci ON ci.id = cv.item_id
+                JOIN catalog.catalog_item ex ON ex.id = cv.exam_item_id
+                WHERE cv.item_id = ?
+                ORDER BY cv.version_no DESC
+                """;
+        List<CombinationVersionHeader> headers = jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new CombinationVersionHeader(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("item_id", UUID.class),
+                        rs.getString("item_code"),
+                        rs.getString("item_name_vi"),
+                        rs.getString("item_name_en"),
+                        rs.getInt("version_no"),
+                        rs.getObject("exam_item_id", UUID.class),
+                        rs.getString("exam_code"),
+                        rs.getString("exam_name_vi"),
+                        rs.getString("exam_name_en"),
+                        CatalogStatus.fromCode(rs.getShort("exam_status")),
+                        rs.getString("source_note"),
+                        rs.getBoolean("is_current"),
+                        rs.getObject("created_by", UUID.class),
+                        toInstant(rs.getTimestamp("created_at"))),
+                itemId);
+        if (headers.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, List<CombinationSubjectResponse>> subjectsByVersion =
+                loadCombinationSubjects(headers.stream().map(CombinationVersionHeader::id).toList());
+        return headers.stream()
+                .map(h -> toCombinationVersionResponse(h, subjectsByVersion.getOrDefault(h.id(), List.of())))
+                .toList();
+    }
+
+    public CombinationVersionResponse loadCombinationVersionById(UUID versionId) {
+        String sql =
+                """
+                SELECT cv.id,
+                       cv.item_id,
+                       ci.code AS item_code,
+                       ci.name_vi AS item_name_vi,
+                       ci.name_en AS item_name_en,
+                       cv.version_no,
+                       cv.exam_item_id,
+                       ex.code AS exam_code,
+                       ex.name_vi AS exam_name_vi,
+                       ex.name_en AS exam_name_en,
+                       ex.status AS exam_status,
+                       cv.source_note,
+                       cv.is_current,
+                       cv.created_by,
+                       cv.created_at
+                FROM catalog.combination_version cv
+                JOIN catalog.catalog_item ci ON ci.id = cv.item_id
+                JOIN catalog.catalog_item ex ON ex.id = cv.exam_item_id
+                WHERE cv.id = ?
+                """;
+        List<CombinationVersionHeader> headers = jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new CombinationVersionHeader(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("item_id", UUID.class),
+                        rs.getString("item_code"),
+                        rs.getString("item_name_vi"),
+                        rs.getString("item_name_en"),
+                        rs.getInt("version_no"),
+                        rs.getObject("exam_item_id", UUID.class),
+                        rs.getString("exam_code"),
+                        rs.getString("exam_name_vi"),
+                        rs.getString("exam_name_en"),
+                        CatalogStatus.fromCode(rs.getShort("exam_status")),
+                        rs.getString("source_note"),
+                        rs.getBoolean("is_current"),
+                        rs.getObject("created_by", UUID.class),
+                        toInstant(rs.getTimestamp("created_at"))),
+                versionId);
+        if (headers.isEmpty()) {
+            return null;
+        }
+        CombinationVersionHeader h = headers.getFirst();
+        Map<UUID, List<CombinationSubjectResponse>> subjectsByVersion =
+                loadCombinationSubjects(List.of(h.id()));
+        return toCombinationVersionResponse(h, subjectsByVersion.getOrDefault(h.id(), List.of()));
+    }
+
+    private Map<UUID, List<CombinationSubjectResponse>> loadCombinationSubjects(Collection<UUID> versionIds) {
+        if (versionIds == null || versionIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = List.copyOf(new LinkedHashSet<>(versionIds));
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql =
+                """
+                SELECT cs.combination_version_id,
+                       cs.subject_item_id,
+                       s.code,
+                       s.name_vi,
+                       s.name_en,
+                       s.status,
+                       cs.position
+                FROM catalog.combination_subject cs
+                JOIN catalog.catalog_item s ON s.id = cs.subject_item_id
+                WHERE cs.combination_version_id IN (%s)
+                ORDER BY cs.position ASC
+                """.formatted(placeholders);
+        Map<UUID, List<CombinationSubjectResponse>> result = new LinkedHashMap<>();
+        jdbcTemplate.query(
+                sql,
+                rs -> {
+                    UUID verId = rs.getObject("combination_version_id", UUID.class);
+                    CombinationSubjectResponse subj = new CombinationSubjectResponse(
+                            rs.getObject("subject_item_id", UUID.class),
+                            rs.getString("code"),
+                            rs.getString("name_vi"),
+                            rs.getString("name_en"),
+                            CatalogStatus.fromCode(rs.getShort("status")),
+                            rs.getInt("position"));
+                    result.computeIfAbsent(verId, ignored -> new ArrayList<>()).add(subj);
+                },
+                ids.toArray());
+        return result;
+    }
+
+    private static CombinationVersionResponse toCombinationVersionResponse(
+            CombinationVersionHeader h, List<CombinationSubjectResponse> subjects) {
+        return new CombinationVersionResponse(
+                h.id(),
+                h.itemId(),
+                h.itemCode(),
+                h.itemNameVi(),
+                h.itemNameEn(),
+                h.versionNo(),
+                h.examItemId(),
+                h.examCode(),
+                h.examNameVi(),
+                h.examNameEn(),
+                h.examStatus(),
+                subjects,
+                h.sourceNote(),
+                h.isCurrent(),
+                h.createdBy(),
+                h.createdAt());
+    }
+
+    private static Instant toInstant(Timestamp ts) {
+        return ts == null ? null : ts.toInstant();
+    }
+
+    private record CombinationVersionHeader(
+            UUID id,
+            UUID itemId,
+            String itemCode,
+            String itemNameVi,
+            String itemNameEn,
+            int versionNo,
+            UUID examItemId,
+            String examCode,
+            String examNameVi,
+            String examNameEn,
+            CatalogStatus examStatus,
+            String sourceNote,
+            boolean isCurrent,
+            UUID createdBy,
+            Instant createdAt
+    ) {
     }
 }
