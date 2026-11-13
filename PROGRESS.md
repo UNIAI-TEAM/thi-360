@@ -4,14 +4,14 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1. **T01 (UNI-2538) đã dựng xong và push** lên nhánh `feature/UNI-2538-khoi-tao-monorepo-ci-moi-truong-dev`; chưa mở PR. Đang dừng chờ M.Trường.
+**Giai đoạn:** đợt 1. **T01 (UNI-2538) cùng toàn bộ tài liệu, thiết kế đã merge vào `develop`** (PR của nhánh `feature/UNI-2538-khoi-tao-monorepo-ci-moi-truong-dev`, 2026-11-13). Đang dừng chờ M.Trường mở phiên Advisor.
 
 **Thiết kế màn hình đã chốt** (2026-11-13, M.Trường). **Phần danh mục (PBI-02: T13, T14, T15) hoãn**, chưa làm trong đợt chạy này vì còn có thể thiết kế lại; plan mục A7 ghi rõ việc không làm và việc vẫn làm.
 
 **Bước tiếp theo**
 
 1. M.Trường giao một phiên Advisor chạy `zone17-cook-plan` (phạm vi: nền + PBI-01, không có T13–T15) với plan `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Plan đã có đủ cấu hình đợt chạy (Phần A), quy ước kỹ thuật (Phần B), sóng thực thi (Phần C) và hợp đồng từng task (Phần D).
-2. Bước 0 của Advisor: tạo `integration/dot-1` từ đầu nhánh này (đã gồm T01 và toàn bộ tài liệu).
+2. Bước 0 của Advisor: tạo `integration/dot-1` từ đầu `develop` (đã gồm T01 và toàn bộ tài liệu).
 3. Sóng 1: T02 (UNI-2539) và T06 (UNI-2543) chạy song song.
 
 ## Đã làm
