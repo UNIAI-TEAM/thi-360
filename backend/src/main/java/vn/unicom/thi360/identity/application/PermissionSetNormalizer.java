@@ -82,4 +82,24 @@ public class PermissionSetNormalizer {
         validateRequiredViews(remaining);
         return Collections.unmodifiableSet(remaining);
     }
+
+    public boolean hasMissingRequiredView(
+            Collection<Permission> directPermissions, Collection<Permission> rolePermissions) {
+        if (directPermissions == null || directPermissions.isEmpty()) {
+            return false;
+        }
+        EnumSet<Permission> directSet = EnumSet.copyOf(directPermissions);
+        EnumSet<Permission> roleSet = (rolePermissions == null || rolePermissions.isEmpty())
+                ? EnumSet.noneOf(Permission.class)
+                : EnumSet.copyOf(rolePermissions);
+        for (Permission p : directSet) {
+            if (p.kind() != Permission.Kind.VIEW) {
+                Permission requiredView = Permission.viewPermissionOf(p.object()).orElse(null);
+                if (requiredView != null && !directSet.contains(requiredView) && !roleSet.contains(requiredView)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }

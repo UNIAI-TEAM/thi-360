@@ -533,6 +533,71 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
         }
     }
 
+    @Test
+    void bulkRevokeViewPermission_whenDirectModifyRemainsWithoutRoleView_skipsAndPreservesInvariant()
+            throws Exception {
+        Role contentAdmin = roleRepository.findByCodeNormalized("content_admin").orElseThrow();
+        Role operations = roleRepository.findByCodeNormalized("operations").orElseThrow();
+        PermissionEntity userView = permissionRepository.findByCode(Permissions.USER_VIEW).orElseThrow();
+        PermissionEntity userModify = permissionRepository.findByCode(Permissions.USER_MODIFY).orElseThrow();
+
+        UserAccount directOnlyUser = createUser("bulk.viewdep." + suffix(), UserStatus.ACTIVE, null);
+        userRoleRepository.save(new UserRole(directOnlyUser.getId(), contentAdmin.getId(), null, Instant.now()));
+        userPermissionRepository.save(new UserPermission(
+                directOnlyUser.getId(), userView.getId(), null, Instant.now(), "Direct view"));
+        userPermissionRepository.save(new UserPermission(
+                directOnlyUser.getId(), userModify.getId(), null, Instant.now(), "Direct modify"));
+
+        UserAccount roleCoveredUser = createUser("bulk.viewrole." + suffix(), UserStatus.ACTIVE, null);
+        userRoleRepository.save(new UserRole(roleCoveredUser.getId(), operations.getId(), null, Instant.now()));
+        userPermissionRepository.save(new UserPermission(
+                roleCoveredUser.getId(), userView.getId(), null, Instant.now(), "Redundant direct view"));
+        userPermissionRepository.save(new UserPermission(
+                roleCoveredUser.getId(), userModify.getId(), null, Instant.now(), "Redundant direct modify"));
+
+        String revokeViewOnlyBody = objectMapper.writeValueAsString(Map.of(
+                "userIds", List.of(directOnlyUser.getId(), roleCoveredUser.getId()),
+                "action", "REVOKE",
+                "target", "PERMISSION",
+                "permissionIds", List.of(userView.getId())));
+
+        mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                        .with(asPlatformAdmin())
+                        .header("Idempotency-Key", "revoke-view-dep-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(revokeViewOnlyBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.willChange").value(1))
+                .andExpect(jsonPath("$.skipped").value(1))
+                .andExpect(jsonPath("$.items[0].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.items[0].reasonCode").value("PERMISSION_REQUIRES_VIEW"))
+                .andExpect(jsonPath("$.items[1].outcome").value("WILL_CHANGE"))
+                .andExpect(jsonPath("$.items[1].removed", containsInAnyOrder("USER.VIEW")));
+
+        // directOnlyUser still keeps both USER.VIEW and USER.MODIFY (never USER.MODIFY without USER.VIEW)
+        List<UUID> remainingDirectOnly = userPermissionRepository.findAllByIdUserId(directOnlyUser.getId()).stream()
+                .map(up -> up.getId().getPermissionId())
+                .toList();
+        assertThat(remainingDirectOnly).containsExactlyInAnyOrder(userView.getId(), userModify.getId());
+
+        // Revoking both USER.VIEW and USER.MODIFY together succeeds for directOnlyUser
+        String revokeBothBody = objectMapper.writeValueAsString(Map.of(
+                "userIds", List.of(directOnlyUser.getId()),
+                "action", "REVOKE",
+                "target", "PERMISSION",
+                "permissionIds", List.of(userView.getId(), userModify.getId())));
+
+        mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                        .with(asPlatformAdmin())
+                        .header("Idempotency-Key", "revoke-both-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(revokeBothBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.willChange").value(1))
+                .andExpect(jsonPath("$.items[0].removed", containsInAnyOrder("USER.VIEW", "USER.MODIFY")));
+        assertThat(userPermissionRepository.findAllByIdUserId(directOnlyUser.getId())).isEmpty();
+    }
+
     private UserAccount createUser(String username, UserStatus status, Instant deletedAt) {
         UUID id = Ids.newId();
         long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);

@@ -55,6 +55,8 @@ public class BulkAuthzService {
     public static final String REASON_PERMISSION_SCOPE_MISMATCH = "PERMISSION_SCOPE_MISMATCH";
     public static final String REASON_DIRECT_PERMISSION_REQUIRES_MANAGE = "DIRECT_PERMISSION_REQUIRES_MANAGE";
     public static final String REASON_SELF_LOCKOUT = "SELF_LOCKOUT";
+    public static final String REASON_PERMISSION_REQUIRES_VIEW =
+            PermissionSetNormalizer.ERROR_PERMISSION_REQUIRES_VIEW;
 
     private static final String MODULE = "IDENTITY";
     private static final String IDEMPOTENCY_SCOPE = "AUTHZ_BULK";
@@ -412,6 +414,16 @@ public class BulkAuthzService {
         }
         if (toRemove.isEmpty()) {
             return UserEvaluation.noChange(userId, username);
+        }
+
+        EnumSet<Permission> remainingDirect = EnumSet.noneOf(Permission.class);
+        for (Permission p : state.directPermissions.keySet()) {
+            if (!removeSet.contains(p)) {
+                remainingDirect.add(p);
+            }
+        }
+        if (permissionSetNormalizer.hasMissingRequiredView(remainingDirect, state.activeRolePermissions())) {
+            return UserEvaluation.skipped(userId, username, REASON_PERMISSION_REQUIRES_VIEW);
         }
 
         EnumSet<Permission> resultingEffective = EnumSet.noneOf(Permission.class);
