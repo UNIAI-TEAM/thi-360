@@ -27,7 +27,8 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14, T18 | todo |
 | T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mục trong menu chính, port từ reap) | T04, T05, T06 | todo |
 | T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | todo |
-| T16 | UNI-2553 | Kiểm thử nghiệm thu nền, PBI-01 và kiểm thử bảo mật gọi thẳng API | T02–T15, T17, T18 | todo |
+| T19 | UNI-2561 | Nền · Đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh) và chế độ sáng/tối theo từng người; hai nút ở thanh trên cùng | T17, T18 | todo |
+| T16 | UNI-2553 | Kiểm thử nghiệm thu nền, PBI-01 và kiểm thử bảo mật gọi thẳng API | T02–T15, T17, T18, T19 | todo |
 
 ### Thứ tự làm
 
@@ -39,6 +40,7 @@ Sóng 4:  T18 · T07 · T17
 Sóng 5:  T08 · T09 · T10 (API)
 Sóng 6:  T10 (UI) · T11 · T12
 Sóng 7:  T16
+Đa ngôn ngữ: T19 (sau T17, T18)
 ```
 
 **Danh mục mở lại (2026-11-14, M.Trường):** T13, T14, T15 (PBI-02 Danh mục dùng chung) từng hoãn ngày 2026-11-13, nay làm trong đợt chạy này. Chi tiết: plan mục A7.
