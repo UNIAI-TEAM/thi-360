@@ -16,6 +16,13 @@
 
 ## Đã làm
 
+### 2026-11-13 — Quy hoạch log của backend (UNI-2558, con của UNI-2539)
+
+- `backend/src/main/resources/logback-spring.xml`: console dạng chữ ở dev/test, JSON ở môi trường khác, ghi tệp khi bật profile `logfile`; mẫu dòng có `trace=` và `user=` ở vị trí cố định; bốn logger theo mục đích (`thi360.access`, `.security`, `.job`, `.external`).
+- `LoggingConfigTests` (3 test) kiểm hai định dạng và mức log mặc định. Lệnh đã chạy: `cd backend && ./mvnw -B -ntp verify` → xanh (4 test).
+- Plan thêm mục B15 (quy ước ghi log, khóa MDC); T02 bổ sung việc của `TraceIdFilter`.
+- **Chưa commit**: thay đổi nằm trên nhánh local `feature/UNI-2558-quy-hoach-logback`, chờ M.Trường yêu cầu.
+
 ### 2026-11-13 — Chốt thiết kế, hoãn phần danh mục
 
 - Quyền theo đối tượng × mức (Chỉ xem / Xem và sửa) + quyền riêng; 7 đối tượng, 13 quyền (spec §5.5, plan B6).
