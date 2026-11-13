@@ -169,7 +169,9 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.username").value("platform"))
                 .andExpect(jsonPath("$.realm").value("MASTER"))
                 .andExpect(jsonPath("$.access").value("MANAGE"))
-                .andExpect(jsonPath("$.permissions").isEmpty())
+                .andExpect(jsonPath("$.permissions.length()").value(13))
+                .andExpect(jsonPath("$.permissions", org.hamcrest.Matchers.hasItems(
+                        "USER.VIEW", "USER.MODIFY", "ROLE.MODIFY", "CATALOG.VIEW", "APPEARANCE.MODIFY")))
                 .andReturn();
 
         String idStr = com.jayway.jsonpath.JsonPath.read(meRes.getResponse().getContentAsString(), "$.id");

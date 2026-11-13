@@ -30,10 +30,22 @@ public final class PermissionSet {
         return ALL;
     }
 
+    public static PermissionSet all(Collection<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return ALL;
+        }
+        return new PermissionSet(new BitSet(), new LinkedHashSet<>(codes), true);
+    }
+
     public static PermissionSet ofBitsAndCodes(BitSet bits, Collection<String> codes) {
         Objects.requireNonNull(bits, "bits must not be null");
         Set<String> copy = codes == null ? Set.of() : new LinkedHashSet<>(codes);
         return new PermissionSet(bits, copy, false);
+    }
+
+    public static PermissionSet fromBytes(byte[] bytes, Collection<String> codes) {
+        BitSet bitSet = (bytes == null || bytes.length == 0) ? new BitSet() : BitSet.valueOf(bytes);
+        return ofBitsAndCodes(bitSet, codes);
     }
 
     public static PermissionSet ofCodes(Collection<String> codes) {
@@ -42,7 +54,6 @@ public final class PermissionSet {
         }
         return new PermissionSet(new BitSet(), new LinkedHashSet<>(codes), false);
     }
-
     public boolean hasBit(int bitIndex) {
         return allGranted || (bitIndex >= 0 && bits.get(bitIndex));
     }

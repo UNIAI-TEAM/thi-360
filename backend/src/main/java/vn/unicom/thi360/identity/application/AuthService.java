@@ -43,6 +43,8 @@ import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.KeycloakProperties;
 import vn.unicom.thi360.shared.security.LoginThrottle;
+import vn.unicom.thi360.shared.security.PermissionCatalog;
+import vn.unicom.thi360.shared.security.PermissionSet;
 import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.security.SessionAuthzResolver;
 import vn.unicom.thi360.shared.security.SessionStore;
@@ -69,7 +71,7 @@ public class AuthService {
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final SessionAuthzResolver authzResolver;
-
+    private final PermissionCatalog permissionCatalog;
     public AuthService(
             UserAccountRepository userAccountRepository,
             PlatformAdminRepository platformAdminRepository,
@@ -85,7 +87,44 @@ public class AuthService {
             AuditRecorder auditRecorder,
             TransactionTemplate transactionTemplate,
             Clock clock,
-            @Autowired(required = false) SessionAuthzResolver authzResolver) {
+            SessionAuthzResolver authzResolver) {
+        this(
+                userAccountRepository,
+                platformAdminRepository,
+                keycloakClient,
+                keycloakProperties,
+                twoIssuerJwtDecoder,
+                sessionStore,
+                loginThrottle,
+                ctxCookieSigner,
+                authCookieService,
+                currentUserProvider,
+                passwordPolicy,
+                auditRecorder,
+                transactionTemplate,
+                clock,
+                authzResolver,
+                null);
+    }
+
+    @Autowired
+    public AuthService(
+            UserAccountRepository userAccountRepository,
+            PlatformAdminRepository platformAdminRepository,
+            KeycloakIdentityClient keycloakClient,
+            KeycloakProperties keycloakProperties,
+            TwoIssuerJwtDecoder twoIssuerJwtDecoder,
+            SessionStore sessionStore,
+            LoginThrottle loginThrottle,
+            CtxCookieSigner ctxCookieSigner,
+            AuthCookieService authCookieService,
+            CurrentUserProvider currentUserProvider,
+            PasswordPolicy passwordPolicy,
+            AuditRecorder auditRecorder,
+            TransactionTemplate transactionTemplate,
+            Clock clock,
+            @Autowired(required = false) SessionAuthzResolver authzResolver,
+            @Autowired(required = false) PermissionCatalog permissionCatalog) {
         this.userAccountRepository = Objects.requireNonNull(userAccountRepository);
         this.platformAdminRepository = Objects.requireNonNull(platformAdminRepository);
         this.keycloakClient = Objects.requireNonNull(keycloakClient);
@@ -101,8 +140,8 @@ public class AuthService {
         this.transactionTemplate = Objects.requireNonNull(transactionTemplate);
         this.clock = Objects.requireNonNull(clock);
         this.authzResolver = authzResolver;
+        this.permissionCatalog = permissionCatalog;
     }
-
     public LoginResult login(
             String identifier,
             String password,
@@ -189,9 +228,8 @@ public class AuthService {
                     Map.of("realm", Realm.APP.name())));
         });
 
-        Access access = resolveAccess(account.getId(), Realm.APP);
-        long ver = resolveAuthzVersion(account.getId(), Realm.APP);
-        String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, access, ver);
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
+        String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, authz.access(), authz.version());
         authCookieService.setAuthCookies(
                 response,
                 tokens.accessToken(),
@@ -261,9 +299,8 @@ public class AuthService {
                     Map.of("realm", Realm.MASTER.name())));
         });
 
-        Access access = resolveAccess(userId, Realm.MASTER);
-        long ver = resolveAuthzVersion(userId, Realm.MASTER);
-        String ctx = ctxCookieSigner.sign(userId, Realm.MASTER, access, ver);
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(userId, Realm.MASTER);
+        String ctx = ctxCookieSigner.sign(userId, Realm.MASTER, authz.access(), authz.version());
         authCookieService.setAuthCookies(
                 response,
                 tokens.accessToken(),
@@ -357,9 +394,8 @@ public class AuthService {
             throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
 
-        Access access = resolveAccess(userId, verifiedRealm);
-        long ver = resolveAuthzVersion(userId, verifiedRealm);
-        String ctx = ctxCookieSigner.sign(userId, verifiedRealm, access, ver);
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(userId, verifiedRealm);
+        String ctx = ctxCookieSigner.sign(userId, verifiedRealm, authz.access(), authz.version());
         authCookieService.setAuthCookies(
                 response,
                 tokens.accessToken(),
@@ -568,7 +604,14 @@ public class AuthService {
             username = account.map(UserAccount::getUsername).orElse(username);
             fullName = account.map(UserAccount::getFullName).orElse(fullName);
         }
-        List<String> permissions = currentUser.permissions().codes().stream().sorted().toList();
+        List<String> permissions;
+        if (currentUser.permissions().isAllGranted()
+                && currentUser.permissions().codes().isEmpty()
+                && permissionCatalog != null) {
+            permissions = permissionCatalog.allCodes().stream().sorted().toList();
+        } else {
+            permissions = currentUser.permissions().codes().stream().sorted().toList();
+        }
         return new MeResult(
                 currentUser.id(),
                 username,
@@ -589,20 +632,13 @@ public class AuthService {
         return Optional.empty();
     }
 
-    private Access resolveAccess(UUID userId, Realm realm) {
+    private SessionAuthzResolver.AuthzSnapshot resolveAuthz(UUID userId, Realm realm) {
         if (authzResolver != null) {
-            return authzResolver.resolve(userId, realm).access();
+            return authzResolver.resolve(userId, realm);
         }
-        return realm == Realm.MASTER ? Access.MANAGE : Access.EXAM;
+        Access fallbackAccess = realm == Realm.MASTER ? Access.MANAGE : Access.EXAM;
+        return new SessionAuthzResolver.AuthzSnapshot(fallbackAccess, PermissionSet.empty(), 0L);
     }
-
-    private long resolveAuthzVersion(UUID userId, Realm realm) {
-        if (authzResolver != null) {
-            return authzResolver.resolve(userId, realm).version();
-        }
-        return 0L;
-    }
-
     private Realm resolveRealmByIssuer(String issuer) {
         if (issuer == null) {
             return null;
