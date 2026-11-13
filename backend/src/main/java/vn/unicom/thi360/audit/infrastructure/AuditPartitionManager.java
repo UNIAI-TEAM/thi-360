@@ -6,6 +6,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -118,13 +119,15 @@ public class AuditPartitionManager {
     }
 
     public long countQuarterPartitionRows(QuarterPartition partition) {
+        QuarterPartition canonical = requireAttachedQuarterPartition(partition);
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM " + qualified(partition.tableName()),
+                "SELECT COUNT(*) FROM " + qualified(canonical.tableName()),
                 Long.class);
         return count == null ? 0L : count;
     }
 
     public long copyQuarterPartitionToArchive(QuarterPartition partition) {
+        QuarterPartition canonical = requireAttachedQuarterPartition(partition);
         String sql = """
                 INSERT INTO audit.audit_event_archive (
                     id, occurred_at, actor_id, actor_username, actor_roles, actor_type,
@@ -137,7 +140,7 @@ public class AuditPartitionManager {
                     before, after, reason, outcome, error_code, trace_id, ip
                 FROM %s
                 ON CONFLICT (id, occurred_at) DO NOTHING
-                """.formatted(qualified(partition.tableName()));
+                """.formatted(qualified(canonical.tableName()));
         return jdbc.update(sql);
     }
 
@@ -157,9 +160,22 @@ public class AuditPartitionManager {
     }
 
     public void detachAndDropQuarterPartition(QuarterPartition partition) {
-        String child = qualified(partition.tableName());
+        QuarterPartition canonical = requireAttachedQuarterPartition(partition);
+        String child = qualified(canonical.tableName());
         jdbc.execute("ALTER TABLE " + qualified(AUDIT_EVENT_TABLE) + " DETACH PARTITION " + child);
         jdbc.execute("DROP TABLE " + child);
+    }
+
+    private QuarterPartition requireAttachedQuarterPartition(QuarterPartition partition) {
+        Objects.requireNonNull(partition, "partition must not be null");
+        QuarterPartition canonical = QuarterPartition.of(partition.year(), partition.quarter());
+        if (!canonical.equals(partition)) {
+            throw new IllegalArgumentException("Non-canonical quarter partition: " + partition);
+        }
+        if (!isPartitionAttached(AUDIT_EVENT_TABLE, canonical.tableName())) {
+            throw new IllegalStateException("Quarter partition is not attached: " + canonical.tableName());
+        }
+        return canonical;
     }
 
     private List<String> listChildRelations(String parentTable) {
@@ -210,7 +226,7 @@ public class AuditPartitionManager {
     }
 
     private static String qualified(String tableName) {
-        return AUDIT_SCHEMA + "." + tableName;
+        return AUDIT_SCHEMA + ".\"" + tableName + "\"";
     }
 
     private static void validateYear(int year) {
@@ -238,6 +254,24 @@ public class AuditPartitionManager {
             Instant startInclusive,
             Instant endExclusive
     ) {
+        public QuarterPartition {
+            validateYear(year);
+            if (quarter < 1 || quarter > 4) {
+                throw new IllegalArgumentException("Audit quarter must be between 1 and 4: " + quarter);
+            }
+            int startMonth = (quarter - 1) * 3 + 1;
+            ZonedDateTime startZdt = ZonedDateTime.of(year, startMonth, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            Instant expectedStart = startZdt.toInstant();
+            Instant expectedEnd = startZdt.plusMonths(3).toInstant();
+            String expectedName = "audit_event_" + year + "q" + quarter;
+            if (!expectedName.equals(tableName)) {
+                throw new IllegalArgumentException("Non-canonical quarter partition tableName: " + tableName);
+            }
+            if (!expectedStart.equals(startInclusive) || !expectedEnd.equals(endExclusive)) {
+                throw new IllegalArgumentException("Non-canonical quarter partition bounds for " + expectedName);
+            }
+        }
+
         public static QuarterPartition of(int year, int quarter) {
             validateYear(year);
             if (quarter < 1 || quarter > 4) {

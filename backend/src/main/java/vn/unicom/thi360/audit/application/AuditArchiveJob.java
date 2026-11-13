@@ -6,6 +6,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -114,6 +115,11 @@ public class AuditArchiveJob {
     }
 
     public long archivePartition(QuarterPartition partition) {
+        Objects.requireNonNull(partition, "partition must not be null");
+        QuarterPartition canonical = QuarterPartition.of(partition.year(), partition.quarter());
+        if (!canonical.equals(partition)) {
+            throw new IllegalArgumentException("Non-canonical quarter partition: " + partition);
+        }
         Long archivedCount = requiresNewTx.execute(status -> {
             partitionManager.enableMaintenanceBypassForTransaction();
             partitionManager.ensureArchiveYearPartition(partition.year());
