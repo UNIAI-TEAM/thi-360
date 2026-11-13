@@ -6,7 +6,11 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,11 +18,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import vn.unicom.thi360.catalog.application.CatalogAdminService;
+import vn.unicom.thi360.catalog.application.CatalogExcelService;
 import vn.unicom.thi360.catalog.spi.CatalogGroupKind;
 import vn.unicom.thi360.catalog.spi.CatalogGroupType;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
@@ -32,10 +39,16 @@ import vn.unicom.thi360.shared.security.RequirePermission;
 @RequestMapping("/api/v1/admin/catalog")
 public class AdminCatalogController {
 
-    private final CatalogAdminService catalogAdminService;
+    private static final MediaType XLSX_MEDIA_TYPE = MediaType.parseMediaType(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
-    public AdminCatalogController(CatalogAdminService catalogAdminService) {
+    private final CatalogAdminService catalogAdminService;
+    private final CatalogExcelService catalogExcelService;
+
+    public AdminCatalogController(
+            CatalogAdminService catalogAdminService, CatalogExcelService catalogExcelService) {
         this.catalogAdminService = catalogAdminService;
+        this.catalogExcelService = catalogExcelService;
     }
 
     @GetMapping("/groups")
@@ -231,5 +244,34 @@ public class AdminCatalogController {
     @Operation(summary = "Danh sách nơi đang sử dụng của toàn nhóm danh mục")
     public CatalogUsagesResponse getGroupUsages(@PathVariable UUID id) {
         return catalogAdminService.getGroupUsages(id);
+    }
+
+    @GetMapping("/groups/{id}/items/export")
+    @RequirePermission(Permissions.CATALOG_VIEW)
+    @Operation(summary = "Xuất danh sách giá trị của nhóm danh mục ra tệp Excel")
+    public ResponseEntity<byte[]> exportItems(@PathVariable UUID id) {
+        CatalogExcelService.ExportedWorkbook exported = catalogExcelService.exportGroupItems(id);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(XLSX_MEDIA_TYPE);
+        headers.setContentDisposition(ContentDisposition.attachment().filename(exported.filename()).build());
+        return ResponseEntity.ok().headers(headers).body(exported.bytes());
+    }
+
+    @PostMapping(value = "/groups/{id}/items/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequirePermission(Permissions.CATALOG_MODIFY)
+    @Operation(summary = "Tải lên tệp Excel để kiểm tra và xem trước trước khi nhập danh mục")
+    public CatalogImportPreviewResponse previewImport(
+            @PathVariable UUID id, @RequestParam("file") MultipartFile file) {
+        return catalogExcelService.previewImport(id, file);
+    }
+
+    @PostMapping("/groups/{id}/items/import/{previewId}/confirm")
+    @RequirePermission(Permissions.CATALOG_MODIFY)
+    @Operation(summary = "Xác nhận nhập danh mục từ phiên xem trước (hỗ trợ Idempotency-Key)")
+    public CatalogImportResultResponse confirmImport(
+            @PathVariable UUID id,
+            @PathVariable UUID previewId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        return catalogExcelService.confirmImport(id, previewId, idempotencyKey);
     }
 }
