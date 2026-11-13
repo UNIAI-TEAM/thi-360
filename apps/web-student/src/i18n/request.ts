@@ -1,4 +1,11 @@
-import { deepMergeMessages, LOCALE_COOKIE_NAME, parseLocaleCookie } from "@thi360/web-kit/preferences";
+import {
+  APP_TIME_ZONE,
+  deepMergeMessages,
+  INTL_FORMATS,
+  LOCALE_COOKIE_NAME,
+  parseLocaleCookie,
+  resolveIntlLocale,
+} from "@thi360/web-kit/preferences";
 import { getRequestConfig } from "next-intl/server";
 import { cookies } from "next/headers";
 import viMessages from "../messages/vi.json";
@@ -14,10 +21,11 @@ async function readLocaleCookie(): Promise<string | undefined> {
 }
 
 export default getRequestConfig(async () => {
-  const locale = parseLocaleCookie(await readLocaleCookie());
+  const uiLocale = parseLocaleCookie(await readLocaleCookie());
   return {
-    locale,
-    messages: locale === "en" ? deepMergeMessages(viMessages, enMessages) : viMessages,
-    timeZone: "Asia/Ho_Chi_Minh",
+    locale: resolveIntlLocale(uiLocale),
+    messages: uiLocale === "en" ? deepMergeMessages(viMessages, enMessages) : viMessages,
+    timeZone: APP_TIME_ZONE,
+    formats: INTL_FORMATS,
   };
 });

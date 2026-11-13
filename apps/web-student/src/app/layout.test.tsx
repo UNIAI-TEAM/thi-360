@@ -9,7 +9,7 @@ import LoginPage from "./dang-nhap/page";
 import RootLayout from "./layout";
 
 const ssrState = vi.hoisted(() => ({
-  locale: "vi" as "vi" | "en",
+  locale: "vi" as "vi" | "en" | "en-GB",
   themeCookie: undefined as string | undefined,
 }));
 
@@ -33,7 +33,7 @@ vi.mock("next-intl", async (importOriginal) => {
     NextIntlClientProvider: ({ children }: { children: ReactNode }) => (
       <Provider
         locale={ssrState.locale}
-        messages={ssrState.locale === "en" ? enMessages : viMessages}
+        messages={ssrState.locale === "vi" ? viMessages : enMessages}
         timeZone="Asia/Ho_Chi_Minh"
       >
         {children}
@@ -145,7 +145,7 @@ describe("web-student RootLayout /dang-nhap SSR appearance", () => {
     expect(fallbackHtml).toContain('data-theme="light"');
   });
 
-  it("render <html lang=\"en\"> và nút chuyển đổi trên /dang-nhap khi locale=en", async () => {
+  it("render <html lang=\"en\"> và nút chuyển đổi trên /dang-nhap khi locale=en hoặc en-GB", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -156,9 +156,9 @@ describe("web-student RootLayout /dang-nhap SSR appearance", () => {
         }),
       ),
     );
-    ssrState.locale = "en";
+    ssrState.locale = "en-GB";
     const html = renderToStaticMarkup(await RootLayout({ children: <LoginPage /> }));
-    expect(html).toContain('lang="en"');
+    expect(html).toContain('<html lang="en"');
     expect(html).toContain("Sign in");
     expect(html).toContain("Switch to dark mode");
     expect(html).toContain("Change language");

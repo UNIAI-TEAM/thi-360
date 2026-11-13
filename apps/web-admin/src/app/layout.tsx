@@ -6,7 +6,7 @@ import {
   themeStyleTag,
   type AppearanceConfig,
 } from "@thi360/ui";
-import { normalizeCookieDomain, parseLocaleCookie, resolveTheme, THEME_COOKIE_NAME } from "@thi360/web-kit/preferences";
+import { normalizeCookieDomain, normalizeUiLocale, resolveTheme, THEME_COOKIE_NAME } from "@thi360/web-kit/preferences";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
@@ -71,10 +71,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   ]);
   const themeMode = resolveTheme(appearance.mode, themeCookie);
   const themeCss = themeStyleTag(appearance);
-  const uiLocale = parseLocaleCookie(locale);
+  const uiLocale = normalizeUiLocale(locale);
   const cookieDomain = normalizeCookieDomain(process.env.THI360_COOKIE_DOMAIN);
   return (
-    <html lang={locale} className={beVietnamPro.variable} data-theme={themeMode}>
+    <html lang={uiLocale} className={beVietnamPro.variable} data-theme={themeMode}>
       <head>
         <style id={THEME_STYLE_ELEMENT_ID} dangerouslySetInnerHTML={{ __html: themeCss }} />
       </head>

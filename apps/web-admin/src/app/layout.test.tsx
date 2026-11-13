@@ -118,10 +118,14 @@ describe("RootLayout appearance SSR", () => {
     expect(fallbackTree.props["data-theme"]).toBe("light");
   });
 
-  it("đặt <html lang> theo locale đang chọn", async () => {
+  it("đặt <html lang> theo uiLocale đã chuẩn hóa (kể cả khi getLocale trả en-GB)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ palette: { presetId: "thi360-green" }, mode: "light", version: 1 })));
     ssrState.locale = "en";
     const enTree = await RootLayout({ children: "ok" });
     expect(enTree.props.lang).toBe("en");
+
+    ssrState.locale = "en-GB";
+    const enGbTree = await RootLayout({ children: "ok" });
+    expect(enGbTree.props.lang).toBe("en");
   });
 });
