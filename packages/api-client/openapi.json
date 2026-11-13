@@ -1373,8 +1373,9 @@
           "code" : {
             "description" : "Mã lớp học (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)",
             "example" : "LOP-A",
-            "maxLength" : 100,
-            "minLength" : 0,
+            "maxLength" : 30,
+            "minLength" : 2,
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]{1,29}$",
             "type" : "string"
           },
           "description" : {
@@ -2574,9 +2575,11 @@
             "type" : "boolean"
           },
           "code" : {
-            "description" : "Mã lớp học mới",
-            "maxLength" : 100,
-            "minLength" : 0,
+            "description" : "Mã lớp học mới (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)",
+            "example" : "LOP-A",
+            "maxLength" : 30,
+            "minLength" : 2,
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]{1,29}$",
             "type" : "string"
           },
           "description" : {
@@ -2594,11 +2597,6 @@
           "ownerUserId" : {
             "description" : "ID người phụ trách mới",
             "format" : "uuid",
-            "type" : "string"
-          },
-          "status" : {
-            "description" : "Trạng thái mới",
-            "enum" : [ "ACTIVE", "INACTIVE" ],
             "type" : "string"
           },
           "version" : {
@@ -6550,10 +6548,10 @@
             "type" : "string"
           }
         }, {
-          "description" : "Lý do xóa lớp (không bắt buộc)",
+          "description" : "Lý do xóa lớp (bắt buộc)",
           "in" : "query",
           "name" : "reason",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "type" : "string"
           }

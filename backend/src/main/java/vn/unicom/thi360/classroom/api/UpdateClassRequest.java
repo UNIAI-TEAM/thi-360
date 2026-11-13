@@ -4,11 +4,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import vn.unicom.thi360.classroom.domain.ClassNormalizer;
 
 @Schema(description = "Yêu cầu cập nhật thông tin lớp học")
 public record UpdateClassRequest(
-        @Schema(description = "Mã lớp học mới")
-        @Size(max = 100, message = "Mã lớp tối đa 30 ký tự sau khi bỏ khoảng trắng")
+        @Schema(
+                description = "Mã lớp học mới (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)",
+                example = "LOP-A",
+                minLength = 2,
+                maxLength = 30,
+                pattern = ClassNormalizer.CODE_REGEX)
         String code,
         @Schema(description = "Tên lớp học mới")
         @Size(max = 200, message = "Tên lớp tối đa 200 ký tự")

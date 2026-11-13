@@ -4,13 +4,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import vn.unicom.thi360.classroom.domain.ClassNormalizer;
 import vn.unicom.thi360.classroom.domain.ClassStatus;
 
 @Schema(description = "Yêu cầu tạo lớp học mới")
 public record CreateClassRequest(
-        @Schema(description = "Mã lớp học (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)", example = "LOP-A", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "Mã lớp học (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)",
+                example = "LOP-A",
+                minLength = 2,
+                maxLength = 30,
+                pattern = ClassNormalizer.CODE_REGEX,
+                requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Mã lớp không được để trống")
-        @Size(max = 100, message = "Mã lớp tối đa 30 ký tự sau khi bỏ khoảng trắng")
         String code,
         @Schema(description = "Tên lớp học", example = "Lớp A", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Tên lớp không được để trống")

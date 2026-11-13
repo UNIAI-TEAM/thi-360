@@ -2646,7 +2646,10 @@ export interface components {
         UpdateClassRequest: {
             /** @description Xóa người phụ trách hiện tại khi đặt là true */
             clearOwner?: boolean;
-            /** @description Mã lớp học mới */
+            /**
+             * @description Mã lớp học mới (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)
+             * @example LOP-A
+             */
             code?: string;
             /** @description Mô tả lớp học mới (chuỗi rỗng để xóa mô tả) */
             description?: string;
@@ -2657,11 +2660,6 @@ export interface components {
              * @description ID người phụ trách mới
              */
             ownerUserId?: string;
-            /**
-             * @description Trạng thái mới
-             * @enum {string}
-             */
-            status?: "ACTIVE" | "INACTIVE";
             /**
              * Format: int64
              * @description Phiên bản khóa lạc quan
@@ -5870,9 +5868,9 @@ export interface operations {
     };
     deleteClass: {
         parameters: {
-            query?: {
-                /** @description Lý do xóa lớp (không bắt buộc) */
-                reason?: string;
+            query: {
+                /** @description Lý do xóa lớp (bắt buộc) */
+                reason: string;
             };
             header?: never;
             path: {
