@@ -68,7 +68,7 @@ Trên máy chủ Keycloak thật (dùng chung với các dự án khác), ứng 
    - Tạo realm role `PLATFORM_ADMIN` (`THI360_KC_PLATFORM_ROLE`).
    - Tạo client confidential (`THI360_KC_PLATFORM_CLIENT_ID`, mặc định `thi360-platform`): bật **Client authentication** và **Direct access grants**; tắt **Standard flow** và **Service accounts**; đặt secret vào `THI360_KC_PLATFORM_CLIENT_SECRET` (khuyến nghị đặt `Access Token Lifespan = 300s`).
    - Tạo tài khoản khởi tạo (ví dụ `platform`), đặt mật khẩu và gán **duy nhất** realm role `PLATFORM_ADMIN` (không gán role `admin` của Keycloak). Tên đăng nhập tài khoản nền tảng phải nằm trong danh sách tên dành riêng của ứng dụng.
-3. **Biến môi trường bắt buộc ở production/staging**: `THI360_KC_URL`, `THI360_KC_REALM`, `THI360_KC_CLIENT_ID`, `THI360_KC_CLIENT_SECRET`, `THI360_KC_PLATFORM_REALM`, `THI360_KC_PLATFORM_ROLE`, `THI360_KC_PLATFORM_CLIENT_ID`, `THI360_KC_PLATFORM_CLIENT_SECRET`, `THI360_CTX_SECRET` (khóa HMAC >= 32 bytes), `THI360_TRUSTED_PROXIES`.
+3. **Biến môi trường bắt buộc ở production/staging**: `THI360_KC_URL`, `THI360_KC_REALM`, `THI360_KC_CLIENT_ID`, `THI360_KC_CLIENT_SECRET`, `THI360_KC_PLATFORM_REALM`, `THI360_KC_PLATFORM_ROLE`, `THI360_KC_PLATFORM_CLIENT_ID`, `THI360_KC_PLATFORM_CLIENT_SECRET`, `THI360_CTX_SECRET` (khóa HMAC >= 32 bytes UTF-8; giá trị mặc định trong `.env.example` chỉ áp dụng khi chạy profile `dev` hoặc `test`, khởi động các profile khác sẽ bị từ chối nếu thiếu hoặc ngắn hơn 32 bytes), `THI360_TRUSTED_PROXIES`.
 
 ## Lệnh thường dùng
 

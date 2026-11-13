@@ -26,7 +26,12 @@ public class CtxCookieSigner {
     public CtxCookieSigner(CtxProperties ctxProperties, Clock clock) {
         this.ctxProperties = Objects.requireNonNull(ctxProperties, "ctxProperties must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
-        this.secretBytes = ctxProperties.secret().getBytes(StandardCharsets.UTF_8);
+        String secret = Objects.requireNonNull(ctxProperties.secret(), "ctxProperties.secret must not be null");
+        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secret.isBlank() || bytes.length < CtxProperties.MIN_SECRET_BYTES) {
+            throw new IllegalArgumentException("thi360.ctx.secret must be at least 32 UTF-8 bytes");
+        }
+        this.secretBytes = bytes;
     }
 
     public String sign(UUID userId, Realm realm, Access access, long version) {
