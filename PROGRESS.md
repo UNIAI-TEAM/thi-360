@@ -6,13 +6,24 @@
 
 **Giai đoạn:** đợt 1. **T01 (UNI-2538) đã dựng xong và push** lên nhánh `feature/UNI-2538-khoi-tao-monorepo-ci-moi-truong-dev`; chưa mở PR. Đang dừng chờ M.Trường.
 
+**Thiết kế màn hình đã chốt** (2026-11-13, M.Trường). **Phần danh mục (PBI-02: T13, T14, T15) hoãn**, chưa làm trong đợt chạy này vì còn có thể thiết kế lại; plan mục A7 ghi rõ việc không làm và việc vẫn làm.
+
 **Bước tiếp theo**
 
-1. M.Trường giao một phiên Advisor chạy `zone17-cook-plan` với plan `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Plan đã có đủ cấu hình đợt chạy (Phần A), quy ước kỹ thuật (Phần B), sóng thực thi (Phần C) và hợp đồng từng task (Phần D).
+1. M.Trường giao một phiên Advisor chạy `zone17-cook-plan` (phạm vi: nền + PBI-01, không có T13–T15) với plan `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Plan đã có đủ cấu hình đợt chạy (Phần A), quy ước kỹ thuật (Phần B), sóng thực thi (Phần C) và hợp đồng từng task (Phần D).
 2. Bước 0 của Advisor: tạo `integration/dot-1` từ đầu nhánh này (đã gồm T01 và toàn bộ tài liệu).
 3. Sóng 1: T02 (UNI-2539) và T06 (UNI-2543) chạy song song.
 
 ## Đã làm
+
+### 2026-11-13 — Chốt thiết kế, hoãn phần danh mục
+
+- Quyền theo đối tượng × mức (Chỉ xem / Xem và sửa) + quyền riêng; 7 đối tượng, 13 quyền (spec §5.5, plan B6).
+- Tùy chỉnh giao diện chỉ còn chế độ sáng/tối và bộ phối màu: 9 bộ cố định + tự tùy chỉnh (spec §13, §13.1); bỏ tùy chọn bố cục và kích thước.
+- Biểu mẫu vai trò: phạm vi Thi thì danh sách quyền hiện nhưng vô hiệu (spec §5.2).
+- Danh mục (spec §9, chỉ mới ở mức thiết kế): thêm kiểu cây nhiều cấp, liên kết nút tới giá trị danh mục khác (kế thừa theo nhánh), loại Hệ thống / Tùy chỉnh, màn Cấu hình chung thiết kế lại. **Chưa có mã; T13–T15 hoãn.**
+- Plan: thêm A7 (phần danh mục đang hoãn), bỏ T13–T15 khỏi các sóng, tiến độ tính trên 83 điểm, T16 nghiệm thu nền + PBI-01, E2E của T08 đổi sang đối tượng Lớp học.
+- Bản thiết kế màn hình (artifact) đã cập nhật đủ các điểm trên, gồm các màn danh mục để tham khảo khi mở lại.
 
 ### 2026-11-13 — Sửa theo góp ý của BA trên bản thiết kế
 
