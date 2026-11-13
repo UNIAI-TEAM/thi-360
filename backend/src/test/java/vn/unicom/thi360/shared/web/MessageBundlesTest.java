@@ -83,6 +83,11 @@ class MessageBundlesTest {
             assertResolves("en", "en");
             assertResolves("en-US,en;q=0.9", "en");
             assertResolves("fr-FR,en;q=0.8", "en");
+            assertResolves("fr;q=0.5,en;q=1", "en");
+            assertResolvesRepeated(List.of("fr;q=0.5", "en;q=1"), "en");
+            assertResolvesRepeated(List.of("en;q=0", "vi;q=0.5"), "vi");
+            assertResolvesRepeated(List.of("  ", "en"), "en");
+            assertResolvesRepeated(List.of("en", "invalid;;;"), "vi");
 
             Locale.setDefault(Locale.FRANCE);
             assertResolves(null, "vi");
@@ -155,6 +160,19 @@ class MessageBundlesTest {
             request.addHeader(HttpHeaders.ACCEPT_LANGUAGE, acceptLanguage);
         }
         assertThat(LocaleConfig.resolveLocale(request).getLanguage()).isEqualTo(expectedLanguage);
+    }
+
+    private static void assertResolvesRepeated(List<String> acceptLanguageHeaders, String expectedLanguage) {
+        MockHttpServletRequest repeated = new MockHttpServletRequest();
+        for (String value : acceptLanguageHeaders) {
+            repeated.addHeader(HttpHeaders.ACCEPT_LANGUAGE, value);
+        }
+        MockHttpServletRequest combined = new MockHttpServletRequest();
+        combined.addHeader(HttpHeaders.ACCEPT_LANGUAGE, String.join(",", acceptLanguageHeaders));
+        Locale repeatedResolved = LocaleConfig.resolveLocale(repeated);
+        Locale combinedResolved = LocaleConfig.resolveLocale(combined);
+        assertThat(repeatedResolved).isEqualTo(combinedResolved);
+        assertThat(repeatedResolved.getLanguage()).isEqualTo(expectedLanguage);
     }
 
     private static Properties loadUtf8Properties(String resourceName) throws IOException {

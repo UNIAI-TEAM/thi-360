@@ -1,6 +1,7 @@
 package vn.unicom.thi360.shared.web;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.context.annotation.Bean;
@@ -36,12 +37,25 @@ public class LocaleConfig {
         if (request == null) {
             return DEFAULT_LOCALE;
         }
-        String header = request.getHeader(HttpHeaders.ACCEPT_LANGUAGE);
-        if (header == null || header.isBlank()) {
+        Enumeration<String> headerValues = request.getHeaders(HttpHeaders.ACCEPT_LANGUAGE);
+        if (headerValues == null || !headerValues.hasMoreElements()) {
+            return DEFAULT_LOCALE;
+        }
+        StringBuilder combined = new StringBuilder();
+        while (headerValues.hasMoreElements()) {
+            String value = headerValues.nextElement();
+            if (value != null && !value.isBlank()) {
+                if (!combined.isEmpty()) {
+                    combined.append(',');
+                }
+                combined.append(value);
+            }
+        }
+        if (combined.isEmpty()) {
             return DEFAULT_LOCALE;
         }
         try {
-            List<Locale.LanguageRange> ranges = Locale.LanguageRange.parse(header).stream()
+            List<Locale.LanguageRange> ranges = Locale.LanguageRange.parse(combined.toString()).stream()
                     .filter(range -> range.getWeight() > 0.0)
                     .toList();
             if (ranges.isEmpty()) {
