@@ -1,0 +1,72 @@
+name: E2E
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "backend/**"
+      - "apps/**"
+      - "packages/**"
+      - "e2e/**"
+      - "infra/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/e2e.yml"
+  pull_request:
+    branches: [develop]
+    paths:
+      - "backend/**"
+      - "apps/**"
+      - "packages/**"
+      - "e2e/**"
+      - "infra/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/e2e.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @thi360/e2e exec playwright install --with-deps chromium
+      - name: Start Compose dev services
+        run: |
+          docker compose -f infra/docker-compose.yml up -d
+          docker wait thi360-keycloak-init-1 || true
+          docker compose -f infra/docker-compose.yml ps
+      - name: Build backend and webs
+        run: |
+          cd backend && ./mvnw -B -ntp package -DskipTests && cd ..
+          pnpm --filter @thi360/web-student --filter @thi360/web-admin build
+      - name: Run Playwright E2E
+        env:
+          E2E_BACKEND_CMD: java -jar target/thi360-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=api,worker,dev
+          E2E_USE_BUILT: "1"
+        run: pnpm --filter @thi360/e2e test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
+      - name: Stop Compose dev services
+        if: always()
+        run: docker compose -f infra/docker-compose.yml down

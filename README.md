@@ -37,6 +37,20 @@ cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=api,worker,dev  
 pnpm dev                                                                         # web học viên :3000, web admin :3001
 ```
 
+### Đăng nhập dev (tài khoản mẫu)
+
+Khi chạy backend với profile `dev` (`api,worker,dev`), `DevDataInitializer` tự tạo sẵn các tài khoản sau (chỉ ở môi trường dev). Đăng nhập tại http://localhost:3000/dang-nhap (một nơi đăng nhập cho cả web học viên và web admin):
+
+| Tên đăng nhập | Mật khẩu | Vai trò / phạm vi |
+|---|---|---|
+| `sys.admin` | `Thi360@dev` | Quản trị hệ thống (`SYSTEM_ADMIN`, `MANAGE`) |
+| `content.admin` | `Thi360@dev` | Quản trị nội dung (`CONTENT_ADMIN`, `MANAGE`) |
+| `ops.admin` | `Thi360@dev` | Vận hành (`OPERATIONS`, `MANAGE`) |
+| `student01` … `student05` | `Thi360@dev` | Học viên (`STUDENT`, `EXAM`) |
+| `platform` | `platform-dev-only` (`THI360_DEV_PLATFORM_PASSWORD`) | Tài khoản khởi tạo ở realm `master` (`PLATFORM_ADMIN`) |
+
+Chạy kiểm thử E2E (Playwright + Compose + backend + hai web): `pnpm --filter @thi360/e2e test`.
+
 ## Dịch vụ dev (Docker Compose)
 
 | Dịch vụ | Địa chỉ | Ghi chú |
