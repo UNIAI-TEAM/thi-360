@@ -36,7 +36,7 @@ export type IconButtonProps = Omit<ComponentProps<"button">, "aria-label" | "chi
   };
 
 /**
- * Nút chỉ có icon cho cột Thao tác. Bị khóa dùng `aria-disabled` thay vì `disabled`
+ * Nút chỉ có icon cho cột Thao tác. Bị khóa (`disabled` hoặc `aria-disabled`) dùng `aria-disabled` thay vì `disabled`
  * để vẫn focus và rê chuột được, tooltip mới nêu được lý do khóa.
  */
 export function IconButton({
@@ -49,17 +49,25 @@ export function IconButton({
   onClick,
   type = "button",
   "aria-label": ariaLabel,
+  "aria-disabled": ariaDisabled,
   ...props
 }: IconButtonProps) {
+  const locked = Boolean(disabled) || ariaDisabled === true || ariaDisabled === "true";
   return (
     <Tooltip content={tooltip ?? ariaLabel}>
       <button
         type={type}
         aria-label={ariaLabel}
-        aria-disabled={disabled || undefined}
-        onClick={disabled ? undefined : onClick}
         className={cn(iconButtonVariants({ tone, size }), className)}
         {...props}
+        aria-disabled={locked || undefined}
+        onClick={(event) => {
+          if (locked) {
+            event.preventDefault();
+            return;
+          }
+          onClick?.(event);
+        }}
       >
         <Slot aria-hidden>{icon}</Slot>
       </button>
