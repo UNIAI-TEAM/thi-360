@@ -79,9 +79,15 @@ describe("proxy /api/[...path]", () => {
     expect(headers.get("x-custom")).toBeNull();
   });
 
-  it("không chuyển tiếp X-Forwarded-For của trình duyệt (danh sách chuyển tiếp chỉ gồm B10)", async () => {
+  it("không chuyển tiếp X-Forwarded-For hay x-real-ip khi chưa bật THI360_TRUST_REAL_IP", async () => {
     await GET(
-      request("v1/me", { headers: { "x-forwarded-for": "203.0.113.9", cookie: "thi360_at=at" } }),
+      request("v1/me", {
+        headers: {
+          "x-forwarded-for": "203.0.113.9",
+          "x-real-ip": "198.51.100.25",
+          cookie: "thi360_at=at",
+        },
+      }),
       context("v1", "me"),
     );
 
@@ -90,15 +96,17 @@ describe("proxy /api/[...path]", () => {
     expect(headers.get("cookie")).toBe("thi360_at=at");
   });
 
-  it("ghi đè X-Forwarded-For bằng địa chỉ kết nối đến của proxy khi có sẵn", async () => {
-    const req = request("v1/auth/login", {
-      method: "POST",
-      body: "{}",
-      headers: { "x-forwarded-for": "203.0.113.9" },
-    }) as NextRequest & { ip?: string };
-    req.ip = "198.51.100.25";
+  it("ghi đè X-Forwarded-For bằng x-real-ip hợp lệ khi THI360_TRUST_REAL_IP=1", async () => {
+    vi.stubEnv("THI360_TRUST_REAL_IP", "1");
 
-    await POST(req, context("v1", "auth", "login"));
+    await POST(
+      request("v1/auth/login", {
+        method: "POST",
+        body: "{}",
+        headers: { "x-forwarded-for": "203.0.113.9", "x-real-ip": "198.51.100.25" },
+      }),
+      context("v1", "auth", "login"),
+    );
     expect(lastCall().headers.get("x-forwarded-for")).toBe("198.51.100.25");
   });
 

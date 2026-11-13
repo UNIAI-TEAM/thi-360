@@ -60,21 +60,28 @@ describe("web-student proxy /api/[...path]", () => {
     expect(lastCall().headers.get("x-request-id")).toBe("req-stu-1");
   });
 
-  it("không chuyển tiếp X-Forwarded-For của trình duyệt và ghi đè bằng IP kết nối đến", async () => {
+  it("không chuyển tiếp X-Forwarded-For của trình duyệt và chỉ ghi đè từ x-real-ip khi THI360_TRUST_REAL_IP=1", async () => {
     await GET(
-      request("v1/me", { headers: { "x-forwarded-for": "203.0.113.9", cookie: "thi360_at=at" } }),
+      request("v1/me", {
+        headers: {
+          "x-forwarded-for": "203.0.113.9",
+          "x-real-ip": "198.51.100.88",
+          cookie: "thi360_at=at",
+        },
+      }),
       context("v1", "me"),
     );
     expect(lastCall().headers.get("x-forwarded-for")).toBeNull();
 
-    const req = request("v1/auth/login", {
-      method: "POST",
-      body: "{}",
-      headers: { "x-forwarded-for": "203.0.113.9" },
-    }) as NextRequest & { ip?: string };
-    req.ip = "198.51.100.88";
-
-    await POST(req, context("v1", "auth", "login"));
+    vi.stubEnv("THI360_TRUST_REAL_IP", "1");
+    await POST(
+      request("v1/auth/login", {
+        method: "POST",
+        body: "{}",
+        headers: { "x-forwarded-for": "203.0.113.9", "x-real-ip": "198.51.100.88" },
+      }),
+      context("v1", "auth", "login"),
+    );
     expect(lastCall().headers.get("x-forwarded-for")).toBe("198.51.100.88");
   });
 

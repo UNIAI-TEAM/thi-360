@@ -46,15 +46,25 @@ describe("proxyApiRequest X-Forwarded-For", () => {
     expect(lastHeaders().get("x-forwarded-for")).toBeNull();
   });
 
-  it("ghi đè X-Forwarded-For bằng request.ip của kết nối đến", async () => {
-    const req = new NextRequest("http://localhost:3000/api/v1/auth/login", {
-      method: "POST",
-      body: "{}",
-      headers: { "x-forwarded-for": "203.0.113.9" },
-    }) as NextRequest & { ip?: string };
-    req.ip = "198.51.100.42";
+  it("ghi đè X-Forwarded-For bằng tùy chọn resolveClientIp và bỏ qua giá trị client gửi", async () => {
+    const customHandlers = createProxyHandlers({
+      messages: {
+        notFound: "Không tìm thấy.",
+        proxyNotConfigured: "Chưa cấu hình API.",
+        upstreamTimeout: "Quá thời gian.",
+        upstreamUnavailable: "Không kết nối được.",
+      },
+      resolveClientIp: () => "198.51.100.42",
+    });
 
-    await handlers.POST(req, context("v1", "auth", "login"));
+    await customHandlers.POST(
+      new NextRequest("http://localhost:3000/api/v1/auth/login", {
+        method: "POST",
+        body: "{}",
+        headers: { "x-forwarded-for": "203.0.113.9" },
+      }),
+      context("v1", "auth", "login"),
+    );
 
     expect(lastHeaders().get("x-forwarded-for")).toBe("198.51.100.42");
   });

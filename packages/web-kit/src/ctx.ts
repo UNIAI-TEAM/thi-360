@@ -69,9 +69,8 @@ export function resolveCtxSecret(
   nodeEnv: string | undefined = process.env.NODE_ENV,
 ): string | null {
   const raw = explicitSecret !== undefined ? explicitSecret : process.env.THI360_CTX_SECRET;
-  const trimmed = raw?.trim() ?? "";
-  if (trimmed.length > 0) {
-    return encoder.encode(trimmed).length >= MIN_SECRET_BYTES ? trimmed : null;
+  if (raw && raw.trim().length > 0) {
+    return encoder.encode(raw).length >= MIN_SECRET_BYTES ? raw : null;
   }
   return nodeEnv === "production" ? null : DEV_CTX_SECRET;
 }

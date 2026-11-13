@@ -53,4 +53,28 @@ describe("verifyCtxCookie", () => {
     expect(resolveCtxSecret(undefined, "development")).toBe("ctx-dev-only-change-me-32-bytes!!");
     expect(resolveCtxSecret("short-secret", "development")).toBeNull();
   });
+
+  it("giữ nguyên khoảng trắng đầu cuối của THI360_CTX_SECRET khi không rỗng (khớp CtxCookieSigner)", async () => {
+    const paddedSecret = "  ctx-padded-secret-must-keep-exact-bytes!!  ";
+    const token = await signCtxCookie(
+      {
+        userId: USER_ID,
+        realm: "APP",
+        access: "MANAGE",
+        version: 2,
+        expiresAt: Math.floor(Date.now() / 1000) + 300,
+      },
+      paddedSecret,
+    );
+
+    vi.stubEnv("THI360_CTX_SECRET", paddedSecret);
+    const claims = await verifyCtxCookie(token);
+    expect(claims?.userId).toBe(USER_ID);
+    expect(claims?.version).toBe(2);
+    expect(resolveCtxSecret(undefined, "production")).toBe(paddedSecret);
+
+    vi.stubEnv("THI360_CTX_SECRET", "    ");
+    expect(resolveCtxSecret(undefined, "production")).toBeNull();
+    expect(resolveCtxSecret(undefined, "development")).toBe("ctx-dev-only-change-me-32-bytes!!");
+  });
 });

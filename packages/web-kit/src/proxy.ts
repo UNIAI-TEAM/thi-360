@@ -44,8 +44,6 @@ export interface ProxyOptions {
   resolveClientIp?: (request: NextRequest) => string | null;
 }
 
-type RequestWithOptionalIp = NextRequest & { ip?: string };
-
 function normalizeIpLiteral(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -54,13 +52,12 @@ function normalizeIpLiteral(raw: string | null | undefined): string | null {
 }
 
 /**
- * Lấy địa chỉ IP khách thực tế mà proxy biết được (từ runtime `request.ip` hoặc `x-real-ip` khi
- * bật `THI360_TRUST_REAL_IP=1`). Không bao giờ đọc hay tin `X-Forwarded-For` do trình duyệt gửi.
+ * Lấy địa chỉ IP khách thực tế từ `x-real-ip` khi chạy sau reverse proxy tin cậy (như nginx
+ * với `proxy_set_header X-Real-IP $remote_addr;`) và bật `THI360_TRUST_REAL_IP=1`.
+ * Next.js 16 không cung cấp `request.ip`, và proxy không bao giờ chuyển tiếp `X-Forwarded-For`
+ * do client gửi.
  */
 export function resolveIncomingClientIp(request: NextRequest): string | null {
-  const runtimeIp = normalizeIpLiteral((request as RequestWithOptionalIp).ip);
-  if (runtimeIp) return runtimeIp;
-
   if (process.env.THI360_TRUST_REAL_IP === "1") {
     return normalizeIpLiteral(request.headers.get("x-real-ip"));
   }
