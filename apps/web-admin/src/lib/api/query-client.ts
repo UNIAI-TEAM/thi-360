@@ -30,16 +30,37 @@ export function handleApiError(error: unknown, handlers: ApiErrorHandlers): void
 }
 
 /** Không thử lại lỗi 4xx: lặp lại cũng cho kết quả đó, và 401/403 đã được xử lý chung. */
-function shouldRetry(failureCount: number, error: unknown): boolean {
+export function shouldRetry(failureCount: number, error: unknown): boolean {
   const status = getErrorStatus(error);
   if (status !== null && status >= 400 && status < 500) return false;
   return failureCount < 2;
 }
 
-export function createQueryClient(handlers: ApiErrorHandlers): QueryClient {
+export function subscribeApiErrors(client: QueryClient, handlers: ApiErrorHandlers): () => void {
+  const unsubQuery = client.getQueryCache().subscribe((event) => {
+    if (event.type === "updated" && event.action.type === "error") {
+      handleApiError(event.action.error, handlers);
+    }
+  });
+  const unsubMutation = client.getMutationCache().subscribe((event) => {
+    if (event.type === "updated" && event.action.type === "error") {
+      handleApiError(event.action.error, handlers);
+    }
+  });
+  return () => {
+    unsubQuery();
+    unsubMutation();
+  };
+}
+
+export function createQueryClient(handlers?: ApiErrorHandlers): QueryClient {
   return new QueryClient({
-    queryCache: new QueryCache({ onError: (error) => handleApiError(error, handlers) }),
-    mutationCache: new MutationCache({ onError: (error) => handleApiError(error, handlers) }),
+    ...(handlers
+      ? {
+          queryCache: new QueryCache({ onError: (error) => handleApiError(error, handlers) }),
+          mutationCache: new MutationCache({ onError: (error) => handleApiError(error, handlers) }),
+        }
+      : {}),
     defaultOptions: {
       queries: { retry: shouldRetry, refetchOnWindowFocus: false },
     },

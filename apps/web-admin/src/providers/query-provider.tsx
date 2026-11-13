@@ -10,10 +10,10 @@ import {
 } from "@thi360/web-kit/client";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { clearSessionBestEffort, refreshSession } from "@/features/session/api";
 import { redirectToLogin } from "@/lib/auth-redirect";
-import { createQueryClient, getErrorStatus } from "@/lib/api/query-client";
+import { createQueryClient, getErrorStatus, subscribeApiErrors } from "@/lib/api/query-client";
 
 export const FORBIDDEN_PATH = "/forbidden";
 const REFRESH_RETRY_KEY = "thi360:403-refresh-url";
@@ -67,21 +67,19 @@ export function QueryProvider({
     }
   }, [guard, pathname]);
   const forbiddenMessage = t("forbiddenToast");
-  const forbiddenMessageRef = useRef(forbiddenMessage);
-  useEffect(() => {
-    forbiddenMessageRef.current = forbiddenMessage;
-  }, [forbiddenMessage]);
-
-  const [client] = useState(() => {
-    const recovery = createUnauthorizedRecovery({
+  const [recovery] = useState(() =>
+    createUnauthorizedRecovery({
       refreshSession,
       clearSessionBestEffort,
       getErrorStatus,
       onReload: (url) => navigate(url),
       onRedirectLogin: () => redirectToLogin(),
-    });
+    }),
+  );
+  const [client] = useState(() => createQueryClient());
 
-    return createQueryClient({
+  useEffect(() => {
+    return subscribeApiErrors(client, {
       onUnauthenticated: () => {
         void recovery.handleUnauthorized();
       },
@@ -91,7 +89,7 @@ export function QueryProvider({
         const alreadyRetried = readRetryMarker() === currentHref;
         if (alreadyRetried) {
           writeRetryMarker(null);
-          notify.error(forbiddenMessageRef.current);
+          notify.error(forbiddenMessage);
           router.replace(FORBIDDEN_PATH);
           return;
         }
@@ -108,12 +106,12 @@ export function QueryProvider({
               redirectToLogin();
               return;
             }
-            notify.error(forbiddenMessageRef.current);
+            notify.error(forbiddenMessage);
             router.replace(FORBIDDEN_PATH);
           });
       },
     });
-  });
+  }, [client, forbiddenMessage, guard, navigate, pathname, recovery, router]);
 
   return (
     <QueryClientProvider client={client}>
