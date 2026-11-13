@@ -159,6 +159,9 @@ DECLARE
     app_role text := NULLIF(btrim('${auditAppRole}'), '');
     migrator_role text := current_user;
     granted_temp_maint_set boolean := false;
+    had_direct_maint_membership boolean := false;
+    orig_inherit_option boolean;
+    orig_set_option boolean;
     child_name text;
 BEGIN
     IF app_role IS NULL THEN
@@ -180,6 +183,18 @@ BEGIN
 
     EXECUTE format('GRANT thi360_audit_maint TO %I WITH INHERIT FALSE, SET TRUE', app_role);
     IF NOT pg_has_role(migrator_role, 'thi360_audit_maint', 'SET') THEN
+        SELECT m.inherit_option, m.set_option
+        INTO orig_inherit_option, orig_set_option
+        FROM pg_auth_members m
+        JOIN pg_roles r ON r.oid = m.roleid
+        JOIN pg_roles u ON u.oid = m.member
+        JOIN pg_roles g ON g.oid = m.grantor
+        WHERE r.rolname = 'thi360_audit_maint'
+          AND u.rolname = migrator_role
+          AND g.rolname = migrator_role;
+
+        had_direct_maint_membership := FOUND;
+
         EXECUTE format('GRANT thi360_audit_maint TO %I WITH INHERIT FALSE, SET TRUE', migrator_role);
         granted_temp_maint_set := true;
     END IF;
@@ -244,7 +259,16 @@ BEGIN
     END IF;
 
     IF granted_temp_maint_set THEN
-        EXECUTE format('REVOKE thi360_audit_maint FROM %I', migrator_role);
+        IF had_direct_maint_membership THEN
+            EXECUTE format(
+                'GRANT thi360_audit_maint TO %I WITH INHERIT %s, SET %s',
+                migrator_role,
+                CASE WHEN orig_inherit_option THEN 'TRUE' ELSE 'FALSE' END,
+                CASE WHEN orig_set_option THEN 'TRUE' ELSE 'FALSE' END
+            );
+        ELSE
+            EXECUTE format('REVOKE thi360_audit_maint FROM %I', migrator_role);
+        END IF;
     END IF;
 END;
 $$;

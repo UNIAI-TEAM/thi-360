@@ -255,6 +255,105 @@ class AuditSharedRoleIntegrationTests {
         }
     }
 
+    @Test
+    void distinctNonSuperuserCreateroleMigrator_preservesPreExistingSetFalseMembershipAndRevokesTempSet() {
+        String dbName = "thi360_distinct_mig_db";
+        String migratorRole = "thi360_distinct_migrator";
+        String migratorPass = "thi360-distinct-migrator-pass";
+        String appRole = "thi360_distinct_app";
+        String appPass = "thi360-distinct-app-pass";
+
+        try (PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
+                .withDatabaseName("postgres")
+                .withUsername("postgres")
+                .withPassword("postgres-admin")) {
+            postgres.start();
+
+            JdbcTemplate adminJdbc = new JdbcTemplate(new SimpleDriverDataSource(
+                    new org.postgresql.Driver(),
+                    postgres.getJdbcUrl(),
+                    postgres.getUsername(),
+                    postgres.getPassword()));
+            adminJdbc.execute(
+                    "CREATE ROLE " + migratorRole + " LOGIN PASSWORD '" + migratorPass + "' NOSUPERUSER CREATEROLE");
+            adminJdbc.execute(
+                    "CREATE ROLE " + appRole + " LOGIN PASSWORD '" + appPass + "' NOSUPERUSER NOCREATEDB NOCREATEROLE");
+            adminJdbc.execute("CREATE DATABASE " + dbName + " OWNER " + migratorRole);
+
+            String dbUrl = "jdbc:postgresql://"
+                    + postgres.getHost()
+                    + ":"
+                    + postgres.getMappedPort(5432)
+                    + "/"
+                    + dbName;
+            JdbcTemplate migratorJdbc = new JdbcTemplate(new SimpleDriverDataSource(
+                    new org.postgresql.Driver(),
+                    dbUrl,
+                    migratorRole,
+                    migratorPass));
+            // Migrator creates thi360_audit_maint and holds a pre-existing SET FALSE, INHERIT TRUE self-grant
+            migratorJdbc.execute("CREATE ROLE thi360_audit_maint NOLOGIN");
+            migratorJdbc.execute("GRANT thi360_audit_maint TO " + migratorRole + " WITH INHERIT TRUE, SET FALSE");
+
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT pg_has_role(current_user, 'thi360_audit_maint', 'SET')",
+                    Boolean.class)).isFalse();
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT pg_has_role(current_user, 'thi360_audit_maint', 'USAGE')",
+                    Boolean.class)).isTrue();
+
+            Flyway.configure()
+                    .dataSource(dbUrl, migratorRole, migratorPass)
+                    .defaultSchema("shared")
+                    .schemas("shared", "identity", "catalog", "audit")
+                    .table("flyway_schema_history")
+                    .locations("classpath:db/migration")
+                    .placeholders(Map.of("auditAppRole", appRole))
+                    .load()
+                    .migrate();
+
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT pg_has_role(current_user, 'thi360_audit_maint', 'SET')",
+                    Boolean.class)).isFalse();
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT pg_has_role(current_user, 'thi360_audit_maint', 'USAGE')",
+                    Boolean.class)).isTrue();
+
+            Map<String, Object> membership = migratorJdbc.queryForMap(
+                    """
+                    SELECT m.inherit_option, m.set_option
+                    FROM pg_auth_members m
+                    JOIN pg_roles r ON r.oid = m.roleid
+                    JOIN pg_roles u ON u.oid = m.member
+                    JOIN pg_roles g ON g.oid = m.grantor
+                    WHERE r.rolname = 'thi360_audit_maint'
+                      AND u.rolname = ?
+                      AND g.rolname = ?
+                    """,
+                    migratorRole,
+                    migratorRole);
+            assertThat(membership.get("inherit_option")).isEqualTo(Boolean.TRUE);
+            assertThat(membership.get("set_option")).isEqualTo(Boolean.FALSE);
+
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT has_schema_privilege(?, 'audit', 'USAGE')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT has_schema_privilege(?, 'audit', 'CREATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(migratorJdbc.queryForObject(
+                    "SELECT pg_has_role(?, 'thi360_audit_maint', 'SET')",
+                    Boolean.class,
+                    appRole)).isTrue();
+        }
+    }
+
     private static String ownerOf(JdbcTemplate jdbc, String tableName) {
         return jdbc.queryForObject(
                 """
