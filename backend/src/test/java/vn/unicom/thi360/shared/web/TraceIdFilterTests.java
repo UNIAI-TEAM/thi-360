@@ -48,6 +48,7 @@ class TraceIdFilterTests extends AbstractIntegrationTest {
         OBSERVED_MDC_TRACE_ID.set(null);
 
         mockMvc.perform(get("/api/v1/trace-probe/fail?secret=123")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, "incoming-trace-42"))
                 .andExpect(status().isNotFound())
                 .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "incoming-trace-42"))
@@ -74,7 +75,7 @@ class TraceIdFilterTests extends AbstractIntegrationTest {
     void generatesRequestIdWhenAbsent_andSkipsAccessLogForActuator(CapturedOutput output) throws Exception {
         OBSERVED_MDC_TRACE_ID.set(null);
 
-        var pingResult = mockMvc.perform(get("/api/v1/trace-probe/ok"))
+        var pingResult = mockMvc.perform(get("/api/v1/trace-probe/ok").with(asStudent()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -103,6 +104,7 @@ class TraceIdFilterTests extends AbstractIntegrationTest {
         }) {
             OBSERVED_MDC_TRACE_ID.set(null);
             var res = mockMvc.perform(get("/api/v1/trace-probe/fail")
+                            .with(asStudent())
                             .header(TraceIdFilter.REQUEST_ID_HEADER, invalidHeader))
                     .andExpect(status().isNotFound())
                     .andReturn();
@@ -118,6 +120,7 @@ class TraceIdFilterTests extends AbstractIntegrationTest {
 
         String maxValidId = "a".repeat(128);
         mockMvc.perform(get("/api/v1/trace-probe/ok")
+                        .with(asStudent())
                         .header(TraceIdFilter.REQUEST_ID_HEADER, maxValidId))
                 .andExpect(status().isOk())
                 .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, maxValidId));
