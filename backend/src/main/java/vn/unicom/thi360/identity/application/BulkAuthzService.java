@@ -143,6 +143,7 @@ public class BulkAuthzService {
 
         String trimmedKey = idempotencyKey.trim();
         return idempotencyService.executeOnce(trimmedKey, IDEMPOTENCY_SCOPE, BulkAuthzResponse.class, () -> {
+            lockUserAuthzState(targets.userIds());
             BatchEvaluation evaluation = evaluateBatch(actor, request, targets);
             UUID batchId = Ids.newId();
             Instant now = Instant.now(clock);
@@ -464,9 +465,10 @@ public class BulkAuthzService {
                             });
                         }
                     }
-                    jdbcTemplate.batchUpdate(
+                    int[] counts = jdbcTemplate.batchUpdate(
                             "INSERT INTO identity.user_role (user_id, role_id, assigned_by, assigned_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
                             batchArgs);
+                    assertAffectedRowCounts(counts, batchArgs.size(), "INSERT user_role");
                 } else {
                     List<Object[]> batchArgs = new ArrayList<>();
                     for (UserEvaluation ev : changes) {
@@ -474,9 +476,10 @@ public class BulkAuthzService {
                             batchArgs.add(new Object[] {ev.item().userId(), roleId});
                         }
                     }
-                    jdbcTemplate.batchUpdate(
+                    int[] counts = jdbcTemplate.batchUpdate(
                             "DELETE FROM identity.user_role WHERE user_id = ? AND role_id = ?",
                             batchArgs);
+                    assertAffectedRowCounts(counts, batchArgs.size(), "DELETE user_role");
                 }
             } else {
                 if (request.action() == BulkAuthzAction.GRANT) {
@@ -488,9 +491,10 @@ public class BulkAuthzService {
                             });
                         }
                     }
-                    jdbcTemplate.batchUpdate(
+                    int[] counts = jdbcTemplate.batchUpdate(
                             "INSERT INTO identity.user_permission (user_id, permission_id, granted_by, granted_at, reason) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
                             batchArgs);
+                    assertAffectedRowCounts(counts, batchArgs.size(), "INSERT user_permission");
                 } else {
                     List<Object[]> batchArgs = new ArrayList<>();
                     for (UserEvaluation ev : changes) {
@@ -498,9 +502,10 @@ public class BulkAuthzService {
                             batchArgs.add(new Object[] {ev.item().userId(), permId});
                         }
                     }
-                    jdbcTemplate.batchUpdate(
+                    int[] counts = jdbcTemplate.batchUpdate(
                             "DELETE FROM identity.user_permission WHERE user_id = ? AND permission_id = ?",
                             batchArgs);
+                    assertAffectedRowCounts(counts, batchArgs.size(), "DELETE user_permission");
                 }
             }
 
@@ -548,6 +553,51 @@ public class BulkAuthzService {
                 .reason(trimmedReason)
                 .actor(actor.id(), actor.username(), null, actorType)
                 .build());
+    }
+
+    private void lockUserAuthzState(List<UUID> userIds) {
+        if (userIds.isEmpty()) {
+            return;
+        }
+        List<UUID> sortedIds = userIds.stream().sorted().toList();
+        jdbcTemplate.query(
+                con -> {
+                    var ps = con.prepareStatement(
+                            "SELECT id FROM identity.user_account WHERE id = ANY(?) ORDER BY id FOR UPDATE");
+                    ps.setArray(1, con.createArrayOf("uuid", sortedIds.toArray(UUID[]::new)));
+                    return ps;
+                },
+                rs -> {});
+        jdbcTemplate.query(
+                con -> {
+                    var ps = con.prepareStatement(
+                            "SELECT user_id, role_id FROM identity.user_role WHERE user_id = ANY(?) ORDER BY user_id, role_id FOR UPDATE");
+                    ps.setArray(1, con.createArrayOf("uuid", sortedIds.toArray(UUID[]::new)));
+                    return ps;
+                },
+                rs -> {});
+        jdbcTemplate.query(
+                con -> {
+                    var ps = con.prepareStatement(
+                            "SELECT user_id, permission_id FROM identity.user_permission WHERE user_id = ANY(?) ORDER BY user_id, permission_id FOR UPDATE");
+                    ps.setArray(1, con.createArrayOf("uuid", sortedIds.toArray(UUID[]::new)));
+                    return ps;
+                },
+                rs -> {});
+    }
+
+    private static void assertAffectedRowCounts(int[] counts, int expectedOperations, String operation) {
+        if (counts.length != expectedOperations) {
+            throw new IllegalStateException(
+                    "Unexpected batch update count length for " + operation + ": "
+                            + counts.length + " vs " + expectedOperations);
+        }
+        for (int count : counts) {
+            if (count != 1) {
+                throw new IllegalStateException(
+                        "Unexpected affected row count for " + operation + ": " + count + " (expected 1)");
+            }
+        }
     }
 
     private Map<UUID, UserBatchAuthzState> loadBatchStates(List<UUID> userIds) {

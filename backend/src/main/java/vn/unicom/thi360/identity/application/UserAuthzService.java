@@ -164,7 +164,7 @@ public class UserAuthzService {
     @Transactional
     public UserRolesResponse updateUserRoles(UUID userId, UpdateUserRolesRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        UserAccount user = requireActiveUser(userId);
+        UserAccount user = requireActiveUserForUpdate(userId);
 
         Set<UUID> targetRoleIds = new LinkedHashSet<>(request.roleIds());
         Map<UUID, Role> targetRoles = new LinkedHashMap<>();
@@ -264,7 +264,7 @@ public class UserAuthzService {
     public UserDirectPermissionsResponse updateUserPermissions(
             UUID userId, UpdateUserPermissionsRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        UserAccount user = requireActiveUser(userId);
+        UserAccount user = requireActiveUserForUpdate(userId);
 
         Set<Permission> requested = RoleService.parsePermissions(request.permissionCodes());
         List<UserPermission> existingRows = userPermissionRepository.findAllByIdUserId(userId);
@@ -482,6 +482,14 @@ public class UserAuthzService {
             throw new NotFoundException("NOT_FOUND", null);
         }
         return user;
+    }
+
+    private UserAccount requireActiveUserForUpdate(UUID userId) {
+        jdbcTemplate.query(
+                "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE",
+                rs -> {},
+                userId);
+        return requireActiveUser(userId);
     }
 
     private UserRolesResponse buildUserRolesResponse(UUID userId) {

@@ -32,6 +32,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import vn.unicom.thi360.shared.outbox.OutboxRelay;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.application.AuthzSnapshotService;
 import vn.unicom.thi360.identity.domain.PermissionEntity;
@@ -95,6 +101,9 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
 
     @MockitoSpyBean
     private AuditRecorder auditRecorder;
+
+    @Autowired
+    private OutboxRelay outboxRelay;
 
     private final List<UUID> createdUserIds = new ArrayList<>();
     private final List<UUID> createdRoleIds = new ArrayList<>();
@@ -430,6 +439,98 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
                         .cookie(atCookie))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void concurrentBulkRevokes_serializeOnUserLock_andPreventSelfLockoutBypass() throws Exception {
+        UserAccount selfActor = createUser("bulk.concurrent." + suffix(), UserStatus.ACTIVE, null);
+        Role roleA = createCustomRole("CONC_A_" + suffix(), Access.MANAGE, RoleStatus.ACTIVE);
+        Role roleB = createCustomRole("CONC_B_" + suffix(), Access.MANAGE, RoleStatus.ACTIVE);
+
+        PermissionEntity userView = permissionRepository.findByCode(Permissions.USER_VIEW).orElseThrow();
+        PermissionEntity userAssign = permissionRepository.findByCode(Permissions.USER_ASSIGN).orElseThrow();
+        for (Role r : List.of(roleA, roleB)) {
+            rolePermissionRepository.save(new RolePermission(r.getId(), userView.getId(), null, Instant.now()));
+            rolePermissionRepository.save(new RolePermission(r.getId(), userAssign.getId(), null, Instant.now()));
+        }
+        userRoleRepository.save(new UserRole(selfActor.getId(), roleA.getId(), null, Instant.now()));
+        userRoleRepository.save(new UserRole(selfActor.getId(), roleB.getId(), null, Instant.now()));
+
+        String bodyA = objectMapper.writeValueAsString(Map.of(
+                "userIds", List.of(selfActor.getId()),
+                "action", "REVOKE",
+                "target", "ROLE",
+                "roleIds", List.of(roleA.getId())));
+        String bodyB = objectMapper.writeValueAsString(Map.of(
+                "userIds", List.of(selfActor.getId()),
+                "action", "REVOKE",
+                "target", "ROLE",
+                "roleIds", List.of(roleB.getId())));
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            Callable<JsonNode> taskA = () -> {
+                ready.countDown();
+                assertThat(go.await(10, TimeUnit.SECONDS)).isTrue();
+                MvcResult res = mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                                .with(asUser(selfActor.getId(), selfActor.getUsername(),
+                                        Permissions.USER_VIEW, Permissions.USER_ASSIGN))
+                                .header("Idempotency-Key", "conc-a-" + UUID.randomUUID())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(bodyA))
+                        .andExpect(status().isOk())
+                        .andReturn();
+                return objectMapper.readTree(res.getResponse().getContentAsString());
+            };
+            Callable<JsonNode> taskB = () -> {
+                ready.countDown();
+                assertThat(go.await(10, TimeUnit.SECONDS)).isTrue();
+                MvcResult res = mockMvc.perform(post("/api/v1/admin/authz/bulk")
+                                .with(asUser(selfActor.getId(), selfActor.getUsername(),
+                                        Permissions.USER_VIEW, Permissions.USER_ASSIGN))
+                                .header("Idempotency-Key", "conc-b-" + UUID.randomUUID())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(bodyB))
+                        .andExpect(status().isOk())
+                        .andReturn();
+                return objectMapper.readTree(res.getResponse().getContentAsString());
+            };
+
+            Future<JsonNode> f1 = executor.submit(taskA);
+            Future<JsonNode> f2 = executor.submit(taskB);
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            go.countDown();
+
+            JsonNode res1 = f1.get(30, TimeUnit.SECONDS);
+            JsonNode res2 = f2.get(30, TimeUnit.SECONDS);
+
+            int totalWillChange = res1.get("willChange").asInt() + res2.get("willChange").asInt();
+            int totalSkipped = res1.get("skipped").asInt() + res2.get("skipped").asInt();
+            assertThat(totalWillChange).isEqualTo(1);
+            assertThat(totalSkipped).isEqualTo(1);
+
+            JsonNode skippedRes = res1.get("skipped").asInt() == 1 ? res1 : res2;
+            assertThat(skippedRes.get("items").get(0).get("reasonCode").asText()).isEqualTo("SELF_LOCKOUT");
+
+            List<UUID> remainingRoleIds = jdbcTemplate.queryForList(
+                    "SELECT role_id FROM identity.user_role WHERE user_id = ?",
+                    UUID.class,
+                    selfActor.getId());
+            assertThat(remainingRoleIds).hasSize(1);
+            UUID survivingRoleId = remainingRoleIds.getFirst();
+            assertThat(survivingRoleId).isIn(roleA.getId(), roleB.getId());
+
+            outboxRelay.relayBatch();
+            Integer roleChangedEvents = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM audit.audit_event WHERE target_id = ? AND action = 'USER_ROLES_CHANGED'",
+                    Integer.class,
+                    selfActor.getId().toString());
+            assertThat(roleChangedEvents).isEqualTo(1);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private UserAccount createUser(String username, UserStatus status, Instant deletedAt) {
