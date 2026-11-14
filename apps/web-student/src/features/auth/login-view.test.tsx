@@ -195,6 +195,13 @@ describe("LoginView", () => {
     await user.type(identifierInput, "ops.admin");
     expect(identifierInput).toHaveValue("ops.admin");
 
+    mocks.loginWithPassword.mockRejectedValueOnce(
+      new ApiStatusError(401, "backend msg", { code: "INVALID_CREDENTIALS" }),
+    );
+    await user.type(screen.getByLabelText(/Mật khẩu/), "wrong");
+    await user.click(screen.getByRole("button", { name: "Đăng nhập" }));
+    expect(await screen.findByText("Tên đăng nhập hoặc mật khẩu không đúng.")).toBeInTheDocument();
+
     const switcher = screen.getByRole("button", { name: "Chọn ngôn ngữ" });
     switcher.focus();
     expect(switcher).toHaveFocus();
@@ -208,6 +215,9 @@ describe("LoginView", () => {
     await user.keyboard("{ArrowDown}{Enter}");
     await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument());
     expect(document.cookie).toContain("thi360_locale=en");
+    // Lỗi đang hiện đổi theo ngôn ngữ mới: lỗi máy chủ và lỗi của ô đều lưu bằng mã, dịch lúc hiển thị.
+    expect(screen.getByText(en_messages.login.errors.INVALID_CREDENTIALS)).toBeInTheDocument();
+    expect(screen.queryByText("Tên đăng nhập hoặc mật khẩu không đúng.")).toBeNull();
     expect(screen.getByLabelText(/Username or email/)).toBe(identifierInput);
     expect(identifierInput).toHaveValue("ops.admin");
     const updatedSwitcher = screen.getByRole("button", { name: "Change language" });

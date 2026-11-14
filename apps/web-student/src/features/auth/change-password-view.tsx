@@ -40,6 +40,15 @@ const PAGE_CLASS = "flex min-h-screen items-start justify-center bg-page p-4 sm:
 const CARD_CLASS =
   "flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-6 shadow-xl sm:p-10";
 
+/** Lỗi của từng ô lưu bằng khóa dịch (`changePassword.<khóa>`), dịch lúc hiển thị: đổi ngôn ngữ là câu lỗi đổi theo. */
+type ChangePasswordErrorKey =
+  | "oldPasswordRequired"
+  | "wrongOldPassword"
+  | "newPasswordWeak"
+  | "newPasswordSameAsUsername"
+  | "confirmPasswordRequired"
+  | "confirmPasswordMismatch";
+
 type ChangePasswordValues = {
   oldPassword: string;
   newPassword: string;
@@ -65,8 +74,11 @@ export function ChangePasswordView({
     staleTime: 60_000,
   });
 
-  const [serverError, setServerError] = useState<string | null>(null);
+  // Chỉ có một lỗi chung (`genericError`): lưu cờ, câu chữ dịch lúc hiển thị.
+  const [hasServerError, setHasServerError] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const fieldError = (message: string | undefined) =>
+    message ? t(message as ChangePasswordErrorKey) : undefined;
 
   const username = sessionQuery.data?.username ?? "";
 
@@ -74,21 +86,21 @@ export function ChangePasswordView({
     () =>
       z
         .object({
-          oldPassword: z.string().min(1, t("oldPasswordRequired")),
+          oldPassword: z.string().min(1, "oldPasswordRequired" satisfies ChangePasswordErrorKey),
           newPassword: z
             .string()
-            .refine((value) => isPasswordStrong(value), t("newPasswordWeak"))
+            .refine((value) => isPasswordStrong(value), "newPasswordWeak" satisfies ChangePasswordErrorKey)
             .refine(
               (value) => !username || value.toLowerCase() !== username.trim().toLowerCase(),
-              t("newPasswordSameAsUsername"),
+              "newPasswordSameAsUsername" satisfies ChangePasswordErrorKey,
             ),
-          confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
+          confirmPassword: z.string().min(1, "confirmPasswordRequired" satisfies ChangePasswordErrorKey),
         })
         .refine((values) => values.newPassword === values.confirmPassword, {
-          message: t("confirmPasswordMismatch"),
+          message: "confirmPasswordMismatch" satisfies ChangePasswordErrorKey,
           path: ["confirmPassword"],
         }),
-    [t, username],
+    [username],
   );
 
   const {
@@ -124,24 +136,25 @@ export function ChangePasswordView({
 
   // Lỗi máy chủ gắn vào ô nào thì đưa focus về ô đó, để người dùng bàn phím và trình đọc màn hình tới ngay chỗ cần sửa.
   function applyPasswordFieldError(error: ApiStatusError): boolean {
+    const setFieldError = (field: "oldPassword" | "newPassword", message: ChangePasswordErrorKey) =>
+      setError(field, { message }, { shouldFocus: true });
     if (error.code === "WRONG_OLD_PASSWORD") {
-      setError("oldPassword", { message: t("wrongOldPassword") }, { shouldFocus: true });
+      setFieldError("oldPassword", "wrongOldPassword");
       return true;
     }
     if (error.code === "PASSWORD_WEAK") {
       const fieldCode = error.fieldErrors[0]?.code;
-      if (fieldCode === "PASSWORD_SAME_AS_USERNAME") {
-        setError("newPassword", { message: t("newPasswordSameAsUsername") }, { shouldFocus: true });
-      } else {
-        setError("newPassword", { message: t("newPasswordWeak") }, { shouldFocus: true });
-      }
+      setFieldError(
+        "newPassword",
+        fieldCode === "PASSWORD_SAME_AS_USERNAME" ? "newPasswordSameAsUsername" : "newPasswordWeak",
+      );
       return true;
     }
     return false;
   }
 
   async function onSubmit(values: ChangePasswordValues) {
-    setServerError(null);
+    setHasServerError(false);
     const payload = {
       oldPassword: values.oldPassword,
       newPassword: values.newPassword,
@@ -174,14 +187,14 @@ export function ChangePasswordView({
             }
             if (applyPasswordFieldError(retryError)) return;
           }
-          setServerError(t("genericError"));
+          setHasServerError(true);
         }
         return;
       }
       if (error instanceof ApiStatusError && applyPasswordFieldError(error)) {
         return;
       }
-      setServerError(t("genericError"));
+      setHasServerError(true);
     }
   }
 
@@ -289,17 +302,17 @@ export function ChangePasswordView({
           </div>
         ) : (
           <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-            {serverError && (
+            {hasServerError && (
               <div
                 role="alert"
                 className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-3 text-body text-danger"
               >
                 <AlertCircle aria-hidden className="mt-0.5 size-4.5 shrink-0" />
-                <span>{serverError}</span>
+                <span>{t("genericError")}</span>
               </div>
             )}
 
-            <FormField label={t("oldPasswordLabel")} error={errors.oldPassword?.message} required>
+            <FormField label={t("oldPasswordLabel")} error={fieldError(errors.oldPassword?.message)} required>
               {(field) => (
                 <Controller
                   name="oldPassword"
@@ -328,7 +341,7 @@ export function ChangePasswordView({
               )}
             </FormField>
 
-            <FormField label={t("newPasswordLabel")} error={errors.newPassword?.message} required>
+            <FormField label={t("newPasswordLabel")} error={fieldError(errors.newPassword?.message)} required>
               {(field) => (
                 <Controller
                   name="newPassword"
@@ -355,7 +368,7 @@ export function ChangePasswordView({
               )}
             </FormField>
 
-            <FormField label={t("confirmPasswordLabel")} error={errors.confirmPassword?.message} required>
+            <FormField label={t("confirmPasswordLabel")} error={fieldError(errors.confirmPassword?.message)} required>
               {(field) => (
                 <Controller
                   name="confirmPassword"

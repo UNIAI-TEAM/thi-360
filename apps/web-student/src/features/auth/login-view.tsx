@@ -6,7 +6,7 @@ import { AlertCircle, Check, Lock, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { loginWithPassword } from "@/features/session/api";
@@ -18,12 +18,25 @@ type LoginFormValues = {
   password: string;
 };
 
-const KNOWN_ERROR_CODES = new Set([
-  "INVALID_CREDENTIALS",
-  "LOGIN_THROTTLED",
-  "ACCOUNT_INACTIVE",
-  "RATE_LIMITED",
-]);
+const KNOWN_ERROR_CODES = ["INVALID_CREDENTIALS", "LOGIN_THROTTLED", "ACCOUNT_INACTIVE", "RATE_LIMITED"] as const;
+/** Mã lỗi máy chủ đang hiện, cũng là khóa dịch `login.errors.<mã>`. Lưu mã chứ không lưu câu đã dịch, để đổi ngôn ngữ là câu đổi theo. */
+type LoginErrorCode = (typeof KNOWN_ERROR_CODES)[number] | "generic";
+
+function toLoginErrorCode(error: unknown): LoginErrorCode {
+  if (error instanceof ApiStatusError) {
+    const known = KNOWN_ERROR_CODES.find((code) => code === error.code);
+    if (known) return known;
+  }
+  return "generic";
+}
+
+/** Lỗi của từng ô cũng lưu bằng khóa dịch (`login.<khóa>`) và dịch lúc hiển thị. */
+type LoginFieldErrorKey = "identifierRequired" | "passwordRequired";
+
+const loginSchema = z.object({
+  identifier: z.string().trim().min(1, "identifierRequired" satisfies LoginFieldErrorKey),
+  password: z.string().min(1, "passwordRequired" satisfies LoginFieldErrorKey),
+});
 
 export function LoginView({
   navigate = (url: string) => window.location.assign(url),
@@ -38,18 +51,11 @@ export function LoginView({
   const callbackUrl = searchParams.get("callbackUrl") ?? undefined;
   const reason = searchParams.get("reason");
 
-  const [serverError, setServerError] = useState<string | null>(() =>
-    reason === "inactive" ? t("errors.ACCOUNT_INACTIVE") : null,
+  const [serverErrorCode, setServerErrorCode] = useState<LoginErrorCode | null>(() =>
+    reason === "inactive" ? "ACCOUNT_INACTIVE" : null,
   );
-
-  const schema = useMemo(
-    () =>
-      z.object({
-        identifier: z.string().trim().min(1, t("identifierRequired")),
-        password: z.string().min(1, t("passwordRequired")),
-      }),
-    [t],
-  );
+  const fieldError = (message: string | undefined) =>
+    message ? t(message as LoginFieldErrorKey) : undefined;
 
   const {
     register,
@@ -57,12 +63,12 @@ export function LoginView({
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(loginSchema),
     defaultValues: { identifier: "", password: "" },
   });
 
   async function onSubmit(values: LoginFormValues) {
-    setServerError(null);
+    setServerErrorCode(null);
     try {
       const result = await loginWithPassword({
         identifier: values.identifier.trim(),
@@ -71,13 +77,7 @@ export function LoginView({
       });
       navigate(result.redirectTo);
     } catch (error) {
-      if (error instanceof ApiStatusError && KNOWN_ERROR_CODES.has(error.code)) {
-        setServerError(
-          t(`errors.${error.code as "INVALID_CREDENTIALS" | "LOGIN_THROTTLED" | "ACCOUNT_INACTIVE" | "RATE_LIMITED"}`),
-        );
-        return;
-      }
-      setServerError(t("errors.generic"));
+      setServerErrorCode(toLoginErrorCode(error));
     }
   }
 
@@ -125,18 +125,18 @@ export function LoginView({
             </Link>
           </div>
 
-          {serverError && (
+          {serverErrorCode && (
             <div
               role="alert"
               className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-3 text-body text-danger"
             >
               <AlertCircle aria-hidden className="mt-0.5 size-4.5 shrink-0" />
-              <span>{serverError}</span>
+              <span>{t(`errors.${serverErrorCode}`)}</span>
             </div>
           )}
 
           <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-            <FormField label={t("identifierLabel")} error={errors.identifier?.message} required>
+            <FormField label={t("identifierLabel")} error={fieldError(errors.identifier?.message)} required>
               {(field) => (
                 <Input
                   {...field}
@@ -157,7 +157,7 @@ export function LoginView({
               )}
             </FormField>
 
-            <FormField label={t("passwordLabel")} error={errors.password?.message} required>
+            <FormField label={t("passwordLabel")} error={fieldError(errors.password?.message)} required>
               {(field) => (
                 <Controller
                   name="password"
