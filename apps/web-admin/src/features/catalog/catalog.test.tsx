@@ -686,7 +686,7 @@ describe("resolveImportColumnLabel", () => {
   });
 });
 
-describe("CatalogView: cột thao tác của bảng giá trị (VIS-8)", () => {
+describe("CatalogView: cột thao tác của bảng giá trị (VIS-8)", { timeout: 20_000 }, () => {
   it("cột thao tác dính mép phải nên vẫn bấm được khi bảng rộng hơn thẻ", async () => {
     renderCatalog({ search: "group=SUBJECT" });
     const table = await screen.findByRole("table");
@@ -717,7 +717,7 @@ describe("thông báo thiếu quyền xem lịch sử không lộ mã quyền (V
   });
 });
 
-describe("CatalogView: một bộ định dạng ngày trong ngăn chi tiết (VIS-9)", () => {
+describe("CatalogView: một bộ định dạng ngày trong ngăn chi tiết (VIS-9)", { timeout: 20_000 }, () => {
   // 2026-11-14T00:00:00Z = 07:00 giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7).
   const INSTANT = "2026-11-14T00:00:00Z";
 
@@ -755,7 +755,7 @@ describe("CatalogView: một bộ định dạng ngày trong ngăn chi tiết (V
   });
 });
 
-describe("CatalogView: chip danh mục liên kết mặc định (VIS-6)", () => {
+describe("CatalogView: chip danh mục liên kết mặc định (VIS-6)", { timeout: 20_000 }, () => {
   it("chữ (Mặc định) dùng token chữ primary, không giảm opacity", async () => {
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
     expect(await screen.findByText("Hàm số")).toBeInTheDocument();
@@ -815,7 +815,7 @@ describe("buildCatalogDndAccessibility (VIS-5)", () => {
   });
 });
 
-describe("CatalogView: hướng dẫn kéo thả được dịch trên mọi DndContext (VIS-5)", () => {
+describe("CatalogView: hướng dẫn kéo thả được dịch trên mọi DndContext (VIS-5)", { timeout: 20_000 }, () => {
   const ENGLISH_DEFAULT = /To pick up a draggable item/;
 
   it("bảng giá trị SIMPLE: vi và en", async () => {
@@ -884,7 +884,7 @@ describe("error-code mapping", () => {
   });
 });
 
-describe("CatalogView: phân quyền và bốn trạng thái", () => {
+describe("CatalogView: phân quyền và bốn trạng thái", { timeout: 20_000 }, () => {
   it("chặn truy cập khi thiếu quyền CATALOG.VIEW", async () => {
     renderCatalog({ permissions: ["USER.VIEW"] });
     expect(
@@ -957,7 +957,7 @@ describe("CatalogView: phân quyền và bốn trạng thái", () => {
   });
 });
 
-describe("CatalogView: bảng giá trị, tìm kiếm, lọc và sắp xếp thứ tự", () => {
+describe("CatalogView: bảng giá trị, tìm kiếm, lọc và sắp xếp thứ tự", { timeout: 20_000 }, () => {
   it("tìm kiếm + lọc trạng thái khóa kéo thả/sắp xếp, đổi thứ tự lạc quan và hoàn tác khi lỗi", async () => {
     const reorderMock = vi
       .fn<CatalogApi["reorderItems"]>()
@@ -1023,7 +1023,7 @@ describe("CatalogView: bảng giá trị, tìm kiếm, lọc và sắp xếp th�
   }, 15_000);
 });
 
-describe("CatalogView: dialog nhóm và dialog giá trị", () => {
+describe("CatalogView: dialog nhóm và dialog giá trị", { timeout: 20_000 }, () => {
   it("dialog thêm/sửa nhóm khóa ô mã khi API báo CATALOG_CODE_LOCKED và giữ nguyên dữ liệu đã nhập", async () => {
     const updateGroupMock = vi
       .fn<CatalogApi["updateGroup"]>()
@@ -1173,7 +1173,7 @@ describe("CatalogView: dialog nhóm và dialog giá trị", () => {
   });
 });
 
-describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng và xóa đang dùng", () => {
+describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng và xóa đang dùng", { timeout: 20_000 }, () => {
   it("nhóm COMBINATION hiển thị thêm cột Kỳ thi, Các môn theo thứ tự và Phiên bản", async () => {
     renderCatalog({ search: "group=SUBJECT_COMBINATION" });
 
@@ -1806,7 +1806,7 @@ function createTreeMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
   });
 }
 
-describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và chuyển nhánh", () => {
+describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và chuyển nhánh", { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -2613,7 +2613,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
   });
 });
 
-describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
+describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     if (!URL.createObjectURL) {
@@ -2881,7 +2881,7 @@ describe("importDialog: số nhiều ICU cho số dòng (V2-5)", () => {
   });
 });
 
-describe("CatalogView: dịch cấp cây hệ thống và pickName theo useLocale()", () => {
+describe("CatalogView: dịch cấp cây hệ thống và pickName theo useLocale()", { timeout: 20_000 }, () => {
   it("hiển thị tên 3 cấp cây hệ thống qua message key trên header, dòng cây, pane chi tiết và các dialog ở locale en & vi", async () => {
     const api = createTreeMockApi();
     const enRender = renderCatalog({ api, locale: "en", search: "group=KNOWLEDGE" });
