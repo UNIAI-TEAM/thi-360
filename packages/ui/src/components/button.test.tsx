@@ -44,6 +44,39 @@ describe("Button", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("đang xử lý: nhãn vẫn nằm trong cây truy cập (không visibility:hidden), spinner chỉ để nhìn", () => {
+    render(
+      <Button loading>
+        <span data-testid="label-text">Đăng nhập</span>
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Đăng nhập" });
+    expect(button).toHaveAccessibleName("Đăng nhập");
+    expect(button).toHaveAttribute("aria-busy", "true");
+    // Nút vẫn nhận focus khi đang xử lý, nên trình đọc màn hình đọc lại được tên và trạng thái bận.
+    expect(button).not.toHaveAttribute("disabled");
+    button.focus();
+    expect(button).toHaveFocus();
+
+    const label = screen.getByTestId("label-text").parentElement as HTMLElement;
+    expect(label).toHaveClass("opacity-0");
+    expect(label).not.toHaveClass("invisible");
+    expect(label).not.toHaveAttribute("aria-hidden");
+    expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("không đang xử lý: không có spinner, nhãn hiện bình thường, không aria-busy", () => {
+    render(
+      <Button>
+        <span data-testid="label-text">Đăng nhập</span>
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Đăng nhập" });
+    expect(button).not.toHaveAttribute("aria-busy");
+    expect(button.querySelector("svg")).toBeNull();
+    expect(screen.getByTestId("label-text").parentElement).not.toHaveClass("opacity-0");
+  });
+
   it("asChild đưa kiểu nút cho phần tử con", () => {
     render(
       <Button asChild variant="secondary">

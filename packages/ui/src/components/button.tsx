@@ -114,10 +114,14 @@ export function Button({
           className="absolute size-4 animate-spin motion-reduce:animate-none"
         />
       )}
+      {/*
+       * Nhãn ẩn bằng `opacity-0`, không bằng `invisible`: `visibility: hidden` bỏ nhãn khỏi cây truy cập, nút đang
+       * xử lý thành nút không tên. Nhãn vẫn chiếm chỗ nên nút giữ nguyên chiều rộng.
+       */}
       <span
         className={cn(
           "inline-flex items-center gap-2 [&_svg]:size-4 [&_svg]:shrink-0",
-          loading && "invisible",
+          loading && "opacity-0",
         )}
       >
         {children}
