@@ -288,7 +288,9 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
         adminPage.getByText("Đã lưu và áp dụng giao diện mới cho toàn hệ thống."),
       ).toBeVisible();
       await expect(adminPage.locator("html")).toHaveAttribute("data-theme", chosenMode);
-      await expect(adminPage.locator("#thi360-theme-vars")).toContainText("#0f3c6e");
+      await expect(adminPage.locator("#thi360-theme-vars")).toContainText("#0f3c6e", {
+        useInnerText: false,
+      });
 
       const afterSaveCookies = await adminContext.cookies(ADMIN_URL);
       expect(cookieValue(afterSaveCookies, "thi360_theme")).toBe(chosenMode);
