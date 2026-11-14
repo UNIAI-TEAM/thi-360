@@ -76,7 +76,7 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** Định dạng ngày chuẩn dd/MM/yyyy (DESIGN.md mục 8). */
+/** Dinh dang ngay chuan dd/MM/yyyy (DESIGN.md muc 8). */
 export function formatClassDate(iso?: string): string {
   if (!iso) return "—";
   const date = new Date(iso);
@@ -84,7 +84,7 @@ export function formatClassDate(iso?: string): string {
   return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
 
-/** Định dạng ngày giờ dd/MM/yyyy HH:mm. */
+/** Dinh dang ngay gio dd/MM/yyyy HH:mm. */
 export function formatClassDateTime(iso?: string): string {
   if (!iso) return "—";
   const date = new Date(iso);

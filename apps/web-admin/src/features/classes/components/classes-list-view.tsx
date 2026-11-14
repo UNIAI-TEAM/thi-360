@@ -160,9 +160,9 @@ function ClassesListContent({
     queryFn: () => deps.listClasses(queryParams),
   });
 
-  // Điều chỉnh trang trong render (thay cho effect): khi đang ở trang >1 mà trang đó
-  // rỗng (vd sau khi xóa phần tử cuối hoặc trang vượt quá totalPages), lùi về trang
-  // cuối hợp lệ ngay lập tức thay vì chờ effect.
+  // Dieu chinh trang trong render (thay cho effect): khi dang o trang >1 ma trang do
+  // rong (vd sau khi xoa phan tu cuoi hoac trang vuot qua totalPages), lui ve trang
+  // cuoi hop le ngay lap tuc thay vi cho effect.
   const classesData = classesQuery.data;
   const effectivePage =
     page > 1 &&

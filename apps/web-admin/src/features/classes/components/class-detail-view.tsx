@@ -176,8 +176,8 @@ function ClassDetailContent({
     enabled: Boolean(classQuery.data),
   });
 
-  // Điều chỉnh trang trong render (thay cho effect): khi đang ở trang >1 mà trang đó
-  // rỗng (vd sau khi xóa/transfer phần tử cuối), lùi về trang cuối hợp lệ ngay lập tức.
+  // Dieu chinh trang trong render (thay cho effect): khi dang o trang >1 ma trang do
+  // rong (vd sau khi xoa/transfer phan tu cuoi), lui ve trang cuoi hop le ngay lap tuc.
   const membersData = membersQuery.data;
   const effectiveMembersPage =
     page > 1 &&

@@ -52,7 +52,7 @@ type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 
 export interface UsersListViewProps {
   deps?: Partial<UsersApiDeps>;
-  /** Hiện bộ lọc Lớp học (mặc định bật; cần quyền CLASS.VIEW để xem). */
+  /** Hien bo loc Lop hoc (mac dinh bat; can quyen CLASS.VIEW de xem). */
   showClassFilter?: boolean;
 }
 

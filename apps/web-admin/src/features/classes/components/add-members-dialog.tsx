@@ -49,7 +49,7 @@ export interface AddMembersDialogProps {
   addClassMembers?: typeof defaultAddClassMembers;
   listUsers?: (query: ListUsersQuery) => Promise<PageResponseUserSummary>;
   listActiveRoles?: () => Promise<RoleSummary[]>;
-  /** Học viên đã là thành viên lớp theo dữ liệu đang tải ở trang chi tiết (không gọi thêm API); máy chủ vẫn là nguồn quyết định khi thêm. */
+  /** Hoc vien da la thanh vien lop theo du lieu dang tai o trang chi tiet (khong goi them API); may chu van la nguon quyet dinh khi them. */
   existingMemberUserIds?: readonly string[];
 }
 
