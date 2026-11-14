@@ -19,7 +19,16 @@ export type DrawerContentProps = ComponentProps<typeof DialogPrimitive.Content> 
   closeLabel?: string;
 };
 
-/** Trượt từ phải, rộng 520px, dùng cho chi tiết (DESIGN.md mục 5.10). */
+/**
+ * Trượt từ phải, rộng 520px, dùng cho chi tiết (DESIGN.md mục 5.10).
+ *
+ * Cùng cấu trúc với `DialogContent` (C-12): khung drawer KHÔNG cuộn; nội dung nằm trong một vùng cuộn bên trong,
+ * `DrawerHeader` dính mép trên, `DrawerFooter` (tùy chọn) dính mép dưới, nút × nằm ngoài vùng cuộn nên luôn
+ * bấm được. Nơi gọi không phải đổi gì: con của `DrawerContent` vẫn xếp cột, cách nhau 16px.
+ *
+ * Muốn chỉ một phần nội dung cuộn (ví dụ giữ thanh tab đứng yên): cho khối đó `min-h-0 flex-1` và cho phần cuộn
+ * bên trong nó `min-h-0 flex-1 overflow-y-auto`; vùng cuộn của drawer là một cột flex cao bằng phần còn lại.
+ */
 export function DrawerContent({
   className,
   children,
@@ -34,7 +43,7 @@ export function DrawerContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full max-w-[520px] flex-col gap-4 overflow-y-auto rounded-l-xl bg-surface p-6 shadow-xl",
+          "fixed inset-y-0 right-0 z-50 flex w-full max-w-[520px] flex-col gap-4 rounded-l-xl bg-surface p-6 shadow-xl",
           // Chỉ chạy hiệu ứng trong `motion-safe:` (xem ghi chú ở `DialogOverlay`).
           "motion-safe:data-[state=open]:animate-drawer-in motion-safe:data-[state=closed]:animate-drawer-out",
           className,
@@ -42,11 +51,19 @@ export function DrawerContent({
         {...props}
         {...returnFocusProps}
       >
-        {children}
+        {/*
+          Vùng cuộn, như ở DialogContent: margin âm + padding chỉ theo chiều ngang (chừa chỗ cho vòng focus bị
+          overflow cắt); theo chiều dọc không có padding/margin âm để nội dung cuộn không lộ ra phía trên
+          tiêu đề dính.
+        */}
+        <div className="-mx-2 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2">
+          {children}
+        </div>
+        {/* z-20 > z-10 của DrawerHeader/DrawerFooter dính: nút × luôn là phần tử trên cùng tại tâm của nó. */}
         <DialogPrimitive.Close
           aria-label={closeLabel ?? common.close}
           className={cn(
-            "absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
+            "absolute top-4 right-4 z-20 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
             focusRing,
           )}
         >
@@ -57,8 +74,30 @@ export function DrawerContent({
   );
 }
 
+/** Dính mép trên của vùng cuộn; chừa 40px bên phải cho nút ×. */
 export function DrawerHeader({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("flex flex-col gap-1.5 pr-8", className)} {...props} />;
+  return (
+    <div
+      className={cn("sticky top-0 z-10 flex flex-col gap-1.5 bg-surface pb-2 pr-10", className)}
+      {...props}
+    />
+  );
+}
+
+/**
+ * Hàng nút dính mép dưới của drawer (tùy chọn). Đặt làm con cuối của `DrawerContent`; `mt-auto` đẩy nó xuống
+ * đáy khi nội dung ngắn. Nút căn phải, nút chính ở ngoài cùng bên phải.
+ */
+export function DrawerFooter({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "sticky bottom-0 z-10 mt-auto flex justify-end gap-3 bg-surface pt-2 pb-1",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export const DrawerTitle = DialogTitle;
