@@ -102,6 +102,47 @@ describe("proxyApiRequest X-Forwarded-For", () => {
   });
 });
 
+describe("proxyApiRequest Accept-Language", () => {
+  it("gửi Accept-Language theo cookie thi360_locale=en và bỏ qua header của trình duyệt", async () => {
+    await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: {
+          cookie: "thi360_at=at; thi360_locale=en",
+          "accept-language": "fr-FR,fr;q=0.9,vi;q=0.8",
+        },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(lastHeaders().get("accept-language")).toBe("en");
+  });
+
+  it("mặc định Accept-Language là vi khi thiếu hoặc sai cookie thi360_locale kể cả khi trình duyệt gửi en-US", async () => {
+    await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: {
+          cookie: "thi360_locale=fr",
+          "accept-language": "en-US,en;q=0.9",
+        },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(lastHeaders().get("accept-language")).toBe("vi");
+
+    await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: {
+          "accept-language": "en-US,en;q=0.9",
+        },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(lastHeaders().get("accept-language")).toBe("vi");
+  });
+});
+
 describe("proxyApiRequest header forwarding", () => {
   it("chuyển tiếp Idempotency-Key tới upstream và không chuyển tiếp header ngoài danh sách", async () => {
     await handlers.POST(

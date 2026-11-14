@@ -2,6 +2,7 @@
 
 import type { ComponentProps, CSSProperties } from "react";
 import { Toaster as Sonner, toast } from "sonner";
+import { useUiStrings } from "./ui-strings";
 
 export { toast };
 
@@ -27,16 +28,23 @@ export type ToasterProps = ComponentProps<typeof Sonner> & {
 };
 
 /** Đặt một lần ở layout gốc. Góc trên phải, tự ẩn sau 4 giây (DESIGN.md mục 5.10). */
-export function Toaster({ closeButtonAriaLabel, toastOptions, ...props }: ToasterProps) {
+export function Toaster({
+  containerAriaLabel,
+  closeButtonAriaLabel,
+  toastOptions,
+  ...props
+}: ToasterProps) {
+  const { toaster } = useUiStrings();
   return (
     <Sonner
       position="top-right"
       duration={4000}
       closeButton
+      containerAriaLabel={containerAriaLabel ?? toaster.containerAriaLabel}
       style={tokenStyle}
       toastOptions={{
         ...toastOptions,
-        ...(closeButtonAriaLabel !== undefined ? { closeButtonAriaLabel } : {}),
+        closeButtonAriaLabel: closeButtonAriaLabel ?? toaster.closeButtonAriaLabel,
       }}
       {...props}
     />

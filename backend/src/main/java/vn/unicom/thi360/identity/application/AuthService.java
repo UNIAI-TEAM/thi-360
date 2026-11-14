@@ -44,6 +44,7 @@ import vn.unicom.thi360.shared.security.CtxCookieSigner;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.KeycloakProperties;
+import vn.unicom.thi360.shared.web.AppMessages;
 import vn.unicom.thi360.shared.security.LoginThrottle;
 import vn.unicom.thi360.shared.security.PermissionCatalog;
 import vn.unicom.thi360.shared.security.PermissionSet;
@@ -75,6 +76,7 @@ public class AuthService {
     private final SessionAuthzResolver authzResolver;
     private final PermissionCatalog permissionCatalog;
     private final RedirectResolver redirectResolver;
+    private final AppMessages messages;
     public AuthService(
             UserAccountRepository userAccountRepository,
             PlatformAdminRepository platformAdminRepository,
@@ -108,6 +110,46 @@ public class AuthService {
                 clock,
                 authzResolver,
                 null,
+                null,
+                null);
+    }
+
+    public AuthService(
+            UserAccountRepository userAccountRepository,
+            PlatformAdminRepository platformAdminRepository,
+            KeycloakIdentityClient keycloakClient,
+            KeycloakProperties keycloakProperties,
+            TwoIssuerJwtDecoder twoIssuerJwtDecoder,
+            SessionStore sessionStore,
+            LoginThrottle loginThrottle,
+            CtxCookieSigner ctxCookieSigner,
+            AuthCookieService authCookieService,
+            CurrentUserProvider currentUserProvider,
+            PasswordPolicy passwordPolicy,
+            AuditRecorder auditRecorder,
+            TransactionTemplate transactionTemplate,
+            Clock clock,
+            SessionAuthzResolver authzResolver,
+            PermissionCatalog permissionCatalog,
+            RedirectResolver redirectResolver) {
+        this(
+                userAccountRepository,
+                platformAdminRepository,
+                keycloakClient,
+                keycloakProperties,
+                twoIssuerJwtDecoder,
+                sessionStore,
+                loginThrottle,
+                ctxCookieSigner,
+                authCookieService,
+                currentUserProvider,
+                passwordPolicy,
+                auditRecorder,
+                transactionTemplate,
+                clock,
+                authzResolver,
+                permissionCatalog,
+                redirectResolver,
                 null);
     }
 
@@ -129,7 +171,8 @@ public class AuthService {
             Clock clock,
             @Autowired(required = false) SessionAuthzResolver authzResolver,
             @Autowired(required = false) PermissionCatalog permissionCatalog,
-            @Autowired(required = false) RedirectResolver redirectResolver) {
+            @Autowired(required = false) RedirectResolver redirectResolver,
+            @Autowired(required = false) AppMessages messages) {
         this.userAccountRepository = Objects.requireNonNull(userAccountRepository);
         this.platformAdminRepository = Objects.requireNonNull(platformAdminRepository);
         this.keycloakClient = Objects.requireNonNull(keycloakClient);
@@ -149,6 +192,7 @@ public class AuthService {
         this.redirectResolver = redirectResolver != null
                 ? redirectResolver
                 : new RedirectResolver("http://localhost:3000", "http://localhost:3001", List.of());
+        this.messages = messages != null ? messages : AppMessages.defaultInstance();
     }
     public LoginResult login(
             String identifier,
@@ -158,7 +202,7 @@ public class AuthService {
         String normalized = Normalizer.normalize(identifier);
         if (normalized == null) {
             throw new ValidationException(List.of(
-                    new FieldError("identifier", "NOTBLANK", "Tên đăng nhập hoặc email là bắt buộc")));
+                    new FieldError("identifier", "NOTBLANK", messages.get("validation.login.identifier.notBlank"))));
         }
 
         try {
@@ -622,7 +666,7 @@ public class AuthService {
             throw new ValidationException(
                     "WRONG_OLD_PASSWORD",
                     null,
-                    List.of(new FieldError("oldPassword", "WRONG_OLD_PASSWORD", "Mật khẩu hiện tại không đúng")));
+                    List.of(new FieldError("oldPassword", "WRONG_OLD_PASSWORD", messages.get("WRONG_OLD_PASSWORD"))));
         }
         keycloakClient.logout(keycloakProperties.realm(), verified.refreshToken());
 

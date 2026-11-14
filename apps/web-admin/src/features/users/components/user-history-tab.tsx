@@ -11,7 +11,7 @@ import {
   Table,
 } from "@thi360/ui";
 import { History } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { type AuditEvent, type UsersApiDeps, USERS_QUERY_KEYS } from "../api";
 import { formatUserDateTime } from "../utils";
@@ -46,6 +46,7 @@ export interface UserHistoryTabProps {
 export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabProps) {
   const t = useTranslations("users");
   const common = useTranslations("common");
+  const format = useFormatter();
   const [page, setPage] = useState(1);
 
   const queryParams = useMemo(
@@ -167,8 +168,13 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
               previous: t("list.paginationPrevious"),
               next: t("list.paginationNext"),
               rowsPerPage: t("list.paginationRowsPerPage"),
-              page: (pageNum) => t("list.paginationPage", { page: pageNum }),
-              range: ({ from, to, total }) => t("list.paginationRange", { from, to, total }),
+              page: (pageNum) => t("list.paginationPage", { page: format.number(pageNum) }),
+              range: ({ from, to, total }) =>
+                t("list.paginationRange", {
+                  from: format.number(from),
+                  to: format.number(to),
+                  total: format.number(total),
+                }),
             }}
           />
         </div>

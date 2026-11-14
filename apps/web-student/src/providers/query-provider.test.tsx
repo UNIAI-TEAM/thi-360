@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
@@ -191,5 +192,38 @@ describe("web-student QueryProvider", () => {
         closeButtonAriaLabel: en_messages.common.closeToast,
       }),
     );
+  });
+
+  it("giữ nguyên cây con và dùng forbiddenToast tiếng Anh mới khi đổi locale vi -> en", async () => {
+    const user = userEvent.setup();
+    queryFn.mockResolvedValue("ok");
+
+    const { rerender } = render(
+      <NextIntlClientProvider locale="vi" messages={vi_messages} timeZone="Asia/Ho_Chi_Minh">
+        <QueryProvider navigate={mocks.navigate}>
+          <input aria-label="draft" />
+          <Probe keys={["init"]} />
+        </QueryProvider>
+      </NextIntlClientProvider>,
+    );
+
+    const input = screen.getByLabelText("draft");
+    await user.type(input, "student01");
+    expect(input).toHaveValue("student01");
+
+    queryFn.mockRejectedValue(new ApiStatusError(403));
+    rerender(
+      <NextIntlClientProvider locale="en-GB" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
+        <QueryProvider navigate={mocks.navigate}>
+          <input aria-label="draft" />
+          <Probe keys={["forbidden"]} />
+        </QueryProvider>
+      </NextIntlClientProvider>,
+    );
+
+    expect(screen.getByLabelText("draft")).toBe(input);
+    expect(input).toHaveValue("student01");
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith(FORBIDDEN_PATH));
+    expect(mocks.toastError).toHaveBeenCalledWith(en_messages.errors.forbiddenToast);
   });
 });

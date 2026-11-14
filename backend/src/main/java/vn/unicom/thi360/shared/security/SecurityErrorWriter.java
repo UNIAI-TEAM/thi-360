@@ -9,24 +9,33 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.LocaleResolver;
 import vn.unicom.thi360.shared.api.ApiError;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @Component
 public class SecurityErrorWriter {
 
-    private static final Locale DEFAULT_LOCALE = Locale.of("vi");
-
     private final ObjectMapper objectMapper;
     private final MessageSource messageSource;
+    private final LocaleResolver localeResolver;
 
     public SecurityErrorWriter(ObjectMapper objectMapper, MessageSource messageSource) {
+        this(objectMapper, messageSource, LocaleConfig.createLocaleResolver());
+    }
+
+    @Autowired
+    public SecurityErrorWriter(
+            ObjectMapper objectMapper, MessageSource messageSource, LocaleResolver localeResolver) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
         this.messageSource = Objects.requireNonNull(messageSource, "messageSource must not be null");
+        this.localeResolver = Objects.requireNonNull(localeResolver, "localeResolver must not be null");
     }
 
     public void write(
@@ -39,7 +48,8 @@ public class SecurityErrorWriter {
         if (response.isCommitted()) {
             return;
         }
-        String message = resolveMessage(code, fallbackCode);
+        Locale locale = LocaleConfig.normalizeSupported(localeResolver.resolveLocale(request));
+        String message = resolveMessage(code, fallbackCode, locale);
         String traceId = resolveTraceId(request);
         ApiError body = ApiError.of(code, message, List.of(), traceId);
 
@@ -49,13 +59,13 @@ public class SecurityErrorWriter {
         objectMapper.writeValue(response.getWriter(), body);
     }
 
-    private String resolveMessage(String code, String fallbackCode) {
-        String msg = messageSource.getMessage(code, null, null, DEFAULT_LOCALE);
+    private String resolveMessage(String code, String fallbackCode, Locale locale) {
+        String msg = messageSource.getMessage(code, null, null, locale);
         if (msg != null && !msg.isBlank()) {
             return msg;
         }
         if (fallbackCode != null) {
-            String fallback = messageSource.getMessage(fallbackCode, null, null, DEFAULT_LOCALE);
+            String fallback = messageSource.getMessage(fallbackCode, null, null, locale);
             if (fallback != null && !fallback.isBlank()) {
                 return fallback;
             }

@@ -108,6 +108,7 @@ import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.PermissionSet;
 import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.security.SessionStore;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Service
 public class UserAdminService {
@@ -155,6 +156,7 @@ public class UserAdminService {
     private final TransactionTemplate transactionTemplate;
     private final TransactionTemplate requiresNewTx;
     private final Clock clock;
+    private final AppMessages messages;
 
     public UserAdminService(
             UserAccountRepository userAccountRepository,
@@ -179,7 +181,8 @@ public class UserAdminService {
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
-            Clock clock) {
+            Clock clock,
+            AppMessages messages) {
         this.userAccountRepository = userAccountRepository;
         this.userIdentityRepository = userIdentityRepository;
         this.roleRepository = roleRepository;
@@ -205,6 +208,7 @@ public class UserAdminService {
         this.requiresNewTx = new TransactionTemplate(transactionManager);
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
+        this.messages = messages;
     }
     @Transactional(readOnly = true)
     public PageResponse<UserSummaryResponse> listUsers(
@@ -216,6 +220,7 @@ public class UserAdminService {
             Boolean neverLoggedIn,
             Boolean includeDeleted,
             PageQuery pageQuery) {
+
         StringBuilder where = new StringBuilder("u.status <> ?");
         List<Object> params = new ArrayList<>();
         params.add(UserStatus.PROVISIONING.code());
@@ -771,7 +776,7 @@ public class UserAdminService {
         if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
             throw new ConflictException(ERROR_SELF_DEACTIVATE);
         }
-        String trimmedReason = validateReason("reason", request.reason(), "Vui lòng nhập lý do ngừng hoạt động");
+        String trimmedReason = validateReason("reason", request.reason(), "validation.user.deactivateReason.required");
         Boolean[] restoreKcEnabledOnRollback = {null};
         try {
             return transactionTemplate.execute(status -> {
@@ -861,7 +866,7 @@ public class UserAdminService {
         String trimmedReason = request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
         if (trimmedReason != null && trimmedReason.length() > 500) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+                    new FieldError("reason", "SIZE", messages.get("validation.reason.size"))));
         }
 
         transactionTemplate.executeWithoutResult(status -> {
@@ -960,7 +965,7 @@ public class UserAdminService {
         if (actor.realm() == Realm.APP && actor.id().equals(userId)) {
             throw new ConflictException(ERROR_SELF_DELETE);
         }
-        String trimmedReason = validateReason("reason", reason, "Vui lòng nhập lý do xóa tài khoản");
+        String trimmedReason = validateReason("reason", reason, "validation.user.deleteReason.required");
         transactionTemplate.executeWithoutResult(status -> {
             UserAccount user = lockActiveManageableUser(actor, userId);
             List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
@@ -970,7 +975,7 @@ public class UserAdminService {
                                 b.source(),
                                 b.code() == null || b.code().isBlank() ? ERROR_USER_HAS_TRANSACTIONS : b.code(),
                                 b.message() == null || b.message().isBlank()
-                                        ? "Tài khoản đang có dữ liệu giao dịch cần đối soát, không thể xóa"
+                                        ? messages.get(ERROR_USER_HAS_TRANSACTIONS)
                                         : b.message()))
                         .toList();
                 throw new ConflictException(ERROR_USER_HAS_TRANSACTIONS, null, fieldErrors);
@@ -1009,7 +1014,10 @@ public class UserAdminService {
             } else {
                 UserAccount ua = accountsById.get(uid);
                 skipped.add(new BulkUserSkippedItem(
-                        uid, ua == null ? null : ua.getUsername(), decision.code(), decision.message()));
+                        uid,
+                        ua == null ? null : ua.getUsername(),
+                        decision.code(),
+                        localizeReason(decision.messageKey(), decision.messageArgs(), decision.code())));
             }
         }
         return new BulkUserActionPreviewResponse(distinctIds.size(), affected, List.copyOf(skipped));
@@ -1018,7 +1026,7 @@ public class UserAdminService {
     public BulkUserActionResponse applyBulkActions(BulkUserActionRequest request, String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", "Thiếu khóa Idempotency-Key")));
+                    new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", messages.get("validation.idempotencyKey.required"))));
         }
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         List<UUID> distinctIds = validateBulkUserIds(request.userIds());
@@ -1026,32 +1034,33 @@ public class UserAdminService {
         if ((request.action() == UserBulkAction.DEACTIVATE || request.action() == UserBulkAction.DELETE)
                 && trimmedReason == null) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "REASON_REQUIRED", "Vui lòng nhập lý do thực hiện thao tác hàng loạt")));
+                    new FieldError("reason", "REASON_REQUIRED", messages.get("validation.user.bulkReason.required"))));
         }
 
         String scope = BULK_IDEMPOTENCY_ENDPOINT + ":" + actor.realm().name() + ":" + actor.id();
         String digest = computeBulkDigest(request.action(), distinctIds, trimmedReason);
 
-        return idempotencyService.executeOnce(
+        StoredBulkUserActionResponse stored = idempotencyService.executeOnce(
                 idempotencyKey.trim(),
                 scope,
                 digest,
-                BulkUserActionResponse.class,
+                StoredBulkUserActionResponse.class,
                 () -> executeBulkItems(actor, request.action(), distinctIds, trimmedReason));
+        return localizeBulkResponse(stored);
     }
 
-    private BulkUserActionResponse executeBulkItems(
+    private StoredBulkUserActionResponse executeBulkItems(
             CurrentUser actor, UserBulkAction action, List<UUID> distinctIds, String trimmedReason) {
         UUID batchId = Ids.newId();
         Instant now = Instant.now(clock);
 
-        List<BulkUserActionItemResult> results = new ArrayList<>(distinctIds.size());
+        List<StoredBulkUserActionItemResult> results = new ArrayList<>(distinctIds.size());
         int succeeded = 0;
         int skipped = 0;
         int failed = 0;
 
         for (UUID uid : distinctIds) {
-            BulkUserActionItemResult item = executeSingleBulkItem(actor, action, uid, trimmedReason, now);
+            StoredBulkUserActionItemResult item = executeSingleBulkItem(actor, action, uid, trimmedReason, now);
             results.add(item);
             switch (item.outcome()) {
                 case SUCCEEDED -> succeeded++;
@@ -1060,16 +1069,16 @@ public class UserAdminService {
             }
         }
 
-        return new BulkUserActionResponse(
+        return new StoredBulkUserActionResponse(
                 batchId, action, distinctIds.size(), succeeded, skipped, failed, List.copyOf(results));
     }
 
-    private BulkUserActionItemResult executeSingleBulkItem(
+    private StoredBulkUserActionItemResult executeSingleBulkItem(
             CurrentUser actor, UserBulkAction action, UUID uid, String trimmedReason, Instant now) {
         String[] knownUsername = {null};
         Boolean[] restoreKcEnabledOnRollback = {null};
         try {
-            BulkUserActionItemResult committed = requiresNewTx.execute(status -> {
+            StoredBulkUserActionItemResult committed = requiresNewTx.execute(status -> {
                 jdbcTemplate.query(
                         "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE",
                         rs -> {},
@@ -1078,10 +1087,15 @@ public class UserAdminService {
                 knownUsername[0] = user == null ? null : user.getUsername();
                 BulkSkipDecision skip = evaluateBulkEligibility(actor, action, uid, user);
                 if (skip != null) {
-                    return new BulkUserActionItemResult(
-                            uid, knownUsername[0], BulkUserItemOutcome.SKIPPED, skip.code(), skip.message());
+                    return new StoredBulkUserActionItemResult(
+                            uid,
+                            knownUsername[0],
+                            BulkUserItemOutcome.SKIPPED,
+                            skip.code(),
+                            skip.messageKey(),
+                            skip.messageArgs(),
+                            null);
                 }
-
                 switch (action) {
                     case DEACTIVATE -> {
                         UserStatus oldStatus = user.getStatus();
@@ -1124,8 +1138,8 @@ public class UserAdminService {
                     }
                     case DELETE -> performSoftDeleteLocal(actor, user, trimmedReason, now);
                 }
-                return new BulkUserActionItemResult(
-                        uid, user.getUsername(), BulkUserItemOutcome.SUCCEEDED, null, null);
+                return new StoredBulkUserActionItemResult(
+                        uid, user.getUsername(), BulkUserItemOutcome.SUCCEEDED, null, null, List.of(), null);
             });
             if (committed != null
                     && committed.outcome() == BulkUserItemOutcome.SUCCEEDED
@@ -1137,8 +1151,8 @@ public class UserAdminService {
             if (restoreKcEnabledOnRollback[0] != null) {
                 compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
             }
-            return new BulkUserActionItemResult(
-                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), "Lỗi kết nối dịch vụ xác thực");
+            return new StoredBulkUserActionItemResult(
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, ex.getCode(), "bulk.user.fail.idpError", List.of(), null);
         } catch (RuntimeException ex) {
             if (restoreKcEnabledOnRollback[0] != null) {
                 compensateKeycloakEnabled(uid, restoreKcEnabledOnRollback[0]);
@@ -1148,9 +1162,46 @@ public class UserAdminService {
                     .addKeyValue("userId", uid.toString())
                     .addKeyValue("action", action.name())
                     .log("Bulk user action item failed; transaction rolled back");
-            return new BulkUserActionItemResult(
-                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, "INTERNAL_ERROR", "Không thể xử lý tài khoản");
+            return new StoredBulkUserActionItemResult(
+                    uid, knownUsername[0], BulkUserItemOutcome.FAILED, "INTERNAL_ERROR", "bulk.user.fail.internal", List.of(), null);
         }
+    }
+
+    private BulkUserActionResponse localizeBulkResponse(StoredBulkUserActionResponse stored) {
+        List<BulkUserActionItemResult> localizedResults = stored.results().stream()
+                .map(item -> new BulkUserActionItemResult(
+                        item.id(),
+                        item.username(),
+                        item.outcome(),
+                        item.reasonCode(),
+                        localizeBulkItemReason(item)))
+                .toList();
+        return new BulkUserActionResponse(
+                stored.batchId(),
+                stored.action(),
+                stored.total(),
+                stored.succeeded(),
+                stored.skipped(),
+                stored.failed(),
+                localizedResults);
+    }
+
+    private String localizeBulkItemReason(StoredBulkUserActionItemResult item) {
+        if (item.outcome() == BulkUserItemOutcome.SUCCEEDED) {
+            return null;
+        }
+        if (item.reasonKey() != null && !item.reasonKey().isBlank()) {
+            return localizeReason(item.reasonKey(), item.reasonArgs(), item.reasonCode());
+        }
+        return item.reason();
+    }
+
+    private String localizeReason(String messageKey, List<String> messageArgs, String fallback) {
+        if (messageKey == null || messageKey.isBlank()) {
+            return fallback;
+        }
+        Object[] args = messageArgs == null || messageArgs.isEmpty() ? new Object[0] : messageArgs.toArray();
+        return messages.get(messageKey, args);
     }
 
     private void performSoftDeleteLocal(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
@@ -1350,29 +1401,29 @@ public class UserAdminService {
     private BulkSkipDecision evaluateBulkEligibility(
             CurrentUser actor, UserBulkAction action, UUID userId, UserAccount user) {
         if (user == null || user.isDeleted() || user.getStatus() == UserStatus.PROVISIONING) {
-            return new BulkSkipDecision("USER_NOT_AVAILABLE", "Tài khoản không tồn tại hoặc đã bị xóa");
+            return new BulkSkipDecision("USER_NOT_AVAILABLE", "bulk.user.skip.notAvailable");
         }
         if (action == UserBulkAction.DEACTIVATE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
-            return new BulkSkipDecision(ERROR_SELF_DEACTIVATE, "Không thể tự ngừng hoạt động tài khoản của chính mình");
+            return new BulkSkipDecision(ERROR_SELF_DEACTIVATE, ERROR_SELF_DEACTIVATE);
         }
         if (action == UserBulkAction.DELETE && actor.realm() == Realm.APP && actor.id().equals(userId)) {
-            return new BulkSkipDecision(ERROR_SELF_DELETE, "Không thể tự xóa tài khoản của chính mình");
+            return new BulkSkipDecision(ERROR_SELF_DELETE, ERROR_SELF_DELETE);
         }
         if (action == UserBulkAction.DEACTIVATE && user.getStatus() == UserStatus.INACTIVE) {
-            return new BulkSkipDecision("ALREADY_INACTIVE", "Tài khoản đã ở trạng thái ngừng hoạt động");
+            return new BulkSkipDecision("ALREADY_INACTIVE", "bulk.user.skip.alreadyInactive");
         }
         if (action == UserBulkAction.ACTIVATE && user.getStatus() == UserStatus.ACTIVE) {
-            return new BulkSkipDecision("ALREADY_ACTIVE", "Tài khoản đang hoạt động");
+            return new BulkSkipDecision("ALREADY_ACTIVE", "bulk.user.skip.alreadyActive");
         }
         Set<Permission> targetPermissions = authzSnapshotService.computeEffectivePermissions(userId);
         if (!privilegeGuard.canGrant(actor, targetPermissions)) {
-            return new BulkSkipDecision("PRIVILEGE_ESCALATION", "Tài khoản có quyền vượt quá phạm vi của bạn");
+            return new BulkSkipDecision("PRIVILEGE_ESCALATION", "bulk.user.skip.privilegeEscalation");
         }
         if (action == UserBulkAction.DELETE) {
             List<AccountDeletionGuard.Blocker> blockers = collectDeletionBlockers(userId);
             if (!blockers.isEmpty()) {
                 String sources = blockers.stream().map(AccountDeletionGuard.Blocker::source).distinct().reduce((a, b) -> a + ", " + b).orElse("");
-                return new BulkSkipDecision(ERROR_USER_HAS_TRANSACTIONS, "Tài khoản có dữ liệu giao dịch (" + sources + ")");
+                return new BulkSkipDecision(ERROR_USER_HAS_TRANSACTIONS, "bulk.user.skip.hasTransactions", List.of(sources));
             }
         }
         return null;
@@ -1387,17 +1438,17 @@ public class UserAdminService {
     }
 
 
-    private static List<UUID> validateBulkUserIds(List<UUID> userIds) {
+    private List<UUID> validateBulkUserIds(List<UUID> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("userIds", "NOTEMPTY", "Danh sách tài khoản không được để trống")));
+                    new FieldError("userIds", "NOTEMPTY", messages.get("validation.userIds.notEmpty"))));
         }
         if (userIds.size() > MAX_BULK_USERS) {
             throw new ValidationException(
                     "BULK_LIMIT_EXCEEDED",
                     null,
                     List.of(new FieldError(
-                            "userIds", "BULK_LIMIT_EXCEEDED", "Số lượng tài khoản thao tác hàng loạt tối đa là 500")));
+                            "userIds", "BULK_LIMIT_EXCEEDED", messages.get("BULK_LIMIT_EXCEEDED"))));
         }
         Set<UUID> seen = new LinkedHashSet<>();
         for (UUID id : userIds) {
@@ -1407,7 +1458,7 @@ public class UserAdminService {
         }
         if (seen.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("userIds", "NOTEMPTY", "Danh sách tài khoản không được để trống")));
+                    new FieldError("userIds", "NOTEMPTY", messages.get("validation.userIds.notEmpty"))));
         }
         return List.copyOf(seen);
     }
@@ -1426,20 +1477,45 @@ public class UserAdminService {
         }
     }
 
-    private static String validateReason(String field, String reason, String emptyMessage) {
+    private String validateReason(String field, String reason, String emptyMessageKey) {
         if (reason == null || reason.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError(field, "REASON_REQUIRED", emptyMessage)));
+                    new FieldError(field, "REASON_REQUIRED", messages.get(emptyMessageKey))));
         }
         String trimmed = reason.trim();
         if (trimmed.length() > 500) {
             throw new ValidationException(List.of(
-                    new FieldError(field, "SIZE", "Lý do tối đa 500 ký tự")));
+                    new FieldError(field, "SIZE", messages.get("validation.reason.size"))));
         }
         return trimmed;
     }
 
-    private record BulkSkipDecision(String code, String message) {
+    private record BulkSkipDecision(String code, String messageKey, List<String> messageArgs) {
+        private BulkSkipDecision(String code, String messageKey) {
+            this(code, messageKey, List.of());
+        }
+    }
+
+    record StoredBulkUserActionResponse(
+            UUID batchId,
+            UserBulkAction action,
+            int total,
+            int succeeded,
+            int skipped,
+            int failed,
+            List<StoredBulkUserActionItemResult> results
+    ) {
+    }
+
+    record StoredBulkUserActionItemResult(
+            UUID id,
+            String username,
+            BulkUserItemOutcome outcome,
+            String reasonCode,
+            String reasonKey,
+            List<String> reasonArgs,
+            String reason
+    ) {
     }
 
     private List<Role> resolveTargetRoles(CurrentUser actor, List<UUID> requestedRoleIds) {
@@ -1706,43 +1782,43 @@ public class UserAdminService {
         return ex;
     }
 
-    private static String validateRequiredFullName(String fullName) {
+    private String validateRequiredFullName(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("fullName", "NOTBLANK", "Họ và tên không được để trống")));
+                    new FieldError("fullName", "NOTBLANK", messages.get("validation.user.fullName.notBlank"))));
         }
         String trimmed = fullName.trim();
         if (trimmed.length() > 200) {
             throw new ValidationException(List.of(
-                    new FieldError("fullName", "SIZE", "Họ và tên tối đa 200 ký tự")));
+                    new FieldError("fullName", "SIZE", messages.get("validation.user.fullName.size"))));
         }
         return trimmed;
     }
 
-    private static String normalizeAndValidateEmail(String email) {
+    private String normalizeAndValidateEmail(String email) {
         if (email == null || email.isBlank()) {
             return null;
         }
         String trimmed = email.trim();
         if (trimmed.length() > 255) {
             throw new ValidationException(List.of(
-                    new FieldError("email", "SIZE", "Email tối đa 255 ký tự")));
+                    new FieldError("email", "SIZE", messages.get("validation.user.email.size"))));
         }
         if (!EMAIL_PATTERN.matcher(trimmed).matches()) {
             throw new ValidationException(List.of(
-                    new FieldError("email", "EMAIL_INVALID", "Email không đúng định dạng")));
+                    new FieldError("email", "EMAIL_INVALID", messages.get("validation.user.email.invalid"))));
         }
         return trimmed;
     }
 
-    private static String normalizeAndValidatePhone(String phone) {
+    private String normalizeAndValidatePhone(String phone) {
         if (phone == null || phone.isBlank()) {
             return null;
         }
         String trimmed = phone.trim();
         if (trimmed.length() > 30) {
             throw new ValidationException(List.of(
-                    new FieldError("phone", "SIZE", "Số điện thoại tối đa 30 ký tự")));
+                    new FieldError("phone", "SIZE", messages.get("validation.user.phone.size"))));
         }
         return trimmed;
     }

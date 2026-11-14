@@ -27,7 +27,7 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14, T18 | in_progress |
 | T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mục trong menu chính, port từ reap) | T04, T05, T06 | in_review (đã merge vào `integration/dot-1` qua PR #11 ngày 2026-11-14) |
 | T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | in_review (đã merge vào `integration/dot-1` qua PR #13 ngày 2026-11-14) |
-| T19 | UNI-2561 | Nền · Đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh) và chế độ sáng/tối theo từng người; hai nút ở thanh trên cùng | T17, T18 | in_progress |
+| T19 | UNI-2561 | Nền · Đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh) và chế độ sáng/tối theo từng người; hai nút ở thanh trên cùng | T17, T18 | in_review (đã merge vào integration/dot-1, PR #20) |
 | T16 | UNI-2553 | Kiểm thử nghiệm thu nền, PBI-01 và kiểm thử bảo mật gọi thẳng API | T02–T15, T17, T18, T19 | todo |
 
 ### Thứ tự làm

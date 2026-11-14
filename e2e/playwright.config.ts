@@ -5,17 +5,31 @@ const defaultBackendCmd = isWindows
   ? "mvnw.cmd -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev"
   : "./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev";
 
+const apiUrl = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+const webUrl = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+const adminUrl = (process.env.THI360_ADMIN_URL ?? "http://localhost:3001").replace(/\/+$/, "");
+
+function portFromUrl(rawUrl: string, fallback: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.port || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const apiPort = portFromUrl(apiUrl, "8080");
+const webPort = portFromUrl(webUrl, "3000");
+const adminPort = portFromUrl(adminUrl, "3001");
+
 const webMode = process.env.E2E_USE_BUILT === "1" ? "start" : "dev";
-const apiUrl = process.env.THI360_API_URL ?? "http://localhost:8080";
-const webUrl = process.env.THI360_WEB_URL ?? "http://localhost:3000";
-const adminUrl = process.env.THI360_ADMIN_URL ?? "http://localhost:3001";
-const webPort = new URL(webUrl).port || "3000";
-const adminPort = new URL(adminUrl).port || "3001";
 const webEnv: Record<string, string> = {
   THI360_API_URL: apiUrl,
   THI360_CTX_SECRET: process.env.THI360_CTX_SECRET ?? "ctx-dev-only-change-me-32-bytes!!",
   THI360_WEB_URL: webUrl,
   THI360_ADMIN_URL: adminUrl,
+  NEXT_PUBLIC_THI360_WEB_URL: webUrl,
+  NEXT_PUBLIC_THI360_ADMIN_URL: adminUrl,
 };
 export default defineConfig({
   testDir: "./tests",
@@ -47,6 +61,11 @@ export default defineConfig({
       url: `${apiUrl}/actuator/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
+      env: {
+        THI360_API_PORT: process.env.THI360_API_PORT ?? apiPort,
+        THI360_WEB_URL: webUrl,
+        THI360_ADMIN_URL: adminUrl,
+      },
     },
     {
       command: `pnpm exec next ${webMode} -p ${webPort}`,

@@ -24,7 +24,7 @@ import {
   Tooltip,
 } from "@thi360/ui";
 import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, Upload, Users } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Can } from "@/features/session/can";
@@ -96,6 +96,7 @@ function UsersListContent({
   const t = useTranslations("users");
   const rbacT = useTranslations("rbac");
   const common = useTranslations("common");
+  const format = useFormatter();
   const { can } = usePermissions();
   const queryClient = useQueryClient();
   const neverLoggedInId = useId();
@@ -533,7 +534,7 @@ function UsersListContent({
               ? t("list.loadingCount")
               : usersQuery.isError
                 ? t("list.errorTitle")
-                : t("list.filteredCount", { count: totalItems })}
+                : t("list.filteredCount", { count: format.number(totalItems) })}
           </p>
           <p className="text-caption text-text-muted">{t("list.hint")}</p>
         </div>
@@ -636,8 +637,13 @@ function UsersListContent({
                 previous: t("list.paginationPrevious"),
                 next: t("list.paginationNext"),
                 rowsPerPage: t("list.paginationRowsPerPage"),
-                page: (pageNum) => t("list.paginationPage", { page: pageNum }),
-                range: ({ from, to, total }) => t("list.paginationRange", { from, to, total }),
+                page: (pageNum) => t("list.paginationPage", { page: format.number(pageNum) }),
+                range: ({ from, to, total }) =>
+                  t("list.paginationRange", {
+                    from: format.number(from),
+                    to: format.number(to),
+                    total: format.number(total),
+                  }),
               }}
             />
           </div>

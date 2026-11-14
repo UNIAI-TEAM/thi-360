@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const WEB_URL = "http://localhost:3000";
-const ADMIN_URL = "http://localhost:3001";
+const WEB_URL = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+const ADMIN_URL = (process.env.THI360_ADMIN_URL ?? "http://localhost:3001").replace(/\/+$/, "");
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
 const PLATFORM_PASSWORD = process.env.THI360_DEV_PLATFORM_PASSWORD ?? "platform-dev-only";
 
@@ -30,7 +30,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
     await expect(page.getByRole("button", { name: "Menu tài khoản" })).toContainText("student01");
   });
 
-  test("mở thẳng http://localhost:3001/users khi chưa đăng nhập sẽ quay lại đúng /users sau khi đăng nhập", async ({
+  test("mở thẳng /users trên web-admin khi chưa đăng nhập sẽ quay lại đúng /users sau khi đăng nhập", async ({
     page,
   }) => {
     await page.goto(`${ADMIN_URL}/users`);

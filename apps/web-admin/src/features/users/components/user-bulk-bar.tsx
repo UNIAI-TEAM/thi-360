@@ -14,7 +14,7 @@ import {
   StatusChip,
   Textarea,
 } from "@thi360/ui";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Can } from "@/features/session/can";
@@ -58,6 +58,7 @@ export function UserBulkBar({
   applyBulkUserActions,
 }: UserBulkBarProps) {
   const t = useTranslations("users");
+  const format = useFormatter();
   const router = useRouter();
   const [dialog, setDialog] = useState<BulkDialogState>({ kind: "none" });
   const [previewLoadingAction, setPreviewLoadingAction] = useState<BulkActionKind | null>(null);
@@ -160,7 +161,7 @@ export function UserBulkBar({
         >
           <div className="flex items-center gap-3">
             <span className="text-label font-semibold text-primary-text tabular-nums">
-              {t("bulk.selectedCount", { count: selectedIds.length })}
+              {t("bulk.selectedCount", { count: format.number(selectedIds.length) })}
             </span>
             <Button type="button" variant="link" size="sm" onClick={onClearSelection}>
               {t("bulk.clearSelection")}
@@ -209,7 +210,7 @@ export function UserBulkBar({
           </div>
         </div>
           <div className="border-b border-border bg-surface px-4 py-2 text-caption text-text-secondary">
-            {t("bulk.helperNote", { count: selectedIds.length })}
+            {t("bulk.helperNote", { count: format.number(selectedIds.length) })}
           </div>
         </>
       )}
@@ -244,8 +245,8 @@ export function UserBulkBar({
                 </DialogTitle>
                 <DialogDescription>
                   {t("bulk.confirmSummary", {
-                    affected: dialog.preview.affected,
-                    total: dialog.preview.total,
+                    affected: format.number(dialog.preview.affected),
+                    total: format.number(dialog.preview.total),
                   })}
                 </DialogDescription>
               </DialogHeader>
@@ -259,7 +260,7 @@ export function UserBulkBar({
               {dialog.preview.skipped.length > 0 && (
                 <div className="flex flex-col gap-1.5">
                   <p className="text-caption font-semibold text-text-secondary">
-                    {t("bulk.skippedHeading", { count: dialog.preview.skipped.length })}
+                    {t("bulk.skippedHeading", { count: format.number(dialog.preview.skipped.length) })}
                   </p>
                   <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-subtle p-2">
                     {dialog.preview.skipped.map((item) => {
@@ -315,10 +316,10 @@ export function UserBulkBar({
                   }}
                 >
                   {dialog.action === "DEACTIVATE"
-                    ? t("bulk.deactivateConfirm", { count: dialog.preview.affected })
+                    ? t("bulk.deactivateConfirm", { count: format.number(dialog.preview.affected) })
                     : dialog.action === "ACTIVATE"
-                      ? t("bulk.activateConfirm", { count: dialog.preview.affected })
-                      : t("bulk.deleteConfirm", { count: dialog.preview.affected })}
+                      ? t("bulk.activateConfirm", { count: format.number(dialog.preview.affected) })
+                      : t("bulk.deleteConfirm", { count: format.number(dialog.preview.affected) })}
                 </Button>
               </DialogFooter>
             </>
@@ -339,9 +340,9 @@ export function UserBulkBar({
                 <DialogTitle>{t("bulk.resultTitle")}</DialogTitle>
                 <DialogDescription>
                   {t("bulk.resultSummary", {
-                    succeeded: dialog.result.succeeded,
-                    skipped: dialog.result.skipped,
-                    failed: dialog.result.failed,
+                    succeeded: format.number(dialog.result.succeeded),
+                    skipped: format.number(dialog.result.skipped),
+                    failed: format.number(dialog.result.failed),
                   })}
                 </DialogDescription>
               </DialogHeader>

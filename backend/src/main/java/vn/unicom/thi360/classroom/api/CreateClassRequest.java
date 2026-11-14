@@ -16,14 +16,14 @@ public record CreateClassRequest(
                 maxLength = 30,
                 pattern = ClassNormalizer.CODE_REGEX,
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Mã lớp không được để trống")
+        @NotBlank(message = "{validation.class.code.notBlank}")
         String code,
         @Schema(description = "Tên lớp học", example = "Lớp A", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Tên lớp không được để trống")
-        @Size(max = 200, message = "Tên lớp tối đa 200 ký tự")
+        @NotBlank(message = "{validation.class.name.notBlank}")
+        @Size(max = 200, message = "{validation.class.name.size}")
         String name,
         @Schema(description = "Mô tả lớp học")
-        @Size(max = 1000, message = "Mô tả tối đa 1000 ký tự")
+        @Size(max = 1000, message = "{validation.class.description.size}")
         String description,
         @Schema(description = "ID người phụ trách lớp (không bắt buộc)")
         UUID ownerUserId,

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "Yêu cầu ngừng hoạt động tài khoản")
 public record DeactivateUserRequest(
         @Schema(description = "Lý do ngừng hoạt động (bắt buộc)", example = "Vi phạm quy chế thi", requiredMode = Schema.RequiredMode.REQUIRED)
-        @Size(max = 500, message = "Lý do tối đa 500 ký tự")
+        @Size(max = 500, message = "{validation.reason.size}")
         String reason
 ) {
 }

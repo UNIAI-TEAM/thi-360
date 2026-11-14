@@ -48,33 +48,45 @@ import {
   Textarea,
   notify,
   Tooltip,
+  useUiPreferences,
+  type ThemeMode,
 } from "@thi360/ui";
 import { Eye, Inbox, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 interface SampleAccount {
   id: string;
   code: string;
   username: string;
-  fullName: string;
-  role: string;
+  nameKey: "content" | "ops" | "student3" | "student4";
+  roleKey: "content" | "ops" | "student";
   status: "success" | "warning" | "danger" | "neutral";
   statusKey: "active" | "pending" | "locked" | "inactive";
 }
 
 const SAMPLE_ROWS: SampleAccount[] = [
-  { id: "1", code: "U000001", username: "content.admin", fullName: "Quản trị nội dung", role: "Quản trị nội dung", status: "success", statusKey: "active" },
-  { id: "2", code: "U000002", username: "ops.admin", fullName: "Vận hành", role: "Vận hành / CSKH", status: "success", statusKey: "active" },
-  { id: "3", code: "U000005", username: "student03", fullName: "Học viên 03", role: "Học viên", status: "warning", statusKey: "pending" },
-  { id: "4", code: "U000006", username: "student04", fullName: "Học viên 04", role: "Học viên", status: "danger", statusKey: "locked" },
+  { id: "1", code: "U000001", username: "content.admin", nameKey: "content", roleKey: "content", status: "success", statusKey: "active" },
+  { id: "2", code: "U000002", username: "ops.admin", nameKey: "ops", roleKey: "ops", status: "success", statusKey: "active" },
+  { id: "3", code: "U000005", username: "student03", nameKey: "student3", roleKey: "student", status: "warning", statusKey: "pending" },
+  { id: "4", code: "U000006", username: "student04", nameKey: "student4", roleKey: "student", status: "danger", statusKey: "locked" },
 ];
 
 type TableState = "data" | "loading" | "empty" | "error";
+function readDomTheme(fallback: ThemeMode): ThemeMode {
+  if (typeof document === "undefined") return fallback;
+  const domTheme = document.documentElement.dataset.theme;
+  return domTheme === "dark" || domTheme === "light" ? domTheme : fallback;
+}
 
 export function DevUiGallery() {
   const t = useTranslations("devUi");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const format = useFormatter();
+  const prefs = useUiPreferences();
+  const [localTheme, setLocalTheme] = useState<ThemeMode>(() =>
+    prefs?.theme ?? readDomTheme("light"),
+  );
+  const theme = prefs?.theme ?? localTheme;
   const [chipSelected, setChipSelected] = useState(true);
   const [checked, setChecked] = useState(true);
   const [switched, setSwitched] = useState(true);
@@ -87,25 +99,45 @@ export function DevUiGallery() {
   const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
-    const previousTheme = document.documentElement.dataset.theme;
-    return () => {
-      if (previousTheme === undefined) {
-        delete document.documentElement.dataset.theme;
-      } else {
-        document.documentElement.dataset.theme = previousTheme;
+    if (prefs || typeof document === "undefined") return;
+    const root = document.documentElement;
+    const syncFromDom = () => {
+      const domTheme = root.dataset.theme;
+      if (domTheme === "light" || domTheme === "dark") {
+        setLocalTheme(domTheme);
       }
     };
-  }, []);
+    const observer = new MutationObserver(syncFromDom);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, [prefs]);
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+  function handleThemeChange(next: ThemeMode) {
+    if (prefs) {
+      prefs.setTheme(next);
+      return;
+    }
+    setLocalTheme(next);
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.theme = next;
+    }
+  }
 
   const columns: TableProps<SampleAccount>["columns"] = [
     { accessorKey: "code", header: t("table.colCode") },
     { accessorKey: "username", header: t("table.colUsername") },
-    { accessorKey: "fullName", header: t("table.colFullName") },
-    { accessorKey: "role", header: t("table.colRole"), enableSorting: false },
+    {
+      id: "fullName",
+      header: t("table.colFullName"),
+      accessorFn: (row) => t(`table.sampleNames.${row.nameKey}`),
+      cell: ({ row }) => t(`table.sampleNames.${row.original.nameKey}`),
+    },
+    {
+      id: "role",
+      header: t("table.colRole"),
+      enableSorting: false,
+      cell: ({ row }) => t(`table.sampleRoles.${row.original.roleKey}`),
+    },
     {
       id: "status",
       header: t("table.colStatus"),
@@ -141,7 +173,7 @@ export function DevUiGallery() {
           <Tabs
             variant="segmented"
             value={theme}
-            onValueChange={(next) => setTheme(next === "dark" ? "dark" : "light")}
+            onValueChange={(next) => handleThemeChange(next === "dark" ? "dark" : "light")}
           >
             <TabsList aria-label={t("themeLabel")}>
               <TabsTrigger value="light">{t("themeLight")}</TabsTrigger>
@@ -383,8 +415,13 @@ export function DevUiGallery() {
               previous: t("pagination.previous"),
               next: t("pagination.next"),
               rowsPerPage: t("pagination.rowsPerPage"),
-              page: (p) => t("pagination.page", { page: p }),
-              range: ({ from, to, total }) => t("pagination.range", { from, to, total }),
+              page: (p) => t("pagination.page", { page: format.number(p) }),
+              range: ({ from, to, total }) =>
+                t("pagination.range", {
+                  from: format.number(from),
+                  to: format.number(to),
+                  total: format.number(total),
+                }),
             }}
           />
         </div>

@@ -8,7 +8,7 @@ import java.util.UUID;
 @Schema(description = "Yêu cầu thay thế toàn bộ danh sách vai trò của tài khoản")
 public record UpdateUserRolesRequest(
         @Schema(description = "Danh sách ID vai trò mới", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "Danh sách vai trò không được để trống")
+        @NotNull(message = "{validation.user.roleIds.notNull}")
         List<UUID> roleIds
 ) {
 }

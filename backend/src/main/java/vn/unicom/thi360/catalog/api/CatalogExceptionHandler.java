@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -23,11 +24,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.HandlerExceptionResolver;
+import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.ModelAndView;
 import vn.unicom.thi360.catalog.application.CatalogConflictException;
 import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.GlobalExceptionHandler;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @RestControllerAdvice(assignableTypes = {AdminCatalogController.class, CatalogPublicController.class})
@@ -36,7 +39,6 @@ public class CatalogExceptionHandler implements HandlerExceptionResolver {
 
     private static final String ERR_CODE_TAKEN = "CATALOG_CODE_TAKEN";
     private static final String ERR_IMPORT_FILE_TOO_LARGE = "IMPORT_FILE_TOO_LARGE";
-    private static final Locale DEFAULT_LOCALE = Locale.of("vi");
     private static final Pattern CATALOG_IMPORT_PATH =
             Pattern.compile("^/api/v1/admin/catalog/groups/[^/]+/items/import/?$");
     private static final Set<String> CODE_UNIQUE_CONSTRAINTS =
@@ -44,14 +46,30 @@ public class CatalogExceptionHandler implements HandlerExceptionResolver {
 
     private final MessageSource messageSource;
     private final GlobalExceptionHandler globalExceptionHandler;
+    private final LocaleResolver localeResolver;
     private final ObjectMapper objectMapper;
+
+    public CatalogExceptionHandler(
+            MessageSource messageSource, GlobalExceptionHandler globalExceptionHandler) {
+        this(messageSource, globalExceptionHandler, LocaleConfig.createLocaleResolver(), new ObjectMapper());
+    }
 
     public CatalogExceptionHandler(
             MessageSource messageSource,
             GlobalExceptionHandler globalExceptionHandler,
+            LocaleResolver localeResolver) {
+        this(messageSource, globalExceptionHandler, localeResolver, new ObjectMapper());
+    }
+
+    @Autowired
+    public CatalogExceptionHandler(
+            MessageSource messageSource,
+            GlobalExceptionHandler globalExceptionHandler,
+            LocaleResolver localeResolver,
             ObjectMapper objectMapper) {
         this.messageSource = messageSource;
         this.globalExceptionHandler = globalExceptionHandler;
+        this.localeResolver = localeResolver;
         this.objectMapper = objectMapper;
     }
 
@@ -61,8 +79,8 @@ public class CatalogExceptionHandler implements HandlerExceptionResolver {
         if (!isCatalogCodeUniqueViolation(ex)) {
             return globalExceptionHandler.handleUnexpected(ex, request);
         }
-        String message = messageSource.getMessage(
-                ERR_CODE_TAKEN, null, "Mã danh mục hoặc giá trị đã tồn tại", DEFAULT_LOCALE);
+        Locale locale = LocaleConfig.normalizeSupported(localeResolver.resolveLocale(request));
+        String message = messageSource.getMessage(ERR_CODE_TAKEN, null, ERR_CODE_TAKEN, locale);
         String traceId = resolveTraceId(request);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -72,9 +90,9 @@ public class CatalogExceptionHandler implements HandlerExceptionResolver {
     @ExceptionHandler(CatalogConflictException.class)
     public ResponseEntity<ApiError> handleCatalogConflict(
             CatalogConflictException ex, HttpServletRequest request) {
+        Locale locale = LocaleConfig.normalizeSupported(localeResolver.resolveLocale(request));
         String code = ex.getCode();
-        String message = messageSource.getMessage(
-                code, null, "Xung đột dữ liệu danh mục", DEFAULT_LOCALE);
+        String message = messageSource.getMessage(code, null, code, locale);
         String traceId = resolveTraceId(request);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -113,11 +131,12 @@ public class CatalogExceptionHandler implements HandlerExceptionResolver {
     }
 
     private ApiError buildImportFileTooLargeError(HttpServletRequest request) {
+        Locale locale = LocaleConfig.normalizeSupported(localeResolver.resolveLocale(request));
         String message = messageSource.getMessage(
                 ERR_IMPORT_FILE_TOO_LARGE,
                 null,
-                "Dung lượng tệp Excel vượt quá giới hạn cho phép (tối đa 5 MB)",
-                DEFAULT_LOCALE);
+                ERR_IMPORT_FILE_TOO_LARGE,
+                locale);
         String traceId = resolveTraceId(request);
         return ApiError.of(
                 ERR_IMPORT_FILE_TOO_LARGE,
@@ -140,7 +159,6 @@ public class CatalogExceptionHandler implements HandlerExceptionResolver {
         }
         return CATALOG_IMPORT_PATH.matcher(uri).matches();
     }
-
     private static boolean isCatalogCodeUniqueViolation(Throwable throwable) {
         for (Throwable cur = throwable; cur != null; cur = cur.getCause()) {
             if (cur instanceof ConstraintViolationException cve

@@ -51,7 +51,7 @@ import vn.unicom.thi360.shared.security.Access;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.Realm;
-
+import vn.unicom.thi360.shared.web.AppMessages;
 @Service
 public class UserAuthzService {
 
@@ -125,6 +125,7 @@ public class UserAuthzService {
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final AppMessages messages;
 
     public UserAuthzService(
             UserAccountRepository userAccountRepository,
@@ -139,7 +140,8 @@ public class UserAuthzService {
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
-            Clock clock) {
+            Clock clock,
+            AppMessages messages) {
         this.userAccountRepository = userAccountRepository;
         this.roleRepository = roleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
@@ -153,6 +155,7 @@ public class UserAuthzService {
         this.auditRecorder = auditRecorder;
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
@@ -266,7 +269,7 @@ public class UserAuthzService {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         UserAccount user = requireActiveUserForUpdate(userId);
 
-        Set<Permission> requested = RoleService.parsePermissions(request.permissionCodes());
+        Set<Permission> requested = RoleService.parsePermissions(request.permissionCodes(), messages);
         List<UserPermission> existingRows = userPermissionRepository.findAllByIdUserId(userId);
         Map<UUID, PermissionEntity> allPermissionsById = new HashMap<>();
         Map<String, PermissionEntity> allPermissionsByCode = new HashMap<>();
@@ -304,7 +307,7 @@ public class UserAuthzService {
                             List.of(new FieldError(
                                     "permissionCodes",
                                     PermissionSetNormalizer.ERROR_PERMISSION_REQUIRES_VIEW,
-                                    "Phải giữ quyền " + requiredView.code() + " khi còn quyền " + p.code())));
+                                    messages.get("validation.permission.keepView", requiredView.code(), p.code()))));
                 }
             }
         }
@@ -339,7 +342,7 @@ public class UserAuthzService {
                         "VALIDATION_FAILED",
                         null,
                         List.of(new FieldError(
-                                "reason", ERROR_REASON_REQUIRED, "Vui lòng nhập lý do khi gán quyền trực tiếp")));
+                                "reason", ERROR_REASON_REQUIRED, messages.get("REASON_REQUIRED"))));
             }
             privilegeGuard.assertCanGrant(actor, added);
         }

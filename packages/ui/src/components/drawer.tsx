@@ -6,6 +6,7 @@ import type { ComponentProps } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { DialogDescription, DialogOverlay, DialogTitle } from "./dialog";
+import { useUiStrings } from "./ui-strings";
 
 export const Drawer = DialogPrimitive.Root;
 export const DrawerTrigger = DialogPrimitive.Trigger;
@@ -13,11 +14,12 @@ export const DrawerClose = DialogPrimitive.Close;
 
 export type DrawerContentProps = ComponentProps<typeof DialogPrimitive.Content> & {
   /** Tên nút đóng (×) cho trình đọc màn hình. */
-  closeLabel: string;
+  closeLabel?: string;
 };
 
 /** Trượt từ phải, rộng 520px, dùng cho chi tiết (DESIGN.md mục 5.10). */
 export function DrawerContent({ className, children, closeLabel, ...props }: DrawerContentProps) {
+  const { common } = useUiStrings();
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
@@ -31,7 +33,7 @@ export function DrawerContent({ className, children, closeLabel, ...props }: Dra
       >
         {children}
         <DialogPrimitive.Close
-          aria-label={closeLabel}
+          aria-label={closeLabel ?? common.close}
           className={cn(
             "absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
             focusRing,
