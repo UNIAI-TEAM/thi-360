@@ -43,6 +43,7 @@ import {
   resolveUsersErrorMessage,
 } from "../utils";
 import { UserActionDialogs, useUserActionController } from "./user-action-dialogs";
+import { LearningProfileTab } from "./learning-profile-tab";
 import { UserClassesPlaceholder } from "./user-classes-placeholder";
 import { UserHistoryTab } from "./user-history-tab";
 import { UserRolesPermissionsPlaceholder } from "./user-roles-permissions-placeholder";
@@ -267,6 +268,9 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
           <TabsTrigger value="info">{t("detail.tabs.info")}</TabsTrigger>
           <TabsTrigger value="classes">{t("detail.tabs.classes")}</TabsTrigger>
           <TabsTrigger value="roles">{t("detail.tabs.roles")}</TabsTrigger>
+          {can("USER.LEARNING_VIEW") && (
+            <TabsTrigger value="learning">{t("learning.tabLabel")}</TabsTrigger>
+          )}
           {can("AUDIT.VIEW") && (
             <TabsTrigger value="history">{t("detail.tabs.history")}</TabsTrigger>
           )}
@@ -293,6 +297,15 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
         <TabsContent value="roles">
           <UserRolesPermissionsPlaceholder userId={user.id} roles={user.roles} />
         </TabsContent>
+
+        {can("USER.LEARNING_VIEW") && (
+          <TabsContent value="learning">
+            <LearningProfileTab
+              userId={user.id}
+              getUserLearning={deps.getUserLearning}
+            />
+          </TabsContent>
+        )}
 
         {can("AUDIT.VIEW") && (
           <TabsContent value="history">

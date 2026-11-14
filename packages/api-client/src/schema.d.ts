@@ -916,6 +916,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/users/{id}/learning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối) */
+        get: operations["getUserLearning"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users/{id}/permissions": {
         parameters: {
             query?: never;
@@ -927,6 +944,23 @@ export interface paths {
         get: operations["getUserPermissions"];
         /** Thay thế toàn bộ quyền gán trực tiếp của tài khoản */
         put: operations["updateUserPermissions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hồ sơ tài khoản gồm thông tin tài khoản, phương thức đăng nhập và lớp học */
+        get: operations["getUserProfile"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -3166,6 +3200,26 @@ export interface components {
              */
             version: number;
         };
+        /** @description Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối) */
+        StudentLearningResponse: {
+            /** @description Kết quả đánh giá năng lực */
+            assessments: Record<string, never>[];
+            /** @description Lịch sử lượt thi */
+            attempts: Record<string, never>[];
+            /** @description Cho biết dữ liệu học tập đã sẵn sàng từ module thi hay chưa */
+            dataAvailable: boolean;
+            /** @description Quyền sử dụng và gói bài thi */
+            entitlements: Record<string, never>[];
+            /** @description Lịch sử ôn luyện */
+            practice: Record<string, never>[];
+            /** @description Yêu cầu hỗ trợ */
+            supportRequests: Record<string, never>[];
+            /**
+             * Format: uuid
+             * @description ID tài khoản
+             */
+            userId: string;
+        };
         /** @description Yêu cầu chuyển học viên sang lớp học khác */
         TransferClassMemberRequest: {
             /** @description Lý do chuyển lớp */
@@ -3604,6 +3658,105 @@ export interface components {
              * @description ID tài khoản
              */
             userId: string;
+        };
+        /** @description Phương thức đăng nhập đã liên kết của tài khoản */
+        UserLoginMethodResponse: {
+            /** @description Email tại thời điểm liên kết */
+            emailAtLink?: string;
+            /**
+             * Format: uuid
+             * @description ID liên kết
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm liên kết
+             */
+            linkedAt: string;
+            /**
+             * @description Nhà cung cấp xác thực (LOCAL, GOOGLE)
+             * @enum {string}
+             */
+            provider: "LOCAL" | "GOOGLE";
+        };
+        /** @description Bản ghi lịch sử tham gia, rời hoặc chuyển lớp trong hồ sơ tài khoản */
+        UserProfileClassHistoryResponse: {
+            /** @description Hành động (JOIN, LEAVE, TRANSFER_OUT, TRANSFER_IN) */
+            action: string;
+            /**
+             * Format: uuid
+             * @description ID người thực hiện
+             */
+            actorId?: string;
+            /** @description Tên đăng nhập người thực hiện */
+            actorUsername?: string;
+            /** @description Mã lớp học */
+            classCode: string;
+            /**
+             * Format: uuid
+             * @description ID lớp học
+             */
+            classId: string;
+            /** @description Tên lớp học */
+            className: string;
+            /**
+             * Format: uuid
+             * @description ID bản ghi lịch sử
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm phát sinh
+             */
+            occurredAt: string;
+            /** @description Lý do */
+            reason?: string;
+            /** @description Mã lớp liên quan */
+            relatedClassCode?: string;
+            /**
+             * Format: uuid
+             * @description ID lớp liên quan (khi chuyển lớp)
+             */
+            relatedClassId?: string;
+            /** @description Tên lớp liên quan */
+            relatedClassName?: string;
+        };
+        /** @description Lớp học hiện tại của tài khoản trong hồ sơ */
+        UserProfileCurrentClassResponse: {
+            /**
+             * Format: uuid
+             * @description ID người thêm vào lớp
+             */
+            addedBy?: string;
+            /** @description Tên đăng nhập người thêm vào lớp */
+            addedByUsername?: string;
+            /** @description Mã lớp học */
+            classCode: string;
+            /**
+             * Format: uuid
+             * @description ID lớp học
+             */
+            classId: string;
+            /** @description Tên lớp học */
+            className: string;
+            /** @description Trạng thái lớp học (ACTIVE, INACTIVE) */
+            classStatus: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm tham gia lớp
+             */
+            joinedAt: string;
+        };
+        /** @description Hồ sơ tài khoản gồm thông tin chi tiết, phương thức đăng nhập, lớp hiện tại và lịch sử lớp */
+        UserProfileResponse: {
+            /** @description Thông tin chi tiết tài khoản */
+            account: components["schemas"]["UserDetailResponse"];
+            /** @description Lịch sử tham gia, rời và chuyển lớp (mới nhất trước) */
+            classHistory: components["schemas"]["UserProfileClassHistoryResponse"][];
+            /** @description Danh sách lớp học hiện tại */
+            currentClasses: components["schemas"]["UserProfileCurrentClassResponse"][];
+            /** @description Danh sách phương thức đăng nhập đã liên kết */
+            loginMethods: components["schemas"]["UserLoginMethodResponse"][];
         };
         /** @description Vai trò đang gán cho tài khoản */
         UserRoleItemResponse: {
@@ -11258,6 +11411,109 @@ export interface operations {
             };
         };
     };
+    getUserLearning: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StudentLearningResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getUserPermissions: {
         parameters: {
             query?: never;
@@ -11383,6 +11639,109 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserDirectPermissionsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getUserProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserProfileResponse"];
                 };
             };
             /** @description Bad Request */

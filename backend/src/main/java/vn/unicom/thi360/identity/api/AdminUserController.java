@@ -84,6 +84,20 @@ public class AdminUserController {
         return userAdminService.getUser(id);
     }
 
+    @GetMapping("/{id}/profile")
+    @RequirePermission(Permissions.USER_VIEW)
+    @Operation(summary = "Hồ sơ tài khoản gồm thông tin tài khoản, phương thức đăng nhập và lớp học")
+    public UserProfileResponse getUserProfile(@PathVariable UUID id) {
+        return userAdminService.getUserProfile(id);
+    }
+
+    @GetMapping("/{id}/learning")
+    @RequirePermission(Permissions.USER_LEARNING_VIEW)
+    @Operation(summary = "Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối)")
+    public StudentLearningResponse getUserLearning(@PathVariable UUID id) {
+        return userAdminService.getUserLearning(id);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @RequirePermission(Permissions.USER_MODIFY)
