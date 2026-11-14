@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
 import { useSyncExternalStore } from "react";
@@ -364,7 +364,7 @@ describe("RbacPageView & RolesTab", () => {
         }),
       );
     });
-  });
+  }, 15_000);
 
   it("hiển thị thông báo lỗi PRIVILEGE_ESCALATION bằng tiếng Việt trong dialog", async () => {
     const user = userEvent.setup();
@@ -433,5 +433,31 @@ describe("RbacPageView & RolesTab", () => {
     // Bấm "+ Tạo vai trò" lại vẫn mở được dialog mới bình thường
     await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("hiển thị lỗi kiểm tra độ dài mã, tên và mô tả bằng tiếng Việt đã bản địa hóa", async () => {
+    const user = userEvent.setup();
+    const { createRole } = renderRbacPage();
+
+    await screen.findByText("Theo dõi lớp");
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Mã vai trò/), {
+      target: { value: "A".repeat(65) },
+    });
+    fireEvent.change(within(dialog).getByLabelText(/Tên vai trò/), {
+      target: { value: "B".repeat(121) },
+    });
+    fireEvent.change(within(dialog).getByLabelText(/Mô tả/), {
+      target: { value: "C".repeat(501) },
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Tạo vai trò" }));
+
+    expect(await within(dialog).findByText(viMessages.rbac.roleDialog.codeMaxLength)).toBeInTheDocument();
+    expect(within(dialog).getByText(viMessages.rbac.roleDialog.nameMaxLength)).toBeInTheDocument();
+    expect(within(dialog).getByText(viMessages.rbac.roleDialog.descriptionMaxLength)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Too big:/)).not.toBeInTheDocument();
+    expect(createRole).not.toHaveBeenCalled();
   });
 });

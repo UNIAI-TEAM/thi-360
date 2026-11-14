@@ -265,6 +265,7 @@ function RoleDialogBody({
 
   const codeError = form.formState.errors.code?.message;
   const nameError = form.formState.errors.name?.message;
+  const descriptionError = form.formState.errors.description?.message;
 
   const statusOptions = useMemo(
     () => [
@@ -374,7 +375,10 @@ function RoleDialogBody({
           !isCreate ? "sm:grid-cols-[2fr_1fr]" : "",
         )}
       >
-        <FormField label={t("roleDialog.descriptionLabel")}>
+        <FormField
+          label={t("roleDialog.descriptionLabel")}
+          error={descriptionError ? t(`roleDialog.${descriptionError}`) : undefined}
+        >
           {(fieldProps) => (
             <Textarea
               {...fieldProps}
