@@ -1223,7 +1223,8 @@
   },
   "metadata": {
     "description": "Trang quản trị cổng luyện thi Thi 360",
-    "title": "Thi 360 — Quản trị"
+    "title": "Thi 360 — Quản trị",
+    "titleTemplate": "{title} · Thi 360"
   },
   "nav": {
     "groups": {

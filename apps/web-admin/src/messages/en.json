@@ -1223,7 +1223,8 @@
   },
   "metadata": {
     "description": "Thi 360 exam preparation administration portal",
-    "title": "Thi 360 — Admin"
+    "title": "Thi 360 — Admin",
+    "titleTemplate": "{title} · Thi 360"
   },
   "nav": {
     "groups": {
