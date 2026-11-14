@@ -130,6 +130,33 @@ function makeDeps(overrides: Partial<UsersApiDeps> = {}): Partial<UsersApiDeps> 
       createdAt: "2026-11-14T00:00:00Z",
       updatedAt: "2026-11-14T00:00:00Z",
     })),
+    listAllClasses: vi.fn<UsersApiDeps["listAllClasses"]>(async () => [
+      {
+        id: "00000000-0000-4000-8000-000000000301",
+        code: "LOP-A",
+        name: "Lớp A",
+        status: "ACTIVE",
+        memberCount: 2,
+        version: 0,
+        createdAt: "2026-11-10T08:00:00Z",
+        updatedAt: "2026-11-10T08:00:00Z",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000302",
+        code: "LOP-B",
+        name: "Lớp B",
+        status: "ACTIVE",
+        memberCount: 2,
+        version: 0,
+        createdAt: "2026-11-10T08:00:00Z",
+        updatedAt: "2026-11-10T08:00:00Z",
+      },
+    ]),
+    getUserClasses: vi.fn<UsersApiDeps["getUserClasses"]>(async (userId) => ({
+      userId,
+      currentClasses: [],
+      history: [],
+    })),
     ...overrides,
   };
 }
@@ -519,5 +546,84 @@ describe("UsersListView (Slice 1)", () => {
     expect(screen.getByRole("option", { name: "Student" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Exam Proctor" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Quản trị hệ thống" })).not.toBeInTheDocument();
+  });
+
+  it("bộ lọc Lớp học hoạt động với classId và CreateUserDialog ẩn/hiện classIds theo quyền CLASS.MODIFY", async () => {
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+      items: SAMPLE_USERS.slice(0, 1),
+      page: 0,
+      size: 20,
+      totalItems: 1,
+      totalPages: 1,
+    }));
+    const createMock = vi.fn<UsersApiDeps["createUser"]>(async (body) => ({
+      id: "00000000-0000-4000-8000-000000000888",
+      code: "U000888",
+      username: body.username,
+      fullName: body.fullName,
+      source: "ADMIN_CREATED",
+      status: "ACTIVE",
+      mustChangePassword: body.mustChangePassword ?? false,
+      roles: [{ id: "r-student", code: "STUDENT", name: "Học viên", access: "EXAM" }],
+      version: 0,
+      createdAt: "2026-11-14T00:00:00Z",
+      updatedAt: "2026-11-14T00:00:00Z",
+    }));
+
+    // 1. Khi không có CLASS.MODIFY, CreateUserDialog không hiển thị chọn lớp học
+    const { unmount } = renderUsersView(
+      makeDeps({ listUsers: listUsersMock, createUser: createMock }),
+      { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW", "USER.MODIFY", "CLASS.VIEW"] },
+      true,
+    );
+
+    await screen.findByText("student01");
+    const classTrigger = screen.getByRole("combobox", { name: "Lớp" });
+    await userEvent.click(classTrigger);
+    await userEvent.click(await screen.findByRole("option", { name: "LOP-A — Lớp A" }));
+
+    await waitFor(() => {
+      expect(listUsersMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ classId: "00000000-0000-4000-8000-000000000301" }),
+      );
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Tạo tài khoản/ }));
+    const dialogWithoutModify = screen.getByRole("dialog");
+    expect(
+      within(dialogWithoutModify).queryByRole("group", { name: "Lớp học" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    // 2. Khi có CLASS.MODIFY, chọn nhiều lớp và gửi classIds khi tạo tài khoản
+    renderUsersView(
+      makeDeps({ listUsers: listUsersMock, createUser: createMock }),
+      TEST_ADMIN_SESSION,
+      true,
+    );
+
+    await screen.findByText("student01");
+    await userEvent.click(screen.getByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+    const classGroup = await within(dialog).findByRole("group", { name: "Lớp học" });
+    await userEvent.click(within(classGroup).getByRole("checkbox", { name: /LOP-A/ }));
+    await userEvent.click(within(classGroup).getByRole("checkbox", { name: /LOP-B/ }));
+
+    await userEvent.type(within(dialog).getByLabelText(/Tên đăng nhập/), "student99");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo ngẫu nhiên" }));
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 99");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo tài khoản" }));
+
+    await waitFor(() => {
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: "student99",
+          classIds: [
+            "00000000-0000-4000-8000-000000000301",
+            "00000000-0000-4000-8000-000000000302",
+          ],
+        }),
+      );
+    });
   });
 });

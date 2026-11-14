@@ -1,4 +1,5 @@
 import type { ApiError, components, FieldError, operations } from "@thi360/api-client";
+import { getUserClasses, listAllClasses } from "@/features/classes/api";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
 
@@ -229,6 +230,8 @@ export interface UsersApiDeps {
   checkUsernameAvailability: typeof checkUsernameAvailability;
   listActiveRoles: typeof listActiveRoles;
   listUserAuditEvents: typeof listUserAuditEvents;
+  listAllClasses: typeof listAllClasses;
+  getUserClasses: typeof getUserClasses;
 }
 
 export const defaultUsersApiDeps: UsersApiDeps = {
@@ -247,4 +250,6 @@ export const defaultUsersApiDeps: UsersApiDeps = {
   checkUsernameAvailability,
   listActiveRoles,
   listUserAuditEvents,
+  listAllClasses,
+  getUserClasses,
 };

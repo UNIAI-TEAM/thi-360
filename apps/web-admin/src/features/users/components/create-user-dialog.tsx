@@ -17,10 +17,15 @@ import {
   PasswordField,
   Select,
 } from "@thi360/ui";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import {
+  CLASSES_QUERY_KEYS,
+  type ClassSummary,
+  listAllClasses as defaultListAllClasses,
+} from "@/features/classes/api";
 import { usePermissions } from "@/features/session/session-provider";
 import {
   checkUsernameAvailability as defaultCheckUsernameAvailability,
@@ -42,7 +47,9 @@ export interface CreateUserDialogProps {
   onCreated: (user: UserDetail) => void;
   createUser?: typeof defaultCreateUser;
   checkUsernameAvailability?: typeof defaultCheckUsernameAvailability;
+  listActiveClasses?: () => Promise<ClassSummary[]>;
 }
+
 
 export function CreateUserDialog({
   open,
@@ -51,6 +58,7 @@ export function CreateUserDialog({
   onCreated,
   createUser = defaultCreateUser,
   checkUsernameAvailability = defaultCheckUsernameAvailability,
+  listActiveClasses = () => defaultListAllClasses("ACTIVE"),
 }: CreateUserDialogProps) {
   const t = useTranslations("users");
   const [submitting, setSubmitting] = useState(false);
@@ -83,6 +91,7 @@ export function CreateUserDialog({
             }}
             createUser={createUser}
             checkUsernameAvailability={checkUsernameAvailability}
+            listActiveClasses={listActiveClasses}
           />
         )}
       </DialogContent>
@@ -97,6 +106,7 @@ function CreateUserFormBody({
   onCreated,
   createUser,
   checkUsernameAvailability,
+  listActiveClasses,
 }: {
   roles: RoleSummary[];
   onCancel: () => void;
@@ -104,12 +114,21 @@ function CreateUserFormBody({
   onCreated: (user: UserDetail) => void;
   createUser: typeof defaultCreateUser;
   checkUsernameAvailability: typeof defaultCheckUsernameAvailability;
+  listActiveClasses: () => Promise<ClassSummary[]>;
 }) {
   const t = useTranslations("users");
   const rbacT = useTranslations("rbac");
   const { can } = usePermissions();
   const canAssignRole = can("USER.ASSIGN") && can("ROLE.VIEW");
+  const canAssignClasses = can("CLASS.MODIFY");
   const mustChangeId = useId();
+
+  const classesQuery = useQuery({
+    queryKey: [...CLASSES_QUERY_KEYS.options(), "ACTIVE"],
+    queryFn: () => listActiveClasses(),
+    enabled: canAssignClasses,
+    staleTime: 60_000,
+  });
 
   const [usernameStatus, setUsernameStatus] = useState<
     | { state: "idle" }
@@ -160,6 +179,7 @@ function CreateUserFormBody({
       email: "",
       phone: "",
       roleId: defaultRoleOption,
+      classIds: [],
       mustChangePassword: false,
     },
   });
@@ -201,8 +221,10 @@ function CreateUserFormBody({
           const fieldKey = mapUserErrorCodeToKey(error.fieldErrors[0]?.code) ?? "PASSWORD_WEAK";
           setError("password", { message: t(`errorCodes.${fieldKey}`) });
           appliedFieldError = true;
+        } else if (error.code === "CLASS_INACTIVE") {
+          setError("classIds", { message: t("errorCodes.CLASS_INACTIVE") });
+          appliedFieldError = true;
         }
-
         for (const fe of error.fieldErrors) {
           const mappedKey = mapUserErrorCodeToKey(fe.code);
           const msg = mappedKey ? t(`errorCodes.${mappedKey}`) : t("errorCodes.VALIDATION_FAILED");
@@ -211,7 +233,8 @@ function CreateUserFormBody({
             fe.field === "password" ||
             fe.field === "fullName" ||
             fe.field === "email" ||
-            fe.field === "phone"
+            fe.field === "phone" ||
+            fe.field === "classIds"
           ) {
             setError(fe.field, { message: msg });
             appliedFieldError = true;
@@ -283,6 +306,7 @@ function CreateUserFormBody({
       ...(email ? { email } : {}),
       ...(phone ? { phone } : {}),
       ...(!isDefaultStudent && values.roleId ? { roleIds: [values.roleId] } : {}),
+      ...(canAssignClasses && values.classIds.length > 0 ? { classIds: values.classIds } : {}),
     };
 
     mutation.mutate(payload);
@@ -488,6 +512,80 @@ function CreateUserFormBody({
               value={t("createDialog.roleDefaultValue")}
               readOnly
               disabled
+            />
+          )}
+        </FormField>
+      )}
+
+      {canAssignClasses && (
+        <FormField
+          label={t("createDialog.classesLabel")}
+          hint={t("createDialog.classesHint")}
+          error={errors.classIds?.message}
+        >
+          {() => (
+            <Controller
+              control={control}
+              name="classIds"
+              render={({ field }) => {
+                const classes = classesQuery.data ?? [];
+                const selectedSet = new Set(field.value);
+                if (classesQuery.isLoading) {
+                  return (
+                    <p className="rounded-lg border border-border px-3 py-2 text-caption text-text-muted">
+                      {t("createDialog.classesLoading")}
+                    </p>
+                  );
+                }
+                if (classes.length === 0) {
+                  return (
+                    <p className="rounded-lg border border-border px-3 py-2 text-caption text-text-muted">
+                      {t("createDialog.classesEmpty")}
+                    </p>
+                  );
+                }
+                return (
+                  <div
+                    role="group"
+                    aria-label={t("createDialog.classesLabel")}
+                    className="max-h-36 overflow-y-auto rounded-lg border border-border bg-surface p-2"
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      {classes.map((cls) => {
+                        const itemId = `create-user-class-${cls.id}`;
+                        const checked = selectedSet.has(cls.id);
+                        return (
+                          <label
+                            key={cls.id}
+                            htmlFor={itemId}
+                            className="flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-1 text-body text-text hover:bg-subtle"
+                          >
+                            <Checkbox
+                              id={itemId}
+                              checked={checked}
+                              disabled={mutation.isPending}
+                              onCheckedChange={(next) => {
+                                setSubmitError(null);
+                                const nextIds =
+                                  next === true
+                                    ? checked
+                                      ? field.value
+                                      : [...field.value, cls.id]
+                                    : field.value.filter((id) => id !== cls.id);
+                                field.onChange(nextIds);
+                              }}
+                            />
+                            <span className="truncate font-medium">{cls.code}</span>
+                            <span className="truncate text-caption text-text-muted">
+                              {cls.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }}
             />
           )}
         </FormField>

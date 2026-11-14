@@ -27,6 +27,7 @@ import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, U
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
+import { CLASSES_QUERY_KEYS } from "@/features/classes/api";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -51,11 +52,11 @@ type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 
 export interface UsersListViewProps {
   deps?: Partial<UsersApiDeps>;
-  /** Cờ chờ T10: hiện bộ lọc Lớp học khi T10 ghép vào. */
+  /** Hiện bộ lọc Lớp học (mặc định bật; cần quyền CLASS.VIEW để xem). */
   showClassFilter?: boolean;
 }
 
-export function UsersListView({ deps, showClassFilter = false }: UsersListViewProps) {
+export function UsersListView({ deps, showClassFilter = true }: UsersListViewProps) {
   const sessionState = useSession();
   const { can } = usePermissions();
 
@@ -106,6 +107,7 @@ function UsersListContent({
   const [source, setSource] = useState<SourceFilter>(ALL_VALUE);
   const [status, setStatus] = useState<StatusFilter>(ALL_VALUE);
   const [roleId, setRoleId] = useState<string>(ALL_VALUE);
+  const [classId, setClassId] = useState<string>(ALL_VALUE);
   const [neverLoggedIn, setNeverLoggedIn] = useState(false);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [page, setPage] = useState(1);
@@ -138,6 +140,14 @@ function UsersListContent({
     staleTime: 60_000,
   });
 
+  const canViewClasses = showClassFilter && can("CLASS.VIEW");
+  const classesQuery = useQuery({
+    queryKey: CLASSES_QUERY_KEYS.options(),
+    queryFn: () => deps.listAllClasses(),
+    enabled: canViewClasses,
+    staleTime: 60_000,
+  });
+
   const sortParam = useMemo(() => {
     const first = sorting[0];
     if (!first) return "createdAt,desc";
@@ -150,13 +160,14 @@ function UsersListContent({
       ...(source !== ALL_VALUE ? { source } : {}),
       ...(status !== ALL_VALUE ? { status } : {}),
       ...(roleId !== ALL_VALUE ? { roleId } : {}),
+      ...(canViewClasses && classId !== ALL_VALUE ? { classId } : {}),
       ...(neverLoggedIn ? { neverLoggedIn: true } : {}),
       ...(includeDeleted ? { includeDeleted: true } : {}),
       page: page - 1,
       size: pageSize,
       sort: sortParam,
     }),
-    [debouncedSearch, source, status, roleId, neverLoggedIn, includeDeleted, page, pageSize, sortParam],
+    [debouncedSearch, source, status, roleId, canViewClasses, classId, neverLoggedIn, includeDeleted, page, pageSize, sortParam],
   );
 
   const usersQuery = useQuery({
@@ -169,6 +180,7 @@ function UsersListContent({
       source !== ALL_VALUE ||
       status !== ALL_VALUE ||
       roleId !== ALL_VALUE ||
+      (canViewClasses && classId !== ALL_VALUE) ||
       neverLoggedIn ||
       includeDeleted,
   );
@@ -179,6 +191,7 @@ function UsersListContent({
     setSource(ALL_VALUE);
     setStatus(ALL_VALUE);
     setRoleId(ALL_VALUE);
+    setClassId(ALL_VALUE);
     setNeverLoggedIn(false);
     setIncludeDeleted(false);
     setPage(1);
@@ -214,6 +227,17 @@ function UsersListContent({
     ],
     [rolesQuery.data, t, rbacT],
   );
+  const classOptions = useMemo(
+    () => [
+      { value: ALL_VALUE, label: t("filters.all") },
+      ...(classesQuery.data ?? []).map((cls) => ({
+        value: cls.id,
+        label: `${cls.code} — ${cls.name}`,
+      })),
+    ],
+    [classesQuery.data, t],
+  );
+
 
   const columns = useMemo<ColumnDef<UserSummary>[]>(
     () => [
@@ -471,14 +495,17 @@ function UsersListContent({
             </FormField>
           )}
 
-          {showClassFilter && (
-            <FormField label={t("filters.classLabel")} className="min-w-36 flex-1">
+          {canViewClasses && (
+            <FormField label={t("filters.classLabel")} className="min-w-44 flex-1">
               {(controlProps) => (
                 <Select
                   {...controlProps}
-                  value={ALL_VALUE}
-                  options={[{ value: ALL_VALUE, label: t("filters.all") }]}
-                  disabled
+                  value={classId}
+                  onValueChange={(value) => {
+                    setClassId(value);
+                    setPage(1);
+                  }}
+                  options={classOptions}
                 />
               )}
             </FormField>
@@ -644,8 +671,10 @@ function UsersListContent({
         roles={rolesQuery.data ?? []}
         createUser={deps.createUser}
         checkUsernameAvailability={deps.checkUsernameAvailability}
+        listActiveClasses={() => deps.listAllClasses("ACTIVE")}
         onCreated={() => {
           void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
+          void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.all });
         }}
       />
 
