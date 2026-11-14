@@ -96,6 +96,16 @@ function TreeHarness({
 }
 
 describe("TreeView", () => {
+  it("tên truy cập của treeitem chỉ là tên nút, không gộp mã, chip, nút mở/đóng (VIS-10)", () => {
+    render(<TreeHarness initialExpanded={["n-1", "n-1-1"]} />);
+    const items = screen.getAllByRole("treeitem");
+    expect(items[0]).toHaveAccessibleName("Mệnh đề. Tập hợp");
+    expect(items[1]).toHaveAccessibleName("Mệnh đề");
+    expect(items[2]).toHaveAccessibleName("Mệnh đề chứa biến");
+    expect(items[3]).toHaveAccessibleName("Bất phương trình");
+    expect(screen.getByRole("treeitem", { name: "Mệnh đề chứa biến" })).toBe(items[2]);
+  });
+
   it("render đúng role=tree, treeitem, aria-level, aria-expanded, aria-selected và chỉ hiện chip khi khác Hoạt động", () => {
     render(<TreeHarness initialExpanded={["n-1", "n-1-1"]} />);
 

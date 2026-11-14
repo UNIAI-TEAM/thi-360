@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight, Loader2 } from "lucide-react";
-import { Fragment, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { StatusChip, type StatusTone } from "./status-chip";
@@ -73,6 +73,7 @@ export function TreeView({
   renderRowWrapper,
 }: TreeViewProps) {
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const nameIdPrefix = useId();
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
   const visibleRows = useMemo<VisibleTreeRow[]>(() => {
@@ -238,6 +239,7 @@ export function TreeView({
               }
             }}
             role="treeitem"
+            aria-labelledby={`${nameIdPrefix}-name-${item.id}`}
             aria-level={level}
             aria-setsize={setSize}
             aria-posinset={posInSet}
@@ -309,7 +311,10 @@ export function TreeView({
                 {item.code}
               </span>
 
-              <span className={cn("min-w-0 flex-1 truncate", nameStyle, nameColor)}>
+              <span
+                id={`${nameIdPrefix}-name-${item.id}`}
+                className={cn("min-w-0 flex-1 truncate", nameStyle, nameColor)}
+              >
                 {item.name}
               </span>
 
