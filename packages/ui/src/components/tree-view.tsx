@@ -48,6 +48,8 @@ interface VisibleTreeRow {
   level: number;
   firstChildId: string | null;
   visibleParentId: string | null;
+  setSize: number;
+  posInSet: number;
 }
 
 /**
@@ -88,7 +90,9 @@ export function TreeView({
     function visit(parentKey: string | null, depthOffset: number, visibleParentId: string | null) {
       const list = childrenByParent.get(parentKey);
       if (!list) return;
-      for (const item of list) {
+      const setSize = list.length;
+      for (let idx = 0; idx < list.length; idx++) {
+        const item = list[idx]!;
         const level = item.depth > 0 ? item.depth : depthOffset;
         const isExpanded = expandedIds.has(item.id);
         const children = childrenByParent.get(item.id);
@@ -98,6 +102,8 @@ export function TreeView({
           level,
           firstChildId,
           visibleParentId,
+          setSize,
+          posInSet: idx + 1,
         });
         if (isExpanded) {
           visit(item.id, level + 1, item.id);
@@ -125,6 +131,7 @@ export function TreeView({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>, rowIndex: number) {
+    if (event.target !== event.currentTarget) return;
     const current = visibleRows[rowIndex];
     if (!current) return;
     const { item, firstChildId, visibleParentId } = current;
@@ -196,7 +203,7 @@ export function TreeView({
 
   return (
     <div role="tree" aria-label={ariaLabel} className={cn("flex flex-col gap-0.5 p-2", className)}>
-      {visibleRows.map(({ item, level }, rowIndex) => {
+      {visibleRows.map(({ item, level, setSize, posInSet }, rowIndex) => {
         const isExpanded = expandedIds.has(item.id);
         const isSelected = selectedId === item.id;
         const isLoading = Boolean(loadingIds?.has(item.id));
@@ -221,6 +228,8 @@ export function TreeView({
             }}
             role="treeitem"
             aria-level={level}
+            aria-setsize={setSize}
+            aria-posinset={posInSet}
             aria-selected={isSelected}
             aria-expanded={item.hasChildren ? isExpanded : undefined}
             tabIndex={activeFocusId === item.id ? 0 : -1}

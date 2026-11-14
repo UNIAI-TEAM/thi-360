@@ -105,6 +105,8 @@ describe("TreeView", () => {
 
     expect(items[0]).toHaveAttribute("aria-level", "1");
     expect(items[0]).toHaveAttribute("aria-expanded", "true");
+    expect(items[0]).toHaveAttribute("aria-setsize", "2");
+    expect(items[0]).toHaveAttribute("aria-posinset", "1");
     expect(items[0]).toHaveAttribute("aria-selected", "false");
     expect(within(items[0]!).getByText("0D1")).toBeInTheDocument();
     expect(within(items[0]!).getByText("Toán · Lớp 10")).toBeInTheDocument();
@@ -116,6 +118,8 @@ describe("TreeView", () => {
     expect(within(items[2]!).getByText("Ngừng theo cấp trên")).toBeInTheDocument();
 
     expect(items[3]).toHaveAttribute("aria-level", "1");
+    expect(items[3]).toHaveAttribute("aria-setsize", "2");
+    expect(items[3]).toHaveAttribute("aria-posinset", "2");
     expect(items[3]).not.toHaveAttribute("aria-expanded");
     expect(within(items[3]!).getByText("Ngừng sử dụng")).toBeInTheDocument();
   });
@@ -192,5 +196,43 @@ describe("TreeView", () => {
     expect(screen.getAllByRole("treeitem")[1]).toHaveFocus();
     await userEvent.keyboard("{ArrowUp}");
     expect(root1).toHaveFocus();
+  });
+
+  it("không chặn Enter/Space khi focus đang ở nút thao tác bên trong renderTrailing", async () => {
+    const onSelect = vi.fn();
+    const onTrailingClick = vi.fn();
+
+    render(
+      <TreeView
+        aria-label="Cây có nút thao tác"
+        items={SAMPLE_ITEMS}
+        expandedIds={new Set()}
+        selectedId={null}
+        onToggleExpand={vi.fn()}
+        onSelect={onSelect}
+        labels={{
+          expandNode: (name) => `Mở ${name}`,
+          collapseNode: (name) => `Thu gọn ${name}`,
+        }}
+        renderTrailing={(item) => (
+          <button type="button" onClick={() => onTrailingClick(item.id)}>
+            Sửa {item.code}
+          </button>
+        )}
+      />,
+    );
+
+    const trailingBtn = screen.getByRole("button", { name: "Sửa 0D1" });
+    trailingBtn.focus();
+    expect(trailingBtn).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    expect(onTrailingClick).toHaveBeenCalledTimes(1);
+    expect(onTrailingClick).toHaveBeenCalledWith("n-1");
+    expect(onSelect).not.toHaveBeenCalled();
+
+    await userEvent.keyboard(" ");
+    expect(onTrailingClick).toHaveBeenCalledTimes(2);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });
