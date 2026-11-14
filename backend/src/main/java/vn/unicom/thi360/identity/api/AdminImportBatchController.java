@@ -93,6 +93,7 @@ public class AdminImportBatchController {
 
     @GetMapping("/{id}/errors")
     @RequirePermission(Permissions.USER_MODIFY)
+    @Operation(summary = "Tải tệp Excel chỉ gồm các dòng lỗi kèm cột Lỗi")
     public ResponseEntity<byte[]> downloadErrors(@PathVariable UUID id, HttpServletRequest request) {
         byte[] bytes = importBatchService.downloadErrorsWorkbook(id, LocaleConfig.resolveLocale(request));
         return xlsxAttachment("import-errors-" + id + ".xlsx", bytes);
