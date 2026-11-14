@@ -71,7 +71,8 @@ test.describe("Quản lý lớp học (UNI-2547)", () => {
       await expect(page.getByRole("heading", { name: classAName })).toBeVisible();
       await expect(page.getByText(/Lịch sử thành viên/i)).toBeHidden();
 
-      await page.getByRole("button", { name: "Thêm học viên" }).click();
+      // Lớp rỗng có hai nút "Thêm học viên": nút ở tiêu đề trang (đứng trước trong DOM) và nút CTA của bảng rỗng.
+      await page.getByRole("button", { name: "Thêm học viên" }).first().click();
       const addDialog = page.getByRole("dialog");
       await addDialog.getByLabel("Tìm học viên").fill("student0");
       await addDialog.getByRole("checkbox", { name: /student01/ }).check();
@@ -104,15 +105,21 @@ test.describe("Quản lý lớp học (UNI-2547)", () => {
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
       await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
       await page.getByLabel("Tìm kiếm").fill("student01");
-      await page.getByRole("link", { name: "student01" }).click();
+      await page.getByRole("link", { name: "student01", exact: true }).click();
 
       await page.getByRole("tab", { name: "Lớp học" }).click();
       await expect(page.getByRole("heading", { name: /Lớp học hiện tại/ })).toBeVisible();
-      await expect(page.getByRole("link", { name: classBCode })).toBeVisible();
+      // Link lớp hiện tại có chữ đúng bằng mã lớp; các link lịch sử có dạng "MÃ — Tên lớp" nên không khớp exact.
+      await expect(page.getByRole("link", { name: classBCode, exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { name: /Lịch sử tham gia và chuyển lớp/ })).toBeVisible();
-      await expect(page.getByText("Chuyển đến")).toBeVisible();
-      await expect(page.getByText("Chuyển đi")).toBeVisible();
-      await expect(page.getByText("E2E chuyển lớp").first()).toBeVisible();
+      // Lịch sử của student01 tích lũy qua các lần chạy: chỉ xét các dòng liên quan lớp B của lần chạy này.
+      const classBHistoryRows = page
+        .getByRole("table", { name: "Lịch sử tham gia và chuyển lớp" })
+        .getByRole("row")
+        .filter({ hasText: classBCode });
+      await expect(classBHistoryRows.filter({ hasText: "Chuyển đến" })).toHaveCount(1);
+      await expect(classBHistoryRows.filter({ hasText: "Chuyển đi" })).toHaveCount(1);
+      await expect(classBHistoryRows.getByText("E2E chuyển lớp").first()).toBeVisible();
     } finally {
       const listRes = await api.get(`${ADMIN_URL}/api/v1/admin/classes?q=${suffix}&size=20`);
       if (listRes.ok()) {
