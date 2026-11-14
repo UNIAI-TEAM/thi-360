@@ -380,12 +380,17 @@ export function PermissionUsersTab({
   const totalUsers = usersQuery.data?.totalItems ?? 0;
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+    // Hai khung xếp cạnh nhau theo bề rộng của chính vùng này (truy vấn vùng chứa), không theo cửa sổ: sidebar
+    // 248px đã lấy một phần cửa sổ. Một vùng chứa không tự truy vấn được chính nó, nên nó luôn là hàng có xuống
+    // dòng, còn hai khung con đổi kích thước: dưới ngưỡng mỗi khung chiếm trọn một dòng (xếp chồng). Ngưỡng
+    // `@5xl` = 64rem (1024px): trừ cột trái 320px và khe 16px, khung phải còn từ 688px, đủ cho bảng năm cột
+    // (ước tính cần khoảng 670px để không phải cuộn ngang) và hàng bộ lọc.
+    <div className="@container flex flex-wrap items-start gap-4">
       <Card
         padding="none"
         role="region"
         aria-labelledby="rbac-perm-picker-heading"
-        className="w-full overflow-hidden lg:w-[320px] lg:shrink-0"
+        className="w-full overflow-hidden @5xl:w-[320px] @5xl:shrink-0"
       >
         <div className="flex flex-col gap-2.5 p-4">
           <h2 id="rbac-perm-picker-heading" className="text-title font-semibold text-text">
@@ -431,7 +436,9 @@ export function PermissionUsersTab({
             />
           </div>
         ) : (
-          <ul className="m-0 max-h-[640px] list-none overflow-y-auto p-0">
+          // Khi xếp chồng, danh sách thấp lại để bảng bên dưới không bị đẩy khỏi màn hình; bóng ở mép báo còn
+          // quyền để cuộn tới.
+          <ul className="scroll-shadows-y m-0 max-h-80 list-none overflow-y-auto p-0 @5xl:max-h-[640px]">
             {filteredPermissions.map((perm) => {
               const isSelected = activePermission?.id === perm.id;
               const objName = resolveObjectName(rbacT, perm.groupCode, perm.groupName);
@@ -447,13 +454,16 @@ export function PermissionUsersTab({
                     }}
                     className={cn(
                       "flex min-h-[60px] w-full cursor-pointer items-center gap-2.5 px-4 py-2 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-primary-600/30",
+                      // Mục thường không tô nền (thẻ đã có nền `surface`): cách dự phòng của `scroll-shadows-y`
+                      // vẽ bóng bằng nền của danh sách, mục có nền đặc sẽ che mất.
                       isSelected
                         ? "border-l-[3px] border-l-primary-600 bg-primary-50"
-                        : "bg-surface hover:bg-subtle",
+                        : "hover:bg-subtle",
                     )}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-text">
+                      {/* Tối đa hai dòng thay vì cắt một dòng: tên dài vẫn đọc được cả trên màn cảm ứng và bằng bàn phím. */}
+                      <span className="line-clamp-2 font-semibold wrap-anywhere text-text">
                         {objName} · {permName}
                       </span>
                       <span className="block text-caption text-text-muted">{perm.code}</span>
@@ -473,7 +483,7 @@ export function PermissionUsersTab({
         padding="none"
         role="region"
         aria-labelledby="rbac-perm-users-heading"
-        className="min-w-0 flex-1 overflow-hidden"
+        className="min-w-0 flex-[1_1_100%] overflow-hidden @5xl:flex-1"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">
