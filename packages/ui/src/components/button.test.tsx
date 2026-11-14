@@ -95,6 +95,33 @@ describe("Button", () => {
     expect(link).toHaveClass("h-10");
   });
 
+  it("asChild: icon và nhãn của phần tử con cùng cỡ icon, cùng khoảng cách với nút thường", () => {
+    render(
+      <>
+        <Button asChild variant="secondary">
+          <a href="/cap-hang-loat">
+            <svg data-testid="link-icon" />
+            Cấp hàng loạt
+          </a>
+        </Button>
+        <Button>
+          <svg data-testid="button-icon" />
+          Tạo tài khoản
+        </Button>
+      </>,
+    );
+    const link = screen.getByRole("link", { name: "Cấp hàng loạt" });
+    const button = screen.getByRole("button", { name: "Tạo tài khoản" });
+    // Lớp cỡ icon nằm ở phần tử gốc của cả hai nhánh, nên áp cho mọi svg bên trong.
+    for (const root of [link, button]) {
+      expect(root).toHaveClass("[&_svg]:size-4", "[&_svg]:shrink-0");
+    }
+    // Khoảng cách icon–nhãn: ở liên kết là gap của chính nó, ở nút thường là gap của phần tử bọc nhãn.
+    expect(screen.getByTestId("link-icon").parentElement).toBe(link);
+    expect(link).toHaveClass("inline-flex", "items-center", "gap-2");
+    expect(screen.getByTestId("button-icon").parentElement).toHaveClass("inline-flex", "items-center", "gap-2");
+  });
+
   it("asChild + disabled: phần tử con aria-disabled, ra khỏi thứ tự Tab và không nhận bấm", async () => {
     const onClick = vi.fn();
     render(

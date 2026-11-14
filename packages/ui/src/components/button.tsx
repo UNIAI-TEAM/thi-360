@@ -8,6 +8,9 @@ import { focusRing } from "../lib/styles";
 export const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 items-center justify-center rounded-lg text-label font-semibold whitespace-nowrap",
+    // Cỡ icon và khoảng cách icon–nhãn đặt ở gốc: nhánh `asChild` không có phần tử bọc nhãn bên trong, nên con
+    // trực tiếp của phần tử nhận kiểu (ví dụ `<a><Icon /> Nhãn</a>`) cũng phải được canh như nút thường.
+    "gap-2 [&_svg]:size-4 [&_svg]:shrink-0",
     "transition-colors duration-150 motion-reduce:transition-none",
     "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none [&[aria-disabled='true']:not([aria-busy='true'])]:opacity-50",
     focusRing,
@@ -123,10 +126,7 @@ export function Button({
        * xử lý thành nút không tên. Nhãn vẫn chiếm chỗ nên nút giữ nguyên chiều rộng.
        */}
       <span
-        className={cn(
-          "inline-flex items-center gap-2 [&_svg]:size-4 [&_svg]:shrink-0",
-          loading && "opacity-0",
-        )}
+        className={cn("inline-flex items-center gap-2", loading && "opacity-0")}
       >
         {children}
       </span>
