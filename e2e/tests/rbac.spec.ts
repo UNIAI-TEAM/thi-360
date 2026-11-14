@@ -78,66 +78,17 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
     const roleName = `Theo dõi lớp ${suffix}`;
     const watchUsername = `e2e.watch.${suffix}`;
 
-    test("E2E 1: platform tạo vai trò Chỉ xem Lớp học → gán cho user mới → user chỉ thấy menu Lớp học và quyền CLASS.VIEW", async ({
-      page,
-    }) => {
-      await loginAs(page, "platform", PLATFORM_PASSWORD);
-      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+    // E2E 2 dùng lại user và vai trò do E2E 1 tạo, nên chỉ dọn sau cả hai test.
+    let watchUserId: string | undefined;
+    let createdRoleId: string | undefined;
 
+    test.afterAll(async () => {
+      // Dọn dẹp best-effort: gỡ vai trò khỏi user rồi xóa user, sau đó xóa vai trò.
+      if (!watchUserId && !createdRoleId) {
+        return;
+      }
       const { api, xsrf } = await createPlatformApiContext();
-      let watchUserId: string | undefined;
-      let createdRoleId: string | undefined;
       try {
-        await page
-          .getByRole("navigation", { name: "Menu chính" })
-          .getByRole("link", { name: "Phân quyền" })
-          .click();
-        await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/phan-quyen\\?tab=vai-tro`));
-
-        await page.getByRole("button", { name: "+ Tạo vai trò" }).click();
-        const dialog = page.getByRole("dialog");
-        await expect(dialog).toBeVisible();
-
-        await dialog.getByLabel(/Mã vai trò/).fill(roleCode);
-        await dialog.getByLabel(/Tên vai trò/).fill(roleName);
-        await dialog.getByRole("checkbox", { name: "Cấp đối tượng Lớp học" }).check();
-        await dialog.getByRole("button", { name: "Tạo vai trò" }).click();
-
-        await expect(dialog).toBeHidden();
-        // Danh sách vai trò phân trang 20; tìm theo mã để hàng mới không rơi sang trang sau.
-        await page.getByLabel("Tìm kiếm").fill(roleCode);
-        await expect(page.getByText(roleCode)).toBeVisible();
-
-        createdRoleId = await findRoleIdByCode(page, roleCode);
-        const createdUser = await createUserViaAdminApi(page, {
-          username: watchUsername,
-          fullName: "Người theo dõi lớp",
-          email: `${watchUsername}@thi360.vn`,
-          roleIds: [createdRoleId],
-        });
-        watchUserId = createdUser.id;
-
-        await logoutFromAdmin(page);
-
-        await loginAs(page, watchUsername, TEST_USER_PASSWORD);
-        await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
-
-        const nav = page.getByRole("navigation", { name: "Menu chính" });
-        await expect(nav.getByRole("link", { name: "Bảng điều khiển" })).toBeVisible();
-        await expect(nav.getByRole("link", { name: "Tài khoản" })).toBeHidden();
-        await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeHidden();
-        await expect(nav.getByRole("link", { name: "Tùy chỉnh giao diện" })).toBeHidden();
-
-        // T10 (Lớp học) chưa merge nên kiểm tra quyền CLASS.VIEW và không có quyền ghi qua GET /api/v1/me;
-        // kiểm tra cấp màn hình Lớp học sẽ thực hiện sau khi T10 merge.
-        const meResponse = await page.request.get(`${ADMIN_URL}/api/v1/me`);
-        expect(meResponse.ok()).toBe(true);
-        const me = (await meResponse.json()) as { access: string; permissions: string[] };
-        expect(me.access).toBe("MANAGE");
-        expect(me.permissions).toContain("CLASS.VIEW");
-        expect(me.permissions).toEqual(["CLASS.VIEW"]);
-      } finally {
-        // Dọn dẹp best-effort: gỡ vai trò khỏi user rồi xóa user, sau đó xóa vai trò.
         if (watchUserId) {
           await api.put(`/api/v1/admin/users/${watchUserId}/roles`, {
             headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
@@ -152,8 +103,65 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
             headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
           });
         }
+      } finally {
         await api.dispose();
       }
+    });
+
+    test("E2E 1: platform tạo vai trò Chỉ xem Lớp học → gán cho user mới → user chỉ thấy menu Lớp học và quyền CLASS.VIEW", async ({
+      page,
+    }) => {
+      await loginAs(page, "platform", PLATFORM_PASSWORD);
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+
+      await page
+        .getByRole("navigation", { name: "Menu chính" })
+        .getByRole("link", { name: "Phân quyền" })
+        .click();
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/phan-quyen\\?tab=vai-tro`));
+
+      await page.getByRole("button", { name: "+ Tạo vai trò" }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+
+      await dialog.getByLabel(/Mã vai trò/).fill(roleCode);
+      await dialog.getByLabel(/Tên vai trò/).fill(roleName);
+      await dialog.getByRole("checkbox", { name: "Cấp đối tượng Lớp học" }).check();
+      await dialog.getByRole("button", { name: "Tạo vai trò" }).click();
+
+      await expect(dialog).toBeHidden();
+      // Danh sách vai trò phân trang 20; tìm theo mã để hàng mới không rơi sang trang sau.
+      await page.getByLabel("Tìm kiếm").fill(roleCode);
+      await expect(page.getByText(roleCode)).toBeVisible();
+
+      createdRoleId = await findRoleIdByCode(page, roleCode);
+      const createdUser = await createUserViaAdminApi(page, {
+        username: watchUsername,
+        fullName: "Người theo dõi lớp",
+        email: `${watchUsername}@thi360.vn`,
+        roleIds: [createdRoleId],
+      });
+      watchUserId = createdUser.id;
+
+      await logoutFromAdmin(page);
+
+      await loginAs(page, watchUsername, TEST_USER_PASSWORD);
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+
+      const nav = page.getByRole("navigation", { name: "Menu chính" });
+      await expect(nav.getByRole("link", { name: "Bảng điều khiển" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Tài khoản" })).toBeHidden();
+      await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeHidden();
+      await expect(nav.getByRole("link", { name: "Tùy chỉnh giao diện" })).toBeHidden();
+
+      // T10 (Lớp học) chưa merge nên kiểm tra quyền CLASS.VIEW và không có quyền ghi qua GET /api/v1/me;
+      // kiểm tra cấp màn hình Lớp học sẽ thực hiện sau khi T10 merge.
+      const meResponse = await page.request.get(`${ADMIN_URL}/api/v1/me`);
+      expect(meResponse.ok()).toBe(true);
+      const me = (await meResponse.json()) as { access: string; permissions: string[] };
+      expect(me.access).toBe("MANAGE");
+      expect(me.permissions).toContain("CLASS.VIEW");
+      expect(me.permissions).toEqual(["CLASS.VIEW"]);
     });
 
     test("E2E 2: tab Người dùng theo quyền với CLASS.VIEW hiện đúng user ở E2E 1 với nguồn Từ vai trò", async ({
@@ -289,9 +297,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
     const roleName = `Chỉ xem vai trò ${suffix}`;
     const viewerUsername = `e2e.roleview.${suffix}`;
 
-    await loginAs(page, "platform", PLATFORM_PASSWORD);
-    await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
-
+    // Fixture qua API context; không đăng nhập platform vào trang để /dang-nhap hiện form cho viewer.
     const { api, xsrf } = await createPlatformApiContext();
     let roleId: string | undefined;
     let viewerId: string | undefined;

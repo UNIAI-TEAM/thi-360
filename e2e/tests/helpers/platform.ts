@@ -26,10 +26,22 @@ export interface PlatformSessionState {
 // The backend rate-limits /auth/login per IP, so the suite logs in once per
 // worker process and every test gets its own request context cloned from the
 // shared session cookies instead of re-authenticating.
-let sessionPromise: Promise<{ storageState: PlatformSessionState; xsrf: string }> | undefined;
+// The access cookie (thi360_at) lives 5 minutes, so a cached session is
+// discarded after ~3 minutes and a long suite never reuses an expired cookie.
+const SESSION_MAX_AGE_MS = 3 * 60 * 1000;
 
-function platformApiSession() {
-  sessionPromise ??= (async () => {
+interface PlatformSession {
+  storageState: PlatformSessionState;
+  xsrf: string;
+}
+
+let cachedSession: { promise: Promise<PlatformSession>; createdAt: number } | undefined;
+
+function platformApiSession(): Promise<PlatformSession> {
+  if (cachedSession && Date.now() - cachedSession.createdAt < SESSION_MAX_AGE_MS) {
+    return cachedSession.promise;
+  }
+  const promise = (async () => {
     const loginApi = await playwrightRequest.newContext({ baseURL: ADMIN_URL });
     const loginRes = await loginApi.post(`${WEB_URL}/api/v1/auth/login`, {
       headers: { origin: WEB_URL },
@@ -44,7 +56,14 @@ function platformApiSession() {
     await loginApi.dispose();
     return { storageState, xsrf };
   })();
-  return sessionPromise;
+  cachedSession = { promise, createdAt: Date.now() };
+  // A failed login must not stay cached for the next test.
+  promise.catch(() => {
+    if (cachedSession?.promise === promise) {
+      cachedSession = undefined;
+    }
+  });
+  return promise;
 }
 
 export async function createPlatformApiContext(): Promise<{ api: APIRequestContext; xsrf: string }> {
