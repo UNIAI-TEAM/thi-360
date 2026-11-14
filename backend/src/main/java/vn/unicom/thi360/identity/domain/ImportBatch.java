@@ -73,6 +73,9 @@ public class ImportBatch {
     @Column(name = "confirmed_by_username")
     private String confirmedByUsername;
 
+    @Column(name = "lease_token")
+    private UUID leaseToken;
+
     @Column(name = "lease_expires_at")
     private Instant leaseExpiresAt;
 
@@ -81,6 +84,9 @@ public class ImportBatch {
 
     @Column(name = "retry_count", nullable = false)
     private int retryCount;
+    @Column(name = "result_retry_count", nullable = false)
+    private int resultRetryCount;
+
 
     @Column(name = "started_at")
     private Instant startedAt;
@@ -155,11 +161,12 @@ public class ImportBatch {
         this.updatedBy = actorId;
     }
 
-    public void markProcessing(Instant leaseExpiresAt, Instant now) {
+    public void markProcessing(UUID leaseToken, Instant leaseExpiresAt, Instant now) {
         this.status = ImportBatchStatus.PROCESSING;
         if (this.startedAt == null) {
             this.startedAt = now;
         }
+        this.leaseToken = Objects.requireNonNull(leaseToken, "leaseToken must not be null");
         this.leaseExpiresAt = leaseExpiresAt;
         this.nextRetryAt = null;
         this.updatedAt = now;
@@ -167,9 +174,21 @@ public class ImportBatch {
 
     public void scheduleRetry(Instant nextRetryAt, int createdRows, int failedRows, Instant now) {
         this.status = ImportBatchStatus.PROCESSING;
+        this.leaseToken = null;
         this.leaseExpiresAt = null;
         this.nextRetryAt = nextRetryAt;
         this.retryCount = this.retryCount + 1;
+        this.createdRows = createdRows;
+        this.failedRows = failedRows;
+        this.updatedAt = now;
+    }
+
+    public void scheduleResultRetry(Instant nextRetryAt, int createdRows, int failedRows, Instant now) {
+        this.status = ImportBatchStatus.PROCESSING;
+        this.leaseToken = null;
+        this.leaseExpiresAt = null;
+        this.nextRetryAt = nextRetryAt;
+        this.resultRetryCount = this.resultRetryCount + 1;
         this.createdRows = createdRows;
         this.failedRows = failedRows;
         this.updatedAt = now;
@@ -180,6 +199,7 @@ public class ImportBatch {
         this.createdRows = createdRows;
         this.failedRows = failedRows;
         this.status = failedRows == 0 ? ImportBatchStatus.COMPLETED : ImportBatchStatus.COMPLETED_WITH_ERRORS;
+        this.leaseToken = null;
         this.leaseExpiresAt = null;
         this.nextRetryAt = null;
         this.completedAt = now;
@@ -191,6 +211,7 @@ public class ImportBatch {
         this.errorMessage = errorMessage;
         this.createdRows = createdRows;
         this.failedRows = failedRows;
+        this.leaseToken = null;
         this.leaseExpiresAt = null;
         this.nextRetryAt = null;
         this.completedAt = now;
@@ -288,6 +309,10 @@ public class ImportBatch {
     public String getConfirmedByUsername() {
         return confirmedByUsername;
     }
+    public UUID getLeaseToken() {
+        return leaseToken;
+    }
+
 
     public Instant getLeaseExpiresAt() {
         return leaseExpiresAt;
@@ -300,6 +325,10 @@ public class ImportBatch {
     public int getRetryCount() {
         return retryCount;
     }
+    public int getResultRetryCount() {
+        return resultRetryCount;
+    }
+
 
     public Instant getStartedAt() {
         return startedAt;

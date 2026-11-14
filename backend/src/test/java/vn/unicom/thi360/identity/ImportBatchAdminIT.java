@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -34,6 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -1406,6 +1408,298 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+
+    @Test
+    void staleWorkerResumingAfterLeaseTakeover_touchesNothingAndLeavesWinnerOutcomeIntact() throws Exception {
+        String sfx = suffix();
+        // Part A: Worker A pauses immediately after Keycloak setPassword returns (before Tx2 promotion);
+        // lease expires, Worker B recovers and completes, then A resumes.
+        String u1 = "r2.1.a." + sfx;
+        UUID batchA = uploadBatch(
+                buildImportXlsx(List.<String[]>of(new String[] {u1, "", "Lease Fence A", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchA, "r2-1-a-" + sfx);
+
+        CountDownLatch aPausedAfterSetPwd = new CountDownLatch(1);
+        CountDownLatch releaseWorkerA = new CountDownLatch(1);
+        AtomicBoolean firstSetPwdPaused = new AtomicBoolean(false);
+        doAnswer(invocation -> {
+            Object res = invocation.callRealMethod();
+            if (firstSetPwdPaused.compareAndSet(false, true)) {
+                aPausedAfterSetPwd.countDown();
+                assertThat(releaseWorkerA.await(20, TimeUnit.SECONDS)).isTrue();
+            }
+            return res;
+        }).when(keycloakClient).setPassword(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<?> workerAFuture = executor.submit(() -> dispatcherWorker().runScheduledImportBatches());
+        try {
+            assertThat(aPausedAfterSetPwd.await(15, TimeUnit.SECONDS)).isTrue();
+
+            // Expire A's lease -> Worker B claims with a new lease_token and completes batchA
+            jdbcTemplate.update(
+                    "UPDATE identity.import_batch SET lease_expires_at = now() - interval '1 minute' WHERE id = ?",
+                    batchA);
+            dispatcherWorker().runScheduledImportBatches();
+
+            Map<String, Object> batchBeforeResume = jdbcTemplate.queryForMap(
+                    "SELECT status, created_rows, failed_rows, result_object_key, source_deleted_at FROM identity.import_batch WHERE id = ?",
+                    batchA);
+            assertThat(((Number) batchBeforeResume.get("status")).shortValue()).isEqualTo(ImportBatchStatus.COMPLETED.code());
+            assertThat(((Number) batchBeforeResume.get("created_rows")).intValue()).isEqualTo(1);
+            assertThat(((Number) batchBeforeResume.get("failed_rows")).intValue()).isZero();
+            assertThat(batchBeforeResume.get("result_object_key")).isNotNull();
+
+            UUID bCreatedUserId = jdbcTemplate.queryForObject(
+                    "SELECT created_user_id FROM identity.import_row WHERE batch_id = ?",
+                    UUID.class,
+                    batchA);
+            assertThat(bCreatedUserId).isNotNull();
+            String bPwd = readResultCell(batchA, 1, 5);
+            assertThat(bPwd).isNotBlank();
+            byte[] bResultBytes = ((InMemoryObjectStorage) objectStorage)
+                    .rawBytes(ImportBatchService.resultObjectKey(batchA))
+                    .orElseThrow();
+
+            // Release stale worker A: must stop cleanly without overwriting row, result, batch, or ACTIVE user
+            releaseWorkerA.countDown();
+            workerAFuture.get(15, TimeUnit.SECONDS);
+            reset(keycloakClient);
+
+            Map<String, Object> batchAfterResume = jdbcTemplate.queryForMap(
+                    "SELECT status, created_rows, failed_rows, result_object_key, source_deleted_at FROM identity.import_batch WHERE id = ?",
+                    batchA);
+            assertThat(((Number) batchAfterResume.get("status")).shortValue()).isEqualTo(ImportBatchStatus.COMPLETED.code());
+            assertThat(((Number) batchAfterResume.get("created_rows")).intValue()).isEqualTo(1);
+            assertThat(((Number) batchAfterResume.get("failed_rows")).intValue()).isZero();
+
+            Map<String, Object> rowAfterResume = jdbcTemplate.queryForMap(
+                    "SELECT status, created_user_id, failure_code, generated_password_enc FROM identity.import_row WHERE batch_id = ?",
+                    batchA);
+            assertThat(((Number) rowAfterResume.get("status")).shortValue()).isEqualTo(ImportRowStatus.CREATED.code());
+            assertThat(rowAfterResume.get("created_user_id")).isEqualTo(bCreatedUserId);
+            assertThat(rowAfterResume.get("failure_code")).isNull();
+            assertThat(rowAfterResume.get("generated_password_enc")).isNull();
+
+            List<Map<String, Object>> accounts = jdbcTemplate.queryForList(
+                    "SELECT id, status FROM identity.user_account WHERE username_normalized = ? AND deleted_at IS NULL",
+                    u1.toLowerCase());
+            assertThat(accounts).hasSize(1);
+            assertThat(accounts.getFirst().get("id")).isEqualTo(bCreatedUserId);
+            assertThat(((Number) accounts.getFirst().get("status")).shortValue()).isEqualTo(UserStatus.ACTIVE.code());
+
+            byte[] afterResultBytes = ((InMemoryObjectStorage) objectStorage)
+                    .rawBytes(ImportBatchService.resultObjectKey(batchA))
+                    .orElseThrow();
+            assertThat(afterResultBytes).isEqualTo(bResultBytes);
+            assertThat(readResultCell(batchA, 1, 5)).isEqualTo(bPwd);
+            assertLoginSucceeds(u1, bPwd);
+        } finally {
+            releaseWorkerA.countDown();
+            reset(keycloakClient);
+            executor.shutdownNow();
+        }
+
+        // Part B: Worker A pauses right before result upload (inside buildResultWorkbook); B completes, A resumes ->
+        // A never overwrites result.xlsx in storage or finalizes batch.
+        String u2 = "r2.1.b." + sfx;
+        UUID batchB = uploadBatch(
+                buildImportXlsx(List.<String[]>of(new String[] {u2, "", "Lease Fence B", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchB, "r2-1-b-" + sfx);
+
+        CountDownLatch aPausedBeforeResultWrite = new CountDownLatch(1);
+        CountDownLatch releaseWorkerAB = new CountDownLatch(1);
+        AtomicBoolean pausedResultBuildOnce = new AtomicBoolean(false);
+        AtomicInteger resultPutCount = new AtomicInteger(0);
+        doAnswer(invocation -> {
+            Object res = invocation.callRealMethod();
+            if (pausedResultBuildOnce.compareAndSet(false, true)) {
+                aPausedBeforeResultWrite.countDown();
+                assertThat(releaseWorkerAB.await(20, TimeUnit.SECONDS)).isTrue();
+            }
+            return res;
+        }).when(workbookCodec).buildResultWorkbook(any(), any(), any());
+        doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            if (key != null && key.endsWith("/result.xlsx")) {
+                resultPutCount.incrementAndGet();
+            }
+            return invocation.callRealMethod();
+        }).when(encryptedObjectStorage).putEncrypted(any(), any());
+
+        ExecutorService executorB = Executors.newSingleThreadExecutor();
+        Future<?> workerBFuture = executorB.submit(() -> dispatcherWorker().runScheduledImportBatches());
+        try {
+            assertThat(aPausedBeforeResultWrite.await(15, TimeUnit.SECONDS)).isTrue();
+
+            jdbcTemplate.update(
+                    "UPDATE identity.import_batch SET lease_expires_at = now() - interval '1 minute' WHERE id = ?",
+                    batchB);
+            dispatcherWorker().runScheduledImportBatches();
+            assertThat(resultPutCount.get()).isEqualTo(1);
+            byte[] winnerResultBytes = ((InMemoryObjectStorage) objectStorage)
+                    .rawBytes(ImportBatchService.resultObjectKey(batchB))
+                    .orElseThrow();
+
+            releaseWorkerAB.countDown();
+            workerBFuture.get(15, TimeUnit.SECONDS);
+
+            // Stale worker A must NOT have written result.xlsx after B won
+            assertThat(resultPutCount.get()).isEqualTo(1);
+            assertThat(((InMemoryObjectStorage) objectStorage)
+                    .rawBytes(ImportBatchService.resultObjectKey(batchB))
+                    .orElseThrow()).isEqualTo(winnerResultBytes);
+            String b2Pwd = readResultCell(batchB, 1, 5);
+            assertLoginSucceeds(u2, b2Pwd);
+        } finally {
+            releaseWorkerAB.countDown();
+            reset(workbookCodec, encryptedObjectStorage);
+            executorB.shutdownNow();
+        }
+    }
+
+    @Test
+    void persistentResultStorageFailureBeyondMaxAttempts_keepsStagedGeneratedPasswords_andRestoresExactResult()
+            throws Exception {
+        String sfx = suffix();
+        String genUser = "r2.2.gen." + sfx;
+        String expUser = "r2.2.exp." + sfx;
+        String explicitPwd = "ExplicitPass@22";
+        UUID batchId = uploadBatch(
+                buildImportXlsx(List.of(
+                        new String[] {genUser, "", "Result Exhaustion Gen", "", "", ""},
+                        new String[] {expUser, explicitPwd, "Result Exhaustion Exp", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchId, "r2-2-" + sfx);
+
+        doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            if (key != null && key.endsWith("/result.xlsx")) {
+                throw new ExternalServiceException("INTERNAL_ERROR", "Persistent result storage outage", null);
+            }
+            return invocation.callRealMethod();
+        }).when(encryptedObjectStorage).putEncrypted(any(), any());
+
+        // Exceed maxAttempts (3) with 5 consecutive result-write failures
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            if (attempt > 1) {
+                jdbcTemplate.update(
+                        "UPDATE identity.import_batch SET next_retry_at = now() - interval '1 second' WHERE id = ?",
+                        batchId);
+            }
+            dispatcherWorker().runScheduledImportBatches();
+        }
+        reset(encryptedObjectStorage);
+
+        Map<String, Object> stalledBatch = jdbcTemplate.queryForMap(
+                "SELECT status, created_rows, failed_rows, result_object_key, result_retry_count FROM identity.import_batch WHERE id = ?",
+                batchId);
+        assertThat(((Number) stalledBatch.get("status")).shortValue()).isEqualTo(ImportBatchStatus.PROCESSING.code());
+        assertThat(((Number) stalledBatch.get("created_rows")).intValue()).isEqualTo(2);
+        assertThat(((Number) stalledBatch.get("failed_rows")).intValue()).isZero();
+        assertThat(stalledBatch.get("result_object_key")).isNull();
+        assertThat(((Number) stalledBatch.get("result_retry_count")).intValue()).isEqualTo(5);
+
+        // Staged generated password MUST still be preserved; explicit row secret MUST already be wiped
+        String stagedGenEnc = jdbcTemplate.queryForObject(
+                "SELECT generated_password_enc FROM identity.import_row WHERE batch_id = ? AND row_no = 2",
+                String.class,
+                batchId);
+        assertThat(stagedGenEnc).isNotBlank();
+        String expRawJson = jdbcTemplate.queryForObject(
+                "SELECT raw::text FROM identity.import_row WHERE batch_id = ? AND row_no = 3",
+                String.class,
+                batchId);
+        JsonNode expRawNode = objectMapper.readTree(expRawJson);
+        assertThat(expRawNode.path("passwordEnc").isNull() || expRawNode.path("passwordEnc").isMissingNode()).isTrue();
+        assertThat(expRawJson).doesNotContain(explicitPwd);
+
+        // Restore storage and recover via production dispatcher -> zero extra Keycloak creations
+        clearInvocations(keycloakClient);
+        jdbcTemplate.update(
+                "UPDATE identity.import_batch SET next_retry_at = now() - interval '1 second' WHERE id = ?",
+                batchId);
+        dispatcherWorker().runScheduledImportBatches();
+
+        verify(keycloakClient, times(0)).createUser(any());
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchId)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.createdRows").value(2))
+                .andExpect(jsonPath("$.failedRows").value(0))
+                .andExpect(jsonPath("$.resultAvailable").value(true))
+                .andExpect(jsonPath("$.sourceAvailable").value(false));
+
+        Integer remainingStaged = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM identity.import_row WHERE batch_id = ? AND generated_password_enc IS NOT NULL",
+                Integer.class,
+                batchId);
+        assertThat(remainingStaged).isZero();
+
+        String deliveredGenPwd = readResultCell(batchId, 1, 5);
+        assertThat(deliveredGenPwd).isNotBlank();
+        assertThat(readResultCell(batchId, 2, 5)).isEmpty();
+        assertLoginSucceeds(genUser, deliveredGenPwd);
+        assertLoginSucceeds(expUser, explicitPwd);
+    }
+
+    @Test
+    void sourceDeletionFailure_retainsSourceKeyUntilCleanupSweepSucceeds() throws Exception {
+        String sfx = suffix();
+        String u1 = "r2.3.u." + sfx;
+        UUID batchId = uploadBatch(
+                buildImportXlsx(List.<String[]>of(new String[] {u1, "Valid@1234", "Source Delete Retry", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchId, "r2-3-" + sfx);
+        String sourceKey = ImportBatchService.sourceObjectKey(batchId);
+
+        doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            if (sourceKey.equals(key)) {
+                throw new ExternalServiceException("INTERNAL_ERROR", "Transient source delete outage", null);
+            }
+            return invocation.callRealMethod();
+        }).when(encryptedObjectStorage).delete(any());
+
+        dispatcherWorker().runScheduledImportBatches();
+
+        // Batch completes and API marks source unavailable, while DB retains file_object_key & null source_deleted_at
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchId)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.sourceAvailable").value(false));
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}/errors", batchId)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IMPORT_SOURCE_GONE"));
+
+        assertThat(objectStorage.exists(sourceKey)).isTrue();
+        Map<String, Object> pendingDb = jdbcTemplate.queryForMap(
+                "SELECT file_object_key, source_deleted_at FROM identity.import_batch WHERE id = ?",
+                batchId);
+        assertThat(pendingDb.get("file_object_key")).isEqualTo(sourceKey);
+        assertThat(pendingDb.get("source_deleted_at")).isNull();
+
+        // Restore storage and run worker -> sweep deletes orphan source and records source_deleted_at
+        reset(encryptedObjectStorage);
+        dispatcherWorker().runScheduledImportBatches();
+
+        assertThat(objectStorage.exists(sourceKey)).isFalse();
+        Map<String, Object> cleanedDb = jdbcTemplate.queryForMap(
+                "SELECT file_object_key, source_deleted_at FROM identity.import_batch WHERE id = ?",
+                batchId);
+        assertThat(cleanedDb.get("file_object_key")).isNull();
+        assertThat(cleanedDb.get("source_deleted_at")).isNotNull();
+        assertThat(importBatchProcessorJob.sweepPendingSourceDeletions()).isZero();
+    }
     @Test
     void upload_rejectsOver2000Rows_formulas_macros_zipBomb_andNonZip() throws Exception {
         int batchesBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM identity.import_batch", Integer.class);
@@ -1456,11 +1750,8 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("IMPORT_MACRO_NOT_ALLOWED"));
 
-        // R1-16: Zip bomb (high-compression giant XML entry > ZipSecureFile limits)
-        byte[] zipBomb = injectZipEntry(
-                validXlsx,
-                "xl/sharedStrings.xml",
-                "A".repeat(12 * 1024 * 1024).getBytes(StandardCharsets.UTF_8));
+        // R1-16: Zip bomb (valid OOXML with xl/sharedStrings.xml expanded beyond ZipSecureFile 10 MiB entry cap)
+        byte[] zipBomb = buildValidOoxmlSharedStringsBomb(validXlsx);
         mockMvc.perform(multipart("/api/v1/admin/import-batches")
                         .file(multipartXlsx("bomb.xlsx", zipBomb))
                         .with(asUser(Permissions.USER_MODIFY)))
@@ -1544,6 +1835,41 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
             if (!replaced) {
                 zout.putNextEntry(new ZipEntry(entryName));
                 zout.write(entryContent);
+                zout.closeEntry();
+            }
+            zout.finish();
+            return out.toByteArray();
+        }
+    }
+
+    private static byte[] buildValidOoxmlSharedStringsBomb(byte[] baseXlsx) throws IOException {
+        String alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        Random rng = new Random(42L);
+        StringBuilder commentPayload = new StringBuilder(11 * 1024 * 1024 + 512 * 1024);
+        commentPayload.append("<!-- ");
+        for (int i = 0; i < 250 * 1024; i++) {
+            commentPayload.append(alphabet.charAt(rng.nextInt(alphabet.length())));
+        }
+        commentPayload.append("A".repeat(11 * 1024 * 1024 + 300 * 1024));
+        commentPayload.append(" -->");
+
+        try (ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(baseXlsx));
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                ZipOutputStream zout = new ZipOutputStream(out)) {
+            ZipEntry entry;
+            while ((entry = zin.getNextEntry()) != null) {
+                zout.putNextEntry(new ZipEntry(entry.getName()));
+                if ("xl/sharedStrings.xml".equals(entry.getName())) {
+                    String originalXml = new String(zin.readAllBytes(), StandardCharsets.UTF_8);
+                    int closeIdx = originalXml.lastIndexOf("</sst>");
+                    assertThat(closeIdx).isPositive();
+                    String expandedXml = originalXml.substring(0, closeIdx)
+                            + commentPayload
+                            + originalXml.substring(closeIdx);
+                    zout.write(expandedXml.getBytes(StandardCharsets.UTF_8));
+                } else {
+                    zin.transferTo(zout);
+                }
                 zout.closeEntry();
             }
             zout.finish();

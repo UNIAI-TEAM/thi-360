@@ -115,15 +115,83 @@ public class ImportBatchProcessorJob {
     }
 
     public Optional<UUID> processNextConfirmedBatch() {
-        UUID claimedBatchId = claimNextConfirmedBatch();
-        if (claimedBatchId == null) {
+        ClaimedBatch claimed = claimNextConfirmedBatch();
+        if (claimed == null) {
             return Optional.empty();
         }
-        processBatch(claimedBatchId);
-        return Optional.of(claimedBatchId);
+        processBatchWithToken(claimed.batchId(), claimed.leaseToken());
+        return Optional.of(claimed.batchId());
     }
 
     public ImportBatchStatus processBatch(UUID batchId) {
+        ClaimedBatchOrStatus claimed = requiresNewTx.execute(status -> {
+            ImportBatch b = importBatchRepository.findByIdForUpdate(batchId)
+                    .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+            if (b.getStatus().isTerminal()) {
+                return new ClaimedBatchOrStatus(b.getStatus(), null);
+            }
+            if (b.getStatus() != ImportBatchStatus.CONFIRMED
+                    && b.getStatus() != ImportBatchStatus.PROCESSING) {
+                throw new ConflictException("IMPORT_NOT_CONFIRMED");
+            }
+            Instant now = Instant.now(clock);
+            if (b.getStatus() == ImportBatchStatus.PROCESSING
+                    && b.getLeaseExpiresAt() != null
+                    && b.getLeaseExpiresAt().isAfter(now)) {
+                return new ClaimedBatchOrStatus(ImportBatchStatus.PROCESSING, null);
+            }
+            UUID leaseToken = Ids.newId();
+            b.markProcessing(leaseToken, now.plus(leaseDuration), now);
+            importBatchRepository.saveAndFlush(b);
+            return new ClaimedBatchOrStatus(null, leaseToken);
+        });
+        if (claimed == null) {
+            throw new NotFoundException("NOT_FOUND", null);
+        }
+        if (claimed.terminalOrBusyStatus() != null) {
+            return claimed.terminalOrBusyStatus();
+        }
+        return processBatchWithToken(batchId, claimed.leaseToken());
+    }
+
+    public int sweepPendingSourceDeletions() {
+        String prevTraceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
+        String prevJob = MDC.get("job");
+        if (prevTraceId == null || prevTraceId.isBlank()) {
+            MDC.put(TraceIdFilter.MDC_TRACE_ID, Ids.newId().toString());
+        }
+        MDC.put("job", JOB_NAME);
+        try {
+            List<PendingSourceDeletion> pending = jdbcTemplate.query(
+                    """
+                    SELECT id, file_object_key
+                    FROM identity.import_batch
+                    WHERE status IN (?, ?, ?)
+                      AND file_object_key IS NOT NULL
+                      AND source_deleted_at IS NULL
+                    ORDER BY completed_at ASC NULLS LAST, updated_at ASC
+                    LIMIT 50
+                    """,
+                    (rs, rowNum) -> new PendingSourceDeletion(
+                            rs.getObject("id", UUID.class),
+                            rs.getString("file_object_key")),
+                    ImportBatchStatus.COMPLETED.code(),
+                    ImportBatchStatus.COMPLETED_WITH_ERRORS.code(),
+                    ImportBatchStatus.FAILED.code());
+            int deletedCount = 0;
+            for (PendingSourceDeletion item : pending) {
+                if (tryDeleteSourceAndCheckpoint(item.batchId(), item.sourceKey())) {
+                    deletedCount++;
+                }
+            }
+            return deletedCount;
+        } finally {
+            restoreMdc(TraceIdFilter.MDC_TRACE_ID, prevTraceId);
+            restoreMdc("job", prevJob);
+        }
+    }
+
+    private ImportBatchStatus processBatchWithToken(UUID batchId, UUID leaseToken) {
         String prevTraceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         String prevJob = MDC.get("job");
         String prevJobId = MDC.get("jobId");
@@ -135,7 +203,15 @@ public class ImportBatchProcessorJob {
         MDC.put("jobId", batchId.toString());
 
         try {
-            return processBatchInternal(batchId);
+            return processBatchInternal(batchId, leaseToken);
+        } catch (StaleBatchLeaseException ex) {
+            jobLog.atInfo()
+                    .addKeyValue("batchId", batchId.toString())
+                    .addKeyValue("leaseToken", leaseToken.toString())
+                    .log("Stopping stale bulk import worker after lease loss");
+            return importBatchRepository.findById(batchId)
+                    .map(ImportBatch::getStatus)
+                    .orElse(ImportBatchStatus.PROCESSING);
         } finally {
             restoreMdc(TraceIdFilter.MDC_TRACE_ID, prevTraceId);
             restoreMdc("job", prevJob);
@@ -143,7 +219,7 @@ public class ImportBatchProcessorJob {
         }
     }
 
-    private UUID claimNextConfirmedBatch() {
+    private ClaimedBatch claimNextConfirmedBatch() {
         return requiresNewTx.execute(status -> {
             Instant now = Instant.now(clock);
             Timestamp nowTs = Timestamp.from(now);
@@ -160,6 +236,7 @@ public class ImportBatchProcessorJob {
                        )
                     ORDER BY
                         CASE WHEN status = ? THEN 0 ELSE 1 END,
+                        next_retry_at ASC NULLS FIRST,
                         confirmed_at ASC NULLS LAST,
                         created_at ASC
                     FOR UPDATE SKIP LOCKED
@@ -175,11 +252,13 @@ public class ImportBatchProcessorJob {
                 return null;
             }
             UUID batchId = ids.getFirst();
-            jdbcTemplate.update(
+            UUID leaseToken = Ids.newId();
+            int updated = jdbcTemplate.update(
                     """
                     UPDATE identity.import_batch
                     SET status = ?,
                         started_at = COALESCE(started_at, ?),
+                        lease_token = ?,
                         lease_expires_at = ?,
                         next_retry_at = NULL,
                         updated_at = ?,
@@ -188,28 +267,21 @@ public class ImportBatchProcessorJob {
                     """,
                     ImportBatchStatus.PROCESSING.code(),
                     nowTs,
+                    leaseToken,
                     leaseUntilTs,
                     nowTs,
                     batchId);
-            return batchId;
+            if (updated != 1) {
+                return null;
+            }
+            return new ClaimedBatch(batchId, leaseToken);
         });
     }
 
-    private ImportBatchStatus processBatchInternal(UUID batchId) {
-        ImportBatch batch = requiresNewTx.execute(status -> {
-            ImportBatch b = importBatchRepository.findByIdForUpdate(batchId)
-                    .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-            if (b.getStatus().isTerminal()) {
-                return b;
-            }
-            if (b.getStatus() != ImportBatchStatus.CONFIRMED
-                    && b.getStatus() != ImportBatchStatus.PROCESSING) {
-                throw new ConflictException("IMPORT_NOT_CONFIRMED");
-            }
-            Instant now = Instant.now(clock);
-            b.markProcessing(now.plus(leaseDuration), now);
-            return importBatchRepository.saveAndFlush(b);
-        });
+    private ImportBatchStatus processBatchInternal(UUID batchId, UUID leaseToken) {
+        ImportBatch batch = requiresNewTx.execute(status ->
+                importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                        .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken)));
         if (batch == null) {
             throw new NotFoundException("NOT_FOUND", null);
         }
@@ -230,8 +302,8 @@ public class ImportBatchProcessorJob {
                 .log("Starting bulk import batch processing");
 
         for (ImportRow row : unfinishedRows) {
-            extendBatchLease(batchId);
-            String rawPassword = resolveAndCheckpointRowPassword(row);
+            extendBatchLease(batchId, leaseToken);
+            String rawPassword = resolveAndCheckpointRowPassword(row, batchId, leaseToken);
             try {
                 ImportRowRaw raw = row.getRaw();
                 List<UUID> classIds = row.getResolvedClassId() == null
@@ -248,15 +320,22 @@ public class ImportBatchProcessorJob {
                         batch.isMustChangePassword());
 
                 UserDetailResponse created = userAdminService.createStudentForImport(
-                        createReq, row.getId(), actorId, actorUsername, platformActor);
+                        createReq, row.getId(), batchId, leaseToken, actorId, actorUsername, platformActor);
 
                 Instant now = Instant.now(clock);
                 requiresNewTx.executeWithoutResult(tx -> {
+                    importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                            .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
                     ImportRow lockedRow = importRowRepository.findByIdForUpdate(row.getId())
                             .orElseThrow();
+                    if (lockedRow.getStatus() == ImportRowStatus.CREATED) {
+                        return;
+                    }
                     lockedRow.markCreated(created.id(), now);
                     importRowRepository.saveAndFlush(lockedRow);
                 });
+            } catch (StaleBatchLeaseException ex) {
+                throw ex;
             } catch (RuntimeException ex) {
                 FailureInfo failure = classifyFailure(ex);
                 boolean retryableError = ex instanceof ExternalServiceException;
@@ -264,8 +343,13 @@ public class ImportBatchProcessorJob {
                 boolean willRetry = retryableError && nextAttempt < maxAttempts;
                 Instant now = Instant.now(clock);
                 requiresNewTx.executeWithoutResult(tx -> {
+                    importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                            .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
                     ImportRow lockedRow = importRowRepository.findByIdForUpdate(row.getId())
                             .orElseThrow();
+                    if (lockedRow.getStatus() == ImportRowStatus.CREATED) {
+                        throw new StaleBatchLeaseException(batchId, leaseToken);
+                    }
                     lockedRow.markFailed(failure.code(), failure.reason(), willRetry, now);
                     importRowRepository.saveAndFlush(lockedRow);
                 });
@@ -289,7 +373,6 @@ public class ImportBatchProcessorJob {
                 }
             }
         }
-
         List<ImportRow> allRows = importRowRepository.findByBatchIdOrderByRowNoAsc(batchId);
         int createdCount = 0;
         int failedCount = 0;
@@ -307,13 +390,15 @@ public class ImportBatchProcessorJob {
             }
         }
 
+        extendBatchLease(batchId, leaseToken);
         if (pendingRetryCount > 0 && batch.getRetryCount() < maxAttempts) {
             Instant now = Instant.now(clock);
             Instant nextRetryAt = now.plus(retryDelay);
             int finalCreatedCount = createdCount;
             int finalFailedCount = failedCount;
             requiresNewTx.executeWithoutResult(tx -> {
-                ImportBatch b = importBatchRepository.findByIdForUpdate(batchId).orElseThrow();
+                ImportBatch b = importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                        .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
                 b.scheduleRetry(nextRetryAt, finalCreatedCount, finalFailedCount, now);
                 importBatchRepository.saveAndFlush(b);
             });
@@ -344,59 +429,43 @@ public class ImportBatchProcessorJob {
         Locale locale = ImportExcelSchemaHelper.DEFAULT_LOCALE;
         byte[] resultBytes = workbookCodec.buildResultWorkbook(allRows, generatedPasswordsByRowNo, locale);
         String resultKey = ImportBatchService.resultObjectKey(batchId);
+        extendBatchLease(batchId, leaseToken);
         try {
             encryptedObjectStorage.putEncrypted(resultKey, resultBytes);
         } catch (RuntimeException ex) {
-            jobLog.atError()
-                    .setCause(ex)
-                    .addKeyValue("batchId", batchId.toString())
-                    .addKeyValue("retryCount", batch.getRetryCount())
-                    .log("Failed to store encrypted bulk import result workbook");
+            if (ex instanceof StaleBatchLeaseException stale) {
+                throw stale;
+            }
             Instant now = Instant.now(clock);
             int finalCreatedCount = createdCount;
             int finalFailedCount = failedCount;
-            if (batch.getRetryCount() < maxAttempts) {
-                Instant nextRetryAt = now.plus(retryDelay);
-                requiresNewTx.executeWithoutResult(tx -> {
-                    ImportBatch b = importBatchRepository.findByIdForUpdate(batchId).orElseThrow();
-                    b.scheduleRetry(nextRetryAt, finalCreatedCount, finalFailedCount, now);
-                    importBatchRepository.saveAndFlush(b);
-                });
-                return ImportBatchStatus.PROCESSING;
-            }
-            String[] sourceKeyToDelete = new String[1];
-            ImportBatchStatus failedStatus = requiresNewTx.execute(tx -> {
-                ImportBatch finalBatch = importBatchRepository.findByIdForUpdate(batchId).orElseThrow();
-                String sourceKey = finalBatch.getFileObjectKey();
-                sourceKeyToDelete[0] = sourceKey;
-                finalBatch.markFailed("RESULT_STORAGE_ERROR", finalCreatedCount, finalFailedCount, now);
-                if (sourceKey != null) {
-                    finalBatch.markSourceDeleted(now);
-                }
-                importBatchRepository.saveAndFlush(finalBatch);
-                wipeAllBatchRowSecrets(batchId);
-                recordCompletionAudit(finalBatch, actorId, actorUsername, platformActor, "IMPORT_BATCH_FAILED");
-                return finalBatch.getStatus();
+            Integer currentResultRetry = requiresNewTx.execute(tx -> {
+                ImportBatch b = importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                        .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
+                int attemptBefore = b.getResultRetryCount();
+                Instant nextRetryAt = now.plus(computeResultRetryDelay(attemptBefore));
+                b.scheduleResultRetry(nextRetryAt, finalCreatedCount, finalFailedCount, now);
+                importBatchRepository.saveAndFlush(b);
+                return attemptBefore;
             });
-            if (sourceKeyToDelete[0] != null) {
-                deleteSourceQuietly(sourceKeyToDelete[0], batchId);
-            }
-            return failedStatus;
+            jobLog.atError()
+                    .setCause(ex)
+                    .addKeyValue("batchId", batchId.toString())
+                    .addKeyValue("resultRetryCount", currentResultRetry)
+                    .log("Failed to store encrypted bulk import result workbook; scheduled retry without wiping credentials");
+            return ImportBatchStatus.PROCESSING;
         }
 
         int finalCreatedCount = createdCount;
         int finalFailedCount = failedCount;
         String[] sourceKeyToDelete = new String[1];
         ImportBatchStatus finalStatus = requiresNewTx.execute(tx -> {
-            ImportBatch finalBatch = importBatchRepository.findByIdForUpdate(batchId)
-                    .orElseThrow();
+            ImportBatch finalBatch = importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                    .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
             String sourceKey = finalBatch.getFileObjectKey();
             sourceKeyToDelete[0] = sourceKey;
             Instant now = Instant.now(clock);
             finalBatch.markFinished(resultKey, finalCreatedCount, finalFailedCount, now);
-            if (sourceKey != null) {
-                finalBatch.markSourceDeleted(now);
-            }
             importBatchRepository.saveAndFlush(finalBatch);
             wipeAllBatchRowSecrets(batchId);
             recordCompletionAudit(
@@ -411,7 +480,7 @@ public class ImportBatchProcessorJob {
         });
 
         if (sourceKeyToDelete[0] != null) {
-            deleteSourceQuietly(sourceKeyToDelete[0], batchId);
+            tryDeleteSourceAndCheckpoint(batchId, sourceKeyToDelete[0]);
         }
 
         jobLog.atInfo()
@@ -424,24 +493,29 @@ public class ImportBatchProcessorJob {
         return finalStatus;
     }
 
-    private void extendBatchLease(UUID batchId) {
+    private void extendBatchLease(UUID batchId, UUID leaseToken) {
         Instant now = Instant.now(clock);
         Timestamp nowTs = Timestamp.from(now);
         Timestamp leaseUntilTs = Timestamp.from(now.plus(leaseDuration));
-        requiresNewTx.executeWithoutResult(tx -> jdbcTemplate.update(
+        Integer updated = requiresNewTx.execute(tx -> jdbcTemplate.update(
                 """
                 UPDATE identity.import_batch
                 SET lease_expires_at = ?,
-                    updated_at = ?
+                    updated_at = ?,
+                    version = version + 1
                 WHERE id = ?
                   AND status = ?
+                  AND lease_token = ?
                 """,
                 leaseUntilTs,
                 nowTs,
                 batchId,
-                ImportBatchStatus.PROCESSING.code()));
+                ImportBatchStatus.PROCESSING.code(),
+                leaseToken));
+        if (updated == null || updated != 1) {
+            throw new StaleBatchLeaseException(batchId, leaseToken);
+        }
     }
-
     private String resolveActorUsername(ImportBatch batch, UUID actorId) {
         if (batch.getConfirmedBy() != null) {
             if (batch.getConfirmedByUsername() != null && !batch.getConfirmedByUsername().isBlank()) {
@@ -491,7 +565,7 @@ public class ImportBatchProcessorJob {
                 .build());
     }
 
-    private void deleteSourceQuietly(String sourceKey, UUID batchId) {
+    private boolean tryDeleteSourceAndCheckpoint(UUID batchId, String sourceKey) {
         try {
             encryptedObjectStorage.delete(sourceKey);
         } catch (RuntimeException ex) {
@@ -499,8 +573,37 @@ public class ImportBatchProcessorJob {
                     .setCause(ex)
                     .addKeyValue("batchId", batchId.toString())
                     .addKeyValue("sourceKey", sourceKey)
-                    .log("Failed to delete bulk import source object after batch completion");
+                    .log("Failed to delete bulk import source object after batch completion; keeping key for retry");
+            return false;
         }
+        Instant now = Instant.now(clock);
+        Timestamp nowTs = Timestamp.from(now);
+        requiresNewTx.executeWithoutResult(tx -> jdbcTemplate.update(
+                """
+                UPDATE identity.import_batch
+                SET file_object_key = NULL,
+                    source_deleted_at = ?,
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                  AND file_object_key = ?
+                  AND source_deleted_at IS NULL
+                """,
+                nowTs,
+                nowTs,
+                batchId,
+                sourceKey));
+        return true;
+    }
+
+    private Duration computeResultRetryDelay(int attemptBefore) {
+        long multiplier = 1L << Math.min(Math.max(0, attemptBefore), 6);
+        Duration candidate = retryDelay.multipliedBy(multiplier);
+        Duration maxBackoff = Duration.ofMinutes(5);
+        if (retryDelay.compareTo(maxBackoff) > 0) {
+            return retryDelay;
+        }
+        return candidate.compareTo(maxBackoff) > 0 ? maxBackoff : candidate;
     }
 
     private Map<String, String> loadPreviouslyGeneratedPasswords(ImportBatch batch) {
@@ -514,15 +617,21 @@ public class ImportBatchProcessorJob {
         return workbookCodec.extractGeneratedPasswordsByNormalizedUsername(existing.get());
     }
 
-    private String resolveAndCheckpointRowPassword(ImportRow row) {
+    private String resolveAndCheckpointRowPassword(ImportRow row, UUID batchId, UUID leaseToken) {
         if (row.isPasswordGenerated()) {
             if (row.getGeneratedPasswordEnc() != null && !row.getGeneratedPasswordEnc().isBlank()) {
                 return encryptedObjectStorage.decryptText(row.getGeneratedPasswordEnc());
             }
             String generated = passwordGenerator.generate(row.getRaw().username());
             String enc = encryptedObjectStorage.encryptText(generated);
-            requiresNewTx.executeWithoutResult(tx ->
-                    importRowRepository.updateGeneratedPasswordEnc(row.getId(), enc));
+            requiresNewTx.executeWithoutResult(tx -> {
+                importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                        .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
+                int updated = importRowRepository.updateGeneratedPasswordEnc(row.getId(), enc);
+                if (updated != 1) {
+                    throw new IllegalStateException("Expected 1 updated import_row for generated password: " + row.getId());
+                }
+            });
             row.setGeneratedPasswordEnc(enc);
             return generated;
         }
@@ -569,6 +678,15 @@ public class ImportBatchProcessorJob {
         }
     }
 
+    private record ClaimedBatch(UUID batchId, UUID leaseToken) {
+    }
+
+    private record ClaimedBatchOrStatus(ImportBatchStatus terminalOrBusyStatus, UUID leaseToken) {
+    }
+
+    private record PendingSourceDeletion(UUID batchId, String sourceKey) {
+    }
+
     private record FailureInfo(String code, String reason) {
     }
 
@@ -596,6 +714,7 @@ public class ImportBatchProcessorJob {
                     break;
                 }
             }
+            processorJob.sweepPendingSourceDeletions();
         }
     }
 }
