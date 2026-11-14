@@ -367,7 +367,15 @@ export function BulkAssignTab({
         queryClient.invalidateQueries({ queryKey: ["rbac", "permissions"] }),
         queryClient.invalidateQueries({ queryKey: ["rbac", "permission-users"] }),
         queryClient.invalidateQueries({ queryKey: ["rbac", "users"] }),
-        queryClient.invalidateQueries({ queryKey: ["rbac", "user"] }),
+        ...variables.payload.userIds.flatMap((affectedUserId) => [
+          queryClient.invalidateQueries({ queryKey: rbacKeys.userRoles(affectedUserId) }),
+          queryClient.invalidateQueries({
+            queryKey: rbacKeys.userDirectPermissions(affectedUserId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: rbacKeys.userEffectivePermissions(affectedUserId),
+          }),
+        ]),
       ]);
       notify.success(t("bulk.applySuccess", { count: result.willChange }));
     },

@@ -216,6 +216,7 @@ export function UserRbacTab({
       queryClient.invalidateQueries({ queryKey: ["rbac", "roles"] }),
       queryClient.invalidateQueries({ queryKey: ["rbac", "permissions"] }),
       queryClient.invalidateQueries({ queryKey: ["rbac", "permission-users"] }),
+      queryClient.invalidateQueries({ queryKey: ["rbac", "users"] }),
     ]);
   }
 

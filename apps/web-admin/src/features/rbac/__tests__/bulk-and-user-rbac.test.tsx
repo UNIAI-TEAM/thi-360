@@ -8,7 +8,7 @@ import enMessages from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
-import { RbacApiError } from "../api";
+import { RbacApiError, rbacKeys } from "../api";
 import {
   BULK_USER_IDS_STORAGE_KEY,
   BulkAssignTab,
@@ -1082,6 +1082,68 @@ describe("BulkAssignTab & UserRbacTab", () => {
       within(dialog).getByRole("button", { name: viMessages.rbac.userRbac.directDialogSubmit }),
     ).toBeEnabled();
   }, 15_000);
+
+  it("BulkAssignTab (R1-9): làm mới đúng các query key rbac của từng tài khoản sau khi áp dụng", async () => {
+    const user = userEvent.setup();
+    const client = createQueryClient({ onForbidden: vi.fn(), onUnauthenticated: vi.fn() });
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <Toaster />
+        <BulkAssignTab
+          listUsers={async () => USERS_PAGE}
+          listRoles={async () => ROLES_PAGE}
+          listPermissions={async () => PERMISSIONS_LIST}
+          previewBulkAuthz={async () => ({
+            willChange: 1,
+            noChange: 0,
+            skipped: 0,
+            items: [
+              {
+                userId: "u-ops",
+                username: "ops.admin",
+                outcome: "WILL_CHANGE",
+                added: ["STUDENT"],
+                removed: [],
+              },
+            ],
+          })}
+          applyBulkAuthz={async () => ({
+            batchId: "batch-invalidate",
+            willChange: 1,
+            noChange: 0,
+            skipped: 0,
+            items: [
+              {
+                userId: "u-ops",
+                username: "ops.admin",
+                outcome: "WILL_CHANGE",
+                added: ["STUDENT"],
+                removed: [],
+              },
+            ],
+          })}
+        />
+      </SessionProvider>,
+      { client },
+    );
+
+    await user.click(await screen.findByRole("checkbox", { name: /ops\.admin/ }));
+    await user.click(screen.getByRole("button", { name: /Học viên/ }));
+    await user.click(await screen.findByRole("button", { name: "Áp dụng cho 1 tài khoản" }));
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: rbacKeys.userRoles("u-ops") });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: rbacKeys.userDirectPermissions("u-ops"),
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: rbacKeys.userEffectivePermissions("u-ops"),
+      });
+    });
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: ["rbac", "user"] });
+  });
 
   it("ánh xạ toàn bộ reasonCode và mã lỗi RBAC sang câu hiển thị tiếng Việt và tiếng Anh", () => {
     const viT = makeTranslator(viMessages.rbac);

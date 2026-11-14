@@ -3,9 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
+import { createQueryClient } from "@/lib/api/query-client";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
-import { RbacApiError } from "../api";
+import { RbacApiError, rbacKeys } from "../api";
 import { PermissionUsersTab } from "../components/permission-users-tab";
 import { PermissionsTab } from "../components/permissions-tab";
 import type {
@@ -199,6 +200,8 @@ describe("PermissionsTab & PermissionUsersTab", () => {
       }),
     );
     const onAssignMany = vi.fn();
+    const client = createQueryClient({ onForbidden: vi.fn(), onUnauthenticated: vi.fn() });
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
 
     renderWithProviders(
       <SessionProvider
@@ -219,8 +222,8 @@ describe("PermissionsTab & PermissionUsersTab", () => {
           onViewRoles={vi.fn()}
         />
       </SessionProvider>,
+      { client },
     );
-
     expect(await screen.findByText("content.admin")).toBeInTheDocument();
     expect(screen.getByText("ops.admin")).toBeInTheDocument();
     expect(screen.getByText("Vai trò: Quản trị nội dung")).toBeInTheDocument();
@@ -245,7 +248,15 @@ describe("PermissionsTab & PermissionUsersTab", () => {
     await waitFor(() => {
       expect(getUserPermissions).toHaveBeenCalledWith("u-2");
       expect(updateUserPermissions).toHaveBeenCalledWith("u-2", { permissionCodes: [] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: rbacKeys.userRoles("u-2") });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: rbacKeys.userDirectPermissions("u-2"),
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: rbacKeys.userEffectivePermissions("u-2"),
+      });
     });
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: ["rbac", "user"] });
     expect(await screen.findByText("Đã gỡ quyền trực tiếp của ops.admin.")).toBeInTheDocument();
   });
 });

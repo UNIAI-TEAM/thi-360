@@ -252,6 +252,10 @@ function RoleDialogBody({
         queryClient.invalidateQueries({ queryKey: ["rbac", "roles"] }),
         queryClient.invalidateQueries({ queryKey: ["rbac", "permissions"] }),
         queryClient.invalidateQueries({ queryKey: rbacKeys.roleDetail(saved.id) }),
+        queryClient.invalidateQueries({ queryKey: ["rbac", "permission-users"] }),
+        queryClient.invalidateQueries({ queryKey: ["rbac", "users"] }),
+        queryClient.invalidateQueries({ queryKey: ["rbac", "user-roles"] }),
+        queryClient.invalidateQueries({ queryKey: ["rbac", "user-effective-permissions"] }),
       ]);
       notify.success(isCreate ? t("roleDialog.createSuccess") : t("roleDialog.editSuccess"));
       onClose();
