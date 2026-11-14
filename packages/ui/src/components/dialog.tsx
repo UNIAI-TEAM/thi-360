@@ -81,7 +81,7 @@ export function DialogContent({
 export function DialogHeader({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("sticky top-0 z-10 flex flex-col gap-1.5 bg-surface pr-10", className)}
+      className={cn("sticky top-0 z-10 flex flex-col gap-1.5 bg-surface pb-2 pr-10", className)}
       {...props}
     />
   );
@@ -115,7 +115,7 @@ export function DialogDescription({
 export function DialogFooter({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("sticky bottom-0 z-10 flex justify-end gap-3 bg-surface pb-1", className)}
+      className={cn("sticky bottom-0 z-10 flex justify-end gap-3 bg-surface pt-2 pb-1", className)}
       {...props}
     />
   );

@@ -76,8 +76,8 @@ describe("Dialog", () => {
     const footerButton = screen.getByRole("button", { name: "Lưu" });
     expect(scrollRegion?.contains(title)).toBe(true);
     expect(scrollRegion?.contains(footerButton)).toBe(true);
-    expect(footerButton.parentElement).toHaveClass("sticky", "bottom-0", "bg-surface");
-    expect(title.parentElement).toHaveClass("sticky", "top-0", "bg-surface");
+    expect(footerButton.parentElement).toHaveClass("sticky", "bottom-0", "bg-surface", "pt-2");
+    expect(title.parentElement).toHaveClass("sticky", "top-0", "bg-surface", "pb-2");
 
     const close = screen.getByRole("button", { name: "Đóng" });
     expect(scrollRegion?.contains(close)).toBe(false);
