@@ -110,4 +110,27 @@ describe("DropdownMenu", () => {
       expect(item).not.toHaveClass("outline-none");
     }
   });
+
+  // S-12: jsdom không áp media query; `pointer-coarse:h-11` biên dịch thành `@media (pointer: coarse) { height: 44px }`
+  // đứng sau `.h-10` (đã đối chiếu CSS sinh ra của Tailwind 4.3.5 đang cài).
+  it("mục menu cao 40px với chuột và 44px trên thiết bị trỏ thô (cảm ứng)", async () => {
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Ngôn ngữ</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
+          <DropdownMenuRadioGroup value="vi">
+            <DropdownMenuRadioItem value="vi">Tiếng Việt</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Ngôn ngữ" }));
+    for (const item of [
+      await screen.findByRole("menuitem", { name: "Hồ sơ" }),
+      screen.getByRole("menuitemradio", { name: "Tiếng Việt" }),
+    ]) {
+      expect(item).toHaveClass("h-10", "pointer-coarse:h-11");
+    }
+  });
 });

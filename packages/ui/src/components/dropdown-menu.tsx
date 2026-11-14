@@ -37,6 +37,9 @@ export function DropdownMenuContent({
  * Mục đang được tô sáng chính là mục đang giữ focus. Dấu hiệu bình thường là nền (`data-[highlighted]`), mà chế
  * độ tương phản cao bỏ nền, nên dùng `focus:outline-hidden` thay cho `outline-none`: ở chế độ đó mục đang tô
  * sáng có viền ngoài 2px (C-13, S-04; DESIGN.md mục 5.13).
+ *
+ * Chiều cao: 40px với chuột (mật độ của máy tính), 44px khi thiết bị trỏ chính là ngón tay
+ * (`pointer-coarse:` = `@media (pointer: coarse)`), theo WCAG 2.5.5 (S-12).
  */
 export function DropdownMenuItem({
   className,
@@ -49,7 +52,7 @@ export function DropdownMenuItem({
   return (
     <DropdownMenuPrimitive.Item
       className={cn(
-        "flex h-10 cursor-default items-center gap-2.5 rounded-sm px-3 text-label font-medium select-none focus:outline-hidden [&_svg]:size-[18px] [&_svg]:shrink-0",
+        "flex h-10 cursor-default items-center gap-2.5 pointer-coarse:h-11 rounded-sm px-3 text-label font-medium select-none focus:outline-hidden [&_svg]:size-[18px] [&_svg]:shrink-0",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle",
         destructive ? "text-danger data-[highlighted]:bg-danger-bg" : "text-text-secondary",
         className,
@@ -66,7 +69,7 @@ export function DropdownMenuRadioItem({
   return (
     <DropdownMenuPrimitive.RadioItem
       className={cn(
-        "flex h-10 cursor-default items-center gap-2.5 rounded-sm px-3 text-label font-medium text-text-secondary select-none focus:outline-hidden [&_svg]:size-[18px] [&_svg]:shrink-0",
+        "flex h-10 cursor-default items-center gap-2.5 pointer-coarse:h-11 rounded-sm px-3 text-label font-medium text-text-secondary select-none focus:outline-hidden [&_svg]:size-[18px] [&_svg]:shrink-0",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle",
         "data-[state=checked]:bg-primary-50 data-[state=checked]:font-semibold data-[state=checked]:text-primary-text",
         className,
