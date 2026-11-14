@@ -115,7 +115,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       const nav = page.getByRole("navigation", { name: "Menu chính" });
-      await expect(nav.getByRole("link", { name: "Tổng quan" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Bảng điều khiển" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Tài khoản" })).toBeHidden();
       await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeHidden();
       await expect(nav.getByRole("link", { name: "Tùy chỉnh giao diện" })).toBeHidden();
@@ -245,7 +245,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
     const nav = page.getByRole("navigation", { name: "Menu chính" });
-    await expect(nav.getByRole("link", { name: "Tổng quan" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Bảng điều khiển" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeHidden();
 
     // Màn hình Nhật ký (audit screen) chưa merge; xác nhận ops.admin nhận AUDIT.VIEW qua GET /api/v1/me ở lần đăng nhập mới;
