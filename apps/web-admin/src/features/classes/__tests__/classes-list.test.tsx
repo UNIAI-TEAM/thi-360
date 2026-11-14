@@ -187,6 +187,8 @@ describe("ClassesListView", () => {
       );
     });
     expect(screen.getByText("Không tìm thấy lớp học")).toBeInTheDocument();
+    // C-05: kết quả tìm kiếm được đọc qua vùng status.
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Không có lớp học nào"));
 
     const statusTrigger = screen.getByRole("combobox", { name: "Trạng thái" });
     await userEvent.click(statusTrigger);
@@ -197,6 +199,49 @@ describe("ClassesListView", () => {
         expect.objectContaining({ q: "LOP-X", status: "INACTIVE" }),
       );
     });
+  });
+
+  it("đọc số lớp tìm được qua một vùng status luôn có mặt, để rỗng trong lúc đang tải lại (C-05)", async () => {
+    type ClassesPage = Awaited<ReturnType<ClassesApiDeps["listClasses"]>>;
+    const first = Promise.withResolvers<ClassesPage>();
+    const second = Promise.withResolvers<ClassesPage>();
+    const listMock = vi
+      .fn<ClassesApiDeps["listClasses"]>()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+
+    renderListView(makeDeps({ listClasses: listMock }));
+
+    // Vùng status có mặt từ lúc bảng còn đang tải (chưa có chữ), không dựng lên cùng lúc với kết quả.
+    await screen.findByRole("table", { name: "Danh sách lớp học" });
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("");
+    expect(status).toHaveClass("sr-only");
+    first.resolve({
+      items: SAMPLE_CLASSES,
+      page: 0,
+      size: 20,
+      totalItems: SAMPLE_CLASSES.length,
+      totalPages: 1,
+    });
+    await waitFor(() =>
+      expect(status).toHaveTextContent(`Có ${SAMPLE_CLASSES.length} lớp học`),
+    );
+
+    await userEvent.type(screen.getByLabelText("Tìm kiếm"), "LOP-A");
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+    // Đang tải lại: bảng giữ dòng cũ, vùng status để rỗng chờ kết quả mới.
+    expect(status).toHaveTextContent("");
+
+    second.resolve({
+      items: [SAMPLE_CLASSES[0]!],
+      page: 0,
+      size: 20,
+      totalItems: 1,
+      totalPages: 1,
+    });
+    await waitFor(() => expect(status).toHaveTextContent("Có 1 lớp học"));
+    expect(screen.getAllByRole("status")).toHaveLength(1);
   });
 
   it("người dùng chỉ có CLASS.VIEW thấy danh sách và nút xem, không thấy nút Tạo/Sửa/Thao tác ghi", async () => {

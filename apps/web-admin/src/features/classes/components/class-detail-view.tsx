@@ -9,6 +9,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  LiveStatus,
   notify,
   Pagination,
   Skeleton,
@@ -349,6 +350,11 @@ function ClassDetailContent({
     : debouncedMemberSearch
       ? null
       : classDetail.memberCount;
+  // Câu đọc cho trình đọc màn hình sau khi tìm xong (WCAG 4.1.3); rỗng trong lúc đang tải lại.
+  const membersStatus =
+    membersQuery.isLoading || membersQuery.isPlaceholderData || membersQuery.isError
+      ? ""
+      : t("members.resultStatus", { count: totalMembers });
 
   return (
     <div className="flex flex-col gap-5">
@@ -468,6 +474,7 @@ function ClassDetailContent({
             ) : (
               <Skeleton className="h-5 w-20 rounded-full" />
             )}
+            <LiveStatus message={membersStatus} />
           </div>
 
           <div className="w-full sm:w-72">

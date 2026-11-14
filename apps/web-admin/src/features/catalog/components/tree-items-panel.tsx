@@ -34,6 +34,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  LiveStatus,
   Select,
   Skeleton,
   StatusChip,
@@ -780,6 +781,12 @@ export function TreeItemsPanel({
     { value: "INACTIVE", label: t("statuses.INACTIVE") },
   ];
 
+  // Câu đọc cho trình đọc màn hình khi cây lọc xong (WCAG 4.1.3). Chỉ đọc kết quả lọc; mở/đóng nút không đọc.
+  const filterStatus =
+    !isFiltered || rootTreeQuery.isPending || rootTreeQuery.isPlaceholderData || rootTreeQuery.isError
+      ? ""
+      : t("tree.filterResultStatus", { count: rootTreeQuery.data.length });
+
   const activeNode = crossGroupMismatch ? null : (selectedDetail ?? selectedTreeNode);
   const activeNodeLevelName = activeNode
     ? displayLevels[activeNode.depth - 1] ?? `${t("tree.defaultLevelName")} ${activeNode.depth}`
@@ -1206,6 +1213,7 @@ export function TreeItemsPanel({
             {t("tree.filterBanner")}
           </p>
         )}
+        <LiveStatus message={filterStatus} />
       </form>
 
       {/*

@@ -234,6 +234,29 @@ describe("ClassDetailView", () => {
     expect(screen.queryByText(/Lịch sử thành viên/i)).not.toBeInTheDocument();
   });
 
+  it("đọc số học viên tìm được qua vùng status (C-05)", async () => {
+    const listClassMembersMock = vi.fn<ClassesApiDeps["listClassMembers"]>(async (_classId, query) =>
+      query?.q
+        ? { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 }
+        : {
+            items: SAMPLE_MEMBERS,
+            page: 0,
+            size: 20,
+            totalItems: SAMPLE_MEMBERS.length,
+            totalPages: 1,
+          },
+    );
+    renderDetail(makeDeps({ listClassMembers: listClassMembersMock }));
+
+    await screen.findByRole("link", { name: "student01" });
+    const status = screen.getByRole("status");
+    expect(status).toHaveClass("sr-only");
+    expect(status).toHaveTextContent(`Có ${SAMPLE_MEMBERS.length} học viên`);
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Tìm học viên trong lớp" }), "zzz");
+    await waitFor(() => expect(status).toHaveTextContent("Không có học viên nào"));
+  });
+
   it("người chỉ có CLASS.VIEW không thấy các nút sửa, ngừng sử dụng, xóa, thêm, chuyển và loại học viên", async () => {
     renderDetail(makeDeps(), { ...TEST_ADMIN_SESSION, permissions: ["CLASS.VIEW"] });
 

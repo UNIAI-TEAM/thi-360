@@ -1,10 +1,11 @@
 "use client";
 
-import { Button, cn, EmptyState, IconButton, Input, Skeleton } from "@thi360/ui";
+import { Button, cn, EmptyState, IconButton, Input, LiveStatus, Skeleton } from "@thi360/ui";
 import { GitBranch, Link2, List, Lock, Plus, Search, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import type { CatalogGroupKind, CatalogGroupResponse } from "../api";
+import { useDebouncedValue } from "../use-debounced-value";
 import { pickName } from "../utils";
 
 export type GroupSidebarProps = {
@@ -62,6 +63,10 @@ export function GroupSidebar({
   }, [groups, search]);
 
   const totalMatches = systemGroups.length + customGroups.length;
+  // Danh sách lọc ngay theo từng phím; câu đọc cho trình đọc màn hình thì chờ người dùng ngừng gõ (WCAG 4.1.3).
+  const matchStatus = useDebouncedValue(
+    search.trim() && !loading && !error ? t("groupsMatchStatus", { count: totalMatches }) : "",
+  );
 
   return (
     <section
@@ -93,6 +98,7 @@ export function GroupSidebar({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
+        <LiveStatus message={matchStatus} />
       </div>
 
       {loading ? (

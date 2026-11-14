@@ -1143,6 +1143,62 @@ describe("CatalogView: bảng giá trị, tìm kiếm, lọc và sắp xếp th�
   }, 15_000);
 });
 
+describe("CatalogView: kết quả tìm và lọc được đọc qua vùng status (C-05)", { timeout: 20_000 }, () => {
+  /** Vùng `LiveStatus` của một khu vực; phân biệt với vùng đọc của dnd-kit (cũng `role="status"`) bằng lớp `sr-only`. */
+  function liveStatusIn(area: HTMLElement): HTMLElement {
+    const regions = within(area)
+      .getAllByRole("status")
+      .filter((region) => region.classList.contains("sr-only"));
+    expect(regions).toHaveLength(1);
+    return regions[0]!;
+  }
+
+  it("bảng giá trị: đọc số giá trị sau khi tìm, kể cả khi không còn giá trị nào", async () => {
+    renderCatalog({ search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    await within(table).findByText("Toán học");
+    const status = liveStatusIn(table.closest("section")!);
+    expect(status).toHaveTextContent("Có 3 giá trị");
+
+    const searchInput = screen.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" });
+    await userEvent.type(searchInput, "Toán");
+    await waitFor(() => expect(status).toHaveTextContent("Có 1 giá trị"));
+
+    await userEvent.type(searchInput, "zzz");
+    await waitFor(() => expect(status).toHaveTextContent("Không có giá trị nào"));
+  });
+
+  it("danh sách danh mục: đọc số danh mục khớp sau khi ngừng gõ, im lặng khi ô tìm trống", async () => {
+    renderCatalog();
+    const searchInput = await screen.findByRole("searchbox", { name: "Tìm danh mục" });
+    const sidebar = searchInput.closest("section")!;
+    await within(sidebar).findByRole("button", { name: /Môn học/ });
+    const status = liveStatusIn(sidebar);
+    expect(status).toHaveTextContent("");
+
+    await userEvent.type(searchInput, "SUBJECT");
+    await waitFor(() => expect(status).toHaveTextContent("Có 2 danh mục khớp từ khóa"));
+
+    await userEvent.type(searchInput, "zzz");
+    await waitFor(() => expect(status).toHaveTextContent("Không có danh mục nào khớp từ khóa"));
+
+    await userEvent.clear(searchInput);
+    await waitFor(() => expect(status).toHaveTextContent(""));
+  });
+
+  it("cây: đọc số nút trong kết quả lọc; không lọc thì không đọc gì", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    const form = screen.getByRole("form", { name: "Lọc giá trị" });
+    const status = liveStatusIn(form);
+    expect(status).toHaveTextContent("");
+    expect(tree).toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Tìm nút theo mã hoặc tên" }), "Tính");
+    await waitFor(() => expect(status).toHaveTextContent("Có 2 nút trong kết quả lọc"));
+  });
+});
+
 describe("CatalogView: dialog nhóm và dialog giá trị", { timeout: 20_000 }, () => {
   it("dialog thêm/sửa nhóm khóa ô mã khi API báo CATALOG_CODE_LOCKED và giữ nguyên dữ liệu đã nhập", async () => {
     const updateGroupMock = vi

@@ -29,6 +29,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  LiveStatus,
   Pagination,
   Select,
   Skeleton,
@@ -283,6 +284,10 @@ export function SimpleItemsPanel({
     "",
   ];
   const colCount = columnVisibility.length;
+  // Câu đọc cho trình đọc màn hình sau khi tìm/lọc xong (WCAG 4.1.3). Để rỗng trong lúc đang tải lại: khi kết
+  // quả về, vùng status đổi từ rỗng sang có chữ nên được đọc, kể cả khi số lượng trùng với lần trước.
+  const resultStatus =
+    loading || refreshing || error ? "" : t("itemsCountStatus", { count: totalItems });
   const [scrollerRef, tableOverflows] = useInlineOverflow<HTMLDivElement>();
   return (
     <section
@@ -416,6 +421,8 @@ export function SimpleItemsPanel({
           />
         </div>
       </div>
+
+      <LiveStatus message={resultStatus} />
 
       {isFiltered && canModify && supportsReorder && (
         <div className="border-t border-border bg-page px-5 py-2 text-caption text-text-muted">

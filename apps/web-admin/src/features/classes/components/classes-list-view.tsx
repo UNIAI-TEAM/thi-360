@@ -14,6 +14,7 @@ import {
   FormField,
   IconButton,
   Input,
+  LiveStatus,
   PageHeader,
   Pagination,
   Select,
@@ -359,6 +360,12 @@ function ClassesListContent({
 
   const items = classesQuery.data?.items ?? [];
   const totalItems = classesQuery.data?.totalItems ?? 0;
+  // Câu đọc cho trình đọc màn hình sau khi tìm/lọc xong (WCAG 4.1.3). Để rỗng trong lúc đang tải lại: khi kết
+  // quả về, vùng status đổi từ rỗng sang có chữ nên được đọc, kể cả khi số lượng trùng với lần trước.
+  const resultStatus =
+    classesQuery.isLoading || classesQuery.isPlaceholderData || classesQuery.isError
+      ? ""
+      : t("list.resultStatus", { count: totalItems });
 
   return (
     <div className="flex flex-col gap-5">
@@ -430,6 +437,7 @@ function ClassesListContent({
                 ? t("list.errorCount")
                 : t("list.filteredCount", { count: totalItems })}
           </p>
+          <LiveStatus message={resultStatus} />
         </div>
 
         <Table
