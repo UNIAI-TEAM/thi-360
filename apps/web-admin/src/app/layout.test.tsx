@@ -1,0 +1,131 @@
+import { THEME_STYLE_ELEMENT_ID } from "@thi360/ui";
+import type { ReactElement } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import RootLayout from "./layout";
+const ssrState = vi.hoisted(() => ({
+  locale: "vi",
+  themeCookie: undefined as string | undefined,
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) =>
+      name === "thi360_theme" && ssrState.themeCookie !== undefined
+        ? { value: ssrState.themeCookie }
+        : undefined,
+  }),
+}));
+vi.mock("next/font/google", () => ({
+  Be_Vietnam_Pro: () => ({ variable: "--font-be-vietnam-pro" }),
+}));
+
+vi.mock("next-intl", () => ({
+  NextIntlClientProvider: ({ children }: { children: unknown }) => children,
+}));
+
+vi.mock("next-intl/server", () => ({
+  getLocale: async () => ssrState.locale,
+}));
+
+vi.mock("@/providers/query-provider", () => ({
+  QueryProvider: ({ children }: { children: unknown }) => children,
+}));
+
+vi.mock("@/features/session/session-provider", () => ({
+  SessionProvider: ({ children }: { children: unknown }) => children,
+}));
+
+afterEach(() => {
+  ssrState.locale = "vi";
+  ssrState.themeCookie = undefined;
+  vi.unstubAllGlobals();
+});
+
+describe("RootLayout appearance SSR", () => {
+  it("chèn <style> cho cả sáng và tối trong <head> và data-theme lên <html>, không đặt inline style", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        palette: { presetId: "navy-teal" },
+        mode: "dark",
+        version: 7,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const tree = await RootLayout({ children: "ok" });
+    expect(tree.props["data-theme"]).toBe("dark");
+    expect(tree.props.style).toBeUndefined();
+    const children = Array.isArray(tree.props.children) ? tree.props.children : [tree.props.children];
+    const headEl = children.find((node: ReactElement) => node?.type === "head") as ReactElement<{
+      children: ReactElement<{ id: string; dangerouslySetInnerHTML: { __html: string } }>;
+    }>;
+    expect(headEl).toBeDefined();
+    const styleEl = headEl.props.children;
+    expect(styleEl.type).toBe("style");
+    expect(styleEl.props.id).toBe(THEME_STYLE_ELEMENT_ID);
+    const css = styleEl.props.dangerouslySetInnerHTML.__html;
+    expect(css).toContain(':root[data-theme="light"]');
+    expect(css).toContain(':root[data-theme="dark"]');
+    expect(css).toContain("--color-primary-600: #0f3c6e;");
+    expect(css).toContain("--color-page: #f7f8f9;");
+    expect(css).toContain("--color-page: #0f1418;");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [request, init] = fetchMock.mock.calls[0] as unknown as [
+      Request,
+      RequestInit & { next?: { revalidate?: number; tags?: string[] } },
+    ];
+    expect(request.url).toMatch(/\/api\/v1\/appearance$/);
+    expect(init.next).toEqual({ revalidate: 60, tags: ["appearance"] });
+  });
+
+  it("rơi về cấu hình mặc định khi fetch /api/v1/appearance lỗi", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("ECONNREFUSED");
+      }),
+    );
+
+    const tree = await RootLayout({ children: "ok" });
+    expect(tree.props["data-theme"]).toBe("light");
+    expect(tree.props.style).toBeUndefined();
+    const children = Array.isArray(tree.props.children) ? tree.props.children : [tree.props.children];
+    const headEl = children.find((node: ReactElement) => node?.type === "head") as ReactElement<{
+      children: ReactElement<{ dangerouslySetInnerHTML: { __html: string } }>;
+    }>;
+    const css = headEl.props.children.props.dangerouslySetInnerHTML.__html;
+    expect(css).toContain("--color-primary-600: #059669;");
+  });
+
+  it("ưu tiên cookie thi360_theme hợp lệ trên chế độ mặc định và bỏ qua cookie sai giá trị", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          palette: { presetId: "thi360-green" },
+          mode: "light",
+          version: 1,
+        }),
+      ),
+    );
+
+    ssrState.themeCookie = "dark";
+    const darkTree = await RootLayout({ children: "ok" });
+    expect(darkTree.props["data-theme"]).toBe("dark");
+
+    ssrState.themeCookie = "invalid";
+    const fallbackTree = await RootLayout({ children: "ok" });
+    expect(fallbackTree.props["data-theme"]).toBe("light");
+  });
+
+  it("đặt <html lang> theo uiLocale đã chuẩn hóa (kể cả khi getLocale trả en-GB)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ palette: { presetId: "thi360-green" }, mode: "light", version: 1 })));
+    ssrState.locale = "en";
+    const enTree = await RootLayout({ children: "ok" });
+    expect(enTree.props.lang).toBe("en");
+
+    ssrState.locale = "en-GB";
+    const enGbTree = await RootLayout({ children: "ok" });
+    expect(enGbTree.props.lang).toBe("en");
+  });
+});

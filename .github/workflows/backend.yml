@@ -2,9 +2,10 @@ name: Backend
 
 on:
   push:
+    branches: [develop]
     paths: ["backend/**", ".github/workflows/backend.yml"]
   pull_request:
-    branches: [develop, main]
+    branches: [develop]
     paths: ["backend/**", ".github/workflows/backend.yml"]
 
 permissions:
@@ -24,3 +25,4 @@ jobs:
           java-version: "21"
           cache: maven
       - run: ./mvnw -B -ntp verify
+      - run: diff -u ../packages/api-client/openapi.json target/openapi.json

@@ -1,0 +1,136 @@
+{
+  "changePassword": {
+    "confirmPasswordLabel": "Nhập lại mật khẩu mới",
+    "confirmPasswordMismatch": "Mật khẩu nhập lại không khớp.",
+    "confirmPasswordRequired": "Vui lòng nhập lại mật khẩu mới.",
+    "description": "Tài khoản <strong>{username}</strong> cần đặt mật khẩu mới trước khi tiếp tục.",
+    "errorLoad": "Không tải được thông tin tài khoản. Hãy thử lại.",
+    "errorLoadTitle": "Không tải được trang",
+    "footerNote": "Sau khi lưu, bạn được đưa tới trang đang mở dở, hoặc trang chủ theo vai trò.",
+    "genericError": "Không thể đổi mật khẩu. Vui lòng thử lại.",
+    "masterRealmNotice": "Tài khoản quản trị nền tảng đổi mật khẩu trực tiếp trên Keycloak.",
+    "newPasswordLabel": "Mật khẩu mới",
+    "newPasswordSameAsUsername": "Mật khẩu mới không được trùng tên đăng nhập.",
+    "newPasswordWeak": "Mật khẩu mới chưa đáp ứng đủ năm điều kiện.",
+    "oldPasswordLabel": "Mật khẩu hiện tại",
+    "oldPasswordRequired": "Vui lòng nhập mật khẩu hiện tại.",
+    "otherAccount": "Đăng nhập bằng tài khoản khác",
+    "rules": {
+      "generate": "Tạo ngẫu nhiên",
+      "hidePassword": "Ẩn mật khẩu",
+      "ruleDigit": "Có ít nhất một chữ số",
+      "ruleLength": "Từ 8 đến 64 ký tự",
+      "ruleLower": "Có ít nhất một chữ thường",
+      "ruleSpecial": "Có ít nhất một ký tự đặc biệt",
+      "ruleUpper": "Có ít nhất một chữ hoa",
+      "rulesLabel": "Điều kiện mật khẩu",
+      "showPassword": "Hiện mật khẩu"
+    },
+    "submit": "Lưu và tiếp tục",
+    "title": "Đặt mật khẩu mới",
+    "wrongOldPassword": "Mật khẩu hiện tại không đúng."
+  },
+  "common": {
+    "appName": "Thi 360",
+    "backHome": "Về trang chủ",
+    "closeToast": "Đóng thông báo",
+    "loading": "Đang tải",
+    "logoMark": "360",
+    "notificationsLabel": "Thông báo",
+    "retry": "Thử lại"
+  },
+  "errorPage": {
+    "description": "Đã xảy ra lỗi không mong muốn khi xử lý yêu cầu. Vui lòng thử lại sau.",
+    "eyebrow": "MÃ LỖI 500",
+    "title": "Đã có lỗi máy chủ",
+    "traceLabel": "Mã yêu cầu: {traceId}"
+  },
+  "errors": {
+    "forbiddenToast": "Bạn không có quyền thực hiện thao tác này.",
+    "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
+    "notFound": "Không tìm thấy.",
+    "proxyNotConfigured": "Máy chủ web chưa được cấu hình địa chỉ API.",
+    "upstreamTimeout": "Máy chủ xử lý quá lâu. Hãy thử lại sau.",
+    "upstreamUnavailable": "Không kết nối được tới máy chủ. Hãy thử lại sau."
+  },
+  "forbidden": {
+    "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
+    "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
+    "eyebrow": "MÃ LỖI 403",
+    "otherAccount": "Đăng nhập bằng tài khoản khác",
+    "title": "Bạn không có quyền vào trang này"
+  },
+  "home": {
+    "emptyDescription": "Danh mục bài thi, mua bài và làm bài sẽ có ở các đợt phát triển tiếp theo. Đợt này trang học viên chỉ có đăng nhập, đổi mật khẩu và đăng xuất.",
+    "emptyTitle": "Chưa có bài thi nào",
+    "errorDescription": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
+    "errorTitle": "Không tải được trang",
+    "greeting": "Chào {name}",
+    "intro": "Bạn đã đăng nhập vào trang học viên.",
+    "pageTitle": "Trang học viên",
+    "roleAdmin": "Vai trò: Quản trị",
+    "roleStudent": "Vai trò: Học viên",
+    "sectionTitle": "Bài thi của tôi"
+  },
+  "landing": {
+    "badge": "Luyện thi HSA · QDA",
+    "ctaHeader": "Đăng nhập",
+    "ctaHero": "Đăng nhập để bắt đầu",
+    "features": {
+      "analysisDescription": "Điểm từng phần, câu đúng, câu sai, câu bỏ trống hiển thị sau khi nộp.",
+      "analysisTitle": "Điểm và phân tích ngay",
+      "practiceDescription": "Gợi ý chủ đề cần củng cố và theo dõi tiến bộ qua từng lần làm.",
+      "practiceTitle": "Luyện đúng phần còn yếu",
+      "structureDescription": "Bài thi đầy đủ hoặc từng phần, thời gian tính theo máy chủ.",
+      "structureTitle": "Đề thi theo đúng cấu trúc"
+    },
+    "featuresTitle": "Thi 360 giúp bạn điều gì",
+    "footerNote": "Cổng luyện thi đánh giá năng lực HSA và QDA",
+    "heroDescription": "Thi 360 là cổng luyện thi trực tuyến cho kỳ thi đánh giá năng lực của ĐHQG Hà Nội (HSA) và Bộ Quốc phòng (QDA).",
+    "heroTitle": "Thi thử như thi thật, biết ngay mình cần luyện gì"
+  },
+  "login": {
+    "backHome": "Trang chủ",
+    "errors": {
+      "ACCOUNT_INACTIVE": "Tài khoản đã ngừng hoạt động. Vui lòng liên hệ quản trị viên.",
+      "INVALID_CREDENTIALS": "Tên đăng nhập hoặc mật khẩu không đúng.",
+      "LOGIN_THROTTLED": "Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.",
+      "RATE_LIMITED": "Quá nhiều yêu cầu từ địa chỉ của bạn. Vui lòng thử lại sau ít phút.",
+      "generic": "Không thể đăng nhập. Vui lòng thử lại."
+    },
+    "feature1": "Thi thử theo đúng cấu trúc đề",
+    "feature2": "Biết điểm ngay sau khi nộp bài",
+    "feature3": "Xem lời giải và phần cần luyện thêm",
+    "forgotNote": "Quên mật khẩu? Liên hệ quản trị viên để được cấp lại. Sau 5 lần nhập sai liên tiếp, đăng nhập bị tạm khóa 15 phút.",
+    "headline": "Luyện thi đánh giá năng lực HSA và QDA",
+    "hidePassword": "Ẩn mật khẩu",
+    "identifierLabel": "Tên đăng nhập hoặc email",
+    "identifierPlaceholder": "Nhập tên đăng nhập hoặc email",
+    "identifierRequired": "Vui lòng nhập tên đăng nhập hoặc email.",
+    "passwordLabel": "Mật khẩu",
+    "passwordPlaceholder": "Nhập mật khẩu",
+    "passwordRequired": "Vui lòng nhập mật khẩu.",
+    "showPassword": "Hiện mật khẩu",
+    "submit": "Đăng nhập",
+    "subtitle": "Một tài khoản dùng cho cả trang học viên và trang quản trị. Sau khi đăng nhập, bạn được đưa tới đúng nơi theo vai trò của mình.",
+    "title": "Đăng nhập"
+  },
+  "metadata": {
+    "description": "Cổng luyện thi đánh giá năng lực HSA và QDA",
+    "title": "Thi 360 — Luyện thi HSA, QDA"
+  },
+  "notFound": {
+    "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",
+    "eyebrow": "MÃ LỖI 404",
+    "title": "Không tìm thấy trang"
+  },
+  "userMenu": {
+    "adminPortal": "Trang quản trị",
+    "changePassword": "Đổi mật khẩu",
+    "logout": "Đăng xuất",
+    "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
+    "menuLabel": "Tài khoản",
+    "studentPortal": "Trang học viên",
+    "trigger": "Menu tài khoản"
+  }
+}

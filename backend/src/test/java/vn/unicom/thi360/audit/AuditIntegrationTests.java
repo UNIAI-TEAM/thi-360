@@ -1,0 +1,909 @@
+package vn.unicom.thi360.audit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.ApplicationContext;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.SimpleDriverDataSource;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.audit.application.AuditArchiveJob;
+import vn.unicom.thi360.audit.application.AuditPartitionJob;
+import vn.unicom.thi360.audit.application.AuditRecorderImpl;
+import vn.unicom.thi360.audit.infrastructure.AuditPartitionManager;
+import vn.unicom.thi360.audit.infrastructure.AuditPartitionManager.QuarterPartition;
+import vn.unicom.thi360.audit.infrastructure.AuditProperties;
+import vn.unicom.thi360.audit.spi.AuditActorType;
+import vn.unicom.thi360.audit.spi.AuditEvent;
+import vn.unicom.thi360.audit.spi.AuditOutcome;
+import vn.unicom.thi360.audit.spi.AuditQuery;
+import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.shared.api.PageQuery;
+import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.outbox.OutboxEventRepository;
+import vn.unicom.thi360.shared.outbox.OutboxRelay;
+import vn.unicom.thi360.shared.web.TraceIdFilter;
+
+@ExtendWith(OutputCaptureExtension.class)
+class AuditIntegrationTests extends AbstractIntegrationTest {
+
+    @Autowired
+    private AuditRecorder auditRecorder;
+
+    @Autowired
+    private AuditQuery auditQuery;
+
+    @Autowired
+    private AuditPartitionManager partitionManager;
+
+    @Autowired
+    private AuditPartitionJob auditPartitionJob;
+
+    @Autowired
+    private AuditArchiveJob auditArchiveJob;
+
+    @Autowired
+    private AuditProperties auditProperties;
+
+    @Autowired
+    private OutboxRelay outboxRelay;
+
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+    @Autowired
+    private ApplicationContext applicationContext;
+
+
+    @BeforeEach
+    void cleanTables() {
+        SecurityContextHolder.clearContext();
+        MDC.clear();
+        outboxEventRepository.deleteAll();
+    }
+
+    @Test
+    void contextRegistersExactlyOneAuditRecorderBean_ofTypeAuditRecorderImpl() {
+        Map<String, AuditRecorder> beans = applicationContext.getBeansOfType(AuditRecorder.class);
+        assertThat(beans).hasSize(1);
+        assertThat(beans.values().iterator().next()).isInstanceOf(AuditRecorderImpl.class);
+    }
+
+    @Test
+    void migration_createsCurrentAndNextQuarterPartitionsAndArchiveYearPartition() {
+        ZonedDateTime utcNow = ZonedDateTime.now(ZoneOffset.UTC);
+        int year = utcNow.getYear();
+        int quarter = (utcNow.getMonthValue() - 1) / 3 + 1;
+        int nextYear = quarter == 4 ? year + 1 : year;
+        int nextQuarter = quarter == 4 ? 1 : quarter + 1;
+
+        assertThat(partitionManager.isQuarterPartitionAttached(year, quarter)).isTrue();
+        assertThat(partitionManager.isQuarterPartitionAttached(nextYear, nextQuarter)).isTrue();
+        assertThat(partitionManager.isArchiveYearPartitionAttached(year)).isTrue();
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_schema_privilege(current_user, 'audit', 'USAGE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event', 'SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event', 'INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event_archive', 'SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT has_table_privilege(current_user, 'audit.audit_event_archive', 'INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT pg_has_role(current_user, 'thi360_audit_maint', 'MEMBER')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT rolcanlogin FROM pg_roles WHERE rolname = 'thi360_audit_maint'",
+                Boolean.class)).isFalse();
+    }
+
+    @Test
+    void rolledBackUseCase_emitsNoOutboxOrAuditEvent() {
+        String targetId = "rollback-" + Ids.newId();
+
+        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(status -> {
+            auditRecorder.record(AuditEvent.builder("identity", "USER_CREATED")
+                    .target("USER", targetId, "rollback.user")
+                    .after(Map.of("username", "rollback.user"))
+                    .build());
+            throw new IllegalStateException("Simulated business failure");
+        })).isInstanceOf(IllegalStateException.class);
+
+        assertThat(outboxEventRepository.findAll()).isEmpty();
+        outboxRelay.relayBatch();
+        var result = auditQuery.findByTarget("USER", targetId, PageQuery.of(0, 20, null, List.of("occurredAt")));
+        assertThat(result.items()).isEmpty();
+    }
+
+    @Test
+    void directUpdateAndDelete_areBlockedByAppendOnlyTriggers_withNoBypass() {
+        UUID eventId = Ids.newId();
+        Instant occurredAt = Instant.now();
+        insertAuditRowDirectly(eventId, occurredAt, "identity", "USER_CREATED", "USER", "u-1", "user1");
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "UPDATE audit.audit_event SET reason = 'tamper' WHERE id = ?",
+                eventId))
+                .isInstanceOf(DataAccessException.class);
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "DELETE FROM audit.audit_event WHERE id = ?",
+                eventId))
+                .isInstanceOf(DataAccessException.class);
+
+        UUID archiveId = Ids.newId();
+        transactionTemplate.executeWithoutResult(status -> {
+            partitionManager.assumeMaintenanceRoleForTransaction();
+            partitionManager.ensureArchiveYearPartition(2019);
+            partitionManager.resetRole();
+        });
+        try {
+            Instant oldTime = Instant.parse("2019-05-10T10:00:00Z");
+            jdbcTemplate.update(
+                    """
+                    INSERT INTO audit.audit_event_archive (
+                        id, occurred_at, actor_type, module, action, target_type, target_id, outcome
+                    ) VALUES (?, ?, 3, 'audit', 'TEST', 'USER', 'u-old', 1)
+                    """,
+                    archiveId,
+                    Timestamp.from(oldTime));
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "UPDATE audit.audit_event_archive SET reason = 'tamper' WHERE id = ?",
+                    archiveId))
+                    .isInstanceOf(DataAccessException.class);
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "DELETE FROM audit.audit_event_archive WHERE id = ?",
+                    archiveId))
+                    .isInstanceOf(DataAccessException.class);
+        } finally {
+            transactionTemplate.executeWithoutResult(status -> {
+                partitionManager.assumeMaintenanceRoleForTransaction();
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2019");
+                partitionManager.resetRole();
+            });
+        }
+    }
+
+    @Test
+    void sensitiveKeysAreMaskedBeforeOutboxAndInAuditStore_whileEmailAndPhoneRemain() {
+        String targetId = "mask-" + Ids.newId();
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("email", "old@thi360.vn");
+        before.put("password", "OldPass@123");
+        before.put("otpCode", "111222");
+
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("email", "new@thi360.vn");
+        after.put("phone", "0909000111");
+        after.put("newPassword", "NewPass@456");
+        after.put("clientSecret", "super-secret-value");
+        after.put("refreshToken", "tok-secret-value");
+
+        transactionTemplate.executeWithoutResult(status -> auditRecorder.record(
+                AuditEvent.builder("identity", "USER_UPDATED")
+                        .target("USER", targetId, "masked.user")
+                        .before(before)
+                        .after(after)
+                        .build()));
+
+        var outboxRows = outboxEventRepository.findAll();
+        assertThat(outboxRows).hasSize(1);
+        String outboxPayload = outboxRows.getFirst().getPayload();
+        assertThat(outboxPayload)
+                .doesNotContain("OldPass@123", "NewPass@456", "super-secret-value", "tok-secret-value", "111222")
+                .doesNotContain("otpCode", "newPassword", "clientSecret", "refreshToken")
+                .contains("new@thi360.vn", "0909000111");
+
+        outboxRelay.relayBatch();
+
+        var page = auditQuery.findByTarget("USER", targetId, PageQuery.of(0, 20, null, List.of("occurredAt")));
+        assertThat(page.items()).hasSize(1);
+        var view = page.items().getFirst();
+        assertThat(view.before())
+                .containsEntry("email", "old@thi360.vn")
+                .doesNotContainKeys("password", "otpCode");
+        assertThat(view.after())
+                .containsEntry("email", "new@thi360.vn")
+                .containsEntry("phone", "0909000111")
+                .doesNotContainKeys("newPassword", "clientSecret", "refreshToken");
+    }
+
+    @Test
+    void resetLinkAndResetUrlAreMaskedBeforeOutboxAndInStoredAuditRow() {
+        String targetId = "mask-reset-" + Ids.newId();
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("resetLink", "https://thi360.vn/reset?secret=nested-1");
+        nested.put("reset_url", "https://thi360.vn/reset?secret=nested-2");
+        nested.put("note", "password-reset-triggered");
+
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("email", "reset@thi360.vn");
+        after.put("resetLink", "https://thi360.vn/reset?secret=top-1");
+        after.put("resetUrl", "https://thi360.vn/reset?secret=top-2");
+        after.put("reset-link", "https://thi360.vn/reset?secret=top-3");
+        after.put("nested", nested);
+
+        transactionTemplate.executeWithoutResult(status -> auditRecorder.record(
+                AuditEvent.builder("identity", "USER_PASSWORD_RESET")
+                        .target("USER", targetId, "reset.user")
+                        .after(after)
+                        .build()));
+
+        var outboxRows = outboxEventRepository.findAll();
+        assertThat(outboxRows).hasSize(1);
+        String outboxPayload = outboxRows.getFirst().getPayload();
+        assertThat(outboxPayload)
+                .doesNotContain("top-1", "top-2", "top-3", "nested-1", "nested-2")
+                .doesNotContain("resetLink", "resetUrl", "reset-link", "reset_url")
+                .contains("reset@thi360.vn", "password-reset-triggered");
+
+        outboxRelay.relayBatch();
+
+        String storedAfterJson = jdbcTemplate.queryForObject(
+                "SELECT after::text FROM audit.audit_event WHERE target_id = ?",
+                String.class,
+                targetId);
+        assertThat(storedAfterJson)
+                .isNotNull()
+                .doesNotContain("top-1", "top-2", "top-3", "nested-1", "nested-2")
+                .doesNotContain("resetLink", "resetUrl", "reset-link", "reset_url")
+                .contains("reset@thi360.vn", "password-reset-triggered");
+    }
+
+    @Test
+    void reprocessingSameOutboxEvent_isIdempotentOnId() {
+        String targetId = "idemp-" + Ids.newId();
+        transactionTemplate.executeWithoutResult(status -> auditRecorder.record(
+                AuditEvent.builder("identity", "USER_ACTIVATED")
+                        .target("USER", targetId, "idemp.user")
+                        .build()));
+
+        UUID outboxId = outboxEventRepository.findAll().getFirst().getId();
+        assertThat(outboxRelay.relayBatch()).isEqualTo(1);
+
+        // Simulate duplicate delivery of the same outbox event
+        jdbcTemplate.update(
+                "UPDATE shared.outbox_event SET processed_at = NULL WHERE id = ?",
+                outboxId);
+        assertThat(outboxRelay.relayBatch()).isEqualTo(1);
+
+        Integer rowCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE id = ?",
+                Integer.class,
+                outboxId);
+        assertThat(rowCount).isEqualTo(1);
+    }
+
+    @Test
+    void partitionJob_withFakeClock_createsCurrentNextQuarterAndArchiveYearPartitions(CapturedOutput output) {
+        Clock fakeClock = Clock.fixed(Instant.parse("2031-11-15T12:00:00Z"), ZoneOffset.UTC);
+        AuditPartitionJob job = new AuditPartitionJob(partitionManager, transactionManager, fakeClock);
+
+        try {
+            var result = job.run();
+            assertThat(result.createdPartitions())
+                    .containsExactlyInAnyOrder(
+                            "audit_event_2031q4",
+                            "audit_event_2032q1",
+                            "audit_event_archive_2031",
+                            "audit_event_archive_2032");
+            assertThat(partitionManager.isQuarterPartitionAttached(2031, 4)).isTrue();
+            assertThat(partitionManager.isQuarterPartitionAttached(2032, 1)).isTrue();
+            assertThat(partitionManager.isArchiveYearPartitionAttached(2031)).isTrue();
+            assertThat(partitionManager.isArchiveYearPartitionAttached(2032)).isTrue();
+
+            assertThat(MDC.get(TraceIdFilter.MDC_TRACE_ID)).isNull();
+            assertThat(MDC.get("job")).isNull();
+            assertThat(MDC.get("jobId")).isNull();
+            assertThat(output.getOut()).contains("thi360.job").contains("Audit partition maintenance completed");
+        } finally {
+            transactionTemplate.executeWithoutResult(status -> {
+                partitionManager.assumeMaintenanceRoleForTransaction();
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_2031q4");
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_2032q1");
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2031");
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2032");
+                partitionManager.resetRole();
+            });
+        }
+    }
+
+    @Test
+    void archiveJob_withFakeClock_movesRowsDropsQuarterPartitionEmitsEvent_andApiReturnsArchivedData()
+            throws Exception {
+        transactionTemplate.executeWithoutResult(status -> {
+            partitionManager.assumeMaintenanceRoleForTransaction();
+            partitionManager.ensureQuarterPartition(2023, 1);
+            partitionManager.resetRole();
+        });
+        UUID oldEventId = Ids.newId();
+        Instant oldOccurredAt = Instant.parse("2023-02-15T08:30:00Z");
+        insertAuditRowDirectly(oldEventId, oldOccurredAt, "identity", "LOGIN", "USER", "u-2023", "legacy.user");
+
+        Clock fakeClock = Clock.fixed(Instant.parse("2026-11-13T10:00:00Z"), ZoneOffset.UTC);
+        AuditArchiveJob job = new AuditArchiveJob(
+                partitionManager,
+                auditProperties,
+                auditRecorder,
+                transactionManager,
+                fakeClock);
+
+        try {
+            var runResult = job.run();
+            assertThat(runResult.archivedPartitions()).contains("audit_event_2023q1");
+            assertThat(runResult.failedPartitions()).isEmpty();
+            assertThat(runResult.archivedRows()).isGreaterThanOrEqualTo(1L);
+
+            assertThat(partitionManager.isQuarterPartitionAttached(2023, 1)).isFalse();
+            assertThat(partitionManager.isArchiveYearPartitionAttached(2023)).isTrue();
+
+            // AUDIT_ARCHIVED recorded via outbox
+            assertThat(outboxRelay.relayBatch()).isGreaterThanOrEqualTo(1);
+            var archivedEvents = auditQuery.findByTarget(
+                    "AUDIT_PARTITION",
+                    "audit_event_2023q1",
+                    PageQuery.of(0, 10, null, List.of("occurredAt")));
+            assertThat(archivedEvents.items()).hasSize(1);
+            assertThat(archivedEvents.items().getFirst().action()).isEqualTo("AUDIT_ARCHIVED");
+            assertThat(archivedEvents.items().getFirst().actorType()).isEqualTo(AuditActorType.SYSTEM);
+
+            // Default API query without 'from' reads active table only (2023 Q1 row is not in active table)
+            mockMvc.perform(get("/api/v1/admin/audit-events")
+                            .with(asPlatformAdmin())
+                            .param("targetId", "u-2023"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalItems").value(0));
+
+            // API query with old 'from' reads archive and returns the 2023 Q1 row
+            mockMvc.perform(get("/api/v1/admin/audit-events")
+                            .with(asPlatformAdmin())
+                            .param("targetId", "u-2023")
+                            .param("from", "2023-01-01T00:00:00Z")
+                            .param("to", "2023-12-31T23:59:59Z"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalItems").value(1))
+                    .andExpect(jsonPath("$.items[0].id").value(oldEventId.toString()))
+                    .andExpect(jsonPath("$.items[0].actorUsername").value("legacy.user"));
+
+            // API query with only an old 'to' reads archive and returns the 2023 Q1 row
+            mockMvc.perform(get("/api/v1/admin/audit-events")
+                            .with(asPlatformAdmin())
+                            .param("targetId", "u-2023")
+                            .param("to", "2023-12-31T23:59:59Z"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalItems").value(1))
+                    .andExpect(jsonPath("$.items[0].id").value(oldEventId.toString()))
+                    .andExpect(jsonPath("$.items[0].actorUsername").value("legacy.user"));
+        } finally {
+            transactionTemplate.executeWithoutResult(status -> {
+                partitionManager.assumeMaintenanceRoleForTransaction();
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_2023q1");
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2023");
+                partitionManager.resetRole();
+            });
+        }
+    }
+
+    @Test
+    void archiveJob_abortsAndLogsErrorOnCountMismatch_leavingPartitionIntact(CapturedOutput output) {
+        transactionTemplate.executeWithoutResult(status -> {
+            partitionManager.assumeMaintenanceRoleForTransaction();
+            partitionManager.ensureQuarterPartition(2022, 4);
+            partitionManager.ensureArchiveYearPartition(2022);
+            partitionManager.resetRole();
+        });
+        UUID conflictingId = Ids.newId();
+        Instant occurredAt = Instant.parse("2022-11-01T12:00:00Z");
+
+        insertAuditRowDirectly(conflictingId, occurredAt, "identity", "LOGIN", "USER", "u-conflict", "conflict.user");
+        // Pre-insert same (id, occurred_at) into archive so ON CONFLICT DO NOTHING inserts 0 instead of 1
+        jdbcTemplate.update(
+                """
+                INSERT INTO audit.audit_event_archive (
+                    id, occurred_at, actor_type, module, action, target_type, target_id, outcome
+                ) VALUES (?, ?, 1, 'identity', 'LOGIN', 'USER', 'u-conflict', 1)
+                """,
+                conflictingId,
+                Timestamp.from(occurredAt));
+
+        Clock fakeClock = Clock.fixed(Instant.parse("2026-11-13T10:00:00Z"), ZoneOffset.UTC);
+        AuditArchiveJob job = new AuditArchiveJob(
+                partitionManager,
+                auditProperties,
+                auditRecorder,
+                transactionManager,
+                fakeClock);
+
+        try {
+            var runResult = job.run();
+            assertThat(runResult.archivedPartitions()).doesNotContain("audit_event_2022q4");
+            assertThat(runResult.failedPartitions()).contains("audit_event_2022q4");
+            assertThat(partitionManager.isQuarterPartitionAttached(2022, 4)).isTrue();
+            assertThat(partitionManager.countQuarterPartitionRows(QuarterPartition.of(2022, 4))).isEqualTo(1L);
+            assertThat(output.getOut()).contains("Audit archive aborted for quarter partition");
+        } finally {
+            transactionTemplate.executeWithoutResult(status -> {
+                partitionManager.assumeMaintenanceRoleForTransaction();
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_2022q4");
+                jdbcTemplate.execute("DROP TABLE IF EXISTS audit.audit_event_archive_2022");
+                partitionManager.resetRole();
+            });
+        }
+    }
+
+    @Test
+    void outboxToApiEndToEnd_recordsViaOutboxAndReadsViaAdminEndpointWithFilters() throws Exception {
+        UUID actorId = Ids.newId();
+        var auth = new UsernamePasswordAuthenticationToken(
+                actorId.toString(),
+                "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        MDC.put(TraceIdFilter.MDC_TRACE_ID, "trace-ac4-e2e");
+
+        try {
+            transactionTemplate.executeWithoutResult(status -> auditRecorder.record(
+                    AuditEvent.builder("identity", "LOGIN")
+                            .actor(actorId, "platform", List.of("PLATFORM_ADMIN"), AuditActorType.PLATFORM)
+                            .target("USER", actorId.toString(), "platform")
+                            .after(Map.of("realm", "master"))
+                            .outcome(AuditOutcome.SUCCESS)
+                            .build()));
+        } finally {
+            SecurityContextHolder.clearContext();
+            MDC.clear();
+        }
+
+        assertThat(outboxRelay.relayBatch()).isEqualTo(1);
+
+        mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asPlatformAdmin())
+                        .param("action", "LOGIN")
+                        .param("actorId", actorId.toString())
+                        .param("targetType", "USER")
+                        .param("targetId", actorId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].action").value("LOGIN"))
+                .andExpect(jsonPath("$.items[0].module").value("identity"))
+                .andExpect(jsonPath("$.items[0].actorId").value(actorId.toString()))
+                .andExpect(jsonPath("$.items[0].actorUsername").value("platform"))
+                .andExpect(jsonPath("$.items[0].actorType").value("PLATFORM"))
+                .andExpect(jsonPath("$.items[0].traceId").value("trace-ac4-e2e"))
+                .andExpect(jsonPath("$.items[0].after.realm").value("master"));
+
+        // Invalid time range returns 400 VALIDATION_FAILED
+        mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asPlatformAdmin())
+                        .param("from", "2026-11-10T00:00:00Z")
+                        .param("to", "2026-11-01T00:00:00Z"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void listAuditEvents_requiresAuditViewPermission() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asUser("USER.VIEW")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        mockMvc.perform(get("/api/v1/admin/audit-events")
+                        .with(asUser("AUDIT.VIEW")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void nonSuperuserAppRole_cannotMutateOrDetachPartitionsWithoutMaintenanceRole_andJobsSucceedWithIt() {
+        String dbName = "audit_distinct_roles_test";
+        String migratorRole = "thi360_migrator_test";
+        String migratorPass = "thi360-migrator-test";
+        String appRole = "thi360_app_test";
+        String appPass = "thi360-app-test";
+
+        jdbcTemplate.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_migrator_test') THEN
+                        CREATE ROLE thi360_migrator_test LOGIN PASSWORD 'thi360-migrator-test' SUPERUSER;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_app_test') THEN
+                        CREATE ROLE thi360_app_test LOGIN PASSWORD 'thi360-app-test' NOSUPERUSER NOCREATEDB NOCREATEROLE;
+                    END IF;
+                END;
+                $$;
+                """);
+        terminateConnectionsAndDropDatabase(dbName);
+        jdbcTemplate.execute("CREATE DATABASE " + dbName + " OWNER " + migratorRole);
+
+        try {
+            String isolatedJdbcUrl = postgresJdbcUrl(dbName);
+            Flyway.configure()
+                    .dataSource(isolatedJdbcUrl, migratorRole, migratorPass)
+                    .defaultSchema("shared")
+                    .schemas("shared", "identity", "catalog", "audit")
+                    .table("flyway_schema_history")
+                    .locations("classpath:db/migration")
+                    .placeholders(Map.of("auditAppRole", appRole))
+                    .load()
+                    .migrate();
+
+            SimpleDriverDataSource appDataSource = new SimpleDriverDataSource(
+                    new org.postgresql.Driver(),
+                    isolatedJdbcUrl,
+                    appRole,
+                    appPass);
+            JdbcTemplate appJdbc = new JdbcTemplate(appDataSource);
+            NamedParameterJdbcTemplate appNamedJdbc = new NamedParameterJdbcTemplate(appDataSource);
+            DataSourceTransactionManager appTxManager = new DataSourceTransactionManager(appDataSource);
+            TransactionTemplate appTxTemplate = new TransactionTemplate(appTxManager);
+            AuditPartitionManager appPartitionManager = new AuditPartitionManager(appJdbc, appNamedJdbc);
+
+            assertThat(appJdbc.queryForObject(
+                    "SELECT rolsuper FROM pg_roles WHERE rolname = current_user",
+                    Boolean.class)).isFalse();
+            assertThat(appJdbc.queryForObject("SELECT current_user", String.class)).isEqualTo(appRole);
+
+            // Grants came solely from V202611132005 placeholder target, not the migrator role
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_schema_privilege(?, 'audit', 'USAGE')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_schema_privilege(?, 'audit', 'CREATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT pg_has_role(?, 'thi360_audit_maint', 'MEMBER')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_auth_members m
+                        JOIN pg_roles r ON r.oid = m.roleid
+                        JOIN pg_roles u ON u.oid = m.member
+                        WHERE r.rolname = 'thi360_audit_maint'
+                          AND u.rolname = ?
+                    )
+                    """,
+                    Boolean.class,
+                    migratorRole)).isFalse();
+
+            appTxTemplate.executeWithoutResult(status -> {
+                appPartitionManager.assumeMaintenanceRoleForTransaction();
+                appPartitionManager.ensureQuarterPartition(2020, 1);
+                appPartitionManager.ensureArchiveYearPartition(2020);
+                appPartitionManager.resetRole();
+            });
+
+            UUID eventId = Ids.newId();
+            String targetId = "u-2020-" + Ids.newId();
+            Instant oldOccurredAt = Instant.parse("2020-02-10T09:00:00Z");
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event (
+                        id, occurred_at, actor_username, actor_type, module, action,
+                        target_type, target_id, outcome
+                    ) VALUES (?, ?, 'app.user', 1, 'identity', 'LOGIN', 'USER', ?, 1)
+                    """,
+                    eventId,
+                    Timestamp.from(oldOccurredAt),
+                    targetId);
+
+            UUID archiveRowId = Ids.newId();
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event_archive (
+                        id, occurred_at, actor_type, module, action, target_type, target_id, outcome
+                    ) VALUES (?, ?, 3, 'audit', 'TEST', 'USER', ?, 1)
+                    """,
+                    archiveRowId,
+                    Timestamp.from(Instant.parse("2020-01-15T00:00:00Z")),
+                    targetId);
+
+            // App role cannot UPDATE, DELETE, or TRUNCATE either audit table
+            assertThatThrownBy(() -> appJdbc.update(
+                    "UPDATE audit.audit_event SET reason = 'tamper' WHERE id = ?",
+                    eventId))
+                    .isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> appJdbc.update(
+                    "DELETE FROM audit.audit_event WHERE id = ?",
+                    eventId))
+                    .isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> appJdbc.update(
+                    "UPDATE audit.audit_event_archive SET reason = 'tamper' WHERE id = ?",
+                    archiveRowId))
+                    .isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> appJdbc.update(
+                    "DELETE FROM audit.audit_event_archive WHERE id = ?",
+                    archiveRowId))
+                    .isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> appJdbc.execute("TRUNCATE audit.audit_event"))
+                    .isInstanceOf(DataAccessException.class);
+
+            // App role cannot DETACH PARTITION without SET LOCAL ROLE thi360_audit_maint
+            assertThatThrownBy(() -> appJdbc.execute(
+                    "ALTER TABLE audit.audit_event DETACH PARTITION audit.audit_event_2020q1"))
+                    .isInstanceOf(DataAccessException.class);
+
+            // Partition job succeeds as non-superuser app role by assuming thi360_audit_maint
+            Clock partitionClock = Clock.fixed(Instant.parse("2033-11-15T12:00:00Z"), ZoneOffset.UTC);
+            AuditPartitionJob appPartitionJob = new AuditPartitionJob(appPartitionManager, appTxManager, partitionClock);
+            var partitionResult = appPartitionJob.run();
+            assertThat(partitionResult.createdPartitions())
+                    .containsExactlyInAnyOrder(
+                            "audit_event_2033q4",
+                            "audit_event_2034q1",
+                            "audit_event_archive_2033",
+                            "audit_event_archive_2034");
+            assertThat(appPartitionManager.isQuarterPartitionAttached(2034, 1)).isTrue();
+            String owner = appJdbc.queryForObject(
+                    """
+                    SELECT pg_get_userbyid(c.relowner)
+                    FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    WHERE n.nspname = 'audit' AND c.relname = 'audit_event_2034q1'
+                    """,
+                    String.class);
+            assertThat(owner).isEqualTo("thi360_audit_maint");
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_2034q1', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'SELECT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'INSERT')",
+                    Boolean.class,
+                    appRole)).isTrue();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'UPDATE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+            assertThat(appJdbc.queryForObject(
+                    "SELECT has_table_privilege(?, 'audit.audit_event_archive_2034', 'DELETE')",
+                    Boolean.class,
+                    appRole)).isFalse();
+
+            UUID futureEventId = Ids.newId();
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event_2034q1 (
+                        id, occurred_at, actor_username, actor_type, module, action,
+                        target_type, target_id, outcome
+                    ) VALUES (?, ?, 'app.user', 1, 'identity', 'LOGIN', 'USER', ?, 1)
+                    """,
+                    futureEventId,
+                    Timestamp.from(Instant.parse("2034-01-15T12:00:00Z")),
+                    targetId);
+            assertThat(appJdbc.queryForObject(
+                    "SELECT COUNT(*) FROM audit.audit_event_2034q1 WHERE id = ?",
+                    Integer.class,
+                    futureEventId)).isEqualTo(1);
+
+            UUID futureArchiveId = Ids.newId();
+            appJdbc.update(
+                    """
+                    INSERT INTO audit.audit_event_archive_2034 (
+                        id, occurred_at, actor_type, module, action, target_type, target_id, outcome
+                    ) VALUES (?, ?, 3, 'audit', 'TEST', 'USER', ?, 1)
+                    """,
+                    futureArchiveId,
+                    Timestamp.from(Instant.parse("2034-01-15T12:00:00Z")),
+                    targetId);
+            assertThat(appJdbc.queryForObject(
+                    "SELECT COUNT(*) FROM audit.audit_event_archive_2034 WHERE id = ?",
+                    Integer.class,
+                    futureArchiveId)).isEqualTo(1);
+
+            // Archive job succeeds as non-superuser app role: copies rows, compares counts, detaches & drops, resets role, emits AUDIT_ARCHIVED
+            Clock archiveClock = Clock.fixed(Instant.parse("2026-11-13T10:00:00Z"), ZoneOffset.UTC);
+            AuditRecorder appAuditRecorder = event -> {
+                assertThat(appJdbc.queryForObject("SELECT current_user", String.class)).isEqualTo(appRole);
+                transactionTemplate.executeWithoutResult(s -> auditRecorder.record(event));
+            };
+            AuditArchiveJob appArchiveJob = new AuditArchiveJob(
+                    appPartitionManager,
+                    auditProperties,
+                    appAuditRecorder,
+                    appTxManager,
+                    archiveClock);
+            var archiveResult = appArchiveJob.run();
+            assertThat(archiveResult.archivedPartitions()).contains("audit_event_2020q1");
+            assertThat(archiveResult.failedPartitions()).isEmpty();
+            assertThat(archiveResult.archivedRows()).isGreaterThanOrEqualTo(1L);
+            assertThat(appPartitionManager.isQuarterPartitionAttached(2020, 1)).isFalse();
+
+            assertThat(outboxRelay.relayBatch()).isGreaterThanOrEqualTo(1);
+            var archivedAuditEvents = auditQuery.findByTarget(
+                    "AUDIT_PARTITION",
+                    "audit_event_2020q1",
+                    PageQuery.of(0, 10, null, List.of("occurredAt")));
+            assertThat(archivedAuditEvents.items()).isNotEmpty();
+            assertThat(archivedAuditEvents.items().getFirst().action()).isEqualTo("AUDIT_ARCHIVED");
+        } finally {
+            terminateConnectionsAndDropDatabase(dbName);
+            jdbcTemplate.execute("""
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_app_test') THEN
+                            REVOKE thi360_audit_maint FROM thi360_app_test;
+                            DROP ROLE thi360_app_test;
+                        END IF;
+                        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'thi360_migrator_test') THEN
+                            DROP ROLE thi360_migrator_test;
+                        END IF;
+                    END;
+                    $$;
+                    """);
+        }
+    }
+
+    @Test
+    void migration_normalizesPreExistingLoginMaintenanceRoleToNoLogin() {
+        String dbName = "audit_nologin_maint_test";
+        terminateConnectionsAndDropDatabase(dbName);
+        jdbcTemplate.execute("CREATE DATABASE " + dbName);
+
+        try {
+            jdbcTemplate.execute("ALTER ROLE thi360_audit_maint LOGIN");
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT rolcanlogin FROM pg_roles WHERE rolname = 'thi360_audit_maint'",
+                    Boolean.class)).isTrue();
+
+            Flyway.configure()
+                    .dataSource(
+                            postgresJdbcUrl(dbName),
+                            AbstractIntegrationTest.POSTGRES.getUsername(),
+                            AbstractIntegrationTest.POSTGRES.getPassword())
+                    .defaultSchema("shared")
+                    .schemas("shared", "identity", "catalog", "audit")
+                    .table("flyway_schema_history")
+                    .locations("classpath:db/migration")
+                    .placeholders(Map.of("auditAppRole", AbstractIntegrationTest.POSTGRES.getUsername()))
+                    .load()
+                    .migrate();
+
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT rolcanlogin FROM pg_roles WHERE rolname = 'thi360_audit_maint'",
+                    Boolean.class)).isFalse();
+        } finally {
+            jdbcTemplate.execute("ALTER ROLE thi360_audit_maint NOLOGIN");
+            terminateConnectionsAndDropDatabase(dbName);
+        }
+    }
+
+    private static String postgresJdbcUrl(String dbName) {
+        return "jdbc:postgresql://"
+                + AbstractIntegrationTest.POSTGRES.getHost()
+                + ":"
+                + AbstractIntegrationTest.POSTGRES.getMappedPort(5432)
+                + "/"
+                + dbName;
+    }
+
+    private void terminateConnectionsAndDropDatabase(String dbName) {
+        jdbcTemplate.queryForList(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = ? AND pid <> pg_backend_pid()",
+                Boolean.class,
+                dbName);
+        jdbcTemplate.execute("DROP DATABASE IF EXISTS " + dbName);
+    }
+
+    private void insertAuditRowDirectly(
+            UUID id,
+            Instant occurredAt,
+            String module,
+            String action,
+            String targetType,
+            String targetId,
+            String actorUsername) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO audit.audit_event (
+                    id, occurred_at, actor_username, actor_type, module, action,
+                    target_type, target_id, outcome
+                ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, 1)
+                """,
+                id,
+                Timestamp.from(occurredAt),
+                actorUsername,
+                module,
+                action,
+                targetType,
+                targetId);
+    }
+}

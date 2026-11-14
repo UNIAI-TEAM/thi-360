@@ -1,0 +1,799 @@
+package vn.unicom.thi360.identity.application;
+
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
+import jakarta.servlet.http.HttpServletResponse;
+import java.text.ParseException;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.audit.spi.AuditEvent;
+import vn.unicom.thi360.audit.spi.AuditActorType;
+import vn.unicom.thi360.audit.spi.AuditOutcome;
+import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.identity.domain.Normalizer;
+import vn.unicom.thi360.identity.domain.PasswordPolicy;
+import vn.unicom.thi360.identity.domain.PlatformAdmin;
+import vn.unicom.thi360.identity.domain.UserAccount;
+import vn.unicom.thi360.identity.domain.UserStatus;
+import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
+import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.AuthFailureReason;
+import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.KeycloakAuthException;
+import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.TokenResult;
+import vn.unicom.thi360.identity.infrastructure.PlatformAdminRepository;
+import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
+import vn.unicom.thi360.shared.api.FieldError;
+import vn.unicom.thi360.shared.api.ForbiddenException;
+import vn.unicom.thi360.shared.api.RateLimitedException;
+import vn.unicom.thi360.shared.api.UnauthenticatedException;
+import vn.unicom.thi360.shared.api.ValidationException;
+import vn.unicom.thi360.shared.security.Access;
+import vn.unicom.thi360.shared.security.AuthCookieService;
+import vn.unicom.thi360.shared.security.CtxCookieSigner;
+import vn.unicom.thi360.shared.security.CurrentUser;
+import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.security.KeycloakProperties;
+import vn.unicom.thi360.shared.web.AppMessages;
+import vn.unicom.thi360.shared.security.LoginThrottle;
+import vn.unicom.thi360.shared.security.PermissionCatalog;
+import vn.unicom.thi360.shared.security.PermissionSet;
+import vn.unicom.thi360.shared.security.Realm;
+import vn.unicom.thi360.shared.security.SessionAuthzResolver;
+import vn.unicom.thi360.shared.security.SessionStore;
+import vn.unicom.thi360.shared.security.TwoIssuerJwtDecoder;
+
+@Service
+public class AuthService {
+
+    private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
+    private static final String MODULE = "identity";
+
+    private final UserAccountRepository userAccountRepository;
+    private final PlatformAdminRepository platformAdminRepository;
+    private final KeycloakIdentityClient keycloakClient;
+    private final KeycloakProperties keycloakProperties;
+    private final TwoIssuerJwtDecoder twoIssuerJwtDecoder;
+    private final SessionStore sessionStore;
+    private final LoginThrottle loginThrottle;
+    private final CtxCookieSigner ctxCookieSigner;
+    private final AuthCookieService authCookieService;
+    private final CurrentUserProvider currentUserProvider;
+    private final PasswordPolicy passwordPolicy;
+    private final AuditRecorder auditRecorder;
+    private final TransactionTemplate transactionTemplate;
+    private final Clock clock;
+    private final SessionAuthzResolver authzResolver;
+    private final PermissionCatalog permissionCatalog;
+    private final RedirectResolver redirectResolver;
+    private final AppMessages messages;
+    public AuthService(
+            UserAccountRepository userAccountRepository,
+            PlatformAdminRepository platformAdminRepository,
+            KeycloakIdentityClient keycloakClient,
+            KeycloakProperties keycloakProperties,
+            TwoIssuerJwtDecoder twoIssuerJwtDecoder,
+            SessionStore sessionStore,
+            LoginThrottle loginThrottle,
+            CtxCookieSigner ctxCookieSigner,
+            AuthCookieService authCookieService,
+            CurrentUserProvider currentUserProvider,
+            PasswordPolicy passwordPolicy,
+            AuditRecorder auditRecorder,
+            TransactionTemplate transactionTemplate,
+            Clock clock,
+            SessionAuthzResolver authzResolver) {
+        this(
+                userAccountRepository,
+                platformAdminRepository,
+                keycloakClient,
+                keycloakProperties,
+                twoIssuerJwtDecoder,
+                sessionStore,
+                loginThrottle,
+                ctxCookieSigner,
+                authCookieService,
+                currentUserProvider,
+                passwordPolicy,
+                auditRecorder,
+                transactionTemplate,
+                clock,
+                authzResolver,
+                null,
+                null,
+                null);
+    }
+
+    public AuthService(
+            UserAccountRepository userAccountRepository,
+            PlatformAdminRepository platformAdminRepository,
+            KeycloakIdentityClient keycloakClient,
+            KeycloakProperties keycloakProperties,
+            TwoIssuerJwtDecoder twoIssuerJwtDecoder,
+            SessionStore sessionStore,
+            LoginThrottle loginThrottle,
+            CtxCookieSigner ctxCookieSigner,
+            AuthCookieService authCookieService,
+            CurrentUserProvider currentUserProvider,
+            PasswordPolicy passwordPolicy,
+            AuditRecorder auditRecorder,
+            TransactionTemplate transactionTemplate,
+            Clock clock,
+            SessionAuthzResolver authzResolver,
+            PermissionCatalog permissionCatalog,
+            RedirectResolver redirectResolver) {
+        this(
+                userAccountRepository,
+                platformAdminRepository,
+                keycloakClient,
+                keycloakProperties,
+                twoIssuerJwtDecoder,
+                sessionStore,
+                loginThrottle,
+                ctxCookieSigner,
+                authCookieService,
+                currentUserProvider,
+                passwordPolicy,
+                auditRecorder,
+                transactionTemplate,
+                clock,
+                authzResolver,
+                permissionCatalog,
+                redirectResolver,
+                null);
+    }
+
+    @Autowired
+    public AuthService(
+            UserAccountRepository userAccountRepository,
+            PlatformAdminRepository platformAdminRepository,
+            KeycloakIdentityClient keycloakClient,
+            KeycloakProperties keycloakProperties,
+            TwoIssuerJwtDecoder twoIssuerJwtDecoder,
+            SessionStore sessionStore,
+            LoginThrottle loginThrottle,
+            CtxCookieSigner ctxCookieSigner,
+            AuthCookieService authCookieService,
+            CurrentUserProvider currentUserProvider,
+            PasswordPolicy passwordPolicy,
+            AuditRecorder auditRecorder,
+            TransactionTemplate transactionTemplate,
+            Clock clock,
+            @Autowired(required = false) SessionAuthzResolver authzResolver,
+            @Autowired(required = false) PermissionCatalog permissionCatalog,
+            @Autowired(required = false) RedirectResolver redirectResolver,
+            @Autowired(required = false) AppMessages messages) {
+        this.userAccountRepository = Objects.requireNonNull(userAccountRepository);
+        this.platformAdminRepository = Objects.requireNonNull(platformAdminRepository);
+        this.keycloakClient = Objects.requireNonNull(keycloakClient);
+        this.keycloakProperties = Objects.requireNonNull(keycloakProperties);
+        this.twoIssuerJwtDecoder = Objects.requireNonNull(twoIssuerJwtDecoder);
+        this.sessionStore = Objects.requireNonNull(sessionStore);
+        this.loginThrottle = Objects.requireNonNull(loginThrottle);
+        this.ctxCookieSigner = Objects.requireNonNull(ctxCookieSigner);
+        this.authCookieService = Objects.requireNonNull(authCookieService);
+        this.currentUserProvider = Objects.requireNonNull(currentUserProvider);
+        this.passwordPolicy = Objects.requireNonNull(passwordPolicy);
+        this.auditRecorder = Objects.requireNonNull(auditRecorder);
+        this.transactionTemplate = Objects.requireNonNull(transactionTemplate);
+        this.clock = Objects.requireNonNull(clock);
+        this.authzResolver = authzResolver;
+        this.permissionCatalog = permissionCatalog;
+        this.redirectResolver = redirectResolver != null
+                ? redirectResolver
+                : new RedirectResolver("http://localhost:3000", "http://localhost:3001", List.of());
+        this.messages = messages != null ? messages : AppMessages.defaultInstance();
+    }
+    public LoginResult login(
+            String identifier,
+            String password,
+            String callbackUrl,
+            HttpServletResponse response) {
+        String normalized = Normalizer.normalize(identifier);
+        if (normalized == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("identifier", "NOTBLANK", messages.get("validation.login.identifier.notBlank"))));
+        }
+
+        try {
+            loginThrottle.assertNotBlocked(normalized);
+        } catch (RateLimitedException ex) {
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.throttled")
+                    .log("Login blocked by per-identifier throttle");
+            recordAudit(AuditEvent.failure(MODULE, "LOGIN_FAILED", "USER", null, normalized, "LOGIN_THROTTLED"));
+            throw ex;
+        }
+
+        Optional<UserAccount> accountOpt = resolveActiveAccount(normalized);
+        if (accountOpt.isPresent()) {
+            return loginAppRealm(accountOpt.get(), normalized, password, callbackUrl, response);
+        }
+        return loginMasterRealm(identifier.trim(), normalized, password, callbackUrl, response);
+    }
+
+    private LoginResult loginAppRealm(
+            UserAccount account,
+            String normalizedIdentifier,
+            String password,
+            String callbackUrl,
+            HttpServletResponse response) {
+        long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
+        } catch (KeycloakAuthException ex) {
+            if (ex.getReason() == AuthFailureReason.ACCOUNT_LOCKED) {
+                recordAudit(AuditEvent.failure(
+                        MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "LOGIN_THROTTLED"));
+                throw new RateLimitedException("LOGIN_THROTTLED");
+            }
+            loginThrottle.recordFailure(normalizedIdentifier);
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.invalid_credentials")
+                    .addKeyValue("userId", account.getId().toString())
+                    .log("Authentication failed for user account");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "INVALID_CREDENTIALS"));
+            throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
+        }
+
+        if (account.getStatus() == UserStatus.INACTIVE) {
+            keycloakClient.logout(keycloakProperties.realm(), tokens.refreshToken());
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.account_inactive")
+                    .addKeyValue("userId", account.getId().toString())
+                    .log("Login refused for inactive account after password verification");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "ACCOUNT_INACTIVE"));
+            throw new ForbiddenException("ACCOUNT_INACTIVE", null);
+        }
+        if (account.getStatus() != UserStatus.ACTIVE) {
+            keycloakClient.logout(keycloakProperties.realm(), tokens.refreshToken());
+            loginThrottle.recordFailure(normalizedIdentifier);
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "INVALID_CREDENTIALS"));
+            throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
+        }
+
+        Jwt jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        String sid = requireSid(jwt);
+        Instant now = Instant.now(clock);
+
+        SessionStore.SessionCreateResult sessionResult =
+                sessionStore.createSessionIfNotRevoked(sid, account.getId(), Realm.APP, revocationGeneration);
+        if (!sessionResult.accepted()) {
+            keycloakClient.logout(keycloakProperties.realm(), tokens.refreshToken());
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.session_revoked_during_grant")
+                    .addKeyValue("userId", account.getId().toString())
+                    .log("Login refused because user sessions were revoked during authentication");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "SESSION_REVOKED"));
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+        loginThrottle.reset(normalizedIdentifier);
+        transactionTemplate.executeWithoutResult(status -> {
+            UserAccount fresh = userAccountRepository.findById(account.getId()).orElse(account);
+            fresh.markLoggedIn(now);
+            userAccountRepository.save(fresh);
+            auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
+                    .actor(fresh.getId(), fresh.getUsername(), List.of(), AuditActorType.USER)
+                    .target("USER", fresh.getId().toString(), fresh.getUsername())
+                    .after(Map.of("realm", Realm.APP.name()))
+                    .outcome(AuditOutcome.SUCCESS)
+                    .build());
+        });
+
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
+        String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, authz.access(), authz.version());
+        authCookieService.setAuthCookies(
+                response,
+                tokens.accessToken(),
+                tokens.expiresInSeconds(),
+                tokens.refreshToken(),
+                tokens.refreshExpiresInSeconds(),
+                ctx);
+
+        String redirectTo = redirectResolver.resolve(authz.access(), account.isMustChangePassword(), callbackUrl);
+        return new LoginResult(redirectTo, account.isMustChangePassword());
+    }
+
+    private LoginResult loginMasterRealm(
+            String rawUsername,
+            String normalizedIdentifier,
+            String password,
+            String callbackUrl,
+            HttpServletResponse response) {
+        // Master realm admins are not managed by UserAdminService; read generation for consistency.
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.passwordGrant(keycloakProperties.platformRealm(), rawUsername, password);
+        } catch (KeycloakAuthException ex) {
+            if (ex.getReason() == AuthFailureReason.ACCOUNT_LOCKED) {
+                recordAudit(AuditEvent.failure(
+                        MODULE, "LOGIN_FAILED", "USER", null, normalizedIdentifier, "LOGIN_THROTTLED"));
+                throw new RateLimitedException("LOGIN_THROTTLED");
+            }
+            loginThrottle.recordFailure(normalizedIdentifier);
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.invalid_credentials")
+                    .log("Login failed for unknown or master realm user");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", null, normalizedIdentifier, "INVALID_CREDENTIALS"));
+            throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
+        }
+
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(keycloakProperties.platformRealm(), tokens.refreshToken());
+            loginThrottle.recordFailure(normalizedIdentifier);
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.master_role_missing")
+                    .log("Master realm user lacks required platform role");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "PLATFORM_ADMIN", null, normalizedIdentifier, "INVALID_CREDENTIALS"));
+            throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
+        }
+
+        UUID userId = UUID.fromString(jwt.getSubject());
+        String username = Optional.ofNullable(jwt.getClaimAsString("preferred_username")).orElse(rawUsername);
+        String sid = requireSid(jwt);
+        Instant now = Instant.now(clock);
+
+        long revocationGeneration = sessionStore.currentRevocationGeneration(userId);
+        SessionStore.SessionCreateResult sessionResult =
+                sessionStore.createSessionIfNotRevoked(sid, userId, Realm.MASTER, revocationGeneration);
+        if (!sessionResult.accepted()) {
+            keycloakClient.logout(keycloakProperties.platformRealm(), tokens.refreshToken());
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.session_revoked_during_grant")
+                    .addKeyValue("userId", userId.toString())
+                    .log("Master login refused because user sessions were revoked during authentication");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "PLATFORM_ADMIN", userId.toString(), username, "SESSION_REVOKED"));
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+        loginThrottle.reset(normalizedIdentifier);
+        transactionTemplate.executeWithoutResult(status -> {
+            PlatformAdmin admin = platformAdminRepository.findById(userId)
+                    .map(existing -> {
+                        existing.recordLogin(username, now);
+                        return existing;
+                    })
+                    .orElseGet(() -> new PlatformAdmin(userId, username, now));
+            platformAdminRepository.save(admin);
+            auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
+                    .actor(userId, username, List.of(keycloakProperties.platformRole()), AuditActorType.PLATFORM)
+                    .target("PLATFORM_ADMIN", userId.toString(), username)
+                    .after(Map.of("realm", Realm.MASTER.name()))
+                    .outcome(AuditOutcome.SUCCESS)
+                    .build());
+        });
+
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(userId, Realm.MASTER);
+        String ctx = ctxCookieSigner.sign(userId, Realm.MASTER, authz.access(), authz.version());
+        authCookieService.setAuthCookies(
+                response,
+                tokens.accessToken(),
+                tokens.expiresInSeconds(),
+                tokens.refreshToken(),
+                tokens.refreshExpiresInSeconds(),
+                ctx);
+
+        String redirectTo = redirectResolver.resolve(authz.access(), false, callbackUrl);
+        return new LoginResult(redirectTo, false);
+    }
+
+    public LoginResult refresh(String refreshToken, HttpServletResponse response) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("UNAUTHENTICATED", null);
+        }
+
+        JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
+        String oldSid = refreshClaims == null ? null : getStringClaim(refreshClaims, "sid");
+        if (oldSid == null || oldSid.isBlank()) {
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        SessionStore.SessionData session = sessionStore.findSession(oldSid)
+                .orElseThrow(() -> {
+                    authCookieService.clearAuthCookies(response);
+                    return new UnauthenticatedException("SESSION_REVOKED", null);
+                });
+
+        if (!refreshClaimsMatchSession(refreshClaims, session)) {
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        String targetRealmName = session.realm() == Realm.MASTER
+                ? keycloakProperties.platformRealm()
+                : keycloakProperties.realm();
+
+        long revocationGeneration = sessionStore.currentRevocationGeneration(session.userId());
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.refresh(targetRealmName, refreshToken);
+        } catch (KeycloakAuthException ex) {
+            // Never delete oldSid here: Keycloak rejected refreshToken, so session ownership is unverified.
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        UUID userId = parseUuid(jwt.getSubject());
+        Realm verifiedRealm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
+        String newSid = requireSid(jwt);
+        if (userId == null
+                || !userId.equals(session.userId())
+                || verifiedRealm == null
+                || verifiedRealm != session.realm()) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        boolean mustChangePassword = false;
+        if (verifiedRealm == Realm.APP) {
+            UserAccount account = userAccountRepository.findById(userId).orElse(null);
+            if (account == null || account.isDeleted() || account.getStatus() != UserStatus.ACTIVE) {
+                sessionStore.deleteAllSessions(userId);
+                keycloakClient.logout(targetRealmName, tokens.refreshToken());
+                authCookieService.clearAuthCookies(response);
+                throw new UnauthenticatedException("SESSION_REVOKED", null);
+            }
+            mustChangePassword = account.isMustChangePassword();
+        }
+
+        if (!oldSid.equals(newSid)) {
+            if (!sessionStore.rotateSession(oldSid, newSid, userId, verifiedRealm, revocationGeneration)) {
+                keycloakClient.logout(targetRealmName, tokens.refreshToken());
+                authCookieService.clearAuthCookies(response);
+                throw new UnauthenticatedException("SESSION_REVOKED", null);
+            }
+        } else if (!sessionStore.isSessionActiveForGeneration(oldSid, userId, verifiedRealm, revocationGeneration)) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            authCookieService.clearAuthCookies(response);
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(userId, verifiedRealm);
+        String ctx = ctxCookieSigner.sign(userId, verifiedRealm, authz.access(), authz.version());
+        authCookieService.setAuthCookies(
+                response,
+                tokens.accessToken(),
+                tokens.expiresInSeconds(),
+                tokens.refreshToken(),
+                tokens.refreshExpiresInSeconds(),
+                ctx);
+
+        String redirectTo = redirectResolver.resolve(authz.access(), mustChangePassword, null);
+        return new LoginResult(redirectTo, mustChangePassword);
+    }
+
+    public void logout(String refreshToken, String accessToken, HttpServletResponse response) {
+        try {
+            Optional<CurrentUser> currentUserOpt = currentUserProvider.getCurrentUser();
+            Optional<String> currentSidOpt = currentUserProvider.getCurrentSessionId();
+            if (currentUserOpt.isPresent() && currentSidOpt.isPresent() && !currentSidOpt.get().isBlank()) {
+                CurrentUser currentUser = currentUserOpt.get();
+                String sid = currentSidOpt.get();
+                boolean deleted = sessionStore.deleteSessionIfOwner(sid, currentUser.id(), currentUser.realm());
+                if (deleted) {
+                    logoutKeycloakIfMatching(refreshToken, sid, currentUser.id(), currentUser.realm());
+                    recordLogoutAudit(currentUser.id(), currentUser.username(), currentUser.realm());
+                }
+                return;
+            }
+
+            if (accessToken != null && !accessToken.isBlank()) {
+                Jwt jwt;
+                try {
+                    jwt = twoIssuerJwtDecoder.decodeAllowingExpired(accessToken);
+                } catch (JwtException ex) {
+                    securityLog.atWarn()
+                            .addKeyValue("event", "logout.invalid_access_token")
+                            .log("Ignoring unverified access token on logout");
+                    return;
+                }
+
+                String sid = jwt.getClaimAsString("sid");
+                UUID userId = parseUuid(jwt.getSubject());
+                Realm realm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
+                String username = Optional.ofNullable(jwt.getClaimAsString("preferred_username"))
+                        .filter(u -> !u.isBlank())
+                        .orElse(userId != null ? userId.toString() : null);
+
+                if (sid == null || sid.isBlank() || userId == null || realm == null) {
+                    return;
+                }
+
+                boolean deleted = sessionStore.deleteSessionIfOwner(sid, userId, realm);
+                if (deleted) {
+                    logoutKeycloakIfMatching(refreshToken, sid, userId, realm);
+                    recordLogoutAudit(userId, username, realm);
+                }
+                return;
+            }
+
+            if (refreshToken != null && !refreshToken.isBlank()) {
+                logoutViaRefreshTokenVerification(refreshToken);
+            }
+        } finally {
+            authCookieService.clearAuthCookies(response);
+        }
+    }
+
+    private void logoutViaRefreshTokenVerification(String refreshToken) {
+        JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
+        String oldSid = refreshClaims == null ? null : getStringClaim(refreshClaims, "sid");
+        if (oldSid == null || oldSid.isBlank()) {
+            return;
+        }
+        Optional<SessionStore.SessionData> sessionOpt = sessionStore.findSession(oldSid);
+        if (sessionOpt.isEmpty()) {
+            return;
+        }
+        SessionStore.SessionData session = sessionOpt.get();
+        if (!refreshClaimsMatchSession(refreshClaims, session)) {
+            return;
+        }
+
+        String targetRealmName = session.realm() == Realm.MASTER
+                ? keycloakProperties.platformRealm()
+                : keycloakProperties.realm();
+
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.refresh(targetRealmName, refreshToken);
+        } catch (KeycloakAuthException ex) {
+            securityLog.atWarn()
+                    .addKeyValue("event", "logout.invalid_refresh_token")
+                    .log("Ignoring unverified refresh token on logout");
+            return;
+        }
+
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            return;
+        }
+
+        UUID userId = parseUuid(jwt.getSubject());
+        Realm verifiedRealm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
+        String newSid = jwt.getClaimAsString("sid");
+        if (userId == null
+                || !userId.equals(session.userId())
+                || verifiedRealm == null
+                || verifiedRealm != session.realm()) {
+            keycloakClient.logout(targetRealmName, tokens.refreshToken());
+            return;
+        }
+
+        String username = Optional.ofNullable(jwt.getClaimAsString("preferred_username"))
+                .filter(u -> !u.isBlank())
+                .orElse(userId.toString());
+
+        boolean deletedOld = sessionStore.deleteSessionIfOwner(oldSid, userId, verifiedRealm);
+        boolean deletedNew = newSid != null && !newSid.isBlank() && !newSid.equals(oldSid)
+                && sessionStore.deleteSessionIfOwner(newSid, userId, verifiedRealm);
+        keycloakClient.logout(targetRealmName, tokens.refreshToken());
+        if (deletedOld || deletedNew) {
+            recordLogoutAudit(userId, username, verifiedRealm);
+        }
+    }
+
+    private void logoutKeycloakIfMatching(String refreshToken, String expectedSid, UUID expectedUserId, Realm realm) {
+        if (refreshToken == null || refreshToken.isBlank() || realm == null) {
+            return;
+        }
+        JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
+        if (refreshClaims != null) {
+            String rtSid = getStringClaim(refreshClaims, "sid");
+            if (rtSid != null && !rtSid.isBlank() && !expectedSid.equals(rtSid)) {
+                return;
+            }
+            UUID rtSub = parseUuid(refreshClaims.getSubject());
+            if (rtSub != null && !expectedUserId.equals(rtSub)) {
+                return;
+            }
+        }
+        String realmName = realm == Realm.MASTER
+                ? keycloakProperties.platformRealm()
+                : keycloakProperties.realm();
+        keycloakClient.logout(realmName, refreshToken);
+    }
+
+    private void recordLogoutAudit(UUID userId, String username, Realm realm) {
+        String targetType = realm == Realm.MASTER ? "PLATFORM_ADMIN" : "USER";
+        String label = username != null ? username : userId.toString();
+        recordAudit(AuditEvent.success(MODULE, "LOGOUT", targetType, userId.toString(), label));
+    }
+
+    private boolean refreshClaimsMatchSession(JWTClaimsSet refreshClaims, SessionStore.SessionData session) {
+        if (refreshClaims == null) {
+            return false;
+        }
+        String claimIss = refreshClaims.getIssuer();
+        if (claimIss != null && !claimIss.isBlank() && resolveRealmByIssuer(claimIss) != session.realm()) {
+            return false;
+        }
+        UUID claimSub = parseUuid(refreshClaims.getSubject());
+        return claimSub == null || claimSub.equals(session.userId());
+    }
+
+    public void changePassword(String oldPassword, String newPassword) {
+        CurrentUser currentUser = currentUserProvider.requireCurrentUser();
+        if (currentUser.realm() != Realm.APP) {
+            throw new ForbiddenException("FORBIDDEN", null);
+        }
+
+        UserAccount account = userAccountRepository.findById(currentUser.id())
+                .filter(u -> !u.isDeleted() && u.getStatus() == UserStatus.ACTIVE)
+                .orElseThrow(() -> new UnauthenticatedException("UNAUTHENTICATED", null));
+
+        passwordPolicy.validate("newPassword", newPassword, account.getUsername());
+
+        TokenResult verified;
+        try {
+            verified = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), oldPassword);
+        } catch (KeycloakAuthException ex) {
+            throw new ValidationException(
+                    "WRONG_OLD_PASSWORD",
+                    null,
+                    List.of(new FieldError("oldPassword", "WRONG_OLD_PASSWORD", messages.get("WRONG_OLD_PASSWORD"))));
+        }
+        keycloakClient.logout(keycloakProperties.realm(), verified.refreshToken());
+
+        keycloakClient.setPassword(account.getId(), newPassword, false);
+
+        Instant now = Instant.now(clock);
+        transactionTemplate.executeWithoutResult(status -> {
+            UserAccount fresh = userAccountRepository.findById(account.getId()).orElse(account);
+            fresh.clearMustChangePassword(now, currentUser.id());
+            userAccountRepository.save(fresh);
+            auditRecorder.record(AuditEvent.success(
+                    MODULE, "PASSWORD_CHANGED", "USER", fresh.getId().toString(), fresh.getUsername()));
+        });
+    }
+
+    public MeResult me() {
+        CurrentUser currentUser = currentUserProvider.requireCurrentUser();
+        String username = currentUser.username();
+        String fullName = currentUser.username();
+        if (currentUser.realm() == Realm.APP) {
+            Optional<UserAccount> account = userAccountRepository.findById(currentUser.id());
+            username = account.map(UserAccount::getUsername).orElse(username);
+            fullName = account.map(UserAccount::getFullName).orElse(fullName);
+        }
+        List<String> permissions;
+        if (currentUser.permissions().isAllGranted()
+                && currentUser.permissions().codes().isEmpty()
+                && permissionCatalog != null) {
+            permissions = permissionCatalog.allCodes().stream().sorted().toList();
+        } else {
+            permissions = currentUser.permissions().codes().stream().sorted().toList();
+        }
+        String homeUrl = redirectResolver.resolveHomeUrl(currentUser.access());
+        return new MeResult(
+                currentUser.id(),
+                username,
+                fullName,
+                currentUser.realm(),
+                currentUser.access(),
+                permissions,
+                homeUrl);
+    }
+
+    private Optional<UserAccount> resolveActiveAccount(String normalized) {
+        Optional<UserAccount> byUsername = userAccountRepository.findActiveByUsernameNormalized(normalized);
+        if (byUsername.isPresent()) {
+            return byUsername;
+        }
+        if (normalized.contains("@")) {
+            return userAccountRepository.findActiveByEmailNormalized(normalized);
+        }
+        return Optional.empty();
+    }
+
+    private SessionAuthzResolver.AuthzSnapshot resolveAuthz(UUID userId, Realm realm) {
+        if (authzResolver != null) {
+            return authzResolver.resolve(userId, realm);
+        }
+        Access fallbackAccess = realm == Realm.MASTER ? Access.MANAGE : Access.EXAM;
+        return new SessionAuthzResolver.AuthzSnapshot(fallbackAccess, PermissionSet.empty(), 0L);
+    }
+    private Realm resolveRealmByIssuer(String issuer) {
+        if (issuer == null) {
+            return null;
+        }
+        if (twoIssuerJwtDecoder.platformIssuer().equals(issuer)) {
+            return Realm.MASTER;
+        }
+        if (twoIssuerJwtDecoder.appIssuer().equals(issuer)) {
+            return Realm.APP;
+        }
+        return null;
+    }
+
+    private void recordAudit(AuditEvent event) {
+        transactionTemplate.executeWithoutResult(status -> auditRecorder.record(event));
+    }
+
+    private static String requireSid(Jwt jwt) {
+        String sid = jwt.getClaimAsString("sid");
+        if (sid == null || sid.isBlank()) {
+            throw new UnauthenticatedException("UNAUTHENTICATED", null);
+        }
+        return sid;
+    }
+
+    private static JWTClaimsSet parseClaimsUnverified(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        try {
+            return JWTParser.parse(token).getJWTClaimsSet();
+        } catch (ParseException ex) {
+            return null;
+        }
+    }
+
+    private static String getStringClaim(JWTClaimsSet claims, String name) {
+        try {
+            return claims.getStringClaim(name);
+        } catch (ParseException ex) {
+            return null;
+        }
+    }
+
+    private static UUID parseUuid(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    public record LoginResult(String redirectTo, boolean mustChangePassword) {
+    }
+
+    public record MeResult(
+            UUID id,
+            String username,
+            String fullName,
+            Realm realm,
+            Access access,
+            List<String> permissions,
+            String homeUrl
+    ) {
+    }
+}

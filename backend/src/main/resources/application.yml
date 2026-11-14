@@ -1,9 +1,51 @@
 spring:
   application:
     name: thi360-api
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  datasource:
+    url: ${THI360_DB_URL:jdbc:postgresql://localhost:${THI360_DB_PORT:54360}/${THI360_DB_NAME:thi360}}
+    username: ${THI360_DB_USER:thi360}
+    password: ${THI360_DB_PASSWORD:thi360-dev-only}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: shared
+  flyway:
+    enabled: true
+    default-schema: shared
+    schemas:
+      - shared
+      - identity
+      - catalog
+      - audit
+      - classroom
+    table: flyway_schema_history
+    locations:
+      - classpath:db/migration
+    placeholders:
+      auditAppRole: ${THI360_AUDIT_APP_ROLE:${spring.datasource.username}}
+  data:
+    redis:
+      host: ${THI360_REDIS_HOST:localhost}
+      port: ${THI360_REDIS_PORT:63790}
+      repositories:
+        enabled: false
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+    default-locale: vi
 
 server:
   port: ${THI360_API_PORT:8080}
+  forward-headers-strategy: NATIVE
 
 # Log: bố cục và mức log nằm ở logback-spring.xml. Dòng dưới thêm tên dịch vụ vào mỗi bản ghi JSON.
 logging:
@@ -21,3 +63,139 @@ management:
     health:
       probes:
         enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+
+thi360:
+  keycloak:
+    url: ${THI360_KC_URL:http://localhost:${THI360_KC_PORT:8360}}
+    realm: ${THI360_KC_REALM:}
+    client-id: ${THI360_KC_CLIENT_ID:thi360-api}
+    client-secret: ${THI360_KC_CLIENT_SECRET:thi360-api-dev-only}
+    platform-realm: ${THI360_KC_PLATFORM_REALM:master}
+    platform-role: ${THI360_KC_PLATFORM_ROLE:PLATFORM_ADMIN}
+    platform-client-id: ${THI360_KC_PLATFORM_CLIENT_ID:thi360-platform}
+    platform-client-secret: ${THI360_KC_PLATFORM_CLIENT_SECRET:thi360-platform-dev-only}
+  web-url: ${THI360_WEB_URL:http://localhost:3000}
+  admin-url: ${THI360_ADMIN_URL:http://localhost:3001}
+  redirect-allowed-origins: []
+  cookie:
+    domain: ${THI360_COOKIE_DOMAIN:}
+    secure: ${THI360_COOKIE_SECURE:true}
+  ctx:
+    secret: ${THI360_CTX_SECRET:}
+    ttl: PT5M
+  security:
+    admin-origins:
+      - ${THI360_ADMIN_URL:http://localhost:3001}
+    trusted-proxies: ${THI360_TRUSTED_PROXIES:127.0.0.1,::1,172.16.0.0/12}
+  s3:
+    mode: ${THI360_S3_MODE:s3}
+    endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}
+    bucket: ${THI360_S3_BUCKET:thi360-private}
+    access-key: ${THI360_S3_ACCESS_KEY:}
+    secret-key: ${THI360_S3_SECRET_KEY:}
+    region: ${THI360_S3_REGION:us-east-1}
+    auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:false}
+  file:
+    enc-key: ${THI360_FILE_ENC_KEY:}
+  outbox:
+    scheduling:
+      enabled: true
+  audit:
+    archive-after-quarters: ${THI360_AUDIT_ARCHIVE_AFTER_QUARTERS:8}
+  identity:
+    reserved-usernames: ${THI360_RESERVED_USERNAMES:admin,administrator,root,system,support,platform,thi360,null,undefined}
+    provisioning-reconcile:
+      scheduling:
+        enabled: true
+    import-batch:
+      scheduling:
+        enabled: true
+      lease-duration: PT5M
+      retry-delay: PT5S
+      max-attempts: 3
+
+---
+spring:
+  config:
+    activate:
+      on-profile: worker & !api
+  main:
+    web-application-type: none
+
+---
+spring:
+  config:
+    activate:
+      on-profile: api
+  main:
+    web-application-type: servlet
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  flyway:
+    fail-on-missing-locations: false
+    locations:
+      - classpath:db/migration
+      - classpath:db/devdata
+
+thi360:
+  keycloak:
+    realm: ${THI360_KC_REALM:thi-360}
+  ctx:
+    secret: ${THI360_CTX_SECRET:ctx-dev-only-change-me-32-bytes!!}
+  cookie:
+    secure: ${THI360_COOKIE_SECURE:false}
+  s3:
+    access-key: ${THI360_S3_ACCESS_KEY:thi360}
+    secret-key: ${THI360_S3_SECRET_KEY:thi360-dev-only}
+    auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:true}
+  file:
+    enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  flyway:
+    fail-on-missing-locations: false
+    locations:
+      - classpath:db/migration
+      - classpath:db/devdata
+
+thi360:
+  keycloak:
+    realm: ${THI360_KC_REALM:thi-360}
+  ctx:
+    secret: ${THI360_CTX_SECRET:ctx-dev-only-change-me-32-bytes!!}
+  outbox:
+    scheduling:
+      enabled: false
+  identity:
+    provisioning-reconcile:
+      scheduling:
+        enabled: false
+    import-batch:
+      scheduling:
+        enabled: false
+  s3:
+    access-key: ${THI360_S3_ACCESS_KEY:thi360}
+    secret-key: ${THI360_S3_SECRET_KEY:thi360-dev-only}
+    auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:true}
+  file:
+    enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
+  cookie:
+    secure: ${THI360_COOKIE_SECURE:false}
+---
+spring:
+  config:
+    activate:
+      on-profile: openapi
+  main:
+    web-application-type: servlet

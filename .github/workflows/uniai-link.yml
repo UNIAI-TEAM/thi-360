@@ -6,7 +6,7 @@ name: UniAI link
 on:
   pull_request:
     types: [opened, edited, synchronize, labeled, unlabeled]
-    branches: [develop, main]
+    branches: [develop]
 
 permissions:
   pull-requests: read

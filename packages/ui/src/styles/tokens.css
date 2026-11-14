@@ -1,11 +1,13 @@
 /*
  * Token giao diện Thi 360 — bảng màu mặc định "Thi 360 Xanh lá" (DESIGN.md mục 2–4, 10).
- * Thành phần chỉ dùng token, không viết mã màu trực tiếp.
- * Cấu hình giao diện toàn hệ thống (T17) sẽ ghi đè các biến này trên thẻ <html>.
+ * Thành phần chỉ dùng token, không viết mã màu trực tiếp; file này là nơi duy nhất chứa mã màu.
+ * Cấu hình giao diện toàn hệ thống (T17) ghi đè các biến này trên thẻ <html>.
+ * `static`: phát ra mọi biến kể cả khi chưa có lớp tiện ích dùng tới, để ghi đè và `var()` trực tiếp luôn hoạt động.
  */
-@theme {
+@theme static {
   --font-sans: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, sans-serif;
 
+  /* 2.1 Màu chủ đạo */
   --color-primary-50: #ecfdf5;
   --color-primary-100: #dcfce7;
   --color-primary-200: #a7e3c2;
@@ -14,39 +16,183 @@
   --color-primary-700: #047857;
   --color-primary-800: #065f46;
   --color-primary-900: #064e3b;
+  --color-on-primary: #ffffff;
+  /* Chữ màu chính trên nền trắng và trên nền nhạt primary-50/100/200 (link, tab/mục đang chọn, nút nhạt): >= 4.5:1. */
+  --color-primary-text: #047857;
+  /* Nền nút chính, chip lọc đang chọn, ô logo, checkbox/switch bật: đi với on-primary (trắng). hover/pressed đậm dần một bậc. */
+  --color-primary-fill: #047857;
+  --color-primary-fill-hover: #065f46;
+  --color-primary-fill-active: #064e3b;
 
+  /* 2.2 Màu nhấn */
   --color-accent-500: #f59223;
   --color-accent-700: #b45309;
+  --color-amber-500: #f59e0b;
+  --color-yellow-400: #ffd836;
+  --color-on-accent: #1a1a1f;
+  --color-gold-400: #fbbf24;
+  --color-hero-tint: #f0fdf4;
 
+  /* 2.3 Màu trung tính (chế độ tối định nghĩa lại ở cuối file) */
   --color-text: #11181c;
   --color-text-secondary: #3a3a42;
   --color-text-muted: #6b6b72;
-  --color-text-placeholder: #a6a6ae;
-
+  --color-text-placeholder: #6b6b72;
   --color-page: #f7f8f9;
   --color-surface: #ffffff;
   --color-subtle: #f1f2f4;
+  --color-table-head: #fafafb;
   --color-border: #e8e8ec;
   --color-border-strong: #d4d4d8;
   --color-border-primary: #d4eee0;
+  --color-overlay: rgb(17 24 28 / 0.5);
 
-  --color-danger: #dc2626;
-  --color-danger-bg: #fef2f2;
+  /* 2.4 Màu trạng thái: chữ và nền */
+  --color-success: #047857;
+  --color-success-bg: #ecfdf5;
   --color-warning: #b45309;
   --color-warning-bg: #fffbeb;
+  --color-danger: #b91c1c;
+  --color-danger-solid: #dc2626;
+  --color-danger-solid-hover: #b91c1c;
+  --color-danger-bg: #fef2f2;
   --color-info: #0e7490;
   --color-info-bg: #ecfeff;
+  --color-neutral: #54545a;
+  --color-neutral-bg: #f1f2f4;
 
+  /* 2.5 Gradient */
+  --gradient-hero-dark: linear-gradient(115deg, var(--color-primary-800), var(--color-primary-600));
+  --gradient-hero-light: radial-gradient(820px 480px at 90% -12%, var(--color-primary-100) 0, var(--color-hero-tint) 62%);
+  --gradient-badge-gold: linear-gradient(to bottom right, var(--color-gold-400), var(--color-yellow-400));
+
+  /* 3. Chữ: cỡ chữ / chiều cao dòng (độ đậm chọn bằng lớp font-*) */
+  --text-display: 44px;
+  --text-display--line-height: 50px;
+  --text-h1: 30px;
+  --text-h1--line-height: 38px;
+  --text-h2: 27px;
+  --text-h2--line-height: 40px;
+  --text-h3: 18px;
+  --text-h3--line-height: 28px;
+  --text-title: 16px;
+  --text-title--line-height: 24px;
+  --text-body: 14px;
+  --text-body--line-height: 21px;
+  --text-label: 14px;
+  --text-label--line-height: 20px;
+  --text-field-label: 13px;
+  --text-field-label--line-height: 20px;
+  --text-caption: 12.5px;
+  --text-caption--line-height: 19px;
+  --text-overline: 13px;
+  --text-overline--line-height: 20px;
+  --text-page-title: 22px;
+  --text-page-title--line-height: 30px;
+  --tracking-overline: 0.08em;
+
+  /* 4. Bo góc */
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-2xl: 24px;
 
+  /* 4. Bóng */
   --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 4px rgb(0 0 0 / 0.1);
   --shadow-md: 0 6px 18px rgb(20 20 30 / 0.12);
   --shadow-lg: 0 14px 34px rgb(20 20 30 / 0.14);
   --shadow-xl: 0 24px 60px rgb(20 20 30 / 0.08);
   --shadow-primary: 0 8px 20px rgb(5 150 105 / 0.25);
+
+  /* 7. Chuyển động */
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-fade-out: fade-out 200ms ease-out;
+  --animate-dialog-in: dialog-in 200ms ease-out;
+  --animate-dialog-out: dialog-out 200ms ease-out;
+  --animate-drawer-in: drawer-in 200ms ease-out;
+  --animate-drawer-out: drawer-out 200ms ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      scale: 0.97;
+    }
+  }
+  @keyframes dialog-out {
+    to {
+      opacity: 0;
+      scale: 0.97;
+    }
+  }
+  @keyframes drawer-in {
+    from {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes drawer-out {
+    to {
+      transform: translateX(100%);
+    }
+  }
+}
+
+/*
+ * Chế độ tối: định nghĩa lại token trung tính (DESIGN.md mục 9) cùng các màu nền nhạt của
+ * chip, trạng thái và mục đang chọn; nếu giữ nền sáng thì chữ và viền trên đó vỡ tương phản.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-text: #e6eaed;
+  --color-text-secondary: #c5ccd2;
+  --color-text-muted: #a9b2ba;
+  --color-text-placeholder: #83909a;
+  --color-page: #0f1418;
+  --color-surface: #171d22;
+  --color-subtle: #1e262c;
+  --color-table-head: #1a2126;
+  --color-border: #2a3238;
+  --color-border-strong: #3a444c;
+  --color-border-primary: #1f4a3a;
+  --color-overlay: rgb(0 0 0 / 0.6);
+
+  /*
+   * Chữ xanh trên nền tối (F1): chữ màu chính dùng `primary-text`, nền nút chính dùng
+   * `primary-fill` (T06b: nền đậm #047857 đi với `on-primary` trắng, nên `primary-fill*` giữ
+   * nguyên giá trị của chế độ sáng). `primary-text` dùng emerald-500 #10b981 trên nền tối: đạt
+   * >= 4.5:1 trên page/surface/subtle/primary-50/100/200 (#059669 chỉ đạt 4,07:1 trên subtle,
+   * nơi mục select đang chọn được tô sáng). Các token 700/800/900
+   * chỉ làm màu chữ nên ánh xạ sang tông sáng (Tailwind 300–600). Cặp chữ/nền được kiểm bởi
+   * tokens.test.ts.
+   */
+  --color-primary-text: #10b981;
+  --color-primary-50: #0a1f19;
+  --color-primary-100: #0c1f18;
+  --color-primary-200: #101f1a;
+  --color-primary-700: #6ee7b7;
+  --color-primary-800: #6ee7b7;
+  --color-primary-900: #a7f3d0;
+
+  --color-success: #34d399;
+  --color-success-bg: #0f2a21;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #2b2210;
+  --color-danger: #f87171;
+  --color-danger-bg: #2e1517;
+  --color-info: #22d3ee;
+  --color-info-bg: #0f2a30;
+  --color-neutral: #a9b2ba;
+  --color-neutral-bg: #1e262c;
 }
