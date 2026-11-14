@@ -42,6 +42,7 @@ export {
   DropdownMenuTrigger,
 } from "./components/dropdown-menu";
 export { EmptyState, type EmptyStateProps } from "./components/empty-state";
+export { LiveStatus, type LiveStatusProps } from "./components/live-status";
 export {
   FormField,
   type FormFieldControlProps,

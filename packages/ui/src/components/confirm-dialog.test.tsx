@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "./confirm-dialog";
 
-type SetupProps = { loading?: boolean } & (
+type SetupProps = { loading?: boolean; error?: string } & (
   | { reasonLabel: string; requireReason?: boolean }
   | { reasonLabel?: undefined; requireReason?: undefined }
 );
@@ -139,5 +139,20 @@ describe("ConfirmDialog", () => {
     const { onOpenChange } = setup();
     await userEvent.keyboard("{Escape}");
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("có lỗi: hiện trong hộp thoại dưới dạng alert, hộp thoại vẫn mở và thử lại được", async () => {
+    const { onConfirm } = setup({ error: "Không khóa được: tài khoản đang được dùng." });
+    const dialog = screen.getByRole("dialog");
+    const alert = screen.getByRole("alert");
+    expect(dialog).toContainElement(alert);
+    expect(alert).toHaveTextContent("Không khóa được: tài khoản đang được dùng.");
+    await userEvent.click(screen.getByRole("button", { name: "Khóa" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("không có lỗi: không có vùng alert", () => {
+    setup();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

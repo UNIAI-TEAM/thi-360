@@ -36,6 +36,12 @@ export type ConfirmDialogProps = ReasonProps & {
   onConfirm: (reason: string) => void;
   /** `danger` (mặc định) cho khóa, xóa, reset, ngừng sử dụng. */
   tone?: "danger" | "primary";
+  /**
+   * Lỗi của lần xác nhận vừa rồi (ví dụ máy chủ từ chối). Hiện NGAY TRONG hộp thoại dưới dạng `role="alert"`:
+   * toast nằm ngoài hộp thoại đang mở thì người dùng bàn phím và trình đọc màn hình không tới được. Nơi gọi
+   * xóa lỗi khi người dùng thử lại hoặc đóng hộp thoại.
+   */
+  error?: ReactNode;
   /** Đang thực hiện: khóa cả hai nút và ô lý do, Escape, nút × và bấm ra ngoài không đóng được. Hộp thoại không tự đóng, bên gọi đóng khi xong. */
   loading?: boolean;
 };
@@ -51,6 +57,7 @@ export function ConfirmDialog({
   onConfirm,
   tone = "danger",
   loading = false,
+  error,
   reasonLabel,
   requireReason = false,
 }: ConfirmDialogProps) {
@@ -69,6 +76,7 @@ export function ConfirmDialog({
           cancelLabel={cancelLabel ?? common.cancel}
           tone={tone}
           loading={loading}
+          error={error}
           onCancel={() => onOpenChange(false)}
           onConfirm={onConfirm}
         />
@@ -84,6 +92,7 @@ type ConfirmBodyProps = {
   cancelLabel: string;
   tone: "danger" | "primary";
   loading: boolean;
+  error?: ReactNode;
   onCancel: () => void;
   onConfirm: (reason: string) => void;
 };
@@ -96,6 +105,7 @@ function ConfirmBody({
   cancelLabel,
   tone,
   loading,
+  error,
   onCancel,
   onConfirm,
 }: ConfirmBodyProps) {
@@ -116,6 +126,14 @@ function ConfirmBody({
           )}
         </FormField>
       )}
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-caption text-danger"
+        >
+          {error}
+        </div>
+      ) : null}
       <DialogFooter>
         <Button variant="secondary" disabled={loading} onClick={onCancel}>
           {cancelLabel}
