@@ -4,11 +4,13 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "../lib/cn";
+import { useReturnFocusContent } from "../lib/return-focus";
 import { focusRing } from "../lib/styles";
-import { DialogDescription, DialogOverlay, DialogTitle } from "./dialog";
+import { Dialog, DialogDescription, DialogOverlay, DialogTitle } from "./dialog";
 import { useUiStrings } from "./ui-strings";
 
-export const Drawer = DialogPrimitive.Root;
+/** Cùng gốc với `Dialog`: ghi nhớ nơi mở để trả focus về khi đóng. */
+export const Drawer = Dialog;
 export const DrawerTrigger = DialogPrimitive.Trigger;
 export const DrawerClose = DialogPrimitive.Close;
 
@@ -18,8 +20,15 @@ export type DrawerContentProps = ComponentProps<typeof DialogPrimitive.Content> 
 };
 
 /** Trượt từ phải, rộng 520px, dùng cho chi tiết (DESIGN.md mục 5.10). */
-export function DrawerContent({ className, children, closeLabel, ...props }: DrawerContentProps) {
+export function DrawerContent({
+  className,
+  children,
+  closeLabel,
+  onCloseAutoFocus,
+  ...props
+}: DrawerContentProps) {
   const { common } = useUiStrings();
+  const returnFocusProps = useReturnFocusContent(onCloseAutoFocus);
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
@@ -30,6 +39,7 @@ export function DrawerContent({ className, children, closeLabel, ...props }: Dra
           className,
         )}
         {...props}
+        {...returnFocusProps}
       >
         {children}
         <DialogPrimitive.Close

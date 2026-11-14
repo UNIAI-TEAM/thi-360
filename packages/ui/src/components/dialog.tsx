@@ -4,10 +4,22 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "../lib/cn";
+import { ReturnFocusContext, useReturnFocusContent, useReturnFocusRoot } from "../lib/return-focus";
 import { focusRing } from "../lib/styles";
 import { useUiStrings } from "./ui-strings";
 
-export const Dialog = DialogPrimitive.Root;
+/**
+ * Gốc của hộp thoại. Ghi nhớ phần tử đang giữ focus lúc `open` thành `true` để `DialogContent` trả focus về đó
+ * khi đóng (xem `lib/return-focus.ts`); nơi gọi không cần `DialogTrigger`.
+ */
+export function Dialog({ open, ...props }: ComponentProps<typeof DialogPrimitive.Root>) {
+  const returnFocus = useReturnFocusRoot(open);
+  return (
+    <ReturnFocusContext.Provider value={returnFocus}>
+      <DialogPrimitive.Root open={open} {...props} />
+    </ReturnFocusContext.Provider>
+  );
+}
 export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
 
@@ -38,9 +50,11 @@ export function DialogContent({
   children,
   size = "md",
   closeLabel,
+  onCloseAutoFocus,
   ...props
 }: DialogContentProps) {
   const { common } = useUiStrings();
+  const returnFocusProps = useReturnFocusContent(onCloseAutoFocus);
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
@@ -52,6 +66,7 @@ export function DialogContent({
           className,
         )}
         {...props}
+        {...returnFocusProps}
       >
         {/*
           Vùng cuộn: cao tối đa bằng phần còn lại của hộp thoại (max-h theo viewport) nên
