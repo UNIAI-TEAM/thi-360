@@ -1,6 +1,10 @@
 spring:
   application:
     name: thi360-api
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: ${THI360_DB_URL:jdbc:postgresql://localhost:${THI360_DB_PORT:54360}/${THI360_DB_NAME:thi360}}
     username: ${THI360_DB_USER:thi360}
@@ -21,6 +25,7 @@ spring:
       - identity
       - catalog
       - audit
+      - classroom
     table: flyway_schema_history
     locations:
       - classpath:db/migration

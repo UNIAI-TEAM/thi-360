@@ -68,6 +68,55 @@ public class UserDirectoryImpl implements UserDirectory {
         return Map.copyOf(result);
     }
 
+    @Override
+    public Optional<UserDetailSummary> findDetailById(UUID userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userAccountRepository.findById(userId)
+                .map(UserDirectoryImpl::toDetailSummary)
+                .or(() -> platformAdminRepository.findById(userId).map(UserDirectoryImpl::toDetailSummary));
+    }
+
+    @Override
+    public Map<UUID, UserDetailSummary> findDetailsByIds(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Set<UUID> uniqueIds = new LinkedHashSet<>();
+        for (UUID id : userIds) {
+            if (id != null) {
+                uniqueIds.add(id);
+            }
+        }
+        if (uniqueIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, UserDetailSummary> result = new LinkedHashMap<>();
+        for (UserAccount account : userAccountRepository.findAllByIdIn(uniqueIds)) {
+            result.put(account.getId(), toDetailSummary(account));
+        }
+        if (result.size() < uniqueIds.size()) {
+            Set<UUID> missing = new LinkedHashSet<>(uniqueIds);
+            missing.removeAll(result.keySet());
+            for (PlatformAdmin admin : platformAdminRepository.findAllByIdIn(missing)) {
+                result.put(admin.getId(), toDetailSummary(admin));
+            }
+        }
+        return Map.copyOf(result);
+    }
+
+    @Override
+    public Optional<String> findDeleteReason(UUID userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userAccountRepository.findById(userId)
+                .map(UserAccount::getDeleteReason)
+                .filter(reason -> reason != null && !reason.isBlank());
+    }
+
     private static UserSummary toSummary(UserAccount account) {
         return new UserSummary(
                 account.getId(),
@@ -81,6 +130,32 @@ public class UserDirectoryImpl implements UserDirectory {
                 admin.getId(),
                 admin.getUsername(),
                 admin.getUsername(),
+                true);
+    }
+
+    private static UserDetailSummary toDetailSummary(UserAccount account) {
+        return new UserDetailSummary(
+                account.getId(),
+                account.getCode(),
+                account.getUsername(),
+                account.getFullName(),
+                account.getEmail(),
+                account.getPhone(),
+                account.getStatus().name(),
+                account.isDeleted(),
+                false);
+    }
+
+    private static UserDetailSummary toDetailSummary(PlatformAdmin admin) {
+        return new UserDetailSummary(
+                admin.getId(),
+                null,
+                admin.getUsername(),
+                admin.getUsername(),
+                null,
+                null,
+                "ACTIVE",
+                false,
                 true);
     }
 }

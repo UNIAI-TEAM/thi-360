@@ -1,4 +1,4 @@
-import { LayoutDashboard, Shield, SlidersVertical, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Shield, SlidersVertical, Users, type LucideIcon } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
 
 /**
@@ -40,7 +40,17 @@ export const NAVIGATION: readonly NavGroup[] = [
       },
     ],
   },
-  { id: "users", items: [] },
+  {
+    id: "users",
+    items: [
+      {
+        id: "accounts",
+        href: "/tai-khoan",
+        icon: Users,
+        permission: "USER.VIEW",
+      },
+    ],
+  },
   {
     id: "system",
     items: [

@@ -4,7 +4,7 @@
 
 ## Trạng thái hiện tại (2026-11-13)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 61/105 điểm (T01–T07, T13, T17, T18); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 67/105 điểm (T01–T07, T13, T14, T17, T18); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
@@ -16,7 +16,11 @@
 - T13 (UNI-2550) đã nghiệm thu và merge vào `integration/dot-1` (PR #10, `8f1a579`).
 - T07 (UNI-2544) đã nghiệm thu và merge vào `integration/dot-1` (PR #12).
 - T18 (UNI-2556) đã nghiệm thu và merge vào `integration/dot-1` (PR #13, `27d4984`).
-- Đang mở: T14 (UNI-2551) và T10 (UNI-2547, pha API trước; pha UI chờ T09) trên VPS; T09 (UNI-2546), T08 (UNI-2545), T19 (UNI-2561) trên máy Windows.
+- T14 (UNI-2551) đã nghiệm thu và merge vào `integration/dot-1` (PR #14).
+- T10 (UNI-2547) pha A (API lớp học) đã nghiệm thu và merge vào `integration/dot-1` (PR #15, `edfd106`): module `classroom`, API `/api/v1/admin/classes`, `GET /users/{id}/classes`, `classIds` khi tạo tài khoản (cần thêm `CLASS.MODIFY`) và lọc `classId`; mã `CLASS_NOT_SUPPORTED` đã bỏ. Pha B (UI, lớp mẫu dev) làm sau khi T09 merge; T10 chưa tính điểm cho tới khi pha B merge.
+- T09 (UNI-2546) đã nghiệm thu và merge vào `integration/dot-1` (PR #16, `4b57a54`): `/tai-khoan` (danh sách, lọc, thao tác hàng loạt), tạo, reset mật khẩu, `/tai-khoan/[id]`; proxy web chuyển tiếp `Idempotency-Key`. Tab "Vai trò & quyền" và "Lớp học" ở chi tiết tài khoản còn là chỗ giữ chỗ (T08 và T10 pha B nối vào). Việc để lại ghi thành issue con của UNI-2546.
+- CSDL dev dùng chung: migration lớp học của T10 (`V202611140200`) có dấu thời gian sớm hơn migration của T14 đã chạy, nên backend dev trên CSDL cũ cần biến môi trường `SPRING_FLYWAY_OUT_OF_ORDER=true` (CSDL mới, test và CI không ảnh hưởng). Migration mới phải có dấu thời gian muộn hơn mọi migration đang có trên nhánh tích hợp.
+- Đang mở: T10 pha B, T11 (UNI-2548) và T15 (UNI-2552) trên VPS; T08 (UNI-2545), T19 (UNI-2561), T12 (UNI-2549) trên máy Windows. Máy Windows chỉ cho một lane chạy máy chủ thử nghiệm mỗi lúc (`automation/state/devstack.lock` trong thư mục run).
 - 2026-11-14: M.Trường yêu cầu làm luôn phần danh mục đã hoãn (PBI-02: T13, T14, T15). Plan mục A7, A4, Phần C, hợp đồng T13–T15 và T16 đã sửa theo; T13 (UNI-2550) mở ngay trên VPS, T14 sau T13, T15 sau T13, T14, T18.
 - 2026-11-14: M.Trường yêu cầu đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh). Thêm T19 (UNI-2561) vào plan, chạy sau T17 và T18; mọi lane có giao diện thêm khóa tiếng Anh cho chuỗi của mình ngay từ bây giờ (`en.json` cùng bộ khóa với `vi.json`).
 - 2026-11-14: M.Trường chốt chế độ sáng/tối **theo từng người**, bật tắt bằng nút ở thanh trên cùng (cạnh nút ngôn ngữ, bên trái avatar). Cấu hình hệ thống của T17 chỉ còn giữ chế độ mặc định. Nút và cookie `thi360_theme` làm trong T19. Spec §13, `DESIGN.md` §5/§8/§9 và plan T17/T19 đã sửa.
@@ -34,6 +38,16 @@
 
 ## Đã làm
 
+### 2026-11-14 — T14 (UNI-2551) mã tổ hợp, nơi đang dùng, quy tắc ngừng và xóa, Excel; merge vào integration/dot-1
+
+- `combination_version`, `combination_subject`; sửa môn của tổ hợp tạo phiên bản mới khi phiên bản hiện tại đang được tham chiếu, nếu không thì sửa tại chỗ; `GET /items/{id}/versions`, `GET /combination-versions/{id}`.
+- `CatalogUsageProvider` + hai provider nội bộ (tổ hợp dùng môn/kỳ thi; nút cây liên kết giá trị); `usages` cho giá trị và nhóm (cây: gộp cả nhánh); mã lỗi `CATALOG_ITEM_IN_USE`, `CATALOG_CHANGE_BLOCKED`, `CATALOG_CODE_LOCKED`.
+- Excel: xuất; nhập hai bước (xem trước, xác nhận) cho danh sách và cây (ô gộp, dùng lại nút đã có), nhóm tổ hợp trả `IMPORT_NOT_SUPPORTED`; giới hạn 5 MB, 5.000 dòng, chặn công thức, macro, zip bomb, vùng gộp quá lớn.
+- Review BE: 3 lỗi high (vùng gộp làm phình bộ nhớ, quan hệ cha con cũ khi xác nhận, tạo tổ hợp tranh chấp với ngừng môn) và 7 medium, đã sửa hết.
+- Lệnh đã chạy: Cursor cloud runner trên `b92a02e` `./mvnw -B -ntp verify` (177 + 162 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows trên `0ca1e55` `./mvnw -B -ntp verify`, kiểm tra lệch openapi/api-client, `pnpm typecheck` → exit 0.
+- Chạy thử trên bộ dịch vụ dev riêng thực hiện trước vòng sửa review; phần sửa được phủ bằng test tích hợp, e2e của T15 sẽ chạy lại luồng nhập/xuất qua giao diện.
+- Merge squash qua PR #14.
+
 ### 2026-11-14 — T18 (UNI-2556) đăng nhập một nơi và điều hướng theo vai trò, merge vào integration/dot-1
 
 - Backend: `RedirectResolver` (thứ tự spec §15.2, kiểm tra `callbackUrl` §15.3), `redirectTo` khi đăng nhập, `homeUrl` ở `/me`, đăng xuất xóa đủ cookie; `DevDataInitializer` tạo tài khoản mẫu B13 (chỉ profile `dev`): `sys.admin`, `content.admin`, `ops.admin`, `student01`…`05`, mật khẩu `Thi360@dev`.
@@ -50,7 +64,7 @@
 - `UsernamePolicy`, `PasswordPolicy`, `PasswordGenerator`; API `/api/v1/admin/users`: danh sách có lọc và sắp xếp, tạo (PROVISIONING → Keycloak → ACTIVE), xem, sửa, ngừng hoạt động (thu hồi phiên), kích hoạt, reset mật khẩu, xóa mềm có `AccountDeletionGuard`, kiểm tra trước khi xóa/ngừng, thao tác hàng loạt có `Idempotency-Key`, kiểm tra tên đăng nhập.
 - `ProvisioningReconcilerJob` (worker, 5 phút, có công tắc `thi360.identity.provisioning-reconcile.scheduling.enabled`, tắt trong test); sự kiện `UserDeleted` qua outbox.
 - Thu hồi phiên chặn cả lượt đăng nhập đang dở: bộ đếm thu hồi theo tài khoản trong Redis (`SessionStore`), áp cho cả làm mới phiên.
-- Lớp học chưa có (T10): `classIds` và lọc `classId` trả 400 `CLASS_NOT_SUPPORTED`.
+- Lớp học: API đã có từ T10 pha A (`classIds`, lọc `classId` chạy thật); giao diện lớp học chờ pha B.
 - Review BE ba vòng (12 + 4 lỗi đã sửa); vòng cuối không còn lỗi high. Ba lỗi medium về bù trừ khi reset/kích hoạt chạy chồng nhau ghi thành issue con của UNI-2544.
 - Nghiệm thu bị trả lại một lần: job đối soát chạy ngay khi mỗi ngữ cảnh test khởi động và đụng test của T17; hết kết nối PostgreSQL. Đã sửa.
 - Lệnh đã chạy trên `fbfe30a`: Cursor cloud runner `./mvnw -B -ntp verify` (146 + 132 test) và `pnpm` lint/typecheck/test/build → exit 0; Advisor chạy lại trên Windows các lệnh đó và kiểm tra lệch openapi/api-client → exit 0.

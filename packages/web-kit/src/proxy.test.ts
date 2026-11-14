@@ -101,3 +101,23 @@ describe("proxyApiRequest X-Forwarded-For", () => {
     expect(lastHeaders().get("x-unlisted-secret")).toBeNull();
   });
 });
+
+describe("proxyApiRequest header forwarding", () => {
+  it("chuyển tiếp Idempotency-Key tới upstream và không chuyển tiếp header ngoài danh sách", async () => {
+    await handlers.POST(
+      new NextRequest("http://localhost:3000/api/v1/admin/users/bulk-actions", {
+        method: "POST",
+        body: "{}",
+        headers: {
+          "Idempotency-Key": "bulk-key-123",
+          "x-unlisted-header": "secret-value",
+        },
+      }),
+      context("v1", "admin", "users", "bulk-actions"),
+    );
+
+    const forwarded = lastHeaders();
+    expect(forwarded.get("idempotency-key")).toBe("bulk-key-123");
+    expect(forwarded.get("x-unlisted-header")).toBeNull();
+  });
+});

@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/catalog/combination-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết một phiên bản lịch sử hoặc hiện hành của mã tổ hợp */
+        get: operations["getCombinationVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/catalog/groups": {
         parameters: {
             query?: never;
@@ -138,6 +155,57 @@ export interface paths {
         put?: never;
         /** Tạo giá trị mới trong nhóm danh mục */
         post: operations["createItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog/groups/{id}/items/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất danh sách giá trị của nhóm danh mục ra tệp Excel */
+        get: operations["exportItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog/groups/{id}/items/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tải lên tệp Excel để kiểm tra và xem trước trước khi nhập danh mục */
+        post: operations["previewImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog/groups/{id}/items/import/{previewId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xác nhận nhập danh mục từ phiên xem trước (hỗ trợ Idempotency-Key) */
+        post: operations["confirmImport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -213,6 +281,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/catalog/groups/{id}/usages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách nơi đang sử dụng của toàn nhóm danh mục */
+        get: operations["getGroupUsages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/catalog/items/{id}": {
         parameters: {
             query?: never;
@@ -265,6 +350,146 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog/items/{id}/usages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách nơi đang sử dụng của giá trị (nhóm cây gộp cả nhánh) */
+        get: operations["getItemUsages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog/items/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách phiên bản của mã tổ hợp môn */
+        get: operations["listItemVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách lớp học */
+        get: operations["listClasses"];
+        put?: never;
+        /** Tạo lớp học mới */
+        post: operations["createClass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết lớp học */
+        get: operations["getClass"];
+        put?: never;
+        post?: never;
+        /** Xóa mềm lớp học (không ảnh hưởng tài khoản học viên) */
+        delete: operations["deleteClass"];
+        options?: never;
+        head?: never;
+        /** Cập nhật thông tin lớp học */
+        patch: operations["updateClass"];
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách học viên trong lớp */
+        get: operations["listMembers"];
+        put?: never;
+        /** Thêm học viên vào lớp (bỏ qua và báo các ID trùng lặp) */
+        post: operations["addMembers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{id}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Loại học viên khỏi lớp học */
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{id}/members/{userId}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chuyển học viên sang lớp học khác trong một giao dịch */
+        post: operations["transferMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cập nhật trạng thái hoạt động của lớp học */
+        patch: operations["updateStatus"];
         trace?: never;
     };
     "/api/v1/admin/permissions": {
@@ -480,6 +705,23 @@ export interface paths {
         put?: never;
         /** Kích hoạt lại tài khoản đang ngừng hoạt động */
         post: operations["activateUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách lớp hiện tại và lịch sử tham gia, rời, chuyển lớp của tài khoản */
+        get: operations["getUserClasses"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -798,6 +1040,33 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Yêu cầu thêm học viên vào lớp học */
+        AddClassMembersRequest: {
+            /** @description Danh sách ID tài khoản học viên cần thêm vào lớp */
+            userIds: string[];
+        };
+        /** @description Kết quả thêm học viên vào lớp học */
+        AddClassMembersResponse: {
+            /**
+             * Format: int32
+             * @description Số lượng học viên thêm mới thành công
+             */
+            addedCount: number;
+            /** @description Danh sách ID học viên đã được thêm mới */
+            addedUserIds: string[];
+            /**
+             * Format: uuid
+             * @description ID lớp học
+             */
+            classId: string;
+            /**
+             * Format: int32
+             * @description Số lượng bị bỏ qua do trùng lặp
+             */
+            skippedCount: number;
+            /** @description Danh sách ID học viên bị bỏ qua do đã thuộc lớp hoặc trùng lặp */
+            skippedUserIds: string[];
+        };
         /** @description Định dạng lỗi chuẩn của API */
         ApiError: {
             /**
@@ -1225,6 +1494,96 @@ export interface components {
              */
             version: number;
         };
+        /** @description Kết quả xem trước khi nhập danh mục từ Excel */
+        CatalogImportPreviewResponse: {
+            /** @description Có thể xác nhận nhập hay không (true khi totalRows > 0 và errorRows == 0) */
+            canConfirm: boolean;
+            /**
+             * Format: int32
+             * @description Số dòng có lỗi
+             */
+            errorRows: number;
+            /** @description Danh sách lỗi theo dòng */
+            errors: components["schemas"]["CatalogImportRowError"][];
+            /** @description Mã nhóm danh mục */
+            groupCode: string;
+            /**
+             * Format: uuid
+             * @description ID nhóm danh mục
+             */
+            groupId: string;
+            /**
+             * @description Kiểu nhóm danh mục
+             * @enum {string}
+             */
+            groupKind: "SIMPLE" | "COMBINATION" | "TREE";
+            /**
+             * Format: uuid
+             * @description ID phiên xem trước để dùng khi xác nhận
+             */
+            previewId: string;
+            /**
+             * Format: int32
+             * @description Tổng số dòng dữ liệu đọc được
+             */
+            totalRows: number;
+            /**
+             * Format: int32
+             * @description Số dòng hợp lệ
+             */
+            validRows: number;
+        };
+        /** @description Kết quả sau khi xác nhận nhập danh mục từ Excel */
+        CatalogImportResultResponse: {
+            /**
+             * Format: int32
+             * @description Số giá trị mới được tạo
+             */
+            createdCount: number;
+            /** @description Mã nhóm danh mục */
+            groupCode: string;
+            /**
+             * Format: uuid
+             * @description ID nhóm danh mục
+             */
+            groupId: string;
+            /**
+             * Format: uuid
+             * @description ID phiên xem trước đã xác nhận
+             */
+            previewId: string;
+            /**
+             * Format: int32
+             * @description Số nút sẵn có được dùng lại (đối với nhóm TREE)
+             */
+            reusedCount: number;
+            /**
+             * Format: int32
+             * @description Tổng số dòng dữ liệu
+             */
+            totalRows: number;
+        };
+        /** @description Lỗi kiểm tra dữ liệu của một dòng trong tệp Excel */
+        CatalogImportRowError: {
+            /**
+             * @description Mã lỗi ổn định
+             * @example CATALOG_CODE_TAKEN
+             */
+            code: string;
+            /**
+             * @description Tên cột hoặc trường dữ liệu bị lỗi
+             * @example code
+             */
+            column: string;
+            /** @description Thông báo chi tiết */
+            message: string;
+            /**
+             * Format: int32
+             * @description Số dòng trong tệp Excel (1-based, dòng tiêu đề là 1)
+             * @example 2
+             */
+            rowNo: number;
+        };
         /** @description Giá trị liên kết kế thừa từ nút tổ tiên */
         CatalogInheritedRefResponse: {
             /** @description Mã giá trị được liên kết */
@@ -1305,6 +1664,8 @@ export interface components {
             childCount: number;
             /** @description Mã giá trị */
             code: string;
+            /** @description Thông tin phiên bản hiện hành của mã tổ hợp (chỉ có với nhóm COMBINATION) */
+            combination?: components["schemas"]["CombinationVersionResponse"];
             /**
              * Format: date-time
              * @description Thời điểm tạo
@@ -1474,12 +1835,265 @@ export interface components {
              */
             version: number;
         };
+        /** @description Chi tiết nơi đang sử dụng giá trị danh mục theo nguồn */
+        CatalogUsageResponse: {
+            /** @description Có chặn thao tác ngừng sử dụng hay không */
+            blocking: boolean;
+            /**
+             * Format: int64
+             * @description Số lượng bản ghi đang tham chiếu
+             */
+            count: number;
+            /** @description Loại đối tượng tham chiếu */
+            objectType: string;
+            /** @description Một số nhãn ví dụ của đối tượng đang tham chiếu */
+            sampleLabels: string[];
+            /** @description Tên nguồn tham chiếu */
+            source: string;
+        };
+        /** @description Tổng hợp nơi đang sử dụng của một giá trị hoặc nhóm danh mục */
+        CatalogUsagesResponse: {
+            /** @description Có nguồn nào chặn ngừng sử dụng hay không */
+            blocking: boolean;
+            /** @description Mã giá trị hoặc nhóm danh mục */
+            targetCode: string;
+            /**
+             * Format: uuid
+             * @description ID giá trị hoặc nhóm danh mục
+             */
+            targetId: string;
+            /**
+             * Format: int64
+             * @description Tổng số tham chiếu
+             */
+            totalCount: number;
+            /** @description Danh sách nơi đang sử dụng theo từng nguồn */
+            usages: components["schemas"]["CatalogUsageResponse"][];
+        };
         /** @description Yêu cầu đổi mật khẩu */
         ChangePasswordRequest: {
             /** @description Mật khẩu mới */
             newPassword: string;
             /** @description Mật khẩu hiện tại */
             oldPassword: string;
+        };
+        /** @description Thông tin chi tiết lớp học */
+        ClassDetailResponse: {
+            /** @description Mã lớp học */
+            code: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm tạo
+             */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description ID người tạo
+             */
+            createdBy?: string;
+            /** @description Mô tả lớp học */
+            description?: string;
+            /**
+             * Format: uuid
+             * @description ID lớp học
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Số lượng học viên hiện tại trong lớp
+             */
+            memberCount: number;
+            /** @description Tên lớp học */
+            name: string;
+            /** @description Họ tên người phụ trách */
+            ownerFullName?: string;
+            /**
+             * Format: uuid
+             * @description ID người phụ trách
+             */
+            ownerUserId?: string;
+            /** @description Tên đăng nhập người phụ trách */
+            ownerUsername?: string;
+            /**
+             * @description Trạng thái lớp học
+             * @enum {string}
+             */
+            status: "ACTIVE" | "INACTIVE";
+            /**
+             * Format: date-time
+             * @description Thời điểm cập nhật gần nhất
+             */
+            updatedAt: string;
+            /**
+             * Format: uuid
+             * @description ID người cập nhật gần nhất
+             */
+            updatedBy?: string;
+            /**
+             * Format: int64
+             * @description Phiên bản khóa lạc quan
+             */
+            version: number;
+        };
+        /** @description Thông tin thành viên trong lớp học */
+        ClassMemberResponse: {
+            /**
+             * Format: uuid
+             * @description ID người thêm vào lớp
+             */
+            addedBy?: string;
+            /** @description Tên đăng nhập người thêm vào lớp */
+            addedByUsername?: string;
+            /** @description Email */
+            email?: string;
+            /** @description Họ và tên */
+            fullName: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm vào lớp
+             */
+            joinedAt: string;
+            /** @description Số điện thoại */
+            phone?: string;
+            /** @description Mã tài khoản */
+            userCode?: string;
+            /**
+             * Format: uuid
+             * @description ID tài khoản học viên
+             */
+            userId: string;
+            /** @description Trạng thái tài khoản */
+            userStatus: string;
+            /** @description Tên đăng nhập */
+            username: string;
+        };
+        /** @description Thông tin tóm tắt lớp học */
+        ClassSummaryResponse: {
+            /** @description Mã lớp học */
+            code: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm tạo
+             */
+            createdAt: string;
+            /** @description Mô tả lớp học */
+            description?: string;
+            /**
+             * Format: uuid
+             * @description ID lớp học
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Số lượng học viên hiện tại trong lớp
+             */
+            memberCount: number;
+            /** @description Tên lớp học */
+            name: string;
+            /** @description Họ tên người phụ trách */
+            ownerFullName?: string;
+            /**
+             * Format: uuid
+             * @description ID người phụ trách
+             */
+            ownerUserId?: string;
+            /** @description Tên đăng nhập người phụ trách */
+            ownerUsername?: string;
+            /**
+             * @description Trạng thái lớp học
+             * @enum {string}
+             */
+            status: "ACTIVE" | "INACTIVE";
+            /**
+             * Format: date-time
+             * @description Thời điểm cập nhật gần nhất
+             */
+            updatedAt: string;
+            /**
+             * Format: int64
+             * @description Phiên bản khóa lạc quan
+             */
+            version: number;
+        };
+        /** @description Môn học trong một phiên bản mã tổ hợp */
+        CombinationSubjectResponse: {
+            /** @description Mã môn học */
+            code: string;
+            /** @description Tên tiếng Anh của môn học */
+            nameEn?: string;
+            /** @description Tên tiếng Việt của môn học */
+            nameVi: string;
+            /**
+             * Format: int32
+             * @description Thứ tự môn trong tổ hợp
+             */
+            position: number;
+            /**
+             * @description Trạng thái hiện tại của môn học
+             * @enum {string}
+             */
+            status: "ACTIVE" | "INACTIVE";
+            /**
+             * Format: uuid
+             * @description ID giá trị môn học
+             */
+            subjectItemId: string;
+        };
+        /** @description Phiên bản cấu hình của mã tổ hợp môn */
+        CombinationVersionResponse: {
+            /**
+             * Format: date-time
+             * @description Thời điểm tạo phiên bản
+             */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description ID người tạo phiên bản
+             */
+            createdBy?: string;
+            /** @description Mã kỳ thi */
+            examCode: string;
+            /**
+             * Format: uuid
+             * @description ID giá trị kỳ thi
+             */
+            examItemId: string;
+            /** @description Tên tiếng Anh kỳ thi */
+            examNameEn?: string;
+            /** @description Tên tiếng Việt kỳ thi */
+            examNameVi: string;
+            /**
+             * @description Trạng thái hiện tại của kỳ thi
+             * @enum {string}
+             */
+            examStatus: "ACTIVE" | "INACTIVE";
+            /**
+             * Format: uuid
+             * @description ID phiên bản tổ hợp
+             */
+            id: string;
+            /** @description Có phải phiên bản hiện hành hay không */
+            isCurrent: boolean;
+            /** @description Mã tổ hợp */
+            itemCode: string;
+            /**
+             * Format: uuid
+             * @description ID giá trị mã tổ hợp
+             */
+            itemId: string;
+            /** @description Tên tiếng Anh mã tổ hợp */
+            itemNameEn?: string;
+            /** @description Tên tiếng Việt mã tổ hợp */
+            itemNameVi: string;
+            /** @description Nguồn quy ước */
+            sourceNote?: string;
+            /** @description Danh sách môn học theo thứ tự */
+            subjects: components["schemas"]["CombinationSubjectResponse"][];
+            /**
+             * Format: int32
+             * @description Số thứ tự phiên bản
+             */
+            versionNo: number;
         };
         /** @description Yêu cầu tạo nhóm danh mục tùy chỉnh mới */
         CreateCatalogGroupRequest: {
@@ -1530,6 +2144,11 @@ export interface components {
              */
             displayOrder?: number;
             /**
+             * Format: uuid
+             * @description ID giá trị kỳ thi (bắt buộc cho nhóm COMBINATION)
+             */
+            examItemId?: string;
+            /**
              * @description Tên tiếng Anh
              * @example Mathematics
              */
@@ -1546,6 +2165,35 @@ export interface components {
             parentId?: string;
             /** @description Danh sách ID giá trị liên kết riêng của nút (chỉ dùng cho nhóm TREE) */
             refItemIds?: string[];
+            /** @description Ghi chú nguồn quy ước (tùy chọn cho nhóm COMBINATION) */
+            sourceNote?: string;
+            /**
+             * @description Trạng thái ban đầu (mặc định ACTIVE)
+             * @enum {string}
+             */
+            status?: "ACTIVE" | "INACTIVE";
+            /** @description Danh sách ID môn học theo thứ tự (bắt buộc cho nhóm COMBINATION, không trùng) */
+            subjectItemIds?: string[];
+        };
+        /** @description Yêu cầu tạo lớp học mới */
+        CreateClassRequest: {
+            /**
+             * @description Mã lớp học (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)
+             * @example LOP-A
+             */
+            code: string;
+            /** @description Mô tả lớp học */
+            description?: string;
+            /**
+             * @description Tên lớp học
+             * @example Lớp A
+             */
+            name: string;
+            /**
+             * Format: uuid
+             * @description ID người phụ trách lớp (không bắt buộc)
+             */
+            ownerUserId?: string;
             /**
              * @description Trạng thái ban đầu (mặc định ACTIVE)
              * @enum {string}
@@ -1581,7 +2229,7 @@ export interface components {
         };
         /** @description Yêu cầu tạo tài khoản mới */
         CreateUserRequest: {
-            /** @description Danh sách ID lớp học (tạm thời chưa hỗ trợ trước T10) */
+            /** @description Danh sách ID lớp học */
             classIds?: string[];
             /**
              * @description Email liên hệ
@@ -1811,6 +2459,64 @@ export interface components {
         PageResponseCatalogItemResponse: {
             /** @description Danh sách phần tử của trang hiện tại */
             items: components["schemas"]["CatalogItemResponse"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseClassMemberResponse: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["ClassMemberResponse"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseClassSummaryResponse: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["ClassSummaryResponse"][];
             /**
              * Format: int32
              * @description Chỉ số trang (bắt đầu từ 0)
@@ -2169,6 +2875,39 @@ export interface components {
              */
             version: number;
         };
+        /** @description Yêu cầu chuyển học viên sang lớp học khác */
+        TransferClassMemberRequest: {
+            /** @description Lý do chuyển lớp */
+            reason?: string;
+            /**
+             * Format: uuid
+             * @description ID lớp học đích
+             */
+            targetClassId: string;
+        };
+        /** @description Kết quả chuyển học viên sang lớp học khác */
+        TransferClassMemberResponse: {
+            /**
+             * Format: uuid
+             * @description ID lớp nguồn
+             */
+            sourceClassId: string;
+            /**
+             * Format: uuid
+             * @description ID lớp đích
+             */
+            targetClassId: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm chuyển lớp
+             */
+            transferredAt: string;
+            /**
+             * Format: uuid
+             * @description ID học viên được chuyển
+             */
+            userId: string;
+        };
         /** @description Yêu cầu cập nhật cấu hình giao diện toàn hệ thống */
         UpdateAppearanceRequest: {
             /**
@@ -2224,6 +2963,11 @@ export interface components {
              * @description Thứ tự hiển thị mới
              */
             displayOrder?: number;
+            /**
+             * Format: uuid
+             * @description ID giá trị kỳ thi mới (chỉ cho nhóm COMBINATION)
+             */
+            examItemId?: string;
             /** @description Tên tiếng Anh mới */
             nameEn?: string;
             /** @description Tên tiếng Việt mới */
@@ -2232,11 +2976,54 @@ export interface components {
             reason?: string;
             /** @description Danh sách ID giá trị liên kết riêng mới (chỉ cho nhóm TREE; nếu truyền sẽ thay toàn bộ liên kết của nút) */
             refItemIds?: string[];
+            /** @description Ghi chú nguồn quy ước mới (chỉ cho nhóm COMBINATION) */
+            sourceNote?: string;
             /**
              * @description Trạng thái mới
              * @enum {string}
              */
             status?: "ACTIVE" | "INACTIVE";
+            /** @description Danh sách ID môn học mới theo thứ tự (chỉ cho nhóm COMBINATION) */
+            subjectItemIds?: string[];
+            /**
+             * Format: int64
+             * @description Phiên bản khóa lạc quan
+             */
+            version: number;
+        };
+        /** @description Yêu cầu cập nhật thông tin lớp học */
+        UpdateClassRequest: {
+            /** @description Xóa người phụ trách hiện tại khi đặt là true */
+            clearOwner?: boolean;
+            /**
+             * @description Mã lớp học mới (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)
+             * @example LOP-A
+             */
+            code?: string;
+            /** @description Mô tả lớp học mới (chuỗi rỗng để xóa mô tả) */
+            description?: string;
+            /** @description Tên lớp học mới */
+            name?: string;
+            /**
+             * Format: uuid
+             * @description ID người phụ trách mới
+             */
+            ownerUserId?: string;
+            /**
+             * Format: int64
+             * @description Phiên bản khóa lạc quan
+             */
+            version: number;
+        };
+        /** @description Yêu cầu thay đổi trạng thái lớp học */
+        UpdateClassStatusRequest: {
+            /** @description Lý do thay đổi trạng thái */
+            reason?: string;
+            /**
+             * @description Trạng thái lớp học mới
+             * @enum {string}
+             */
+            status: "ACTIVE" | "INACTIVE";
             /**
              * Format: int64
              * @description Phiên bản khóa lạc quan
@@ -2302,6 +3089,92 @@ export interface components {
         UpdateUserRolesRequest: {
             /** @description Danh sách ID vai trò mới */
             roleIds: string[];
+        };
+        /** @description Bản ghi lịch sử tham gia, rời hoặc chuyển lớp của tài khoản */
+        UserClassHistoryResponse: {
+            /**
+             * @description Hành động (JOIN, LEAVE, TRANSFER_OUT, TRANSFER_IN)
+             * @enum {string}
+             */
+            action: "JOIN" | "LEAVE" | "TRANSFER_OUT" | "TRANSFER_IN";
+            /**
+             * Format: uuid
+             * @description ID người thực hiện
+             */
+            actorId?: string;
+            /** @description Tên đăng nhập người thực hiện */
+            actorUsername?: string;
+            /** @description Mã lớp học */
+            classCode: string;
+            /**
+             * Format: uuid
+             * @description ID lớp học
+             */
+            classId: string;
+            /** @description Tên lớp học */
+            className: string;
+            /**
+             * Format: uuid
+             * @description ID bản ghi lịch sử
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm phát sinh
+             */
+            occurredAt: string;
+            /** @description Lý do */
+            reason?: string;
+            /** @description Mã lớp liên quan */
+            relatedClassCode?: string;
+            /**
+             * Format: uuid
+             * @description ID lớp liên quan (khi chuyển lớp)
+             */
+            relatedClassId?: string;
+            /** @description Tên lớp liên quan */
+            relatedClassName?: string;
+        };
+        /** @description Danh sách lớp học hiện tại và lịch sử tham gia/chuyển lớp của tài khoản */
+        UserClassesResponse: {
+            /** @description Danh sách lớp học hiện tại */
+            currentClasses: components["schemas"]["UserCurrentClassResponse"][];
+            /** @description Lịch sử tham gia, rời và chuyển lớp (mới nhất trước) */
+            history: components["schemas"]["UserClassHistoryResponse"][];
+            /**
+             * Format: uuid
+             * @description ID tài khoản
+             */
+            userId: string;
+        };
+        /** @description Lớp học hiện tại của tài khoản */
+        UserCurrentClassResponse: {
+            /**
+             * Format: uuid
+             * @description ID người thêm vào lớp
+             */
+            addedBy?: string;
+            /** @description Tên đăng nhập người thêm vào lớp */
+            addedByUsername?: string;
+            /** @description Mã lớp học */
+            classCode: string;
+            /**
+             * Format: uuid
+             * @description ID lớp học
+             */
+            classId: string;
+            /** @description Tên lớp học */
+            className: string;
+            /**
+             * @description Trạng thái lớp học
+             * @enum {string}
+             */
+            classStatus: "ACTIVE" | "INACTIVE";
+            /**
+             * Format: date-time
+             * @description Thời điểm tham gia lớp
+             */
+            joinedAt: string;
         };
         /** @description Thông tin chi tiết tài khoản */
         UserDetailResponse: {
@@ -3044,6 +3917,109 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BulkAuthzResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getCombinationVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CombinationVersionResponse"];
                 };
             };
             /** @description Bad Request */
@@ -3874,6 +4850,325 @@ export interface operations {
             };
         };
     };
+    exportItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    previewImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CatalogImportPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    confirmImport: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+                previewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CatalogImportResultResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     reorderItems: {
         parameters: {
             query?: never;
@@ -4314,6 +5609,109 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CatalogTreeNodeResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getGroupUsages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CatalogUsagesResponse"];
                 };
             };
             /** @description Bad Request */
@@ -4941,6 +6339,1276 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getItemUsages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CatalogUsagesResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listItemVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CombinationVersionResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listClasses: {
+        parameters: {
+            query?: {
+                /** @description Tìm kiếm theo mã, tên, mô tả lớp */
+                q?: string;
+                /** @description Lọc theo trạng thái lớp */
+                status?: "ACTIVE" | "INACTIVE";
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseClassSummaryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createClass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClassRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClassDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getClass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClassDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteClass: {
+        parameters: {
+            query: {
+                /** @description Lý do xóa lớp (bắt buộc) */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateClass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClassRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClassDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMembers: {
+        parameters: {
+            query?: {
+                /** @description Tìm kiếm theo mã, tên đăng nhập, họ tên, email, số điện thoại */
+                q?: string;
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseClassMemberResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    addMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddClassMembersRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AddClassMembersResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: {
+                /** @description Lý do loại khỏi lớp (không bắt buộc) */
+                reason?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    transferMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferClassMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TransferClassMemberResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClassStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClassDetailResponse"];
+                };
             };
             /** @description Bad Request */
             400: {
@@ -5993,7 +8661,7 @@ export interface operations {
                 status?: "PROVISIONING" | "ACTIVE" | "INACTIVE";
                 /** @description Lọc theo vai trò */
                 roleId?: string;
-                /** @description Lọc theo lớp học (tạm thời chưa hỗ trợ trước T10) */
+                /** @description Lọc theo lớp học */
                 classId?: string;
                 /** @description Lọc tài khoản chưa từng đăng nhập */
                 neverLoggedIn?: boolean;
@@ -6855,6 +9523,109 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getUserClasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserClassesResponse"];
                 };
             };
             /** @description Bad Request */
