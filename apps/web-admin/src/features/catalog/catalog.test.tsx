@@ -1211,6 +1211,23 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(within(sidebar).getByText(/Custom ·/)).toBeInTheDocument();
   });
 
+  it("cột Value và nhãn giá trị hệ thống dùng tiếng Việt ở vi, giữ tiếng Anh ở en (VIS-3)", async () => {
+    const viRender = renderCatalog({ search: "group=SUBJECT" });
+    const viTable = await screen.findByRole("table");
+    expect(within(viTable).getByRole("columnheader", { name: "Giá trị" })).toBeInTheDocument();
+    expect(within(viTable).queryByRole("columnheader", { name: "Value" })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Chi tiết Toán học" }));
+    const viDrawer = await screen.findByRole("dialog");
+    expect(within(viDrawer).getByText("Giá trị hệ thống")).toBeInTheDocument();
+    viRender.unmount();
+
+    renderCatalog({ locale: "en", search: "group=SUBJECT" });
+    const enTable = await screen.findByRole("table");
+    expect(within(enTable).getByRole("columnheader", { name: "Value" })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Details for Mathematics" }));
+    expect(within(await screen.findByRole("dialog")).getByText("System value")).toBeInTheDocument();
+  });
+
   it("đóng ngăn chi tiết ngay khi xóa giá trị đang mở và đặt lại itemDialog khi đổi danh mục (R1-12)", async () => {
     const api = createMockApi();
     renderCatalog({ api, search: "group=SUBJECT" });

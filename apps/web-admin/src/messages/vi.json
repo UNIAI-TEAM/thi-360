@@ -109,7 +109,7 @@
       "nameVi": "Tên tiếng Việt",
       "status": "Trạng thái",
       "subjects": "Các môn",
-      "value": "Value",
+      "value": "Giá trị",
       "version": "Phiên bản"
     },
     "combinationDialog": {
@@ -191,7 +191,7 @@
       "usagesSamplesLabel": "Ví dụ:",
       "usagesTab": "Nơi đang dùng",
       "usagesTotalSummary": "Tổng cộng {count, number} lượt tham chiếu",
-      "valueLabel": "Value hệ thống",
+      "valueLabel": "Giá trị hệ thống",
       "versionHeading": "Phiên bản {version}",
       "versionsEmpty": "Chưa có phiên bản tổ hợp nào.",
       "versionsError": "Không tải được danh sách phiên bản.",
