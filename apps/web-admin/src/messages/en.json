@@ -724,6 +724,7 @@
       "failedBanner": "The import batch failed due to a technical error.",
       "failedHint": "Failed rows did not create accounts. Fix them and import again using a file with only those rows.",
       "goToUsers": "Back to accounts",
+      "heading": "Batch result",
       "onlyFailed": "Show failed rows only",
       "passwordGenerated": "System-generated, see file",
       "passwordProvided": "From file",

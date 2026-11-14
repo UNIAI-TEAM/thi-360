@@ -28,7 +28,7 @@ import {
 import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, Upload, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { CLASSES_QUERY_KEYS } from "@/features/classes/api";
 import { Can } from "@/features/session/can";
@@ -123,6 +123,8 @@ function UsersListContent({
   const queryClient = useQueryClient();
   const neverLoggedInId = useId();
   const includeDeletedId = useId();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const tableAreaRef = useRef<HTMLDivElement>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -223,6 +225,19 @@ function UsersListContent({
     setNeverLoggedIn(false);
     setIncludeDeleted(false);
     setPage(1);
+    // Nút "Xóa bộ lọc" biến mất ngay sau khi bấm: đưa focus về ô tìm kiếm thay vì để rơi về <body>.
+    searchInputRef.current?.focus();
+  }
+
+  /**
+   * Sau "Bỏ chọn" thanh thao tác hàng loạt không còn nhận focus: đưa focus về ô chọn tất cả của bảng (điểm bắt đầu
+   * để chọn lại). Ô đó bị khóa khi trang đang hiện không có dòng nào thì về ô tìm kiếm.
+   */
+  function focusAfterClearSelection() {
+    const selectAll = tableAreaRef.current?.querySelector<HTMLElement>(
+      "thead [role='checkbox']:not([disabled])",
+    );
+    (selectAll ?? searchInputRef.current)?.focus();
   }
 
   const sourceOptions = useMemo(
@@ -527,6 +542,7 @@ function UsersListContent({
             {(controlProps) => (
               <Input
                 {...controlProps}
+                ref={searchInputRef}
                 type="search"
                 leadingIcon={<Search />}
                 value={searchInput}
@@ -661,7 +677,10 @@ function UsersListContent({
           <UserBulkBar
             className="col-start-1 row-start-1"
             selected={selectedAccounts}
-            onClearSelection={() => handleSelectionChange({})}
+            onClearSelection={() => {
+              handleSelectionChange({});
+              focusAfterClearSelection();
+            }}
             onBulkApplied={() => {
               void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
             }}
@@ -671,7 +690,7 @@ function UsersListContent({
         )}
         </div>
 
-        <div className={DROP_LOW_PRIORITY_COLUMNS}>
+        <div ref={tableAreaRef} className={DROP_LOW_PRIORITY_COLUMNS}>
         <Table
           aria-label={t("list.tableAriaLabel")}
           stickyColumns={{ start: true, end: true }}

@@ -1066,3 +1066,67 @@ describe("BulkImportBatchView: hộp thoại xóa file kết quả và cảnh b�
     expect(routerMock.push).not.toHaveBeenCalled();
   });
 });
+
+describe("BulkImportBatchView: đổi bước thì focus tới tiêu đề của bước mới (U-10)", () => {
+  it("bước 2 → 3 → 2 → 3 → đang xử lý: focus không rơi về <body>", async () => {
+    const getBatchMock = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(makeBatch({ totalRows: 2, validRows: 2 }))
+      .mockResolvedValue(
+        makeBatch({ status: "PROCESSING", totalRows: 2, validRows: 2, canConfirm: false }),
+      );
+    renderBatch(makeDeps({ getImportBatch: getBatchMock }));
+
+    // Tải lần đầu: không giành focus.
+    const continueBtn = await screen.findByRole("button", { name: "Xác nhận cấp 2 tài khoản" });
+    expect(screen.getByRole("heading", { name: "Xem trước" })).not.toHaveFocus();
+
+    await userEvent.click(continueBtn);
+    const confirmHeading = await screen.findByRole("heading", { name: "Kiểm tra lần cuối" });
+    expect(confirmHeading).toHaveFocus();
+    expect(confirmHeading).toHaveAttribute("tabindex", "-1");
+
+    await userEvent.click(screen.getByRole("button", { name: "Quay lại xem trước" }));
+    expect(await screen.findByRole("heading", { name: "Xem trước" })).toHaveFocus();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận cấp 2 tài khoản" }));
+    await screen.findByRole("heading", { name: "Kiểm tra lần cuối" });
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận cấp 2 tài khoản" }));
+
+    const processingHeading = await screen.findByRole("heading", { name: "Đang tạo tài khoản" });
+    await waitFor(() => expect(processingHeading).toHaveFocus());
+  });
+
+  it("đợt chạy xong khi focus đang ở tiêu đề đang xử lý: focus chuyển tới tiêu đề kết quả; đang đứng chỗ khác thì giữ nguyên", async () => {
+    const processing = makeBatch({ status: "PROCESSING", totalRows: 2, validRows: 2, createdRows: 1 });
+    const completed = makeBatch({
+      status: "COMPLETED",
+      totalRows: 2,
+      validRows: 2,
+      createdRows: 2,
+      resultAvailable: true,
+    });
+
+    const firstRun = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(processing)
+      .mockResolvedValue(completed);
+    const first = renderBatch(makeDeps({ getImportBatch: firstRun }));
+    const processingHeading = await screen.findByRole("heading", { name: "Đang tạo tài khoản" });
+    processingHeading.focus();
+    const resultHeading = await screen.findByRole("heading", { name: "Kết quả đợt cấp" }, { timeout: 4_000 });
+    await waitFor(() => expect(resultHeading).toHaveFocus());
+    first.unmount();
+
+    const secondRun = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(processing)
+      .mockResolvedValue(completed);
+    renderBatch(makeDeps({ getImportBatch: secondRun }));
+    await screen.findByRole("heading", { name: "Đang tạo tài khoản" });
+    const templateButton = screen.getByRole("button", { name: "Tải file mẫu" });
+    templateButton.focus();
+    await screen.findByRole("heading", { name: "Kết quả đợt cấp" }, { timeout: 4_000 });
+    expect(templateButton).toHaveFocus();
+  }, 20_000);
+});

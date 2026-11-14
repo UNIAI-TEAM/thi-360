@@ -989,3 +989,31 @@ describe("CreateUserDialog: gửi biểu mẫu sai thì focus về ô sai đầu
     expect(createMock).not.toHaveBeenCalled();
   });
 });
+
+describe("UsersListView: focus không rơi về <body> khi nút vừa bấm biến mất (U-10)", () => {
+  it("Xóa bộ lọc bằng bàn phím: focus về ô tìm kiếm", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+    const clearButton = await screen.findByRole("button", { name: "Xóa bộ lọc" });
+    clearButton.focus();
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Xóa bộ lọc" })).not.toBeInTheDocument());
+    expect(screen.getByLabelText("Tìm kiếm")).toHaveFocus();
+  });
+
+  it("Bỏ chọn: focus về ô chọn tất cả của bảng", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    const clearSelection = screen.getByRole("button", { name: "Bỏ chọn" });
+    clearSelection.focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(screen.getByRole("checkbox", { name: "Chọn tất cả tài khoản" })).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+});

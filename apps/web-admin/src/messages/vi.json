@@ -724,6 +724,7 @@
       "failedBanner": "Đợt cấp tài khoản không hoàn tất do lỗi kỹ thuật.",
       "failedHint": "Dòng thất bại không tạo tài khoản. Sửa rồi cấp lại bằng một tệp chỉ gồm các dòng đó.",
       "goToUsers": "Về danh sách tài khoản",
+      "heading": "Kết quả đợt cấp",
       "onlyFailed": "Chỉ hiện dòng thất bại",
       "passwordGenerated": "Hệ thống sinh, xem trong file",
       "passwordProvided": "Theo tệp",

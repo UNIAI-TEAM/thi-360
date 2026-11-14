@@ -54,6 +54,11 @@ const EMPTY_ROW_ITEMS: ImportRow[] = [];
 /** `getRowId` ổn định ở module scope: inline arrow tạo hàm mới mỗi render. */
 const getImportRowId = (row: ImportRow) => row.id;
 const GUARD_STATE_KEY = "__thi360BulkImportLeaveGuard";
+/** Tiêu đề của bước nhận focus bằng mã (tabIndex -1) khi đổi bước; vòng focus giống các điều khiển của bộ giao diện. */
+const STEP_HEADING_FOCUS =
+  "rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-text";
+
+type BatchPhase = "preview" | "confirm" | "processing" | "result";
 
 export interface BulkImportBatchViewProps {
   batchId: string;
@@ -169,6 +174,31 @@ function BulkImportBatchContent({
     if (batch.status === "VALIDATED") return confirmStepActive ? 3 : 2;
     return 4;
   }, [batch, confirmStepActive]);
+
+  // Khối đang hiện của trang đợt. Mỗi khối có một tiêu đề gắn `stepHeadingRef`.
+  const phase: BatchPhase | null = !batch
+    ? null
+    : isBatchTerminalStatus(batch.status)
+      ? "result"
+      : batch.status === "CONFIRMED" || batch.status === "PROCESSING"
+        ? "processing"
+        : batch.status === "VALIDATED" && confirmStepActive
+          ? "confirm"
+          : "preview";
+
+  // Đổi bước là thay cả khối, nút vừa bấm (hoặc tiêu đề đang giữ focus) bị gỡ khỏi trang và focus rơi về <body>.
+  // Khi đó đưa focus tới tiêu đề của khối mới. Không giành focus nếu người dùng đang đứng ở chỗ khác còn tồn tại.
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousPhaseRef = useRef<BatchPhase | null>(null);
+  useEffect(() => {
+    const previous = previousPhaseRef.current;
+    previousPhaseRef.current = phase;
+    if (previous === null || phase === null || previous === phase) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body) {
+      stepHeadingRef.current?.focus();
+    }
+  }, [phase]);
 
   const rowFilterStatus: ListBatchRowsQuery["status"] = useMemo(() => {
     if (!batch) return undefined;
@@ -733,9 +763,13 @@ function BulkImportBatchContent({
 
           <Card padding="none" className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <strong className="text-body font-semibold text-text">
+              <h2
+                ref={stepHeadingRef}
+                tabIndex={-1}
+                className={cn("text-body font-semibold text-text", STEP_HEADING_FOCUS)}
+              >
                 {t("preview.sectionTitle")}
-              </strong>
+              </h2>
               <div className="flex flex-wrap items-center gap-3">
                 {batch.invalidRows > 0 && (
                   <div className="flex items-center gap-2">
@@ -892,7 +926,13 @@ function BulkImportBatchContent({
           </div>
 
           <Card padding="lg" className="flex flex-col gap-4">
-            <h2 className="text-title font-semibold text-text">{t("confirm.sectionTitle")}</h2>
+            <h2
+              ref={stepHeadingRef}
+              tabIndex={-1}
+              className={cn("self-start text-title font-semibold text-text", STEP_HEADING_FOCUS)}
+            >
+              {t("confirm.sectionTitle")}
+            </h2>
 
             <dl className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-[200px_1fr]">
               <dt className="text-body text-text-muted">{t("confirm.fields.role")}</dt>
@@ -957,7 +997,13 @@ function BulkImportBatchContent({
             return (
               <>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="text-title font-semibold text-text">{t("processing.title")}</h2>
+                  <h2
+                    ref={stepHeadingRef}
+                    tabIndex={-1}
+                    className={cn("text-title font-semibold text-text", STEP_HEADING_FOCUS)}
+                  >
+                    {t("processing.title")}
+                  </h2>
                   <div aria-live="polite" className="text-body font-semibold text-text tabular-nums">
                     {t("processing.progressValue", {
                       processed,
@@ -1000,6 +1046,10 @@ function BulkImportBatchContent({
       {/* Bước 4: Kết quả */}
       {isTerminal && (
         <>
+          {/* Tiêu đề ẩn ở đầu khối kết quả: đích focus khi đợt chạy xong, đứng trước nút tải file kết quả. */}
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="sr-only">
+            {t("result.heading")}
+          </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Card padding="md">
               <div className="text-body text-text-muted">{t("result.cards.file")}</div>
@@ -1094,9 +1144,7 @@ function BulkImportBatchContent({
 
           <Card padding="none" className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <strong className="text-body font-semibold text-text">
-                {t("result.sectionTitle")}
-              </strong>
+              <h3 className="text-body font-semibold text-text">{t("result.sectionTitle")}</h3>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id={onlyFailedId}
