@@ -11,6 +11,7 @@ import {
   deriveTokens,
   EmptyState,
   findPresetPalette,
+  focusRing,
   FormField,
   getContrastRatio,
   Input,
@@ -21,10 +22,7 @@ import {
   PRESET_PALETTES,
   Skeleton,
   StatusChip,
-  Tabs,
-  TabsList,
   WHITE_COLOR,
-  TabsTrigger,
   type AppearancePalette,
   type CustomPaletteColors,
   type PresetId,
@@ -32,7 +30,7 @@ import {
 } from "@thi360/ui";
 import { AlertTriangle, Check, CheckCircle2, SlidersVertical, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -51,6 +49,7 @@ import {
 } from "./api";
 
 const PREVIEW_SCALE_STEPS = [50, 100, 200, 500, 600, 700, 800, 900] as const;
+const MODE_OPTIONS = ["light", "dark"] as const satisfies readonly ThemeMode[];
 const DEFAULT_FALLBACK_PRESET = PRESET_PALETTES[0];
 const ERROR_CODE_KEYS = {
   INTERNAL_ERROR: "INTERNAL_ERROR",
@@ -162,6 +161,7 @@ function AppearanceEditor({
   const commonT = useTranslations("common");
   const format = useFormatter();
   const queryClient = useQueryClient();
+  const modeGroupName = useId();
 
   const query = useQuery({
     queryKey: APPEARANCE_QUERY_KEY,
@@ -452,22 +452,44 @@ function AppearanceEditor({
               </h2>
               <p className="mt-0.5 text-body text-text-muted">{t("modeDescription")}</p>
             </div>
-            <Tabs
-              variant="segmented"
-              value={activeDraft.mode}
-              onValueChange={(value) =>
-                updateDraft((current) => ({
-                  ...current,
-                  mode: value === "dark" ? "dark" : "light",
-                }))
-              }
-              className="w-full sm:w-70"
+            {/*
+              Chọn một trong hai giá trị, không đổi phần nội dung nào: đây là nhóm radio, không phải tab (tab phải điều
+              khiển một khung nội dung). Hình dáng giữ kiểu tab phân đoạn của DESIGN 5.5 và mục 9: thanh nền `subtle`,
+              mục đang chọn nổi lên và có gạch chân vẽ bằng viền. Ô radio thật phủ kín cả mục (trong suốt) nên bấm,
+              chạm và phím mũi tên đều do trình duyệt xử lý; vòng focus vẽ bằng `outline` trên nhãn chứa nó.
+            */}
+            <div
+              role="radiogroup"
+              aria-labelledby="sec-mode"
+              className="flex h-12 w-full items-center gap-1 rounded-lg bg-subtle p-1 sm:w-70"
             >
-              <TabsList aria-labelledby="sec-mode">
-                <TabsTrigger value="light">{t("modeLight")}</TabsTrigger>
-                <TabsTrigger value="dark">{t("modeDark")}</TabsTrigger>
-              </TabsList>
-            </Tabs>
+              {MODE_OPTIONS.map((mode) => {
+                const checked = activeDraft.mode === mode;
+                return (
+                  <label
+                    key={mode}
+                    className={cn(
+                      "relative inline-flex h-10 flex-1 items-center justify-center rounded-md px-4 text-label font-medium whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none",
+                      "after:pointer-events-none after:absolute after:inset-x-3 after:bottom-1",
+                      "has-focus-visible:outline-3 has-focus-visible:outline-primary-text",
+                      checked
+                        ? "bg-surface text-primary-text shadow-sm after:border-b-2 after:border-current"
+                        : "text-text-muted",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name={modeGroupName}
+                      value={mode}
+                      checked={checked}
+                      onChange={() => updateDraft((current) => ({ ...current, mode }))}
+                      className="absolute inset-0 cursor-pointer opacity-0"
+                    />
+                    {mode === "dark" ? t("modeDark") : t("modeLight")}
+                  </label>
+                );
+              })}
+            </div>
           </Card>
 
           <Card padding="md" className="flex flex-col gap-3.5 p-5">
@@ -478,7 +500,12 @@ function AppearanceEditor({
               <p className="mt-0.5 text-body text-text-muted">{t("paletteDescription")}</p>
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            {/* Mười thẻ là một nhóm có tên (tiêu đề "Bộ phối màu"); thẻ đang dùng báo bằng `aria-pressed`, viền dày và dấu tích. */}
+            <div
+              role="group"
+              aria-labelledby="sec-palette"
+              className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3"
+            >
               {PRESET_PALETTES.map((preset) => {
                 const selected = activeDraft.presetId === preset.id;
                 const tokens = deriveTokens({
@@ -494,7 +521,7 @@ function AppearanceEditor({
                     onClick={() => handleSelectPreset(preset.id)}
                     className={cn(
                       "flex min-h-24 flex-col gap-2.5 rounded-lg bg-surface p-3 text-left transition-colors duration-150 motion-reduce:transition-none",
-                      "focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
+                      focusRing,
                       selected
                         ? "border-2 border-primary-600"
                         : "border border-border hover:border-border-strong",
@@ -543,7 +570,7 @@ function AppearanceEditor({
                 onClick={handleSelectCustom}
                 className={cn(
                   "flex min-h-24 flex-col gap-2.5 rounded-lg bg-surface p-3 text-left transition-colors duration-150 motion-reduce:transition-none",
-                  "focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
+                  focusRing,
                   isCustom
                     ? "border-2 border-primary-600"
                     : "border border-dashed border-border-strong hover:border-text-muted",
@@ -606,7 +633,10 @@ function AppearanceEditor({
                               hasCustomColors: true,
                             }));
                           }}
-                          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1 focus-visible:border-primary-600 focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+                          className={cn(
+                            "h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1",
+                            focusRing,
+                          )}
                         />
                         <Input
                           {...controlProps}
@@ -646,7 +676,10 @@ function AppearanceEditor({
                               hasCustomColors: true,
                             }));
                           }}
-                          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1 focus-visible:border-primary-600 focus-visible:ring-3 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+                          className={cn(
+                            "h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1",
+                            focusRing,
+                          )}
                         />
                         <Input
                           {...controlProps}
@@ -756,10 +789,17 @@ function AppearanceEditor({
             </div>
           </div>
 
+          {/*
+            Vùng xem trước chỉ để nhìn: nút và ô nhập bên trong không làm gì. `inert` bỏ cả khối khỏi thứ tự Tab và cây
+            truy cập (mô tả bằng chữ nằm ở tiêu đề và bảng tương phản bên ngoài); `aria-hidden` và `tabIndex={-1}` giữ
+            đúng hành vi đó ở trình duyệt chưa hỗ trợ `inert`.
+          */}
           <div
             data-testid="appearance-preview"
             data-theme={activeDraft.mode}
             style={previewVars}
+            inert
+            aria-hidden
             className="flex flex-col gap-3 rounded-lg border border-border bg-page p-4 text-text"
           >
             <div className="flex items-center gap-2.5">
@@ -782,11 +822,13 @@ function AppearanceEditor({
               </p>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="button">{t("previewPrimaryButton")}</Button>
-                <Button type="button" variant="secondary">
+                <Button type="button" tabIndex={-1}>
+                  {t("previewPrimaryButton")}
+                </Button>
+                <Button type="button" variant="secondary" tabIndex={-1}>
                   {t("previewSecondaryButton")}
                 </Button>
-                <Button type="button" variant="exam">
+                <Button type="button" variant="exam" tabIndex={-1}>
                   {t("previewAccentButton")}
                 </Button>
               </div>
@@ -801,6 +843,7 @@ function AppearanceEditor({
 
               <Input
                 readOnly
+                tabIndex={-1}
                 value={t("previewInputValue")}
                 aria-label={t("previewInputValue")}
                 className="border-primary-600 ring-3 ring-primary-600/15"

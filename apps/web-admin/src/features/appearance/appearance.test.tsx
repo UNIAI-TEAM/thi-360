@@ -152,12 +152,55 @@ describe("AppearanceView", () => {
     expect((screen.getByLabelText("Màu nhấn") as HTMLInputElement).value).toBe("#10B981");
   });
 
+  it("chế độ mặc định là nhóm radio có tên, bộ phối màu là nhóm có tên, vùng xem trước không nhận focus", async () => {
+    renderAppearance();
+    await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
+
+    // Chọn một trong hai: radio, không phải tab trỏ tới khung nội dung không tồn tại.
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+    const modeGroup = screen.getByRole("radiogroup", { name: "Chế độ mặc định" });
+    const light = within(modeGroup).getByRole("radio", { name: "Sáng" });
+    const dark = within(modeGroup).getByRole("radio", { name: "Tối" });
+    expect(within(modeGroup).getAllByRole("radio")).toHaveLength(2);
+    expect(light).toBeChecked();
+    expect(dark).not.toBeChecked();
+    expect(light).toHaveAttribute("name", dark.getAttribute("name")!);
+    // Dấu hiệu đang chọn vẽ bằng viền (gạch chân), không chỉ bằng nền.
+    expect(light.closest("label")).toHaveClass("after:border-b-2");
+    expect(dark.closest("label")).not.toHaveClass("after:border-b-2");
+
+    await userEvent.click(dark);
+    expect(dark).toBeChecked();
+    expect(light).not.toBeChecked();
+    expect(screen.getByTestId("appearance-preview")).toHaveAttribute("data-theme", "dark");
+    expect(dark.closest("label")).toHaveClass("after:border-b-2");
+
+    const paletteGroup = screen.getByRole("group", { name: "Bộ phối màu" });
+    const cards = within(paletteGroup).getAllByRole("button");
+    expect(cards).toHaveLength(10);
+    expect(cards.filter((card) => card.getAttribute("aria-pressed") === "true")).toHaveLength(1);
+    for (const card of cards) {
+      expect(card).toHaveClass("focus-visible:ring-primary-text");
+    }
+
+    const preview = screen.getByTestId("appearance-preview");
+    expect(preview).toHaveAttribute("inert");
+    expect(preview).toHaveAttribute("aria-hidden", "true");
+    const previewControls = preview.querySelectorAll("button, input, a[href], [tabindex]");
+    expect(previewControls).toHaveLength(4);
+    for (const control of previewControls) {
+      expect(control).toHaveAttribute("tabindex", "-1");
+    }
+    expect(screen.queryByRole("button", { name: "Nút chính" })).toBeNull();
+  });
+
   it("đồng bộ color picker, chặn lưu khi mã màu sai, hiện cảnh báo tương phản kèm tỉ lệ và chỉ xem trước cục bộ", async () => {
     renderAppearance();
     await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
 
     // Đổi chế độ sang Tối -> chỉ cập nhật vùng xem trước cục bộ, chưa đổi <html>
-    await userEvent.click(screen.getByRole("tab", { name: "Tối" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Tối" }));
     const preview = screen.getByTestId("appearance-preview");
     expect(preview).toHaveAttribute("data-theme", "dark");
     expect(document.documentElement.dataset.theme).toBeUndefined();
@@ -212,7 +255,7 @@ describe("AppearanceView", () => {
 
     await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
     await userEvent.click(screen.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }));
-    await userEvent.click(screen.getByRole("tab", { name: "Tối" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Tối" }));
 
     const scrollSpy = vi.fn();
     Element.prototype.scrollIntoView = scrollSpy;
@@ -233,7 +276,7 @@ describe("AppearanceView", () => {
 
     // Chọn lại bộ màu & lưu thành công
     await userEvent.click(screen.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }));
-    await userEvent.click(screen.getByRole("tab", { name: "Tối" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Tối" }));
     await userEvent.click(screen.getByRole("button", { name: "Lưu và áp dụng" }));
 
     await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
@@ -275,7 +318,7 @@ describe("AppearanceView", () => {
     renderAppearance({ saveAppearance: saveMock });
     await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
     await userEvent.click(screen.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }));
-    await userEvent.click(screen.getByRole("tab", { name: "Sáng" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Sáng" }));
     await userEvent.click(screen.getByRole("button", { name: "Lưu và áp dụng" }));
 
     await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(1));
