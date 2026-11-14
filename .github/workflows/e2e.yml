@@ -68,7 +68,7 @@ jobs:
           # Passed through playwright.config.ts to the spawned backend: raises
           # the per-IP login rate limit (thi360.security.rate-limit.login-per-ip-limit)
           # so the suite's platform logins cannot trip RateLimitFilter.
-          THI360_SECURITY_RATELIMIT_LOGINPERIPLIMT: "200"
+          THI360_SECURITY_RATELIMIT_LOGINPERIPLIMIT: "200"
         run: pnpm --filter @thi360/e2e test
       - uses: actions/upload-artifact@v4
         if: always()
