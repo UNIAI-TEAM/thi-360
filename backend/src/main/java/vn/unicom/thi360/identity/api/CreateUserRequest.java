@@ -33,7 +33,7 @@ public record CreateUserRequest(
         String phone,
         @Schema(description = "Danh sách ID vai trò (mặc định vai trò STUDENT; gán vai trò khác cần USER.ASSIGN)")
         List<UUID> roleIds,
-        @Schema(description = "Danh sách ID lớp học (tạm thời chưa hỗ trợ trước T10)")
+        @Schema(description = "Danh sách ID lớp học")
         List<UUID> classIds,
         @Schema(description = "Bắt buộc đổi mật khẩu ở lần đăng nhập đầu (mặc định false)")
         Boolean mustChangePassword
