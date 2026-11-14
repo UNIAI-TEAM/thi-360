@@ -44,11 +44,17 @@ public class LocaleConfig {
         StringBuilder combined = new StringBuilder();
         while (headerValues.hasMoreElements()) {
             String value = headerValues.nextElement();
-            if (value != null && !value.isBlank()) {
-                if (!combined.isEmpty()) {
-                    combined.append(',');
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            for (String segment : value.split(",")) {
+                String trimmed = segment.trim();
+                if (!trimmed.isEmpty()) {
+                    if (!combined.isEmpty()) {
+                        combined.append(',');
+                    }
+                    combined.append(trimmed);
                 }
-                combined.append(value);
             }
         }
         if (combined.isEmpty()) {
