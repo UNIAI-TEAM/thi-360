@@ -38,6 +38,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -158,6 +159,7 @@ function ClassesListContent({
   const classesQuery = useQuery({
     queryKey: CLASSES_QUERY_KEYS.list(queryParams),
     queryFn: () => deps.listClasses(queryParams),
+    placeholderData: keepPreviousWhileSameScope(CLASSES_QUERY_KEYS.list(queryParams)),
   });
 
   // Dieu chinh trang trong render (thay cho effect): khi dang o trang >1 ma trang do
@@ -202,7 +204,7 @@ function ClassesListContent({
         header: t("table.code"),
         cell: ({ row }) => (
           <Link
-            href={`/lop-hoc/${row.original.id}`}
+            href={`/classes/${row.original.id}`}
             className="whitespace-nowrap font-semibold text-primary-text hover:underline"
           >
             {row.original.code}
@@ -273,7 +275,7 @@ function ClassesListContent({
                 icon={<Eye />}
                 aria-label={t("actions.openAria", { code: item.code })}
                 tooltip={t("actions.openTooltip")}
-                onClick={() => router.push(`/lop-hoc/${item.id}`)}
+                onClick={() => router.push(`/classes/${item.id}`)}
               />
               {canModify && (
                 <>
@@ -436,6 +438,7 @@ function ClassesListContent({
           data={items}
           getRowId={(row) => row.id}
           loading={classesQuery.isLoading}
+          refreshing={classesQuery.isPlaceholderData}
           sorting={{
             state: sorting,
             manual: true,

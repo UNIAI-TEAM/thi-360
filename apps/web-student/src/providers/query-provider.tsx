@@ -17,7 +17,7 @@ import { ApiStatusError } from "@/lib/api/client";
 import { webUrl } from "@/lib/env";
 
 export const FORBIDDEN_PATH = "/forbidden";
-export const LOGIN_PATH = "/dang-nhap";
+export const LOGIN_PATH = "/login";
 
 function getErrorStatus(error: unknown): number | null {
   if (error instanceof ApiStatusError) return error.status;

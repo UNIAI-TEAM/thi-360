@@ -4,6 +4,20 @@
 /* Tailwind quét cả class dùng trong UI kit dùng chung. */
 @source "../../../../packages/ui/src";
 
+/* Luôn giữ chỗ cho thanh cuộn dọc: số dòng của một danh sách đổi làm thanh cuộn hiện/ẩn thì trang không lệch ngang. */
+html {
+  scrollbar-gutter: stable;
+}
+
+/*
+ * Khi mở hộp thoại, Radix khóa cuộn trang và tự bù bề rộng thanh cuộn bằng padding-right trên body.
+ * Chỗ cho thanh cuộn đã được giữ sẵn ở trên, nên phần bù đó làm nền phía sau lệch sang trái: bỏ đi.
+ */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
 body {
   background-color: var(--color-page);
   color: var(--color-text);

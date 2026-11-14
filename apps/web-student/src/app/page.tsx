@@ -29,7 +29,7 @@ export default async function LandingPage() {
       <StudentHeader
         actions={
           <Button asChild size="md">
-            <Link href="/dang-nhap">{t("ctaHeader")}</Link>
+            <Link href="/login">{t("ctaHeader")}</Link>
           </Button>
         }
       />
@@ -44,7 +44,7 @@ export default async function LandingPage() {
             {t("heroDescription")}
           </p>
           <Button asChild size="lg">
-            <Link href="/dang-nhap">{t("ctaHero")}</Link>
+            <Link href="/login">{t("ctaHero")}</Link>
           </Button>
         </div>
       </section>

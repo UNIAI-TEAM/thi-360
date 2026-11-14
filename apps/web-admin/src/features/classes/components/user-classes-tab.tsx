@@ -52,7 +52,7 @@ export function UserClassesTab({
         enableSorting: false,
         cell: ({ row }) => (
           <Link
-            href={`/lop-hoc/${row.original.classId}`}
+            href={`/classes/${row.original.classId}`}
             className="whitespace-nowrap font-semibold text-primary-text hover:underline"
           >
             {row.original.classCode}
@@ -132,7 +132,7 @@ export function UserClassesTab({
         enableSorting: false,
         cell: ({ row }) => (
           <Link
-            href={`/lop-hoc/${row.original.classId}`}
+            href={`/classes/${row.original.classId}`}
             className="font-medium text-primary-text hover:underline"
           >
             {row.original.classCode} — {row.original.className}
@@ -146,7 +146,7 @@ export function UserClassesTab({
         cell: ({ row }) =>
           row.original.relatedClassId && row.original.relatedClassCode ? (
             <Link
-              href={`/lop-hoc/${row.original.relatedClassId}`}
+              href={`/classes/${row.original.relatedClassId}`}
               className="text-primary-text hover:underline"
             >
               {row.original.relatedClassCode}

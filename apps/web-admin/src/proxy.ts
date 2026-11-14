@@ -1,22 +1,24 @@
-import { CTX_COOKIE_NAME, verifyCtxCookie } from "@thi360/web-kit/ctx";
 import { buildLoginUrl, getEnvUrls } from "@thi360/web-kit/redirect";
+import { continueWithSession, resolveNavigationSession, withSessionCookies } from "@thi360/web-kit/session";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const urls = getEnvUrls();
-  const claims = await verifyCtxCookie(request.cookies.get(CTX_COOKIE_NAME)?.value);
+  // Hết hạn `thi360_ctx` mà còn refresh token thì phiên được làm mới tại đây, không về trang đăng nhập.
+  const session = await resolveNavigationSession(request);
+  const claims = session.claims;
 
   if (!claims) {
     const publicUrl = `${urls.adminUrl}${pathname}${search}`;
-    return NextResponse.redirect(buildLoginUrl(urls.webUrl, publicUrl));
+    return withSessionCookies(NextResponse.redirect(buildLoginUrl(urls.webUrl, publicUrl)), session);
   }
 
   if (pathname !== "/forbidden" && claims.access !== "MANAGE") {
-    return NextResponse.redirect(new URL("/forbidden", `${urls.adminUrl}/`));
+    return withSessionCookies(NextResponse.redirect(new URL("/forbidden", `${urls.adminUrl}/`)), session);
   }
 
-  return NextResponse.next();
+  return continueWithSession(request, session);
 }
 
 export const config = {

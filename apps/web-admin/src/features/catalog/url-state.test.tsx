@@ -6,7 +6,7 @@ import { applyCatalogSelectionPatch, buildCatalogHref, useCatalogUrlState } from
 const nav = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   const state = {
-    pathname: "/cau-hinh-chung",
+    pathname: "/catalog",
     search: "",
     setSearch(search: string) {
       state.search = search;
@@ -46,8 +46,8 @@ describe("applyCatalogSelectionPatch", () => {
   });
 
   it("buildCatalogHref không để dấu ? thừa", () => {
-    expect(buildCatalogHref("/cau-hinh-chung", "")).toBe("/cau-hinh-chung");
-    expect(buildCatalogHref("/cau-hinh-chung", "group=A")).toBe("/cau-hinh-chung?group=A");
+    expect(buildCatalogHref("/catalog", "")).toBe("/catalog");
+    expect(buildCatalogHref("/catalog", "group=A")).toBe("/catalog?group=A");
   });
 });
 
@@ -80,7 +80,7 @@ describe("useCatalogUrlState", () => {
 
     expect(result.current.group).toBe("EXAM");
     expect(nav.search).toBe("group=SUBJECT");
-    expect(replaceState).toHaveBeenCalledWith(null, "", "/cau-hinh-chung?group=EXAM");
+    expect(replaceState).toHaveBeenCalledWith(null, "", "/catalog?group=EXAM");
   });
 
   it("chọn nút cây rồi bỏ chọn khi searchParams vẫn cũ", () => {
@@ -92,12 +92,12 @@ describe("useCatalogUrlState", () => {
     expect(replaceState).toHaveBeenLastCalledWith(
       null,
       "",
-      "/cau-hinh-chung?group=KNOWLEDGE&node=n1",
+      "/catalog?group=KNOWLEDGE&node=n1",
     );
 
     act(() => result.current.select({ node: null }));
     expect(result.current.node).toBeNull();
-    expect(replaceState).toHaveBeenLastCalledWith(null, "", "/cau-hinh-chung?group=KNOWLEDGE");
+    expect(replaceState).toHaveBeenLastCalledWith(null, "", "/catalog?group=KNOWLEDGE");
   });
 
   it("không ghi URL khi chọn lại đúng giá trị đang chọn", () => {
@@ -123,7 +123,7 @@ describe("useCatalogUrlState", () => {
     act(() => result.current.select({ group: "EXAM" }));
 
     replaceState.mockRestore();
-    window.history.replaceState(null, "", "/cau-hinh-chung?group=SUBJECT");
+    window.history.replaceState(null, "", "/catalog?group=SUBJECT");
     act(() => {
       window.dispatchEvent(new PopStateEvent("popstate"));
     });

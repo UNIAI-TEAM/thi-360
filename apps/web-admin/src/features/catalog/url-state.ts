@@ -39,7 +39,7 @@ export interface CatalogUrlState {
 }
 
 /**
- * Selected group / tree node of `/cau-hinh-chung`.
+ * Selected group / tree node of `/catalog`.
  *
  * The selection lives in React state (initialised from `useSearchParams()`), so it never
  * depends on a Next RSC navigation: in a production build a search-only `router.replace`

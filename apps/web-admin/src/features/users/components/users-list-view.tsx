@@ -27,6 +27,7 @@ import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, U
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { CLASSES_QUERY_KEYS } from "@/features/classes/api";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
@@ -174,6 +175,7 @@ function UsersListContent({
   const usersQuery = useQuery({
     queryKey: USERS_QUERY_KEYS.list(queryParams),
     queryFn: () => deps.listUsers(queryParams),
+    placeholderData: keepPreviousWhileSameScope(USERS_QUERY_KEYS.list(queryParams)),
   });
 
   const hasActiveFilters = Boolean(
@@ -247,7 +249,7 @@ function UsersListContent({
         header: t("table.username"),
         cell: ({ row }) => (
           <Link
-            href={`/tai-khoan/${row.original.id}`}
+            href={`/users/${row.original.id}`}
             className="whitespace-nowrap font-semibold text-primary-text hover:underline"
           >
             {row.original.username}
@@ -338,7 +340,7 @@ function UsersListContent({
                       </Tooltip>
                       <DropdownMenuContent>
                         <DropdownMenuItem asChild>
-                          <Link href={`/tai-khoan/${item.id}`}>
+                          <Link href={`/users/${item.id}`}>
                             <Eye />
                             <span>{t("actions.viewDetail")}</span>
                           </Link>
@@ -426,7 +428,7 @@ function UsersListContent({
         actions={
           <Can permission="USER.MODIFY">
             <Button asChild variant="secondary">
-              <Link href="/tai-khoan/cap-hang-loat">
+              <Link href="/users/bulk-import">
                 <Upload />
                 <span>{t("actions.bulkImport")}</span>
               </Link>
@@ -584,6 +586,7 @@ function UsersListContent({
           data={items}
           getRowId={(row) => row.id}
           loading={usersQuery.isLoading}
+          refreshing={usersQuery.isPlaceholderData}
           selection={
             canBulkOperate
               ? {

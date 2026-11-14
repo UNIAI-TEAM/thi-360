@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import enMessages from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
-import LoginPage from "./dang-nhap/page";
+import LoginPage from "./login/page";
 import RootLayout from "./layout";
 
 const ssrState = vi.hoisted(() => ({
@@ -48,7 +48,7 @@ vi.mock("next-intl/server", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dang-nhap",
+  usePathname: () => "/login",
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));
@@ -59,8 +59,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("web-student RootLayout /dang-nhap SSR appearance", () => {
-  it("HTML máy chủ của /dang-nhap nhúng <style id=\"thi360-theme-vars\"> chứa màu chính tùy chỉnh đã lưu và data-theme", async () => {
+describe("web-student RootLayout /login SSR appearance", () => {
+  it("HTML máy chủ của /login nhúng <style id=\"thi360-theme-vars\"> chứa màu chính tùy chỉnh đã lưu và data-theme", async () => {
     const fetchMock = vi.fn(async () =>
       Response.json({
         palette: { presetId: "custom", custom: { primary: "#1d4ed8", accent: "#d97706" } },
@@ -90,7 +90,7 @@ describe("web-student RootLayout /dang-nhap SSR appearance", () => {
     expect(init.next).toEqual({ revalidate: 60, tags: ["appearance"] });
   });
 
-  it("HTML máy chủ của /dang-nhap nhúng màu chính của bộ phối màu đã lưu", async () => {
+  it("HTML máy chủ của /login nhúng màu chính của bộ phối màu đã lưu", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -145,7 +145,7 @@ describe("web-student RootLayout /dang-nhap SSR appearance", () => {
     expect(fallbackHtml).toContain('data-theme="light"');
   });
 
-  it("render <html lang=\"en\"> và nút chuyển đổi trên /dang-nhap khi locale=en hoặc en-GB", async () => {
+  it("render <html lang=\"en\"> và nút chuyển đổi trên /login khi locale=en hoặc en-GB", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>

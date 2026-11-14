@@ -21,6 +21,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -200,6 +201,7 @@ function BulkImportBatchContent({
   const rowsQuery = useQuery({
     queryKey: BULK_IMPORT_QUERY_KEYS.rows(batchId, rowsQueryParams),
     queryFn: () => deps.listImportBatchRows(batchId, rowsQueryParams),
+    placeholderData: keepPreviousWhileSameScope(BULK_IMPORT_QUERY_KEYS.rows(batchId, rowsQueryParams)),
     enabled: shouldLoadRows && !(batch?.status === "VALIDATED" && confirmStepActive),
   });
 
@@ -251,7 +253,7 @@ function BulkImportBatchContent({
       [GUARD_STATE_KEY]: token,
     });
     const isGuardedSameUrlEntry = () =>
-      window.location.pathname.endsWith(`/tai-khoan/cap-hang-loat/${batchId}`) &&
+      window.location.pathname.endsWith(`/users/bulk-import/${batchId}`) &&
       Boolean(
         (window.history.state as Record<string, unknown> | null)?.[GUARD_STATE_KEY],
       );
@@ -649,7 +651,7 @@ function BulkImportBatchContent({
             action={
               isNotFound ? (
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan/cap-hang-loat">{t("batchError.startOver")}</Link>
+                  <Link href="/users/bulk-import">{t("batchError.startOver")}</Link>
                 </Button>
               ) : (
                 <Button variant="secondary" onClick={() => void batchQuery.refetch()}>
@@ -776,6 +778,7 @@ function BulkImportBatchContent({
               data={rowItems}
               getRowId={getImportRowId}
               loading={rowsQuery.isLoading}
+              refreshing={rowsQuery.isPlaceholderData}
               error={
                 rowsQuery.isError ? (
                   <EmptyState
@@ -830,7 +833,7 @@ function BulkImportBatchContent({
 
               <div className="flex flex-wrap items-center gap-2">
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan/cap-hang-loat">
+                  <Link href="/users/bulk-import">
                     <Upload />
                     <span>{t("preview.reupload")}</span>
                   </Link>
@@ -1115,6 +1118,7 @@ function BulkImportBatchContent({
               data={rowItems}
               getRowId={getImportRowId}
               loading={rowsQuery.isLoading}
+              refreshing={rowsQuery.isPlaceholderData}
               error={
                 rowsQuery.isError ? (
                   <EmptyState
@@ -1161,10 +1165,10 @@ function BulkImportBatchContent({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan/cap-hang-loat">{t("result.startAnother")}</Link>
+                  <Link href="/users/bulk-import">{t("result.startAnother")}</Link>
                 </Button>
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan">{t("result.goToUsers")}</Link>
+                  <Link href="/users">{t("result.goToUsers")}</Link>
                 </Button>
               </div>
             </div>
