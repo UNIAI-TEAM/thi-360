@@ -12,7 +12,7 @@
 - **UNI-2574** (PR #26): access token hết hạn (5 phút) làm trang tải lại hoặc bị đưa về trang đăng nhập. Sửa: proxy `/api/[...path]` và middleware trang của hai web tự làm mới phiên ở phía máy chủ; trang đăng nhập quay lại `callbackUrl` hợp lệ khi đã có phiên. Triển khai sau nginx cần `proxy_buffer_size 16k` (README, mục chạy trên máy chủ Keycloak thật); cách làm mới dựa vào việc realm không bật "Revoke Refresh Token".
 - **UNI-2577** (PR #28): danh sách bị nhảy khi đổi bộ lọc. Sửa: bảng giữ dữ liệu cũ trong lúc tải lại (`Table.refreshing`, `keepPreviousWhileSameScope`), giữ chỗ cho thanh cuộn dọc.
 - **UNI-2578** (PR #27): hộp thoại Tạo tài khoản bố cục hai cột, hiện đủ trong một khung (cỡ `xl` của `DialogContent`, `PasswordField.rulesColumns`).
-- **UNI-2576** (PR này): đổi đường dẫn trang sang tiếng Anh. Chữ hiển thị không đổi; không có chuyển hướng từ đường dẫn cũ.
+- **UNI-2576** (PR #29): đổi đường dẫn trang sang tiếng Anh. Chữ hiển thị không đổi; không có chuyển hướng từ đường dẫn cũ.
 
   | Web | Cũ | Mới |
   |---|---|---|
@@ -58,7 +58,7 @@
 
 **Bước tiếp theo**
 
-1. Người duyệt và merge các PR sau đợt 1 theo thứ tự #26, #28, #27 rồi PR của UNI-2576 (PR này chồng lên ba PR kia). Việc để lại của đợt 1 nằm ở mục 6 của `docs/acceptance/dot-1.md`.
+1. Người duyệt và merge các PR sau đợt 1 theo thứ tự #26, #28, #27 rồi #29 (UNI-2576, chồng lên ba PR kia). Việc để lại của đợt 1 nằm ở mục 6 của `docs/acceptance/dot-1.md`.
 2. Tài khoản mẫu dev (B13: `sys.admin`, `content.admin`, `ops.admin`, `student01`…`05`) làm trong T18; lớp mẫu làm trong T10.
 
 **Vướng / việc treo**

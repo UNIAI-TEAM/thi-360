@@ -39,7 +39,7 @@ Không thuộc điểm của plan đợt 1; mỗi việc một issue con của U
 | UNI-2574 | Lỗi · Hết hạn access token: trang bị tải lại hoặc về trang đăng nhập thay vì tự làm mới phiên | #26 | in_review |
 | UNI-2577 | Lỗi · Danh sách bị nhảy khi đổi bộ lọc | #28 | in_review |
 | UNI-2578 | Hộp thoại Tạo tài khoản: bố cục hai cột, hiện đủ trong một khung | #27 | in_review |
-| UNI-2576 | Đổi đường dẫn trang của hai web sang tiếng Anh (chồng lên ba PR trên) | PR của nhánh `feature/UNI-2576-route-tieng-anh` | in_review |
+| UNI-2576 | Đổi đường dẫn trang của hai web sang tiếng Anh (chồng lên ba PR trên) | #29 | in_review |
 
 ### Thứ tự làm
 
