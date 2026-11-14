@@ -84,3 +84,55 @@ describe("proxyApiRequest X-Forwarded-For", () => {
     expect(lastHeaders().get("x-forwarded-for")).toBe("198.51.100.77");
   });
 });
+
+describe("proxyApiRequest Idempotency-Key và multipart stream", () => {
+  it("chuyển tiếp header Idempotency-Key tới upstream", async () => {
+    await handlers.POST(
+      new NextRequest("http://localhost:3000/api/v1/admin/catalog/groups/g1/items/import", {
+        method: "POST",
+        body: "{}",
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": "idem-12345",
+        },
+      }),
+      context("v1", "admin", "catalog", "groups", "g1", "items", "import"),
+    );
+
+    expect(lastHeaders().get("idempotency-key")).toBe("idem-12345");
+  });
+
+  it("stream body multipart/form-data (không parse JSON) kèm content-type và idempotency-key", async () => {
+    const form = new FormData();
+    const payload = new Uint8Array(1024 * 64);
+    payload[0] = 0x50;
+    payload[1] = 0x4b;
+    form.append("file", new File([payload], "catalog.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }));
+
+    const req = new NextRequest(
+      "http://localhost:3000/api/v1/admin/catalog/groups/g1/items/import/preview",
+      {
+        method: "POST",
+        body: form,
+        headers: {
+          "idempotency-key": "idem-upload-1",
+        },
+      },
+    );
+
+    await handlers.POST(
+      req,
+      context("v1", "admin", "catalog", "groups", "g1", "items", "import", "preview"),
+    );
+
+    const call = fetchMock.mock.calls.at(-1);
+    expect(call).toBeDefined();
+    const init = call![1] as RequestInit & { duplex?: string };
+    expect(init.duplex).toBe("half");
+    expect(init.body).toBeInstanceOf(ReadableStream);
+    expect(lastHeaders().get("content-type")).toMatch(/^multipart\/form-data;/);
+    expect(lastHeaders().get("idempotency-key")).toBe("idem-upload-1");
+  });
+});
