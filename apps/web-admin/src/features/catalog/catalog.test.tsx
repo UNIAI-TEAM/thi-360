@@ -33,6 +33,7 @@ import {
   resolveImportColumnLabel,
   resolveSystemTreeLevelKey,
   resolveTreeLevelLabel,
+  type SystemTreeLevelKey,
 } from "./utils";
 
 const routerMock = vi.hoisted(() => {
@@ -624,9 +625,12 @@ describe("resolveImportColumnLabel", () => {
     })[key] as string;
   const base = {
     levels: ["Chương", "Bài", "Kiến thức"],
+    isSystemGroup: false,
+    groupCode: "CUSTOM_TREE",
     refGroups: [{ code: "SUBJECT", nameVi: "Môn học", nameEn: "Subject" }],
     locale: "vi",
     translate,
+    translateLevel: (key: SystemTreeLevelKey) => viMessages.catalog.tree.systemLevels[key],
   };
 
   it("ánh xạ trường nhóm danh sách sang tiêu đề cột Excel", () => {
@@ -640,6 +644,37 @@ describe("resolveImportColumnLabel", () => {
     expect(resolveImportColumnLabel("level2NameVi", base)).toBe("Bài (Tiếng Việt)");
     expect(resolveImportColumnLabel("level3NameEn", base)).toBe("Kiến thức (Tiếng Anh)");
     expect(resolveImportColumnLabel("level4Code", base)).toBe("level4Code");
+  });
+
+  it.each([
+    ["vi", viMessages.catalog.tree.systemLevels, ["Mã Chương", "Bài (Tiếng Việt)", "Kiến thức (Tiếng Anh)"]],
+    ["en", en.catalog.tree.systemLevels, ["Mã Chapter", "Lesson (Tiếng Việt)", "Knowledge (Tiếng Anh)"]],
+  ])(
+    "R3-01: cột cấp của cây hệ thống KNOWLEDGE dùng khóa dịch ở locale %s",
+    (locale, systemLevels, expected) => {
+      const system = {
+        ...base,
+        locale,
+        isSystemGroup: true,
+        groupCode: "KNOWLEDGE",
+        translateLevel: (key: SystemTreeLevelKey) => systemLevels[key],
+      };
+      expect([
+        resolveImportColumnLabel("level1Code", system),
+        resolveImportColumnLabel("level2NameVi", system),
+        resolveImportColumnLabel("level3NameEn", system),
+      ]).toEqual(expected);
+    },
+  );
+
+  it("cột cấp của cây tùy chỉnh giữ nguyên tên đã lưu dù trùng tên cấp hệ thống", () => {
+    expect(
+      resolveImportColumnLabel("level1Code", {
+        ...base,
+        locale: "en",
+        translateLevel: (key) => en.catalog.tree.systemLevels[key],
+      }),
+    ).toBe("Mã Chương");
   });
 
   it("cột danh mục liên kết lấy tên nhóm theo ngôn ngữ, dự phòng nguyên văn", () => {
@@ -2721,6 +2756,44 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
     expect(
       await within(dialog).findByText(/Đã nhập xong: tạo mới 2 giá trị, dùng lại 1 nút có sẵn/),
     ).toBeInTheDocument();
+  });
+
+  it("R3-01: xem trước nhập cây hệ thống KNOWLEDGE ở locale en dùng Chapter/Lesson/Knowledge, không lộ tên cấp tiếng Việt", async () => {
+    const api = createTreeMockApi({
+      previewImport: vi.fn(async () => ({
+        previewId: "prev-en",
+        groupId: "grp-knowledge",
+        groupCode: "KNOWLEDGE",
+        groupKind: "TREE" as const,
+        totalRows: 3,
+        validRows: 0,
+        errorRows: 3,
+        canConfirm: false,
+        errors: [
+          { rowNo: 4, column: "level1Code", code: "PARENT_REQUIRED", message: "x" },
+          { rowNo: 5, column: "level2NameVi", code: "REQUIRED", message: "x" },
+          { rowNo: 6, column: "level3NameEn", code: "REQUIRED", message: "x" },
+        ],
+      })),
+    });
+
+    renderCatalog({ api, locale: "en", search: "group=KNOWLEDGE" });
+    await userEvent.click(await screen.findByRole("button", { name: en.catalog.importExcel }));
+    const dialog = await screen.findByRole("dialog");
+    const file = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "tree.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    await userEvent.upload(within(dialog).getByLabelText(/Excel file/) as HTMLInputElement, file);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: en.catalog.importDialog.uploadButton }),
+    );
+
+    const errorTable = await within(dialog).findByRole("table");
+    const rows = within(errorTable).getAllByRole("row").slice(1);
+    expect(within(rows[0]!).getByText("Chapter code")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Lesson (Vietnamese)")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("Knowledge (English)")).toBeInTheDocument();
+    expect(within(errorTable).queryByText(/Chương|Bài|Kiến thức/)).not.toBeInTheDocument();
   });
 });
 

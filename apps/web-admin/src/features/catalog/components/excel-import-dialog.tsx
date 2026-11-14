@@ -214,9 +214,12 @@ function ExcelImportBody({
   function columnLabel(field: string): string {
     return resolveImportColumnLabel(field, {
       levels: group.levels ?? [],
+      isSystemGroup: group.type === "SYSTEM" || group.system,
+      groupCode: group.code,
       refGroups: group.refGroups,
       locale,
       translate: (key, values) => t(`importDialog.columnLabels.${key}`, values),
+      translateLevel: (key) => t(`tree.systemLevels.${key}`),
     });
   }
 

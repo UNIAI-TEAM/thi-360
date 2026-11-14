@@ -255,9 +255,12 @@ export function resolveImportColumnLabel(
   field: string,
   options: {
     levels: readonly string[];
+    isSystemGroup: boolean;
+    groupCode: string;
     refGroups: ReadonlyArray<BilingualName & { code: string }>;
     locale: string;
     translate: (key: ImportColumnLabelKey, values?: { level: string }) => string;
+    translateLevel: (key: SystemTreeLevelKey) => string;
   },
 ): string {
   if ((SIMPLE_IMPORT_FIELDS as readonly string[]).includes(field)) {
@@ -265,7 +268,13 @@ export function resolveImportColumnLabel(
   }
   const treeMatch = TREE_IMPORT_FIELD_RE.exec(field);
   if (treeMatch) {
-    const level = options.levels[Number(treeMatch[1]) - 1];
+    const levelIndex = Number(treeMatch[1]) - 1;
+    const level = resolveTreeLevelLabel(options.levels[levelIndex], {
+      isSystemGroup: options.isSystemGroup,
+      groupCode: options.groupCode,
+      levelIndex,
+      translateLevel: options.translateLevel,
+    });
     if (level) {
       return options.translate(TREE_IMPORT_FIELD_KEYS[treeMatch[2] as keyof typeof TREE_IMPORT_FIELD_KEYS], {
         level,
