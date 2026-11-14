@@ -15,6 +15,7 @@ import type {
   PermissionResponse,
   RoleDetailResponse,
   RoleSummaryResponse,
+  UpdateRoleRequest,
 } from "../types";
 
 const navMocks = vi.hoisted(() => {
@@ -179,6 +180,8 @@ function renderRbacPage({
     totalPages: 1,
   })),
   listPermissions = vi.fn(async () => PERMISSIONS_FIXTURE),
+  updateRole,
+  updateRolePermissions,
 }: {
   permissions?: readonly string[];
   roles?: RoleSummaryResponse[];
@@ -187,6 +190,8 @@ function renderRbacPage({
   getRole?: Mock<(id: string) => Promise<RoleDetailResponse>>;
   listRoles?: Mock<(params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse>>;
   listPermissions?: Mock<() => Promise<PermissionResponse[]>>;
+  updateRole?: Mock<(id: string, payload: UpdateRoleRequest) => Promise<RoleDetailResponse>>;
+  updateRolePermissions?: Mock<() => Promise<RoleDetailResponse>>;
 } = {}) {
   return {
     createRole,
@@ -209,6 +214,8 @@ function renderRbacPage({
               roleDialogApi: {
                 getRole,
                 createRole,
+                ...(updateRole ? { updateRole } : {}),
+                ...(updateRolePermissions ? { updateRolePermissions } : {}),
               },
             }}
             permissionsTabProps={{
@@ -495,4 +502,79 @@ describe("RbacPageView & RolesTab", () => {
     expect(within(dialog).queryByText(/Too big:/)).not.toBeInTheDocument();
     expect(createRole).not.toHaveBeenCalled();
   });
+
+  it("lưu dialog Tạo vai trò khi đang chọn Thi gửi access EXAM và không kèm quyền nào (R3-2)", async () => {
+    const user = userEvent.setup();
+    const { createRole } = renderRbacPage();
+
+    await screen.findByText("Theo dõi lớp");
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Mã vai trò/), {
+      target: { value: "EXAM_PROCTOR" },
+    });
+    fireEvent.change(within(dialog).getByLabelText(/Tên vai trò/), {
+      target: { value: "Giám thị" },
+    });
+    await user.click(within(dialog).getByRole("checkbox", { name: "Cấp đối tượng Lớp học" }));
+    await user.click(within(dialog).getByRole("button", { name: "Thi" }));
+    await user.click(within(dialog).getByRole("button", { name: "Tạo vai trò" }));
+
+    await waitFor(() => {
+      expect(createRole).toHaveBeenCalledTimes(1);
+    });
+    expect(createRole).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "EXAM_PROCTOR", access: "EXAM", permissionCodes: [] }),
+    );
+  }, 15_000);
+
+  it("sửa vai trò tự tạo đổi phạm vi và trạng thái gửi đúng giá trị mới (R3-2)", async () => {
+    const user = userEvent.setup();
+    const customRole = ROLES_FIXTURE.find((r) => r.id === "r-custom-unused")!;
+    const getRole = vi.fn(
+      async (): Promise<RoleDetailResponse> => ({
+        ...customRole,
+        description: undefined,
+        access: "EXAM",
+        status: "INACTIVE",
+        permissionCodes: [],
+        version: 3,
+      }),
+    );
+    const updateRole = vi.fn(
+      async (id: string, payload: UpdateRoleRequest): Promise<RoleDetailResponse> => ({
+        ...customRole,
+        id,
+        access: payload.access ?? "EXAM",
+        status: payload.status ?? "INACTIVE",
+        permissionCodes: [],
+        version: payload.version + 1,
+      }),
+    );
+    const updateRolePermissions = vi.fn(
+      async (): Promise<RoleDetailResponse> => ({ ...customRole, permissionCodes: [], version: 5 }),
+    );
+    renderRbacPage({ getRole, updateRole, updateRolePermissions });
+
+    await screen.findByText("Vai trò tạm");
+    await user.click(screen.getByRole("button", { name: "Sửa vai trò Vai trò tạm" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const submit = await within(dialog).findByRole("button", { name: "Lưu vai trò" });
+    await user.click(within(dialog).getByRole("button", { name: "Quản trị" }));
+    await user.click(within(dialog).getByRole("combobox", { name: "Trạng thái" }));
+    await user.click(await screen.findByRole("option", { name: "Hoạt động" }));
+    await user.click(submit);
+
+    await waitFor(() => {
+      expect(updateRole).toHaveBeenCalledTimes(1);
+    });
+    expect(updateRole).toHaveBeenCalledWith("r-custom-unused", {
+      access: "MANAGE",
+      status: "ACTIVE",
+      version: 3,
+    });
+    expect(updateRolePermissions).not.toHaveBeenCalled();
+  }, 15_000);
 });
