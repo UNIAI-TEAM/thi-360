@@ -277,6 +277,38 @@ describe("UsersListView (Slice 1)", () => {
     expect(await screen.findByText("student01")).toBeInTheDocument();
   });
 
+  it("đổi bộ lọc khi đã có dữ liệu: các dòng cũ ở lại cho tới khi có dữ liệu mới, không hiện khung chờ (UNI-2577)", async () => {
+    const first = SAMPLE_USERS[0]!;
+    let releaseFiltered: () => void = () => {};
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async (query) => {
+      if (query.neverLoggedIn) {
+        await new Promise<void>((resolve) => {
+          releaseFiltered = resolve;
+        });
+        return { items: [first], page: 0, size: 20, totalItems: 1, totalPages: 1 };
+      }
+      return { items: SAMPLE_USERS, page: 0, size: 20, totalItems: SAMPLE_USERS.length, totalPages: 1 };
+    });
+    renderUsersView(makeDeps({ listUsers: listUsersMock }));
+
+    const table = await screen.findByRole("table");
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + SAMPLE_USERS.length));
+
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+    await waitFor(() =>
+      expect(listUsersMock).toHaveBeenLastCalledWith(expect.objectContaining({ neverLoggedIn: true })),
+    );
+
+    // Dữ liệu mới chưa về: bảng vẫn đủ các dòng cũ và báo đang bận, không thay bằng khung chờ.
+    expect(within(table).getAllByRole("row")).toHaveLength(1 + SAMPLE_USERS.length);
+    expect(table).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("Đang tải danh sách tài khoản...")).not.toBeInTheDocument();
+
+    releaseFiltered();
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + 1));
+    expect(table).not.toHaveAttribute("aria-busy");
+  });
+
   it("khi đang tải danh sách không hiển thị 0 tài khoản khớp bộ lọc", async () => {
     const pendingList = new Promise<never>(() => {});
     renderUsersView(makeDeps({ listUsers: vi.fn(() => pendingList) }));
