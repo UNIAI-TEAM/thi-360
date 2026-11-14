@@ -2,26 +2,35 @@ package vn.unicom.thi360.catalog.application;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.catalog.spi.CatalogUsage;
+import vn.unicom.thi360.shared.web.AppMessages;
 import vn.unicom.thi360.catalog.spi.CatalogUsageProvider;
 
 @Component
 public class TreeRefUsageProvider implements CatalogUsageProvider {
 
-    private static final String SOURCE = "Danh mục cây";
+    private static final String SOURCE_KEY = "catalog.usage.source.treeRef";
     private static final String OBJECT_TYPE = "TREE_NODE";
 
     private final JdbcTemplate jdbcTemplate;
+    private final AppMessages messages;
 
     public TreeRefUsageProvider(JdbcTemplate jdbcTemplate) {
+        this(jdbcTemplate, AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public TreeRefUsageProvider(JdbcTemplate jdbcTemplate, AppMessages messages) {
         this.jdbcTemplate = jdbcTemplate;
+        this.messages = messages != null ? messages : AppMessages.defaultInstance();
     }
 
     @Override
     public String source() {
-        return SOURCE;
+        return messages.get(SOURCE_KEY);
     }
 
     @Override
@@ -51,6 +60,6 @@ public class TreeRefUsageProvider implements CatalogUsageProvider {
                 """,
                 (rs, rowNum) -> rs.getString("label"),
                 itemId);
-        return List.of(new CatalogUsage(SOURCE, OBJECT_TYPE, count, false, labels));
+        return List.of(new CatalogUsage(source(), OBJECT_TYPE, count, false, labels));
     }
 }

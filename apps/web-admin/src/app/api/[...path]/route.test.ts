@@ -363,4 +363,28 @@ describe("proxy /api/[...path]", () => {
 
     expect(lastCall().url).toBe(`${API}/api/v1/me`);
   });
+
+  it("suy ra Accept-Language từ cookie thi360_locale và bỏ qua header trình duyệt", async () => {
+    await GET(
+      request("v1/me", {
+        headers: {
+          cookie: "thi360_locale=en",
+          "accept-language": "fr-FR,vi;q=0.9",
+        },
+      }),
+      context("v1", "me"),
+    );
+    expect(lastCall().headers.get("accept-language")).toBe("en");
+
+    await GET(
+      request("v1/me", {
+        headers: {
+          cookie: "thi360_locale=invalid",
+          "accept-language": "en-US,en;q=0.9",
+        },
+      }),
+      context("v1", "me"),
+    );
+    expect(lastCall().headers.get("accept-language")).toBe("vi");
+  });
 });

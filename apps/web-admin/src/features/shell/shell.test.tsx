@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
@@ -61,7 +61,13 @@ describe("AppShell", () => {
     expect(breadcrumb).toHaveTextContent("Tổng quan");
     expect(breadcrumb).toHaveTextContent("Bảng điều khiển");
 
-    const trigger = screen.getByRole("button", { name: "Menu tài khoản" });
+    const banner = screen.getByRole("banner");
+    const themeButton = within(banner).getByRole("button", { name: "Chuyển sang chế độ tối" });
+    const localeButton = within(banner).getByRole("button", { name: "Chọn ngôn ngữ" });
+    const trigger = within(banner).getByRole("button", { name: "Menu tài khoản" });
+    expect(themeButton.compareDocumentPosition(localeButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(localeButton.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(themeButton.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(trigger).toHaveTextContent("ops.admin");
     await userEvent.click(trigger);
 

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
+import { useUiStrings } from "./ui-strings";
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
@@ -29,7 +30,7 @@ export type DialogContentProps = ComponentProps<typeof DialogPrimitive.Content> 
   /** `md` rộng 480px (biểu mẫu ngắn), `lg` rộng 720px. */
   size?: "md" | "lg";
   /** Tên nút đóng (×) cho trình đọc màn hình. Bắt buộc vì không có chuỗi mặc định. */
-  closeLabel: string;
+  closeLabel?: string;
 };
 
 export function DialogContent({
@@ -39,6 +40,7 @@ export function DialogContent({
   closeLabel,
   ...props
 }: DialogContentProps) {
+  const { common } = useUiStrings();
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
@@ -53,7 +55,7 @@ export function DialogContent({
       >
         {children}
         <DialogPrimitive.Close
-          aria-label={closeLabel}
+          aria-label={closeLabel ?? common.close}
           className={cn(
             "absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
             focusRing,

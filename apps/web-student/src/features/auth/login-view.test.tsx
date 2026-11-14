@@ -1,21 +1,29 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { APP_TIME_ZONE, INTL_FORMATS, resolveIntlLocale, type AppLocale } from "@thi360/web-kit/preferences";
 import { NextIntlClientProvider } from "next-intl";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import en_messages from "@/messages/en.json";
+import vi_messages from "@/messages/vi.json";
+import { PreferencesProvider } from "@/providers/preferences-provider";
+import { QueryProvider } from "@/providers/query-provider";
 import { renderWithProviders } from "@/test/render";
 import { LoginView } from "./login-view";
-
 const mocks = vi.hoisted(() => ({
   callbackUrl: null as string | null,
   reason: null as string | null,
   loginWithPassword: vi.fn(),
   navigate: vi.fn(),
+  refresh: vi.fn(),
+  replace: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/dang-nhap",
+  useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace }),
   useSearchParams: () =>
     new URLSearchParams({
       ...(mocks.callbackUrl ? { callbackUrl: mocks.callbackUrl } : {}),
@@ -39,6 +47,9 @@ beforeEach(() => {
 afterEach(() => {
   mocks.loginWithPassword.mockReset();
   mocks.navigate.mockReset();
+  mocks.refresh.mockReset();
+  mocks.replace.mockReset();
+  document.cookie = "thi360_locale=; Max-Age=0; Path=/";
 });
 
 describe("LoginView", () => {
@@ -99,5 +110,52 @@ describe("LoginView", () => {
     const toggle = screen.getByRole("button", { name: "Show password" });
     await userEvent.click(toggle);
     expect(screen.getByRole("button", { name: "Hide password" })).toBeInTheDocument();
+  });
+
+  it("đổi ngôn ngữ bằng bàn phím dưới PreferencesProvider + QueryProvider giữ nguyên giá trị đang nhập và giữ focus ở nút chọn ngôn ngữ", async () => {
+    const user = userEvent.setup();
+    function RootHarness() {
+      const [locale, setLocale] = useState<AppLocale>("vi");
+      mocks.refresh.mockImplementation(() => setLocale("en"));
+      return (
+        <NextIntlClientProvider
+          locale={resolveIntlLocale(locale)}
+          messages={locale === "en" ? en_messages : vi_messages}
+          timeZone={APP_TIME_ZONE}
+          formats={INTL_FORMATS}
+        >
+          <PreferencesProvider locale={locale} initialTheme="light">
+            <QueryProvider navigate={mocks.navigate}>
+              <LoginView navigate={mocks.navigate} />
+            </QueryProvider>
+          </PreferencesProvider>
+        </NextIntlClientProvider>
+      );
+    }
+
+    render(<RootHarness />);
+
+    const identifierInput = screen.getByLabelText(/Tên đăng nhập hoặc email/);
+    await user.type(identifierInput, "ops.admin");
+    expect(identifierInput).toHaveValue("ops.admin");
+
+    const switcher = screen.getByRole("button", { name: "Chọn ngôn ngữ" });
+    switcher.focus();
+    expect(switcher).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    const viItem = await screen.findByRole("menuitemradio", { name: "Tiếng Việt" });
+    const englishItem = screen.getByRole("menuitemradio", { name: "English" });
+    expect(viItem).toHaveAttribute("aria-checked", "true");
+    expect(englishItem).toHaveAttribute("aria-checked", "false");
+    expect(viItem).toHaveFocus();
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument());
+    expect(document.cookie).toContain("thi360_locale=en");
+    expect(screen.getByLabelText(/Username or email/)).toBe(identifierInput);
+    expect(identifierInput).toHaveValue("ops.admin");
+    const updatedSwitcher = screen.getByRole("button", { name: "Change language" });
+    expect(updatedSwitcher).toBe(switcher);
+    expect(updatedSwitcher).toHaveFocus();
   });
 });

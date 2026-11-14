@@ -10,6 +10,7 @@ import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
 import {
   AppearanceApiError,
+  applyAppearanceToDocument,
   loadAppearance as apiLoadAppearance,
   resetAppearance as apiResetAppearance,
   saveAppearance as apiSaveAppearance,
@@ -72,6 +73,7 @@ afterEach(() => {
   document.getElementById(THEME_STYLE_ELEMENT_ID)?.remove();
   vi.unstubAllGlobals();
   document.cookie = "thi360_xsrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+  document.cookie = "thi360_theme=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
 });
 
 describe("AppearanceView", () => {
@@ -261,6 +263,26 @@ describe("AppearanceView", () => {
     ).toBe("#059669");
   });
 
+  it("giữ nguyên data-theme theo cookie thi360_theme khi bấm Lưu và áp dụng nhưng vẫn cập nhật style tag", async () => {
+    document.documentElement.dataset.theme = "dark";
+    document.cookie = "thi360_theme=dark; path=/";
+    const saveMock = vi.fn<AppearanceSaver>().mockResolvedValueOnce({
+      palette: { presetId: "navy-teal" },
+      mode: "light",
+      version: 3,
+    });
+
+    renderAppearance({ saveAppearance: saveMock });
+    await screen.findByRole("heading", { name: "Tùy chỉnh giao diện" });
+    await userEvent.click(screen.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }));
+    await userEvent.click(screen.getByRole("tab", { name: "Sáng" }));
+    await userEvent.click(screen.getByRole("button", { name: "Lưu và áp dụng" }));
+
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(1));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.getElementById(THEME_STYLE_ELEMENT_ID)?.textContent).toContain("#0f3c6e");
+  });
+
   it("hiển thị thông báo lỗi theo mã lỗi next-intl, không dùng message thô từ backend", async () => {
     const saveMock = vi
       .fn<AppearanceSaver>()
@@ -401,5 +423,46 @@ describe("appearance api client", () => {
     expect(request.url).toMatch(/\/api\/v1\/admin\/appearance\/reset$/);
     expect(request.headers.get("x-xsrf-token")).toBe("xsrf-reset");
     expect(await request.json()).toEqual({ version: 2 });
+  });
+});
+
+describe("applyAppearanceToDocument", () => {
+  it("áp dụng config.mode khi không có cookie hoặc cookie sai giá trị và cập nhật style tag", () => {
+    applyAppearanceToDocument({
+      palette: { presetId: "navy-teal" },
+      mode: "dark",
+      version: 1,
+    });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.getElementById(THEME_STYLE_ELEMENT_ID)?.textContent).toContain("#0f3c6e");
+
+    document.cookie = "thi360_theme=sepia; path=/";
+    applyAppearanceToDocument({
+      palette: { presetId: "thi360-green" },
+      mode: "light",
+      version: 2,
+    });
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(document.getElementById(THEME_STYLE_ELEMENT_ID)?.textContent).toContain("#059669");
+  });
+
+  it("ưu tiên cookie thi360_theme hợp lệ khi áp dụng cấu hình mới và vẫn cập nhật style tag", () => {
+    document.cookie = "thi360_theme=dark; path=/";
+    applyAppearanceToDocument({
+      palette: { presetId: "navy-teal" },
+      mode: "light",
+      version: 1,
+    });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.getElementById(THEME_STYLE_ELEMENT_ID)?.textContent).toContain("#0f3c6e");
+
+    document.cookie = "thi360_theme=light; path=/";
+    applyAppearanceToDocument({
+      palette: { presetId: "thi360-green" },
+      mode: "dark",
+      version: 2,
+    });
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(document.getElementById(THEME_STYLE_ELEMENT_ID)?.textContent).toContain("#059669");
   });
 });

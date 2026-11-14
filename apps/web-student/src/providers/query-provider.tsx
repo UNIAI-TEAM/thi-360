@@ -1,6 +1,6 @@
 "use client";
 
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { notify, Toaster } from "@thi360/ui";
 import {
   clearStaleUnauthorizedMarker,
@@ -55,16 +55,26 @@ export function QueryProvider({
     }
   }, [guard, pathname]);
 
-  const [client] = useState(() => {
-    const forbiddenMessage = t("forbiddenToast");
-    const recovery = createUnauthorizedRecovery({
+  const forbiddenMessage = t("forbiddenToast");
+  const [recovery] = useState(() =>
+    createUnauthorizedRecovery({
       refreshSession,
       clearSessionBestEffort,
       getErrorStatus,
       onReload: (url) => navigate(url),
       onRedirectLogin: (currentHref) => navigate(buildLoginUrl(webUrl(), currentHref)),
-    });
+    }),
+  );
+  const [client] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: shouldRetry, refetchOnWindowFocus: false },
+        },
+      }),
+  );
 
+  useEffect(() => {
     const handleError = (error: unknown) => {
       const status = getErrorStatus(error);
       if (status === 401 && guard.pathname() !== LOGIN_PATH) {
@@ -74,14 +84,21 @@ export function QueryProvider({
         router.replace(FORBIDDEN_PATH);
       }
     };
-    return new QueryClient({
-      queryCache: new QueryCache({ onError: handleError }),
-      mutationCache: new MutationCache({ onError: handleError }),
-      defaultOptions: {
-        queries: { retry: shouldRetry, refetchOnWindowFocus: false },
-      },
+    const unsubQuery = client.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "error") {
+        handleError(event.action.error);
+      }
     });
-  });
+    const unsubMutation = client.getMutationCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "error") {
+        handleError(event.action.error);
+      }
+    });
+    return () => {
+      unsubQuery();
+      unsubMutation();
+    };
+  }, [client, forbiddenMessage, guard, pathname, recovery, router]);
 
   return (
     <QueryClientProvider client={client}>

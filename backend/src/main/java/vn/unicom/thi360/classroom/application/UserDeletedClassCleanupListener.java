@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -27,11 +28,11 @@ import vn.unicom.thi360.classroom.infrastructure.ClassRoomRepository;
 import vn.unicom.thi360.identity.spi.UserDeleted;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Component
 public class UserDeletedClassCleanupListener {
 
-    private static final String DEFAULT_DELETE_REASON = "Tài khoản đã bị xóa";
     private static final String MODULE = "CLASSROOM";
     private static final String TARGET_TYPE_CLASS = "CLASS";
 
@@ -42,6 +43,7 @@ public class UserDeletedClassCleanupListener {
     private final ClassMemberLock classMemberLock;
     private final AuditRecorder auditRecorder;
     private final Clock clock;
+    private final AppMessages messages;
 
     public UserDeletedClassCleanupListener(
             ClassMemberRepository classMemberRepository,
@@ -51,6 +53,27 @@ public class UserDeletedClassCleanupListener {
             ClassMemberLock classMemberLock,
             AuditRecorder auditRecorder,
             Clock clock) {
+        this(
+                classMemberRepository,
+                classMemberHistoryRepository,
+                classRoomRepository,
+                userDirectory,
+                classMemberLock,
+                auditRecorder,
+                clock,
+                AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public UserDeletedClassCleanupListener(
+            ClassMemberRepository classMemberRepository,
+            ClassMemberHistoryRepository classMemberHistoryRepository,
+            ClassRoomRepository classRoomRepository,
+            UserDirectory userDirectory,
+            ClassMemberLock classMemberLock,
+            AuditRecorder auditRecorder,
+            Clock clock,
+            AppMessages messages) {
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
         this.classRoomRepository = classRoomRepository;
@@ -58,6 +81,7 @@ public class UserDeletedClassCleanupListener {
         this.classMemberLock = classMemberLock;
         this.auditRecorder = auditRecorder;
         this.clock = clock;
+        this.messages = messages;
     }
 
     @EventListener
@@ -74,7 +98,8 @@ public class UserDeletedClassCleanupListener {
             return;
         }
 
-        String reason = userDirectory.findDeleteReason(event.userId()).orElse(DEFAULT_DELETE_REASON);
+        String reason = userDirectory.findDeleteReason(event.userId())
+                .orElseGet(() -> messages.get("classroom.memberHistory.userDeletedReason"));
         Instant occurredAt = event.deletedAt() != null ? event.deletedAt() : Instant.now(clock);
         List<ClassMemberHistory> historyRows = new ArrayList<>(memberships.size());
         Set<UUID> classIds = new LinkedHashSet<>(memberships.size());

@@ -93,4 +93,27 @@ describe("web-student proxy /api/[...path]", () => {
     await handler(request("v1/ping", { method, body: method === "DELETE" ? undefined : "{}" }), context("v1", "ping"));
     expect(lastCall().init.method).toBe(method);
   });
+
+  it("suy ra Accept-Language từ cookie thi360_locale và bỏ qua header trình duyệt", async () => {
+    await GET(
+      request("v1/me", {
+        headers: {
+          cookie: "thi360_locale=en",
+          "accept-language": "vi-VN,vi;q=0.9",
+        },
+      }),
+      context("v1", "me"),
+    );
+    expect(lastCall().headers.get("accept-language")).toBe("en");
+
+    await GET(
+      request("v1/me", {
+        headers: {
+          "accept-language": "en-US,en;q=0.9",
+        },
+      }),
+      context("v1", "me"),
+    );
+    expect(lastCall().headers.get("accept-language")).toBe("vi");
+  });
 });

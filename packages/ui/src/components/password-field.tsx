@@ -3,6 +3,8 @@
 import { Check, Circle, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { type ComponentProps, type ReactNode, useId, useRef, useState } from "react";
 import { cn } from "../lib/cn";
+import { UI_STRINGS_BY_LOCALE, type UiLocale } from "../messages/ui-strings";
+import { useUiStrings } from "./ui-strings";
 import { fieldBase, focusRing } from "../lib/styles";
 
 const UPPER_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -29,23 +31,16 @@ export interface PasswordFieldLabels {
   ruleSpecial: string;
 }
 
-const DEFAULT_LABELS: PasswordFieldLabels = {
-  showPassword: "Hiện mật khẩu",
-  hidePassword: "Ẩn mật khẩu",
-  generate: "Tạo ngẫu nhiên",
-  rulesLabel: "Điều kiện mật khẩu",
-  ruleLength: "Từ 8 đến 64 ký tự",
-  ruleUpper: "Có ít nhất một chữ hoa",
-  ruleLower: "Có ít nhất một chữ thường",
-  ruleDigit: "Có ít nhất một chữ số",
-  ruleSpecial: "Có ít nhất một ký tự đặc biệt",
-};
 
 export function evaluatePasswordRules(
   password: string,
+  labelsOrLocale: Partial<PasswordFieldLabels> | UiLocale = "vi",
   labels: Partial<PasswordFieldLabels> = {},
 ): PasswordRuleStatus[] {
-  const merged = { ...DEFAULT_LABELS, ...labels };
+  const locale: UiLocale = typeof labelsOrLocale === "string" ? labelsOrLocale : "vi";
+  const resolvedOverrides = typeof labelsOrLocale === "string" ? labels : labelsOrLocale;
+  const base = UI_STRINGS_BY_LOCALE[locale]?.passwordField ?? UI_STRINGS_BY_LOCALE.vi.passwordField;
+  const merged = { ...base, ...resolvedOverrides };
   return [
     { key: "length", label: merged.ruleLength, met: password.length >= 8 && password.length <= 64 },
     { key: "upper", label: merged.ruleUpper, met: /\p{Lu}/u.test(password) },
@@ -121,8 +116,9 @@ export function PasswordField({
   );
   const inputRef = useRef<HTMLInputElement | null>(null);
   const rulesId = useId();
+  const { passwordField: defaultLabels } = useUiStrings();
   const resolvedValue = typeof value === "string" ? value : uncontrolledValue;
-  const mergedLabels = { ...DEFAULT_LABELS, ...labels };
+  const mergedLabels = { ...defaultLabels, ...labels };
   const rules = showRules ? evaluatePasswordRules(resolvedValue, mergedLabels) : null;
   const describedBy = [ariaDescribedBy, rules && rulesId].filter(Boolean).join(" ") || undefined;
 

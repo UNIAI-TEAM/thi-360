@@ -96,7 +96,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
     await expect(page.getByRole("button", { name: "Ngừng hoạt động" })).toBeVisible();
 
     // 4. Reset mật khẩu -> đăng nhập thành công bằng mật khẩu mới
-    await page.getByRole("button", { name: "Reset mật khẩu" }).click();
+    await page.getByRole("button", { name: "Đặt lại mật khẩu" }).click();
     const resetDialog = page.getByRole("dialog");
     await resetDialog.getByLabel(/Mật khẩu mới/).fill(resetPassword);
     await resetDialog.getByLabel(/Lý do đặt lại mật khẩu/).fill("E2E reset");
@@ -207,7 +207,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/[^/]+$`));
       await expect(page.getByRole("heading", { name: /Học viên 01/ })).toBeVisible();
 
-      await expect(page.getByRole("button", { name: "Reset mật khẩu" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Đặt lại mật khẩu" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Ngừng hoạt động" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Kích hoạt lại" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Xóa" })).toHaveCount(0);

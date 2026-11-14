@@ -34,7 +34,10 @@ export {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuItemIndicator,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./components/dropdown-menu";
@@ -91,6 +94,26 @@ export {
 export { Textarea, type TextareaProps } from "./components/textarea";
 export { notify, Toaster, toast, type ToasterProps } from "./components/toaster";
 export { Tooltip, type TooltipProps } from "./components/tooltip";
+export { LocaleSwitcher, type LocaleSwitcherProps } from "./components/locale-switcher";
+export { ThemeToggle, type ThemeToggleProps } from "./components/theme-toggle";
+export {
+  UiPreferencesProvider,
+  useUiPreferences,
+  type UiPreferencesContextValue,
+  type UiPreferencesProviderProps,
+} from "./components/ui-preferences";
+export {
+  UiStringsProvider,
+  useUiStrings,
+  type UiStringsProviderProps,
+} from "./components/ui-strings";
+export {
+  UI_STRINGS_BY_LOCALE,
+  UI_STRINGS_EN,
+  UI_STRINGS_VI,
+  type UiLocale,
+  type UiStrings,
+} from "./messages/ui-strings";
 export {
   TreeView,
   type TreeViewItem,

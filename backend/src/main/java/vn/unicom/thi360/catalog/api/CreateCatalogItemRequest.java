@@ -11,21 +11,21 @@ import vn.unicom.thi360.catalog.spi.CatalogStatus;
 @Schema(description = "Yêu cầu tạo giá trị danh mục mới")
 public record CreateCatalogItemRequest(
         @Schema(description = "Mã giá trị duy nhất trong nhóm", example = "TOAN", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Mã giá trị không được để trống")
-        @Size(max = 100, message = "Mã giá trị tối đa 50 ký tự sau khi bỏ khoảng trắng")
+        @NotBlank(message = "{validation.catalog.item.code.notBlank}")
+        @Size(max = 100, message = "{validation.catalog.item.code.size}")
         String code,
         @Schema(description = "Tên tiếng Việt", example = "Toán học", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Tên tiếng Việt không được để trống")
-        @Size(max = 255, message = "Tên tiếng Việt tối đa 255 ký tự")
+        @NotBlank(message = "{validation.catalog.item.nameVi.notBlank}")
+        @Size(max = 255, message = "{validation.catalog.item.nameVi.size}")
         String nameVi,
         @Schema(description = "Tên tiếng Anh", example = "Mathematics")
-        @Size(max = 255, message = "Tên tiếng Anh tối đa 255 ký tự")
+        @Size(max = 255, message = "{validation.catalog.nameEn.size}")
         String nameEn,
         @Schema(description = "Mô tả")
-        @Size(max = 1000, message = "Mô tả tối đa 1000 ký tự")
+        @Size(max = 1000, message = "{validation.catalog.description.size}")
         String description,
         @Schema(description = "Thứ tự hiển thị (không âm; trống thì xếp cuối)")
-        @Min(value = 0, message = "Thứ tự hiển thị phải lớn hơn hoặc bằng 0")
+        @Min(value = 0, message = "{validation.catalog.item.displayOrder.min}")
         Integer displayOrder,
         @Schema(description = "Trạng thái ban đầu (mặc định ACTIVE)")
         CatalogStatus status,
@@ -38,7 +38,7 @@ public record CreateCatalogItemRequest(
         @Schema(description = "Danh sách ID môn học theo thứ tự (bắt buộc cho nhóm COMBINATION, không trùng)")
         List<UUID> subjectItemIds,
         @Schema(description = "Ghi chú nguồn quy ước (tùy chọn cho nhóm COMBINATION)")
-        @Size(max = 500, message = "Nguồn quy ước tối đa 500 ký tự")
+        @Size(max = 500, message = "{validation.catalog.combination.sourceNote.size}")
         String sourceNote
 ) {
     public CreateCatalogItemRequest(

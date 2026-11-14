@@ -35,7 +35,6 @@ import vn.unicom.thi360.catalog.api.CatalogItemResponse;
 import vn.unicom.thi360.catalog.api.CatalogTreeNodeResponse;
 import vn.unicom.thi360.catalog.api.CatalogUsageResponse;
 import vn.unicom.thi360.catalog.api.CatalogUsagesResponse;
-import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.api.CreateCatalogGroupRequest;
 import vn.unicom.thi360.catalog.api.CreateCatalogItemRequest;
 import vn.unicom.thi360.catalog.api.MoveCatalogItemRequest;
@@ -71,6 +70,7 @@ import vn.unicom.thi360.shared.api.VersionConflictException;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Service
 public class CatalogAdminService {
@@ -117,6 +117,7 @@ public class CatalogAdminService {
     private final JdbcTemplate jdbcTemplate;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final AppMessages messages;
 
     public CatalogAdminService(
             CatalogGroupRepository catalogGroupRepository,
@@ -132,7 +133,8 @@ public class CatalogAdminService {
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
             EntityManager entityManager,
-            Clock clock) {
+            Clock clock,
+            AppMessages messages) {
         this.catalogGroupRepository = catalogGroupRepository;
         this.catalogItemRepository = catalogItemRepository;
         this.catalogGroupRefRepository = catalogGroupRefRepository;
@@ -147,6 +149,7 @@ public class CatalogAdminService {
         this.jdbcTemplate = jdbcTemplate;
         this.entityManager = entityManager;
         this.clock = clock;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
@@ -259,7 +262,7 @@ public class CatalogAdminService {
         CatalogGroupKind kind = request.kind() == null ? CatalogGroupKind.SIMPLE : request.kind();
         if (kind == CatalogGroupKind.COMBINATION) {
             throw new ValidationException(List.of(
-                    new FieldError("kind", "INVALID_KIND", "Không thể tạo nhóm kiểu COMBINATION")));
+                    new FieldError("kind", "INVALID_KIND", messages.get("validation.catalog.kind.invalid"))));
         }
 
         List<String> validatedLevels = null;
@@ -267,13 +270,13 @@ public class CatalogAdminService {
             validatedLevels = validateLevels(request.levels());
         } else if (request.levels() != null && !request.levels().isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("levels", "INVALID_FOR_SIMPLE", "Chỉ nhóm TREE mới có danh sách cấp")));
+                    new FieldError("levels", "INVALID_FOR_SIMPLE", messages.get("validation.catalog.levels.treeOnly"))));
         }
 
         List<UUID> refGroupIds = deduplicateIds(request.refGroupIds());
         if (kind != CatalogGroupKind.TREE && !refGroupIds.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("refGroupIds", "INVALID_FOR_SIMPLE", "Chỉ nhóm TREE mới có danh mục liên kết")));
+                    new FieldError("refGroupIds", "INVALID_FOR_SIMPLE", messages.get("validation.catalog.refGroups.treeOnly"))));
         }
         if (kind == CatalogGroupKind.TREE && !refGroupIds.isEmpty()) {
             validateRefGroupsForAdd(null, refGroupIds);
@@ -337,9 +340,8 @@ public class CatalogAdminService {
         CatalogStatus previousStatus = group.getStatus();
         boolean deactivating = previousStatus == CatalogStatus.ACTIVE && request.status() == CatalogStatus.INACTIVE;
         String trimmedReason = deactivating
-                ? requireReason(request.reason(), "Vui lòng nhập lý do khi ngừng sử dụng nhóm danh mục")
+                ? requireReason(request.reason(), "validation.catalog.group.deactivateReason.required")
                 : CatalogNormalizer.trimToNull(request.reason());
-
         List<CatalogGroupRefResponse> existingRefs =
                 catalogSupportDao.loadGroupRefs(List.of(groupId)).getOrDefault(groupId, List.of());
         Map<String, Object> before = groupAuditState(group, existingRefs);
@@ -374,7 +376,7 @@ public class CatalogAdminService {
         if (request.nameVi() != null) {
             if (request.nameVi().isBlank()) {
                 throw new ValidationException(List.of(
-                        new FieldError("nameVi", "NOT_BLANK", "Tên tiếng Việt của nhóm không được để trống")));
+                        new FieldError("nameVi", "NOT_BLANK", messages.get("validation.catalog.group.nameVi.notBlank"))));
             }
             newNameVi = request.nameVi();
         }
@@ -383,7 +385,7 @@ public class CatalogAdminService {
         if (request.levels() != null) {
             if (group.getKind() != CatalogGroupKind.TREE) {
                 throw new ValidationException(List.of(
-                        new FieldError("levels", "INVALID_FOR_SIMPLE", "Chỉ nhóm TREE mới có danh sách cấp")));
+                        new FieldError("levels", "INVALID_FOR_SIMPLE", messages.get("validation.catalog.levels.treeOnly"))));
             }
             newLevels = validateLevels(request.levels());
             int currentCount = group.getLevels() == null ? 0 : group.getLevels().size();
@@ -395,7 +397,7 @@ public class CatalogAdminService {
         if (request.refGroupIds() != null) {
             if (group.getKind() != CatalogGroupKind.TREE) {
                 throw new ValidationException(List.of(
-                        new FieldError("refGroupIds", "INVALID_FOR_SIMPLE", "Chỉ nhóm TREE mới có danh mục liên kết")));
+                        new FieldError("refGroupIds", "INVALID_FOR_SIMPLE", messages.get("validation.catalog.refGroups.treeOnly"))));
             }
             List<UUID> requestedRefIds = deduplicateIds(request.refGroupIds());
             replaceGroupRefs(groupId, requestedRefIds);
@@ -447,7 +449,7 @@ public class CatalogAdminService {
         if (catalogGroupRefRepository.existsByIdRefGroupId(groupId)) {
             throw new ConflictException(ERR_REF_GROUP_IN_USE);
         }
-        String trimmedReason = requireReason(reason, "Vui lòng nhập lý do khi xóa nhóm danh mục");
+        String trimmedReason = requireReason(reason, "validation.catalog.group.deleteReason.required");
 
         List<CatalogGroupRefResponse> existingRefs =
                 catalogSupportDao.loadGroupRefs(List.of(groupId)).getOrDefault(groupId, List.of());
@@ -609,7 +611,7 @@ public class CatalogAdminService {
                 throw new ValidationException(
                         ERR_REF_INVALID,
                         null,
-                        List.of(new FieldError("refItemIds", ERR_REF_INVALID, "Chỉ nhóm TREE mới gắn được liên kết")));
+                        List.of(new FieldError("refItemIds", ERR_REF_INVALID, messages.get("validation.catalog.refItems.treeOnly"))));
             }
             validateItemRefsForAdd(groupId, refItemIds, Set.of());
         }
@@ -622,7 +624,7 @@ public class CatalogAdminService {
                 || (request.subjectItemIds() != null && !request.subjectItemIds().isEmpty())
                 || CatalogNormalizer.trimToNull(request.sourceNote()) != null) {
             throw new ValidationException(List.of(new FieldError(
-                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", messages.get("validation.catalog.combination.onlyCombinationGroup"))));
         }
 
         int maxExistingValue = catalogItemRepository.findMaxValueByGroupId(groupId);
@@ -702,9 +704,8 @@ public class CatalogAdminService {
         CatalogStatus previousStatus = item.getStatus();
         boolean deactivating = previousStatus == CatalogStatus.ACTIVE && request.status() == CatalogStatus.INACTIVE;
         String trimmedReason = deactivating
-                ? requireReason(request.reason(), "Vui lòng nhập lý do khi ngừng sử dụng giá trị danh mục")
+                ? requireReason(request.reason(), "validation.catalog.item.deactivateReason.required")
                 : CatalogNormalizer.trimToNull(request.reason());
-
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
         CombinationVersionResponse beforeCombo = group.getKind() == CatalogGroupKind.COMBINATION
@@ -745,7 +746,7 @@ public class CatalogAdminService {
         if (request.nameVi() != null) {
             if (request.nameVi().isBlank()) {
                 throw new ValidationException(List.of(
-                        new FieldError("nameVi", "NOT_BLANK", "Tên tiếng Việt không được để trống")));
+                        new FieldError("nameVi", "NOT_BLANK", messages.get("validation.catalog.item.nameVi.notBlank"))));
             }
             newNameVi = request.nameVi();
         }
@@ -756,7 +757,7 @@ public class CatalogAdminService {
                 throw new ValidationException(
                         ERR_REF_INVALID,
                         null,
-                        List.of(new FieldError("refItemIds", ERR_REF_INVALID, "Chỉ nhóm TREE mới gắn được liên kết")));
+                        List.of(new FieldError("refItemIds", ERR_REF_INVALID, messages.get("validation.catalog.refItems.treeOnly"))));
             }
             List<UUID> requestedRefIds = deduplicateIds(request.refItemIds());
             Set<UUID> existingOwnRefIds = new HashSet<>();
@@ -823,7 +824,7 @@ public class CatalogAdminService {
                 || request.subjectItemIds() != null
                 || request.sourceNote() != null) {
             throw new ValidationException(List.of(new FieldError(
-                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", messages.get("validation.catalog.combination.onlyCombinationGroup"))));
         }
 
         item.updateDetails(
@@ -874,25 +875,25 @@ public class CatalogAdminService {
         List<UUID> requestedIds = request.itemIds();
         if (requestedIds == null || requestedIds.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("itemIds", "NOT_EMPTY", "Danh sách sắp xếp không được để trống")));
+                    new FieldError("itemIds", "NOT_EMPTY", messages.get("validation.catalog.reorder.itemIds.notEmpty"))));
         }
 
         Set<UUID> seen = new LinkedHashSet<>();
         for (UUID id : requestedIds) {
             if (id == null) {
                 throw new ValidationException(List.of(
-                        new FieldError("itemIds", "INVALID", "Danh sách sắp xếp chứa ID trống")));
+                        new FieldError("itemIds", "INVALID", messages.get("validation.catalog.reorder.invalidItem"))));
             }
             if (!seen.add(id)) {
                 throw new ValidationException(List.of(
-                        new FieldError("itemIds", "DUPLICATE", "Danh sách sắp xếp chứa ID trùng lặp")));
+                        new FieldError("itemIds", "DUPLICATE", messages.get("validation.catalog.reorder.duplicateItem"))));
             }
         }
 
         List<CatalogItem> loaded = catalogItemRepository.findByGroupIdAndIdIn(groupId, seen);
         if (loaded.size() != seen.size()) {
             throw new ValidationException(List.of(
-                    new FieldError("itemIds", "INVALID_ITEMS", "Một hoặc nhiều giá trị không thuộc nhóm này")));
+                    new FieldError("itemIds", "INVALID_ITEMS", messages.get("validation.catalog.reorder.invalidGroup"))));
         }
 
         Map<UUID, CatalogItem> byId = new HashMap<>();
@@ -995,7 +996,7 @@ public class CatalogAdminService {
         if (!deleteUsages.isEmpty()) {
             throw new CatalogConflictException(ERR_ITEM_IN_USE, toUsageFieldErrors(deleteUsages));
         }
-        String trimmedReason = requireReason(reason, "Vui lòng nhập lý do khi xóa giá trị danh mục");
+        String trimmedReason = requireReason(reason, "validation.catalog.item.deleteReason.required");
 
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
@@ -1031,7 +1032,7 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (group.getKind() != CatalogGroupKind.TREE) {
             throw new ValidationException(List.of(
-                    new FieldError("id", "NOT_TREE", "Nhóm danh mục này không phải kiểu TREE")));
+                    new FieldError("id", "NOT_TREE", messages.get("validation.catalog.group.notTree"))));
         }
 
         boolean hasQuery = q != null && !q.isBlank();
@@ -1310,7 +1311,7 @@ public class CatalogAdminService {
             throw new ValidationException(
                     ERR_REF_INVALID,
                     null,
-                    List.of(new FieldError("groupId", ERR_REF_INVALID, "Chỉ nhóm TREE mới có danh mục liên kết")));
+                    List.of(new FieldError("groupId", ERR_REF_INVALID, messages.get("validation.catalog.refGroups.treeOnly"))));
         }
 
         validateRefGroupsForAdd(groupId, List.of(refGroupId));
@@ -1386,7 +1387,7 @@ public class CatalogAdminService {
             throw new ValidationException(
                     ERR_REF_INVALID,
                     null,
-                    List.of(new FieldError("itemId", ERR_REF_INVALID, "Chỉ nút thuộc nhóm TREE mới gắn liên kết")));
+                    List.of(new FieldError("itemId", ERR_REF_INVALID, messages.get("validation.catalog.refItem.treeOnly"))));
         }
 
         CatalogItemRefId refId = new CatalogItemRefId(itemId, refItemId);
@@ -1507,7 +1508,7 @@ public class CatalogAdminService {
                 throw new ValidationException(
                         ERR_REF_INVALID,
                         null,
-                        List.of(new FieldError("refGroupIds", ERR_REF_INVALID, "Không thể liên kết tới chính nhóm hiện tại")));
+                        List.of(new FieldError("refGroupIds", ERR_REF_INVALID, messages.get("validation.catalog.refGroups.self"))));
             }
             CatalogGroup target = loaded.get(refGroupId);
             if (target == null
@@ -1516,7 +1517,7 @@ public class CatalogAdminService {
                 throw new ValidationException(
                         ERR_REF_INVALID,
                         null,
-                        List.of(new FieldError("refGroupIds", ERR_REF_INVALID, "Nhóm liên kết phải là nhóm SIMPLE đang hoạt động")));
+                        List.of(new FieldError("refGroupIds", ERR_REF_INVALID, messages.get("validation.catalog.refGroups.simpleActiveOnly"))));
             }
         }
     }
@@ -1548,7 +1549,7 @@ public class CatalogAdminService {
                 throw new ValidationException(
                         ERR_REF_INVALID,
                         null,
-                        List.of(new FieldError("refItemIds", ERR_REF_INVALID, "Giá trị liên kết không thuộc nhóm đã khai báo")));
+                        List.of(new FieldError("refItemIds", ERR_REF_INVALID, messages.get("validation.catalog.refItems.notAllowedGroup"))));
             }
             boolean alreadyLinked = existingOwnRefIds.contains(refItemId);
             if (!alreadyLinked) {
@@ -1562,7 +1563,7 @@ public class CatalogAdminService {
                             List.of(new FieldError(
                                     "refItemIds",
                                     ERR_REF_INVALID,
-                                    "Không thể gắn liên kết tới giá trị hoặc nhóm đã ngừng sử dụng")));
+                                    messages.get("validation.catalog.refItems.inactive"))));
                 }
             }
         }
@@ -1635,47 +1636,47 @@ public class CatalogAdminService {
                 group.getUpdatedAt());
     }
 
-    private static String validateAndTrimCode(String rawCode) {
+    private String validateAndTrimCode(String rawCode) {
         if (rawCode == null) {
             throw new ValidationException(List.of(
-                    new FieldError("code", "NOT_BLANK", "Mã không được để trống")));
+                    new FieldError("code", "NOT_BLANK", messages.get("validation.catalog.code.notBlank"))));
         }
         String trimmed = rawCode.trim();
         if (trimmed.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("code", "NOT_BLANK", "Mã không được để trống")));
+                    new FieldError("code", "NOT_BLANK", messages.get("validation.catalog.code.notBlank"))));
         }
         if (!CatalogNormalizer.CODE_PATTERN.matcher(trimmed).matches()) {
             throw new ValidationException(List.of(
-                    new FieldError("code", "PATTERN", "Mã chỉ gồm chữ cái không dấu, số, _, ., - và tối đa 50 ký tự")));
+                    new FieldError("code", "PATTERN", messages.get("validation.catalog.code.pattern"))));
         }
         return trimmed;
     }
 
-    private static List<String> validateLevels(List<String> rawLevels) {
+    private List<String> validateLevels(List<String> rawLevels) {
         if (rawLevels == null || rawLevels.size() < 2 || rawLevels.size() > 6) {
             throw new ValidationException(List.of(
-                    new FieldError("levels", "INVALID_LEVELS", "Danh mục cây phải có từ 2 đến 6 cấp")));
+                    new FieldError("levels", "INVALID_LEVELS", messages.get("validation.catalog.levels.count"))));
         }
         List<String> cleaned = new ArrayList<>(rawLevels.size());
         Set<String> seen = new HashSet<>();
         for (String level : rawLevels) {
             if (level == null || level.isBlank()) {
                 throw new ValidationException(List.of(
-                        new FieldError("levels", "NOT_BLANK", "Tên cấp không được để trống")));
+                        new FieldError("levels", "NOT_BLANK", messages.get("validation.catalog.levels.notBlank"))));
             }
             String trimmed = level.trim();
             String key = trimmed.toLowerCase(Locale.ROOT);
             if (!seen.add(key)) {
                 throw new ValidationException(List.of(
-                        new FieldError("levels", "DUPLICATE", "Tên các cấp không được trùng nhau")));
+                        new FieldError("levels", "DUPLICATE", messages.get("validation.catalog.levels.duplicate"))));
             }
             cleaned.add(trimmed);
         }
         return cleaned;
     }
 
-    private static List<UUID> deduplicateIds(List<UUID> rawIds) {
+    private List<UUID> deduplicateIds(List<UUID> rawIds) {
         if (rawIds == null || rawIds.isEmpty()) {
             return List.of();
         }
@@ -1683,21 +1684,22 @@ public class CatalogAdminService {
         for (UUID id : rawIds) {
             if (id == null) {
                 throw new ValidationException(List.of(
-                        new FieldError("ids", "INVALID", "Danh sách ID chứa phần tử trống")));
+                        new FieldError("ids", "INVALID", messages.get("validation.ids.invalidItem"))));
             }
             seen.add(id);
         }
         return List.copyOf(seen);
     }
-    private static String requireReason(String rawReason, String message) {
+
+    private String requireReason(String rawReason, String messageKey) {
         String trimmed = CatalogNormalizer.trimToNull(rawReason);
         if (trimmed == null) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "REASON_REQUIRED", message)));
+                    new FieldError("reason", "REASON_REQUIRED", messages.get(messageKey))));
         }
         if (trimmed.length() > 500) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+                    new FieldError("reason", "SIZE", messages.get("validation.reason.size"))));
         }
         return trimmed;
     }
@@ -1872,7 +1874,7 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (group.getKind() != CatalogGroupKind.COMBINATION) {
             throw new ValidationException(List.of(
-                    new FieldError("id", "NOT_COMBINATION", "Giá trị này không thuộc nhóm mã tổ hợp")));
+                    new FieldError("id", "NOT_COMBINATION", messages.get("validation.catalog.combination.notCombination"))));
         }
         return catalogSupportDao.loadCombinationVersionsByItemId(itemId);
     }
@@ -2007,7 +2009,7 @@ public class CatalogAdminService {
     private List<UUID> validateCombinationForCreate(UUID examItemId, List<UUID> rawSubjectIds) {
         if (examItemId == null) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+                    new FieldError("examItemId", "REQUIRED", messages.get("validation.catalog.combination.examRequired"))));
         }
         List<UUID> subjectIds = validateSubjectIdsList(rawSubjectIds);
         TreeSet<UUID> toLock = new TreeSet<>();
@@ -2040,7 +2042,7 @@ public class CatalogAdminService {
                 : (current != null ? current.getExamItemId() : null);
         if (targetExamId == null) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+                    new FieldError("examItemId", "REQUIRED", messages.get("validation.catalog.combination.examRequired"))));
         }
         boolean examChanged = current == null || !targetExamId.equals(current.getExamItemId());
 
@@ -2052,7 +2054,7 @@ public class CatalogAdminService {
         } else {
             if (currentSubjectIds.isEmpty()) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+                        new FieldError("subjectItemIds", "REQUIRED", messages.get("validation.catalog.combination.subjectsRequired"))));
             }
             targetSubjectIds = currentSubjectIds;
             subjectsChanged = false;
@@ -2099,33 +2101,33 @@ public class CatalogAdminService {
     private void validateExamItem(UUID examItemId, boolean requireActive, Map<UUID, CatalogItem> lockedItems) {
         CatalogGroup examGroup = catalogGroupRepository.findByCodeNormalized(EXAM_GROUP_CODE_NORMALIZED)
                 .orElseThrow(() -> new ValidationException(List.of(
-                        new FieldError("examItemId", "INVALID_EXAM", "Không tìm thấy nhóm danh mục kỳ thi"))));
+                        new FieldError("examItemId", "INVALID_EXAM", messages.get("validation.catalog.combination.examGroupNotFound")))));
         CatalogItem examItem = lockedItems.get(examItemId);
         if (examItem == null || !examItem.getGroupId().equals(examGroup.getId())) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "INVALID_EXAM", "Kỳ thi không hợp lệ hoặc không thuộc nhóm EXAM")));
+                    new FieldError("examItemId", "INVALID_EXAM", messages.get("validation.catalog.combination.examInvalid"))));
         }
         if (requireActive && (examGroup.getStatus() != CatalogStatus.ACTIVE || examItem.getStatus() != CatalogStatus.ACTIVE)) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "INACTIVE_EXAM", "Kỳ thi đang ngừng sử dụng")));
+                    new FieldError("examItemId", "INACTIVE_EXAM", messages.get("validation.catalog.combination.examInactive"))));
         }
     }
 
     private List<UUID> validateSubjectIdsList(List<UUID> rawSubjectIds) {
         if (rawSubjectIds == null || rawSubjectIds.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+                    new FieldError("subjectItemIds", "REQUIRED", messages.get("validation.catalog.combination.subjectsRequired"))));
         }
         List<UUID> result = new ArrayList<>(rawSubjectIds.size());
         Set<UUID> seen = new LinkedHashSet<>();
         for (UUID subjectId : rawSubjectIds) {
             if (subjectId == null) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INVALID", "Danh sách môn học chứa ID trống")));
+                        new FieldError("subjectItemIds", "INVALID", messages.get("validation.catalog.combination.subjectNullId"))));
             }
             if (!seen.add(subjectId)) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "DUPLICATE", "Danh sách môn học không được trùng lặp")));
+                        new FieldError("subjectItemIds", "DUPLICATE", messages.get("validation.catalog.combination.subjectDuplicate"))));
             }
             result.add(subjectId);
         }
@@ -2136,17 +2138,17 @@ public class CatalogAdminService {
             List<UUID> subjectIds, Set<UUID> existingSubjectIds, Map<UUID, CatalogItem> lockedItems) {
         CatalogGroup subjectGroup = catalogGroupRepository.findByCodeNormalized(SUBJECT_GROUP_CODE_NORMALIZED)
                 .orElseThrow(() -> new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Không tìm thấy nhóm danh mục môn học"))));
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", messages.get("validation.catalog.combination.subjectGroupNotFound")))));
         for (UUID subjectId : subjectIds) {
             CatalogItem subject = lockedItems.get(subjectId);
             if (subject == null || !subject.getGroupId().equals(subjectGroup.getId())) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Môn học không hợp lệ hoặc không thuộc nhóm SUBJECT")));
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", messages.get("validation.catalog.combination.subjectInvalid"))));
             }
             boolean isNewlyAdded = !existingSubjectIds.contains(subjectId);
             if (isNewlyAdded && (subjectGroup.getStatus() != CatalogStatus.ACTIVE || subject.getStatus() != CatalogStatus.ACTIVE)) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INACTIVE_SUBJECT", "Môn học đang ngừng sử dụng")));
+                        new FieldError("subjectItemIds", "INACTIVE_SUBJECT", messages.get("validation.catalog.combination.subjectInactive"))));
             }
         }
     }

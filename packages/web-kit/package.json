@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./ctx": "./src/ctx.ts",
+    "./preferences": "./src/preferences.ts",
     "./proxy": "./src/proxy.ts",
     "./redirect": "./src/redirect.ts"
   },

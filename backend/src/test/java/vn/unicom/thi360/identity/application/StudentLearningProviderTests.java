@@ -38,6 +38,7 @@ import vn.unicom.thi360.shared.idempotency.IdempotencyService;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.SessionStore;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 class StudentLearningProviderTests {
 
@@ -154,6 +155,7 @@ class StudentLearningProviderTests {
                 mock(AuditRecorder.class),
                 mock(JdbcTemplate.class),
                 mock(PlatformTransactionManager.class),
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                AppMessages.defaultInstance());
     }
 }

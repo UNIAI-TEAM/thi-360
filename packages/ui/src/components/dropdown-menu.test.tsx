@@ -5,6 +5,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
@@ -60,5 +62,29 @@ describe("DropdownMenu", () => {
     render(<Example onSelect={() => {}} />);
     await userEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
     expect(await screen.findByRole("menuitem", { name: "Đăng xuất" })).toHaveClass("text-danger");
+  });
+
+  it("DropdownMenuRadioGroup và RadioItem đặt role menuitemradio và aria-checked theo giá trị đang chọn", async () => {
+    const onValueChange = vi.fn();
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Ngôn ngữ</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup value="vi" onValueChange={onValueChange}>
+            <DropdownMenuRadioItem value="vi">Tiếng Việt</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Ngôn ngữ" }));
+    const viItem = await screen.findByRole("menuitemradio", { name: "Tiếng Việt" });
+    const enItem = screen.getByRole("menuitemradio", { name: "English" });
+    expect(viItem).toHaveAttribute("aria-checked", "true");
+    expect(enItem).toHaveAttribute("aria-checked", "false");
+
+    await userEvent.click(enItem);
+    expect(onValueChange).toHaveBeenCalledWith("en");
   });
 });

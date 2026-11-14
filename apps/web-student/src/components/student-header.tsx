@@ -1,3 +1,4 @@
+import { LocaleSwitcher, ThemeToggle } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -25,6 +26,10 @@ export function StudentHeader({
         </Link>
         <div className="flex items-center gap-3">
           {rightSlot}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <LocaleSwitcher />
+          </div>
           {actions}
         </div>
       </div>

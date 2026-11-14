@@ -11,6 +11,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -1725,6 +1727,136 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         provisioningReconcilerJob.reconcile();
         assertThat(userAccountRepository.findById(u2).orElseThrow().isIdpCleanupPending()).isFalse();
         assertThat(keycloakClient.findUserIdByUsername("r1.11.b." + sfx)).isEmpty();
+    }
+
+    @Test
+    void bulkActions_idempotentReplay_localizesReasonsByReplayLocale_withoutRepeatingMutationsOrAudit()
+            throws Exception {
+        String sfx = suffix();
+        UUID actorId = Ids.newId();
+        UUID uActive = createUserViaApi("bulk.loc.act." + sfx, "Valid@1234", "Bulk Locale Active", null, null);
+        UserAccount uInactive = insertUser(
+                "bulk.loc.inact." + sfx,
+                "Bulk Locale Inactive",
+                null,
+                null,
+                UserSource.ADMIN_CREATED,
+                UserStatus.INACTIVE,
+                null,
+                null);
+        UUID missingId = Ids.newId();
+
+        clearInvocations(keycloakClient, auditRecorder);
+
+        String deactKey = "bulk-loc-deact-" + sfx;
+        String deactPayload = """
+                {
+                  "action": "DEACTIVATE",
+                  "userIds": ["%s", "%s", "%s"],
+                  "reason": "Cross-locale replay check"
+                }
+                """.formatted(uActive, uInactive.getId(), missingId);
+
+        MvcResult viRes = mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", deactKey)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "vi")
+                        .with(asUser(actorId, "bulk.loc.actor." + sfx, Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deactPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.succeeded").value(1))
+                .andExpect(jsonPath("$.skipped").value(2))
+                .andExpect(jsonPath("$.failed").value(0))
+                .andExpect(jsonPath("$.results[0].outcome").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.results[0].reason").doesNotExist())
+                .andExpect(jsonPath("$.results[1].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[1].reasonCode").value("ALREADY_INACTIVE"))
+                .andExpect(jsonPath("$.results[1].reason").value("Tài khoản đã ở trạng thái ngừng hoạt động"))
+                .andExpect(jsonPath("$.results[2].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[2].reasonCode").value("USER_NOT_AVAILABLE"))
+                .andExpect(jsonPath("$.results[2].reason").value("Tài khoản không tồn tại hoặc đã bị xóa"))
+                .andReturn();
+        String batchId = objectMapper.readTree(viRes.getResponse().getContentAsString()).get("batchId").asText();
+
+        mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", deactKey)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                        .with(asUser(actorId, "bulk.loc.actor." + sfx, Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deactPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.batchId").value(batchId))
+                .andExpect(jsonPath("$.succeeded").value(1))
+                .andExpect(jsonPath("$.skipped").value(2))
+                .andExpect(jsonPath("$.failed").value(0))
+                .andExpect(jsonPath("$.results[0].outcome").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.results[0].reason").doesNotExist())
+                .andExpect(jsonPath("$.results[1].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[1].reasonCode").value("ALREADY_INACTIVE"))
+                .andExpect(jsonPath("$.results[1].reason").value("Account is already inactive"))
+                .andExpect(jsonPath("$.results[2].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[2].reasonCode").value("USER_NOT_AVAILABLE"))
+                .andExpect(jsonPath("$.results[2].reason").value("Account does not exist or has been deleted"));
+
+        mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", deactKey)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "fr")
+                        .with(asUser(actorId, "bulk.loc.actor." + sfx, Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deactPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.batchId").value(batchId))
+                .andExpect(jsonPath("$.results[1].reasonCode").value("ALREADY_INACTIVE"))
+                .andExpect(jsonPath("$.results[1].reason").value("Tài khoản đã ở trạng thái ngừng hoạt động"))
+                .andExpect(jsonPath("$.results[2].reasonCode").value("USER_NOT_AVAILABLE"))
+                .andExpect(jsonPath("$.results[2].reason").value("Tài khoản không tồn tại hoặc đã bị xóa"));
+
+        assertThat(userAccountRepository.findById(uActive).orElseThrow().getStatus()).isEqualTo(UserStatus.INACTIVE);
+        verify(keycloakClient, times(1)).setEnabled(uActive, false);
+        verify(auditRecorder, times(1)).record(argThat(ev ->
+                "USER_DEACTIVATED".equals(ev.action()) && uActive.toString().equals(ev.targetId())));
+
+        // Parameterized skip reason (USER_HAS_TRANSACTIONS with blocker source arg) across vi -> en replay
+        fakeGuardsControl.setBlockers(List.of(
+                new AccountDeletionGuard.Blocker("COMMERCE", "USER_HAS_ORDERS", "Đơn hàng chưa đối soát")));
+        String deleteKey = "bulk-loc-del-" + sfx;
+        String deletePayload = """
+                {
+                  "action": "DELETE",
+                  "userIds": ["%s"],
+                  "reason": "Cross-locale parameterized check"
+                }
+                """.formatted(uInactive.getId());
+
+        MvcResult delViRes = mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", deleteKey)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "vi")
+                        .with(asUser(actorId, "bulk.loc.actor." + sfx, Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deletePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skipped").value(1))
+                .andExpect(jsonPath("$.results[0].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[0].reasonCode").value("USER_HAS_TRANSACTIONS"))
+                .andExpect(jsonPath("$.results[0].reason").value("Tài khoản có dữ liệu giao dịch (COMMERCE)"))
+                .andReturn();
+        String delBatchId = objectMapper.readTree(delViRes.getResponse().getContentAsString()).get("batchId").asText();
+
+        mockMvc.perform(post("/api/v1/admin/users/bulk-actions")
+                        .header("Idempotency-Key", deleteKey)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                        .with(asUser(actorId, "bulk.loc.actor." + sfx, Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deletePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.batchId").value(delBatchId))
+                .andExpect(jsonPath("$.skipped").value(1))
+                .andExpect(jsonPath("$.results[0].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[0].reasonCode").value("USER_HAS_TRANSACTIONS"))
+                .andExpect(jsonPath("$.results[0].reason").value("Account has transaction records (COMMERCE)"));
+
+        assertThat(userAccountRepository.findById(uInactive.getId()).orElseThrow().getDeletedAt()).isNull();
+        verify(auditRecorder, never()).record(argThat(ev -> "USER_DELETED".equals(ev.action())));
     }
 
     @Test

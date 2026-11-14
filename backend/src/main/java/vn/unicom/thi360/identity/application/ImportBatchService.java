@@ -260,8 +260,9 @@ public class ImportBatchService {
     public ImportBatchResponse confirmBatch(UUID batchId, String idempotencyKey, Locale locale) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            throw new ValidationException(List.of(
-                    new FieldError("Idempotency-Key", "REQUIRED", "Khóa Idempotency-Key là bắt buộc")));
+            String message =
+                    schemaHelper.message("validation.idempotencyKey.required", "Thiếu header Idempotency-Key", locale);
+            throw new ValidationException(List.of(new FieldError("Idempotency-Key", "REQUIRED", message)));
         }
         String trimmedKey = idempotencyKey.trim();
         if (!importBatchRepository.existsById(batchId)) {

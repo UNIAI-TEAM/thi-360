@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,6 +58,7 @@ import vn.unicom.thi360.shared.api.VersionConflictException;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Service
 public class ClassService {
@@ -83,6 +85,7 @@ public class ClassService {
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final AppMessages messages;
 
     public ClassService(
             ClassRoomRepository classRoomRepository,
@@ -94,6 +97,31 @@ public class ClassService {
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
             Clock clock) {
+        this(
+                classRoomRepository,
+                classMemberRepository,
+                classMemberHistoryRepository,
+                userDirectory,
+                classMemberLock,
+                currentUserProvider,
+                auditRecorder,
+                jdbcTemplate,
+                clock,
+                AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public ClassService(
+            ClassRoomRepository classRoomRepository,
+            ClassMemberRepository classMemberRepository,
+            ClassMemberHistoryRepository classMemberHistoryRepository,
+            UserDirectory userDirectory,
+            ClassMemberLock classMemberLock,
+            CurrentUserProvider currentUserProvider,
+            AuditRecorder auditRecorder,
+            JdbcTemplate jdbcTemplate,
+            Clock clock,
+            AppMessages messages) {
         this.classRoomRepository = classRoomRepository;
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
@@ -103,6 +131,7 @@ public class ClassService {
         this.auditRecorder = auditRecorder;
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
@@ -305,7 +334,7 @@ public class ClassService {
         ClassStatus previousStatus = classRoom.getStatus();
         boolean deactivating = previousStatus == ClassStatus.ACTIVE && request.status() == ClassStatus.INACTIVE;
         String trimmedReason = deactivating
-                ? validateRequiredReason(request.reason(), "Vui lòng nhập lý do khi ngừng sử dụng lớp học")
+                ? validateRequiredReason(request.reason(), "validation.class.deactivateReason.required")
                 : validateOptionalReason(request.reason());
         Map<String, Object> before = Map.of("status", previousStatus.name());
 
@@ -326,7 +355,7 @@ public class ClassService {
         ClassRoom classRoom = classRoomRepository.findByIdAndDeletedAtIsNullForUpdate(classId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
-        String trimmedReason = validateRequiredReason(reason, "Vui lòng nhập lý do khi xóa lớp học");
+        String trimmedReason = validateRequiredReason(reason, "validation.class.deleteReason.required");
         Map<String, Object> before = classAuditState(classRoom);
 
         Instant now = Instant.now(clock);
@@ -402,14 +431,14 @@ public class ClassService {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         if (request.userIds() == null || request.userIds().isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("userIds", "NOTEMPTY", "Danh sách học viên không được để trống")));
+                    new FieldError("userIds", "NOTEMPTY", messages.get("validation.classMember.userIds.notEmpty"))));
         }
 
         Set<UUID> uniqueRequested = new LinkedHashSet<>();
         for (UUID uid : request.userIds()) {
             if (uid == null) {
                 throw new ValidationException(List.of(
-                        new FieldError("userIds", "INVALID", "ID học viên không được để trống")));
+                        new FieldError("userIds", "INVALID", messages.get("validation.classMember.userIds.invalidItem"))));
             }
             uniqueRequested.add(uid);
         }
@@ -768,68 +797,65 @@ public class ClassService {
         return map;
     }
 
-    private static String validateAndTrimCode(String rawCode) {
+    private String validateAndTrimCode(String rawCode) {
         if (rawCode == null || rawCode.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("code", "NOT_BLANK", "Mã lớp không được để trống")));
+                    new FieldError("code", "NOT_BLANK", messages.get("validation.class.code.notBlank"))));
         }
         String trimmed = rawCode.trim();
         if (!ClassNormalizer.CODE_PATTERN.matcher(trimmed).matches()) {
             throw new ValidationException(List.of(
-                    new FieldError(
-                            "code",
-                            ERROR_CODE_INVALID,
-                            "Mã lớp học chỉ gồm 2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số")));
+                    new FieldError("code", ERROR_CODE_INVALID, messages.get(ERROR_CODE_INVALID))));
         }
         return trimmed;
     }
 
-    private static String validateRequiredName(String rawName) {
+    private String validateRequiredName(String rawName) {
         if (rawName == null || rawName.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("name", "NOT_BLANK", "Tên lớp không được để trống")));
+                    new FieldError("name", "NOT_BLANK", messages.get("validation.class.name.notBlank"))));
         }
         String trimmed = rawName.trim();
         if (trimmed.length() > 200) {
             throw new ValidationException(List.of(
-                    new FieldError("name", "SIZE", "Tên lớp tối đa 200 ký tự")));
+                    new FieldError("name", "SIZE", messages.get("validation.class.name.size"))));
         }
         return trimmed;
     }
 
-    private static String validateOptionalDescription(String rawDescription) {
+    private String validateOptionalDescription(String rawDescription) {
         if (rawDescription == null) {
             return null;
         }
         String trimmed = ClassNormalizer.trimToNull(rawDescription);
         if (trimmed != null && trimmed.length() > 1000) {
             throw new ValidationException(List.of(
-                    new FieldError("description", "SIZE", "Mô tả tối đa 1000 ký tự")));
+                    new FieldError("description", "SIZE", messages.get("validation.class.description.size"))));
         }
         return trimmed;
     }
 
-    private static String validateOptionalReason(String rawReason) {
+    private String validateOptionalReason(String rawReason) {
         if (rawReason == null) {
             return null;
         }
         String trimmed = ClassNormalizer.trimToNull(rawReason);
         if (trimmed != null && trimmed.length() > 500) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+                    new FieldError("reason", "SIZE", messages.get("validation.reason.size"))));
         }
         return trimmed;
     }
 
-    private static String validateRequiredReason(String rawReason, String emptyMessage) {
+    private String validateRequiredReason(String rawReason, String emptyMessageKey) {
         if (rawReason == null || rawReason.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "REASON_REQUIRED", emptyMessage)));
+                    new FieldError("reason", "REASON_REQUIRED", messages.get(emptyMessageKey))));
         }
         String trimmed = rawReason.trim();
         if (trimmed.length() > 500) {
             throw new ValidationException(List.of(
-                    new FieldError("reason", "SIZE", "Lý do tối đa 500 ký tự")));
+                    new FieldError("reason", "SIZE", messages.get("validation.reason.size"))));
         }
         return trimmed;
     }

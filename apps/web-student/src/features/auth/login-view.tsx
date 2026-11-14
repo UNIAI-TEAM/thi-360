@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, FormField, Input, PasswordField } from "@thi360/ui";
+import { Button, FormField, Input, LocaleSwitcher, PasswordField, ThemeToggle } from "@thi360/ui";
 import { AlertCircle, Check, Lock, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -84,8 +84,13 @@ export function LoginView({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-page p-6">
-      <div className="flex w-full max-w-[920px] items-center justify-end gap-2 empty:hidden">
-        {headerActions}
+      <div className="flex w-full max-w-[920px] items-center justify-end gap-2">
+        {headerActions ?? (
+          <>
+            <ThemeToggle />
+            <LocaleSwitcher />
+          </>
+        )}
       </div>
       <div className="flex w-full max-w-[920px] flex-wrap overflow-hidden rounded-2xl border border-border bg-surface shadow-xl">
         <section className="flex min-w-[300px] flex-1 basis-[360px] flex-col gap-6 bg-primary-50 p-10 md:p-12">

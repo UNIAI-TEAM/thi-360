@@ -665,6 +665,17 @@
       "emptyTitle": "No accounts found",
       "errorDescription": "Could not load the list. Please try again.",
       "errorTitle": "Failed to load data",
+      "sampleNames": {
+        "content": "Content Admin",
+        "ops": "Operations",
+        "student3": "Student 03",
+        "student4": "Student 04"
+      },
+      "sampleRoles": {
+        "content": "Content Admin",
+        "ops": "Operations / Support",
+        "student": "Student"
+      },
       "selectAll": "Select all rows",
       "selectRow": "Select account {name}",
       "stateData": "Has data",
