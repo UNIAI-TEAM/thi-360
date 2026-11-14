@@ -73,6 +73,8 @@ export type SimpleItemsPanelProps = {
   searchQuery: string;
   statusFilter: StatusFilter;
   loading: boolean;
+  /** Đang tải lại trong khi vẫn hiện dữ liệu cũ (đổi tìm kiếm, bộ lọc, trang): giữ các dòng, không hiện khung xương. */
+  refreshing?: boolean;
   error: boolean;
   reordering: boolean;
   exporting?: boolean;
@@ -104,6 +106,7 @@ export function SimpleItemsPanel({
   searchQuery,
   statusFilter,
   loading,
+  refreshing = false,
   error,
   reordering,
   exporting = false,
@@ -134,7 +137,13 @@ export function SimpleItemsPanel({
   const isFiltered = searchQuery.trim().length > 0 || statusFilter !== "ALL";
   const supportsReorder = group.kind !== "TREE";
   const reorderEnabled =
-    canModify && supportsReorder && !isFiltered && !reordering && totalPages <= 1 && items.length > 1;
+    canModify &&
+    supportsReorder &&
+    !isFiltered &&
+    !reordering &&
+    !refreshing &&
+    totalPages <= 1 &&
+    items.length > 1;
   const groupDisplayName = pickName(group, locale);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -338,7 +347,7 @@ export function SimpleItemsPanel({
           >
             <table
               aria-label={t("itemsTableLabel")}
-              aria-busy={loading || undefined}
+              aria-busy={loading || refreshing || undefined}
               className="w-full border-collapse tabular-nums"
             >
               <thead>
@@ -381,7 +390,13 @@ export function SimpleItemsPanel({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody
+                className={
+                  refreshing && !loading
+                    ? "opacity-60 transition-opacity duration-150 motion-reduce:transition-none"
+                    : "transition-opacity duration-150 motion-reduce:transition-none"
+                }
+              >
                 {loading ? (
                   Array.from({ length: 5 }, (_, rowIndex) => (
                     <tr key={rowIndex} className="border-b border-border last:border-b-0">
