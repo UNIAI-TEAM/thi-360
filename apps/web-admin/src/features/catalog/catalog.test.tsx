@@ -1199,6 +1199,64 @@ describe("CatalogView: kết quả tìm và lọc được đọc qua vùng stat
   });
 });
 
+describe("CatalogView: tìm kiếm chờ ngừng gõ và giữ nội dung đang hiện (C-10)", { timeout: 20_000 }, () => {
+  it("bảng giá trị: gõ một từ chỉ gửi một yêu cầu với từ khóa đầy đủ; xóa trống có hiệu lực ngay", async () => {
+    const api = createMockApi();
+    renderCatalog({ api, search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    await within(table).findByText("Toán học");
+    expect(api.listItems).toHaveBeenCalledTimes(1);
+
+    const searchInput = screen.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" });
+    await userEvent.type(searchInput, "Toán");
+    // Ô tìm hiện chữ ngay, còn yêu cầu thì chưa gửi.
+    expect(searchInput).toHaveValue("Toán");
+    expect(api.listItems).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => expect(api.listItems).toHaveBeenCalledTimes(2));
+    expect(api.listItems).toHaveBeenLastCalledWith("grp-subject", { q: "Toán", page: 0, size: 20 });
+    const queries = vi.mocked(api.listItems).mock.calls.map(([, query]) => query?.q);
+    expect(queries).toEqual([undefined, "Toán"]);
+
+    await waitFor(() => expect(within(table).queryByText("Ngữ văn")).not.toBeInTheDocument());
+    await userEvent.clear(searchInput);
+    // Không chờ 300ms: danh sách đầy đủ có sẵn trong bộ nhớ đệm nên hiện lại ngay.
+    expect(within(table).getByText("Ngữ văn")).toBeInTheDocument();
+  });
+
+  it("cây: gõ một từ chỉ gửi một yêu cầu, cây đang hiện được giữ và báo aria-busy trong lúc tải", async () => {
+    const filtered = Promise.withResolvers<CatalogTreeNodeResponse[]>();
+    const base = createTreeMockApi();
+    const listTree = vi.fn<CatalogApi["listTree"]>((groupId, query) =>
+      query?.q ? filtered.promise : base.listTree(groupId, query),
+    );
+    renderCatalog({ api: { ...base, listTree }, search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    const pane = tree.parentElement as HTMLElement;
+    expect(within(tree).getByText("Hàm số")).toBeInTheDocument();
+    const callsBefore = listTree.mock.calls.length;
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Tìm nút theo mã hoặc tên" }), "Tính");
+    expect(listTree).toHaveBeenCalledTimes(callsBefore);
+
+    await waitFor(() => expect(listTree).toHaveBeenCalledTimes(callsBefore + 1));
+    expect(listTree).toHaveBeenLastCalledWith("grp-knowledge", { q: "Tính" });
+
+    // Đang tải kết quả lọc: cây cũ vẫn còn (cùng một phần tử, không bị thay bằng khung xương), mờ đi và báo bận.
+    expect(screen.getByRole("tree")).toBe(tree);
+    expect(within(tree).getByText("Hàm số")).toBeInTheDocument();
+    expect(tree).toHaveClass("opacity-60");
+    expect(pane).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("status", { name: "Đang tải" })).not.toBeInTheDocument();
+
+    filtered.resolve([KNOWLEDGE_CH1, { ...KNOWLEDGE_BAI1, matched: true }]);
+    await waitFor(() => expect(pane).not.toHaveAttribute("aria-busy"));
+    expect(screen.getByRole("tree")).toBe(tree);
+    expect(tree).not.toHaveClass("opacity-60");
+    expect(listTree).toHaveBeenCalledTimes(callsBefore + 1);
+  });
+});
+
 describe("CatalogView: dialog nhóm và dialog giá trị", { timeout: 20_000 }, () => {
   it("dialog thêm/sửa nhóm khóa ô mã khi API báo CATALOG_CODE_LOCKED và giữ nguyên dữ liệu đã nhập", async () => {
     const updateGroupMock = vi

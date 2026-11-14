@@ -80,6 +80,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
   catalogQueryKeys,
@@ -100,6 +101,7 @@ import {
   resolveTreeLevelLabel,
 } from "../utils";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
+import { useDebouncedSearch } from "../use-debounced-value";
 import type { StatusFilter } from "./simple-items-panel";
 
 export interface TreeItemsPanelProps {
@@ -230,7 +232,8 @@ export function TreeItemsPanel({
     () => Object.values(selectedRefByGroup).flat().filter(Boolean),
     [selectedRefByGroup],
   );
-  const trimmedSearch = searchQuery.trim();
+  // Ô tìm hiện chữ ngay; cây chỉ lọc (và gửi yêu cầu) sau khi ngừng gõ 300ms (C-10).
+  const trimmedSearch = useDebouncedSearch(searchQuery);
   const isFiltered = Boolean(trimmedSearch) || statusFilter !== "ALL" || selectedRefItemIds.length > 0;
 
   const refGroupsQuery = useQuery({
@@ -286,10 +289,15 @@ export function TreeItemsPanel({
     [isFiltered, selectedRefItemIds, statusFilter, trimmedSearch],
   );
 
+  // Đổi từ khóa hoặc bộ lọc: giữ cây đang hiện (làm mờ nhẹ) cho tới khi kết quả mới về, không thay bằng khung
+  // xương; đổi sang nhóm khác thì tải như lần đầu.
+  const rootTreeQueryKey = catalogQueryKeys.tree(group.id, rootQueryParams);
   const rootTreeQuery = useQuery({
-    queryKey: catalogQueryKeys.tree(group.id, rootQueryParams),
+    queryKey: rootTreeQueryKey,
     queryFn: () => api.listTree(group.id, rootQueryParams),
+    placeholderData: keepPreviousWhileSameScope(rootTreeQueryKey),
   });
+  const treeRefreshing = rootTreeQuery.isPlaceholderData;
 
   // Lazy child queries (only when not in filtered mode)
   const expandedCandidateIds = useMemo(() => {
@@ -1228,7 +1236,10 @@ export function TreeItemsPanel({
       */}
       <div className="mt-4 flex flex-col gap-4 min-[1600px]:flex-row min-[1600px]:items-start">
         {/* Tree pane */}
-        <div className="min-w-0 flex-1 rounded-md border border-border bg-surface p-2">
+        <div
+          aria-busy={rootTreeQuery.isPending || treeRefreshing || undefined}
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface p-2"
+        >
           {rootTreeQuery.isPending ? (
             <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-2 p-2">
               {Array.from({ length: 6 }).map((_, idx) => (
@@ -1297,6 +1308,10 @@ export function TreeItemsPanel({
                   expandedIds={expandedIdSet}
                   selectedId={selectedNodeId}
                   loadingIds={loadingIds}
+                  className={cn(
+                    "transition-opacity duration-150 motion-reduce:transition-none",
+                    treeRefreshing && "opacity-60",
+                  )}
                   onSelect={(item) => handleTreeSelectNode(item.id)}
                   onToggleExpand={(item) => handleToggleExpand(item.id)}
                   labels={{

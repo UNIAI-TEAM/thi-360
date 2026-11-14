@@ -40,6 +40,7 @@ import {
   triggerBlobDownload,
 } from "../utils";
 import { useCatalogUrlState } from "../url-state";
+import { useDebouncedSearch } from "../use-debounced-value";
 import { CombinationFormDialog } from "./combination-form-dialog";
 import { DeleteInUseDialog } from "./delete-in-use-dialog";
 import { ExcelImportDialog } from "./excel-import-dialog";
@@ -165,14 +166,23 @@ function CatalogWorkspace({
     );
   }, [groups, selectedGroupParam]);
 
+  // Ô tìm hiện chữ ngay; yêu cầu chỉ gửi sau khi ngừng gõ 300ms, như danh sách tài khoản và lớp học (C-10).
+  const debouncedSearch = useDebouncedSearch(searchQuery);
+  // Về trang đầu đúng lúc từ khóa có hiệu lực (chỉnh state ngay trong render), để không gửi thừa một yêu cầu
+  // "trang đầu + từ khóa cũ" ở phím gõ đầu tiên.
+  const [pagedSearch, setPagedSearch] = useState(debouncedSearch);
+  if (pagedSearch !== debouncedSearch) {
+    setPagedSearch(debouncedSearch);
+    setPage(0);
+  }
   const itemsQueryParams = useMemo(
     () => ({
-      ...(searchQuery.trim() ? { q: searchQuery.trim() } : {}),
+      ...(debouncedSearch ? { q: debouncedSearch } : {}),
       ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
       page,
       size: pageSize,
     }),
-    [page, pageSize, searchQuery, statusFilter],
+    [debouncedSearch, page, pageSize, statusFilter],
   );
 
   const itemsQueryKey = selectedGroup
@@ -227,7 +237,6 @@ function CatalogWorkspace({
   }
   function handleSearchChange(q: string) {
     setSearchQuery(q);
-    setPage(0);
   }
 
   function handleStatusFilterChange(status: StatusFilter) {
