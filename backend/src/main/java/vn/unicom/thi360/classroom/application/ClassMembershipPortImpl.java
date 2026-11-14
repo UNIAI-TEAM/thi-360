@@ -171,4 +171,32 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
         }
         return Set.copyOf(classMemberRepository.findActiveUserIdsByClassId(classId));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, ClassLookupInfo> findClassesByNormalizedCodes(Collection<String> normalizedCodes) {
+        if (normalizedCodes == null || normalizedCodes.isEmpty()) {
+            return Map.of();
+        }
+        Set<String> lookupKeys = new LinkedHashSet<>();
+        for (String code : normalizedCodes) {
+            if (code != null && !code.isBlank()) {
+                lookupKeys.add(code.trim().toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        if (lookupKeys.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, ClassLookupInfo> result = new HashMap<>();
+        for (ClassRoom classRoom : classRoomRepository.findAllByCodeNormalizedInAndDeletedAtIsNull(lookupKeys)) {
+            result.put(
+                    classRoom.getCodeNormalized(),
+                    new ClassLookupInfo(
+                            classRoom.getId(),
+                            classRoom.getCode(),
+                            classRoom.getCodeNormalized(),
+                            classRoom.getStatus() == ClassStatus.ACTIVE));
+        }
+        return Map.copyOf(result);
+    }
 }
