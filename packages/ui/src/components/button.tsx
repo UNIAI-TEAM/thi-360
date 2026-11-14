@@ -108,10 +108,14 @@ export function Button({
       }}
       {...props}
     >
+      {/*
+       * Giảm chuyển động: spinner quay chậm lại (6 giây một vòng) chứ không đứng yên. Đây là chuyển động duy nhất
+       * báo việc đang chạy; một cung tròn bất động trông như nút bị treo.
+       */}
       {loading && (
         <LoaderCircle
           aria-hidden
-          className="absolute size-4 animate-spin motion-reduce:animate-none"
+          className="absolute size-4 animate-spin motion-reduce:animate-[spin_6s_linear_infinite]"
         />
       )}
       {/*

@@ -65,6 +65,13 @@ describe("Button", () => {
     expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
+  it("đang xử lý với giảm chuyển động: spinner quay chậm lại, không đứng yên", () => {
+    render(<Button loading>Lưu</Button>);
+    const spinner = screen.getByRole("button", { name: "Lưu" }).querySelector("svg");
+    expect(spinner).toHaveClass("animate-spin", "motion-reduce:animate-[spin_6s_linear_infinite]");
+    expect(spinner).not.toHaveClass("motion-reduce:animate-none");
+  });
+
   it("không đang xử lý: không có spinner, nhãn hiện bình thường, không aria-busy", () => {
     render(
       <Button>
