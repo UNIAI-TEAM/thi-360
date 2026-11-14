@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { NAVIGATION, resolveBreadcrumb } from "@/lib/navigation";
+import { useBreadcrumbLeaf } from "./breadcrumb-leaf";
 import { UserMenu } from "./user-menu";
 
 /** Thanh trên cao 56px: breadcrumb bên trái, menu avatar luôn ở bên phải, kể cả khi trang không có breadcrumb (DESIGN 5.8). */
@@ -13,21 +14,16 @@ export function Topbar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
   const t = useTranslations();
   const pathname = usePathname();
   const trail = resolveBreadcrumb(NAVIGATION, pathname);
-  const isBulkImport =
-    trail?.item.id === "accounts" &&
-    (pathname === "/tai-khoan/cap-hang-loat" ||
-      pathname.startsWith("/tai-khoan/cap-hang-loat/"));
+  const leaf = useBreadcrumbLeaf();
+  const leafLabel = trail && pathname !== trail.item.href ? leaf : null;
   const items = trail
-    ? isBulkImport
-      ? [
-          { label: t(`nav.groups.${trail.group.id}`) },
-          { label: t(`nav.items.${trail.item.id}.label`), href: trail.item.href },
-          { label: t("bulkImport.breadcrumb") },
-        ]
-      : [
-          { label: t(`nav.groups.${trail.group.id}`) },
-          { label: t(`nav.items.${trail.item.id}.label`) },
-        ]
+    ? [
+        { label: t(`nav.groups.${trail.group.id}`) },
+        leafLabel
+          ? { label: t(`nav.items.${trail.item.id}.label`), href: trail.item.href }
+          : { label: t(`nav.items.${trail.item.id}.label`) },
+        ...(leafLabel ? [{ label: leafLabel }] : []),
+      ]
     : [];
 
   return (

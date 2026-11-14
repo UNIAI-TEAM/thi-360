@@ -8,5 +8,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function UsersPage() {
-  return <UsersListView />;
+  return <UsersListView showClassFilter />;
 }

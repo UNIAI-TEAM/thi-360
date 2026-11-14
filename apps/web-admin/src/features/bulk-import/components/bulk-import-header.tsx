@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Button, notify, PageHeader } from "@thi360/ui";
 import { Download } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import type { BulkImportApiDeps } from "../api";
 import { resolveImportApiErrorMessage } from "../utils";
 
@@ -13,6 +14,7 @@ export interface BulkImportHeaderProps {
 
 export function BulkImportHeader({ deps }: BulkImportHeaderProps) {
   const t = useTranslations("bulkImport");
+  useSetBreadcrumbLeaf(t("breadcrumb"));
 
   const downloadTemplateMutation = useMutation({
     mutationFn: () => deps.downloadImportTemplate(),

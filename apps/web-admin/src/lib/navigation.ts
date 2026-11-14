@@ -1,4 +1,4 @@
-import { LayoutDashboard, Shield, SlidersVertical, Users, type LucideIcon } from "lucide-react";
+import { GraduationCap, LayoutDashboard, Shield, SlidersVertical, Users, type LucideIcon } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
 
 /**
@@ -48,6 +48,12 @@ export const NAVIGATION: readonly NavGroup[] = [
         href: "/tai-khoan",
         icon: Users,
         permission: "USER.VIEW",
+      },
+      {
+        id: "classes",
+        href: "/lop-hoc",
+        icon: GraduationCap,
+        permission: "CLASS.VIEW",
       },
     ],
   },

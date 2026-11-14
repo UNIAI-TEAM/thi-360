@@ -43,8 +43,8 @@ import {
   resolveUsersErrorMessage,
 } from "../utils";
 import { UserActionDialogs, useUserActionController } from "./user-action-dialogs";
+import { UserClassesTab } from "@/features/classes/components/user-classes-tab";
 import { LearningProfileTab } from "./learning-profile-tab";
-import { UserClassesPlaceholder } from "./user-classes-placeholder";
 import { UserHistoryTab } from "./user-history-tab";
 import { UserRolesPermissionsPlaceholder } from "./user-roles-permissions-placeholder";
 
@@ -291,7 +291,7 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
         </TabsContent>
 
         <TabsContent value="classes">
-          <UserClassesPlaceholder userId={user.id} />
+          <UserClassesTab userId={user.id} getUserClasses={deps.getUserClasses} />
         </TabsContent>
 
         <TabsContent value="roles">

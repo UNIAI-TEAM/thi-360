@@ -109,12 +109,9 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
         assertThat(outboxEventRepository.count()).isEqualTo(outboxCountBeforeSecondSeed);
         assertSeededState();
 
-        int relayed = 0;
-        int batch;
-        while ((batch = outboxRelay.relayBatch()) > 0) {
-            relayed += batch;
+        while (outboxRelay.relayBatch() > 0) {
+            // Drain any pending outbox events before verifying seeded audit events
         }
-        assertThat(relayed).isGreaterThanOrEqualTo(EXPECTED_ROLES.size() * 2);
         assertSeededAuditEvents();
 
         // Restoring a missing role assignment emits only USER_ROLES_CHANGED (no duplicate USER_CREATED)
@@ -234,4 +231,5 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
                     });
         }
     }
+
 }

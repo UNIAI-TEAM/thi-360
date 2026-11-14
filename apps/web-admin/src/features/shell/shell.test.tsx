@@ -6,6 +6,7 @@ import { SessionProvider } from "@/features/session/session-provider";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
 import { AppShell } from "./app-shell";
+import { useSetBreadcrumbLeaf } from "./breadcrumb-leaf";
 import { initialsOf } from "./user-menu";
 
 const mocks = vi.hoisted(() => ({
@@ -27,6 +28,11 @@ beforeEach(() => {
 afterEach(() => {
   mocks.logout.mockReset();
 });
+
+function LeafPage({ label }: { label: string | undefined }) {
+  useSetBreadcrumbLeaf(label);
+  return <p>Trang con</p>;
+}
 
 describe("initialsOf", () => {
   it("ghép chữ cái đầu của từ đầu và từ cuối (bỏ qua từ số), hoặc hai chữ cái đầu khi chỉ có một từ", () => {
@@ -136,27 +142,34 @@ describe("AppShell", () => {
     expect(screen.getByRole("banner")).toContainElement(trigger);
   });
 
-  it("trang cấp hàng loạt giữ menu Tài khoản đang chọn và hiện breadcrumb Người dùng › Tài khoản › Cấp hàng loạt", async () => {
-    mocks.pathname.current = "/tai-khoan/cap-hang-loat/batch-123";
-    renderWithProviders(
+  it("trang con cung cấp mục cuối: breadcrumb Người dùng › Lớp học (liên kết) › mã lớp, gỡ mục cuối khi trang rời đi", async () => {
+    mocks.pathname.current = "/lop-hoc/abc";
+    const { rerender } = renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
-          <p>Nội dung cấp hàng loạt</p>
+          <LeafPage label="LOP-A" />
         </AppShell>
       </SessionProvider>,
     );
 
-    const nav = await waitFor(() => screen.getByRole("navigation", { name: "Menu chính" }));
-    const accountsLink = await waitFor(() => within(nav).getByRole("link", { name: "Tài khoản" }));
-    expect(accountsLink).toHaveAttribute("aria-current", "page");
-
-    const breadcrumb = screen.getByRole("navigation", { name: "Vị trí hiện tại" });
+    const breadcrumb = await screen.findByRole("navigation", { name: "Vị trí hiện tại" });
+    await waitFor(() => expect(breadcrumb).toHaveTextContent("LOP-A"));
     expect(breadcrumb).toHaveTextContent("Người dùng");
-    expect(breadcrumb).toHaveTextContent("Tài khoản");
-    expect(breadcrumb).toHaveTextContent("Cấp hàng loạt");
-    expect(within(breadcrumb).getByRole("link", { name: "Tài khoản" })).toHaveAttribute(
+    expect(within(breadcrumb).getByRole("link", { name: "Lớp học" })).toHaveAttribute(
       "href",
-      "/tai-khoan",
+      "/lop-hoc",
     );
+    expect(within(breadcrumb).getByText("LOP-A")).toHaveAttribute("aria-current", "page");
+
+    rerender(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <LeafPage label={undefined} />
+        </AppShell>
+      </SessionProvider>,
+    );
+    await waitFor(() => expect(breadcrumb).not.toHaveTextContent("LOP-A"));
+    expect(within(breadcrumb).queryByRole("link", { name: "Lớp học" })).toBeNull();
+    expect(within(breadcrumb).getByText("Lớp học")).toHaveAttribute("aria-current", "page");
   });
 });

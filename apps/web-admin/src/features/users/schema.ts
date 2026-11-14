@@ -64,6 +64,7 @@ export function createCreateUserSchema(messages: CreateUserValidationMessages) {
         .transform((value) => value.trim())
         .refine((value) => value.length <= 30, messages.phoneMax),
       roleId: z.string(),
+      classIds: z.array(z.string()),
       mustChangePassword: z.boolean(),
     })
     .refine(
@@ -84,6 +85,7 @@ export interface CreateUserFormValues {
   email: string;
   phone: string;
   roleId: string;
+  classIds: string[];
   mustChangePassword: boolean;
 }
 
