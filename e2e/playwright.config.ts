@@ -47,6 +47,13 @@ export default defineConfig({
       url: `${apiUrl}/actuator/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
+      env: {
+        ...process.env,
+        // Relax the per-IP login rate limit (default 20/min) so the suite's
+        // platform logins cannot trip RateLimitFilter. Applies only to the
+        // backend spawned for e2e runs.
+        THI360_SECURITY_RATELIMIT_LOGINPERIPLIMT: process.env.THI360_SECURITY_RATELIMIT_LOGINPERIPLIMT ?? "200",
+      },
     },
     {
       command: `pnpm exec next ${webMode} -p ${webPort}`,

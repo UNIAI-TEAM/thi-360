@@ -1,4 +1,5 @@
-import { expect, type Page, request as playwrightRequest, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import { createPlatformApiContext } from "./helpers/platform";
 
 const WEB_URL = process.env.THI360_WEB_URL ?? "http://localhost:3000";
 const ADMIN_URL = process.env.THI360_ADMIN_URL ?? "http://localhost:3001";
@@ -8,20 +9,6 @@ async function submitLoginForm(page: Page, identifier: string, password: string)
   await page.getByLabel(/Tên đăng nhập hoặc email/).fill(identifier);
   await page.getByLabel(/Mật khẩu/).fill(password);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
-}
-
-async function createPlatformApiContext() {
-  const api = await playwrightRequest.newContext({ baseURL: ADMIN_URL });
-  const loginRes = await api.post(`${WEB_URL}/api/v1/auth/login`, {
-    headers: { origin: WEB_URL },
-    data: { identifier: "platform", password: PLATFORM_PASSWORD },
-  });
-  if (!loginRes.ok()) {
-    throw new Error(`Platform API login failed: ${loginRes.status()} ${await loginRes.text()}`);
-  }
-  const state = await api.storageState();
-  const xsrf = state.cookies.find((cookie) => cookie.name === "thi360_xsrf")?.value ?? "";
-  return { api, xsrf };
 }
 
 test.describe("Quản lý tài khoản (UNI-2546)", () => {
