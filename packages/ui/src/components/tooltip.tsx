@@ -24,7 +24,8 @@ export function Tooltip({ content, children, side = "top", delayDuration = 200 }
             sideOffset={6}
             className={cn(
               "z-50 max-w-72 rounded-sm bg-text px-2.5 py-1.5 text-caption font-medium text-page shadow-md",
-              "data-[state=delayed-open]:animate-fade-in motion-reduce:animate-none",
+              // Chỉ chạy hiệu ứng trong `motion-safe:`: lớp `motion-reduce:animate-none` không thắng nổi bộ chọn `[data-state]` (U-13).
+              "motion-safe:data-[state=delayed-open]:animate-fade-in",
             )}
           >
             {content}

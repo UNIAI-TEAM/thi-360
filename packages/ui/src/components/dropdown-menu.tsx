@@ -23,7 +23,8 @@ export function DropdownMenuContent({
         align={align}
         className={cn(
           "z-50 min-w-48 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-md",
-          "data-[state=open]:animate-fade-in motion-reduce:animate-none",
+          // Chỉ chạy hiệu ứng trong `motion-safe:`: lớp `motion-reduce:animate-none` không thắng nổi bộ chọn `[data-state]` (U-13).
+          "motion-safe:data-[state=open]:animate-fade-in",
           className,
         )}
         {...props}

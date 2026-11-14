@@ -23,6 +23,12 @@ export function Dialog({ open, ...props }: ComponentProps<typeof DialogPrimitive
 export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
 
+/*
+ * Chuyển động (DESIGN.md mục 7): hiệu ứng mở/đóng chỉ khai báo trong `motion-safe:` (tức
+ * `@media (prefers-reduced-motion: no-preference)`). Không viết `data-[state=open]:animate-*` rồi hủy bằng
+ * `motion-reduce:animate-none`: bộ chọn có thuộc tính `[data-state]` nặng hơn lớp `animate-none` nên lệnh hủy
+ * không bao giờ thắng (U-13). Không có hiệu ứng thì Presence của Radix gỡ phần tử ngay khi đóng.
+ */
 export function DialogOverlay({
   className,
   ...props
@@ -30,7 +36,7 @@ export function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        "fixed inset-0 z-50 bg-overlay data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out motion-reduce:animate-none",
+        "fixed inset-0 z-50 bg-overlay motion-safe:data-[state=open]:animate-fade-in motion-safe:data-[state=closed]:animate-fade-out",
         className,
       )}
       {...props}
@@ -61,7 +67,7 @@ export function DialogContent({
       <DialogPrimitive.Content
         className={cn(
           "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-surface p-6 shadow-xl",
-          "data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out motion-reduce:animate-none",
+          "motion-safe:data-[state=open]:animate-dialog-in motion-safe:data-[state=closed]:animate-dialog-out",
           size === "xl" ? "max-w-[920px]" : size === "lg" ? "max-w-[720px]" : "max-w-[480px]",
           className,
         )}

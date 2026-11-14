@@ -35,7 +35,8 @@ export function DrawerContent({
       <DialogPrimitive.Content
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-full max-w-[520px] flex-col gap-4 overflow-y-auto rounded-l-xl bg-surface p-6 shadow-xl",
-          "data-[state=open]:animate-drawer-in data-[state=closed]:animate-drawer-out motion-reduce:animate-none",
+          // Chỉ chạy hiệu ứng trong `motion-safe:` (xem ghi chú ở `DialogOverlay`).
+          "motion-safe:data-[state=open]:animate-drawer-in motion-safe:data-[state=closed]:animate-drawer-out",
           className,
         )}
         {...props}
