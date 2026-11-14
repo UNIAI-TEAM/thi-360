@@ -1409,26 +1409,6 @@ const KNOWLEDGE_KT1: CatalogTreeNodeResponse = {
   version: 0,
 };
 
-const KNOWLEDGE_KT2: CatalogTreeNodeResponse = {
-  id: "node-kt2",
-  groupId: "grp-knowledge",
-  parentId: "node-b1",
-  code: "KT2",
-  nameVi: "GTLN GTNN",
-  nameEn: "Max Min",
-  displayOrder: 1,
-  status: "ACTIVE",
-  effectiveStatus: "ACTIVE",
-  depth: 3,
-  path: "/node-ch1/node-b1/node-kt2/",
-  hasChildren: false,
-  childCount: 0,
-  matched: false,
-  ownRefs: [],
-  inheritedRefs: KNOWLEDGE_BAI1.inheritedRefs,
-  value: 5,
-  version: 0,
-};
 
 function toTreeItemDetail(node: CatalogTreeNodeResponse): CatalogItemResponse {
   return {
@@ -2189,6 +2169,47 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       ).toBeInTheDocument(),
     );
     expect(getDescendants).toHaveBeenCalledTimes(2);
+  });
+
+  it("giữ nguyên chữ hoa của tên cấp tùy chỉnh trong câu phạm vi câu hỏi (R2-03)", async () => {
+    const cefrGroup: CatalogGroupResponse = {
+      ...SYSTEM_KNOWLEDGE_GROUP,
+      id: "grp-cefr",
+      code: "CEFR_TREE",
+      nameVi: "Cây CEFR",
+      nameEn: "CEFR tree",
+      type: "CUSTOM",
+      system: false,
+      levels: ["Band", "CEFR"],
+      refGroups: [],
+    };
+    const cefrRoot: CatalogTreeNodeResponse = {
+      ...KNOWLEDGE_CH1,
+      id: "node-cefr-a1",
+      groupId: "grp-cefr",
+      code: "A1",
+      nameVi: "Sơ cấp",
+      nameEn: "Beginner",
+      depth: 1,
+      path: "/node-cefr-a1/",
+      hasChildren: false,
+      childCount: 0,
+      value: 1,
+    };
+    const api = createTreeMockApi({
+      listGroups: vi.fn(async () => pageOfGroups([cefrGroup])),
+      listTree: vi.fn(async () => [cefrRoot]),
+      getItem: vi.fn(async () => toTreeItemDetail(cefrRoot)),
+      getDescendants: vi.fn(async () => []),
+    });
+    renderCatalog({ api, search: "group=CEFR_TREE&node=node-cefr-a1" });
+
+    const detailPane = await screen.findByRole("complementary", {
+      name: "Chi tiết nút đang chọn",
+    });
+    expect(
+      await within(detailPane).findByText("Đề gắn nút này lấy câu hỏi của 0 CEFR."),
+    ).toBeInTheDocument();
   });
 
   it("chặn hiển thị chi tiết khi ?node= thuộc danh mục khác (R1-10)", async () => {

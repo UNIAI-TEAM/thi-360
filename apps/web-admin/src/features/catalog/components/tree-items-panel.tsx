@@ -830,6 +830,11 @@ export function TreeItemsPanel({
     enabled: Boolean(activeNode && !activeNodeIsLeaf),
   });
   const leafLevelName = displayLevels[levels.length - 1] ?? t("tree.defaultLevelName");
+  // System level names are translated titles lowered for grammar; custom level
+  // names are user data and must stay verbatim.
+  const questionScopeLeafLabel = isSystemGroup
+    ? leafLevelName.toLowerCase()
+    : leafLevelName;
   const questionScopeLeafCount = activeNode
     ? activeNodeIsLeaf
       ? 1
@@ -1611,7 +1616,7 @@ export function TreeItemsPanel({
                 <p className="rounded-md border border-border bg-surface px-3 py-2 text-caption text-text-secondary">
                   {t("tree.questionScope", {
                     count: questionScopeLeafCount,
-                    leafName: leafLevelName.toLowerCase(),
+                    leafName: questionScopeLeafLabel,
                   })}
                 </p>
               ) : activeNodeDescendantsQuery.isPending ? (
@@ -1637,7 +1642,7 @@ export function TreeItemsPanel({
                 <p className="rounded-md border border-border bg-surface px-3 py-2 text-caption text-text-secondary">
                   {t("tree.questionScope", {
                     count: questionScopeLeafCount,
-                    leafName: leafLevelName.toLowerCase(),
+                    leafName: questionScopeLeafLabel,
                   })}
                 </p>
               )}
