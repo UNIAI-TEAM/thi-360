@@ -248,7 +248,8 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
 
     // 2. Add three values
     for (const [idx, code] of ["V1", "V2", "V3"].entries()) {
-      await page.getByRole("button", { name: "Thêm giá trị" }).click();
+      // Header CTA and the empty-state CTA both exist while the group is empty: the header one is first.
+      await page.getByRole("button", { name: "Thêm giá trị" }).first().click();
       const itemDialog = page.getByRole("dialog");
       await itemDialog.getByLabel(/Mã giá trị/).fill(`${code}_${suffix}`);
       await itemDialog.getByLabel(/Tên tiếng Việt/).fill(`Giá trị ${idx + 1} ${suffix}`);
@@ -485,7 +486,8 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await expect(importDlg.getByText(/Tất cả 1 dòng đều hợp lệ/)).toBeVisible();
     await importDlg.getByRole("button", { name: /Nhập 1 dòng hợp lệ/ }).click();
     await expect(importDlg.getByText(/Đã nhập xong/)).toBeVisible();
-    await importDlg.getByRole("button", { name: "Đóng", exact: true }).click();
+    // The footer button is first in the DOM; the dialog X (also "Đóng") comes after it.
+    await importDlg.getByRole("button", { name: "Đóng", exact: true }).first().click();
 
     await expect(page.getByText(impChapName)).toBeVisible();
     await page.getByRole("button", { name: `Mở ${impChapName}` }).click();
