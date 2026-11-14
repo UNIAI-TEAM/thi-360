@@ -25,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,6 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.classroom.api.AddClassMembersRequest;
 import vn.unicom.thi360.classroom.api.TransferClassMemberRequest;
+import vn.unicom.thi360.classroom.application.DevClassSeeder;
 import vn.unicom.thi360.classroom.application.ClassService;
 import vn.unicom.thi360.classroom.application.UserDeletedClassCleanupListener;
 import vn.unicom.thi360.identity.spi.Permissions;
@@ -51,6 +53,9 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -99,6 +104,11 @@ class ClassroomAdminIT extends AbstractIntegrationTest {
             jdbcTemplate.update("DELETE FROM identity.platform_admin WHERE id = ?", platformAdminId);
         }
         createdPlatformAdminIds.clear();
+    }
+
+    @Test
+    void nonDevProfile_doesNotRegisterDevClassSeeder() {
+        assertThat(applicationContext.getBeansOfType(DevClassSeeder.class)).isEmpty();
     }
 
     @Test

@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,7 @@ import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.ids.Ids;
 
+@Order(1)
 @Component
 @Profile("dev")
 public class DevDataInitializer implements ApplicationRunner {
@@ -256,4 +258,5 @@ public class DevDataInitializer implements ApplicationRunner {
             String roleCode
     ) {
     }
+
 }
