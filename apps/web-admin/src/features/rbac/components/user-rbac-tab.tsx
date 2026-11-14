@@ -206,6 +206,13 @@ export function UserRbacTab({
     return locked;
   }, [effectiveQuery.data, permissionGroups, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const inheritedRoleCodes = useMemo(() => {
+    const effective = effectiveQuery.data?.permissions ?? [];
+    return effective
+      .filter((item) => item.sources.some((s) => s.type === "ROLE"))
+      .map((item) => item.code);
+  }, [effectiveQuery.data]);
+
   async function invalidateUserAuthz() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: rbacKeys.userRoles(userId) }),
@@ -694,6 +701,7 @@ export function UserRbacTab({
                 selectedCodes={draftDirectCodes}
                 onChange={setDraftDirectCodes}
                 lockedObjects={lockedObjects}
+                inheritedCodes={inheritedRoleCodes}
               />
             </div>
 

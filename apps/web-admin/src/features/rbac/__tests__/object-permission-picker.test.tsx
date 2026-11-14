@@ -198,4 +198,27 @@ describe("ObjectPermissionPicker (AC-1)", () => {
     await user.click(screen.getByRole("checkbox", { name: "Cấp đối tượng Giao diện" }));
     expect(onChange).toHaveBeenCalledWith(["APPEARANCE.MODIFY"]);
   });
+
+  it("giữ nguyên quyền riêng trực tiếp khi quyền xem đến từ vai trò (inheritedCodes) và thêm đối tượng khác", async () => {
+    const user = userEvent.setup();
+    const groups = groupPermissionsByObject(SAMPLE_PERMISSIONS, VI_RBAC_T);
+    const onChange = vi.fn();
+
+    renderWithProviders(
+      <ObjectPermissionPicker
+        groups={groups}
+        selectedCodes={["USER.ASSIGN"]}
+        inheritedCodes={["USER.VIEW"]}
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByText(/Đang cấp 0 đối tượng · 1 quyền riêng/)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Cấp đối tượng Tài khoản" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Gán vai trò và quyền" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Gán vai trò và quyền" })).toBeEnabled();
+
+    await user.click(screen.getByRole("checkbox", { name: "Cấp đối tượng Nhật ký" }));
+    expect(onChange).toHaveBeenCalledWith(["USER.ASSIGN", "AUDIT.VIEW"]);
+  });
 });

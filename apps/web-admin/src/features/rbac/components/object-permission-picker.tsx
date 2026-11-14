@@ -79,8 +79,10 @@ export function groupPermissionsByObject(
 export function codesToPickerSelection(
   codes: readonly string[],
   groups: readonly PermissionObjectGroup[],
+  inheritedCodes: readonly string[] = [],
 ): PickerSelection {
   const codeSet = new Set(codes);
+  const inheritedSet = new Set(inheritedCodes);
   const levels: Record<string, "VIEW" | "MODIFY"> = {};
   const extras: Record<string, boolean> = {};
 
@@ -92,11 +94,12 @@ export function codesToPickerSelection(
     }
 
     const granted = levels[group.objectCode] !== undefined;
-    if (granted) {
-      for (const extra of group.extraPermissions) {
-        if (codeSet.has(extra.code)) {
-          extras[extra.code] = true;
-        }
+    const hasInheritedView =
+      Boolean(group.viewPermission && inheritedSet.has(group.viewPermission.code)) ||
+      Boolean(group.modifyPermission && inheritedSet.has(group.modifyPermission.code));
+    for (const extra of group.extraPermissions) {
+      if (codeSet.has(extra.code) && (granted || hasInheritedView || codeSet.has(extra.code))) {
+        extras[extra.code] = true;
       }
     }
   }
@@ -114,11 +117,9 @@ export function pickerSelectionToCodes(
   const codes: string[] = [];
   for (const group of groups) {
     const level = selection.levels[group.objectCode];
-    if (!level) continue;
-
     if (level === "VIEW") {
       if (group.viewPermission) codes.push(group.viewPermission.code);
-    } else {
+    } else if (level === "MODIFY") {
       if (group.viewPermission) codes.push(group.viewPermission.code);
       if (group.modifyPermission) codes.push(group.modifyPermission.code);
     }
@@ -136,14 +137,17 @@ export function pickerSelectionToCodes(
 export function toggleObjectSelection(
   selection: PickerSelection,
   group: PermissionObjectGroup,
+  hasInheritedPrerequisite = false,
 ): PickerSelection {
   const nextLevels = { ...selection.levels };
   const nextExtras = { ...selection.extras };
 
   if (nextLevels[group.objectCode]) {
     delete nextLevels[group.objectCode];
-    for (const extra of group.extraPermissions) {
-      delete nextExtras[extra.code];
+    if (!hasInheritedPrerequisite) {
+      for (const extra of group.extraPermissions) {
+        delete nextExtras[extra.code];
+      }
     }
   } else {
     nextLevels[group.objectCode] = group.levelMode === "modify" ? "MODIFY" : "VIEW";
@@ -170,8 +174,11 @@ export function toggleExtraSelection(
   selection: PickerSelection,
   objectCode: string,
   extraCode: string,
+  allowWithoutLevel = false,
 ): PickerSelection {
-  if (!selection.levels[objectCode]) return selection;
+  if (!selection.levels[objectCode] && !allowWithoutLevel && !selection.extras[extraCode]) {
+    return selection;
+  }
   const nextExtras = { ...selection.extras };
   if (nextExtras[extraCode]) {
     delete nextExtras[extraCode];
@@ -180,7 +187,6 @@ export function toggleExtraSelection(
   }
   return { ...selection, extras: nextExtras };
 }
-
 export interface ObjectPermissionPickerProps {
   groups: readonly PermissionObjectGroup[];
   selectedCodes: readonly string[];
@@ -191,6 +197,8 @@ export interface ObjectPermissionPickerProps {
   readOnly?: boolean;
   /** Khóa theo từng đối tượng (ví dụ đã có đủ từ vai trò trong dialog gán quyền trực tiếp). */
   lockedObjects?: Record<string, string>;
+  /** Các mã quyền đã có sẵn từ vai trò (làm điều kiện tiên quyết cho quyền riêng trực tiếp). */
+  inheritedCodes?: readonly string[];
   sectionTitle?: string;
 }
 
@@ -201,23 +209,21 @@ export function ObjectPermissionPicker({
   examLocked = false,
   readOnly = false,
   lockedObjects,
+  inheritedCodes = [],
   sectionTitle,
 }: ObjectPermissionPickerProps) {
   const t = useTranslations("rbac");
   const rbacT: RbacTranslator = (key, values) => t(key, values);
 
-  const selection = codesToPickerSelection(selectedCodes, groups);
+  const inheritedSet = new Set(inheritedCodes);
+  const selection = codesToPickerSelection(selectedCodes, groups, inheritedCodes);
   const objectCount = examLocked
     ? 0
     : groups.filter((g) => Boolean(selection.levels[g.objectCode])).length;
   const extraCount = examLocked
     ? 0
     : groups.reduce(
-        (sum, g) =>
-          sum +
-          g.extraPermissions.filter(
-            (e) => Boolean(selection.levels[g.objectCode]) && Boolean(selection.extras[e.code]),
-          ).length,
+        (sum, g) => sum + g.extraPermissions.filter((e) => Boolean(selection.extras[e.code])).length,
         0,
       );
 
@@ -239,8 +245,11 @@ export function ObjectPermissionPicker({
           const isObjectLocked = examLocked || readOnly || Boolean(lockedReason);
           const currentLevel = examLocked ? undefined : selection.levels[group.objectCode];
           const isGranted = Boolean(currentLevel);
+          const hasInheritedPrerequisite =
+            Boolean(group.viewPermission && inheritedSet.has(group.viewPermission.code)) ||
+            Boolean(group.modifyPermission && inheritedSet.has(group.modifyPermission.code));
           const isControlActive = isGranted && !isObjectLocked;
-
+          const isExtraControlActive = (isGranted || hasInheritedPrerequisite) && !isObjectLocked;
           return (
             <div
               key={group.objectCode}
@@ -265,7 +274,11 @@ export function ObjectPermissionPicker({
                     aria-label={t("picker.grantAria", { name: group.objectName })}
                     onCheckedChange={() => {
                       if (isObjectLocked) return;
-                      const next = toggleObjectSelection(selection, group);
+                      const next = toggleObjectSelection(
+                        selection,
+                        group,
+                        hasInheritedPrerequisite,
+                      );
                       onChange(pickerSelectionToCodes(next, groups, examLocked));
                     }}
                   />
@@ -282,8 +295,16 @@ export function ObjectPermissionPicker({
                   </span>
                   <span className="min-w-0">
                     <span className="block font-semibold text-text">{group.objectName}</span>
-                    {lockedReason && (
+                    {lockedReason ? (
                       <span className="block text-caption text-text-muted">{lockedReason}</span>
+                    ) : (
+                      !isGranted &&
+                      hasInheritedPrerequisite &&
+                      group.extraPermissions.length > 0 && (
+                        <span className="block text-caption text-text-muted">
+                          {t("picker.inheritedPrerequisiteHint")}
+                        </span>
+                      )
                     )}
                   </span>
                 </label>
@@ -390,28 +411,30 @@ export function ObjectPermissionPicker({
                   </span>
                   {group.extraPermissions.map((extra) => {
                     const extraName = resolvePermissionName(rbacT, extra.code, extra.name);
-                    const checked = !examLocked && isGranted && Boolean(selection.extras[extra.code]);
+                    const checked = !examLocked && Boolean(selection.extras[extra.code]);
+                    const canToggleExtra = isExtraControlActive || (checked && !isObjectLocked);
                     return (
                       <label
                         key={extra.code}
                         className={cn(
                           "inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-body transition-colors duration-150 motion-reduce:transition-none",
-                          isControlActive ? "cursor-pointer" : "cursor-not-allowed",
+                          canToggleExtra ? "cursor-pointer" : "cursor-not-allowed",
                           checked
                             ? "border-primary-200 bg-primary-50 font-medium text-primary-text"
                             : "border-border bg-surface text-text-secondary",
-                          !isControlActive && "opacity-75",
+                          !canToggleExtra && "opacity-75",
                         )}
                       >
                         <Checkbox
                           checked={checked}
-                          disabled={!isControlActive}
+                          disabled={!canToggleExtra}
                           onCheckedChange={() => {
-                            if (!isControlActive) return;
+                            if (!canToggleExtra) return;
                             const next = toggleExtraSelection(
                               selection,
                               group.objectCode,
                               extra.code,
+                              hasInheritedPrerequisite,
                             );
                             onChange(pickerSelectionToCodes(next, groups, examLocked));
                           }}

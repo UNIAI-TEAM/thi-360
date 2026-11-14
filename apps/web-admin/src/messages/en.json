@@ -524,6 +524,7 @@
       "fixedView": "View only",
       "grantAria": "Grant object {name}",
       "helper": "Check the box at the start of a row to grant the object, then choose View only or View and modify. Special permissions below an object are only selectable when the object is granted.",
+      "inheritedPrerequisiteHint": "View inherited from role; special permissions can be selected.",
       "levelGroupAria": "Access level for {name}",
       "levelModify": "View and modify",
       "levelView": "View only"

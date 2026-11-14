@@ -444,6 +444,132 @@ describe("BulkAssignTab & UserRbacTab", () => {
     ).toBeInTheDocument();
   });
 
+  it("UserRbacTab: giữ quyền riêng USER.ASSIGN khi USER.VIEW đến từ vai trò và người dùng thêm đối tượng khác", async () => {
+    const user = userEvent.setup();
+    const manageRoles: UserRolesResponse = {
+      userId: "u-target",
+      access: "MANAGE",
+      roles: [
+        {
+          roleId: "role-ops",
+          roleCode: "OPERATIONS",
+          roleName: "Vận hành / CSKH",
+          access: "MANAGE",
+          status: "ACTIVE",
+          system: true,
+          assignedAt: "2026-11-14T00:00:00Z",
+        },
+      ],
+    };
+    const directWithAssign: UserDirectPermissionsResponse = {
+      userId: "u-target",
+      hasManageRole: true,
+      permissions: [
+        {
+          permissionId: "perm-user-assign",
+          permissionCode: "USER.ASSIGN",
+          permissionName: "Gán vai trò và quyền",
+          groupCode: "USER",
+          groupName: "Tài khoản",
+          effective: true,
+          grantedAt: "2026-11-12T00:00:00Z",
+          grantedByUsername: "platform",
+          reason: "Hỗ trợ phân quyền",
+        },
+      ],
+    };
+    const effectiveWithRoleView: EffectivePermissionsResponse = {
+      userId: "u-target",
+      effectiveAccess: "MANAGE",
+      hasManageRole: true,
+      inactiveDirectPermissions: [],
+      permissions: [
+        {
+          permissionId: "perm-user-view",
+          code: "USER.VIEW",
+          name: "Xem",
+          groupCode: "USER",
+          groupName: "Tài khoản",
+          sources: [
+            {
+              type: "ROLE",
+              roleId: "role-ops",
+              roleCode: "OPERATIONS",
+              roleName: "Vận hành / CSKH",
+            },
+          ],
+        },
+        {
+          permissionId: "perm-user-assign",
+          code: "USER.ASSIGN",
+          name: "Gán vai trò và quyền",
+          groupCode: "USER",
+          groupName: "Tài khoản",
+          sources: [{ type: "DIRECT", reason: "Hỗ trợ phân quyền" }],
+        },
+      ],
+    };
+    const permissionsCatalog: PermissionResponse[] = [
+      {
+        id: "perm-user-view",
+        code: "USER.VIEW",
+        bitIndex: 0,
+        groupCode: "USER",
+        groupName: "Tài khoản",
+        name: "Xem",
+        scope: "MANAGE",
+        roleCount: 1,
+        userCount: 1,
+      },
+      {
+        id: "perm-user-assign",
+        code: "USER.ASSIGN",
+        bitIndex: 2,
+        groupCode: "USER",
+        groupName: "Tài khoản",
+        name: "Gán vai trò và quyền",
+        scope: "MANAGE",
+        roleCount: 1,
+        userCount: 1,
+      },
+      ...PERMISSIONS_LIST,
+    ];
+    const updateUserPermissions = vi.fn(async () => directWithAssign);
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UserRbacTab
+          userId="u-target"
+          username="target.user"
+          fullName="Target"
+          getUserRoles={async () => manageRoles}
+          getUserPermissions={async () => directWithAssign}
+          updateUserPermissions={updateUserPermissions}
+          getEffectivePermissions={async () => effectiveWithRoleView}
+          listRoles={async () => ROLES_PAGE}
+          listPermissions={async () => permissionsCatalog}
+        />
+      </SessionProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Thêm quyền" }));
+    const dialog = await screen.findByRole("dialog");
+
+    await user.click(within(dialog).getByRole("checkbox", { name: "Cấp đối tượng Nhật ký" }));
+    await user.type(
+      within(dialog).getByPlaceholderText("Nhập lý do gán quyền trực tiếp"),
+      "Bổ sung xem nhật ký",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Thêm quyền" }));
+
+    await waitFor(() => {
+      expect(updateUserPermissions).toHaveBeenCalledWith("u-target", {
+        permissionCodes: ["USER.ASSIGN", "AUDIT.VIEW"],
+        reason: "Bổ sung xem nhật ký",
+      });
+    });
+  });
+
   it("ánh xạ toàn bộ reasonCode và mã lỗi RBAC sang câu hiển thị tiếng Việt và tiếng Anh", () => {
     const viT = makeTranslator(viMessages.rbac);
     const enT = makeTranslator(enMessages.rbac);

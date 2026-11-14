@@ -524,6 +524,7 @@
       "fixedView": "Chỉ có mức xem",
       "grantAria": "Cấp đối tượng {name}",
       "helper": "Tick ô đầu hàng để cấp đối tượng, rồi chọn mức Chỉ xem hoặc Xem và sửa. Dòng \"Quyền riêng\" bên dưới đối tượng là các quyền thêm, chỉ chọn được khi đối tượng đã được cấp.",
+      "inheritedPrerequisiteHint": "Đã có quyền xem từ vai trò; có thể chọn quyền riêng.",
       "levelGroupAria": "Mức truy cập của {name}",
       "levelModify": "Xem và sửa",
       "levelView": "Chỉ xem"
