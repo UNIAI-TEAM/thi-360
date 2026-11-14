@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dang-nhap",
+  usePathname: () => "/login",
   useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace }),
   useSearchParams: () =>
     new URLSearchParams({

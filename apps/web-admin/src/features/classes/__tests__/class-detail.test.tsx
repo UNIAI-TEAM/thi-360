@@ -229,7 +229,7 @@ describe("ClassDetailView", () => {
     expect(screen.getByText(/LOP-A · Nhóm ôn HSA buổi tối/)).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "student01" })).toHaveAttribute(
       "href",
-      `/tai-khoan/${SAMPLE_MEMBERS[0]!.userId}`,
+      `/users/${SAMPLE_MEMBERS[0]!.userId}`,
     );
     expect(screen.queryByText(/Lịch sử thành viên/i)).not.toBeInTheDocument();
   });

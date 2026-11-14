@@ -29,7 +29,7 @@ describe("redirect helpers", () => {
       "http://localhost:3000/home",
     );
     expect(buildLoginUrl("http://localhost:3000", "http://localhost:3001/users")).toBe(
-      "http://localhost:3000/dang-nhap?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fusers",
+      "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fusers",
     );
   });
 });
@@ -38,8 +38,8 @@ describe("resolveAuthenticatedLanding", () => {
   const urls = { webUrl: "https://thi360.vn", adminUrl: "https://admin.thi360.vn" };
 
   it("callbackUrl hợp lệ của web admin hoặc web học viên được dùng nguyên văn", () => {
-    expect(resolveAuthenticatedLanding("MANAGE", "https://admin.thi360.vn/lop-hoc?page=2", urls)).toBe(
-      "https://admin.thi360.vn/lop-hoc?page=2",
+    expect(resolveAuthenticatedLanding("MANAGE", "https://admin.thi360.vn/classes?page=2", urls)).toBe(
+      "https://admin.thi360.vn/classes?page=2",
     );
     expect(resolveAuthenticatedLanding("EXAM", "/home?tab=1", urls)).toBe("https://thi360.vn/home?tab=1");
   });
@@ -48,10 +48,10 @@ describe("resolveAuthenticatedLanding", () => {
     expect(resolveAuthenticatedLanding("MANAGE", null, urls)).toBe("https://admin.thi360.vn");
     expect(resolveAuthenticatedLanding("EXAM", "https://trang-la.example/x", urls)).toBe("https://thi360.vn/home");
     expect(resolveAuthenticatedLanding("EXAM", "//trang-la.example", urls)).toBe("https://thi360.vn/home");
-    expect(resolveAuthenticatedLanding("MANAGE", "/dang-nhap?callbackUrl=%2Fhome", urls)).toBe(
+    expect(resolveAuthenticatedLanding("MANAGE", "/login?callbackUrl=%2Fhome", urls)).toBe(
       "https://admin.thi360.vn",
     );
-    expect(resolveAuthenticatedLanding("MANAGE", "https://thi360.vn/dang-nhap", urls)).toBe("https://admin.thi360.vn");
+    expect(resolveAuthenticatedLanding("MANAGE", "https://thi360.vn/login", urls)).toBe("https://admin.thi360.vn");
   });
 
   it("đường dẫn chuẩn hóa thành //host không được dùng làm đích (open redirect qua Location tương đối)", () => {

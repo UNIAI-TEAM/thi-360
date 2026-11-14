@@ -5,7 +5,7 @@ const ADMIN_URL = (process.env.THI360_ADMIN_URL ?? "http://localhost:3001").repl
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
 
 async function login(page: Page, identifier: string) {
-  await page.goto(`${WEB_URL}/dang-nhap`);
+  await page.goto(`${WEB_URL}/login`);
   await page.getByLabel(/Tên đăng nhập hoặc email/).fill(identifier);
   await page.getByLabel(/Mật khẩu/).fill(DEV_PASSWORD);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
@@ -33,7 +33,7 @@ function watchNavigation(page: Page) {
   page.on("request", (request) => {
     if (request.resourceType() !== "document" || request.frame() !== page.mainFrame()) return;
     state.documents += 1;
-    if (new URL(request.url()).pathname === "/dang-nhap") state.loginVisits += 1;
+    if (new URL(request.url()).pathname === "/login") state.loginVisits += 1;
   });
   return state;
 }
@@ -45,7 +45,7 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
   }) => {
     await login(page, "sys.admin");
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
-    await page.goto(`${ADMIN_URL}/tai-khoan`);
+    await page.goto(`${ADMIN_URL}/users`);
     await expect(page.getByRole("heading", { level: 1, name: "Tài khoản" })).toBeVisible();
     const search = page.getByLabel("Tìm kiếm");
     await expect(search).toBeVisible();
@@ -69,7 +69,7 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
   test("bấm mục menu sau khi hết hạn: vào đúng trang, không qua trang đăng nhập", async ({ page, context }) => {
     await login(page, "sys.admin");
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
-    await page.goto(`${ADMIN_URL}/tai-khoan`);
+    await page.goto(`${ADMIN_URL}/users`);
     await expect(page.getByRole("heading", { level: 1, name: "Tài khoản" })).toBeVisible();
 
     const navigation = watchNavigation(page);
@@ -77,7 +77,7 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
 
     await page.getByRole("link", { name: "Lớp học", exact: true }).click();
 
-    await expect(page).toHaveURL(`${ADMIN_URL}/lop-hoc`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/classes`);
     await expect(page.getByRole("heading", { level: 1, name: "Lớp học" })).toBeVisible();
     expect(navigation.loginVisits).toBe(0);
     expect(await cookieNames(context)).toEqual(expect.arrayContaining(["thi360_at", "thi360_ctx", "thi360_rt"]));
@@ -86,20 +86,20 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
   test("tải lại trang (F5) sau khi hết hạn: ở lại đúng trang, vẫn đăng nhập", async ({ page, context }) => {
     await login(page, "sys.admin");
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
-    await page.goto(`${ADMIN_URL}/lop-hoc`);
+    await page.goto(`${ADMIN_URL}/classes`);
     await expect(page.getByRole("heading", { level: 1, name: "Lớp học" })).toBeVisible();
 
     const navigation = watchNavigation(page);
     await expireAccessToken(context);
     await page.reload();
 
-    await expect(page).toHaveURL(`${ADMIN_URL}/lop-hoc`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/classes`);
     await expect(page.getByRole("heading", { level: 1, name: "Lớp học" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Menu tài khoản" })).toContainText("sys.admin");
     expect(navigation.loginVisits).toBe(0);
   });
 
-  test("học viên mở lại /dang-nhap khi phiên còn hạn làm mới: được đưa về /home, không phải đăng nhập lại", async ({
+  test("học viên mở lại /login khi phiên còn hạn làm mới: được đưa về /home, không phải đăng nhập lại", async ({
     page,
     context,
   }) => {
@@ -107,7 +107,7 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
     await expect(page).toHaveURL(`${WEB_URL}/home`);
 
     await expireAccessToken(context);
-    await page.goto(`${WEB_URL}/dang-nhap`);
+    await page.goto(`${WEB_URL}/login`);
 
     await expect(page).toHaveURL(`${WEB_URL}/home`);
     await expect(page.getByRole("button", { name: "Menu tài khoản" })).toContainText("student02");
@@ -119,17 +119,17 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
   }) => {
     await login(page, "sys.admin");
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
-    const target = `${ADMIN_URL}/lop-hoc?page=1`;
+    const target = `${ADMIN_URL}/classes?page=1`;
 
-    await page.goto(`${WEB_URL}/dang-nhap?callbackUrl=${encodeURIComponent(target)}`);
+    await page.goto(`${WEB_URL}/login?callbackUrl=${encodeURIComponent(target)}`);
     await expect(page).toHaveURL(target);
 
     await expireAccessToken(context);
-    await page.goto(`${WEB_URL}/dang-nhap?callbackUrl=${encodeURIComponent(target)}`);
+    await page.goto(`${WEB_URL}/login?callbackUrl=${encodeURIComponent(target)}`);
     await expect(page).toHaveURL(target);
     await expect(page.getByRole("heading", { level: 1, name: "Lớp học" })).toBeVisible();
 
-    await page.goto(`${WEB_URL}/dang-nhap?callbackUrl=${encodeURIComponent("https://trang-la.example")}`);
+    await page.goto(`${WEB_URL}/login?callbackUrl=${encodeURIComponent("https://trang-la.example")}`);
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
   });
 
@@ -140,9 +140,9 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
     await context.clearCookies({ name: "thi360_at" });
     await context.clearCookies({ name: "thi360_ctx" });
     await context.clearCookies({ name: "thi360_rt" });
-    await page.goto(`${ADMIN_URL}/lop-hoc`);
+    await page.goto(`${ADMIN_URL}/classes`);
 
-    await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/dang-nhap\\?callbackUrl=`));
+    await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/login\\?callbackUrl=`));
     await expect(page.getByRole("button", { name: "Đăng nhập" })).toBeVisible();
   });
 
@@ -152,7 +152,7 @@ test.describe("Access token hết hạn: phiên tự làm mới, không tải l�
   }) => {
     await login(page, "sys.admin");
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
-    await page.goto(`${ADMIN_URL}/lop-hoc`);
+    await page.goto(`${ADMIN_URL}/classes`);
     await expect(page.getByRole("heading", { level: 1, name: "Lớp học" })).toBeVisible();
 
     const navigation = watchNavigation(page);

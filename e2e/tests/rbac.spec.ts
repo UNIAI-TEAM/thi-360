@@ -14,14 +14,14 @@ async function submitLoginForm(page: Page, identifier: string, password: string)
 }
 
 async function loginAs(page: Page, identifier: string, password: string) {
-  await page.goto(`${WEB_URL}/dang-nhap`);
+  await page.goto(`${WEB_URL}/login`);
   await submitLoginForm(page, identifier, password);
 }
 
 async function logoutFromAdmin(page: Page) {
   await page.getByRole("button", { name: "Menu tài khoản" }).click();
   await page.getByRole("menuitem", { name: "Đăng xuất" }).click();
-  await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/dang-nhap`));
+  await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/login`));
 }
 
 async function getXsrfHeaders(page: Page): Promise<Record<string, string>> {
@@ -118,7 +118,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
         .getByRole("navigation", { name: "Menu chính" })
         .getByRole("link", { name: "Phân quyền" })
         .click();
-      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/phan-quyen\\?tab=vai-tro`));
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/rbac\\?tab=vai-tro`));
 
       await page.getByRole("button", { name: "+ Tạo vai trò" }).click();
       const dialog = page.getByRole("dialog");
@@ -170,13 +170,13 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await loginAs(page, "platform", PLATFORM_PASSWORD);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
-      await page.goto(`${ADMIN_URL}/phan-quyen?tab=quyen`);
+      await page.goto(`${ADMIN_URL}/rbac?tab=quyen`);
       await page
         .getByRole("button", { name: "Xem tài khoản đang có quyền Xem lớp học" })
         .click();
 
       await expect(page).toHaveURL(
-        new RegExp(`${ADMIN_URL}/phan-quyen\\?tab=nguoi-dung&permission=CLASS\\.VIEW`),
+        new RegExp(`${ADMIN_URL}/rbac\\?tab=nguoi-dung&permission=CLASS\\.VIEW`),
       );
 
       await page.getByLabel("Tìm tài khoản").fill(watchUsername);
@@ -226,7 +226,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       expect(clearResp.ok()).toBe(true);
     }
 
-    await page.goto(`${ADMIN_URL}/phan-quyen?tab=gan-hang-loat`);
+    await page.goto(`${ADMIN_URL}/rbac?tab=gan-hang-loat`);
     await expect(page.getByRole("heading", { name: /1\. Chọn tài khoản/ })).toBeVisible();
 
     const searchInput = page.getByLabel("Tìm kiếm");
@@ -297,7 +297,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
     const roleName = `Chỉ xem vai trò ${suffix}`;
     const viewerUsername = `e2e.roleview.${suffix}`;
 
-    // Fixture qua API context; không đăng nhập platform vào trang để /dang-nhap hiện form cho viewer.
+    // Fixture qua API context; không đăng nhập platform vào trang để /login hiện form cho viewer.
     const { api, xsrf } = await createPlatformApiContext();
     let roleId: string | undefined;
     let viewerId: string | undefined;
@@ -329,7 +329,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       const createdUser = (await userResp.json()) as { id: string };
       viewerId = createdUser.id;
 
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, viewerUsername, TEST_USER_PASSWORD);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
@@ -337,8 +337,8 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeVisible();
 
       // Truy cập thẳng tab không có quyền -> chuyển về tab đầu tiên được phép (?tab=vai-tro)
-      await page.goto(`${ADMIN_URL}/phan-quyen?tab=quyen`);
-      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/phan-quyen\\?tab=vai-tro`));
+      await page.goto(`${ADMIN_URL}/rbac?tab=quyen`);
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/rbac\\?tab=vai-tro`));
 
       const tabList = page.getByRole("tablist", { name: "Các tab phân quyền" });
       await expect(tabList.getByRole("tab", { name: "Vai trò" })).toBeVisible();

@@ -66,7 +66,7 @@ export function UserMenu() {
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href={`${webUrl()}/doi-mat-khau`}>
+          <a href={`${webUrl()}/change-password`}>
             <KeyRound aria-hidden />
             {t("changePassword")}
           </a>

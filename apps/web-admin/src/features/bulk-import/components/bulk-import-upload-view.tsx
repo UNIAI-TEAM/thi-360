@@ -102,7 +102,7 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
     mutationFn: ({ file, forceChange }: { file: File; forceChange: boolean }) =>
       deps.uploadImportBatch(file, forceChange),
     onSuccess: (batch) => {
-      router.push(`/tai-khoan/cap-hang-loat/${batch.id}`);
+      router.push(`/users/bulk-import/${batch.id}`);
     },
     onError: (error) => {
       setErrorMessage(

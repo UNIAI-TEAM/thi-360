@@ -208,13 +208,13 @@ describe("UsersListView (Slice 1)", () => {
     expect(screen.queryByLabelText("Lớp")).not.toBeInTheDocument();
   });
 
-  it("hiện nút Cấp hàng loạt dẫn tới /tai-khoan/cap-hang-loat khi có quyền USER.MODIFY", async () => {
+  it("hiện nút Cấp hàng loạt dẫn tới /users/bulk-import khi có quyền USER.MODIFY", async () => {
     const deps = makeDeps();
     renderUsersView(deps, { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW", "USER.MODIFY"] });
 
     expect(await screen.findByText("student01", undefined, { timeout: 3000 })).toBeInTheDocument();
     const bulkLink = screen.getByRole("link", { name: "Cấp hàng loạt" });
-    expect(bulkLink).toHaveAttribute("href", "/tai-khoan/cap-hang-loat");
+    expect(bulkLink).toHaveAttribute("href", "/users/bulk-import");
   });
 
   it("gửi đúng tham số bộ lọc tìm kiếm, chưa đăng nhập và hiện tài khoản đã xóa", async () => {
@@ -444,7 +444,7 @@ describe("UsersListView (Slice 1)", () => {
     expect(window.sessionStorage.getItem("rbac.bulk.userIds")).toBe(
       JSON.stringify([SAMPLE_USERS[0]!.id, SAMPLE_USERS[3]!.id]),
     );
-    expect(routerMock.push).toHaveBeenCalledWith("/phan-quyen?tab=gan-hang-loat");
+    expect(routerMock.push).toHaveBeenCalledWith("/rbac?tab=gan-hang-loat");
 
     await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
     expect(previewMock).toHaveBeenCalledWith({

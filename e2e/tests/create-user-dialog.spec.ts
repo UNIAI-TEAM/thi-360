@@ -15,7 +15,7 @@ const VARIANTS = [
 ] as const;
 
 async function login(page: Page) {
-  await page.goto(`${WEB_URL}/dang-nhap`);
+  await page.goto(`${WEB_URL}/login`);
   await page.getByLabel(/Tên đăng nhập hoặc email/).fill("sys.admin");
   await page.getByLabel(/Mật khẩu/).fill(DEV_PASSWORD);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
@@ -35,7 +35,7 @@ test.describe("Hộp thoại Tạo tài khoản: hai cột, hiện đủ trong m
           { name: "thi360_locale", value: variant.locale, url: ADMIN_URL },
           { name: "thi360_theme", value: variant.theme, url: ADMIN_URL },
         ]);
-        await page.goto(`${ADMIN_URL}/tai-khoan`);
+        await page.goto(`${ADMIN_URL}/users`);
         await expect(page.getByRole("table").getByRole("row").nth(1)).toBeVisible();
 
         await page.getByRole("button", { name: variant.title }).first().click();
@@ -90,7 +90,7 @@ test.describe("Hộp thoại Tạo tài khoản: hai cột, hiện đủ trong m
   test("màn hình hẹp (390 px): xếp một cột, cuộn trong hộp thoại, hai nút vẫn thấy được", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 780 });
     await login(page);
-    await page.goto(`${ADMIN_URL}/tai-khoan`);
+    await page.goto(`${ADMIN_URL}/users`);
     await page.getByRole("button", { name: "Tạo tài khoản" }).first().click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "Tạo tài khoản" })).toBeVisible();

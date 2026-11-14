@@ -94,20 +94,20 @@ describe("web-student QueryProvider", () => {
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
   });
 
-  it("401 khi /auth/refresh trả 401 thì chuyển về /dang-nhap kèm callbackUrl", async () => {
+  it("401 khi /auth/refresh trả 401 thì chuyển về /login kèm callbackUrl", async () => {
     mocks.refreshSession.mockRejectedValue(new ApiStatusError(401));
     queryFn.mockRejectedValue(new ApiStatusError(401));
     renderProbe();
 
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith(
-        `http://localhost:3000/dang-nhap?callbackUrl=${encodeURIComponent(window.location.href)}`,
+        `http://localhost:3000/login?callbackUrl=${encodeURIComponent(window.location.href)}`,
       ),
     );
     expect(mocks.clearSessionBestEffort).not.toHaveBeenCalled();
   });
 
-  it("401 khi /auth/refresh lỗi mạng hoặc 5xx thì gọi logout tối đa trước khi về /dang-nhap", async () => {
+  it("401 khi /auth/refresh lỗi mạng hoặc 5xx thì gọi logout tối đa trước khi về /login", async () => {
     mocks.refreshSession.mockRejectedValue(new ApiStatusError(500));
     queryFn.mockRejectedValue(new ApiStatusError(401));
     renderProbe();
@@ -116,8 +116,8 @@ describe("web-student QueryProvider", () => {
     expect(mocks.clearSessionBestEffort).toHaveBeenCalledTimes(1);
   });
 
-  it("cập nhật pathname khi chuyển từ /dang-nhap sang /home và khử trùng lặp 403", async () => {
-    mocks.pathname.current = "/dang-nhap";
+  it("cập nhật pathname khi chuyển từ /login sang /home và khử trùng lặp 403", async () => {
+    mocks.pathname.current = "/login";
     queryFn.mockRejectedValueOnce(new ApiStatusError(403));
 
     const { rerender } = render(

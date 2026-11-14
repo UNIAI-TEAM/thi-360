@@ -52,7 +52,7 @@ pnpm install
 pnpm dev                                                 # web học viên http://localhost:3000, web admin http://localhost:3001
 ```
 
-**4. Đăng nhập thử** tại http://localhost:3000/dang-nhap bằng một tài khoản mẫu bên dưới. Quản trị viên được chuyển sang web admin, học viên tới `/home`.
+**4. Đăng nhập thử** tại http://localhost:3000/login bằng một tài khoản mẫu bên dưới. Quản trị viên được chuyển sang web admin, học viên tới `/home`.
 
 Lưu từ web admin cần backend biết địa chỉ web admin (`THI360_ADMIN_URL`, mặc định `http://localhost:3001`); nếu bạn chạy web ở cổng khác, đặt `THI360_WEB_URL` và `THI360_ADMIN_URL` cho backend và `THI360_API_URL` cho web cho khớp.
 
@@ -79,7 +79,7 @@ Kiểm tra không lệch OpenAPI sau `verify`: `diff -u packages/api-client/open
 
 ## Đăng nhập dev (tài khoản mẫu)
 
-Khi chạy backend với profile `dev` (`api,worker,dev`), `DevDataInitializer` tự tạo sẵn các tài khoản sau (chỉ ở môi trường dev). Đăng nhập tại http://localhost:3000/dang-nhap (một nơi đăng nhập cho cả web học viên và web admin):
+Khi chạy backend với profile `dev` (`api,worker,dev`), `DevDataInitializer` tự tạo sẵn các tài khoản sau (chỉ ở môi trường dev). Đăng nhập tại http://localhost:3000/login (một nơi đăng nhập cho cả web học viên và web admin):
 
 | Tên đăng nhập | Mật khẩu | Vai trò / phạm vi |
 |---|---|---|

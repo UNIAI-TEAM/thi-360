@@ -85,7 +85,7 @@ describe("AppShell", () => {
     expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
       "href",
-      "http://localhost:3000/doi-mat-khau",
+      "http://localhost:3000/change-password",
     );
 
     await userEvent.click(screen.getByRole("menuitem", { name: "Đăng xuất" }));
@@ -143,7 +143,7 @@ describe("AppShell", () => {
   });
 
   it("trang con cung cấp mục cuối: breadcrumb Người dùng › Lớp học (liên kết) › mã lớp, gỡ mục cuối khi trang rời đi", async () => {
-    mocks.pathname.current = "/lop-hoc/abc";
+    mocks.pathname.current = "/classes/abc";
     const { rerender } = renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
@@ -157,7 +157,7 @@ describe("AppShell", () => {
     expect(breadcrumb).toHaveTextContent("Người dùng");
     expect(within(breadcrumb).getByRole("link", { name: "Lớp học" })).toHaveAttribute(
       "href",
-      "/lop-hoc",
+      "/classes",
     );
     expect(within(breadcrumb).getByText("LOP-A")).toHaveAttribute("aria-current", "page");
 

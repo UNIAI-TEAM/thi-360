@@ -18,7 +18,7 @@ export async function proxy(request: NextRequest) {
   const session = await resolveNavigationSession(request);
   const claims = session.claims;
 
-  if (pathname === "/dang-nhap") {
+  if (pathname === "/login") {
     if (claims) {
       // Đã có phiên: quay lại trang đang mở trước đó nếu `callbackUrl` hợp lệ, không thì về trang chủ.
       const landing = resolveAuthenticatedLanding(

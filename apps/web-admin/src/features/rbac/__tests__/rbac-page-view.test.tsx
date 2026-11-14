@@ -22,7 +22,7 @@ const navMocks = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   return {
     replace: vi.fn(),
-    pathname: "/phan-quyen",
+    pathname: "/rbac",
     search: "",
     listeners,
     setSearch(nextSearch: string) {
@@ -130,9 +130,9 @@ const ROLES_FIXTURE: RoleSummaryResponse[] = [
 
 beforeEach(() => {
   navMocks.replace.mockReset();
-  navMocks.pathname = "/phan-quyen";
+  navMocks.pathname = "/rbac";
   navMocks.setSearch("");
-  window.history.replaceState(null, "", "/phan-quyen");
+  window.history.replaceState(null, "", "/rbac");
   const originalReplaceState = window.history.replaceState.bind(window.history);
   vi.spyOn(window.history, "replaceState").mockImplementation((data, unused, url) => {
     originalReplaceState(data, unused, url);
@@ -257,13 +257,13 @@ describe("RbacPageView & RolesTab", () => {
 
     await screen.findByText("Theo dõi lớp");
     await waitFor(() => {
-      expect(window.location.pathname + window.location.search).toBe("/phan-quyen?tab=vai-tro");
+      expect(window.location.pathname + window.location.search).toBe("/rbac?tab=vai-tro");
     });
   });
 
   it("người chỉ có ROLE.VIEW mở ?tab=quyen chuyển về ?tab=vai-tro, không render tab cấm và không có nút ghi", async () => {
     navMocks.setSearch("tab=quyen");
-    window.history.replaceState(null, "", "/phan-quyen?tab=quyen");
+    window.history.replaceState(null, "", "/rbac?tab=quyen");
     const listPermissions = vi.fn(async () => PERMISSIONS_FIXTURE);
     renderRbacPage({ permissions: ["ROLE.VIEW"], listPermissions });
     await screen.findByText("Theo dõi lớp");
@@ -271,7 +271,7 @@ describe("RbacPageView & RolesTab", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((el) => el.textContent)).toEqual(["Vai trò"]);
     await waitFor(() => {
-      expect(window.location.pathname + window.location.search).toBe("/phan-quyen?tab=vai-tro");
+      expect(window.location.pathname + window.location.search).toBe("/rbac?tab=vai-tro");
     });
     expect(listPermissions).not.toHaveBeenCalled();
     expect(

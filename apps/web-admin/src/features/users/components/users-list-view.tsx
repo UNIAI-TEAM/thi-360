@@ -249,7 +249,7 @@ function UsersListContent({
         header: t("table.username"),
         cell: ({ row }) => (
           <Link
-            href={`/tai-khoan/${row.original.id}`}
+            href={`/users/${row.original.id}`}
             className="whitespace-nowrap font-semibold text-primary-text hover:underline"
           >
             {row.original.username}
@@ -340,7 +340,7 @@ function UsersListContent({
                       </Tooltip>
                       <DropdownMenuContent>
                         <DropdownMenuItem asChild>
-                          <Link href={`/tai-khoan/${item.id}`}>
+                          <Link href={`/users/${item.id}`}>
                             <Eye />
                             <span>{t("actions.viewDetail")}</span>
                           </Link>
@@ -428,7 +428,7 @@ function UsersListContent({
         actions={
           <Can permission="USER.MODIFY">
             <Button asChild variant="secondary">
-              <Link href="/tai-khoan/cap-hang-loat">
+              <Link href="/users/bulk-import">
                 <Upload />
                 <span>{t("actions.bulkImport")}</span>
               </Link>

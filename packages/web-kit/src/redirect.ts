@@ -27,7 +27,7 @@ export function resolveHomeUrl(
   return access === "MANAGE" ? adminUrl : `${webUrl}/home`;
 }
 
-const LOGIN_PATH = "/dang-nhap";
+const LOGIN_PATH = "/login";
 
 export function buildLoginUrl(webBaseUrl: string, callbackUrl?: string): string {
   const base = `${stripTrailingSlashes(webBaseUrl)}${LOGIN_PATH}`;

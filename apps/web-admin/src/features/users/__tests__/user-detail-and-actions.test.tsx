@@ -229,7 +229,7 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: "Lớp học" }));
     expect(await screen.findByRole("heading", { name: /Lớp học hiện tại/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "LOP-A" })).toHaveAttribute("href", "/lop-hoc/cls-1");
+    expect(screen.getByRole("link", { name: "LOP-A" })).toHaveAttribute("href", "/classes/cls-1");
     expect(screen.getByText("Chuyển đến")).toBeInTheDocument();
     expect(screen.getByText("Đổi ca học")).toBeInTheDocument();
     expect(deps.getUserClasses).toHaveBeenCalledWith(BASE_USER.id);

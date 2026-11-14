@@ -17,14 +17,14 @@ const TREE: readonly NavGroup[] = [
   {
     id: "users",
     items: [
-      { id: "accounts", href: "/tai-khoan", icon: Home, permission: "USER.VIEW" },
-      { id: "classes", href: "/lop-hoc", icon: Home, permission: "CLASS.VIEW" },
+      { id: "accounts", href: "/users", icon: Home, permission: "USER.VIEW" },
+      { id: "classes", href: "/classes", icon: Home, permission: "CLASS.VIEW" },
     ],
   },
   {
     id: "system",
     items: [
-      { id: "rbac", href: "/phan-quyen", icon: Home, permission: ["ROLE.VIEW", "PERMISSION.VIEW"] },
+      { id: "rbac", href: "/rbac", icon: Home, permission: ["ROLE.VIEW", "PERMISSION.VIEW"] },
       { id: "appearance", href: "/giao-dien", icon: Home, permission: "APPEARANCE.MODIFY" },
     ],
   },
@@ -84,8 +84,8 @@ describe("shortcutItems", () => {
 
 describe("resolveBreadcrumb", () => {
   it("khớp mục theo đường dẫn, kể cả trang con", () => {
-    expect(resolveBreadcrumb(TREE, "/tai-khoan")?.item.id).toBe("accounts");
-    expect(resolveBreadcrumb(TREE, "/tai-khoan/abc")?.group.id).toBe("users");
+    expect(resolveBreadcrumb(TREE, "/users")?.item.id).toBe("accounts");
+    expect(resolveBreadcrumb(TREE, "/users/abc")?.group.id).toBe("users");
   });
 
   it("'/' chỉ khớp Bảng điều khiển, không khớp mọi đường dẫn", () => {
@@ -93,8 +93,8 @@ describe("resolveBreadcrumb", () => {
     expect(resolveBreadcrumb(TREE, "/khong-co")).toBeNull();
   });
 
-  it("không khớp tiền tố chuỗi ('/tai-khoan-x' không thuộc '/tai-khoan')", () => {
-    expect(resolveBreadcrumb(TREE, "/tai-khoan-x")).toBeNull();
+  it("không khớp tiền tố chuỗi ('/users-x' không thuộc '/users')", () => {
+    expect(resolveBreadcrumb(TREE, "/users-x")).toBeNull();
   });
 });
 
@@ -106,7 +106,7 @@ describe("NAVIGATION của đợt 1", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "catalog",
-          href: "/cau-hinh-chung",
+          href: "/catalog",
           permission: "CATALOG.VIEW",
         }),
       ]),
@@ -119,7 +119,7 @@ describe("NAVIGATION của đợt 1", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "appearance",
-          href: "/tuy-chinh-giao-dien",
+          href: "/appearance",
           permission: "APPEARANCE.MODIFY",
         }),
       ]),
@@ -132,7 +132,7 @@ describe("NAVIGATION của đợt 1", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "rbac",
-          href: "/phan-quyen",
+          href: "/rbac",
           permission: ["ROLE.VIEW", "PERMISSION.VIEW"],
         }),
       ]),
@@ -145,25 +145,25 @@ describe("NAVIGATION của đợt 1", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "accounts",
-          href: "/tai-khoan",
+          href: "/users",
           permission: "USER.VIEW",
         }),
       ]),
     );
   });
 
-  it("có mục Lớp học trong nhóm Người dùng với quyền CLASS.VIEW và breadcrumb khớp /lop-hoc/[id]", () => {
+  it("có mục Lớp học trong nhóm Người dùng với quyền CLASS.VIEW và breadcrumb khớp /classes/[id]", () => {
     const usersGroup = NAVIGATION.find((g) => g.id === "users");
     expect(usersGroup?.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "classes",
-          href: "/lop-hoc",
+          href: "/classes",
           permission: "CLASS.VIEW",
         }),
       ]),
     );
-    const trail = resolveBreadcrumb(NAVIGATION, "/lop-hoc/123");
+    const trail = resolveBreadcrumb(NAVIGATION, "/classes/123");
     expect(trail?.group.id).toBe("users");
     expect(trail?.item.id).toBe("classes");
   });

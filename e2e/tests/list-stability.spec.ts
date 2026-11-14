@@ -5,7 +5,7 @@ const ADMIN_URL = (process.env.THI360_ADMIN_URL ?? "http://localhost:3001").repl
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
 
 async function loginAsSysAdmin(page: Page) {
-  await page.goto(`${WEB_URL}/dang-nhap`);
+  await page.goto(`${WEB_URL}/login`);
   await page.getByLabel(/Tên đăng nhập hoặc email/).fill("sys.admin");
   await page.getByLabel(/Mật khẩu/).fill(DEV_PASSWORD);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
@@ -25,7 +25,7 @@ test.describe("Danh sách không nhảy khi đổi bộ lọc (UNI-2577)", () =>
     page,
   }) => {
     await loginAsSysAdmin(page);
-    await page.goto(`${ADMIN_URL}/tai-khoan`);
+    await page.goto(`${ADMIN_URL}/users`);
     const table = page.getByRole("table");
     // Cơ sở dữ liệu dev dùng chung có nhiều tài khoản do các lượt e2e khác tạo: thu về 5 học viên mẫu trước.
     await page.getByLabel("Tìm kiếm").fill("student0");
@@ -67,7 +67,7 @@ test.describe("Danh sách không nhảy khi đổi bộ lọc (UNI-2577)", () =>
   test("thanh cuộn dọc hiện/ẩn và mở hộp thoại không làm trang lệch ngang", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 300 });
     await loginAsSysAdmin(page);
-    await page.goto(`${ADMIN_URL}/tai-khoan`);
+    await page.goto(`${ADMIN_URL}/users`);
     const table = page.getByRole("table");
     const search = page.getByLabel("Tìm kiếm");
     const noMatch = "khong-co-tai-khoan-nao-ten-nay";

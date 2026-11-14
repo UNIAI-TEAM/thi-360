@@ -2,7 +2,7 @@ import { webUrl } from "./env";
 
 /** URL trang đăng nhập (web học viên) kèm `callbackUrl` là URL đầy đủ của trang đang mở. */
 export function buildLoginUrl(callbackUrl?: string): string {
-  const base = `${webUrl()}/dang-nhap`;
+  const base = `${webUrl()}/login`;
   return callbackUrl ? `${base}?callbackUrl=${encodeURIComponent(callbackUrl)}` : base;
 }
 

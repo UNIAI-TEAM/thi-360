@@ -23,12 +23,12 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
     const resetPassword = `Thi360@${suffix}2B`;
     const recreatedPassword = `Thi360@${suffix}3C`;
 
-    await page.goto(`${WEB_URL}/dang-nhap`);
+    await page.goto(`${WEB_URL}/login`);
     await submitLoginForm(page, "platform", PLATFORM_PASSWORD);
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
     await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/users`);
     await expect(page.getByRole("heading", { name: "Tài khoản" })).toBeVisible();
 
     // 1. Tạo tài khoản mới
@@ -53,7 +53,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
     await expect(userRowLink).toBeVisible();
     await userRowLink.click();
 
-    await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/[^/]+$`));
+    await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/users/[^/]+$`));
     await expect(page.getByRole("heading", { name: fullName })).toBeVisible();
 
     // 2. Ngừng hoạt động -> đăng nhập thất bại
@@ -67,9 +67,9 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
     const guestContext = await browser.newContext();
     try {
       const guestPage = await guestContext.newPage();
-      await guestPage.goto(`${WEB_URL}/dang-nhap`);
+      await guestPage.goto(`${WEB_URL}/login`);
       await submitLoginForm(guestPage, username, initialPassword);
-      await expect(guestPage).toHaveURL(new RegExp(`^${WEB_URL}/dang-nhap`));
+      await expect(guestPage).toHaveURL(new RegExp(`^${WEB_URL}/login`));
       await expect(guestPage.getByRole("alert")).toBeVisible();
     } finally {
       await guestContext.close();
@@ -93,7 +93,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
     const resetLoginContext = await browser.newContext();
     try {
       const resetLoginPage = await resetLoginContext.newPage();
-      await resetLoginPage.goto(`${WEB_URL}/dang-nhap`);
+      await resetLoginPage.goto(`${WEB_URL}/login`);
       await submitLoginForm(resetLoginPage, username, resetPassword);
       await expect(resetLoginPage).toHaveURL(`${WEB_URL}/home`);
     } finally {
@@ -110,7 +110,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
 
     // 6. Tạo lại cùng tên đăng nhập
     await page.getByRole("link", { name: /Quay lại danh sách/ }).click();
-    await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+    await expect(page).toHaveURL(`${ADMIN_URL}/users`);
 
     await page.getByRole("button", { name: "Tạo tài khoản" }).click();
     const recreateDialog = page.getByRole("dialog");
@@ -176,12 +176,12 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
       const userBody = (await userRes.json()) as { id: string };
       viewerId = userBody.id;
 
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, viewerUsername, viewerPassword);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users`);
 
       await page.getByLabel("Tìm kiếm").fill("student01");
       await expect(page.getByRole("link", { name: "student01" })).toBeVisible();
@@ -191,7 +191,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
       await expect(page.getByRole("button", { name: /Thao tác với/ })).toHaveCount(0);
 
       await page.getByRole("link", { name: "student01" }).click();
-      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/[^/]+$`));
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/users/[^/]+$`));
       await expect(page.getByRole("heading", { name: /Học viên 01/ })).toBeVisible();
 
       await expect(page.getByRole("button", { name: "Đặt lại mật khẩu" })).toHaveCount(0);
@@ -252,12 +252,12 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
         else userBId = created.id;
       }
 
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, "platform", PLATFORM_PASSWORD);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users`);
 
       await page.getByLabel("Tìm kiếm").fill(prefix);
       await expect(page.getByRole("link", { name: userA })).toBeVisible();

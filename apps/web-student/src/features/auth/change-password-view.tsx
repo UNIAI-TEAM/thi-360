@@ -97,7 +97,7 @@ export function ChangePasswordView({
       const webOrigin = new URL(webBase).origin.toLowerCase();
       if (parsed.origin.toLowerCase() !== webOrigin) return false;
       const normalizedPath = parsed.pathname.replace(/\/+$/, "");
-      return normalizedPath === "/doi-mat-khau" || normalizedPath === "/dang-nhap";
+      return normalizedPath === "/change-password" || normalizedPath === "/login";
     } catch {
       return true;
     }
@@ -141,7 +141,7 @@ export function ChangePasswordView({
     } catch (error) {
       if (error instanceof ApiStatusError && error.status === 401) {
         const currentHref =
-          typeof window !== "undefined" ? window.location.href : `${webUrl()}/doi-mat-khau`;
+          typeof window !== "undefined" ? window.location.href : `${webUrl()}/change-password`;
         try {
           await refreshSession();
         } catch (refreshError) {
@@ -178,7 +178,7 @@ export function ChangePasswordView({
     setLeaving(true);
     try {
       await logoutSession();
-      navigate("/dang-nhap");
+      navigate("/login");
     } catch {
       notify.error(errT("logoutFailed"));
     } finally {
