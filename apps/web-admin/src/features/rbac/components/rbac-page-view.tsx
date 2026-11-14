@@ -89,8 +89,9 @@ export function RbacPageView({
   const searchParams = useSearchParams();
 
   const [createRoleNonce, setCreateRoleNonce] = useState(0);
-  const handleCreateRequestConsumed = useCallback(() => {
-    setCreateRoleNonce(0);
+  const [consumedCreateNonce, setConsumedCreateNonce] = useState(0);
+  const handleCreateRequestConsumed = useCallback((nonce: number) => {
+    setConsumedCreateNonce((prev) => Math.max(prev, nonce));
   }, []);
   const allowedTabs = useMemo(
     () => getAllowedRbacTabs(permissions),
@@ -195,7 +196,7 @@ export function RbacPageView({
         {allowedTabs.includes("vai-tro") && (
           <TabsContent value="vai-tro">
             <RolesTab
-              createRequestNonce={createRoleNonce}
+              createRequestNonce={createRoleNonce > consumedCreateNonce ? createRoleNonce : 0}
               onCreateRequestConsumed={handleCreateRequestConsumed}
               {...rolesTabProps}
             />

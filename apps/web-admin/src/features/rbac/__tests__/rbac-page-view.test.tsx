@@ -435,6 +435,22 @@ describe("RbacPageView & RolesTab", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
+  it("bấm Tạo vai trò, đóng dialog rồi bấm Tạo vai trò lại không đổi tab vẫn mở được dialog (R2-1)", async () => {
+    const user = userEvent.setup();
+    renderRbacPage();
+
+    await screen.findByText("Theo dõi lớp");
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+    const firstDialog = await screen.findByRole("dialog");
+    await user.click(within(firstDialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
   it("hiển thị lỗi kiểm tra độ dài mã, tên và mô tả bằng tiếng Việt đã bản địa hóa", async () => {
     const user = userEvent.setup();
     const { createRole } = renderRbacPage();

@@ -48,7 +48,7 @@ import { RoleDialog, type RoleDialogProps } from "./role-dialog";
 
 export interface RolesTabProps {
   createRequestNonce?: number;
-  onCreateRequestConsumed?: () => void;
+  onCreateRequestConsumed?: (nonce: number) => void;
   listRoles?: (params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse>;
   listPermissions?: () => Promise<PermissionResponse[]>;
   deleteRole?: (id: string) => Promise<void>;
@@ -159,13 +159,13 @@ export function RolesTab({
 
   useEffect(() => {
     if (!canModify || createRequestNonce <= 0) return;
-    if (lastConsumedNonceRef.current === createRequestNonce) return;
+    if (lastConsumedNonceRef.current >= createRequestNonce) return;
     lastConsumedNonceRef.current = createRequestNonce;
     setDialogState({
       open: true,
       mode: "create",
     });
-    onCreateRequestConsumed?.();
+    onCreateRequestConsumed?.(createRequestNonce);
   }, [canModify, createRequestNonce, onCreateRequestConsumed]);
 
   function closeDialog() {
