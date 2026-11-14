@@ -233,6 +233,13 @@ export function TreeView({
             : level >= 3
               ? "text-text-secondary"
               : "text-text";
+        // Tên truy cập của dòng gồm mã rồi tên, đúng như chữ đang hiện (WCAG 2.5.3). Trạng thái khác Hoạt động và
+        // liên kết riêng là mô tả của dòng: trình đọc màn hình đọc sau tên khi đi mũi tên qua cây (WCAG 1.3.1).
+        const codeId = `${nameIdPrefix}-code-${item.id}`;
+        const nameId = `${nameIdPrefix}-name-${item.id}`;
+        const statusId = item.statusLabel ? `${nameIdPrefix}-status-${item.id}` : null;
+        const refsId = item.refsSummary ? `${nameIdPrefix}-refs-${item.id}` : null;
+        const describedBy = [statusId, refsId].filter(Boolean).join(" ") || undefined;
         const rowElement = (
           <div
             key={item.id}
@@ -244,7 +251,8 @@ export function TreeView({
               }
             }}
             role="treeitem"
-            aria-labelledby={`${nameIdPrefix}-name-${item.id}`}
+            aria-labelledby={`${codeId} ${nameId}`}
+            aria-describedby={describedBy}
             aria-level={level}
             aria-setsize={setSize}
             aria-posinset={posInSet}
@@ -313,6 +321,7 @@ export function TreeView({
               )}
 
               <span
+                id={codeId}
                 title={item.code}
                 className="max-w-24 shrink-0 truncate rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text"
               >
@@ -321,7 +330,7 @@ export function TreeView({
 
               {/* Tên có ưu tiên chiều rộng: không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. */}
               <span
-                id={`${nameIdPrefix}-name-${item.id}`}
+                id={nameId}
                 title={item.name}
                 className={cn("min-w-[8rem] flex-1 truncate", nameStyle, nameColor)}
               >
@@ -329,14 +338,20 @@ export function TreeView({
               </span>
 
               {item.statusLabel && (
-                <StatusChip tone={item.statusTone ?? "neutral"} className="shrink-0">
+                <StatusChip
+                  id={statusId ?? undefined}
+                  tone={item.statusTone ?? "neutral"}
+                  className="shrink-0"
+                >
                   {item.statusLabel}
                 </StatusChip>
               )}
 
               {item.refsSummary && (
                 <>
+                  {/* Dù bị ẩn khi cây hẹp, phần tử này vẫn là mô tả của dòng qua `aria-describedby`. */}
                   <span
+                    id={refsId ?? undefined}
                     title={item.refsSummary}
                     className="hidden max-w-48 min-w-0 shrink truncate text-caption whitespace-nowrap text-text-muted @3xl:inline"
                   >

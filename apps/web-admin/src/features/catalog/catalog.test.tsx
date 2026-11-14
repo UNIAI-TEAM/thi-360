@@ -2004,7 +2004,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(pane.parentElement).toHaveClass("flex-col", "min-[1600px]:flex-row");
     expect(pane.parentElement?.className).not.toMatch(/(^|\s)(xl|lg|md):/);
 
-    const row = screen.getByRole("treeitem", { name: "Hàm số" });
+    const row = screen.getByRole("treeitem", { name: "CH1 Hàm số" });
     expect(within(row).getByText("Toán học")).toHaveClass("@3xl:inline");
     expect(within(row).getByRole("img", { name: "Toán học" })).toHaveTextContent("+1");
     expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
@@ -2056,7 +2056,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
         mockMedia({ wide: false, reducedMotion });
         renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
-        await userEvent.click(await screen.findByRole("treeitem", { name: "Hàm số" }));
+        await userEvent.click(await screen.findByRole("treeitem", { name: "CH1 Hàm số" }));
 
         const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
         const heading = await within(pane).findByRole("heading", { level: 3, name: "Hàm số" });
@@ -2072,7 +2072,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       mockMedia({ wide: true, reducedMotion: false });
       renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
-      await userEvent.click(await screen.findByRole("treeitem", { name: "Hàm số" }));
+      await userEvent.click(await screen.findByRole("treeitem", { name: "CH1 Hàm số" }));
 
       const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
       const heading = await within(pane).findByRole("heading", { level: 3, name: "Hàm số" });

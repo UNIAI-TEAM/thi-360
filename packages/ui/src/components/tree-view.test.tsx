@@ -96,14 +96,52 @@ function TreeHarness({
 }
 
 describe("TreeView", () => {
-  it("tên truy cập của treeitem chỉ là tên nút, không gộp mã, chip, nút mở/đóng (VIS-10)", () => {
+  it("tên truy cập của treeitem là mã rồi tên như chữ đang hiện, không gộp chip, số đếm, nút mở/đóng (VIS-10, C-06)", () => {
     render(<TreeHarness initialExpanded={["n-1", "n-1-1"]} />);
     const items = screen.getAllByRole("treeitem");
-    expect(items[0]).toHaveAccessibleName("Mệnh đề. Tập hợp");
-    expect(items[1]).toHaveAccessibleName("Mệnh đề");
-    expect(items[2]).toHaveAccessibleName("Mệnh đề chứa biến");
-    expect(items[3]).toHaveAccessibleName("Bất phương trình");
-    expect(screen.getByRole("treeitem", { name: "Mệnh đề chứa biến" })).toBe(items[2]);
+    expect(items[0]).toHaveAccessibleName("0D1 Mệnh đề. Tập hợp");
+    expect(items[1]).toHaveAccessibleName("0D1-1 Mệnh đề");
+    expect(items[2]).toHaveAccessibleName("0D1-1-1 Mệnh đề chứa biến");
+    expect(items[3]).toHaveAccessibleName("0D2 Bất phương trình");
+    expect(screen.getByRole("treeitem", { name: "0D1-1-1 Mệnh đề chứa biến" })).toBe(items[2]);
+  });
+
+  it("trạng thái khác Hoạt động và liên kết riêng là mô tả của dòng (C-06)", () => {
+    render(<TreeHarness initialExpanded={["n-1", "n-1-1"]} />);
+    const items = screen.getAllByRole("treeitem");
+    // Liên kết riêng: mô tả lấy từ dòng chữ đầy đủ, kể cả khi cây hẹp chỉ hiện chip +N.
+    expect(items[0]).toHaveAccessibleDescription("Toán · Lớp 10");
+    // Nút đang hoạt động, không có liên kết riêng: không có mô tả.
+    expect(items[1]).not.toHaveAttribute("aria-describedby");
+    expect(items[2]).toHaveAccessibleDescription("Ngừng theo cấp trên");
+    expect(items[3]).toHaveAccessibleDescription("Ngừng sử dụng");
+  });
+
+  it("mô tả gồm cả trạng thái lẫn liên kết khi dòng có cả hai (C-06)", () => {
+    render(
+      <TreeView
+        aria-label="Cây mô tả"
+        items={[
+          {
+            id: "a",
+            parentId: null,
+            depth: 1,
+            code: "CH1",
+            name: "Hàm số",
+            hasChildren: false,
+            statusLabel: "Ngừng sử dụng",
+            refsSummary: "Toán học, Lớp 10",
+            refsCount: 2,
+          },
+        ]}
+        expandedIds={new Set()}
+        onToggleExpand={vi.fn()}
+        onSelect={vi.fn()}
+        labels={{ expandNode: (n) => n, collapseNode: (n) => n }}
+      />,
+    );
+    const row = screen.getByRole("treeitem", { name: "CH1 Hàm số" });
+    expect(row).toHaveAccessibleDescription("Ngừng sử dụng Toán học, Lớp 10");
   });
 
   it("render đúng role=tree, treeitem, aria-level, aria-expanded, aria-selected và chỉ hiện chip khi khác Hoạt động", () => {
