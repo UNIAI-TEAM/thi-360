@@ -3,9 +3,9 @@ package vn.unicom.thi360.identity.spi;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
 public interface ClassMembershipPort {
 
     List<UUID> validateAssignableClasses(Collection<UUID> classIds);
@@ -13,4 +13,9 @@ public interface ClassMembershipPort {
     void assignUserToClasses(UUID userId, Collection<UUID> classIds, UUID actorId, Instant occurredAt);
 
     Set<UUID> findUserIdsInClass(UUID classId);
+
+    Map<String, ClassLookupInfo> findClassesByNormalizedCodes(Collection<String> normalizedCodes);
+
+    record ClassLookupInfo(UUID id, String code, String codeNormalized, boolean active) {
+    }
 }

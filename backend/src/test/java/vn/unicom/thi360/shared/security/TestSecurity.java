@@ -13,6 +13,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -20,12 +21,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import vn.unicom.thi360.shared.ids.Ids;
-
+import vn.unicom.thi360.shared.storage.InMemoryObjectStorage;
+import vn.unicom.thi360.shared.storage.ObjectStorage;
 @TestConfiguration
 public class TestSecurity {
     private static final UUID PLATFORM_ADMIN_TEST_ID =
             UUID.fromString("00000000-0000-7000-8000-0000000000ff");
 
+
+    @Bean
+    @ConditionalOnProperty(name = "thi360.s3.mode", havingValue = "memory")
+    public ObjectStorage inMemoryObjectStorage() {
+        return new InMemoryObjectStorage();
+    }
 
     @Bean
     @ConditionalOnMissingBean(TestSecuritySupport.class)

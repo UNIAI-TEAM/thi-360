@@ -12,7 +12,7 @@ class ClientIpResolverTests {
     private final SecurityProperties properties = new SecurityProperties(
             List.of("http://localhost:3001"),
             List.of("127.0.0.1", "::1", "172.16.0.0/12"),
-            new SecurityProperties.RateLimitProperties(20, Duration.ofMinutes(1)),
+            new SecurityProperties.RateLimitProperties(20, Duration.ofMinutes(1), 10, Duration.ofMinutes(1)),
             new SecurityProperties.LoginThrottleProperties(5, Duration.ofMinutes(15), Duration.ofMinutes(15)),
             new SecurityProperties.SessionProperties(5, Duration.ofDays(30)));
 

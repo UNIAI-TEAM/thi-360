@@ -92,10 +92,15 @@ thi360:
       - ${THI360_ADMIN_URL:http://localhost:3001}
     trusted-proxies: ${THI360_TRUSTED_PROXIES:127.0.0.1,::1,172.16.0.0/12}
   s3:
+    mode: ${THI360_S3_MODE:s3}
     endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}
     bucket: ${THI360_S3_BUCKET:thi360-private}
+    access-key: ${THI360_S3_ACCESS_KEY:}
+    secret-key: ${THI360_S3_SECRET_KEY:}
+    region: ${THI360_S3_REGION:us-east-1}
+    auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:false}
   file:
-    enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
+    enc-key: ${THI360_FILE_ENC_KEY:}
   outbox:
     scheduling:
       enabled: true
@@ -106,6 +111,12 @@ thi360:
     provisioning-reconcile:
       scheduling:
         enabled: true
+    import-batch:
+      scheduling:
+        enabled: true
+      lease-duration: PT5M
+      retry-delay: PT5S
+      max-attempts: 3
 
 ---
 spring:
@@ -141,6 +152,12 @@ thi360:
     secret: ${THI360_CTX_SECRET:ctx-dev-only-change-me-32-bytes!!}
   cookie:
     secure: ${THI360_COOKIE_SECURE:false}
+  s3:
+    access-key: ${THI360_S3_ACCESS_KEY:thi360}
+    secret-key: ${THI360_S3_SECRET_KEY:thi360-dev-only}
+    auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:true}
+  file:
+    enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
 ---
 spring:
   config:
@@ -164,6 +181,15 @@ thi360:
     provisioning-reconcile:
       scheduling:
         enabled: false
+    import-batch:
+      scheduling:
+        enabled: false
+  s3:
+    access-key: ${THI360_S3_ACCESS_KEY:thi360}
+    secret-key: ${THI360_S3_SECRET_KEY:thi360-dev-only}
+    auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:true}
+  file:
+    enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
   cookie:
     secure: ${THI360_COOKIE_SECURE:false}
 ---
