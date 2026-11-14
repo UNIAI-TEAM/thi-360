@@ -51,6 +51,12 @@ export type TableProps<TData> = {
    * làm mờ nhẹ và báo `aria-busy`; không thay bằng khung xương nên bố cục không nhảy.
    */
   refreshing?: boolean;
+  /**
+   * Ghim cột khi bảng phải cuộn ngang, để không mất ngữ cảnh của dòng: `start` ghim cột dữ liệu đầu tiên
+   * (tên/mã của dòng; đứng sau cột chọn dòng nếu có), `end` ghim cột cuối (cột Thao tác). Cột ghim có nền đặc.
+   * TODO(UNI-2581, nhánh kit): hiện mới khai báo kiểu để các màn dùng trước; phần hiển thị làm ở nhánh kit.
+   */
+  stickyColumns?: { start?: boolean; end?: boolean };
   /** Có giá trị thì hiện thay cho dữ liệu, thường là thông báo kèm nút thử lại. */
   error?: ReactNode;
   /** Hiện khi không lỗi, không tải và không có dòng nào. */
