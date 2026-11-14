@@ -2578,6 +2578,11 @@ export interface components {
             code: string;
             /** @description Tên cột bị lỗi */
             column: string;
+            /**
+             * @description Khóa cột ổn định, không phụ thuộc ngôn ngữ; null với lỗi cấp dòng và với dòng lưu trước khi có trường này
+             * @enum {string}
+             */
+            columnKey?: "USERNAME" | "PASSWORD" | "FULL_NAME" | "EMAIL" | "PHONE" | "CLASS_CODE";
             /** @description Thông báo lỗi chi tiết */
             message: string;
             /**
