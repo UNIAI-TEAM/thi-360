@@ -3,6 +3,7 @@ package vn.unicom.thi360.identity.infrastructure;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,6 +25,21 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
               AND u.deletedAt IS NULL
             """)
     Optional<UserAccount> findActiveByEmailNormalized(@Param("emailNormalized") String emailNormalized);
+
+    @Query("""
+            SELECT u.usernameNormalized FROM UserAccount u
+            WHERE u.deletedAt IS NULL
+              AND u.usernameNormalized IN :usernames
+            """)
+    Set<String> findActiveUsernamesNormalizedIn(@Param("usernames") Collection<String> usernames);
+
+    @Query("""
+            SELECT u.emailNormalized FROM UserAccount u
+            WHERE u.deletedAt IS NULL
+              AND u.emailNormalized IS NOT NULL
+              AND u.emailNormalized IN :emails
+            """)
+    Set<String> findActiveEmailsNormalizedIn(@Param("emails") Collection<String> emails);
 
     @Query("""
             SELECT u FROM UserAccount u

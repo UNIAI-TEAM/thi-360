@@ -95,6 +95,7 @@ import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 import vn.unicom.thi360.shared.security.Access;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.security.PermissionSet;
 import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.security.SessionStore;
 
@@ -325,9 +326,36 @@ public class UserAdminService {
 
     public UserDetailResponse createUser(CreateUserRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
+        return createUserInternal(request, actor, true, false);
+    }
 
+    public UserDetailResponse createStudentForImport(
+            CreateUserRequest request, UUID actorId, String actorUsername, boolean platformActor) {
+        CurrentUser actor = new CurrentUser(
+                actorId,
+                actorUsername,
+                platformActor ? Realm.MASTER : Realm.APP,
+                Access.MANAGE,
+                PermissionSet.empty());
+        CreateUserRequest studentRequest = new CreateUserRequest(
+                request.username(),
+                request.password(),
+                request.fullName(),
+                request.email(),
+                request.phone(),
+                null,
+                request.classIds(),
+                request.mustChangePassword());
+        return createUserInternal(studentRequest, actor, false, true);
+    }
+
+    private UserDetailResponse createUserInternal(
+            CreateUserRequest request,
+            CurrentUser actor,
+            boolean enforceClassModifyPermission,
+            boolean cleanupIncompleteProvisioningForImport) {
         boolean hasClassIds = request.classIds() != null && !request.classIds().isEmpty();
-        if (hasClassIds && !actor.permissions().hasCode(Permissions.CLASS_MODIFY)) {
+        if (enforceClassModifyPermission && hasClassIds && !actor.permissions().hasCode(Permissions.CLASS_MODIFY)) {
             throw new ForbiddenException("FORBIDDEN", null);
         }
         List<UUID> targetClassIds = !hasClassIds
@@ -345,6 +373,9 @@ public class UserAdminService {
 
         String normalizedUsername = Normalizer.normalize(trimmedUsername);
         String normalizedEmail = Normalizer.normalize(trimmedEmail);
+        if (cleanupIncompleteProvisioningForImport) {
+            cleanupStaleProvisioningBeforeRetry(normalizedUsername);
+        }
         if (userAccountRepository.findActiveByUsernameNormalized(normalizedUsername).isPresent()) {
             throw new ConflictException(ERROR_USERNAME_TAKEN);
         }
@@ -395,7 +426,9 @@ public class UserAdminService {
             deleteProvisionalUserQuietly(provisionalId);
             throw ex;
         } catch (ExternalServiceException ex) {
-            if (userAccountRepository.findById(provisionalId).isPresent()) {
+            if (cleanupIncompleteProvisioningForImport) {
+                cleanupUncreatedProvisioningQuietly(provisionalId, normalizedUsername);
+            } else if (userAccountRepository.findById(provisionalId).isPresent()) {
                 log.atError()
                         .addKeyValue("event", "user.create.keycloak_failed")
                         .addKeyValue("provisionalUserId", provisionalId.toString())
@@ -1388,6 +1421,29 @@ public class UserAdminService {
                     .addKeyValue("keycloakUserId", keycloakUserId.toString())
                     .log("Failed to clean up Keycloak user during rollback");
             return false;
+        }
+    }
+
+    private void cleanupStaleProvisioningBeforeRetry(String normalizedUsername) {
+        Optional<UserAccount> existing = userAccountRepository.findActiveByUsernameNormalized(normalizedUsername);
+        if (existing.isEmpty() || existing.get().getStatus() != UserStatus.PROVISIONING) {
+            return;
+        }
+        UserAccount stale = existing.get();
+        Optional<UUID> kcId = keycloakClient.findUserIdByUsername(normalizedUsername);
+        if (kcId.isEmpty() || deleteKeycloakUserQuietly(kcId.get())) {
+            deleteProvisionalUserQuietly(stale.getId());
+        }
+    }
+
+    private void cleanupUncreatedProvisioningQuietly(UUID provisionalId, String normalizedUsername) {
+        try {
+            Optional<UUID> kcId = keycloakClient.findUserIdByUsername(normalizedUsername);
+            if (kcId.isEmpty()) {
+                deleteProvisionalUserQuietly(provisionalId);
+            }
+        } catch (RuntimeException ignored) {
+            // Keycloak unreachable; leave PROVISIONING row for reconciler or retry cleanup.
         }
     }
 
