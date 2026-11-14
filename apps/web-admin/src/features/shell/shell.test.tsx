@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
@@ -128,5 +128,29 @@ describe("AppShell", () => {
     // jsdom không dàn trang: `justify-end` là thứ giữ menu bên phải khi chỉ còn một phần tử.
     expect(screen.getByRole("banner")).toHaveClass("justify-end");
     expect(screen.getByRole("banner")).toContainElement(trigger);
+  });
+
+  it("trang cấp hàng loạt giữ menu Tài khoản đang chọn và hiện breadcrumb Người dùng › Tài khoản › Cấp hàng loạt", async () => {
+    mocks.pathname.current = "/tai-khoan/cap-hang-loat/batch-123";
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <p>Nội dung cấp hàng loạt</p>
+        </AppShell>
+      </SessionProvider>,
+    );
+
+    const nav = await waitFor(() => screen.getByRole("navigation", { name: "Menu chính" }));
+    const accountsLink = await waitFor(() => within(nav).getByRole("link", { name: "Tài khoản" }));
+    expect(accountsLink).toHaveAttribute("aria-current", "page");
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Vị trí hiện tại" });
+    expect(breadcrumb).toHaveTextContent("Người dùng");
+    expect(breadcrumb).toHaveTextContent("Tài khoản");
+    expect(breadcrumb).toHaveTextContent("Cấp hàng loạt");
+    expect(within(breadcrumb).getByRole("link", { name: "Tài khoản" })).toHaveAttribute(
+      "href",
+      "/tai-khoan",
+    );
   });
 });

@@ -174,10 +174,20 @@ describe("UsersListView (Slice 1)", () => {
     expect(screen.queryByRole("columnheader", { name: "Mã" })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Đăng nhập cuối" })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Số điện thoại" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Cấp hàng loạt/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Tạo tài khoản/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Thao tác với/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "Chọn tất cả tài khoản" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Lớp")).not.toBeInTheDocument();
+  });
+
+  it("hiện nút Cấp hàng loạt dẫn tới /tai-khoan/cap-hang-loat khi có quyền USER.MODIFY", async () => {
+    const deps = makeDeps();
+    renderUsersView(deps, { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW", "USER.MODIFY"] });
+
+    expect(await screen.findByText("student01", undefined, { timeout: 3000 })).toBeInTheDocument();
+    const bulkLink = screen.getByRole("link", { name: "Cấp hàng loạt" });
+    expect(bulkLink).toHaveAttribute("href", "/tai-khoan/cap-hang-loat");
   });
 
   it("gửi đúng tham số bộ lọc tìm kiếm, chưa đăng nhập và hiện tài khoản đã xóa", async () => {

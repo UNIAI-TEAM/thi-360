@@ -13,11 +13,21 @@ export function Topbar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
   const t = useTranslations();
   const pathname = usePathname();
   const trail = resolveBreadcrumb(NAVIGATION, pathname);
+  const isBulkImport =
+    trail?.item.id === "accounts" &&
+    (pathname === "/tai-khoan/cap-hang-loat" ||
+      pathname.startsWith("/tai-khoan/cap-hang-loat/"));
   const items = trail
-    ? [
-        { label: t(`nav.groups.${trail.group.id}`) },
-        { label: t(`nav.items.${trail.item.id}.label`) },
-      ]
+    ? isBulkImport
+      ? [
+          { label: t(`nav.groups.${trail.group.id}`) },
+          { label: t(`nav.items.${trail.item.id}.label`), href: trail.item.href },
+          { label: t("bulkImport.breadcrumb") },
+        ]
+      : [
+          { label: t(`nav.groups.${trail.group.id}`) },
+          { label: t(`nav.items.${trail.item.id}.label`) },
+        ]
     : [];
 
   return (
