@@ -2580,9 +2580,9 @@ export interface components {
             column: string;
             /**
              * @description Khóa cột ổn định, không phụ thuộc ngôn ngữ; null với lỗi cấp dòng và với dòng lưu trước khi có trường này
-             * @enum {string}
+             * @enum {string|null}
              */
-            columnKey?: "USERNAME" | "PASSWORD" | "FULL_NAME" | "EMAIL" | "PHONE" | "CLASS_CODE";
+            columnKey?: "USERNAME" | "PASSWORD" | "FULL_NAME" | "EMAIL" | "PHONE" | "CLASS_CODE" | null;
             /** @description Thông báo lỗi chi tiết */
             message: string;
             /**

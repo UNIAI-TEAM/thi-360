@@ -2072,8 +2072,8 @@
           },
           "columnKey" : {
             "description" : "Khóa cột ổn định, không phụ thuộc ngôn ngữ; null với lỗi cấp dòng và với dòng lưu trước khi có trường này",
-            "enum" : [ "USERNAME", "PASSWORD", "FULL_NAME", "EMAIL", "PHONE", "CLASS_CODE" ],
-            "type" : "string"
+            "enum" : [ "USERNAME", "PASSWORD", "FULL_NAME", "EMAIL", "PHONE", "CLASS_CODE", null ],
+            "type" : [ "string", "null" ]
           },
           "message" : {
             "description" : "Thông báo lỗi chi tiết",
