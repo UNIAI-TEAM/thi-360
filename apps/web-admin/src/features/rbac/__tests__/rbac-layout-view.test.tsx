@@ -1,16 +1,36 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
-import { StrictMode, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
+import { StrictMode, useSyncExternalStore, type ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import viMessages from "@/messages/vi.json";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
-import { RbacApiError, type ListRolesParams } from "../api";
-import { RbacPageView, getAllowedRbacTabs } from "../components/rbac-page-view";
+import { RbacApiError, type ListPermissionUsersParams, type ListRolesParams } from "../api";
+import { RbacLayoutView } from "../components/rbac-layout-view";
+import {
+  RbacBulkAssignRoute,
+  RbacPermissionsRoute,
+  RbacRolesRoute,
+  RbacUsersRoute,
+  type RbacBulkAssignRouteProps,
+  type RbacPermissionsRouteProps,
+  type RbacRolesRouteProps,
+  type RbacUsersRouteProps,
+} from "../components/rbac-routes";
+import {
+  RBAC_TAB_ORDER,
+  getAllowedRbacTabs,
+  rbacNavigationHref,
+  rbacTabFromPathname,
+  rbacTabHref,
+  resolveActiveRbacTab,
+} from "../rbac-tabs";
 import type {
   CreateRoleRequest,
+  PageResponsePermissionUserResponse,
   PageResponseRoleSummaryResponse,
   PermissionResponse,
   RoleDetailResponse,
@@ -18,37 +38,64 @@ import type {
   UpdateRoleRequest,
 } from "../types";
 
+// Bộ định tuyến giả: giữ đường dẫn hiện tại, `push`/`replace` và `history.replaceState` đều đổi nó.
 const navMocks = vi.hoisted(() => {
   const listeners = new Set<() => void>();
+  const location = { pathname: "/rbac/roles", search: "" };
+  function setLocation(url: string) {
+    const parsed = new URL(url, "http://localhost");
+    location.pathname = parsed.pathname;
+    location.search = parsed.search.replace(/^\?/, "");
+    for (const listener of listeners) listener();
+  }
   return {
-    replace: vi.fn(),
-    pathname: "/rbac",
-    search: "",
-    listeners,
-    setSearch(nextSearch: string) {
-      this.search = nextSearch;
-      for (const listener of this.listeners) listener();
-    },
+    location,
+    setLocation,
+    currentUrl: () => location.pathname + (location.search ? `?${location.search}` : ""),
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
       };
     },
+    router: {
+      push: vi.fn<(href: string) => void>(),
+      replace: vi.fn<(href: string) => void>(),
+    },
   };
 });
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: navMocks.replace }),
-  usePathname: () => navMocks.pathname,
+  useRouter: () => navMocks.router,
+  usePathname: () =>
+    useSyncExternalStore(
+      navMocks.subscribe,
+      () => navMocks.location.pathname,
+      () => navMocks.location.pathname,
+    ),
   useSearchParams: () => {
     const search = useSyncExternalStore(
       navMocks.subscribe,
-      () => navMocks.search,
-      () => navMocks.search,
+      () => navMocks.location.search,
+      () => navMocks.location.search,
     );
     return new URLSearchParams(search);
   },
+}));
+
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...props }: ComponentProps<"a"> & { href: string }) => (
+    <a
+      {...props}
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        navMocks.router.push(href);
+      }}
+    >
+      {children}
+    </a>
+  ),
 }));
 const PERMISSIONS_FIXTURE: PermissionResponse[] = [
   {
@@ -128,19 +175,35 @@ const ROLES_FIXTURE: RoleSummaryResponse[] = [
   },
 ];
 
+const EMPTY_PAGE = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
+
+const PERMISSION_USERS_FIXTURE: PageResponsePermissionUserResponse = {
+  items: [
+    {
+      userId: "u-watch",
+      code: "U000009",
+      username: "class.watcher",
+      fullName: "Người theo dõi lớp",
+      status: "ACTIVE",
+      sources: [
+        { type: "ROLE", roleId: "r-custom-in-use", roleCode: "CLASS_WATCHER", roleName: "Theo dõi lớp" },
+      ],
+    },
+  ],
+  page: 0,
+  size: 20,
+  totalItems: 1,
+  totalPages: 1,
+};
+
 beforeEach(() => {
-  navMocks.replace.mockReset();
-  navMocks.pathname = "/rbac";
-  navMocks.setSearch("");
-  window.history.replaceState(null, "", "/rbac");
-  const originalReplaceState = window.history.replaceState.bind(window.history);
-  vi.spyOn(window.history, "replaceState").mockImplementation((data, unused, url) => {
-    originalReplaceState(data, unused, url);
-    if (typeof url === "string") {
-      const parsed = new URL(url, window.location.origin);
-      navMocks.pathname = parsed.pathname;
-      navMocks.setSearch(parsed.search.replace(/^\?/, ""));
-    }
+  navMocks.router.push.mockReset();
+  navMocks.router.push.mockImplementation(navMocks.setLocation);
+  navMocks.router.replace.mockReset();
+  navMocks.router.replace.mockImplementation(navMocks.setLocation);
+  navMocks.setLocation("/rbac/roles");
+  vi.spyOn(window.history, "replaceState").mockImplementation((_data, _unused, url) => {
+    if (typeof url === "string") navMocks.setLocation(url);
   });
 });
 
@@ -148,6 +211,46 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
+
+interface RbacScreenProps {
+  rolesTabProps?: RbacRolesRouteProps;
+  permissionsTabProps?: RbacPermissionsRouteProps;
+  usersTabProps?: RbacUsersRouteProps;
+  bulkAssignTabProps?: RbacBulkAssignRouteProps;
+}
+
+/** Thay cho App Router: chọn trang con theo đường dẫn hiện tại, như các `page.tsx` dưới `app/(shell)/rbac`. */
+function RbacRoutes({
+  rolesTabProps,
+  permissionsTabProps,
+  usersTabProps,
+  bulkAssignTabProps,
+}: RbacScreenProps) {
+  const pathname = usePathname();
+  if (pathname === "/rbac/roles") return <RbacRolesRoute {...rolesTabProps} />;
+  if (pathname === "/rbac/permissions") return <RbacPermissionsRoute {...permissionsTabProps} />;
+  if (pathname === "/rbac/users") return <RbacUsersRoute {...usersTabProps} />;
+  if (pathname === "/rbac/bulk-assign") return <RbacBulkAssignRoute {...bulkAssignTabProps} />;
+  return null;
+}
+
+function RbacScreen(props: RbacScreenProps) {
+  return (
+    <RbacLayoutView>
+      <RbacRoutes {...props} />
+    </RbacLayoutView>
+  );
+}
+
+function tabNav() {
+  return screen.getByRole("navigation", { name: viMessages.rbac.tabs.ariaLabel });
+}
+
+function tabLinkHrefs() {
+  return within(tabNav())
+    .getAllByRole("link")
+    .map((link) => [link.textContent, link.getAttribute("href")]);
+}
 
 function renderRbacPage({
   permissions = TEST_ADMIN_SESSION.permissions,
@@ -180,6 +283,7 @@ function renderRbacPage({
     totalPages: 1,
   })),
   listPermissions = vi.fn(async () => PERMISSIONS_FIXTURE),
+  listUsersByPermission = vi.fn(async () => PERMISSION_USERS_FIXTURE),
   updateRole,
   updateRolePermissions,
 }: {
@@ -190,6 +294,9 @@ function renderRbacPage({
   getRole?: Mock<(id: string) => Promise<RoleDetailResponse>>;
   listRoles?: Mock<(params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse>>;
   listPermissions?: Mock<() => Promise<PermissionResponse[]>>;
+  listUsersByPermission?: Mock<
+    (id: string, params?: ListPermissionUsersParams) => Promise<PageResponsePermissionUserResponse>
+  >;
   updateRole?: Mock<(id: string, payload: UpdateRoleRequest) => Promise<RoleDetailResponse>>;
   updateRolePermissions?: Mock<() => Promise<RoleDetailResponse>>;
 } = {}) {
@@ -198,6 +305,7 @@ function renderRbacPage({
     deleteRole,
     listRoles,
     listPermissions,
+    listUsersByPermission,
     ...renderWithProviders(
       <>
         <SessionProvider
@@ -206,7 +314,7 @@ function renderRbacPage({
             permissions: [...permissions],
           })}
         >
-          <RbacPageView
+          <RbacScreen
             rolesTabProps={{
               listRoles,
               listPermissions,
@@ -219,6 +327,15 @@ function renderRbacPage({
               },
             }}
             permissionsTabProps={{
+              listPermissions,
+            }}
+            usersTabProps={{
+              listPermissions,
+              listUsersByPermission,
+            }}
+            bulkAssignTabProps={{
+              listUsers: async () => EMPTY_PAGE,
+              listRoles,
               listPermissions,
             }}
           />
@@ -234,45 +351,104 @@ function renderRbacPage({
 
 describe("getAllowedRbacTabs", () => {
   it("tính đúng danh sách tab theo quyền hiệu lực", () => {
-    expect(getAllowedRbacTabs(new Set(["ROLE.VIEW"]))).toEqual(["vai-tro"]);
-    expect(getAllowedRbacTabs(new Set(["PERMISSION.VIEW"]))).toEqual(["quyen"]);
+    expect(getAllowedRbacTabs(new Set(["ROLE.VIEW"]))).toEqual(["roles"]);
+    expect(getAllowedRbacTabs(new Set(["PERMISSION.VIEW"]))).toEqual(["permissions"]);
     expect(getAllowedRbacTabs(new Set(["PERMISSION.VIEW", "USER.VIEW"]))).toEqual([
-      "quyen",
-      "nguoi-dung",
+      "permissions",
+      "users",
     ]);
-    expect(getAllowedRbacTabs(new Set(["USER.ASSIGN"]))).toEqual(["gan-hang-loat"]);
+    expect(getAllowedRbacTabs(new Set(["USER.ASSIGN"]))).toEqual(["bulk-assign"]);
     expect(getAllowedRbacTabs(new Set(TEST_ADMIN_SESSION.permissions))).toEqual([
-      "vai-tro",
-      "quyen",
-      "nguoi-dung",
-      "gan-hang-loat",
+      "roles",
+      "permissions",
+      "users",
+      "bulk-assign",
     ]);
+    expect(getAllowedRbacTabs(new Set(TEST_ADMIN_SESSION.permissions))).toEqual(RBAC_TAB_ORDER);
   });
 });
 
-describe("RbacPageView & RolesTab", () => {
-  it("chuẩn hóa URL thiếu ?tab sang tab đầu tiên được phép", async () => {
-    navMocks.setSearch("");
+describe("đường dẫn các trang con Phân quyền", () => {
+  it("đọc khóa tab từ đường dẫn; /rbac không có tab", () => {
+    expect(rbacTabFromPathname("/rbac")).toBeNull();
+    expect(rbacTabFromPathname("/rbac/")).toBeNull();
+    expect(rbacTabFromPathname("/rbac/roles")).toBe("roles");
+    expect(rbacTabFromPathname("/rbac/bulk-assign")).toBe("bulk-assign");
+    expect(rbacTabFromPathname("/rbac-x/roles")).toBeNull();
+  });
+
+  it("tab không được phép hoặc không có thì lấy tab đầu tiên được phép; không được tab nào thì null", () => {
+    expect(resolveActiveRbacTab("users", ["permissions", "users"])).toBe("users");
+    expect(resolveActiveRbacTab("roles", ["permissions", "users"])).toBe("permissions");
+    expect(resolveActiveRbacTab(null, ["roles", "permissions"])).toBe("roles");
+    expect(resolveActiveRbacTab("roles", [])).toBeNull();
+  });
+
+  it("chỉ Người dùng theo quyền và Gán hàng loạt nhận ?permission", () => {
+    expect(rbacTabHref("roles")).toBe("/rbac/roles");
+    expect(rbacTabHref("roles", "CLASS.VIEW")).toBe("/rbac/roles");
+    expect(rbacTabHref("permissions", "CLASS.VIEW")).toBe("/rbac/permissions");
+    expect(rbacTabHref("users", "CLASS.VIEW")).toBe("/rbac/users?permission=CLASS.VIEW");
+    expect(rbacTabHref("bulk-assign", "CLASS.VIEW")).toBe("/rbac/bulk-assign?permission=CLASS.VIEW");
+    expect(rbacTabHref("users", null)).toBe("/rbac/users");
+  });
+
+  it("chuyển tab: mã quyền truyền vào luôn được mang theo; mã đang chọn chỉ theo sang Gán hàng loạt khi đi từ Người dùng theo quyền", () => {
+    const fromUsers = { tab: "users", permission: "CLASS.VIEW" } as const;
+    const fromPermissions = { tab: "permissions", permission: "CLASS.VIEW" } as const;
+    const fromBulkAssign = { tab: "bulk-assign", permission: "CLASS.VIEW" } as const;
+
+    expect(rbacNavigationHref("users", { tab: "permissions", permission: null }, "AUDIT.VIEW")).toBe(
+      "/rbac/users?permission=AUDIT.VIEW",
+    );
+    expect(rbacNavigationHref("bulk-assign", fromUsers, "AUDIT.VIEW")).toBe(
+      "/rbac/bulk-assign?permission=AUDIT.VIEW",
+    );
+
+    expect(rbacNavigationHref("bulk-assign", fromUsers)).toBe("/rbac/bulk-assign?permission=CLASS.VIEW");
+    expect(rbacNavigationHref("users", fromUsers)).toBe("/rbac/users?permission=CLASS.VIEW");
+    expect(rbacNavigationHref("roles", fromUsers)).toBe("/rbac/roles");
+    expect(rbacNavigationHref("permissions", fromUsers)).toBe("/rbac/permissions");
+
+    expect(rbacNavigationHref("bulk-assign", fromPermissions)).toBe("/rbac/bulk-assign");
+    expect(rbacNavigationHref("users", fromPermissions)).toBe("/rbac/users?permission=CLASS.VIEW");
+
+    expect(rbacNavigationHref("users", fromBulkAssign)).toBe("/rbac/users?permission=CLASS.VIEW");
+    expect(rbacNavigationHref("bulk-assign", fromBulkAssign)).toBe(
+      "/rbac/bulk-assign?permission=CLASS.VIEW",
+    );
+  });
+});
+
+describe("RbacLayoutView & RolesTab", () => {
+  it("/rbac chuyển sang trang con đầu tiên được phép", async () => {
+    navMocks.setLocation("/rbac");
     renderRbacPage();
 
     await screen.findByText("Theo dõi lớp");
-    await waitFor(() => {
-      expect(window.location.pathname + window.location.search).toBe("/rbac?tab=vai-tro");
-    });
+    expect(navMocks.router.replace).toHaveBeenCalledWith("/rbac/roles");
+    expect(navMocks.router.push).not.toHaveBeenCalled();
+    expect(navMocks.currentUrl()).toBe("/rbac/roles");
   });
 
-  it("người chỉ có ROLE.VIEW mở ?tab=quyen chuyển về ?tab=vai-tro, không render tab cấm và không có nút ghi", async () => {
-    navMocks.setSearch("tab=quyen");
-    window.history.replaceState(null, "", "/rbac?tab=quyen");
+  it("/rbac của người không có ROLE.VIEW chuyển sang /rbac/permissions và bỏ ?permission", async () => {
+    navMocks.setLocation("/rbac?permission=CLASS.VIEW");
+    renderRbacPage({ permissions: ["PERMISSION.VIEW", "USER.VIEW"] });
+
+    expect(await screen.findByText(viMessages.rbac.permissionsTab.bannerNote)).toBeInTheDocument();
+    expect(navMocks.router.replace).toHaveBeenCalledWith("/rbac/permissions");
+    expect(tabLinkHrefs().map(([label]) => label)).toEqual(["Quyền", "Người dùng theo quyền"]);
+  });
+
+  it("người chỉ có ROLE.VIEW mở /rbac/permissions chuyển về /rbac/roles, không render tab cấm và không có nút ghi", async () => {
+    navMocks.setLocation("/rbac/permissions");
     const listPermissions = vi.fn(async () => PERMISSIONS_FIXTURE);
     renderRbacPage({ permissions: ["ROLE.VIEW"], listPermissions });
     await screen.findByText("Theo dõi lớp");
 
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((el) => el.textContent)).toEqual(["Vai trò"]);
-    await waitFor(() => {
-      expect(window.location.pathname + window.location.search).toBe("/rbac?tab=vai-tro");
-    });
+    expect(tabLinkHrefs()).toEqual([["Vai trò", "/rbac/roles"]]);
+    expect(navMocks.router.replace).toHaveBeenCalledWith("/rbac/roles");
+    expect(navMocks.currentUrl()).toBe("/rbac/roles");
     expect(listPermissions).not.toHaveBeenCalled();
     expect(
       screen.queryByText(viMessages.rbac.permissionsTab.bannerNote),
@@ -284,6 +460,117 @@ describe("RbacPageView & RolesTab", () => {
     expect(screen.getByRole("button", { name: "Xem vai trò Theo dõi lớp" })).toBeInTheDocument();
   });
 
+  it("người chỉ có USER.ASSIGN mở /rbac/users?permission chuyển sang /rbac/bulk-assign và giữ mã quyền", async () => {
+    navMocks.setLocation("/rbac/users?permission=CLASS.VIEW");
+    const { listUsersByPermission } = renderRbacPage({ permissions: ["USER.ASSIGN"] });
+
+    expect(await screen.findByRole("heading", { name: /1\. Chọn tài khoản/ })).toBeInTheDocument();
+    expect(navMocks.router.replace).toHaveBeenCalledWith("/rbac/bulk-assign?permission=CLASS.VIEW");
+    expect(tabLinkHrefs()).toEqual([["Gán hàng loạt", "/rbac/bulk-assign?permission=CLASS.VIEW"]]);
+    expect(listUsersByPermission).not.toHaveBeenCalled();
+  });
+
+  it("thanh tab là nhóm điều hướng gồm các liên kết của tab được phép, mục đang mở mang aria-current=page", async () => {
+    renderRbacPage();
+    await screen.findByText("Theo dõi lớp");
+
+    expect(tabLinkHrefs()).toEqual([
+      ["Vai trò", "/rbac/roles"],
+      ["Quyền", "/rbac/permissions"],
+      ["Người dùng theo quyền", "/rbac/users"],
+      ["Gán hàng loạt", "/rbac/bulk-assign"],
+    ]);
+    const nav = tabNav();
+    expect(within(nav).getByRole("link", { name: "Vai trò" })).toHaveAttribute("aria-current", "page");
+    for (const name of ["Quyền", "Người dùng theo quyền", "Gán hàng loạt"]) {
+      expect(within(nav).getByRole("link", { name })).not.toHaveAttribute("aria-current");
+    }
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(navMocks.router.replace).not.toHaveBeenCalled();
+  });
+
+  it("đổi trang con: tiêu đề và thanh tab không dựng lại, tiêu điểm ở lại liên kết vừa bấm, nút Tạo vai trò chỉ có ở trang Vai trò", async () => {
+    const user = userEvent.setup();
+    renderRbacPage();
+    await screen.findByText("Theo dõi lớp");
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Phân quyền" });
+    const nav = tabNav();
+    const permissionsLink = within(nav).getByRole("link", { name: "Quyền" });
+    expect(screen.getByText(viMessages.rbac.tabsDescription.roles)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Tạo vai trò" })).toBeInTheDocument();
+
+    await user.click(permissionsLink);
+
+    expect(await screen.findByText(viMessages.rbac.permissionsTab.bannerNote)).toBeInTheDocument();
+    expect(navMocks.currentUrl()).toBe("/rbac/permissions");
+    expect(screen.getByRole("heading", { level: 1, name: "Phân quyền" })).toBe(heading);
+    expect(tabNav()).toBe(nav);
+    expect(permissionsLink).toHaveFocus();
+    expect(permissionsLink).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "Vai trò" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByText(viMessages.rbac.tabsDescription.permissions)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ Tạo vai trò" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Theo dõi lớp")).not.toBeInTheDocument();
+  });
+
+  it("từ một quyền sang Người dùng theo quyền mang ?permission; đổi quyền tại chỗ; sang Gán hàng loạt giữ mã", async () => {
+    const user = userEvent.setup();
+    navMocks.setLocation("/rbac/permissions");
+    const { listUsersByPermission } = renderRbacPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Xem tài khoản đang có quyền Xem lớp học" }),
+    );
+    expect(navMocks.router.push).toHaveBeenLastCalledWith("/rbac/users?permission=CLASS.VIEW");
+    expect(await screen.findByText("class.watcher")).toBeInTheDocument();
+    expect(listUsersByPermission).toHaveBeenCalledWith("p-class-view", expect.anything());
+    expect(tabLinkHrefs()).toEqual([
+      ["Vai trò", "/rbac/roles"],
+      ["Quyền", "/rbac/permissions"],
+      ["Người dùng theo quyền", "/rbac/users?permission=CLASS.VIEW"],
+      ["Gán hàng loạt", "/rbac/bulk-assign?permission=CLASS.VIEW"],
+    ]);
+
+    // Chọn quyền khác trong cùng trang: chỉ đổi ?permission tại chỗ, không điều hướng.
+    navMocks.router.push.mockClear();
+    await user.click(screen.getByRole("button", { name: /AUDIT\.VIEW/ }));
+    expect(navMocks.currentUrl()).toBe("/rbac/users?permission=AUDIT.VIEW");
+    expect(window.history.replaceState).toHaveBeenLastCalledWith(
+      null,
+      "",
+      "/rbac/users?permission=AUDIT.VIEW",
+    );
+    expect(navMocks.router.push).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(listUsersByPermission).toHaveBeenCalledWith("p-audit-view", expect.anything());
+    });
+
+    await user.click(screen.getByRole("button", { name: viMessages.rbac.permissionUsers.assignMany }));
+    expect(navMocks.router.push).toHaveBeenLastCalledWith("/rbac/bulk-assign?permission=AUDIT.VIEW");
+    expect(await screen.findByRole("heading", { name: /1\. Chọn tài khoản/ })).toBeInTheDocument();
+    expect(tabLinkHrefs()).toEqual([
+      ["Vai trò", "/rbac/roles"],
+      ["Quyền", "/rbac/permissions"],
+      ["Người dùng theo quyền", "/rbac/users?permission=AUDIT.VIEW"],
+      ["Gán hàng loạt", "/rbac/bulk-assign?permission=AUDIT.VIEW"],
+    ]);
+  });
+
+  it("Xem vai trò từ Người dùng theo quyền sang /rbac/roles và bỏ ?permission", async () => {
+    const user = userEvent.setup();
+    navMocks.setLocation("/rbac/users?permission=CLASS.VIEW");
+    renderRbacPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Xem vai trò của class.watcher" }),
+    );
+    expect(navMocks.router.push).toHaveBeenLastCalledWith("/rbac/roles");
+    expect(await screen.findByText("Theo dõi lớp")).toBeInTheDocument();
+    expect(navMocks.currentUrl()).toBe("/rbac/roles");
+  });
+
   it("hiển thị trạng thái lỗi và nút thử lại khi tải phiên thất bại", async () => {
     const loadSession = vi
       .fn()
@@ -292,7 +579,7 @@ describe("RbacPageView & RolesTab", () => {
 
     renderWithProviders(
       <SessionProvider loadSession={loadSession}>
-        <RbacPageView
+        <RbacScreen
           rolesTabProps={{
             listRoles: async () => ({
               items: ROLES_FIXTURE,
@@ -430,10 +717,10 @@ describe("RbacPageView & RolesTab", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("tab", { name: "Quyền" }));
+    await user.click(within(tabNav()).getByRole("link", { name: "Quyền" }));
     expect(await screen.findByText(viMessages.rbac.permissionsTab.bannerNote)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Vai trò" }));
+    await user.click(within(tabNav()).getByRole("link", { name: "Vai trò" }));
     await screen.findByText("Theo dõi lớp");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -442,12 +729,31 @@ describe("RbacPageView & RolesTab", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
+  it("đang mở dialog Tạo vai trò mà rời trang (nút Back) rồi quay lại Vai trò thì dialog không tự mở lại", async () => {
+    const user = userEvent.setup();
+    renderRbacPage();
+
+    await screen.findByText("Theo dõi lớp");
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    act(() => navMocks.setLocation("/rbac/permissions"));
+    expect(await screen.findByText(viMessages.rbac.permissionsTab.bannerNote)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    act(() => navMocks.setLocation("/rbac/roles"));
+    await screen.findByText("Theo dõi lớp");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("StrictMode: bấm + Tạo vai trò mở dialog không bị treo", async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <StrictMode>
         <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
-          <RbacPageView
+          <RbacScreen
             rolesTabProps={{
               listRoles: async () => ({ items: ROLES_FIXTURE, page: 0, size: 20, totalItems: 3, totalPages: 1 }),
               listPermissions: async () => PERMISSIONS_FIXTURE,

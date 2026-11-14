@@ -1,9 +1,27 @@
 export {
-  RbacPageView,
+  RbacLayoutView,
+  useRbacLayout,
+  type RbacLayoutContextValue,
+} from "./components/rbac-layout-view";
+export {
+  RbacBulkAssignRoute,
+  RbacPermissionsRoute,
+  RbacRolesRoute,
+  RbacUsersRoute,
+  type RbacBulkAssignRouteProps,
+  type RbacPermissionsRouteProps,
+  type RbacRolesRouteProps,
+  type RbacUsersRouteProps,
+} from "./components/rbac-routes";
+export {
+  RBAC_BASE_PATH,
+  RBAC_TAB_ORDER,
   getAllowedRbacTabs,
+  rbacNavigationHref,
+  rbacTabFromPathname,
+  rbacTabHref,
   resolveActiveRbacTab,
-  type RbacPageViewProps,
-} from "./components/rbac-page-view";
+} from "./rbac-tabs";
 export {
   BulkAssignTab,
   BULK_USER_IDS_STORAGE_KEY,

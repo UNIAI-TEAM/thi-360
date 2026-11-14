@@ -362,7 +362,7 @@ export function RolesTab({
         </div>
 
         <Table
-          aria-label={t("tabs.vai-tro")}
+          aria-label={t("tabs.roles")}
           columns={columns}
           data={items}
           getRowId={(row) => row.id}

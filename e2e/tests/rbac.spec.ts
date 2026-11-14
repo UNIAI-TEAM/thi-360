@@ -118,7 +118,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
         .getByRole("navigation", { name: "Menu chính" })
         .getByRole("link", { name: "Phân quyền" })
         .click();
-      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/rbac\\?tab=vai-tro`));
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/rbac/roles$`));
 
       await page.getByRole("button", { name: "+ Tạo vai trò" }).click();
       const dialog = page.getByRole("dialog");
@@ -170,13 +170,13 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await loginAs(page, "platform", PLATFORM_PASSWORD);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
-      await page.goto(`${ADMIN_URL}/rbac?tab=quyen`);
+      await page.goto(`${ADMIN_URL}/rbac/permissions`);
       await page
         .getByRole("button", { name: "Xem tài khoản đang có quyền Xem lớp học" })
         .click();
 
       await expect(page).toHaveURL(
-        new RegExp(`${ADMIN_URL}/rbac\\?tab=nguoi-dung&permission=CLASS\\.VIEW`),
+        new RegExp(`${ADMIN_URL}/rbac/users\\?permission=CLASS\\.VIEW$`),
       );
 
       await page.getByLabel("Tìm tài khoản").fill(watchUsername);
@@ -226,7 +226,7 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       expect(clearResp.ok()).toBe(true);
     }
 
-    await page.goto(`${ADMIN_URL}/rbac?tab=gan-hang-loat`);
+    await page.goto(`${ADMIN_URL}/rbac/bulk-assign`);
     await expect(page.getByRole("heading", { name: /1\. Chọn tài khoản/ })).toBeVisible();
 
     const searchInput = page.getByLabel("Tìm kiếm");
@@ -336,15 +336,18 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       const nav = page.getByRole("navigation", { name: "Menu chính" });
       await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeVisible();
 
-      // Truy cập thẳng tab không có quyền -> chuyển về tab đầu tiên được phép (?tab=vai-tro)
-      await page.goto(`${ADMIN_URL}/rbac?tab=quyen`);
-      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/rbac\\?tab=vai-tro`));
+      // Truy cập thẳng trang con không có quyền -> chuyển về trang con đầu tiên được phép (/rbac/roles)
+      await page.goto(`${ADMIN_URL}/rbac/permissions`);
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/rbac/roles$`));
 
-      const tabList = page.getByRole("tablist", { name: "Các tab phân quyền" });
-      await expect(tabList.getByRole("tab", { name: "Vai trò" })).toBeVisible();
-      await expect(tabList.getByRole("tab", { name: "Quyền" })).toBeHidden();
-      await expect(tabList.getByRole("tab", { name: "Người dùng theo quyền" })).toBeHidden();
-      await expect(tabList.getByRole("tab", { name: "Gán hàng loạt" })).toBeHidden();
+      // Thanh tab là nhóm điều hướng gồm các liên kết; mục đang mở mang aria-current="page".
+      const tabNav = page.getByRole("navigation", { name: "Các tab phân quyền" });
+      const rolesLink = tabNav.getByRole("link", { name: "Vai trò", exact: true });
+      await expect(rolesLink).toBeVisible();
+      await expect(rolesLink).toHaveAttribute("aria-current", "page");
+      await expect(tabNav.getByRole("link", { name: "Quyền", exact: true })).toBeHidden();
+      await expect(tabNav.getByRole("link", { name: "Người dùng theo quyền" })).toBeHidden();
+      await expect(tabNav.getByRole("link", { name: "Gán hàng loạt" })).toBeHidden();
 
       await expect(page.getByRole("button", { name: "+ Tạo vai trò" })).toBeHidden();
       await expect(page.getByRole("button", { name: /Sửa vai trò/ })).toHaveCount(0);

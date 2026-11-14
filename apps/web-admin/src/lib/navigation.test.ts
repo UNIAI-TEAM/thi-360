@@ -2,6 +2,7 @@ import { Home } from "lucide-react";
 import { describe, expect, it } from "vitest";
 import {
   filterNavigation,
+  isActivePath,
   NAVIGATION,
   type NavGroup,
   resolveBreadcrumb,
@@ -137,6 +138,16 @@ describe("NAVIGATION của đợt 1", () => {
         }),
       ]),
     );
+  });
+
+  it("bốn trang con của Phân quyền vẫn thuộc mục Phân quyền: sidebar sáng và breadcrumb đúng", () => {
+    const rbacItem = NAVIGATION.flatMap((g) => g.items).find((item) => item.id === "rbac")!;
+    for (const path of ["/rbac", "/rbac/roles", "/rbac/permissions", "/rbac/users", "/rbac/bulk-assign"]) {
+      expect(isActivePath(rbacItem, path), path).toBe(true);
+      const trail = resolveBreadcrumb(NAVIGATION, path);
+      expect(trail?.group.id, path).toBe("system");
+      expect(trail?.item.id, path).toBe("rbac");
+    }
   });
 
   it("có mục Tài khoản trong nhóm Người dùng với quyền USER.VIEW", () => {

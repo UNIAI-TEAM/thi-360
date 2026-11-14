@@ -116,7 +116,7 @@ export function UserBulkBar({
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem(RBAC_BULK_USER_IDS_STORAGE_KEY, JSON.stringify(selectedIds));
     }
-    router.push("/rbac?tab=gan-hang-loat");
+    router.push("/rbac/bulk-assign");
   }
 
   async function handleStartBulkAction(action: BulkActionKind) {

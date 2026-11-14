@@ -444,7 +444,7 @@ describe("UsersListView (Slice 1)", () => {
     expect(window.sessionStorage.getItem("rbac.bulk.userIds")).toBe(
       JSON.stringify([SAMPLE_USERS[0]!.id, SAMPLE_USERS[3]!.id]),
     );
-    expect(routerMock.push).toHaveBeenCalledWith("/rbac?tab=gan-hang-loat");
+    expect(routerMock.push).toHaveBeenCalledWith("/rbac/bulk-assign");
 
     await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
     expect(previewMock).toHaveBeenCalledWith({
