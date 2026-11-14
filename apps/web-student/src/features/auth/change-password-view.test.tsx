@@ -57,6 +57,28 @@ afterEach(() => {
   mocks.navigate.mockReset();
 });
 describe("ChangePasswordView", () => {
+  it("khung chờ và biểu mẫu dùng cùng vị trí và đệm của thẻ: bám mép trên ở màn hẹp, căn giữa từ md", async () => {
+    // jsdom không dàn trang: kiểm lớp bố cục giống nhau giữa hai trạng thái để thẻ không nhảy khi phiên tải xong.
+    const loadingView = renderWithProviders(
+      <ChangePasswordView loadCurrentSession={() => new Promise(() => {})} navigate={mocks.navigate} />,
+    );
+    const loadingMain = screen.getByRole("main");
+    const loadingCard = screen.getByRole("status", { name: "Đang tải" });
+    expect(loadingMain).toHaveClass("items-start", "md:items-center");
+    expect(loadingMain).not.toHaveClass("items-center");
+    const mainClass = loadingMain.className;
+    const cardClass = loadingCard.className;
+    loadingView.unmount();
+
+    renderWithProviders(
+      <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+    const main = screen.getByRole("main");
+    expect(main.className).toBe(mainClass);
+    expect(main.firstElementChild?.className).toBe(cardClass);
+  });
+
   it("kiểm tra 5 điều kiện mật khẩu và điều hướng tới callbackUrl hợp lệ sau khi đổi thành công", async () => {
     mocks.callbackUrl = "http://localhost:3001/users";
     mocks.changeAccountPassword.mockResolvedValue(undefined);

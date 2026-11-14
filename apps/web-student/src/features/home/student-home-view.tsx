@@ -6,7 +6,7 @@ import { FileText, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { StudentHeader } from "@/components/student-header";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
-import { StudentUserMenu } from "./student-user-menu";
+import { StudentUserMenu, StudentUserMenuPlaceholder } from "./student-user-menu";
 
 export function StudentHomeView({
   loadCurrentSession = loadSession,
@@ -24,14 +24,25 @@ export function StudentHomeView({
 
   return (
     <div className="min-h-screen bg-page text-text">
-      <StudentHeader actions={sessionQuery.data && <StudentUserMenu session={sessionQuery.data} />} />
+      <StudentHeader
+        actions={
+          sessionQuery.data ? (
+            <StudentUserMenu session={sessionQuery.data} />
+          ) : sessionQuery.isLoading ? (
+            <StudentUserMenuPlaceholder />
+          ) : undefined
+        }
+      />
 
       <main className="mx-auto flex max-w-[1170px] flex-col gap-6 px-6 py-10">
         {sessionQuery.isLoading && (
-          <div role="status" aria-label={common("loading")} className="flex flex-col gap-4">
-            <Skeleton className="h-9 w-64" />
-            <Skeleton className="h-5 w-80 max-w-full" />
-            <Skeleton className="mt-4 h-48 w-full rounded-xl" />
+          // Khung chờ xếp đúng như nội dung thật (lời chào 38px, một dòng mô tả 21px, khối bên dưới) để không xê dịch khi tải xong.
+          <div role="status" aria-label={common("loading")} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-9.5 w-64 max-w-full" />
+              <Skeleton className="h-5.25 w-80 max-w-full" />
+            </div>
+            <Skeleton className="h-48 w-full rounded-xl" />
           </div>
         )}
 

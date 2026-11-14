@@ -30,6 +30,14 @@ import {
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl, webUrl } from "@/lib/env";
 
+/**
+ * Màn hẹp: thẻ bám mép trên (cao hơn màn hình nên căn giữa chỉ làm thẻ nhảy khi nội dung tải xong); từ `md` căn giữa.
+ * Khung chờ và biểu mẫu dùng chung hai lớp này để vị trí và đệm của thẻ không đổi giữa hai trạng thái.
+ */
+const PAGE_CLASS = "flex min-h-screen items-start justify-center bg-page p-4 sm:p-6 md:items-center";
+const CARD_CLASS =
+  "flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-6 shadow-xl sm:p-10";
+
 type ChangePasswordValues = {
   oldPassword: string;
   newPassword: string;
@@ -188,18 +196,35 @@ export function ChangePasswordView({
   }
 
   if (sessionQuery.isLoading) {
+    // Khung chờ xếp đúng như biểu mẫu thật (logo, tiêu đề, ba ô, danh sách điều kiện, nút, ghi chú) để thẻ gần như
+    // không đổi chiều cao khi phiên tải xong.
+    const fieldSkeleton = (
+      <div className="flex flex-col gap-1.5">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    );
     return (
-      <main className="flex min-h-screen items-center justify-center bg-page p-6">
-        <div
-          role="status"
-          aria-label={common("loading")}
-          className="flex w-full max-w-[480px] flex-col gap-4 rounded-2xl border border-border bg-surface p-10 shadow-xl"
-        >
-          <Skeleton className="h-10 w-40" />
-          <Skeleton className="h-7 w-56" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
+      <main className={PAGE_CLASS}>
+        <div role="status" aria-label={common("loading")} className={CARD_CLASS}>
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-10 rounded-lg" />
+            <Skeleton className="h-7 w-20" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-7.5 w-48" />
+            <Skeleton className="h-10.5 w-full sm:h-5.25" />
+          </div>
+          <div className="flex flex-col gap-5">
+            {fieldSkeleton}
+            <div className="flex flex-col gap-2">
+              {fieldSkeleton}
+              <Skeleton className="h-27.75 w-56 max-w-full" />
+            </div>
+            {fieldSkeleton}
+            <Skeleton className="h-13 w-full rounded-lg" />
+          </div>
+          <Skeleton className="h-15 w-full sm:h-10" />
         </div>
       </main>
     );
@@ -207,7 +232,7 @@ export function ChangePasswordView({
 
   if (sessionQuery.isError || !sessionQuery.data) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-page p-6">
+      <main className={PAGE_CLASS}>
         <div className="w-full max-w-[480px] rounded-2xl border border-border bg-surface p-8 shadow-xl">
           <EmptyState
             icon={<TriangleAlert />}
@@ -234,8 +259,8 @@ export function ChangePasswordView({
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-page p-6">
-      <div className="flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-10 shadow-xl">
+    <main className={PAGE_CLASS}>
+      <div className={CARD_CLASS}>
         <div className="flex items-center gap-3">
           <span
             aria-hidden

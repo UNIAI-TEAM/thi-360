@@ -9,6 +9,7 @@ import {
   cn,
   focusRing,
   notify,
+  Skeleton,
 } from "@thi360/ui";
 import { initialsOf } from "@thi360/web-kit/client";
 import { ChevronDown, KeyRound, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
@@ -19,6 +20,13 @@ import { adminUrl } from "@/lib/env";
 
 export { initialsOf };
 
+/**
+ * Ô giữ chỗ cho nút tài khoản khi phiên đang tải: cùng chiều cao và gần cùng bề rộng với nút thật, để thanh trên
+ * cùng không xuống hàng hay xê dịch khi phiên tải xong (CLS).
+ */
+export function StudentUserMenuPlaceholder() {
+  return <Skeleton data-testid="user-menu-placeholder" className="h-11 w-12.5 rounded-full sm:w-37" />;
+}
 
 export function StudentUserMenu({
   session,
@@ -44,7 +52,7 @@ export function StudentUserMenu({
       <DropdownMenuTrigger
         aria-label={t("trigger")}
         className={cn(
-          "flex h-11 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-2.5 pl-1.5 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong motion-reduce:transition-none",
+          "flex h-11 min-w-12.5 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-2.5 pl-1.5 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong motion-reduce:transition-none",
           focusRing,
         )}
       >
@@ -54,8 +62,9 @@ export function StudentUserMenu({
         >
           {initialsOf(session.fullName, session.username)}
         </span>
-        <span>{session.username}</span>
-        <ChevronDown aria-hidden className="size-4 text-text-muted" />
+        {/* Dưới `sm` chỉ còn avatar để thanh trên cùng vừa một hàng; tên đầy đủ có trong menu và nút đã có `aria-label`. */}
+        <span className="hidden sm:inline">{session.username}</span>
+        <ChevronDown aria-hidden className="hidden size-4 text-text-muted sm:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent aria-label={t("menuLabel")} className="w-60">
         <div className="mb-1.5 border-b border-border px-3 pt-2 pb-2.5">

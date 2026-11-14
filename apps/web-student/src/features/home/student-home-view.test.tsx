@@ -30,6 +30,11 @@ describe("StudentHomeView", () => {
       <StudentHomeView loadCurrentSession={() => new Promise(() => {})} />,
     );
     expect(screen.getByRole("status", { name: "Đang tải" })).toBeInTheDocument();
+    // Đang tải: thanh trên cùng giữ chỗ cho nút tài khoản (cùng chiều cao) để không xuống hàng khi phiên về.
+    const placeholder = screen.getByTestId("user-menu-placeholder");
+    expect(screen.getByRole("banner")).toContainElement(placeholder);
+    expect(placeholder).toHaveClass("h-11", "w-12.5");
+    expect(screen.queryByRole("button", { name: "Menu tài khoản" })).toBeNull();
     loadingView.unmount();
 
     const failLoader = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce(STUDENT);
@@ -47,6 +52,8 @@ describe("StudentHomeView", () => {
     expect(localeButton.compareDocumentPosition(menuButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(themeButton.compareDocumentPosition(menuButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(menuButton).toHaveTextContent("HV");
+    expect(menuButton).toHaveClass("h-11", "min-w-12.5");
+    expect(screen.queryByTestId("user-menu-placeholder")).toBeNull();
     // Vòng focus dùng chung của kit, không tự viết vòng mờ.
     expect(menuButton).toHaveClass("focus-visible:ring-primary-text");
     expect(menuButton.className).not.toContain("ring-primary-600/30");
