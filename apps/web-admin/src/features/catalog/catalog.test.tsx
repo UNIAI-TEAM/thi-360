@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import { useMemo, useSyncExternalStore } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import { ApiStatusError } from "@/lib/api/query-client";
 import en from "@/messages/en.json";
@@ -38,11 +38,12 @@ const routerMock = vi.hoisted(() => {
   const state = {
     pathname: "/cau-hinh-chung",
     search: "",
-    replace: vi.fn((url: string) => {
+    /** Simulates Next >= 14.1 mirroring `history.replaceState` into `useSearchParams`. */
+    syncFromHistory: (url: string) => {
       const idx = url.indexOf("?");
       state.search = idx >= 0 ? url.slice(idx + 1) : "";
       for (const listener of listeners) listener();
-    }),
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
@@ -66,10 +67,6 @@ vi.mock("next/navigation", () => ({
     );
     return useMemo(() => new URLSearchParams(search), [search]);
   },
-  useRouter: () => ({
-    replace: routerMock.replace,
-    push: routerMock.replace,
-  }),
 }));
 
 const SYSTEM_SUBJECT_GROUP: CatalogGroupResponse = {
@@ -527,9 +524,15 @@ function renderCatalog({
   };
 }
 
+let replaceStateSpy: MockInstance<History["replaceState"]>;
+
 beforeEach(() => {
   routerMock.search = "";
-  routerMock.replace.mockClear();
+  replaceStateSpy = vi
+    .spyOn(window.history, "replaceState")
+    .mockImplementation((_data, _unused, url) => {
+      routerMock.syncFromHistory(String(url));
+    });
 });
 
 afterEach(() => {
@@ -679,9 +682,10 @@ describe("CatalogView: phân quyền và bốn trạng thái", () => {
     expect(within(sidebar).getByText("Tùy chỉnh · 1")).toBeInTheDocument();
 
     await userEvent.click(within(sidebar).getByRole("button", { name: /Nguồn câu hỏi/ }));
-    expect(routerMock.replace).toHaveBeenCalledWith(
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      null,
+      "",
       "/cau-hinh-chung?group=QUESTION_SOURCE",
-      { scroll: false },
     );
     expect(await screen.findByRole("heading", { name: "Chưa có giá trị" })).toBeInTheDocument();
   });
@@ -1586,9 +1590,10 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     // Select B1 -> updates ?node= and shows 340px detail pane with inherited + own refs
     await userEvent.click(screen.getByRole("treeitem", { name: /Tính đơn điệu/ }));
     await waitFor(() => {
-      expect(routerMock.replace).toHaveBeenCalledWith(
+      expect(replaceStateSpy).toHaveBeenCalledWith(
+        null,
+        "",
         expect.stringContaining("node=node-b1"),
-        { scroll: false },
       );
     });
 

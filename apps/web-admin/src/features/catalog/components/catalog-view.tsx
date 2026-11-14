@@ -12,7 +12,6 @@ import {
 } from "@thi360/ui";
 import { FolderOpen } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -39,6 +38,7 @@ import {
   resolveCatalogErrorMessage,
   triggerBlobDownload,
 } from "../utils";
+import { useCatalogUrlState } from "../url-state";
 import { CombinationFormDialog } from "./combination-form-dialog";
 import { DeleteInUseDialog } from "./delete-in-use-dialog";
 import { ExcelImportDialog } from "./excel-import-dialog";
@@ -121,13 +121,11 @@ function CatalogWorkspace({
 }) {
   const t = useTranslations("catalog");
   const locale = useLocale();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const selection = useCatalogUrlState();
 
-  const selectedGroupParam = searchParams.get("group");
-  const selectedNodeParam = searchParams.get("node");
+  const selectedGroupParam = selection.group;
+  const selectedNodeParam = selection.node;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -204,26 +202,11 @@ function CatalogWorkspace({
   });
 
   function updateGroupParam(groupCode: string | null) {
-    const next = new URLSearchParams(searchParams.toString());
-    if (groupCode) {
-      next.set("group", groupCode);
-    } else {
-      next.delete("group");
-    }
-    next.delete("node");
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    selection.select({ group: groupCode });
   }
 
   function updateNodeParam(nodeId: string | null) {
-    const next = new URLSearchParams(searchParams.toString());
-    if (nodeId) {
-      next.set("node", nodeId);
-    } else {
-      next.delete("node");
-    }
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    selection.select({ node: nodeId });
   }
 
   function handleSelectGroup(group: CatalogGroupResponse) {

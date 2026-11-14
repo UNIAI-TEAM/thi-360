@@ -309,6 +309,38 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await expect(page.getByRole("dialog")).toContainText("Mã tổ hợp");
   });
 
+  test("tải lại với ?group= rồi vẫn đổi được nhóm và chọn nút cây (VIS-1)", async ({ page }) => {
+    await loginThroughSso(page, "content.admin", DEV_PASSWORD);
+    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=SUBJECT`);
+    await expect(page.getByRole("heading", { name: "Môn học" })).toBeVisible();
+
+    await page.reload();
+    await expect(page).toHaveURL(/group=SUBJECT(&|$)/);
+    await expect(page.getByRole("heading", { name: "Môn học" })).toBeVisible();
+
+    await page.getByRole("button", { name: /Mã tổ hợp/ }).click();
+    await expect(page.getByRole("heading", { name: /Mã tổ hợp/ })).toBeVisible();
+    await expect(page).toHaveURL(/group=SUBJECT_COMBINATION(&|$)/);
+
+    await page.getByRole("button", { name: /Môn học/ }).click();
+    await expect(page.getByRole("heading", { name: "Môn học" })).toBeVisible();
+    await expect(page).toHaveURL(/group=SUBJECT(&|$)/);
+
+    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=KNOWLEDGE`);
+    await page.reload();
+    const treeItems = page.getByRole("treeitem");
+    await expect(treeItems.first()).toBeVisible();
+    await treeItems.nth(0).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/node=/);
+    const firstNodeUrl = page.url();
+
+    await treeItems.nth(1).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).not.toHaveURL(firstNodeUrl);
+    await expect(page).toHaveURL(/node=/);
+  });
+
   test("người dùng chỉ có CATALOG.VIEW không thấy nút ghi", async ({ browser }) => {
     const suffix = Date.now().toString(36).toUpperCase();
     const viewer = await provisionCatalogViewerUser(browser, suffix);
