@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Button, Card, Checkbox, cn, EmptyState, Label, Skeleton } from "@thi360/ui";
+import { Button, buttonVariants, Card, Checkbox, cn, EmptyState, Label, Skeleton } from "@thi360/ui";
 import { FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -92,6 +92,9 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mustChangeId = useId();
+  const fileInputId = useId();
+  const chooseFileLabelId = useId();
+  const dropzoneHintId = useId();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -132,7 +135,7 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
     event.target.value = "";
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setIsDragging(false);
     acceptFile(event.dataTransfer.files?.[0]);
@@ -186,45 +189,59 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
         <Card padding="lg" className="flex flex-col gap-4 lg:col-span-5">
           <h2 className="text-title font-semibold text-text">{t("upload.sectionTitle")}</h2>
 
-          <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            className={cn(
-              "flex flex-col items-center gap-2.5 rounded-xl border-2 border-dashed px-5 py-9 text-center transition-colors duration-150 motion-reduce:transition-none",
-              isDragging
-                ? "border-primary-text bg-primary-50"
-                : "border-primary-text/40 bg-surface",
-            )}
-          >
-            <span
-              aria-hidden
-              className="flex size-13 items-center justify-center rounded-xl bg-primary-50 text-primary-text"
-            >
-              <Upload className="size-6" />
-            </span>
-            <div className="text-body font-semibold text-text">{t("upload.dropzoneTitle")}</div>
-            <div className="text-body text-text-muted">{t("upload.dropzoneHint")}</div>
-
+          {/*
+            Một điều khiển duy nhất: ô chọn tệp thật (ẩn về hình ảnh, vẫn nhận Tab và Enter/Space) và cả vùng thả
+            là nhãn của nó, nên bấm vào đâu trong vùng cũng mở hộp chọn tệp. Ô nhập đứng trước nhãn để lớp `peer`
+            vẽ vòng focus lên vùng thả khi ô nhập nhận focus bằng bàn phím.
+          */}
+          <div className="relative">
             <input
               ref={fileInputRef}
+              id={fileInputId}
               type="file"
-              aria-label={t("upload.chooseFile")}
+              aria-labelledby={chooseFileLabelId}
+              aria-describedby={dropzoneHintId}
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFileInputChange}
-              className="sr-only"
+              className="peer sr-only"
             />
-            <Button
-              type="button"
-              variant={selectedFile ? "secondary" : "primary"}
-              onClick={() => fileInputRef.current?.click()}
+            <label
+              htmlFor={fileInputId}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={cn(
+                "flex cursor-pointer flex-col items-center gap-2.5 rounded-xl border-2 border-dashed px-5 py-9 text-center transition-colors duration-150 motion-reduce:transition-none",
+                "peer-focus-visible:ring-3 peer-focus-visible:ring-primary-text",
+                isDragging
+                  ? "border-primary-text bg-primary-50"
+                  : "border-primary-text/40 bg-surface hover:bg-primary-50",
+              )}
             >
-              <Upload />
-              <span>{selectedFile ? t("upload.changeFile") : t("upload.chooseFile")}</span>
-            </Button>
+              <span
+                aria-hidden
+                className="flex size-13 items-center justify-center rounded-xl bg-primary-50 text-primary-text"
+              >
+                <Upload className="size-6" />
+              </span>
+              <span className="text-body font-semibold text-text">{t("upload.dropzoneTitle")}</span>
+              <span id={dropzoneHintId} className="text-body text-text-muted">
+                {t("upload.dropzoneHint")}
+              </span>
+              <span
+                id={chooseFileLabelId}
+                className={cn(
+                  buttonVariants({ variant: selectedFile ? "secondary" : "primary" }),
+                  "gap-2",
+                )}
+              >
+                <Upload aria-hidden className="size-4" />
+                <span>{selectedFile ? t("upload.changeFile") : t("upload.chooseFile")}</span>
+              </span>
+            </label>
           </div>
 
           {selectedFile && (

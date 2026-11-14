@@ -230,6 +230,36 @@ describe("BulkImportUploadView (Step 1)", () => {
 
     expect(await screen.findByText("2.048 KB")).toBeInTheDocument();
   });
+
+  it("chỉ có một điều khiển chọn tệp: ô nhập thật, cả vùng thả là nhãn và mang vòng focus (U-03)", async () => {
+    renderUpload(makeDeps());
+
+    const fileInput = await screen.findByLabelText("Chọn tệp");
+    expect(fileInput).toHaveAttribute("type", "file");
+    // Không còn nút "Chọn tệp" đứng riêng lặp lại cùng việc.
+    expect(screen.queryByRole("button", { name: "Chọn tệp" })).not.toBeInTheDocument();
+
+    // Vùng thả là nhãn đứng ngay sau ô nhập, vẽ vòng focus khi ô nhập nhận focus bàn phím.
+    const zone = fileInput.nextElementSibling as HTMLElement;
+    expect(zone.tagName).toBe("LABEL");
+    expect(zone).toHaveAttribute("for", fileInput.id);
+    expect(fileInput).toHaveClass("peer");
+    expect(zone).toHaveClass("peer-focus-visible:ring-3");
+    expect(fileInput).toHaveAccessibleDescription("Chỉ nhận tệp .xlsx, tối đa 2.000 dòng, không quá 5 MB");
+
+    // Thứ tự Tab: nút tải mẫu → ô chọn tệp → ô đánh dấu; không có hai điểm dừng cùng tên.
+    screen.getByRole("button", { name: "Tải file mẫu" }).focus();
+    await userEvent.tab();
+    expect(fileInput).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByRole("checkbox", { name: "Bắt đổi mật khẩu ở lần đăng nhập đầu" })).toHaveFocus();
+
+    // Bấm vào dòng chữ trong vùng thả cũng kích hoạt ô chọn tệp.
+    const onInputClick = vi.fn();
+    fileInput.addEventListener("click", onInputClick);
+    await userEvent.click(screen.getByText("Kéo tệp vào đây hoặc bấm để chọn"));
+    expect(onInputClick).toHaveBeenCalled();
+  });
 });
 
 
