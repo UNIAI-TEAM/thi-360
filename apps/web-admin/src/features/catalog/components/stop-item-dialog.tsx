@@ -24,6 +24,7 @@ import {
   type CatalogApi,
   type CatalogGroupResponse,
   type CatalogItemResponse,
+  type CatalogTreeNodeResponse,
 } from "../api";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { pickName, resolveCatalogErrorMessage } from "../utils";
@@ -31,16 +32,21 @@ import { pickName, resolveCatalogErrorMessage } from "../utils";
 export type StopItemDialogProps = {
   open: boolean;
   group: CatalogGroupResponse;
-  item: CatalogItemResponse | null;
+  item: CatalogItemResponse | CatalogTreeNodeResponse | null;
+  descendantCount?: number | null;
   api: CatalogApi;
   onOpenChange: (open: boolean) => void;
-  onConfirmStop: (item: CatalogItemResponse, reason: string) => Promise<void>;
+  onConfirmStop: (
+    item: CatalogItemResponse | CatalogTreeNodeResponse,
+    reason: string,
+  ) => Promise<void>;
 };
 
 export function StopItemDialog({
   open,
   group,
   item,
+  descendantCount,
   api,
   onOpenChange,
   onConfirmStop,
@@ -73,6 +79,7 @@ export function StopItemDialog({
             key={item.id}
             group={group}
             item={item}
+            descendantCount={descendantCount}
             api={api}
             onCancel={() => onOpenChange(false)}
             onSubmittingChange={setSubmitting}
@@ -87,17 +94,22 @@ export function StopItemDialog({
 function StopItemBody({
   group,
   item,
+  descendantCount,
   api,
   onCancel,
   onSubmittingChange,
   onConfirmStop,
 }: {
   group: CatalogGroupResponse;
-  item: CatalogItemResponse;
+  item: CatalogItemResponse | CatalogTreeNodeResponse;
+  descendantCount?: number | null;
   api: CatalogApi;
   onCancel: () => void;
   onSubmittingChange: (submitting: boolean) => void;
-  onConfirmStop: (item: CatalogItemResponse, reason: string) => Promise<void>;
+  onConfirmStop: (
+    item: CatalogItemResponse | CatalogTreeNodeResponse,
+    reason: string,
+  ) => Promise<void>;
 }) {
   const t = useTranslations("catalog");
   const commonT = useTranslations("common");
@@ -156,6 +168,16 @@ function StopItemBody({
         <ul className="list-disc space-y-1 pl-5 text-field-label text-text-secondary">
           <li>{t("stopItemDialog.impactBullet1")}</li>
           <li>{t("stopItemDialog.impactBullet2")}</li>
+          {group.kind === "TREE" && (
+            <>
+              <li>
+                {t("stopItemDialog.treeImpactBullet", {
+                  count: descendantCount ?? item.childCount,
+                })}
+              </li>
+              <li>{t("stopItemDialog.treeRestoreBullet")}</li>
+            </>
+          )}
         </ul>
       </div>
 

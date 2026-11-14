@@ -92,6 +92,12 @@ export { Textarea, type TextareaProps } from "./components/textarea";
 export { notify, Toaster, toast, type ToasterProps } from "./components/toaster";
 export { Tooltip, type TooltipProps } from "./components/tooltip";
 export {
+  TreeView,
+  type TreeViewItem,
+  type TreeViewLabels,
+  type TreeViewProps,
+} from "./components/tree-view";
+export {
   buildScale,
   buildThemeVars,
   checkPaletteWarnings,

@@ -19,17 +19,18 @@ import {
   catalogQueryKeys,
   type CatalogApi,
   type CatalogItemResponse,
+  type CatalogTreeNodeResponse,
   type FieldError,
 } from "../api";
 import { pickName } from "../utils";
 
 export type DeleteInUseDialogProps = {
   open: boolean;
-  item: CatalogItemResponse | null;
+  item: CatalogItemResponse | CatalogTreeNodeResponse | null;
   fieldErrors: FieldError[];
   api: CatalogApi;
   onOpenChange: (open: boolean) => void;
-  onSuggestStop: (item: CatalogItemResponse) => void;
+  onSuggestStop: (item: CatalogItemResponse | CatalogTreeNodeResponse) => void;
 };
 
 export function DeleteInUseDialog({

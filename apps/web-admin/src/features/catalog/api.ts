@@ -9,6 +9,11 @@ export type UpdateCatalogGroupRequest = components["schemas"]["UpdateCatalogGrou
 export type CreateCatalogItemRequest = components["schemas"]["CreateCatalogItemRequest"];
 export type UpdateCatalogItemRequest = components["schemas"]["UpdateCatalogItemRequest"];
 export type ReorderCatalogItemsRequest = components["schemas"]["ReorderCatalogItemsRequest"];
+export type CatalogTreeNodeResponse = components["schemas"]["CatalogTreeNodeResponse"];
+export type CatalogDescendantNodeResponse = components["schemas"]["CatalogDescendantNodeResponse"];
+export type CatalogGroupRefResponse = components["schemas"]["CatalogGroupRefResponse"];
+export type CatalogItemRefResponse = components["schemas"]["CatalogItemRefResponse"];
+export type CatalogInheritedRefResponse = components["schemas"]["CatalogInheritedRefResponse"];
 export type CatalogOptionResponse = components["schemas"]["CatalogOptionResponse"];
 export type CatalogUsageResponse = components["schemas"]["CatalogUsageResponse"];
 export type CatalogUsagesResponse = components["schemas"]["CatalogUsagesResponse"];
@@ -20,6 +25,7 @@ export type PageResponseCatalogGroupResponse =
   components["schemas"]["PageResponseCatalogGroupResponse"];
 export type PageResponseCatalogItemResponse =
   components["schemas"]["PageResponseCatalogItemResponse"];
+export type MoveCatalogItemRequest = components["schemas"]["MoveCatalogItemRequest"];
 export type FieldError = components["schemas"]["FieldError"];
 export type CatalogGroupKind = CatalogGroupResponse["kind"];
 export type CatalogGroupType = CatalogGroupResponse["type"];
@@ -27,6 +33,8 @@ export type CatalogStatus = CatalogGroupResponse["status"];
 
 export type ListCatalogGroupsQuery = operations["listGroups"]["parameters"]["query"];
 export type ListCatalogItemsQuery = operations["listItems"]["parameters"]["query"];
+export type ListCatalogTreeQuery = operations["listTree"]["parameters"]["query"];
+export type GetCatalogDescendantsQuery = operations["getDescendants"]["parameters"]["query"];
 export type ListAuditEventsQuery = operations["listAuditEvents"]["parameters"]["query"];
 export class CatalogApiError extends ApiStatusError {
   readonly code?: string;
@@ -72,6 +80,12 @@ export const catalogQueryKeys = {
   items: (groupId: string, query?: ListCatalogItemsQuery) =>
     ["catalog", "items", groupId, query ?? {}] as const,
   options: (groupCode: string) => ["catalog", "options", groupCode] as const,
+  item: (itemId: string) => ["catalog", "item", itemId] as const,
+  tree: (groupId: string, query?: ListCatalogTreeQuery) =>
+    ["catalog", "tree", groupId, query ?? {}] as const,
+  refGroups: (groupId: string) => ["catalog", "ref-groups", groupId] as const,
+  descendants: (nodeId: string, leafOnly?: boolean) =>
+    ["catalog", "descendants", nodeId, leafOnly ?? true] as const,
   itemUsages: (itemId: string) => ["catalog", "item-usages", itemId] as const,
   itemVersions: (itemId: string) => ["catalog", "item-versions", itemId] as const,
   itemAudit: (itemId: string, page?: number) => ["catalog", "item-audit", itemId, page ?? 0] as const,
@@ -100,6 +114,23 @@ export interface CatalogApi {
     payload: ReorderCatalogItemsRequest,
   ) => Promise<CatalogItemResponse[]>;
   getOptions: (groupCode: string) => Promise<CatalogOptionResponse[]>;
+  getItem: (itemId: string) => Promise<CatalogItemResponse>;
+  listTree: (
+    groupId: string,
+    query?: ListCatalogTreeQuery,
+  ) => Promise<CatalogTreeNodeResponse[]>;
+  moveItem: (
+    itemId: string,
+    payload: MoveCatalogItemRequest,
+  ) => Promise<CatalogItemResponse>;
+  listRefGroups: (groupId: string) => Promise<CatalogGroupRefResponse[]>;
+  addRefGroup: (groupId: string, refGroupId: string) => Promise<CatalogGroupRefResponse[]>;
+  removeRefGroup: (groupId: string, refGroupId: string) => Promise<void>;
+  addItemRef: (itemId: string, refItemId: string) => Promise<CatalogItemResponse>;
+  removeItemRef: (itemId: string, refItemId: string) => Promise<void>;
+  getDescendants: (
+    query?: GetCatalogDescendantsQuery,
+  ) => Promise<CatalogDescendantNodeResponse[]>;
   getItemUsages: (itemId: string) => Promise<CatalogUsagesResponse>;
   listItemVersions: (itemId: string) => Promise<CombinationVersionResponse[]>;
   getCombinationVersion: (versionId: string) => Promise<CombinationVersionResponse>;
@@ -284,6 +315,120 @@ export async function listCatalogItemAuditEvents(
   return data;
 }
 
+export async function getCatalogItem(itemId: string): Promise<CatalogItemResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/catalog/items/{id}", {
+    params: { path: { id: itemId } },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function listCatalogTree(
+  groupId: string,
+  query?: ListCatalogTreeQuery,
+): Promise<CatalogTreeNodeResponse[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/catalog/groups/{id}/tree", {
+    params: { path: { id: groupId }, query },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function moveCatalogItem(
+  itemId: string,
+  payload: MoveCatalogItemRequest,
+): Promise<CatalogItemResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.PUT("/api/v1/admin/catalog/items/{id}/parent", {
+    params: { path: { id: itemId } },
+    body: payload,
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function listCatalogRefGroups(
+  groupId: string,
+): Promise<CatalogGroupRefResponse[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET(
+    "/api/v1/admin/catalog/groups/{id}/ref-groups",
+    {
+      params: { path: { id: groupId } },
+    },
+  );
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function addCatalogRefGroup(
+  groupId: string,
+  refGroupId: string,
+): Promise<CatalogGroupRefResponse[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.PUT(
+    "/api/v1/admin/catalog/groups/{id}/ref-groups/{refGroupId}",
+    {
+      params: { path: { id: groupId, refGroupId } },
+    },
+  );
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function removeCatalogRefGroup(
+  groupId: string,
+  refGroupId: string,
+): Promise<void> {
+  const client = createBrowserApiClient();
+  const { error, response } = await client.DELETE(
+    "/api/v1/admin/catalog/groups/{id}/ref-groups/{refGroupId}",
+    {
+      params: { path: { id: groupId, refGroupId } },
+    },
+  );
+  if (!response.ok) throw toCatalogApiError(response.status, error);
+}
+
+export async function addCatalogItemRef(
+  itemId: string,
+  refItemId: string,
+): Promise<CatalogItemResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.PUT(
+    "/api/v1/admin/catalog/items/{id}/refs/{refItemId}",
+    {
+      params: { path: { id: itemId, refItemId } },
+    },
+  );
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function removeCatalogItemRef(itemId: string, refItemId: string): Promise<void> {
+  const client = createBrowserApiClient();
+  const { error, response } = await client.DELETE(
+    "/api/v1/admin/catalog/items/{id}/refs/{refItemId}",
+    {
+      params: { path: { id: itemId, refItemId } },
+    },
+  );
+  if (!response.ok) throw toCatalogApiError(response.status, error);
+}
+
+export async function getCatalogDescendants(
+  query?: GetCatalogDescendantsQuery,
+): Promise<CatalogDescendantNodeResponse[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/catalog/tree/descendants", {
+    params: { query },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
 export const defaultCatalogApi: CatalogApi = {
   listGroups: listCatalogGroups,
   getGroup: getCatalogGroup,
@@ -296,6 +441,15 @@ export const defaultCatalogApi: CatalogApi = {
   deleteItem: deleteCatalogItem,
   reorderItems: reorderCatalogItems,
   getOptions: getCatalogOptions,
+  getItem: getCatalogItem,
+  listTree: listCatalogTree,
+  moveItem: moveCatalogItem,
+  listRefGroups: listCatalogRefGroups,
+  addRefGroup: addCatalogRefGroup,
+  removeRefGroup: removeCatalogRefGroup,
+  addItemRef: addCatalogItemRef,
+  removeItemRef: removeCatalogItemRef,
+  getDescendants: getCatalogDescendants,
   getItemUsages: getCatalogItemUsages,
   listItemVersions: listCatalogItemVersions,
   getCombinationVersion: getCombinationVersion,

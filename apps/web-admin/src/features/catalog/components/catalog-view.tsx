@@ -23,6 +23,7 @@ import {
   type CatalogApi,
   type CatalogGroupResponse,
   type CatalogItemResponse,
+  type CatalogTreeNodeResponse,
   type CreateCatalogGroupRequest,
   type CreateCatalogItemRequest,
   type FieldError,
@@ -42,8 +43,12 @@ import { GroupFormDialog } from "./group-form-dialog";
 import { GroupSidebar } from "./group-sidebar";
 import { ItemDetailDrawer } from "./item-detail-drawer";
 import { ItemFormDialog } from "./item-form-dialog";
+import { MoveBranchDialog } from "./move-branch-dialog";
 import { SimpleItemsPanel, type StatusFilter } from "./simple-items-panel";
 import { StopItemDialog } from "./stop-item-dialog";
+import { TreeItemsPanel } from "./tree-items-panel";
+import { TreeNodeFormDialog } from "./tree-node-form-dialog";
+
 export interface CatalogViewProps {
   api?: CatalogApi;
 }
@@ -58,9 +63,14 @@ type ItemDialogState =
   | { open: true; mode: "create"; item: null }
   | { open: true; mode: "edit"; item: CatalogItemResponse };
 
+type TreeNodeDialogState =
+  | { open: false }
+  | { open: true; mode: "create"; parentNode: CatalogTreeNodeResponse | null; node: null }
+  | { open: true; mode: "edit"; parentNode: null; node: CatalogItemResponse | CatalogTreeNodeResponse };
+
 type DeleteTarget =
   | { type: "group"; group: CatalogGroupResponse }
-  | { type: "item"; item: CatalogItemResponse }
+  | { type: "item"; item: CatalogItemResponse | CatalogTreeNodeResponse }
   | null;
 
 export function CatalogView({ api = defaultCatalogApi }: CatalogViewProps) {
@@ -114,6 +124,7 @@ function CatalogWorkspace({
   const queryClient = useQueryClient();
 
   const selectedGroupParam = searchParams.get("group");
+  const selectedNodeParam = searchParams.get("node");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -121,14 +132,19 @@ function CatalogWorkspace({
   const [pageSize, setPageSize] = useState(20);
   const [groupDialog, setGroupDialog] = useState<GroupDialogState>({ open: false });
   const [itemDialog, setItemDialog] = useState<ItemDialogState>({ open: false });
+  const [treeNodeDialog, setTreeNodeDialog] = useState<TreeNodeDialogState>({ open: false });
+  const [moveBranchNode, setMoveBranchNode] = useState<CatalogTreeNodeResponse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
-  const [detailItem, setDetailItem] = useState<CatalogItemResponse | null>(null);
-  const [stopItem, setStopItem] = useState<CatalogItemResponse | null>(null);
+  const [detailItem, setDetailItem] = useState<
+    CatalogItemResponse | CatalogTreeNodeResponse | null
+  >(null);
+  const [stopItem, setStopItem] = useState<
+    CatalogItemResponse | CatalogTreeNodeResponse | null
+  >(null);
   const [deleteInUseState, setDeleteInUseState] = useState<{
-    item: CatalogItemResponse;
+    item: CatalogItemResponse | CatalogTreeNodeResponse;
     fieldErrors: FieldError[];
   } | null>(null);
-
   const groupsQuery = useQuery({
     queryKey: catalogQueryKeys.groups({ size: 100 }),
     queryFn: () => api.listGroups({ size: 100 }),
@@ -163,7 +179,24 @@ function CatalogWorkspace({
   const itemsQuery = useQuery({
     queryKey: itemsQueryKey,
     queryFn: () => api.listItems(selectedGroup!.id, itemsQueryParams),
-    enabled: Boolean(selectedGroup),
+    enabled: Boolean(selectedGroup) && selectedGroup?.kind !== "TREE",
+  });
+
+  const stopDescendantsQuery = useQuery({
+    queryKey: stopItem
+      ? catalogQueryKeys.descendants(stopItem.id, false)
+      : (["catalog", "descendants", "none", false] as const),
+    queryFn: () => api.getDescendants({ nodeId: stopItem!.id, leafOnly: false }),
+    enabled: Boolean(selectedGroup?.kind === "TREE" && stopItem),
+  });
+
+  const detailItemIsTreeNode = Boolean(detailItem && !("createdAt" in detailItem));
+  const detailItemQuery = useQuery({
+    queryKey: detailItem
+      ? catalogQueryKeys.item(detailItem.id)
+      : (["catalog", "item", "none"] as const),
+    queryFn: () => api.getItem(detailItem!.id),
+    enabled: detailItemIsTreeNode,
   });
 
   function updateGroupParam(groupCode: string | null) {
@@ -178,12 +211,25 @@ function CatalogWorkspace({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
+  function updateNodeParam(nodeId: string | null) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (nodeId) {
+      next.set("node", nodeId);
+    } else {
+      next.delete("node");
+    }
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
   function handleSelectGroup(group: CatalogGroupResponse) {
     setSearchQuery("");
     setStatusFilter("ALL");
     setPage(0);
     setDetailItem(null);
     setStopItem(null);
+    setMoveBranchNode(null);
+    setTreeNodeDialog({ open: false });
     setDeleteInUseState(null);
     updateGroupParam(group.code);
   }
@@ -276,11 +322,13 @@ function CatalogWorkspace({
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["catalog", "items", payload.groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "tree", payload.groupId] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
       ]);
       if (!payload.addAnother) {
         setItemDialog({ open: false });
+        setTreeNodeDialog({ open: false });
       }
       notify.success(t("itemDialog.createSuccess", { code: created.code }));
     } else {
@@ -291,19 +339,25 @@ function CatalogWorkspace({
       if (selectedGroup) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["catalog", "items", selectedGroup.id] }),
+          queryClient.invalidateQueries({ queryKey: ["catalog", "tree", selectedGroup.id] }),
           queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
           queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
+          queryClient.invalidateQueries({ queryKey: catalogQueryKeys.item(payload.itemId) }),
           queryClient.invalidateQueries({ queryKey: ["catalog", "item-usages", payload.itemId] }),
           queryClient.invalidateQueries({ queryKey: ["catalog", "item-versions", payload.itemId] }),
           queryClient.invalidateQueries({ queryKey: ["catalog", "item-audit", payload.itemId] }),
         ]);
       }
       setItemDialog({ open: false });
+      setTreeNodeDialog({ open: false });
       notify.success(t("itemDialog.updateSuccess", { code: updated.code }));
     }
   }
 
-  async function handleConfirmStop(item: CatalogItemResponse, reason: string) {
+  async function handleConfirmStop(
+    item: CatalogItemResponse | CatalogTreeNodeResponse,
+    reason: string,
+  ) {
     const updated = await updateItemMutation.mutateAsync({
       itemId: item.id,
       data: {
@@ -315,8 +369,11 @@ function CatalogWorkspace({
     if (selectedGroup) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["catalog", "items", selectedGroup.id] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "tree", selectedGroup.id] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "item"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "descendants"] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "item-usages", item.id] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "item-audit", item.id] }),
       ]);
@@ -340,8 +397,13 @@ function CatalogWorkspace({
         if (selectedGroup) {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: ["catalog", "items", selectedGroup.id] }),
+            queryClient.invalidateQueries({ queryKey: ["catalog", "tree", selectedGroup.id] }),
             queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
+            queryClient.invalidateQueries({ queryKey: ["catalog", "item"] }),
           ]);
+        }
+        if (selectedNodeParam === deleteTarget.item.id) {
+          updateNodeParam(null);
         }
         notify.success(t("deleteItemDialog.success", { code: deleteTarget.item.code }));
       }
@@ -360,6 +422,20 @@ function CatalogWorkspace({
       notify.error(msg);
       setDeleteTarget(null);
     }
+  }
+
+  async function handleBranchMoved(updated: CatalogItemResponse) {
+    if (selectedGroup) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["catalog", "tree", selectedGroup.id] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "item"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "descendants"] }),
+      ]);
+    }
+    setMoveBranchNode(null);
+    updateNodeParam(updated.id);
+    notify.success(t("moveBranchDialog.success", { code: updated.code }));
   }
 
   async function handleUndoReorder(previousItems: CatalogItemResponse[]) {
@@ -425,8 +501,32 @@ function CatalogWorkspace({
   }
 
   const deleting = deleteGroupMutation.isPending || deleteItemMutation.isPending;
-  const resolvedDetailItem = detailItem
-    ? (itemsQuery.data?.items.find((i) => i.id === detailItem.id) ?? detailItem)
+  const resolvedDetailItem: CatalogItemResponse | null = detailItem
+    ? "createdAt" in detailItem
+      ? (itemsQuery.data?.items.find((i) => i.id === detailItem.id) ?? detailItem)
+      : (detailItemQuery.data ?? {
+          id: detailItem.id,
+          groupId: detailItem.groupId,
+          groupCode: selectedGroup?.code ?? "",
+          code: detailItem.code,
+          parentId: detailItem.parentId,
+          nameVi: detailItem.nameVi,
+          nameEn: detailItem.nameEn,
+          description: detailItem.description,
+          displayOrder: detailItem.displayOrder,
+          status: detailItem.status,
+          effectiveStatus: detailItem.effectiveStatus,
+          depth: detailItem.depth,
+          path: detailItem.path,
+          childCount: detailItem.childCount,
+          ownRefs: detailItem.ownRefs,
+          inheritedRefs: detailItem.inheritedRefs,
+          value: detailItem.value,
+          version: detailItem.version,
+          system: false,
+          createdAt: "",
+          updatedAt: "",
+        })
     : null;
   return (
     <>
@@ -452,6 +552,32 @@ function CatalogWorkspace({
               description={t("noSelectionDescription")}
             />
           </Card>
+        ) : selectedGroup.kind === "TREE" ? (
+          <TreeItemsPanel
+            group={selectedGroup}
+            availableSimpleGroups={groups}
+            api={api}
+            selectedNodeId={selectedNodeParam}
+            canModify={canModify}
+            onSelectNode={updateNodeParam}
+            onEditGroup={() =>
+              setGroupDialog({ open: true, mode: "edit", group: selectedGroup })
+            }
+            onDeleteGroup={() => setDeleteTarget({ type: "group", group: selectedGroup })}
+            onAddRootNode={() =>
+              setTreeNodeDialog({ open: true, mode: "create", parentNode: null, node: null })
+            }
+            onAddChildNode={(parentNode) =>
+              setTreeNodeDialog({ open: true, mode: "create", parentNode, node: null })
+            }
+            onEditNode={(node) =>
+              setTreeNodeDialog({ open: true, mode: "edit", parentNode: null, node })
+            }
+            onMoveNode={(node) => setMoveBranchNode(node)}
+            onStopNode={(node) => setStopItem(node)}
+            onDeleteNode={(node) => setDeleteTarget({ type: "item", item: node })}
+            onViewNodeDetail={(node) => setDetailItem(node)}
+          />
         ) : (
           <SimpleItemsPanel
             group={selectedGroup}
@@ -495,6 +621,7 @@ function CatalogWorkspace({
             open={groupDialog.open}
             mode={groupDialog.open ? groupDialog.mode : "create"}
             group={groupDialog.open && groupDialog.mode === "edit" ? groupDialog.group : null}
+            allGroups={groups}
             onOpenChange={(open) => {
               if (!open) setGroupDialog({ open: false });
             }}
@@ -514,6 +641,32 @@ function CatalogWorkspace({
                 }}
                 onSubmit={handleSubmitItem}
               />
+            ) : selectedGroup.kind === "TREE" ? (
+              <>
+                <TreeNodeFormDialog
+                  open={treeNodeDialog.open}
+                  mode={treeNodeDialog.open ? treeNodeDialog.mode : "create"}
+                  group={selectedGroup}
+                  parentNode={treeNodeDialog.open ? treeNodeDialog.parentNode : null}
+                  node={treeNodeDialog.open && treeNodeDialog.mode === "edit" ? treeNodeDialog.node : null}
+                  refGroups={selectedGroup.refGroups}
+                  api={api}
+                  onOpenChange={(open) => {
+                    if (!open) setTreeNodeDialog({ open: false });
+                  }}
+                  onSubmit={handleSubmitItem}
+                />
+                <MoveBranchDialog
+                  open={Boolean(moveBranchNode)}
+                  group={selectedGroup}
+                  node={moveBranchNode}
+                  api={api}
+                  onOpenChange={(open) => {
+                    if (!open) setMoveBranchNode(null);
+                  }}
+                  onMoved={handleBranchMoved}
+                />
+              </>
             ) : (
               <ItemFormDialog
                 open={itemDialog.open}
@@ -533,6 +686,11 @@ function CatalogWorkspace({
               open={Boolean(stopItem)}
               group={selectedGroup}
               item={stopItem}
+              descendantCount={
+                selectedGroup.kind === "TREE"
+                  ? (stopDescendantsQuery.data?.length ?? stopItem?.childCount ?? null)
+                  : null
+              }
               api={api}
               onOpenChange={(open) => {
                 if (!open) setStopItem(null);

@@ -14,6 +14,7 @@ import {
   type CatalogApi,
   type CatalogGroupResponse,
   type CatalogItemResponse,
+  type CatalogTreeNodeResponse,
   type CatalogOptionResponse,
   type CombinationVersionResponse,
   type PageResponseCatalogGroupResponse,
@@ -394,6 +395,25 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
       if (groupCode === "SUBJECT") return SUBJECT_OPTIONS;
       return [];
     }),
+    getItem: vi.fn(async (itemId) => ({
+      ...SUBJECT_ITEMS[0]!,
+      id: itemId,
+    })),
+    listTree: vi.fn(async () => []),
+    moveItem: vi.fn(async (itemId, payload) => ({
+      ...SUBJECT_ITEMS[0]!,
+      id: itemId,
+      parentId: payload.parentId,
+    })),
+    listRefGroups: vi.fn(async () => []),
+    addRefGroup: vi.fn(async () => []),
+    removeRefGroup: vi.fn(async () => undefined),
+    addItemRef: vi.fn(async (itemId) => ({
+      ...SUBJECT_ITEMS[0]!,
+      id: itemId,
+    })),
+    removeItemRef: vi.fn(async () => undefined),
+    getDescendants: vi.fn(async () => []),
     getItemUsages: vi.fn(async (itemId) => ({
       targetId: itemId,
       targetCode: itemId === "item-qd01" ? "QDA_QD01" : "TOAN",
@@ -1084,5 +1104,441 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(within(sidebar).getByRole("button", { name: /^Subject\s*SUBJECT\s*\d+$/ })).toBeInTheDocument();
     expect(within(sidebar).getByText(/System ·/)).toBeInTheDocument();
     expect(within(sidebar).getByText(/Custom ·/)).toBeInTheDocument();
+  });
+});
+
+const SYSTEM_KNOWLEDGE_GROUP: CatalogGroupResponse = {
+  id: "grp-knowledge",
+  code: "KNOWLEDGE",
+  nameVi: "Cấu trúc kiến thức",
+  nameEn: "Knowledge taxonomy",
+  description: "Cây kiến thức theo chương, bài, đơn vị kiến thức",
+  kind: "TREE",
+  type: "SYSTEM",
+  system: true,
+  status: "ACTIVE",
+  itemCount: 3,
+  levels: ["Chương", "Bài", "Kiến thức"],
+  refGroups: [
+    {
+      refGroupId: "grp-subject",
+      code: "SUBJECT",
+      nameVi: "Môn học",
+      nameEn: "Subject",
+      status: "ACTIVE",
+      position: 0,
+      isDefault: true,
+      linkedItemCount: 2,
+    },
+  ],
+  createdAt: "2026-11-14T00:00:00Z",
+  updatedAt: "2026-11-14T00:00:00Z",
+  version: 0,
+};
+
+const KNOWLEDGE_CH1: CatalogTreeNodeResponse = {
+  id: "node-ch1",
+  groupId: "grp-knowledge",
+  code: "CH1",
+  nameVi: "Hàm số",
+  nameEn: "Functions",
+  description: "Chương hàm số",
+  displayOrder: 0,
+  status: "ACTIVE",
+  effectiveStatus: "ACTIVE",
+  depth: 1,
+  path: "/node-ch1/",
+  hasChildren: true,
+  childCount: 1,
+  matched: false,
+  ownRefs: [
+    {
+      refItemId: "item-toan",
+      code: "TOAN",
+      nameVi: "Toán học",
+      nameEn: "Mathematics",
+      status: "ACTIVE",
+      refGroupId: "grp-subject",
+      refGroupCode: "SUBJECT",
+      refGroupNameVi: "Môn học",
+      refGroupNameEn: "Subject",
+    },
+  ],
+  inheritedRefs: [],
+  value: 1,
+  version: 0,
+};
+
+const KNOWLEDGE_CH2: CatalogTreeNodeResponse = {
+  id: "node-ch2",
+  groupId: "grp-knowledge",
+  code: "CH2",
+  nameVi: "Tích phân",
+  nameEn: "Integrals",
+  displayOrder: 1,
+  status: "ACTIVE",
+  effectiveStatus: "ACTIVE",
+  depth: 1,
+  path: "/node-ch2/",
+  hasChildren: false,
+  childCount: 0,
+  matched: false,
+  ownRefs: [],
+  inheritedRefs: [],
+  value: 2,
+  version: 0,
+};
+
+const KNOWLEDGE_BAI1: CatalogTreeNodeResponse = {
+  id: "node-b1",
+  groupId: "grp-knowledge",
+  parentId: "node-ch1",
+  code: "B1",
+  nameVi: "Tính đơn điệu",
+  nameEn: "Monotonicity",
+  displayOrder: 0,
+  status: "ACTIVE",
+  effectiveStatus: "INACTIVE",
+  depth: 2,
+  path: "/node-ch1/node-b1/",
+  hasChildren: true,
+  childCount: 1,
+  matched: false,
+  ownRefs: [
+    {
+      refItemId: "item-van",
+      code: "VAN",
+      nameVi: "Ngữ văn",
+      nameEn: "Literature",
+      status: "ACTIVE",
+      refGroupId: "grp-subject",
+      refGroupCode: "SUBJECT",
+      refGroupNameVi: "Môn học",
+      refGroupNameEn: "Subject",
+    },
+  ],
+  inheritedRefs: [
+    {
+      refItemId: "item-toan",
+      code: "TOAN",
+      nameVi: "Toán học",
+      nameEn: "Mathematics",
+      status: "ACTIVE",
+      refGroupId: "grp-subject",
+      refGroupCode: "SUBJECT",
+      refGroupNameVi: "Môn học",
+      refGroupNameEn: "Subject",
+      fromItemId: "node-ch1",
+      fromItemCode: "CH1",
+      fromItemNameVi: "Hàm số",
+      fromItemNameEn: "Functions",
+    },
+  ],
+  value: 3,
+  version: 1,
+};
+
+const KNOWLEDGE_KT1: CatalogTreeNodeResponse = {
+  id: "node-kt1",
+  groupId: "grp-knowledge",
+  parentId: "node-b1",
+  code: "KT1",
+  nameVi: "Cực trị",
+  nameEn: "Extrema",
+  displayOrder: 0,
+  status: "ACTIVE",
+  effectiveStatus: "ACTIVE",
+  depth: 3,
+  path: "/node-ch1/node-b1/node-kt1/",
+  hasChildren: false,
+  childCount: 0,
+  matched: false,
+  ownRefs: [],
+  inheritedRefs: KNOWLEDGE_BAI1.inheritedRefs,
+  value: 4,
+  version: 0,
+};
+
+function toTreeItemDetail(node: CatalogTreeNodeResponse): CatalogItemResponse {
+  return {
+    id: node.id,
+    groupId: node.groupId,
+    groupCode: "KNOWLEDGE",
+    parentId: node.parentId,
+    code: node.code,
+    nameVi: node.nameVi,
+    nameEn: node.nameEn,
+    description: node.description,
+    displayOrder: node.displayOrder,
+    status: node.status,
+    effectiveStatus: node.effectiveStatus,
+    depth: node.depth,
+    path: node.path,
+    childCount: node.childCount,
+    ownRefs: node.ownRefs,
+    inheritedRefs: node.inheritedRefs,
+    value: node.value,
+    version: node.version,
+    system: false,
+    createdAt: "2026-11-14T00:00:00Z",
+    updatedAt: "2026-11-14T00:00:00Z",
+  };
+}
+
+function createTreeMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
+  const nodes = [KNOWLEDGE_CH1, KNOWLEDGE_CH2, KNOWLEDGE_BAI1, KNOWLEDGE_KT1];
+  return createMockApi({
+    listGroups: vi.fn(async () =>
+      pageOfGroups([
+        SYSTEM_SUBJECT_GROUP,
+        SYSTEM_FORMAT_GROUP,
+        SYSTEM_TASK_TYPE_GROUP,
+        SYSTEM_COMBINATION_GROUP,
+        SYSTEM_KNOWLEDGE_GROUP,
+        CUSTOM_SOURCE_GROUP,
+      ]),
+    ),
+    listTree: vi.fn(async (_groupId, query) => {
+      if (query?.q) {
+        return [KNOWLEDGE_CH1, { ...KNOWLEDGE_BAI1, matched: true }];
+      }
+      if (query?.refItemIds && query.refItemIds.length > 0) {
+        return [{ ...KNOWLEDGE_CH1, matched: true }];
+      }
+      if (query?.depth === 1) {
+        return [KNOWLEDGE_CH1, KNOWLEDGE_CH2];
+      }
+      if (query?.parentId === "node-ch1") return [KNOWLEDGE_BAI1];
+      if (query?.parentId === "node-b1") return [KNOWLEDGE_KT1];
+      if (query?.parentId) return [];
+      return [KNOWLEDGE_CH1, KNOWLEDGE_CH2];
+    }),
+    getItem: vi.fn(async (itemId) => {
+      const found = nodes.find((n) => n.id === itemId) ?? KNOWLEDGE_CH1;
+      return toTreeItemDetail(found);
+    }),
+    getDescendants: vi.fn(async () => [
+      {
+        id: "node-b1",
+        code: "B1",
+        nameVi: "Tính đơn điệu",
+        nameEn: "Monotonicity",
+        depth: 2,
+        parentId: "node-ch1",
+        path: "/node-ch1/node-b1/",
+        value: 3,
+      },
+      {
+        id: "node-kt1",
+        code: "KT1",
+        nameVi: "Cực trị",
+        nameEn: "Extrema",
+        depth: 3,
+        parentId: "node-b1",
+        path: "/node-ch1/node-b1/node-kt1/",
+        value: 4,
+      },
+    ]),
+    reorderItems: vi.fn<CatalogApi["reorderItems"]>(async (_groupId, payload) =>
+      payload.itemIds.map((id, idx) => {
+        const found = nodes.find((n) => n.id === id) ?? KNOWLEDGE_CH1;
+        return { ...toTreeItemDetail(found), displayOrder: idx };
+      }),
+    ),
+    moveItem: vi.fn(async (itemId, payload) => ({
+      ...toTreeItemDetail(KNOWLEDGE_BAI1),
+      id: itemId,
+      parentId: payload.parentId,
+      path: `/${payload.parentId}/${itemId}/`,
+      version: 2,
+    })),
+    ...overrides,
+  });
+}
+
+describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và chuyển nhánh", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("tạo danh mục kiểu TREE với các cấp và gắn danh mục liên kết SIMPLE", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Thêm danh mục" }));
+    const dialog = await screen.findByRole("dialog");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cây nhiều cấp" }));
+    await userEvent.type(within(dialog).getByLabelText(/Mã danh mục/), "CURRICULUM");
+    await userEvent.type(within(dialog).getByLabelText(/Tên tiếng Việt/), "Khung chương trình");
+
+    await userEvent.type(within(dialog).getByLabelText("Tên cấp 1"), "Khối");
+    await userEvent.type(within(dialog).getByLabelText("Tên cấp 2"), "Chủ đề");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Thêm cấp" }));
+    await userEvent.type(within(dialog).getByLabelText("Tên cấp 3"), "Mục tiêu");
+
+    const refSelect = within(dialog).getByRole("combobox", { name: /Danh mục liên kết/ });
+    await userEvent.click(refSelect);
+    await userEvent.click(await screen.findByRole("option", { name: /Môn học/ }));
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => {
+      expect(api.createGroup).toHaveBeenCalledWith({
+        code: "CURRICULUM",
+        nameVi: "Khung chương trình",
+        status: "ACTIVE",
+        kind: "TREE",
+        levels: ["Khối", "Chủ đề", "Mục tiêu"],
+        refGroupIds: ["grp-subject"],
+      });
+    });
+  });
+
+  it("tải lười nút con khi mở rộng, mở tất cả / thu gọn, đồng bộ ?node= và thao tác liên kết ở pane 340px", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+    expect(screen.getByText("Chương → Bài → Kiến thức")).toBeInTheDocument();
+
+    // Expand CH1 lazy loads B1
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    expect(await screen.findByText("Tính đơn điệu")).toBeInTheDocument();
+    expect(screen.getByText("Ngừng theo cấp trên")).toBeInTheDocument();
+
+    // Select B1 -> updates ?node= and shows 340px detail pane with inherited + own refs
+    await userEvent.click(screen.getByRole("treeitem", { name: /Tính đơn điệu/ }));
+    await waitFor(() => {
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        expect.stringContaining("node=node-b1"),
+        { scroll: false },
+      );
+    });
+
+    const detailPane = screen.getByRole("complementary", { name: "Chi tiết nút đang chọn" });
+    expect(await within(detailPane).findByText("Toán học")).toBeInTheDocument();
+    expect(within(detailPane).getByText("Ngữ văn")).toBeInTheDocument();
+    // Inherited ref has no remove button; own ref has remove button
+    expect(within(detailPane).queryByRole("button", { name: "Gỡ Toán học" })).not.toBeInTheDocument();
+    await userEvent.click(within(detailPane).getByRole("button", { name: "Gỡ Ngữ văn" }));
+    await waitFor(() => {
+      expect(api.removeItemRef).toHaveBeenCalledWith("node-b1", "item-van");
+    });
+
+    // Add own ref via Select
+    const addRefCombo = within(detailPane).getByRole("combobox", { name: "Gắn Môn học" });
+    await userEvent.click(addRefCombo);
+    await userEvent.click(await screen.findByRole("option", { name: "Tiếng Anh" }));
+    await waitFor(() => {
+      expect(api.addItemRef).toHaveBeenCalledWith("node-b1", "item-anh");
+    });
+
+    // Expand all -> fetches level 3 KT1; Collapse all -> hides children
+    await userEvent.click(screen.getByRole("button", { name: "Mở tất cả" }));
+    expect(await screen.findByText("Cực trị")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Thu gọn" }));
+    await waitFor(() => {
+      expect(screen.queryByText("Cực trị")).not.toBeInTheDocument();
+    });
+  });
+
+  it("lọc theo danh mục liên kết, sắp xếp cùng cha, khóa xóa nút có con và ẩn thao tác ghi với CATALOG.VIEW", async () => {
+    const api = createTreeMockApi();
+    const { unmount } = renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+
+    // Delete disabled on node with children
+    expect(screen.getByRole("button", { name: "Xóa Hàm số" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+
+    // Same-parent sibling reorder
+    await userEvent.click(screen.getByRole("button", { name: "Di chuyển Tích phân lên" }));
+    await waitFor(() => {
+      expect(api.reorderItems).toHaveBeenCalledWith("grp-knowledge", {
+        itemIds: ["node-ch2", "node-ch1"],
+      });
+    });
+
+    // Filter by linked ref SUBJECT=TOAN
+    const filterCombo = screen.getByRole("combobox", { name: "Lọc theo Môn học" });
+    await userEvent.click(filterCombo);
+    await userEvent.click(await screen.findByRole("option", { name: "Toán học" }));
+    await waitFor(() => {
+      expect(api.listTree).toHaveBeenCalledWith("grp-knowledge", {
+        refItemIds: ["item-toan"],
+      });
+    });
+    unmount();
+
+    // CATALOG.VIEW only: sees tree + detail action, no write controls
+    renderCatalog({
+      api: createTreeMockApi(),
+      search: "group=KNOWLEDGE",
+      permissions: ["CATALOG.VIEW"],
+    });
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chi tiết Hàm số" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Thêm Chương/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sửa Hàm số" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Xóa Hàm số" })).not.toBeInTheDocument();
+  });
+
+  it("hỗ trợ thêm nút con, chuyển nhánh và ngừng sử dụng kèm phạm vi nút con", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+
+    // Add child under CH1 -> opens TreeNodeFormDialog with parent read-only and inherited ref
+    await userEvent.click(screen.getByRole("button", { name: "Thêm Bài vào Hàm số" }));
+    const addDialog = await screen.findByRole("dialog");
+    expect(within(addDialog).getByText("CH1")).toBeInTheDocument();
+    expect(within(addDialog).getByText("Toán học")).toBeInTheDocument();
+    await userEvent.type(within(addDialog).getByLabelText(/Mã giá trị/), "B2");
+    await userEvent.type(within(addDialog).getByLabelText(/Tên tiếng Việt/), "Cực trị hàm số");
+    await userEvent.click(within(addDialog).getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => {
+      expect(api.createItem).toHaveBeenCalledWith(
+        "grp-knowledge",
+        expect.objectContaining({
+          parentId: "node-ch1",
+          code: "B2",
+          nameVi: "Cực trị hàm số",
+        }),
+      );
+    });
+
+    // Expand CH1 -> Move B1 to CH2
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Chuyển nhánh Tính đơn điệu" }));
+    const moveDialog = await screen.findByRole("dialog");
+    await userEvent.click(await within(moveDialog).findByRole("radio", { name: /Tích phân/ }));
+    await userEvent.click(within(moveDialog).getByRole("button", { name: "Chuyển" }));
+
+    await waitFor(() => {
+      expect(api.moveItem).toHaveBeenCalledWith("node-b1", {
+        parentId: "node-ch2",
+        version: 1,
+      });
+    });
+
+    // Stop CH1 -> StopItemDialog displays descendant impact bullet from getDescendants
+    await userEvent.click(screen.getByRole("button", { name: "Ngừng sử dụng Hàm số" }));
+    const stopDialog = await screen.findByRole("dialog");
+    expect(
+      await within(stopDialog).findByText(
+        /2 nút bên dưới sẽ chuyển sang Ngừng theo cấp trên/,
+      ),
+    ).toBeInTheDocument();
   });
 });

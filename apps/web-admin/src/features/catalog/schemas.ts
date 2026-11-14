@@ -10,18 +10,27 @@ export interface CatalogValidationMessages {
   reasonRequired: string;
 }
 
+export interface GroupValidationMessages extends CatalogValidationMessages {
+  levelsCount: string;
+  levelsRequired: string;
+  levelsDuplicate: string;
+}
+
 export interface GroupFormValues {
   code: string;
   nameVi: string;
   nameEn: string;
   status: CatalogStatus;
+  kind: "SIMPLE" | "TREE";
+  levels: string[];
+  refGroupIds: string[];
   description: string;
   reason: string;
 }
 
 export function createGroupFormSchema(
   initialStatus: CatalogStatus | undefined,
-  messages: CatalogValidationMessages,
+  messages: GroupValidationMessages,
 ) {
   return z
     .object({
@@ -33,6 +42,9 @@ export function createGroupFormSchema(
       nameVi: z.string().trim().min(1, messages.nameViRequired),
       nameEn: z.string(),
       status: z.enum(["ACTIVE", "INACTIVE"]),
+      kind: z.enum(["SIMPLE", "TREE"]),
+      levels: z.array(z.string()),
+      refGroupIds: z.array(z.string()),
       description: z.string(),
       reason: z.string(),
     })
@@ -43,6 +55,33 @@ export function createGroupFormSchema(
           path: ["reason"],
           message: messages.reasonRequired,
         });
+      }
+      if (values.kind === "TREE") {
+        if (values.levels.length < 2 || values.levels.length > 6) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["levels"],
+            message: messages.levelsCount,
+          });
+          return;
+        }
+        const trimmedLevels = values.levels.map((l) => l.trim());
+        if (trimmedLevels.some((l) => l.length === 0)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["levels"],
+            message: messages.levelsRequired,
+          });
+          return;
+        }
+        const normalized = new Set(trimmedLevels.map((l) => l.toLowerCase()));
+        if (normalized.size !== trimmedLevels.length) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["levels"],
+            message: messages.levelsDuplicate,
+          });
+        }
       }
     });
 }
@@ -139,4 +178,17 @@ export function createCombinationFormSchema(
         });
       }
     });
+}
+
+export interface TreeNodeFormValues extends ItemFormValues {
+  refItemIds: string[];
+}
+
+export function createTreeNodeFormSchema(
+  initialStatus: CatalogStatus | undefined,
+  messages: CatalogValidationMessages,
+) {
+  return createItemFormSchema(initialStatus, messages).extend({
+    refItemIds: z.array(z.string()),
+  });
 }
