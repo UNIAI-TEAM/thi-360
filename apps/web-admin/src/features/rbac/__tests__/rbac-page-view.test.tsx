@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
+import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import viMessages from "@/messages/vi.json";
@@ -16,18 +17,38 @@ import type {
   RoleSummaryResponse,
 } from "../types";
 
-const navMocks = vi.hoisted(() => ({
-  replace: vi.fn(),
-  pathname: "/phan-quyen",
-  search: "",
-}));
+const navMocks = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  return {
+    replace: vi.fn(),
+    pathname: "/phan-quyen",
+    search: "",
+    listeners,
+    setSearch(nextSearch: string) {
+      this.search = nextSearch;
+      for (const listener of this.listeners) listener();
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: navMocks.replace }),
   usePathname: () => navMocks.pathname,
-  useSearchParams: () => new URLSearchParams(navMocks.search),
+  useSearchParams: () => {
+    const search = useSyncExternalStore(
+      navMocks.subscribe,
+      () => navMocks.search,
+      () => navMocks.search,
+    );
+    return new URLSearchParams(search);
+  },
 }));
-
 const PERMISSIONS_FIXTURE: PermissionResponse[] = [
   {
     id: "p-class-view",
@@ -109,10 +130,21 @@ const ROLES_FIXTURE: RoleSummaryResponse[] = [
 beforeEach(() => {
   navMocks.replace.mockReset();
   navMocks.pathname = "/phan-quyen";
-  navMocks.search = "";
+  navMocks.setSearch("");
+  window.history.replaceState(null, "", "/phan-quyen");
+  const originalReplaceState = window.history.replaceState.bind(window.history);
+  vi.spyOn(window.history, "replaceState").mockImplementation((data, unused, url) => {
+    originalReplaceState(data, unused, url);
+    if (typeof url === "string") {
+      const parsed = new URL(url, window.location.origin);
+      navMocks.pathname = parsed.pathname;
+      navMocks.setSearch(parsed.search.replace(/^\?/, ""));
+    }
+  });
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -146,6 +178,7 @@ function renderRbacPage({
     totalItems: roles.length,
     totalPages: 1,
   })),
+  listPermissions = vi.fn(async () => PERMISSIONS_FIXTURE),
 }: {
   permissions?: readonly string[];
   roles?: RoleSummaryResponse[];
@@ -153,11 +186,13 @@ function renderRbacPage({
   deleteRole?: Mock<(id: string) => Promise<void>>;
   getRole?: Mock<(id: string) => Promise<RoleDetailResponse>>;
   listRoles?: Mock<(params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse>>;
+  listPermissions?: Mock<() => Promise<PermissionResponse[]>>;
 } = {}) {
   return {
     createRole,
     deleteRole,
     listRoles,
+    listPermissions,
     ...renderWithProviders(
       <>
         <SessionProvider
@@ -169,12 +204,15 @@ function renderRbacPage({
           <RbacPageView
             rolesTabProps={{
               listRoles,
-              listPermissions: async () => PERMISSIONS_FIXTURE,
+              listPermissions,
               deleteRole,
               roleDialogApi: {
                 getRole,
                 createRole,
               },
+            }}
+            permissionsTabProps={{
+              listPermissions,
             }}
           />
         </SessionProvider>
@@ -206,20 +244,66 @@ describe("getAllowedRbacTabs", () => {
 });
 
 describe("RbacPageView & RolesTab", () => {
-  it("người chỉ có ROLE.VIEW chỉ thấy tab Vai trò và không có nút ghi", async () => {
-    navMocks.search = "tab=quyen";
-    renderRbacPage({ permissions: ["ROLE.VIEW"] });
+  it("chuẩn hóa URL thiếu ?tab sang tab đầu tiên được phép", async () => {
+    navMocks.setSearch("");
+    renderRbacPage();
 
+    await screen.findByText("Theo dõi lớp");
+    await waitFor(() => {
+      expect(window.location.pathname + window.location.search).toBe("/phan-quyen?tab=vai-tro");
+    });
+  });
+
+  it("người chỉ có ROLE.VIEW mở ?tab=quyen chuyển về ?tab=vai-tro, không render tab cấm và không có nút ghi", async () => {
+    navMocks.setSearch("tab=quyen");
+    window.history.replaceState(null, "", "/phan-quyen?tab=quyen");
+    const listPermissions = vi.fn(async () => PERMISSIONS_FIXTURE);
+    renderRbacPage({ permissions: ["ROLE.VIEW"], listPermissions });
     await screen.findByText("Theo dõi lớp");
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((el) => el.textContent)).toEqual(["Vai trò"]);
-    expect(navMocks.replace).toHaveBeenCalledWith("/phan-quyen?tab=vai-tro");
+    await waitFor(() => {
+      expect(window.location.pathname + window.location.search).toBe("/phan-quyen?tab=vai-tro");
+    });
+    expect(listPermissions).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText(viMessages.rbac.permissionsTab.bannerNote),
+    ).not.toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "+ Tạo vai trò" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Sửa vai trò/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Xóa vai trò/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Xem vai trò Theo dõi lớp" })).toBeInTheDocument();
+  });
+
+  it("hiển thị trạng thái lỗi và nút thử lại khi tải phiên thất bại", async () => {
+    const loadSession = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ ...TEST_ADMIN_SESSION });
+
+    renderWithProviders(
+      <SessionProvider loadSession={loadSession}>
+        <RbacPageView
+          rolesTabProps={{
+            listRoles: async () => ({
+              items: ROLES_FIXTURE,
+              page: 0,
+              size: 20,
+              totalItems: ROLES_FIXTURE.length,
+              totalPages: 1,
+            }),
+            listPermissions: async () => PERMISSIONS_FIXTURE,
+          }}
+        />
+      </SessionProvider>,
+    );
+
+    const retry = await screen.findByRole("button", { name: "Thử lại" });
+    await userEvent.click(retry);
+
+    expect(await screen.findByText("Theo dõi lớp")).toBeInTheDocument();
   });
 
   it("người không có quyền nào trong phân quyền thấy trang 403", async () => {

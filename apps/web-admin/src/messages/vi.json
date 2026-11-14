@@ -603,6 +603,8 @@
       "viewAria": "Xem vai trò {name}",
       "viewTooltip": "Xem chi tiết"
     },
+    "sessionErrorDescription": "Không tải được thông tin phiên làm việc. Hãy thử lại.",
+    "sessionErrorTitle": "Không tải được trang phân quyền",
     "systemRoles": {
       "CONTENT_ADMIN": "Quản trị nội dung",
       "OPERATIONS": "Vận hành / CSKH",

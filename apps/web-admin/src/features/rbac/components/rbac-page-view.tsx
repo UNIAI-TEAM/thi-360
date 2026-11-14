@@ -1,8 +1,19 @@
 "use client";
 
-import { Button, PageHeader, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@thi360/ui";
+import {
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@thi360/ui";
+import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { hasPermission } from "@/features/session/permissions";
@@ -58,6 +69,12 @@ export interface RbacPageViewProps {
   bulkAssignTabProps?: Omit<BulkAssignTabProps, "initialPermissionCode">;
 }
 
+function replaceQueryUrl(nextUrl: string): void {
+  if (typeof window !== "undefined") {
+    window.history.replaceState(null, "", nextUrl);
+  }
+}
+
 export function RbacPageView({
   rolesTabProps,
   permissionsTabProps,
@@ -68,7 +85,6 @@ export function RbacPageView({
   const commonT = useTranslations("common");
   const sessionState = useSession();
   const { permissions, can } = usePermissions();
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -92,8 +108,9 @@ export function RbacPageView({
     if (activeTab !== "nguoi-dung" && activeTab !== "gan-hang-loat") {
       nextParams.delete("permission");
     }
-    router.replace(`${pathname}?${nextParams.toString()}`);
-  }, [activeTab, pathname, requestedTab, router, searchParams, sessionState.status]);
+    replaceQueryUrl(`${pathname}?${nextParams.toString()}`);
+  }, [activeTab, pathname, requestedTab, searchParams, sessionState.status]);
+
   if (sessionState.status === "loading") {
     return (
       <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-4">
@@ -105,11 +122,28 @@ export function RbacPageView({
     );
   }
 
-  if (sessionState.status === "ready" && allowedTabs.length === 0) {
+  if (sessionState.status === "error") {
+    return (
+      <Card padding="md">
+        <EmptyState
+          icon={<TriangleAlert />}
+          title={t("sessionErrorTitle")}
+          description={t("sessionErrorDescription")}
+          action={
+            <Button variant="secondary" onClick={sessionState.retry}>
+              {t("actions.retry")}
+            </Button>
+          }
+        />
+      </Card>
+    );
+  }
+
+  if (allowedTabs.length === 0 || !activeTab) {
     return <ForbiddenView />;
   }
 
-  const currentTab = activeTab ?? allowedTabs[0]!;
+  const currentTab = activeTab;
   const canCreateRole = currentTab === "vai-tro" && can("ROLE.MODIFY");
 
   function navigateToTab(nextTab: RbacTabKey, permissionCode?: string) {
@@ -123,7 +157,7 @@ export function RbacPageView({
     } else if (nextTab === "gan-hang-loat" && currentTab !== "nguoi-dung") {
       nextParams.delete("permission");
     }
-    router.replace(`${pathname}?${nextParams.toString()}`);
+    replaceQueryUrl(`${pathname}?${nextParams.toString()}`);
   }
 
   function handleTabChange(nextTab: string) {

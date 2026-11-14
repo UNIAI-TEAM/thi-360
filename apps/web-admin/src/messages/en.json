@@ -603,6 +603,8 @@
       "viewAria": "View role {name}",
       "viewTooltip": "View details"
     },
+    "sessionErrorDescription": "Could not load session details. Please try again.",
+    "sessionErrorTitle": "Could not load permissions page",
     "systemRoles": {
       "CONTENT_ADMIN": "Content administrator",
       "OPERATIONS": "Operations / Support",
