@@ -52,6 +52,7 @@ const POLL_INTERVAL_MS = 2_000;
 const EMPTY_ROW_ITEMS: ImportRow[] = [];
 /** `getRowId` ổn định ở module scope: inline arrow tạo hàm mới mỗi render. */
 const getImportRowId = (row: ImportRow) => row.id;
+const GUARD_STATE_KEY = "__thi360BulkImportLeaveGuard";
 
 export interface BulkImportBatchViewProps {
   batchId: string;
@@ -224,28 +225,40 @@ function BulkImportBatchContent({
   // sentinel (người dùng bấm Back) thì đẩy lại sentinel và hỏi xác nhận thay vì để
   // trang unmount. Xác nhận "Vẫn rời trang" thì lùi hai bước (sentinel -> trang hiện
   // tại -> trang trước) qua history.go(-2) một lần.
+  //
+  // Khi cảnh báo hết hiệu lực (đã tải/xóa file kết quả) mà còn đứng trên mục
+  // sentinel thì dọn nó bằng history.back(): Back tiếp theo của người dùng sẽ rời
+  // trang ngay thay vì "đứng hình" trên mục trùng URL (N2-1). Chỉ dọn khi cảnh báo
+  // vừa tắt CÓ CHỦ ĐÍCH (leaveWarningDisarmedRef — phân biệt disarm với unmount do
+  // điều hướng) VÀ URL vẫn là trang đợt này — tránh nuốt một lượt Back thật.
+  const leaveWarningDisarmedRef = useRef(false);
   useEffect(() => {
     if (!shouldWarnOnLeave) return;
+    leaveWarningDisarmedRef.current = false;
     if (!leaveGuardTokenRef.current) {
       leaveGuardTokenRef.current = generateIdempotencyKey();
     }
     const token = leaveGuardTokenRef.current;
     const sentinelState = () => ({
       ...(window.history.state ?? {}),
-      __thi360BulkImportLeaveGuard: token,
+      [GUARD_STATE_KEY]: token,
     });
+    const isGuardedSameUrlEntry = () =>
+      window.location.pathname.endsWith(`/tai-khoan/cap-hang-loat/${batchId}`) &&
+      Boolean(
+        (window.history.state as Record<string, unknown> | null)?.[GUARD_STATE_KEY],
+      );
     const alreadyGuarded = Boolean(
-      (window.history.state as Record<string, unknown> | null)?.[
-        "__thi360BulkImportLeaveGuard"
-      ],
+      (window.history.state as Record<string, unknown> | null)?.[GUARD_STATE_KEY],
     );
     if (!alreadyGuarded) {
       window.history.pushState(sentinelState(), "");
     }
 
     const handlePopState = () => {
+      if (leaveWarningDisarmedRef.current) return;
       const state = window.history.state as Record<string, unknown> | null;
-      if (state?.__thi360BulkImportLeaveGuard) {
+      if (state?.[GUARD_STATE_KEY]) {
         // Đáp xuống một mục sentinel (của mount này hoặc mount trước cùng trang) ->
         // vẫn là URL được bảo vệ, không cần hỏi.
         return;
@@ -261,8 +274,18 @@ function BulkImportBatchContent({
     };
 
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [shouldWarnOnLeave]);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (leaveWarningDisarmedRef.current && isGuardedSameUrlEntry()) {
+        // Cảnh báo vừa được gỡ có chủ đích (đã tải/xóa file kết quả): bỏ mục
+        // sentinel để Back tiếp theo hoạt động bình thường. popstate do
+        // history.back() phát sinh chạy sau khi listener đã gỡ nên không bị xử lý
+        // lại; nếu lỡ có mount khác đang nghe, state đáp xuống là entry thật
+        // (không token).
+        window.history.back();
+      }
+    };
+  }, [shouldWarnOnLeave, batchId]);
 
   useEffect(() => {
     if (!shouldWarnOnLeave) return;
@@ -391,6 +414,7 @@ function BulkImportBatchContent({
     onSuccess: ({ blob, filename }) => {
       setActionError(null);
       setHasDownloadedResult(true);
+      leaveWarningDisarmedRef.current = true;
       deps.saveBlobToDisk(blob, filename);
       notify.success(t("result.downloadResultSuccess"));
     },
@@ -410,6 +434,7 @@ function BulkImportBatchContent({
     onSuccess: () => {
       setActionError(null);
       setDeleteConfirmOpen(false);
+      leaveWarningDisarmedRef.current = true;
       queryClient.setQueryData<ImportBatch>(
         BULK_IMPORT_QUERY_KEYS.detail(batchId),
         (prev) => (prev ? { ...prev, resultAvailable: false } : prev),
