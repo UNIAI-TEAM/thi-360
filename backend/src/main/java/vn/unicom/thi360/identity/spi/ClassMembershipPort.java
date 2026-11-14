@@ -13,4 +13,12 @@ public interface ClassMembershipPort {
     void assignUserToClasses(UUID userId, Collection<UUID> classIds, UUID actorId, Instant occurredAt);
 
     Set<UUID> findUserIdsInClass(UUID classId);
+
+    void ensureSeedClass(
+            String code,
+            String name,
+            String description,
+            UUID ownerUserId,
+            Collection<UUID> studentIds,
+            Instant occurredAt);
 }

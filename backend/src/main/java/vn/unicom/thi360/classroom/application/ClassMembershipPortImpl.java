@@ -14,11 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.spi.AuditEvent;
+import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.classroom.domain.ClassMember;
 import vn.unicom.thi360.classroom.domain.ClassMemberHistory;
 import vn.unicom.thi360.classroom.domain.ClassMemberHistoryAction;
 import vn.unicom.thi360.classroom.domain.ClassRoom;
+import vn.unicom.thi360.classroom.domain.ClassNormalizer;
 import vn.unicom.thi360.classroom.domain.ClassStatus;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberHistoryRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberRepository;
@@ -170,5 +172,91 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             return Set.of();
         }
         return Set.copyOf(classMemberRepository.findActiveUserIdsByClassId(classId));
+    }
+
+    @Override
+    @Transactional
+    public void ensureSeedClass(
+            String code,
+            String name,
+            String description,
+            UUID ownerUserId,
+            Collection<UUID> studentIds,
+            Instant occurredAt) {
+        String trimmedCode = code.trim();
+        String normalizedCode = ClassNormalizer.normalizeCode(trimmedCode);
+        ClassRoom classRoom = classRoomRepository.findByCodeNormalizedAndDeletedAtIsNull(normalizedCode)
+                .orElse(null);
+        if (classRoom == null) {
+            classRoom = new ClassRoom(
+                    Ids.newId(),
+                    trimmedCode,
+                    name.trim(),
+                    description,
+                    ownerUserId,
+                    ClassStatus.ACTIVE,
+                    occurredAt,
+                    null);
+            classRoom = classRoomRepository.saveAndFlush(classRoom);
+            Map<String, Object> after = new LinkedHashMap<>();
+            after.put("code", classRoom.getCode());
+            after.put("name", classRoom.getName());
+            after.put("description", classRoom.getDescription());
+            after.put("ownerUserId", ownerUserId == null ? null : ownerUserId.toString());
+            after.put("status", classRoom.getStatus().name());
+            auditRecorder.record(AuditEvent.builder(MODULE, "CLASS_CREATED")
+                    .target(TARGET_TYPE_CLASS, classRoom.getId().toString(), classRoom.getCode())
+                    .after(after)
+                    .reason("dev_seed")
+                    .actorType(AuditActorType.SYSTEM)
+                    .build());
+        }
+
+        if (studentIds == null || studentIds.isEmpty()) {
+            return;
+        }
+        Set<UUID> uniqueStudents = new LinkedHashSet<>();
+        for (UUID studentId : studentIds) {
+            if (studentId != null) {
+                uniqueStudents.add(studentId);
+            }
+        }
+
+        List<ClassMember> newMembers = new ArrayList<>();
+        List<ClassMemberHistory> historyRows = new ArrayList<>();
+        List<String> addedUserIds = new ArrayList<>();
+        for (UUID studentId : uniqueStudents) {
+            if (classMemberRepository.existsByIdClassIdAndIdUserId(classRoom.getId(), studentId)) {
+                continue;
+            }
+            newMembers.add(new ClassMember(classRoom.getId(), studentId, occurredAt, null));
+            historyRows.add(new ClassMemberHistory(
+                    Ids.newId(),
+                    classRoom.getId(),
+                    studentId,
+                    ClassMemberHistoryAction.JOIN,
+                    null,
+                    null,
+                    "dev_seed",
+                    occurredAt));
+            addedUserIds.add(studentId.toString());
+        }
+
+        if (!newMembers.isEmpty()) {
+            classMemberRepository.saveAll(newMembers);
+            classMemberRepository.flush();
+            classMemberHistoryRepository.saveAll(historyRows);
+            classMemberHistoryRepository.flush();
+
+            Map<String, Object> after = new LinkedHashMap<>();
+            after.put("addedUserIds", addedUserIds);
+            after.put("addedCount", addedUserIds.size());
+            auditRecorder.record(AuditEvent.builder(MODULE, "CLASS_MEMBER_ADDED")
+                    .target(TARGET_TYPE_CLASS, classRoom.getId().toString(), classRoom.getCode())
+                    .after(after)
+                    .reason("dev_seed")
+                    .actorType(AuditActorType.SYSTEM)
+                    .build());
+        }
     }
 }

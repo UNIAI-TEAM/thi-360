@@ -37,6 +37,7 @@ import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.infrastructure.UserIdentityRepository;
 import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
+import vn.unicom.thi360.identity.spi.ClassMembershipPort;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.ids.Ids;
 
@@ -58,12 +59,17 @@ public class DevDataInitializer implements ApplicationRunner {
             new SeedUser("student04", "student04@thi360.vn", "Học viên", "04", "Học viên 04", "STUDENT"),
             new SeedUser("student05", "student05@thi360.vn", "Học viên", "05", "Học viên 05", "STUDENT"));
 
+    private static final List<SeedClass> SEED_CLASSES = List.of(
+            new SeedClass("LOP-A", "Lớp A", "Nhóm ôn HSA buổi tối", "ops.admin", List.of("student01", "student02")),
+            new SeedClass("LOP-B", "Lớp B", "Nhóm ôn QDA cuối tuần", "ops.admin", List.of("student03", "student04")));
+
     private final KeycloakIdentityClient keycloakClient;
     private final UserAccountRepository userAccountRepository;
     private final UserIdentityRepository userIdentityRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final AuthzSnapshotService authzSnapshotService;
+    private final ClassMembershipPort classMembershipPort;
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -78,6 +84,7 @@ public class DevDataInitializer implements ApplicationRunner {
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
             @Autowired(required = false) AuthzSnapshotService authzSnapshotService,
+            ClassMembershipPort classMembershipPort,
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
             TransactionTemplate transactionTemplate,
@@ -89,6 +96,7 @@ public class DevDataInitializer implements ApplicationRunner {
         this.roleRepository = Objects.requireNonNull(roleRepository);
         this.userRoleRepository = Objects.requireNonNull(userRoleRepository);
         this.authzSnapshotService = authzSnapshotService;
+        this.classMembershipPort = Objects.requireNonNull(classMembershipPort);
         this.auditRecorder = Objects.requireNonNull(auditRecorder);
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
         this.transactionTemplate = Objects.requireNonNull(transactionTemplate);
@@ -108,11 +116,12 @@ public class DevDataInitializer implements ApplicationRunner {
                 createdUsers++;
             }
         }
+        ensureSeedClasses();
         log.atInfo()
                 .addKeyValue("event", "dev_data.seeded")
                 .addKeyValue("totalUsers", SEED_USERS.size())
                 .addKeyValue("createdUsers", createdUsers)
-                .log("Dev seed accounts verified");
+                .log("Dev seed accounts and classes verified");
     }
 
     private boolean ensureSeedUser(SeedUser spec) {
@@ -254,6 +263,42 @@ public class DevDataInitializer implements ApplicationRunner {
             String lastName,
             String fullName,
             String roleCode
+    ) {
+    }
+
+    private void ensureSeedClasses() {
+        transactionTemplate.executeWithoutResult(status -> {
+            Instant now = Instant.now(clock);
+            for (SeedClass spec : SEED_CLASSES) {
+                UUID ownerId = spec.ownerUsername() == null
+                        ? null
+                        : userAccountRepository
+                                .findActiveByUsernameNormalized(Normalizer.normalize(spec.ownerUsername()))
+                                .map(UserAccount::getId)
+                                .orElse(null);
+                List<UUID> studentIds = spec.studentUsernames().stream()
+                        .map(username -> userAccountRepository
+                                .findActiveByUsernameNormalized(Normalizer.normalize(username))
+                                .map(UserAccount::getId)
+                                .orElseThrow(() -> new IllegalStateException("Missing seeded student: " + username)))
+                        .toList();
+                classMembershipPort.ensureSeedClass(
+                        spec.code(),
+                        spec.name(),
+                        spec.description(),
+                        ownerId,
+                        studentIds,
+                        now);
+            }
+        });
+    }
+
+    private record SeedClass(
+            String code,
+            String name,
+            String description,
+            String ownerUsername,
+            List<String> studentUsernames
     ) {
     }
 }

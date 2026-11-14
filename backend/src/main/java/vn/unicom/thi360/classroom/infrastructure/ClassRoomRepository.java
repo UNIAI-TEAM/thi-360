@@ -24,4 +24,6 @@ public interface ClassRoomRepository extends JpaRepository<ClassRoom, UUID> {
     boolean existsByCodeNormalizedAndDeletedAtIsNullAndIdNot(String codeNormalized, UUID id);
 
     List<ClassRoom> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
+
+    Optional<ClassRoom> findByCodeNormalizedAndDeletedAtIsNull(String codeNormalized);
 }
