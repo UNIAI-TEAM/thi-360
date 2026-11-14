@@ -151,4 +151,20 @@ describe("NAVIGATION của đợt 1", () => {
       ]),
     );
   });
+
+  it("có mục Lớp học trong nhóm Người dùng với quyền CLASS.VIEW và breadcrumb khớp /lop-hoc/[id]", () => {
+    const usersGroup = NAVIGATION.find((g) => g.id === "users");
+    expect(usersGroup?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "classes",
+          href: "/lop-hoc",
+          permission: "CLASS.VIEW",
+        }),
+      ]),
+    );
+    const trail = resolveBreadcrumb(NAVIGATION, "/lop-hoc/123");
+    expect(trail?.group.id).toBe("users");
+    expect(trail?.item.id).toBe("classes");
+  });
 });

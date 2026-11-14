@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { createPlatformApiContext } from "./helpers/platform";
 
 const WEB_URL = process.env.THI360_WEB_URL ?? "http://localhost:3000";
 const ADMIN_URL = process.env.THI360_ADMIN_URL ?? "http://localhost:3001";
@@ -77,6 +78,36 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
     const roleName = `Theo dõi lớp ${suffix}`;
     const watchUsername = `e2e.watch.${suffix}`;
 
+    // E2E 2 dùng lại user và vai trò do E2E 1 tạo, nên chỉ dọn sau cả hai test.
+    let watchUserId: string | undefined;
+    let createdRoleId: string | undefined;
+
+    test.afterAll(async () => {
+      // Dọn dẹp best-effort: gỡ vai trò khỏi user rồi xóa user, sau đó xóa vai trò.
+      if (!watchUserId && !createdRoleId) {
+        return;
+      }
+      const { api, xsrf } = await createPlatformApiContext();
+      try {
+        if (watchUserId) {
+          await api.put(`/api/v1/admin/users/${watchUserId}/roles`, {
+            headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+            data: { roleIds: [] },
+          });
+          await api.delete(`/api/v1/admin/users/${watchUserId}?reason=E2E%20cleanup`, {
+            headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+          });
+        }
+        if (createdRoleId) {
+          await api.delete(`/api/v1/admin/roles/${createdRoleId}`, {
+            headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+          });
+        }
+      } finally {
+        await api.dispose();
+      }
+    });
+
     test("E2E 1: platform tạo vai trò Chỉ xem Lớp học → gán cho user mới → user chỉ thấy menu Lớp học và quyền CLASS.VIEW", async ({
       page,
     }) => {
@@ -99,15 +130,18 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await dialog.getByRole("button", { name: "Tạo vai trò" }).click();
 
       await expect(dialog).toBeHidden();
+      // Danh sách vai trò phân trang 20; tìm theo mã để hàng mới không rơi sang trang sau.
+      await page.getByLabel("Tìm kiếm").fill(roleCode);
       await expect(page.getByText(roleCode)).toBeVisible();
 
-      const roleId = await findRoleIdByCode(page, roleCode);
-      await createUserViaAdminApi(page, {
+      createdRoleId = await findRoleIdByCode(page, roleCode);
+      const createdUser = await createUserViaAdminApi(page, {
         username: watchUsername,
         fullName: "Người theo dõi lớp",
         email: `${watchUsername}@thi360.vn`,
-        roleIds: [roleId],
+        roleIds: [createdRoleId],
       });
+      watchUserId = createdUser.id;
 
       await logoutFromAdmin(page);
 
@@ -263,50 +297,75 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
     const roleName = `Chỉ xem vai trò ${suffix}`;
     const viewerUsername = `e2e.roleview.${suffix}`;
 
-    await loginAs(page, "platform", PLATFORM_PASSWORD);
-    await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+    // Fixture qua API context; không đăng nhập platform vào trang để /dang-nhap hiện form cho viewer.
+    const { api, xsrf } = await createPlatformApiContext();
+    let roleId: string | undefined;
+    let viewerId: string | undefined;
+    try {
+      const roleResp = await api.post("/api/v1/admin/roles", {
+        headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+        data: {
+          access: "MANAGE",
+          code: roleCode,
+          name: roleName,
+          permissionCodes: ["ROLE.VIEW"],
+        },
+      });
+      expect(roleResp.status()).toBe(201);
+      const createdRole = (await roleResp.json()) as { id: string };
+      roleId = createdRole.id;
 
-    const headers = await getXsrfHeaders(page);
-    const roleResp = await page.request.post(`${ADMIN_URL}/api/v1/admin/roles`, {
-      headers,
-      data: {
-        code: roleCode,
-        name: roleName,
-        access: "MANAGE",
-        permissionCodes: ["ROLE.VIEW"],
-      },
-    });
-    expect(roleResp.status()).toBe(201);
-    const createdRole = (await roleResp.json()) as { id: string };
+      const userResp = await api.post("/api/v1/admin/users", {
+        headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+        data: {
+          username: viewerUsername,
+          password: TEST_USER_PASSWORD,
+          fullName: "Chỉ xem vai trò",
+          roleIds: [roleId],
+          mustChangePassword: false,
+        },
+      });
+      expect(userResp.status()).toBe(201);
+      const createdUser = (await userResp.json()) as { id: string };
+      viewerId = createdUser.id;
 
-    await createUserViaAdminApi(page, {
-      username: viewerUsername,
-      fullName: "Chỉ xem vai trò",
-      email: `${viewerUsername}@thi360.vn`,
-      roleIds: [createdRole.id],
-    });
+      await page.goto(`${WEB_URL}/dang-nhap`);
+      await submitLoginForm(page, viewerUsername, TEST_USER_PASSWORD);
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
-    await logoutFromAdmin(page);
+      const nav = page.getByRole("navigation", { name: "Menu chính" });
+      await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeVisible();
 
-    await loginAs(page, viewerUsername, TEST_USER_PASSWORD);
-    await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+      // Truy cập thẳng tab không có quyền -> chuyển về tab đầu tiên được phép (?tab=vai-tro)
+      await page.goto(`${ADMIN_URL}/phan-quyen?tab=quyen`);
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/phan-quyen\\?tab=vai-tro`));
 
-    const nav = page.getByRole("navigation", { name: "Menu chính" });
-    await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeVisible();
+      const tabList = page.getByRole("tablist", { name: "Các tab phân quyền" });
+      await expect(tabList.getByRole("tab", { name: "Vai trò" })).toBeVisible();
+      await expect(tabList.getByRole("tab", { name: "Quyền" })).toBeHidden();
+      await expect(tabList.getByRole("tab", { name: "Người dùng theo quyền" })).toBeHidden();
+      await expect(tabList.getByRole("tab", { name: "Gán hàng loạt" })).toBeHidden();
 
-    // Truy cập thẳng tab không có quyền -> chuyển về tab đầu tiên được phép (?tab=vai-tro)
-    await page.goto(`${ADMIN_URL}/phan-quyen?tab=quyen`);
-    await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/phan-quyen\\?tab=vai-tro`));
-
-    const tabList = page.getByRole("tablist", { name: "Các tab phân quyền" });
-    await expect(tabList.getByRole("tab", { name: "Vai trò" })).toBeVisible();
-    await expect(tabList.getByRole("tab", { name: "Quyền" })).toBeHidden();
-    await expect(tabList.getByRole("tab", { name: "Người dùng theo quyền" })).toBeHidden();
-    await expect(tabList.getByRole("tab", { name: "Gán hàng loạt" })).toBeHidden();
-
-    await expect(page.getByRole("button", { name: "+ Tạo vai trò" })).toBeHidden();
-    await expect(page.getByRole("button", { name: /Sửa vai trò/ })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Xóa vai trò/ })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Xem vai trò/ }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "+ Tạo vai trò" })).toBeHidden();
+      await expect(page.getByRole("button", { name: /Sửa vai trò/ })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Xóa vai trò/ })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Xem vai trò/ }).first()).toBeVisible();
+    } finally {
+      if (viewerId) {
+        await api.put(`/api/v1/admin/users/${viewerId}/roles`, {
+          headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+          data: { roleIds: [] },
+        });
+        await api.delete(`/api/v1/admin/users/${viewerId}?reason=E2E%20cleanup`, {
+          headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+        });
+      }
+      if (roleId) {
+        await api.delete(`/api/v1/admin/roles/${roleId}`, {
+          headers: { origin: ADMIN_URL, "x-xsrf-token": xsrf },
+        });
+      }
+      await api.dispose();
+    }
   });
 });

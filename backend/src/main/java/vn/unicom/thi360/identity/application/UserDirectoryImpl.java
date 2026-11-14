@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.identity.domain.Normalizer;
 import vn.unicom.thi360.identity.domain.PlatformAdmin;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.infrastructure.PlatformAdminRepository;
@@ -37,6 +38,15 @@ public class UserDirectoryImpl implements UserDirectory {
         return userAccountRepository.findById(userId)
                 .map(UserDirectoryImpl::toSummary)
                 .or(() -> platformAdminRepository.findById(userId).map(UserDirectoryImpl::toSummary));
+    }
+
+    @Override
+    public Optional<UserSummary> findActiveByUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return Optional.empty();
+        }
+        return userAccountRepository.findActiveByUsernameNormalized(Normalizer.normalize(username))
+                .map(UserDirectoryImpl::toSummary);
     }
 
     @Override

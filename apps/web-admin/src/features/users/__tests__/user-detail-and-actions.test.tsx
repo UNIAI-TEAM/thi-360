@@ -83,6 +83,43 @@ function makeDeps(overrides: Partial<UsersApiDeps> = {}): Partial<UsersApiDeps> 
       totalItems: 1,
       totalPages: 1,
     })),
+    getUserClasses: vi.fn<UsersApiDeps["getUserClasses"]>(async (userId) => ({
+      userId,
+      currentClasses: [
+        {
+          classId: "cls-1",
+          classCode: "LOP-A",
+          className: "Lớp A",
+          classStatus: "ACTIVE",
+          joinedAt: "2026-11-10T08:00:00Z",
+          addedByUsername: "ops.admin",
+        },
+      ],
+      history: [
+        {
+          id: "hist-1",
+          classId: "cls-1",
+          classCode: "LOP-A",
+          className: "Lớp A",
+          action: "TRANSFER_IN",
+          relatedClassId: "cls-0",
+          relatedClassCode: "LOP-0",
+          relatedClassName: "Lớp 0",
+          actorUsername: "ops.admin",
+          reason: "Đổi ca học",
+          occurredAt: "2026-11-12T08:00:00Z",
+        },
+        {
+          id: "hist-2",
+          classId: "cls-0",
+          classCode: "LOP-0",
+          className: "Lớp 0",
+          action: "JOIN",
+          actorUsername: "ops.admin",
+          occurredAt: "2026-11-10T08:00:00Z",
+        },
+      ],
+    })),
     ...overrides,
   };
 }
@@ -182,7 +219,7 @@ afterEach(() => {
 });
 
 describe("UserDetailView & action dialogs (Slice 2)", () => {
-  it("hiển thị mã tài khoản, lần đăng nhập cuối, tab chỗ chờ T10, tab Vai trò & quyền thật và lịch sử thay đổi", async () => {
+  it("hiển thị mã tài khoản, lần đăng nhập cuối, tab Lớp học thật, tab Vai trò & quyền thật và lịch sử thay đổi", async () => {
     const deps = makeDeps();
     renderDetail(deps);
 
@@ -191,7 +228,11 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     expect(screen.getByText(/student01 · U000101/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Lớp học" }));
-    expect(await screen.findByText("Chưa kết nối dữ liệu lớp học")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Lớp học hiện tại/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "LOP-A" })).toHaveAttribute("href", "/lop-hoc/cls-1");
+    expect(screen.getByText("Chuyển đến")).toBeInTheDocument();
+    expect(screen.getByText("Đổi ca học")).toBeInTheDocument();
+    expect(deps.getUserClasses).toHaveBeenCalledWith(BASE_USER.id);
 
     await userEvent.click(screen.getByRole("tab", { name: "Vai trò & quyền" }));
     expect(
@@ -221,6 +262,9 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     expect(screen.queryByRole("button", { name: "Lưu thay đổi" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Lịch sử thay đổi" })).not.toBeInTheDocument();
     expect(deps.listUserAuditEvents).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("tab", { name: "Lớp học" }));
+    expect(await screen.findByText("Không có quyền xem thông tin lớp học")).toBeInTheDocument();
+    expect(deps.getUserClasses).not.toHaveBeenCalled();
   });
 
   it("deactivation-check có lượt thi đang làm hiện cảnh báo trước khi xác nhận ngừng hoạt động", async () => {

@@ -18,11 +18,11 @@ export interface UserRolesPermissionsPlaceholderProps {
 }
 
 /**
- * Tab "Vai trò & quyền" trên chi tiết tài khoản — hiển thị `UserRbacTab` (T08).
- * Giữ nguyên tên file và tên export để tránh xung đột khi merge với các lane khác.
+ * Tab "Vai tro & quyen" tren chi tiet tai khoan — hien thi `UserRbacTab` (T08).
+ * Giu nguyen ten file va ten export de tranh xung dot khi merge voi cac lane khac.
  *
- * Tài khoản đã xóa mềm: backend từ chối cả ba API đọc phân quyền (404), nên không mount
- * `UserRbacTab` (không gửi request nào) mà chỉ hiện tóm tắt vai trò lấy từ hồ sơ tài khoản.
+ * Tai khoan da xoa mem: backend tu choi ca ba API doc phan quyen (404), nen khong mount
+ * `UserRbacTab` (khong gui request nao) ma chi hien tom tat vai tro lay tu ho so tai khoan.
  */
 export function UserRolesPermissionsPlaceholder({
   userId,
