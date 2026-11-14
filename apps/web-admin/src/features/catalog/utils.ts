@@ -99,6 +99,43 @@ export function pickName(item: BilingualName, locale = "vi"): string {
   return vi.length > 0 ? vi : en;
 }
 
+const SYSTEM_TREE_LEVEL_KEYS = {
+  chương: "chapter",
+  bài: "lesson",
+  "kiến thức": "knowledge",
+} as const;
+
+export type SystemTreeLevelKey =
+  (typeof SYSTEM_TREE_LEVEL_KEYS)[keyof typeof SYSTEM_TREE_LEVEL_KEYS];
+
+/**
+ * Ánh xạ tên cấp của cây hệ thống (Chương / Bài / Kiến thức) sang khóa dịch vi/en;
+ * giữ nguyên tên cấp người dùng tự nhập ở cây tùy chỉnh.
+ */
+export function resolveSystemTreeLevelKey(levelName: string): SystemTreeLevelKey | null {
+  const normalized = levelName.trim().toLowerCase();
+  if (normalized in SYSTEM_TREE_LEVEL_KEYS) {
+    return SYSTEM_TREE_LEVEL_KEYS[normalized as keyof typeof SYSTEM_TREE_LEVEL_KEYS];
+  }
+  return null;
+}
+
+export function resolveTreeLevelLabel(
+  levelName: string | undefined,
+  options: {
+    isSystemGroup?: boolean;
+    translateLevel: (key: SystemTreeLevelKey) => string;
+    fallback?: string;
+  },
+): string {
+  if (!levelName) return options.fallback ?? "";
+  if (options.isSystemGroup) {
+    const key = resolveSystemTreeLevelKey(levelName);
+    if (key) return options.translateLevel(key);
+  }
+  return levelName;
+}
+
 export function isKnownCatalogErrorCode(code: string | undefined): code is CatalogErrorCode {
   return Boolean(code && code in KNOWN_ERROR_CODE_MAP);
 }

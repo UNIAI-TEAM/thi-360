@@ -471,6 +471,11 @@
       "stoppedByParentHint": "Nút này đang bị ngừng do cấp cha đang ngừng sử dụng.",
       "subtreeCount": "{count, number} nút con trực tiếp",
       "subtreeLabel": "Bên dưới",
+      "systemLevels": {
+        "chapter": "Chương",
+        "knowledge": "Kiến thức",
+        "lesson": "Bài"
+      },
       "treeAriaLabel": "Cấu trúc cây {name}",
       "viewAuditAction": "Xem lịch sử thay đổi"
     },

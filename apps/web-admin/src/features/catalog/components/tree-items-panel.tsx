@@ -54,6 +54,7 @@ import {
   getCatalogErrorCode,
   pickName,
   resolveCatalogErrorMessage,
+  resolveTreeLevelLabel,
 } from "../utils";
 import type { StatusFilter } from "./simple-items-panel";
 
@@ -296,11 +297,21 @@ export function TreeItemsPanel({
   const selectedTreeNode = selectedNodeId ? knownNodeById.get(selectedNodeId) ?? null : null;
   const selectedDetail = selectedNodeDetailQuery.data ?? null;
 
-  const isSystemGroup = group.type === "SYSTEM";
+  const isSystemGroup = group.type === "SYSTEM" || group.system;
   const deleteGroupDisabled = group.itemCount > 0;
-  const levels = group.levels ?? [];
-  const levelsBreadcrumb = levels.join(" → ");
-  const rootLevelName = levels[0] ?? t("tree.defaultLevelName");
+  const levels = useMemo(() => group.levels ?? [], [group.levels]);
+  const displayLevels = useMemo(
+    () =>
+      levels.map((levelName) =>
+        resolveTreeLevelLabel(levelName, {
+          isSystemGroup,
+          translateLevel: (key) => t(`tree.systemLevels.${key}`),
+        }),
+      ),
+    [isSystemGroup, levels, t],
+  );
+  const levelsBreadcrumb = displayLevels.join(" → ");
+  const rootLevelName = displayLevels[0] ?? t("tree.defaultLevelName");
 
   const availableRefGroupsToAdd = useMemo(() => {
     const linkedIds = new Set(group.refGroups.map((rg) => rg.refGroupId));
@@ -622,14 +633,14 @@ export function TreeItemsPanel({
 
   const activeNode = selectedDetail ?? selectedTreeNode;
   const activeNodeLevelName = activeNode
-    ? levels[activeNode.depth - 1] ?? `${t("tree.defaultLevelName")} ${activeNode.depth}`
+    ? displayLevels[activeNode.depth - 1] ?? `${t("tree.defaultLevelName")} ${activeNode.depth}`
     : null;
   const activeNodeCanAddChild = activeNode ? activeNode.depth < levels.length : false;
   const activeNodeCanMove = activeNode ? activeNode.depth > 1 : false;
   const activeNodeHasChildren =
     selectedDetail ? selectedDetail.childCount > 0 : (selectedTreeNode?.hasChildren ?? false);
   const activeNodeNextLevelName = activeNode
-    ? levels[activeNode.depth] ?? t("tree.defaultLevelName")
+    ? displayLevels[activeNode.depth] ?? t("tree.defaultLevelName")
     : "";
 
   return (
@@ -962,7 +973,7 @@ export function TreeItemsPanel({
                 const canAddChild = node.depth < levels.length;
                 const canMove = node.depth > 1;
                 const nextLevelName =
-                  levels[node.depth] ?? t("tree.defaultLevelName");
+                  displayLevels[node.depth] ?? t("tree.defaultLevelName");
 
                 return (
                   <div
@@ -1122,7 +1133,7 @@ export function TreeItemsPanel({
                 <h3 className="mt-2 text-card-title font-bold text-text">
                   {pickName(activeNode, locale)}
                 </h3>
-                {activeNode.nameEn && locale !== "en" && (
+                {activeNode.nameEn && !locale.toLowerCase().startsWith("en") && (
                   <p className="text-caption text-text-muted">{activeNode.nameEn}</p>
                 )}
                 {activeNode.effectiveStatus === "INACTIVE" &&

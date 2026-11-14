@@ -26,7 +26,7 @@ import {
   type CatalogTreeNodeResponse,
 } from "../api";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { pickName, resolveCatalogErrorMessage } from "../utils";
+import { pickName, resolveCatalogErrorMessage, resolveTreeLevelLabel } from "../utils";
 
 export type MoveBranchDialogProps = {
   open: boolean;
@@ -122,8 +122,13 @@ function MoveBranchBody({
     });
   }, [candidatesQuery.data, node.id, searchQuery]);
 
+  const isSystemGroup = group.type === "SYSTEM" || group.system;
   const levels = group.levels ?? [];
-  const levelName = levels[node.depth - 1] ?? t("tree.rootNodeBadge");
+  const levelName = resolveTreeLevelLabel(levels[node.depth - 1], {
+    isSystemGroup,
+    translateLevel: (key) => t(`tree.systemLevels.${key}`),
+    fallback: t("tree.rootNodeBadge"),
+  });
 
   async function handleSubmit() {
     if (!selectedParentId || submitting) return;

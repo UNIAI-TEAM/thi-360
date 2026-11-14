@@ -471,6 +471,11 @@
       "stoppedByParentHint": "This node is inactive because an ancestor is inactive.",
       "subtreeCount": "{count, number} direct children",
       "subtreeLabel": "Children",
+      "systemLevels": {
+        "chapter": "Chapter",
+        "knowledge": "Knowledge",
+        "lesson": "Lesson"
+      },
       "treeAriaLabel": "Tree structure for {name}",
       "viewAuditAction": "View change history"
     },

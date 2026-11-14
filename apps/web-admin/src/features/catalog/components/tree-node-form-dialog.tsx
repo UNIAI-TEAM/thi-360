@@ -41,6 +41,7 @@ import {
   getCatalogFieldErrors,
   pickName,
   resolveCatalogErrorMessage,
+  resolveTreeLevelLabel,
 } from "../utils";
 
 export type TreeNodeFormDialogProps = {
@@ -74,11 +75,15 @@ export function TreeNodeFormDialog({
   const locale = useLocale();
   const [submitting, setSubmitting] = useState(false);
 
+  const isSystemGroup = group.type === "SYSTEM" || group.system;
   const levels = group.levels ?? [];
   const targetDepth =
     mode === "edit" && node ? node.depth : parentNode ? parentNode.depth + 1 : 1;
-  const levelName =
-    levels[targetDepth - 1] ?? t("tree.rootNodeBadge");
+  const levelName = resolveTreeLevelLabel(levels[targetDepth - 1], {
+    isSystemGroup,
+    translateLevel: (key) => t(`tree.systemLevels.${key}`),
+    fallback: t("tree.rootNodeBadge"),
+  });
 
   return (
     <Dialog
@@ -261,8 +266,14 @@ function TreeNodeFormBody({
     [t],
   );
 
+  const isSystemGroup = group.type === "SYSTEM" || group.system;
   const levels = group.levels ?? [];
-  const parentLevelName = parentNode ? levels[parentNode.depth - 1] : null;
+  const parentLevelName = parentNode
+    ? resolveTreeLevelLabel(levels[parentNode.depth - 1], {
+        isSystemGroup,
+        translateLevel: (key) => t(`tree.systemLevels.${key}`),
+      })
+    : null;
 
   function handleToggleRefItem(refItemId: string, checked: boolean) {
     if (inheritedRefIdSet.has(refItemId)) return;

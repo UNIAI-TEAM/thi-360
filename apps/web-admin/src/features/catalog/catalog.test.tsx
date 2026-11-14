@@ -21,7 +21,13 @@ import {
   type PageResponseCatalogItemResponse,
 } from "./api";
 import { CatalogView } from "./components/catalog-view";
-import { CATALOG_ERROR_CODES, pickName, resolveCatalogErrorMessage } from "./utils";
+import {
+  CATALOG_ERROR_CODES,
+  pickName,
+  resolveCatalogErrorMessage,
+  resolveSystemTreeLevelKey,
+  resolveTreeLevelLabel,
+} from "./utils";
 
 const routerMock = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -525,6 +531,53 @@ describe("pickName", () => {
     expect(pickName({ nameVi: "Toán học", nameEn: "Mathematics" }, "en")).toBe("Mathematics");
     expect(pickName({ nameVi: "Địa lí", nameEn: "   " }, "en")).toBe("Địa lí");
     expect(pickName({ nameVi: "Địa lí", nameEn: undefined }, "en-US")).toBe("Địa lí");
+    expect(pickName({ nameVi: "   ", nameEn: "Physics" }, "vi")).toBe("Physics");
+  });
+});
+
+describe("resolveTreeLevelLabel", () => {
+  it("dịch 3 cấp hệ thống (Chương, Bài, Kiến thức) theo vi/en và giữ nguyên cấp tùy chỉnh", () => {
+    expect(resolveSystemTreeLevelKey("Chương")).toBe("chapter");
+    expect(resolveSystemTreeLevelKey("Bài")).toBe("lesson");
+    expect(resolveSystemTreeLevelKey("Kiến thức")).toBe("knowledge");
+    expect(resolveSystemTreeLevelKey("Chủ đề")).toBeNull();
+
+    const systemLevels = ["Chương", "Bài", "Kiến thức"];
+    expect(
+      systemLevels.map((lvl) =>
+        resolveTreeLevelLabel(lvl, {
+          isSystemGroup: true,
+          translateLevel: (key) => viMessages.catalog.tree.systemLevels[key],
+        }),
+      ),
+    ).toEqual(["Chương", "Bài", "Kiến thức"]);
+
+    expect(
+      systemLevels.map((lvl) =>
+        resolveTreeLevelLabel(lvl, {
+          isSystemGroup: true,
+          translateLevel: (key) => en.catalog.tree.systemLevels[key],
+        }),
+      ),
+    ).toEqual(["Chapter", "Lesson", "Knowledge"]);
+
+    const customLevels = ["Khối", "Chủ đề", "Chương"];
+    expect(
+      customLevels.map((lvl) =>
+        resolveTreeLevelLabel(lvl, {
+          isSystemGroup: false,
+          translateLevel: (key) => en.catalog.tree.systemLevels[key],
+        }),
+      ),
+    ).toEqual(["Khối", "Chủ đề", "Chương"]);
+
+    expect(
+      resolveTreeLevelLabel(undefined, {
+        isSystemGroup: true,
+        translateLevel: (key) => en.catalog.tree.systemLevels[key],
+        fallback: "Root",
+      }),
+    ).toBe("Root");
   });
 });
 
@@ -1728,5 +1781,139 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
     expect(
       await within(dialog).findByText(/Đã nhập xong: tạo mới 2 giá trị, dùng lại 1 nút có sẵn/),
     ).toBeInTheDocument();
+  });
+});
+
+describe("CatalogView: dịch cấp cây hệ thống và pickName theo useLocale()", () => {
+  it("hiển thị tên 3 cấp cây hệ thống qua message key trên header, dòng cây, pane chi tiết và các dialog ở locale en & vi", async () => {
+    const api = createTreeMockApi();
+    const enRender = renderCatalog({ api, locale: "en", search: "group=KNOWLEDGE" });
+
+    // Header breadcrumb & primary add button in English
+    expect(await screen.findByText("Chapter → Lesson → Knowledge")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Chapter" })).toBeInTheDocument();
+
+    // Tree row add-child button uses localized next level ("Lesson") and pickName ("Functions")
+    expect(
+      await screen.findByRole("button", { name: "Add Lesson under Functions" }),
+    ).toBeInTheDocument();
+
+    // Selecting chapter updates detail pane level badge + next-level button
+    await userEvent.click(screen.getByText("Functions"));
+    const detailPane = screen.getByRole("complementary", { name: "Selected node details" });
+    expect(within(detailPane).getByText("Chapter")).toBeInTheDocument();
+    expect(within(detailPane).getByRole("button", { name: "Add Lesson" })).toBeInTheDocument();
+
+    // Expand chapter -> child row uses "Knowledge" for add-child action
+    await userEvent.click(screen.getByRole("button", { name: "Expand Functions" }));
+    expect(
+      await screen.findByRole("button", { name: "Add Knowledge under Monotonicity" }),
+    ).toBeInTheDocument();
+
+    // Selecting lesson updates detail pane to "Lesson" + "Add Knowledge"
+    await userEvent.click(screen.getByText("Monotonicity"));
+    expect(within(detailPane).getByText("Lesson")).toBeInTheDocument();
+    expect(within(detailPane).getByRole("button", { name: "Add Knowledge" })).toBeInTheDocument();
+
+    // Open root create dialog -> title "Add Chapter"
+    await userEvent.click(screen.getByRole("button", { name: "Add Chapter" }));
+    const rootDialog = await screen.findByRole("dialog");
+    expect(within(rootDialog).getByRole("heading", { name: "Add Chapter" })).toBeInTheDocument();
+    await userEvent.click(within(rootDialog).getByRole("button", { name: "Cancel" }));
+
+    // Open child create dialog under Functions -> title "Add Lesson" and parent level "Chapter"
+    await userEvent.click(screen.getByRole("button", { name: "Add Lesson under Functions" }));
+    const childDialog = await screen.findByRole("dialog");
+    expect(within(childDialog).getByRole("heading", { name: "Add Lesson" })).toBeInTheDocument();
+    expect(within(childDialog).getByText("Chapter")).toBeInTheDocument();
+    await userEvent.click(within(childDialog).getByRole("button", { name: "Cancel" }));
+
+    // Open move branch dialog for B1 -> summary includes "Moving Lesson"
+    await userEvent.click(screen.getByRole("button", { name: "Move branch Monotonicity" }));
+    const moveDialog = await screen.findByRole("dialog");
+    expect(within(moveDialog).getByText(/Moving: Lesson B1 — Monotonicity/)).toBeInTheDocument();
+    await userEvent.click(within(moveDialog).getByRole("button", { name: "Cancel" }));
+
+    enRender.unmount();
+
+    // Verify Vietnamese locale renders Vietnamese level keys via useLocale()
+    renderCatalog({ api: createTreeMockApi(), locale: "vi", search: "group=KNOWLEDGE" });
+    expect(await screen.findByText("Chương → Bài → Kiến thức")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Thêm Chương" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Thêm Bài vào Hàm số" }),
+    ).toBeInTheDocument();
+  });
+
+  it("giữ nguyên tên cấp do người dùng nhập cho cây tùy chỉnh ở locale en và kiểm tra fallback pickName theo useLocale()", async () => {
+    const customTreeGroup: CatalogGroupResponse = {
+      id: "grp-custom-tree",
+      code: "CUSTOM_TREE",
+      nameVi: "Khung tùy chỉnh",
+      nameEn: "   ",
+      description: "Custom tree with custom levels",
+      kind: "TREE",
+      type: "CUSTOM",
+      system: false,
+      status: "ACTIVE",
+      itemCount: 1,
+      levels: ["Khối", "Chủ đề", "Chương"],
+      refGroups: [],
+      createdAt: "2026-11-14T00:00:00Z",
+      updatedAt: "2026-11-14T00:00:00Z",
+      version: 0,
+    };
+    const customRootNode: CatalogTreeNodeResponse = {
+      id: "node-k10",
+      groupId: "grp-custom-tree",
+      code: "K10",
+      nameVi: "Khối 10 mặc định",
+      nameEn: undefined,
+      displayOrder: 0,
+      status: "ACTIVE",
+      effectiveStatus: "ACTIVE",
+      depth: 1,
+      path: "/node-k10/",
+      hasChildren: false,
+      childCount: 0,
+      matched: false,
+      ownRefs: [],
+      inheritedRefs: [],
+      value: 1,
+      version: 0,
+    };
+
+    const api = createTreeMockApi({
+      listGroups: vi.fn(async () =>
+        pageOfGroups([SYSTEM_SUBJECT_GROUP, SYSTEM_KNOWLEDGE_GROUP, customTreeGroup]),
+      ),
+      listTree: vi.fn(async (groupId) =>
+        groupId === "grp-custom-tree" ? [customRootNode] : [KNOWLEDGE_CH1, KNOWLEDGE_CH2],
+      ),
+      getItem: vi.fn(async (id) =>
+        id === "node-k10" ? toTreeItemDetail(customRootNode) : toTreeItemDetail(KNOWLEDGE_CH1),
+      ),
+    });
+
+    renderCatalog({ api, locale: "en", search: "group=CUSTOM_TREE" });
+
+    // Custom levels stay verbatim (including "Chương" when entered on a custom group)
+    expect(await screen.findByText("Khối → Chủ đề → Chương")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Khối" })).toBeInTheDocument();
+
+    // pickName falls back nameEn -> nameVi when nameEn is whitespace or null under locale="en"
+    expect(screen.getByRole("heading", { name: "Khung tùy chỉnh" })).toBeInTheDocument();
+    expect(await screen.findByText("Khối 10 mặc định")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Chủ đề under Khối 10 mặc định" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Khối 10 mặc định"));
+    const detailPane = screen.getByRole("complementary", { name: "Selected node details" });
+    expect(within(detailPane).getByText("Khối")).toBeInTheDocument();
+    expect(within(detailPane).getByRole("button", { name: "Add Chủ đề" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add Chủ đề under Khối 10 mặc định" }));
+    const childDialog = await screen.findByRole("dialog");
+    expect(within(childDialog).getByRole("heading", { name: "Add Chủ đề" })).toBeInTheDocument();
+    expect(within(childDialog).getByText("Khối")).toBeInTheDocument();
   });
 });
