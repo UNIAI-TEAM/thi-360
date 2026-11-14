@@ -37,7 +37,7 @@ import {
 } from "@thi360/ui";
 import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, Lock, TriangleAlert, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useMemo, useState, type CSSProperties } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   catalogQueryKeys,
@@ -48,6 +48,7 @@ import {
   type CreateCatalogItemRequest,
   type UpdateCatalogItemRequest,
 } from "../api";
+import { useCatalogDndAccessibility } from "../dnd-accessibility";
 import { createCombinationFormSchema, type CombinationFormValues } from "../schemas";
 import {
   getCatalogErrorCode,
@@ -333,6 +334,14 @@ function CombinationFormBody({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const resolveDndName = useCallback(
+    (id: string) => {
+      const entry = subjectLookup.get(id);
+      return entry ? pickName(entry, locale) : id;
+    },
+    [subjectLookup, locale],
+  );
+  const dndAccessibility = useCatalogDndAccessibility(resolveDndName);
 
   function handleSubjectDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -662,6 +671,7 @@ function CombinationFormBody({
           <>
             {watchedSubjectIds.length > 0 && (
               <DndContext
+                accessibility={dndAccessibility}
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleSubjectDragEnd}

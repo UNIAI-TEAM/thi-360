@@ -53,8 +53,9 @@ import {
   Upload,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, type CSSProperties } from "react";
+import { useCallback, useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
+import { useCatalogDndAccessibility } from "../dnd-accessibility";
 import { pickName } from "../utils";
 export type StatusFilter = "ALL" | CatalogStatus;
 
@@ -135,6 +136,14 @@ export function SimpleItemsPanel({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const resolveDndName = useCallback(
+    (id: string) => {
+      const item = items.find((candidate) => candidate.id === id);
+      return item ? pickName(item, locale) : id;
+    },
+    [items, locale],
+  );
+  const dndAccessibility = useCatalogDndAccessibility(resolveDndName);
 
   function handleDragEnd(event: DragEndEvent) {
     if (!reorderEnabled) return;
@@ -315,6 +324,7 @@ export function SimpleItemsPanel({
       ) : (
         <div className="overflow-x-auto">
           <DndContext
+            accessibility={dndAccessibility}
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}

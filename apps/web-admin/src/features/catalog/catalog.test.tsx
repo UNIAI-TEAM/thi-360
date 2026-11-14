@@ -24,6 +24,7 @@ import {
   type PageResponseCatalogItemResponse,
 } from "./api";
 import { CatalogView } from "./components/catalog-view";
+import { buildCatalogDndAccessibility, type CatalogDndMessageKey } from "./dnd-accessibility";
 import { resolveTreeDragReorder } from "./components/tree-items-panel";
 import {
   CATALOG_ERROR_CODES,
@@ -646,6 +647,66 @@ describe("resolveImportColumnLabel", () => {
     expect(resolveImportColumnLabel("SUBJECT", { ...base, locale: "en" })).toBe("Subject");
     expect(resolveImportColumnLabel("refItemIds", base)).toBe("Danh mục liên kết");
     expect(resolveImportColumnLabel("OTHER", base)).toBe("OTHER");
+  });
+});
+
+describe("buildCatalogDndAccessibility (VIS-5)", () => {
+  const names = new Map([
+    ["01a1d874-0000-7000-8000-000000000001", "Toán học"],
+    ["01a1d874-0000-7000-8000-000000000002", "Vật lí"],
+  ]);
+  const translate = (key: CatalogDndMessageKey, values?: { name: string; target?: string }) =>
+    viMessages.catalog.dnd[key]
+      .replace("{name}", values?.name ?? "")
+      .replace("{target}", values?.target ?? "");
+  const a11y = buildCatalogDndAccessibility(translate, (id) => names.get(id) ?? id);
+  const [first, second] = [...names.keys()] as [string, string];
+  const active = { id: first } as never;
+  const over = { id: second } as never;
+
+  it("đọc tên mục chứ không đọc UUID, bằng ngôn ngữ giao diện", () => {
+    expect(a11y.announcements.onDragStart?.({ active })).toBe("Đã nhấc mục Toán học.");
+    expect(a11y.announcements.onDragOver?.({ active, over })).toBe(
+      "Mục Toán học đang nằm trên Vật lí.",
+    );
+    expect(a11y.announcements.onDragEnd?.({ active, over })).toBe(
+      "Đã thả mục Toán học lên Vật lí.",
+    );
+    expect(a11y.screenReaderInstructions.draggable).toBe(viMessages.catalog.dnd.instructions);
+  });
+
+  it("dự phòng id khi không tìm thấy tên", () => {
+    expect(a11y.announcements.onDragCancel?.({ active: { id: "x" } as never, over: null })).toBe(
+      "Đã hủy kéo mục x.",
+    );
+  });
+});
+
+describe("CatalogView: hướng dẫn kéo thả được dịch trên mọi DndContext (VIS-5)", () => {
+  const ENGLISH_DEFAULT = /To pick up a draggable item/;
+
+  it("bảng giá trị SIMPLE: vi và en", async () => {
+    const viRender = renderCatalog({ search: "group=SUBJECT" });
+    expect(await screen.findByText("Toán học")).toBeInTheDocument();
+    expect(screen.getByText(viMessages.catalog.dnd.instructions)).toBeInTheDocument();
+    expect(screen.queryByText(ENGLISH_DEFAULT)).not.toBeInTheDocument();
+    viRender.unmount();
+
+    renderCatalog({ locale: "en", search: "group=SUBJECT" });
+    expect(await screen.findByText("Mathematics")).toBeInTheDocument();
+    expect(screen.getByText(en.catalog.dnd.instructions)).toBeInTheDocument();
+    expect(screen.queryByText(ENGLISH_DEFAULT)).not.toBeInTheDocument();
+  });
+
+  it("danh sách môn trong hộp thoại tổ hợp", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa QĐ01" }));
+    await screen.findByRole("dialog");
+    await screen.findByRole("button", { name: "Di chuyển Ngữ văn (VAN) lên" });
+
+    // Bảng + danh sách môn: mỗi DndContext một bản hướng dẫn, không bản nào là mặc định tiếng Anh.
+    expect(screen.getAllByText(viMessages.catalog.dnd.instructions).length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText(ENGLISH_DEFAULT)).not.toBeInTheDocument();
   });
 });
 
@@ -1915,7 +1976,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
 
     // Screen-reader instructions on draggable rows are localized, not dnd-kit defaults
     expect(
-      screen.getByText(viMessages.catalog.tree.dnd.instructions),
+      screen.getByText(viMessages.catalog.dnd.instructions),
     ).toBeInTheDocument();
     expect(screen.queryByText(/To pick up a draggable item/)).not.toBeInTheDocument();
 
@@ -1949,7 +2010,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     await waitFor(() =>
       expect(
         screen.getByText(
-          viMessages.catalog.tree.dnd.draggedOverTarget
+          viMessages.catalog.dnd.draggedOverTarget
             .replace("{name}", "Hàm số")
             .replace("{target}", "Hàm số"),
         ),
@@ -1959,7 +2020,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     await waitFor(() =>
       expect(
         screen.getByText(
-          viMessages.catalog.tree.dnd.draggedOverTarget
+          viMessages.catalog.dnd.draggedOverTarget
             .replace("{name}", "Hàm số")
             .replace("{target}", "Tích phân"),
         ),
@@ -1973,7 +2034,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     );
     expect(
       screen.getByText(
-        viMessages.catalog.tree.dnd.droppedOnTarget
+        viMessages.catalog.dnd.droppedOnTarget
           .replace("{name}", "Hàm số")
           .replace("{target}", "Tích phân"),
       ),
@@ -1985,7 +2046,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     const apiEn = createTreeMockApi();
     const enRender = renderCatalog({ api: apiEn, locale: "en", search: "group=KNOWLEDGE" });
     expect(await screen.findByText("Functions")).toBeInTheDocument();
-    expect(screen.getByText(en.catalog.tree.dnd.instructions)).toBeInTheDocument();
+    expect(screen.getByText(en.catalog.dnd.instructions)).toBeInTheDocument();
     enRender.unmount();
   });
 
