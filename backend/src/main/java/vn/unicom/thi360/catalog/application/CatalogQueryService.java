@@ -14,6 +14,7 @@ import vn.unicom.thi360.catalog.api.CatalogDescendantNodeResponse;
 import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemResponse;
+import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.api.CatalogOptionResponse;
 import vn.unicom.thi360.catalog.api.CatalogTreeNodeResponse;
 import vn.unicom.thi360.catalog.domain.CatalogGroup;
@@ -112,6 +113,9 @@ public class CatalogQueryService {
         Map<UUID, List<CatalogItemRefResponse>> ownRefs = catalogSupportDao.loadOwnRefs(List.of(item.getId()));
         Map<UUID, List<CatalogInheritedRefResponse>> inheritedRefs =
                 catalogSupportDao.loadInheritedRefs(group.getId(), List.of(item.getId()));
+        CombinationVersionResponse combination = group.getKind() == CatalogGroupKind.COMBINATION
+                ? catalogSupportDao.loadCurrentCombinations(List.of(item.getId())).get(item.getId())
+                : null;
 
         return new CatalogItemResponse(
                 item.getId(),
@@ -132,6 +136,7 @@ public class CatalogQueryService {
                 childCounts.getOrDefault(item.getId(), 0L),
                 ownRefs.getOrDefault(item.getId(), List.of()),
                 inheritedRefs.getOrDefault(item.getId(), List.of()),
+                combination,
                 item.getVersion(),
                 item.getCreatedAt(),
                 item.getUpdatedAt());

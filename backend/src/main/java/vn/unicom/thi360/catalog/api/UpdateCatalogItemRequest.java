@@ -34,6 +34,25 @@ public record UpdateCatalogItemRequest(
         String reason,
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "{validation.version.notNull}")
-        Long version
+        Long version,
+        @Schema(description = "ID giá trị kỳ thi mới (chỉ cho nhóm COMBINATION)")
+        UUID examItemId,
+        @Schema(description = "Danh sách ID môn học mới theo thứ tự (chỉ cho nhóm COMBINATION)")
+        List<UUID> subjectItemIds,
+        @Schema(description = "Ghi chú nguồn quy ước mới (chỉ cho nhóm COMBINATION)")
+        @Size(max = 500, message = "{validation.catalog.combination.sourceNote.size}")
+        String sourceNote
 ) {
+    public UpdateCatalogItemRequest(
+            String code,
+            String nameVi,
+            String nameEn,
+            String description,
+            Integer displayOrder,
+            CatalogStatus status,
+            List<UUID> refItemIds,
+            String reason,
+            Long version) {
+        this(code, nameVi, nameEn, description, displayOrder, status, refItemIds, reason, version, null, null, null);
+    }
 }

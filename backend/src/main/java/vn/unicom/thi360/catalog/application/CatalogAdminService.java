@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
@@ -27,9 +28,13 @@ import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.api.CatalogGroupRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogGroupResponse;
 import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
+import vn.unicom.thi360.catalog.api.CombinationSubjectResponse;
+import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemResponse;
 import vn.unicom.thi360.catalog.api.CatalogTreeNodeResponse;
+import vn.unicom.thi360.catalog.api.CatalogUsageResponse;
+import vn.unicom.thi360.catalog.api.CatalogUsagesResponse;
 import vn.unicom.thi360.catalog.api.CreateCatalogGroupRequest;
 import vn.unicom.thi360.catalog.api.CreateCatalogItemRequest;
 import vn.unicom.thi360.catalog.api.MoveCatalogItemRequest;
@@ -42,13 +47,19 @@ import vn.unicom.thi360.catalog.domain.CatalogItem;
 import vn.unicom.thi360.catalog.domain.CatalogItemRef;
 import vn.unicom.thi360.catalog.domain.CatalogItemRefId;
 import vn.unicom.thi360.catalog.domain.CatalogNormalizer;
+import vn.unicom.thi360.catalog.domain.CombinationSubject;
+import vn.unicom.thi360.catalog.domain.CombinationVersion;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRefRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogItemRefRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogItemRepository;
+import vn.unicom.thi360.catalog.infrastructure.CombinationSubjectRepository;
+import vn.unicom.thi360.catalog.infrastructure.CombinationVersionRepository;
 import vn.unicom.thi360.catalog.spi.CatalogGroupKind;
 import vn.unicom.thi360.catalog.spi.CatalogGroupType;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
+import vn.unicom.thi360.catalog.spi.CatalogUsage;
+import vn.unicom.thi360.catalog.spi.CatalogUsageProvider;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
@@ -70,6 +81,8 @@ public class CatalogAdminService {
             Set.of("displayOrder", "code", "value", "nameVi", "nameEn", "status", "createdAt", "updatedAt");
 
     private static final String MODULE = "CATALOG";
+    private static final String EXAM_GROUP_CODE_NORMALIZED = "exam";
+    private static final String SUBJECT_GROUP_CODE_NORMALIZED = "subject";
     private static final long MAX_TREE_NODES = 50_000L;
 
     private static final String ERR_CODE_TAKEN = "CATALOG_CODE_TAKEN";
@@ -86,11 +99,17 @@ public class CatalogAdminService {
     private static final String ERR_REF_GROUP_IN_USE = "CATALOG_REF_GROUP_IN_USE";
     private static final String ERR_REF_GROUP_DEFAULT = "CATALOG_REF_GROUP_DEFAULT";
     private static final String ERR_REF_INVALID = "CATALOG_REF_INVALID";
+    private static final String ERR_ITEM_IN_USE = "CATALOG_ITEM_IN_USE";
+    private static final String ERR_CHANGE_BLOCKED = "CATALOG_CHANGE_BLOCKED";
+    private static final String ERR_CODE_LOCKED = "CATALOG_CODE_LOCKED";
 
     private final CatalogGroupRepository catalogGroupRepository;
     private final CatalogItemRepository catalogItemRepository;
     private final CatalogGroupRefRepository catalogGroupRefRepository;
     private final CatalogItemRefRepository catalogItemRefRepository;
+    private final CombinationVersionRepository combinationVersionRepository;
+    private final CombinationSubjectRepository combinationSubjectRepository;
+    private final List<CatalogUsageProvider> usageProviders;
     private final CatalogSupportDao catalogSupportDao;
     private final CatalogCacheService catalogCacheService;
     private final CurrentUserProvider currentUserProvider;
@@ -105,6 +124,9 @@ public class CatalogAdminService {
             CatalogItemRepository catalogItemRepository,
             CatalogGroupRefRepository catalogGroupRefRepository,
             CatalogItemRefRepository catalogItemRefRepository,
+            CombinationVersionRepository combinationVersionRepository,
+            CombinationSubjectRepository combinationSubjectRepository,
+            List<CatalogUsageProvider> usageProviders,
             CatalogSupportDao catalogSupportDao,
             CatalogCacheService catalogCacheService,
             CurrentUserProvider currentUserProvider,
@@ -117,6 +139,9 @@ public class CatalogAdminService {
         this.catalogItemRepository = catalogItemRepository;
         this.catalogGroupRefRepository = catalogGroupRefRepository;
         this.catalogItemRefRepository = catalogItemRefRepository;
+        this.combinationVersionRepository = combinationVersionRepository;
+        this.combinationSubjectRepository = combinationSubjectRepository;
+        this.usageProviders = usageProviders == null ? List.of() : List.copyOf(usageProviders);
         this.catalogSupportDao = catalogSupportDao;
         this.catalogCacheService = catalogCacheService;
         this.currentUserProvider = currentUserProvider;
@@ -326,11 +351,25 @@ public class CatalogAdminService {
         if (request.code() != null) {
             String trimmed = validateAndTrimCode(request.code());
             String normalized = CatalogNormalizer.normalizeCode(trimmed);
+            if (!trimmed.equals(group.getCode())) {
+                List<CatalogUsageResponse> groupUsages = aggregateGroupUsages(group);
+                if (!groupUsages.isEmpty()) {
+                    throw new CatalogConflictException(ERR_CODE_LOCKED, toUsageFieldErrors(groupUsages));
+                }
+            }
             if (!normalized.equals(group.getCodeNormalized())
                     && catalogGroupRepository.existsByCodeNormalizedAndIdNot(normalized, groupId)) {
                 throw new ConflictException(ERR_CODE_TAKEN);
             }
             newCode = trimmed;
+        }
+        if (deactivating) {
+            List<CatalogUsageResponse> blocking = aggregateGroupUsages(group).stream()
+                    .filter(CatalogUsageResponse::blocking)
+                    .toList();
+            if (!blocking.isEmpty()) {
+                throw new CatalogConflictException(ERR_CHANGE_BLOCKED, toUsageFieldErrors(blocking));
+            }
         }
 
         String newNameVi = null;
@@ -577,6 +616,17 @@ public class CatalogAdminService {
             validateItemRefsForAdd(groupId, refItemIds, Set.of());
         }
 
+        List<UUID> combinationSubjectIds = List.of();
+        if (group.getKind() == CatalogGroupKind.COMBINATION) {
+            combinationSubjectIds = validateCombinationForCreate(
+                    request.examItemId(), request.subjectItemIds());
+        } else if (request.examItemId() != null
+                || (request.subjectItemIds() != null && !request.subjectItemIds().isEmpty())
+                || CatalogNormalizer.trimToNull(request.sourceNote()) != null) {
+            throw new ValidationException(List.of(new FieldError(
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+        }
+
         int maxExistingValue = catalogItemRepository.findMaxValueByGroupId(groupId);
         int nextValue = Math.max(group.getLastValue(), maxExistingValue) + 1;
         catalogGroupRepository.advanceLastValue(groupId, nextValue);
@@ -613,6 +663,17 @@ public class CatalogAdminService {
             catalogItemRefRepository.flush();
         }
 
+        if (group.getKind() == CatalogGroupKind.COMBINATION) {
+            saveCombinationVersion(
+                    item.getId(),
+                    1,
+                    request.examItemId(),
+                    combinationSubjectIds,
+                    request.sourceNote(),
+                    actor.id(),
+                    now);
+        }
+
         CatalogItemResponse response = toItemResponses(group, List.of(item)).getFirst();
         catalogCacheService.evictGroupAndDependents(groupId, group.getCodeNormalized());
         recordAudit(
@@ -621,7 +682,7 @@ public class CatalogAdminService {
                 item.getId(),
                 item.getCode(),
                 null,
-                itemAuditState(item, response.ownRefs()),
+                itemAuditState(item, response.ownRefs(), response.combination()),
                 null);
 
         return response;
@@ -634,7 +695,7 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        CatalogItem item = catalogItemRepository.findById(itemId)
+        CatalogItem item = catalogItemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (!Objects.equals(item.getVersion(), request.version())) {
             throw new VersionConflictException();
@@ -647,13 +708,22 @@ public class CatalogAdminService {
                 : CatalogNormalizer.trimToNull(request.reason());
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
-        Map<String, Object> before = itemAuditState(item, beforeRefs);
+        CombinationVersionResponse beforeCombo = group.getKind() == CatalogGroupKind.COMBINATION
+                ? catalogSupportDao.loadCurrentCombinations(List.of(itemId)).get(itemId)
+                : null;
+        Map<String, Object> before = itemAuditState(item, beforeRefs, beforeCombo);
 
         String newCode = null;
         if (request.code() != null) {
             String trimmed = validateAndTrimCode(request.code());
             if (!trimmed.equals(item.getCode()) && item.isSystem()) {
                 throw new ConflictException(ERR_ITEM_SYSTEM);
+            }
+            if (!trimmed.equals(item.getCode())) {
+                List<CatalogUsageResponse> codeUsages = aggregateItemUsages(group, item, false);
+                if (!codeUsages.isEmpty()) {
+                    throw new CatalogConflictException(ERR_CODE_LOCKED, toUsageFieldErrors(codeUsages));
+                }
             }
             String normalized = CatalogNormalizer.normalizeCode(trimmed);
             if (!normalized.equals(item.getCodeNormalized())
@@ -662,6 +732,14 @@ public class CatalogAdminService {
                 throw new ConflictException(ERR_CODE_TAKEN);
             }
             newCode = trimmed;
+        }
+        if (deactivating) {
+            List<CatalogUsageResponse> blocking = aggregateItemUsages(group, item, true).stream()
+                    .filter(CatalogUsageResponse::blocking)
+                    .toList();
+            if (!blocking.isEmpty()) {
+                throw new CatalogConflictException(ERR_CHANGE_BLOCKED, toUsageFieldErrors(blocking));
+            }
         }
 
         String newNameVi = null;
@@ -699,6 +777,56 @@ public class CatalogAdminService {
             }
         }
 
+        boolean combinationVersionCreated = false;
+        CombinationVersion newCombinationVersion = null;
+        List<UUID> newCombinationSubjects = List.of();
+        if (group.getKind() == CatalogGroupKind.COMBINATION) {
+            CombinationUpdatePlan plan = prepareCombinationUpdate(
+                    group,
+                    item,
+                    request.examItemId(),
+                    request.subjectItemIds(),
+                    request.sourceNote());
+            if (plan.createNewVersion()) {
+                plan.currentVersion().markSuperseded();
+                combinationVersionRepository.saveAndFlush(plan.currentVersion());
+                newCombinationVersion = saveCombinationVersion(
+                        itemId,
+                        plan.currentVersion().getVersionNo() + 1,
+                        plan.targetExamItemId(),
+                        plan.targetSubjectIds(),
+                        plan.targetSourceNote(),
+                        actor.id(),
+                        now);
+                combinationVersionCreated = true;
+                newCombinationSubjects = plan.targetSubjectIds();
+            } else if (plan.changed()) {
+                if (plan.currentVersion() == null) {
+                    newCombinationVersion = saveCombinationVersion(
+                            itemId,
+                            1,
+                            plan.targetExamItemId(),
+                            plan.targetSubjectIds(),
+                            plan.targetSourceNote(),
+                            actor.id(),
+                            now);
+                } else {
+                    plan.currentVersion().replaceInPlace(plan.targetExamItemId(), plan.targetSourceNote());
+                    combinationVersionRepository.saveAndFlush(plan.currentVersion());
+                    if (plan.subjectsChanged()) {
+                        combinationSubjectRepository.deleteAllByIdCombinationVersionId(plan.currentVersion().getId());
+                        combinationSubjectRepository.flush();
+                        saveCombinationSubjects(plan.currentVersion().getId(), plan.targetSubjectIds());
+                    }
+                }
+            }
+        } else if (request.examItemId() != null
+                || request.subjectItemIds() != null
+                || request.sourceNote() != null) {
+            throw new ValidationException(List.of(new FieldError(
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+        }
+
         item.updateDetails(
                 newCode,
                 newNameVi,
@@ -720,9 +848,22 @@ public class CatalogAdminService {
                 item.getId(),
                 item.getCode(),
                 before,
-                itemAuditState(item, response.ownRefs()),
+                itemAuditState(item, response.ownRefs(), response.combination()),
                 trimmedReason);
-
+        if (combinationVersionCreated && newCombinationVersion != null) {
+            recordAudit(
+                    "COMBINATION_VERSION_CREATED",
+                    "COMBINATION_VERSION",
+                    newCombinationVersion.getId(),
+                    item.getCode() + ":v" + newCombinationVersion.getVersionNo(),
+                    null,
+                    Map.of(
+                            "itemId", item.getId().toString(),
+                            "versionNo", newCombinationVersion.getVersionNo(),
+                            "examItemId", newCombinationVersion.getExamItemId().toString(),
+                            "subjectItemIds", newCombinationSubjects.stream().map(UUID::toString).toList()),
+                    trimmedReason);
+        }
         return response;
     }
 
@@ -842,7 +983,7 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         CatalogGroup group = catalogGroupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        CatalogItem item = catalogItemRepository.findById(itemId)
+        CatalogItem item = catalogItemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
 
         if (item.isSystem()) {
@@ -851,11 +992,18 @@ public class CatalogAdminService {
         if (catalogItemRepository.existsByParentId(itemId)) {
             throw new ConflictException(ERR_NODE_HAS_CHILDREN);
         }
+        List<CatalogUsageResponse> deleteUsages = aggregateItemUsages(group, item, false);
+        if (!deleteUsages.isEmpty()) {
+            throw new CatalogConflictException(ERR_ITEM_IN_USE, toUsageFieldErrors(deleteUsages));
+        }
         String trimmedReason = requireReason(reason, "validation.catalog.item.deleteReason.required");
 
         List<CatalogItemRefResponse> beforeRefs =
                 catalogSupportDao.loadOwnRefs(List.of(itemId)).getOrDefault(itemId, List.of());
-        Map<String, Object> before = itemAuditState(item, beforeRefs);
+        CombinationVersionResponse beforeCombo = group.getKind() == CatalogGroupKind.COMBINATION
+                ? catalogSupportDao.loadCurrentCombinations(List.of(itemId)).get(itemId)
+                : null;
+        Map<String, Object> before = itemAuditState(item, beforeRefs, beforeCombo);
 
         catalogItemRefRepository.deleteAllByIdItemId(itemId);
         catalogItemRepository.delete(item);
@@ -1077,6 +1225,11 @@ public class CatalogAdminService {
                 catalogSupportDao.findInactiveEffectiveItemIds(group.getId(), List.of(newParentId));
         if (newParent.getStatus() != CatalogStatus.ACTIVE || inactiveParent.contains(newParentId)) {
             throw new ConflictException(ERR_PARENT_INACTIVE);
+        }
+
+        List<CatalogUsageResponse> branchUsages = aggregateItemUsages(group, item, true);
+        if (!branchUsages.isEmpty()) {
+            throw new CatalogConflictException(ERR_ITEM_IN_USE, toUsageFieldErrors(branchUsages));
         }
 
         String oldPrefix = item.getPath();
@@ -1426,6 +1579,10 @@ public class CatalogAdminService {
         Map<UUID, List<CatalogItemRefResponse>> ownRefs = catalogSupportDao.loadOwnRefs(itemIds);
         Map<UUID, List<CatalogInheritedRefResponse>> inheritedRefs =
                 catalogSupportDao.loadInheritedRefs(group.getId(), itemIds);
+        Map<UUID, CombinationVersionResponse> combinations =
+                group.getKind() == CatalogGroupKind.COMBINATION
+                        ? catalogSupportDao.loadCurrentCombinations(itemIds)
+                        : Map.of();
 
         return items.stream()
                 .map(item -> {
@@ -1451,6 +1608,7 @@ public class CatalogAdminService {
                             childCounts.getOrDefault(item.getId(), 0L),
                             ownRefs.getOrDefault(item.getId(), List.of()),
                             inheritedRefs.getOrDefault(item.getId(), List.of()),
+                            combinations.get(item.getId()),
                             item.getVersion(),
                             item.getCreatedAt(),
                             item.getUpdatedAt());
@@ -1579,7 +1737,7 @@ public class CatalogAdminService {
     }
 
     private static Map<String, Object> itemAuditState(
-            CatalogItem item, List<CatalogItemRefResponse> ownRefs) {
+            CatalogItem item, List<CatalogItemRefResponse> ownRefs, CombinationVersionResponse combination) {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("groupId", item.getGroupId().toString());
         state.put("code", item.getCode());
@@ -1594,6 +1752,19 @@ public class CatalogAdminService {
         state.put("depth", item.getDepth());
         state.put("path", item.getPath());
         state.put("ownRefItemIds", toRefIds(ownRefs));
+        if (combination != null) {
+            state.put("versionId", combination.id().toString());
+            state.put("versionNo", combination.versionNo());
+            state.put("examItemId", combination.examItemId().toString());
+            state.put("examCode", combination.examCode());
+            state.put("subjectItemIds", combination.subjects().stream()
+                    .map(s -> s.subjectItemId().toString())
+                    .toList());
+            state.put("subjectCodes", combination.subjects().stream()
+                    .map(CombinationSubjectResponse::code)
+                    .toList());
+            state.put("sourceNote", combination.sourceNote());
+        }
         return state;
     }
 
@@ -1692,6 +1863,344 @@ public class CatalogAdminService {
             short depth,
             String path,
             long version
+    ) {
+    }
+
+    @Transactional(readOnly = true)
+    public List<CombinationVersionResponse> listCombinationVersions(UUID itemId) {
+        CatalogItem item = catalogItemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        if (group.getKind() != CatalogGroupKind.COMBINATION) {
+            throw new ValidationException(List.of(
+                    new FieldError("id", "NOT_COMBINATION", "Giá trị này không thuộc nhóm mã tổ hợp")));
+        }
+        return catalogSupportDao.loadCombinationVersionsByItemId(itemId);
+    }
+
+    @Transactional(readOnly = true)
+    public CombinationVersionResponse getCombinationVersion(UUID versionId) {
+        CombinationVersionResponse version = catalogSupportDao.loadCombinationVersionById(versionId);
+        if (version == null) {
+            throw new NotFoundException("NOT_FOUND", null);
+        }
+        return version;
+    }
+
+    @Transactional(readOnly = true)
+    public CatalogUsagesResponse getItemUsages(UUID itemId) {
+        CatalogItem item = catalogItemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        CatalogGroup group = catalogGroupRepository.findById(item.getGroupId())
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        List<CatalogUsageResponse> usages = aggregateItemUsages(group, item, true);
+        return toUsagesResponse(item.getId(), item.getCode(), usages);
+    }
+
+    @Transactional(readOnly = true)
+    public CatalogUsagesResponse getGroupUsages(UUID groupId) {
+        CatalogGroup group = catalogGroupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        List<CatalogUsageResponse> usages = aggregateGroupUsages(group);
+        return toUsagesResponse(group.getId(), group.getCode(), usages);
+    }
+
+    private List<CatalogUsageResponse> aggregateGroupUsages(CatalogGroup group) {
+        List<UUID> itemIds = jdbcTemplate.query(
+                "SELECT id FROM catalog.catalog_item WHERE group_id = ?",
+                (rs, rowNum) -> rs.getObject("id", UUID.class),
+                group.getId());
+        return aggregateUsages(group.getCode(), itemIds);
+    }
+
+    private List<CatalogUsageResponse> aggregateItemUsages(
+            CatalogGroup group, CatalogItem item, boolean includeSubtree) {
+        List<UUID> targetIds;
+        if (includeSubtree && group.getKind() == CatalogGroupKind.TREE) {
+            targetIds = jdbcTemplate.query(
+                    """
+                    SELECT id
+                    FROM catalog.catalog_item
+                    WHERE group_id = ?
+                      AND path LIKE ? ESCAPE '\\'
+                    """,
+                    (rs, rowNum) -> rs.getObject("id", UUID.class),
+                    group.getId(),
+                    escapeLike(item.getPath()) + "%");
+        } else {
+            targetIds = List.of(item.getId());
+        }
+        return aggregateUsages(group.getCode(), targetIds);
+    }
+
+    private List<CatalogUsageResponse> aggregateUsages(String groupCode, List<UUID> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return List.of();
+        }
+        record Key(String source, String objectType) {}
+        final class Acc {
+            final String source;
+            final String objectType;
+            long count;
+            boolean blocking;
+            final Set<String> labels = new LinkedHashSet<>();
+
+            Acc(String source, String objectType) {
+                this.source = source;
+                this.objectType = objectType;
+            }
+        }
+        Map<Key, Acc> accMap = new LinkedHashMap<>();
+        for (UUID id : itemIds) {
+            for (CatalogUsageProvider provider : usageProviders) {
+                List<CatalogUsage> list = provider.findUsages(groupCode, id);
+                if (list == null) {
+                    continue;
+                }
+                for (CatalogUsage u : list) {
+                    if (u == null || u.count() <= 0L) {
+                        continue;
+                    }
+                    String src = u.source() != null && !u.source().isBlank() ? u.source() : provider.source();
+                    String obj = u.objectType() != null && !u.objectType().isBlank() ? u.objectType() : "REFERENCE";
+                    Key key = new Key(src, obj);
+                    Acc acc = accMap.computeIfAbsent(key, ignored -> new Acc(src, obj));
+                    acc.count += u.count();
+                    if (u.blocking()) {
+                        acc.blocking = true;
+                    }
+                    for (String label : u.sampleLabels()) {
+                        if (label != null && !label.isBlank() && acc.labels.size() < 10) {
+                            acc.labels.add(label);
+                        }
+                    }
+                }
+            }
+        }
+        return accMap.values().stream()
+                .map(a -> new CatalogUsageResponse(a.source, a.objectType, a.count, a.blocking, List.copyOf(a.labels)))
+                .toList();
+    }
+
+    private static CatalogUsagesResponse toUsagesResponse(
+            UUID targetId, String targetCode, List<CatalogUsageResponse> usages) {
+        long total = usages.stream().mapToLong(CatalogUsageResponse::count).sum();
+        boolean blocking = usages.stream().anyMatch(CatalogUsageResponse::blocking);
+        return new CatalogUsagesResponse(targetId, targetCode, total, blocking, usages);
+    }
+
+    private static List<FieldError> toUsageFieldErrors(List<CatalogUsageResponse> usages) {
+        return usages.stream()
+                .map(u -> {
+                    StringBuilder msg = new StringBuilder();
+                    msg.append(u.source()).append(" (").append(u.count()).append(")");
+                    if (!u.sampleLabels().isEmpty()) {
+                        msg.append(": ").append(String.join(", ", u.sampleLabels()));
+                    }
+                    return new FieldError(
+                            u.objectType(),
+                            u.blocking() ? "BLOCKING" : "IN_USE",
+                            msg.toString());
+                })
+                .toList();
+    }
+
+    private List<UUID> validateCombinationForCreate(UUID examItemId, List<UUID> rawSubjectIds) {
+        if (examItemId == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+        }
+        List<UUID> subjectIds = validateSubjectIdsList(rawSubjectIds);
+        TreeSet<UUID> toLock = new TreeSet<>();
+        toLock.add(examItemId);
+        toLock.addAll(subjectIds);
+        Map<UUID, CatalogItem> lockedItems = lockItemsInOrder(toLock);
+
+        validateExamItem(examItemId, true, lockedItems);
+        validateSubjectItems(subjectIds, Set.of(), lockedItems);
+        return subjectIds;
+    }
+
+    private CombinationUpdatePlan prepareCombinationUpdate(
+            CatalogGroup group,
+            CatalogItem item,
+            UUID requestedExamId,
+            List<UUID> requestedSubjectIds,
+            String requestedSourceNote) {
+        CombinationVersion current = combinationVersionRepository.findByItemIdAndCurrentTrue(item.getId())
+                .orElse(null);
+        List<UUID> currentSubjectIds = current == null
+                ? List.of()
+                : combinationSubjectRepository.findByIdCombinationVersionIdOrderByPositionAsc(current.getId())
+                        .stream()
+                        .map(CombinationSubject::getSubjectItemId)
+                        .toList();
+
+        UUID targetExamId = requestedExamId != null
+                ? requestedExamId
+                : (current != null ? current.getExamItemId() : null);
+        if (targetExamId == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+        }
+        boolean examChanged = current == null || !targetExamId.equals(current.getExamItemId());
+
+        List<UUID> targetSubjectIds;
+        boolean subjectsChanged;
+        if (requestedSubjectIds != null) {
+            targetSubjectIds = validateSubjectIdsList(requestedSubjectIds);
+            subjectsChanged = current == null || !targetSubjectIds.equals(currentSubjectIds);
+        } else {
+            if (currentSubjectIds.isEmpty()) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+            }
+            targetSubjectIds = currentSubjectIds;
+            subjectsChanged = false;
+        }
+
+        TreeSet<UUID> toLock = new TreeSet<>();
+        toLock.add(targetExamId);
+        toLock.addAll(targetSubjectIds);
+        Map<UUID, CatalogItem> lockedItems = lockItemsInOrder(toLock);
+
+        validateExamItem(targetExamId, examChanged, lockedItems);
+        if (requestedSubjectIds != null) {
+            validateSubjectItems(targetSubjectIds, new HashSet<>(currentSubjectIds), lockedItems);
+        }
+
+        String targetSourceNote = requestedSourceNote != null
+                ? CatalogNormalizer.trimToNull(requestedSourceNote)
+                : (current != null ? current.getSourceNote() : null);
+        boolean sourceNoteChanged = current != null && !Objects.equals(targetSourceNote, current.getSourceNote());
+
+        boolean createNewVersion = current != null
+                && (subjectsChanged || examChanged)
+                && isCombinationVersionReferenced(item.getId(), current.getId());
+
+        boolean changed = current == null || subjectsChanged || examChanged || sourceNoteChanged;
+        return new CombinationUpdatePlan(
+                current,
+                targetExamId,
+                targetSubjectIds,
+                targetSourceNote,
+                subjectsChanged,
+                changed,
+                createNewVersion);
+    }
+
+    private Map<UUID, CatalogItem> lockItemsInOrder(TreeSet<UUID> sortedIds) {
+        Map<UUID, CatalogItem> locked = new LinkedHashMap<>();
+        for (UUID id : sortedIds) {
+            catalogItemRepository.findByIdForUpdate(id).ifPresent(item -> locked.put(id, item));
+        }
+        return locked;
+    }
+
+    private void validateExamItem(UUID examItemId, boolean requireActive, Map<UUID, CatalogItem> lockedItems) {
+        CatalogGroup examGroup = catalogGroupRepository.findByCodeNormalized(EXAM_GROUP_CODE_NORMALIZED)
+                .orElseThrow(() -> new ValidationException(List.of(
+                        new FieldError("examItemId", "INVALID_EXAM", "Không tìm thấy nhóm danh mục kỳ thi"))));
+        CatalogItem examItem = lockedItems.get(examItemId);
+        if (examItem == null || !examItem.getGroupId().equals(examGroup.getId())) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "INVALID_EXAM", "Kỳ thi không hợp lệ hoặc không thuộc nhóm EXAM")));
+        }
+        if (requireActive && (examGroup.getStatus() != CatalogStatus.ACTIVE || examItem.getStatus() != CatalogStatus.ACTIVE)) {
+            throw new ValidationException(List.of(
+                    new FieldError("examItemId", "INACTIVE_EXAM", "Kỳ thi đang ngừng sử dụng")));
+        }
+    }
+
+    private List<UUID> validateSubjectIdsList(List<UUID> rawSubjectIds) {
+        if (rawSubjectIds == null || rawSubjectIds.isEmpty()) {
+            throw new ValidationException(List.of(
+                    new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+        }
+        List<UUID> result = new ArrayList<>(rawSubjectIds.size());
+        Set<UUID> seen = new LinkedHashSet<>();
+        for (UUID subjectId : rawSubjectIds) {
+            if (subjectId == null) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INVALID", "Danh sách môn học chứa ID trống")));
+            }
+            if (!seen.add(subjectId)) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "DUPLICATE", "Danh sách môn học không được trùng lặp")));
+            }
+            result.add(subjectId);
+        }
+        return List.copyOf(result);
+    }
+
+    private void validateSubjectItems(
+            List<UUID> subjectIds, Set<UUID> existingSubjectIds, Map<UUID, CatalogItem> lockedItems) {
+        CatalogGroup subjectGroup = catalogGroupRepository.findByCodeNormalized(SUBJECT_GROUP_CODE_NORMALIZED)
+                .orElseThrow(() -> new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Không tìm thấy nhóm danh mục môn học"))));
+        for (UUID subjectId : subjectIds) {
+            CatalogItem subject = lockedItems.get(subjectId);
+            if (subject == null || !subject.getGroupId().equals(subjectGroup.getId())) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Môn học không hợp lệ hoặc không thuộc nhóm SUBJECT")));
+            }
+            boolean isNewlyAdded = !existingSubjectIds.contains(subjectId);
+            if (isNewlyAdded && (subjectGroup.getStatus() != CatalogStatus.ACTIVE || subject.getStatus() != CatalogStatus.ACTIVE)) {
+                throw new ValidationException(List.of(
+                        new FieldError("subjectItemIds", "INACTIVE_SUBJECT", "Môn học đang ngừng sử dụng")));
+            }
+        }
+    }
+
+    private CombinationVersion saveCombinationVersion(
+            UUID itemId,
+            int versionNo,
+            UUID examItemId,
+            List<UUID> subjectIds,
+            String sourceNote,
+            UUID actorId,
+            Instant now) {
+        CombinationVersion version = new CombinationVersion(
+                Ids.newId(),
+                itemId,
+                versionNo,
+                examItemId,
+                sourceNote,
+                true,
+                actorId,
+                now);
+        version = combinationVersionRepository.saveAndFlush(version);
+        saveCombinationSubjects(version.getId(), subjectIds);
+        return version;
+    }
+
+    private void saveCombinationSubjects(UUID combinationVersionId, List<UUID> subjectIds) {
+        List<CombinationSubject> rows = new ArrayList<>(subjectIds.size());
+        for (int i = 0; i < subjectIds.size(); i++) {
+            rows.add(new CombinationSubject(combinationVersionId, subjectIds.get(i), i));
+        }
+        combinationSubjectRepository.saveAll(rows);
+        combinationSubjectRepository.flush();
+    }
+
+    private boolean isCombinationVersionReferenced(UUID itemId, UUID versionId) {
+        for (CatalogUsageProvider provider : usageProviders) {
+            if (provider.isCombinationVersionReferenced(itemId, versionId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private record CombinationUpdatePlan(
+            CombinationVersion currentVersion,
+            UUID targetExamItemId,
+            List<UUID> targetSubjectIds,
+            String targetSourceNote,
+            boolean subjectsChanged,
+            boolean changed,
+            boolean createNewVersion
     ) {
     }
 }

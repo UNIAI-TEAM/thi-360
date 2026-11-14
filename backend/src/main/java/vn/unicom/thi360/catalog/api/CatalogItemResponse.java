@@ -44,6 +44,8 @@ public record CatalogItemResponse(
         List<CatalogItemRefResponse> ownRefs,
         @Schema(description = "Danh sách liên kết kế thừa từ tổ tiên", requiredMode = Schema.RequiredMode.REQUIRED)
         List<CatalogInheritedRefResponse> inheritedRefs,
+        @Schema(description = "Thông tin phiên bản hiện hành của mã tổ hợp (chỉ có với nhóm COMBINATION)")
+        CombinationVersionResponse combination,
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
         Long version,
         @Schema(description = "Thời điểm tạo", requiredMode = Schema.RequiredMode.REQUIRED)

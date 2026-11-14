@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.LocaleResolver;
 import vn.unicom.thi360.catalog.application.CatalogAdminService;
+import vn.unicom.thi360.catalog.application.CatalogExcelService;
 import vn.unicom.thi360.shared.api.GlobalExceptionHandler;
 import vn.unicom.thi360.shared.web.LocaleConfig;
 
@@ -42,7 +43,8 @@ class CatalogExceptionHandlerTest {
                 new CatalogExceptionHandler(messageSource, globalExceptionHandler, localeResolver);
 
         catalogAdminService = mock(CatalogAdminService.class);
-        mockMvc = MockMvcBuilders.standaloneSetup(new AdminCatalogController(catalogAdminService))
+        mockMvc = MockMvcBuilders.standaloneSetup(
+                        new AdminCatalogController(catalogAdminService, mock(CatalogExcelService.class)))
                 .setControllerAdvice(catalogExceptionHandler, globalExceptionHandler)
                 .build();
     }

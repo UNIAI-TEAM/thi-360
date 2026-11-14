@@ -32,6 +32,24 @@ public record CreateCatalogItemRequest(
         @Schema(description = "ID nút cha (chỉ dùng cho nhóm TREE)")
         UUID parentId,
         @Schema(description = "Danh sách ID giá trị liên kết riêng của nút (chỉ dùng cho nhóm TREE)")
-        List<UUID> refItemIds
+        List<UUID> refItemIds,
+        @Schema(description = "ID giá trị kỳ thi (bắt buộc cho nhóm COMBINATION)")
+        UUID examItemId,
+        @Schema(description = "Danh sách ID môn học theo thứ tự (bắt buộc cho nhóm COMBINATION, không trùng)")
+        List<UUID> subjectItemIds,
+        @Schema(description = "Ghi chú nguồn quy ước (tùy chọn cho nhóm COMBINATION)")
+        @Size(max = 500, message = "Nguồn quy ước tối đa 500 ký tự")
+        String sourceNote
 ) {
+    public CreateCatalogItemRequest(
+            String code,
+            String nameVi,
+            String nameEn,
+            String description,
+            Integer displayOrder,
+            CatalogStatus status,
+            UUID parentId,
+            List<UUID> refItemIds) {
+        this(code, nameVi, nameEn, description, displayOrder, status, parentId, refItemIds, null, null, null);
+    }
 }
