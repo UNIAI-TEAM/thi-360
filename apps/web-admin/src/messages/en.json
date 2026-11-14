@@ -214,6 +214,7 @@
       "emptyFilteredDescription": "No classes match the current filters.",
       "emptyFilteredTitle": "No matching classes",
       "emptyTitle": "No classes yet",
+      "errorCount": "Class count unavailable",
       "errorDescription": "Could not load classes. Please try again.",
       "errorTitle": "Could not load list",
       "filteredCount": "{count, number} classes",

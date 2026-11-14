@@ -214,6 +214,7 @@
       "emptyFilteredDescription": "Không có lớp học nào khớp với bộ lọc hiện tại.",
       "emptyFilteredTitle": "Không tìm thấy lớp học",
       "emptyTitle": "Chưa có lớp học",
+      "errorCount": "Chưa xác định số lớp",
       "errorDescription": "Không tải được danh sách lớp học. Hãy thử lại.",
       "errorTitle": "Không tải được danh sách",
       "filteredCount": "{count, number} lớp",

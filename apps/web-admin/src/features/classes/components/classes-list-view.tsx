@@ -32,6 +32,7 @@ import {
   PowerOff,
   Search,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -424,7 +425,7 @@ function ClassesListContent({
             {classesQuery.isLoading
               ? t("list.loadingCount")
               : classesQuery.isError
-                ? t("list.errorTitle")
+                ? t("list.errorCount")
                 : t("list.filteredCount", { count: totalItems })}
           </p>
         </div>
@@ -446,7 +447,7 @@ function ClassesListContent({
           error={
             classesQuery.isError ? (
               <EmptyState
-                icon={<GraduationCap />}
+                icon={<TriangleAlert />}
                 title={t("list.errorTitle")}
                 description={t("list.errorDescription")}
                 action={

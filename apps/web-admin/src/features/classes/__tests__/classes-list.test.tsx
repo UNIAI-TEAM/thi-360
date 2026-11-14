@@ -159,7 +159,8 @@ describe("ClassesListView", () => {
     renderListView(makeDeps({ listClasses: listMock }));
 
     const retry = await screen.findByRole("button", { name: "Thử lại" });
-    expect(screen.getAllByText("Không tải được danh sách").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Không tải được danh sách")).toHaveLength(1);
+    expect(screen.getByText("Chưa xác định số lớp")).toBeInTheDocument();
 
     await userEvent.click(retry);
     expect(await screen.findByText("LOP-A")).toBeInTheDocument();

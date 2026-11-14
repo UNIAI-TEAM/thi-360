@@ -25,6 +25,7 @@ import {
   PowerOff,
   Search,
   Trash2,
+  TriangleAlert,
   UserMinus,
   Users,
 } from "lucide-react";
@@ -313,7 +314,7 @@ function ClassDetailContent({
         </Link>
         <Card>
           <EmptyState
-            icon={<GraduationCap />}
+            icon={isNotFound ? <GraduationCap /> : <TriangleAlert />}
             title={isNotFound ? t("detail.notFoundTitle") : t("detail.errorTitle")}
             description={isNotFound ? t("detail.notFoundDescription") : t("detail.errorDescription")}
             action={
