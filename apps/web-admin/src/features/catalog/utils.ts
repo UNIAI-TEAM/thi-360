@@ -2,6 +2,8 @@ import type { FieldError } from "@thi360/api-client";
 import { getErrorStatus } from "@/lib/api/query-client";
 
 export const CATALOG_CODE_REGEX = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,49}$/;
+export const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+
 
 export const BEHAVIOR_WARNING_GROUP_CODES: Record<string, true> = {
   QUESTION_FORMAT: true,
@@ -147,4 +149,37 @@ export function resolveCatalogErrorMessage(
   if (status === 429) return translateCode("RATE_LIMITED");
   if (status !== null && status >= 500) return translateCode("INTERNAL_ERROR");
   return translateCode("UNKNOWN_ERROR");
+}
+
+export function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function escapeCsvCell(value: string): string {
+  const normalized = value.replace(/\r?\n/g, " ");
+  if (/[",]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, '""')}"`;
+  }
+  return normalized;
+}
+
+export function buildImportErrorCsv(
+  headers: { row: string; column: string; code: string; message: string },
+  errors: ReadonlyArray<{ rowNo: number; column: string; code: string; message: string }>,
+): Blob {
+  const lines = [
+    [headers.row, headers.column, headers.code, headers.message].map(escapeCsvCell).join(","),
+    ...errors.map((err) =>
+      [String(err.rowNo), err.column, err.code, err.message].map(escapeCsvCell).join(","),
+    ),
+  ];
+  // UTF-8 BOM so Microsoft Excel preserves Vietnamese diacritics
+  return new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
 }

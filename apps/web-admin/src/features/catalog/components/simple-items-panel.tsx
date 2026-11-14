@@ -39,6 +39,7 @@ import {
   ArrowDown,
   ArrowUp,
   Ban,
+  Download,
   Eye,
   GripVertical,
   List,
@@ -49,6 +50,7 @@ import {
   Search,
   Trash2,
   TriangleAlert,
+  Upload,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, type CSSProperties } from "react";
@@ -68,6 +70,7 @@ export type SimpleItemsPanelProps = {
   loading: boolean;
   error: boolean;
   reordering: boolean;
+  exporting?: boolean;
   canModify: boolean;
   onSearchChange: (q: string) => void;
   onStatusFilterChange: (status: StatusFilter) => void;
@@ -83,6 +86,8 @@ export type SimpleItemsPanelProps = {
   onStopItem: (item: CatalogItemResponse) => void;
   onDeleteItem: (item: CatalogItemResponse) => void;
   onReorder: (nextItems: CatalogItemResponse[]) => void;
+  onExportExcel: () => void;
+  onImportExcel: () => void;
 };
 export function SimpleItemsPanel({
   group,
@@ -96,6 +101,7 @@ export function SimpleItemsPanel({
   loading,
   error,
   reordering,
+  exporting = false,
   canModify,
   onSearchChange,
   onStatusFilterChange,
@@ -111,6 +117,8 @@ export function SimpleItemsPanel({
   onStopItem,
   onDeleteItem,
   onReorder,
+  onExportExcel,
+  onImportExcel,
 }: SimpleItemsPanelProps) {
   const t = useTranslations("catalog");
   const commonT = useTranslations("common");
@@ -218,6 +226,29 @@ export function SimpleItemsPanel({
               </DropdownMenu>
             )
           )}
+
+          <Button variant="secondary" loading={exporting} onClick={onExportExcel}>
+            <Download aria-hidden className="mr-1.5 size-4" />
+            {t("exportExcel")}
+          </Button>
+
+          {canModify &&
+            !isCombinationGroup &&
+            (group.status === "INACTIVE" ? (
+              <Tooltip content={t("inactiveGroupCreateHint")}>
+                <span>
+                  <Button variant="secondary" disabled>
+                    <Upload aria-hidden className="mr-1.5 size-4" />
+                    {t("importExcel")}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button variant="secondary" onClick={onImportExcel}>
+                <Upload aria-hidden className="mr-1.5 size-4" />
+                {t("importExcel")}
+              </Button>
+            ))}
 
           {canModify &&
             (group.status === "INACTIVE" ? (

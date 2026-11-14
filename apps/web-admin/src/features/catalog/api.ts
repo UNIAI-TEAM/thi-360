@@ -21,6 +21,13 @@ export type CombinationSubjectResponse = components["schemas"]["CombinationSubje
 export type CombinationVersionResponse = components["schemas"]["CombinationVersionResponse"];
 export type AuditEventResponse = components["schemas"]["AuditEventResponse"];
 export type PageResponseAuditEventResponse = components["schemas"]["PageResponseAuditEventResponse"];
+export type CatalogImportPreviewResponse = components["schemas"]["CatalogImportPreviewResponse"];
+export type CatalogImportResultResponse = components["schemas"]["CatalogImportResultResponse"];
+export type CatalogImportRowError = components["schemas"]["CatalogImportRowError"];
+export type ExportCatalogItemsResult = {
+  blob: Blob;
+  filename: string;
+};
 export type PageResponseCatalogGroupResponse =
   components["schemas"]["PageResponseCatalogGroupResponse"];
 export type PageResponseCatalogItemResponse =
@@ -138,6 +145,13 @@ export interface CatalogApi {
     itemId: string,
     query?: Omit<ListAuditEventsQuery, "targetType" | "targetId">,
   ) => Promise<PageResponseAuditEventResponse>;
+  exportItems: (groupId: string) => Promise<ExportCatalogItemsResult>;
+  previewImport: (groupId: string, file: File) => Promise<CatalogImportPreviewResponse>;
+  confirmImport: (
+    groupId: string,
+    previewId: string,
+    idempotencyKey?: string,
+  ) => Promise<CatalogImportResultResponse>;
 }
 export async function listCatalogGroups(
   query?: ListCatalogGroupsQuery,
@@ -429,6 +443,76 @@ export async function getCatalogDescendants(
   return data;
 }
 
+function parseDispositionFilename(header: string | null): string | null {
+  if (!header) return null;
+  const utf8Match = /filename\*=UTF-8''([^;\n]+)/i.exec(header);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim().replace(/^"|"$/g, ""));
+    } catch {
+      return utf8Match[1].trim().replace(/^"|"$/g, "");
+    }
+  }
+  const plainMatch = /filename="?([^";\n]+)"?/i.exec(header);
+  return plainMatch?.[1]?.trim() ?? null;
+}
+
+export async function exportCatalogItems(groupId: string): Promise<ExportCatalogItemsResult> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET(
+    "/api/v1/admin/catalog/groups/{id}/items/export",
+    {
+      params: { path: { id: groupId } },
+      parseAs: "blob",
+    },
+  );
+  if (!response.ok || !(data instanceof Blob)) {
+    throw toCatalogApiError(response.status, error);
+  }
+  const filename =
+    parseDispositionFilename(response.headers.get("content-disposition")) ??
+    `catalog-${groupId}.xlsx`;
+  return { blob: data, filename };
+}
+
+export async function previewCatalogImport(
+  groupId: string,
+  file: File,
+): Promise<CatalogImportPreviewResponse> {
+  const client = createBrowserApiClient();
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data, error, response } = await client.POST(
+    "/api/v1/admin/catalog/groups/{id}/items/import",
+    {
+      params: { path: { id: groupId } },
+      body: formData as unknown as { file: string },
+      bodySerializer: (body) => body as unknown as BodyInit,
+    },
+  );
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function confirmCatalogImport(
+  groupId: string,
+  previewId: string,
+  idempotencyKey?: string,
+): Promise<CatalogImportResultResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST(
+    "/api/v1/admin/catalog/groups/{id}/items/import/{previewId}/confirm",
+    {
+      params: {
+        path: { id: groupId, previewId },
+        ...(idempotencyKey ? { header: { "Idempotency-Key": idempotencyKey } } : {}),
+      },
+    },
+  );
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
 export const defaultCatalogApi: CatalogApi = {
   listGroups: listCatalogGroups,
   getGroup: getCatalogGroup,
@@ -454,4 +538,7 @@ export const defaultCatalogApi: CatalogApi = {
   listItemVersions: listCatalogItemVersions,
   getCombinationVersion: getCombinationVersion,
   listItemAuditEvents: listCatalogItemAuditEvents,
+  exportItems: exportCatalogItems,
+  previewImport: previewCatalogImport,
+  confirmImport: confirmCatalogImport,
 };

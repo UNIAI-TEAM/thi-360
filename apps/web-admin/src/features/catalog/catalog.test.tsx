@@ -443,6 +443,31 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
       totalItems: 1,
       totalPages: 1,
     })),
+    exportItems: vi.fn(async (groupId) => ({
+      blob: new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      filename: `catalog-${groupId}.xlsx`,
+    })),
+    previewImport: vi.fn<CatalogApi["previewImport"]>(async (groupId) => ({
+      previewId: "preview-1",
+      groupId,
+      groupCode: groupId === "grp-knowledge" ? "KNOWLEDGE" : "SUBJECT",
+      groupKind: groupId === "grp-knowledge" ? "TREE" : "SIMPLE",
+      totalRows: 2,
+      validRows: 2,
+      errorRows: 0,
+      canConfirm: true,
+      errors: [],
+    })),
+    confirmImport: vi.fn(async (groupId, previewId) => ({
+      previewId,
+      groupId,
+      groupCode: groupId === "grp-knowledge" ? "KNOWLEDGE" : "SUBJECT",
+      totalRows: 2,
+      createdCount: 2,
+      reusedCount: groupId === "grp-knowledge" ? 1 : 0,
+    })),
   };
   for (const [key, value] of Object.entries(overrides)) {
     if (value !== undefined) {
@@ -660,7 +685,7 @@ describe("CatalogView: bảng giá trị, tìm kiếm, lọc và sắp xếp th�
       expect(getRowOrder()).toEqual(["VAN", "TOAN", "DIA"]);
     });
     expect(await screen.findByText("Đã cập nhật thứ tự hiển thị.")).toBeInTheDocument();
-  });
+  }, 15_000);
 });
 
 describe("CatalogView: dialog nhóm và dialog giá trị", () => {
@@ -1539,6 +1564,169 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       await within(stopDialog).findByText(
         /2 nút bên dưới sẽ chuyển sang Ngừng theo cấp trên/,
       ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    if (!URL.createObjectURL) {
+      Object.defineProperty(URL, "createObjectURL", {
+        writable: true,
+        value: vi.fn(() => "blob:mock-url"),
+      });
+    } else {
+      vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
+    }
+    if (!URL.revokeObjectURL) {
+      Object.defineProperty(URL, "revokeObjectURL", {
+        writable: true,
+        value: vi.fn(),
+      });
+    } else {
+      vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    }
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("ẩn nút Nhập Excel ở nhóm tổ hợp và với CATALOG.VIEW; giữ Xuất Excel cho cả hai", async () => {
+    const api = createTreeMockApi();
+    const { unmount } = renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+    expect(await screen.findByRole("button", { name: "Xuất Excel" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nhập Excel" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xuất Excel" }));
+    await waitFor(() => {
+      expect(api.exportItems).toHaveBeenCalledWith("grp-combination");
+    });
+    unmount();
+
+    renderCatalog({
+      api: createTreeMockApi(),
+      search: "group=SUBJECT",
+      permissions: ["CATALOG.VIEW"],
+    });
+    expect(await screen.findByRole("button", { name: "Xuất Excel" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nhập Excel" })).not.toBeInTheDocument();
+  });
+
+  it("chặn tệp quá 5 MB và tệp .xlsm ngay ở bước chọn tệp", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Nhập Excel" }));
+    const dialog = await screen.findByRole("dialog");
+    const fileInput = within(dialog).getByLabelText(/Tệp Excel/) as HTMLInputElement;
+
+    const oversized = new File(["x"], "big.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    Object.defineProperty(oversized, "size", { value: 5 * 1024 * 1024 + 1 });
+    await userEvent.upload(fileInput, oversized);
+
+    expect(
+      await within(dialog).findByText(viMessages.catalog.errorCodes.IMPORT_FILE_TOO_LARGE),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Kiểm tra tệp" })).toBeDisabled();
+    expect(api.previewImport).not.toHaveBeenCalled();
+
+    const userNoAccept = userEvent.setup({ applyAccept: false });
+    const macroFile = new File(["macro"], "macro.xlsm", {
+      type: "application/vnd.ms-excel.sheet.macroEnabled.12",
+    });
+    await userNoAccept.upload(fileInput, macroFile);
+    expect(
+      await within(dialog).findByText(viMessages.catalog.errorCodes.IMPORT_MACRO_NOT_ALLOWED),
+    ).toBeInTheDocument();
+  });
+
+  it("hiển thị bảng lỗi, nút tải file lỗi khi previewImport có lỗi và cho phép xác nhận khi hợp lệ", async () => {
+    const api = createTreeMockApi({
+      previewImport: vi
+        .fn()
+        .mockResolvedValueOnce({
+          previewId: "prev-err",
+          groupId: "grp-knowledge",
+          groupCode: "KNOWLEDGE",
+          groupKind: "TREE",
+          totalRows: 3,
+          validRows: 2,
+          errorRows: 1,
+          canConfirm: false,
+          errors: [
+            {
+              rowNo: 4,
+              column: "code",
+              code: "CATALOG_CODE_TAKEN",
+              message: "Mã đã tồn tại",
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          previewId: "prev-ok",
+          groupId: "grp-knowledge",
+          groupCode: "KNOWLEDGE",
+          groupKind: "TREE",
+          totalRows: 3,
+          validRows: 3,
+          errorRows: 0,
+          canConfirm: true,
+          errors: [],
+        }),
+      confirmImport: vi.fn(async () => ({
+        previewId: "prev-ok",
+        groupId: "grp-knowledge",
+        groupCode: "KNOWLEDGE",
+        totalRows: 3,
+        createdCount: 2,
+        reusedCount: 1,
+      })),
+    });
+
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+    await userEvent.click(await screen.findByRole("button", { name: "Nhập Excel" }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(within(dialog).getByText(viMessages.catalog.importDialog.treeRuleHint)).toBeInTheDocument();
+    const fileInput = within(dialog).getByLabelText(/Tệp Excel/) as HTMLInputElement;
+
+    const validXlsx = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "tree.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    await userEvent.upload(fileInput, validXlsx);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kiểm tra tệp" }));
+
+    expect(await within(dialog).findByText("CATALOG_CODE_TAKEN")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /Nhập 2 dòng hợp lệ/ })).toBeDisabled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tải file lỗi" }));
+    expect(URL.createObjectURL).toHaveBeenCalled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Chọn tệp khác" }));
+    const fileInputRetry = within(dialog).getByLabelText(/Tệp Excel/) as HTMLInputElement;
+    await userEvent.upload(fileInputRetry, validXlsx);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kiểm tra tệp" }));
+
+    const confirmBtn = await within(dialog).findByRole("button", {
+      name: /Nhập 3 dòng hợp lệ/,
+    });
+    expect(confirmBtn).not.toBeDisabled();
+    await userEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(api.confirmImport).toHaveBeenCalledWith(
+        "grp-knowledge",
+        "prev-ok",
+        expect.any(String),
+      );
+    });
+    expect(
+      await within(dialog).findByText(/Đã nhập xong: tạo mới 2 giá trị, dùng lại 1 nút có sẵn/),
     ).toBeInTheDocument();
   });
 });

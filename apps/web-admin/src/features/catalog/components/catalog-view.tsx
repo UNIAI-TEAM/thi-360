@@ -23,6 +23,7 @@ import {
   type CatalogApi,
   type CatalogGroupResponse,
   type CatalogItemResponse,
+  type CatalogImportResultResponse,
   type CatalogTreeNodeResponse,
   type CreateCatalogGroupRequest,
   type CreateCatalogItemRequest,
@@ -36,9 +37,11 @@ import {
   getCatalogFieldErrors,
   pickName,
   resolveCatalogErrorMessage,
+  triggerBlobDownload,
 } from "../utils";
 import { CombinationFormDialog } from "./combination-form-dialog";
 import { DeleteInUseDialog } from "./delete-in-use-dialog";
+import { ExcelImportDialog } from "./excel-import-dialog";
 import { GroupFormDialog } from "./group-form-dialog";
 import { GroupSidebar } from "./group-sidebar";
 import { ItemDetailDrawer } from "./item-detail-drawer";
@@ -131,6 +134,8 @@ function CatalogWorkspace({
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [groupDialog, setGroupDialog] = useState<GroupDialogState>({ open: false });
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [itemDialog, setItemDialog] = useState<ItemDialogState>({ open: false });
   const [treeNodeDialog, setTreeNodeDialog] = useState<TreeNodeDialogState>({ open: false });
   const [moveBranchNode, setMoveBranchNode] = useState<CatalogTreeNodeResponse | null>(null);
@@ -229,6 +234,7 @@ function CatalogWorkspace({
     setDetailItem(null);
     setStopItem(null);
     setMoveBranchNode(null);
+    setImportDialogOpen(false);
     setTreeNodeDialog({ open: false });
     setDeleteInUseState(null);
     updateGroupParam(group.code);
@@ -500,6 +506,37 @@ function CatalogWorkspace({
     }
   }
 
+  async function handleExportExcel(groupId: string) {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const exported = await api.exportItems(groupId);
+      triggerBlobDownload(exported.blob, exported.filename);
+      notify.success(t("exportSuccess", { filename: exported.filename }));
+    } catch (error) {
+      const status = getErrorStatus(error);
+      if (status === 401 || status === 403) return;
+      notify.error(t("exportError"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleImported(result: CatalogImportResultResponse) {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["catalog", "items", result.groupId] }),
+      queryClient.invalidateQueries({ queryKey: ["catalog", "tree", result.groupId] }),
+      queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
+      queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
+    ]);
+    notify.success(
+      t("importDialog.resultBanner", {
+        created: result.createdCount,
+        reused: result.reusedCount,
+      }),
+    );
+  }
+
   const deleting = deleteGroupMutation.isPending || deleteItemMutation.isPending;
   const resolvedDetailItem: CatalogItemResponse | null = detailItem
     ? "createdAt" in detailItem
@@ -559,6 +596,7 @@ function CatalogWorkspace({
             api={api}
             selectedNodeId={selectedNodeParam}
             canModify={canModify}
+            exporting={exporting}
             onSelectNode={updateNodeParam}
             onEditGroup={() =>
               setGroupDialog({ open: true, mode: "edit", group: selectedGroup })
@@ -577,6 +615,8 @@ function CatalogWorkspace({
             onStopNode={(node) => setStopItem(node)}
             onDeleteNode={(node) => setDeleteTarget({ type: "item", item: node })}
             onViewNodeDetail={(node) => setDetailItem(node)}
+            onExportExcel={() => void handleExportExcel(selectedGroup.id)}
+            onImportExcel={() => setImportDialogOpen(true)}
           />
         ) : (
           <SimpleItemsPanel
@@ -591,6 +631,7 @@ function CatalogWorkspace({
             loading={itemsQuery.isPending}
             error={itemsQuery.isError}
             reordering={reorderMutation.isPending}
+            exporting={exporting}
             canModify={canModify}
             onSearchChange={handleSearchChange}
             onStatusFilterChange={handleStatusFilterChange}
@@ -611,6 +652,8 @@ function CatalogWorkspace({
             onStopItem={(item) => setStopItem(item)}
             onDeleteItem={(item) => setDeleteTarget({ type: "item", item })}
             onReorder={(nextItems) => void handleReorder(nextItems)}
+            onExportExcel={() => void handleExportExcel(selectedGroup.id)}
+            onImportExcel={() => setImportDialogOpen(true)}
           />
         )}
       </div>
@@ -696,6 +739,17 @@ function CatalogWorkspace({
                 if (!open) setStopItem(null);
               }}
               onConfirmStop={handleConfirmStop}
+            />
+          )}
+
+          {selectedGroup && selectedGroup.kind !== "COMBINATION" && (
+            <ExcelImportDialog
+              open={importDialogOpen}
+              group={selectedGroup}
+              api={api}
+              onOpenChange={setImportDialogOpen}
+              onImported={handleImported}
+              onDownloadTemplate={() => handleExportExcel(selectedGroup.id)}
             />
           )}
 

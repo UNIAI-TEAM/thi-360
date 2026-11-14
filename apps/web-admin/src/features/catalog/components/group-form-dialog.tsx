@@ -576,7 +576,7 @@ function GroupFormBody({
                           const linkedCount = linkedCountByRefGroupId.get(refGroupId) ?? 0;
                           const locked = isDefault || linkedCount > 0;
                           return (
-                            <Chip key={refGroupId} size="sm" className="gap-1.5">
+                            <Chip key={refGroupId} variant="tag" className="gap-1.5">
                               {isDefault && <Lock aria-hidden className="size-3" />}
                               <span>{refName}</span>
                               {!locked && (

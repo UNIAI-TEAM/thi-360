@@ -25,6 +25,7 @@ import {
   Ban,
   ChevronsDownUp,
   ChevronsUpDown,
+  Download,
   Eye,
   FolderInput,
   FolderTree,
@@ -33,6 +34,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -60,6 +62,7 @@ export interface TreeItemsPanelProps {
   availableSimpleGroups: CatalogGroupResponse[];
   api: CatalogApi;
   selectedNodeId: string | null;
+  exporting?: boolean;
   canModify: boolean;
   onSelectNode: (nodeId: string | null) => void;
   onEditGroup: () => void;
@@ -71,6 +74,8 @@ export interface TreeItemsPanelProps {
   onStopNode: (node: CatalogItemResponse | CatalogTreeNodeResponse) => void;
   onDeleteNode: (node: CatalogItemResponse | CatalogTreeNodeResponse) => void;
   onViewNodeDetail: (node: CatalogItemResponse | CatalogTreeNodeResponse) => void;
+  onExportExcel: () => void;
+  onImportExcel: () => void;
 }
 
 type VisibleTreeRow = {
@@ -91,6 +96,7 @@ export function TreeItemsPanel({
   api,
   selectedNodeId,
   canModify,
+  exporting = false,
   onSelectNode,
   onEditGroup,
   onDeleteGroup,
@@ -101,6 +107,8 @@ export function TreeItemsPanel({
   onStopNode,
   onDeleteNode,
   onViewNodeDetail,
+  onExportExcel,
+  onImportExcel,
 }: TreeItemsPanelProps) {
   const t = useTranslations("catalog");
   const commonT = useTranslations("common");
@@ -648,39 +656,71 @@ export function TreeItemsPanel({
           )}
         </div>
 
-        {canModify && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {!isSystemGroup && (
-              <>
-                <Button variant="secondary" size="sm" onClick={onEditGroup}>
-                  <Pencil aria-hidden="true" className="size-4" />
-                  {t("editGroup")}
-                </Button>
-                <Tooltip
-                  content={deleteGroupDisabled ? t("deleteGroupNotEmptyHint") : t("deleteGroup")}
-                >
-                  <span className="inline-flex">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={deleteGroupDisabled}
-                      onClick={onDeleteGroup}
-                      className="text-danger hover:bg-danger-bg hover:text-danger"
-                    >
-                      <Trash2 aria-hidden="true" className="size-4" />
-                      {t("deleteGroup")}
-                    </Button>
-                  </span>
-                </Tooltip>
-              </>
-            )}
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {canModify && !isSystemGroup && (
+            <>
+              <Button variant="secondary" size="sm" onClick={onEditGroup}>
+                <Pencil aria-hidden="true" className="size-4" />
+                {t("editGroup")}
+              </Button>
+              <Tooltip
+                content={deleteGroupDisabled ? t("deleteGroupNotEmptyHint") : t("deleteGroup")}
+              >
+                <span className="inline-flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={deleteGroupDisabled}
+                    onClick={onDeleteGroup}
+                    className="text-danger hover:bg-danger-bg hover:text-danger"
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />
+                    {t("deleteGroup")}
+                  </Button>
+                </span>
+              </Tooltip>
+            </>
+          )}
 
-            <Button variant="primary" size="sm" onClick={onAddRootNode}>
-              <Plus aria-hidden="true" className="size-4" />
-              {t("tree.addNodeAction", { levelName: rootLevelName })}
-            </Button>
-          </div>
-        )}
+          <Button variant="secondary" size="sm" loading={exporting} onClick={onExportExcel}>
+            <Download aria-hidden="true" className="size-4" />
+            {t("exportExcel")}
+          </Button>
+
+          {canModify &&
+            (group.status === "INACTIVE" ? (
+              <Tooltip content={t("inactiveGroupCreateHint")}>
+                <span>
+                  <Button variant="secondary" size="sm" disabled>
+                    <Upload aria-hidden="true" className="size-4" />
+                    {t("importExcel")}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={onImportExcel}>
+                <Upload aria-hidden="true" className="size-4" />
+                {t("importExcel")}
+              </Button>
+            ))}
+
+          {canModify &&
+            (group.status === "INACTIVE" ? (
+              <Tooltip content={t("inactiveGroupCreateHint")}>
+                <span>
+                  <Button variant="primary" size="sm" disabled>
+                    <Plus aria-hidden="true" className="size-4" />
+                    {t("tree.addNodeAction", { levelName: rootLevelName })}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button variant="primary" size="sm" onClick={onAddRootNode}>
+                <Plus aria-hidden="true" className="size-4" />
+                {t("tree.addNodeAction", { levelName: rootLevelName })}
+              </Button>
+            ))}
+        </div>
       </div>
 
       {/* Linked ref-groups strip */}
@@ -1096,7 +1136,7 @@ export function TreeItemsPanel({
               {/* Metrics */}
               <dl className="grid grid-cols-2 gap-2 rounded-md border border-border bg-surface p-3 text-caption">
                 <div>
-                  <dt className="text-text-muted">{t("columns.displayOrder")}</dt>
+                  <dt className="text-text-muted">{t("detailDrawer.displayOrderLabel")}</dt>
                   <dd className="font-semibold tabular-nums text-text">
                     {activeNode.displayOrder}
                   </dd>
