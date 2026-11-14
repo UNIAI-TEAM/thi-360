@@ -128,6 +128,7 @@
       "newVersionNotice": "This combination is currently in use. Changing the exam, subjects, or subject order will create version {nextVersion}; published exams and historical results continue using version {currentVersion}.",
       "noActiveExams": "No active exams available.",
       "noActiveSubjects": "No more active subjects available to add.",
+      "optionsLoadError": "Could not load options. Please try again.",
       "removeSubjectLabel": "Remove {name}",
       "saveNewVersion": "Save as new version",
       "sourceNoteLabel": "Source convention",
@@ -496,6 +497,7 @@
       "linksSection": "Links",
       "parentHint": "New node is placed under this parent. Use Move branch to change an existing node's parent.",
       "parentLabel": "Parent node",
+      "parentLoadError": "Could not load parent node details.",
       "rootParentLabel": "Root level (no parent)"
     },
     "types": {

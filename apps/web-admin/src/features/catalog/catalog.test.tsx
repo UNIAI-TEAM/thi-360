@@ -1858,6 +1858,88 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     await userEvent.click(within(moveDlg).getByRole("button", { name: "Chuyển" }));
     await waitFor(() => expect(onMutationError).toHaveBeenCalledTimes(3));
   });
+
+  it("hiển thị đúng nút cha khi sửa nút cây không phải gốc (R1-07)", async () => {
+    const api = createTreeMockApi({
+      getItem: vi.fn(async (id) => {
+        if (id === KNOWLEDGE_CH1.id) return toTreeItemDetail(KNOWLEDGE_CH1);
+        if (id === KNOWLEDGE_BAI1.id) return toTreeItemDetail(KNOWLEDGE_BAI1);
+        return toTreeItemDetail(KNOWLEDGE_CH1);
+      }),
+    });
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Mở Hàm số" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa Tính đơn điệu" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(api.getItem).toHaveBeenCalledWith(KNOWLEDGE_CH1.id));
+    expect(await within(dialog).findByText(KNOWLEDGE_CH1.code)).toBeInTheDocument();
+    expect(within(dialog).getByText(KNOWLEDGE_CH1.nameVi)).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText(viMessages.catalog.treeNodeDialog.rootParentLabel),
+    ).not.toBeInTheDocument();
+  });
+
+  it("khóa Lưu và hiện Thử lại khi getItemUsages lỗi lúc đổi ACTIVE -> INACTIVE trong dialog sửa (R1-13)", async () => {
+    const getItemUsages = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce({
+        targetId: "item-toan",
+        targetCode: "TOAN",
+        totalCount: 0,
+        blocking: false,
+        usages: [],
+      });
+    const api = createMockApi({ getItemUsages });
+    renderCatalog({ api, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa Toán học" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: /Trạng thái/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "Ngừng sử dụng" }));
+
+    expect(
+      await within(dialog).findByText(viMessages.catalog.stopItemDialog.usagesLoadError),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Lưu" })).toBeDisabled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Thử lại" }));
+    await waitFor(() =>
+      expect(
+        within(dialog).queryByText(viMessages.catalog.stopItemDialog.usagesLoadError),
+      ).not.toBeInTheDocument(),
+    );
+    expect(within(dialog).getByRole("button", { name: "Lưu" })).not.toBeDisabled();
+  });
+
+  it("hiện lỗi và nút Thử lại khi getOptions thất bại trong CombinationFormDialog (R1-14)", async () => {
+    const getOptions = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Options failed"))
+      .mockRejectedValueOnce(new Error("Options failed"))
+      .mockResolvedValueOnce(EXAM_OPTIONS)
+      .mockResolvedValueOnce(SUBJECT_OPTIONS);
+    const api = createMockApi({ getOptions });
+    renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Thêm giá trị" }));
+    const dialog = await screen.findByRole("dialog");
+    const errors = await within(dialog).findAllByText(
+      viMessages.catalog.combinationDialog.optionsLoadError,
+    );
+    expect(errors.length).toBe(2);
+
+    const retryButtons = within(dialog).getAllByRole("button", { name: "Thử lại" });
+    await userEvent.click(retryButtons[0]!);
+    await userEvent.click(retryButtons[1]!);
+    await waitFor(() =>
+      expect(
+        within(dialog).queryByText(viMessages.catalog.combinationDialog.optionsLoadError),
+      ).not.toBeInTheDocument(),
+    );
+  });
 });
 
 describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {

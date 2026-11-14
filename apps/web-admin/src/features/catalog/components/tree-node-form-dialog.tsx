@@ -19,7 +19,7 @@ import {
   Skeleton,
   Textarea,
 } from "@thi360/ui";
-import { Lock } from "lucide-react";
+import { Lock, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -145,6 +145,7 @@ function TreeNodeFormBody({
   onSubmit: TreeNodeFormDialogProps["onSubmit"];
 }) {
   const t = useTranslations("catalog");
+  const commonT = useTranslations("common");
   const locale = useLocale();
   const [codeLocked, setCodeLocked] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -202,6 +203,13 @@ function TreeNodeFormBody({
     })),
   });
 
+  const parentIdToFetch = mode === "edit" && !parentNode ? (node?.parentId ?? null) : null;
+  const fetchedParentQuery = useQuery({
+    queryKey: catalogQueryKeys.item(parentIdToFetch ?? "none"),
+    queryFn: () => api.getItem(parentIdToFetch!),
+    enabled: Boolean(parentIdToFetch),
+  });
+  const resolvedParent = parentNode ?? fetchedParentQuery.data ?? null;
   const schema = useMemo(
     () =>
       createTreeNodeFormSchema(initialStatus, {
@@ -257,7 +265,9 @@ function TreeNodeFormBody({
     queryFn: () => api.getItemUsages(node!.id),
     enabled: showReason && Boolean(node?.id),
   });
-  const stopBlocked = showReason && Boolean(usagesQuery.data?.blocking);
+  const stopBlocked =
+    showReason &&
+    (usagesQuery.isPending || usagesQuery.isError || Boolean(usagesQuery.data?.blocking));
 
   const statusOptions = useMemo(
     () => [
@@ -269,8 +279,8 @@ function TreeNodeFormBody({
 
   const isSystemGroup = group.type === "SYSTEM" || group.system;
   const levels = group.levels ?? [];
-  const parentLevelName = parentNode
-    ? resolveTreeLevelLabel(levels[parentNode.depth - 1], {
+  const parentLevelName = resolvedParent
+    ? resolveTreeLevelLabel(levels[resolvedParent.depth - 1], {
         isSystemGroup,
         translateLevel: (key) => t(`tree.systemLevels.${key}`),
       })
@@ -412,15 +422,31 @@ function TreeNodeFormBody({
           {t("treeNodeDialog.parentLabel")}
         </span>
         <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-md border border-border bg-page px-3 py-2">
-          {parentNode ? (
+          {parentIdToFetch && fetchedParentQuery.isPending ? (
+            <Skeleton className="h-5 w-48" />
+          ) : parentIdToFetch && fetchedParentQuery.isError ? (
+            <div className="flex w-full items-center justify-between gap-2 text-field-label text-danger">
+              <span className="flex items-center gap-1.5">
+                <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+                {t("treeNodeDialog.parentLoadError")}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void fetchedParentQuery.refetch()}
+              >
+                {commonT("retry")}
+              </Button>
+            </div>
+          ) : resolvedParent ? (
             <>
               {parentLevelName && (
                 <span className="text-caption text-text-muted">{parentLevelName}</span>
               )}
               <span className="rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold text-text">
-                {parentNode.code}
+                {resolvedParent.code}
               </span>
-              <span className="font-medium text-text">{pickName(parentNode, locale)}</span>
+              <span className="font-medium text-text">{pickName(resolvedParent, locale)}</span>
             </>
           ) : (
             <span className="text-field-label text-text-secondary">
@@ -514,7 +540,28 @@ function TreeNodeFormBody({
 
       {showReason && (
         <>
-          {usagesQuery.data && usagesQuery.data.usages.length > 0 && (
+          {usagesQuery.isPending ? (
+            <div className="flex flex-col gap-1.5" role="status" aria-label={commonT("loading")}>
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : usagesQuery.isError ? (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-3 rounded-md border border-danger bg-danger-bg px-3.5 py-2.5 text-field-label text-danger"
+            >
+              <span className="flex items-center gap-2">
+                <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+                {t("stopItemDialog.usagesLoadError")}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void usagesQuery.refetch()}
+              >
+                {commonT("retry")}
+              </Button>
+            </div>
+          ) : usagesQuery.data && usagesQuery.data.usages.length > 0 ? (
             <div
               role={usagesQuery.data.blocking ? "alert" : "note"}
               className={cn(
@@ -537,8 +584,7 @@ function TreeNodeFormBody({
                 ))}
               </ul>
             </div>
-          )}
-
+          ) : null}
           <FormField
             label={t("itemDialog.reasonLabel")}
             required
@@ -597,6 +643,23 @@ function TreeNodeFormBody({
 
                 {optQuery?.isPending ? (
                   <Skeleton className="h-9 w-full" />
+                ) : optQuery?.isError ? (
+                  <div
+                    role="alert"
+                    className="flex items-center justify-between gap-2 rounded-md border border-danger bg-danger-bg px-3 py-2 text-field-label text-danger"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+                      {t("combinationDialog.optionsLoadError")}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void optQuery.refetch()}
+                    >
+                      {commonT("retry")}
+                    </Button>
+                  </div>
                 ) : (
                   <div
                     role="group"

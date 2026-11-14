@@ -35,7 +35,7 @@ import {
   Skeleton,
   Textarea,
 } from "@thi360/ui";
-import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, Lock, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, Lock, TriangleAlert, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, type CSSProperties } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -155,6 +155,7 @@ function CombinationFormBody({
   onSubmit: CombinationFormDialogProps["onSubmit"];
 }) {
   const t = useTranslations("catalog");
+  const commonT = useTranslations("common");
   const locale = useLocale();
   const [codeLocked, setCodeLocked] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -249,7 +250,9 @@ function CombinationFormBody({
   const watchedSubjectIds = useWatch({ control, name: "subjectItemIds" });
 
   const showReason = mode === "edit" && item?.status === "ACTIVE" && watchedStatus === "INACTIVE";
-  const stopBlocked = showReason && Boolean(usagesQuery.data?.blocking);
+  const stopBlocked =
+    showReason &&
+    (usagesQuery.isPending || usagesQuery.isError || Boolean(usagesQuery.data?.blocking));
 
   const compositionChanged =
     mode === "edit" &&
@@ -555,7 +558,7 @@ function CombinationFormBody({
           required
           error={errors.examItemId?.message}
           hint={
-            !examsQuery.isPending && examOptions.length === 0
+            !examsQuery.isPending && !examsQuery.isError && examOptions.length === 0
               ? t("combinationDialog.noActiveExams")
               : undefined
           }
@@ -563,6 +566,23 @@ function CombinationFormBody({
           {(fieldProps) =>
             examsQuery.isPending ? (
               <Skeleton className="h-10 w-full" />
+            ) : examsQuery.isError ? (
+              <div
+                role="alert"
+                className="flex items-center justify-between gap-2 rounded-md border border-danger bg-danger-bg px-3 py-2 text-field-label text-danger"
+              >
+                <span className="flex items-center gap-1.5">
+                  <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+                  {t("combinationDialog.optionsLoadError")}
+                </span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void examsQuery.refetch()}
+                >
+                  {commonT("retry")}
+                </Button>
+              </div>
             ) : (
               <Controller
                 control={control}
@@ -621,6 +641,23 @@ function CombinationFormBody({
 
         {subjectsQuery.isPending ? (
           <Skeleton className="h-24 w-full" />
+        ) : subjectsQuery.isError ? (
+          <div
+            role="alert"
+            className="flex items-center justify-between gap-2 rounded-md border border-danger bg-danger-bg px-3.5 py-2.5 text-field-label text-danger"
+          >
+            <span className="flex items-center gap-2">
+              <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+              {t("combinationDialog.optionsLoadError")}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void subjectsQuery.refetch()}
+            >
+              {commonT("retry")}
+            </Button>
+          </div>
         ) : (
           <>
             {watchedSubjectIds.length > 0 && (
@@ -702,7 +739,28 @@ function CombinationFormBody({
 
       {showReason && (
         <>
-          {usagesQuery.data && usagesQuery.data.usages.length > 0 && (
+          {usagesQuery.isPending ? (
+            <div className="flex flex-col gap-1.5" role="status" aria-label={commonT("loading")}>
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : usagesQuery.isError ? (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-3 rounded-md border border-danger bg-danger-bg px-3.5 py-2.5 text-field-label text-danger"
+            >
+              <span className="flex items-center gap-2">
+                <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+                {t("stopItemDialog.usagesLoadError")}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void usagesQuery.refetch()}
+              >
+                {commonT("retry")}
+              </Button>
+            </div>
+          ) : usagesQuery.data && usagesQuery.data.usages.length > 0 ? (
             <div
               role={usagesQuery.data.blocking ? "alert" : "note"}
               className={cn(
@@ -725,7 +783,7 @@ function CombinationFormBody({
                 ))}
               </ul>
             </div>
-          )}
+          ) : null}
 
           <FormField
             label={t("itemDialog.reasonLabel")}

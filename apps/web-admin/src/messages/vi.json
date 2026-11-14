@@ -128,6 +128,7 @@
       "newVersionNotice": "Tổ hợp này đang được dùng. Đổi kỳ thi, môn hoặc thứ tự môn sẽ tạo phiên bản {nextVersion}; đề đã công bố và kết quả cũ tiếp tục dùng phiên bản {currentVersion}.",
       "noActiveExams": "Chưa có kỳ thi nào đang hoạt động.",
       "noActiveSubjects": "Chưa còn môn nào đang hoạt động để thêm.",
+      "optionsLoadError": "Không tải được danh sách lựa chọn. Hãy thử lại.",
       "removeSubjectLabel": "Bỏ môn {name}",
       "saveNewVersion": "Lưu thành phiên bản mới",
       "sourceNoteLabel": "Nguồn quy ước",
@@ -496,6 +497,7 @@
       "linksSection": "Liên kết",
       "parentHint": "Nút mới nằm dưới nút cha này. Muốn đổi nút cha của một nút đã có, dùng thao tác Chuyển nhánh.",
       "parentLabel": "Nút cha",
+      "parentLoadError": "Không tải được thông tin nút cha.",
       "rootParentLabel": "Cấp gốc (không có nút cha)"
     },
     "types": {
