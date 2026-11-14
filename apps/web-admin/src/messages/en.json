@@ -106,9 +106,9 @@
         "mustChangePassword": "Require password change",
         "passwordMode": "Passwords",
         "willCreate": "Will create",
-        "willCreateValue": "{count} accounts"
+        "willCreateValue": "{count, number} accounts"
       },
-      "confirmAction": "Confirm creating {count} accounts",
+      "confirmAction": "Confirm creating {count, number} accounts",
       "errorsRemainWarning": "Data changed and new row errors were found. Returned to preview for review.",
       "fields": {
         "invalidRows": "Error rows",
@@ -173,9 +173,9 @@
     "pagination": {
       "nav": "Import rows pagination",
       "next": "Next",
-      "page": "Page {page}",
+      "page": "Page {page, number}",
       "previous": "Previous",
-      "range": "Showing {from}–{to} of {total}",
+      "range": "Showing {from, number}–{to, number} of {total, number}",
       "rowsPerPage": "Rows per page"
     },
     "preview": {
@@ -185,21 +185,21 @@
         "total": "Total rows",
         "valid": "Valid"
       },
-      "continueConfirm": "Confirm creating {count} accounts",
-      "downloadErrors": "Download error file ({count} rows)",
+      "continueConfirm": "Confirm creating {count, number} accounts",
+      "downloadErrors": "Download error file ({count, number} rows)",
       "downloadErrorsError": "Could not download the error file. Please try again.",
       "emptyDescription": "No data rows match the current filter.",
       "emptyTitle": "No rows found",
       "errorDescription": "Could not load preview rows. Please try again.",
       "errorTitle": "Could not load preview data",
-      "errorsRemainHint": "{count} error rows remain. Fix the file and re-upload; confirmation is enabled only when no errors remain.",
+      "errorsRemainHint": "{count, number} error rows remain. Fix the file and re-upload; confirmation is enabled only when no errors remain.",
       "footnote": "Download the result file in step 4 after processing finishes. It only contains system-generated passwords; download it before leaving this page.",
       "mustChangePasswordLabel": "Require password change on first sign-in:",
       "no": "No",
       "onlyErrors": "Show error rows only",
       "passwordGenerated": "Blank, system-generated",
       "passwordProvided": "Provided, meets rules",
-      "readyHint": "All {count} rows are valid. Ready to proceed to confirmation.",
+      "readyHint": "All {count, number} rows are valid. Ready to proceed to confirmation.",
       "reupload": "Re-upload file",
       "rowErrorItem": "{column}: {message}",
       "sectionTitle": "Preview",
@@ -219,9 +219,9 @@
     },
     "processing": {
       "awayNotice": "The batch continues running if you leave this page. However, the result file (with system-generated passwords) can only be downloaded here, so stay until completion.",
-      "counts": "Succeeded {created} · Failed {failed} · Remaining {remaining}. Progress updates automatically without refreshing.",
+      "counts": "Succeeded {created, number} · Failed {failed, number} · Remaining {remaining, number}. Progress updates automatically without refreshing.",
       "progressAriaLabel": "Batch processing progress",
-      "progressValue": "{processed} / {total} rows",
+      "progressValue": "{processed, number} / {total, number} rows",
       "title": "Creating accounts"
     },
     "result": {
@@ -233,7 +233,7 @@
         "failed": "Failed",
         "file": "File",
         "processed": "Processed",
-        "processedValue": "{processed} / {total}"
+        "processedValue": "{processed, number} / {total, number}"
       },
       "deleteConfirm": {
         "cancel": "Cancel",
@@ -291,6 +291,10 @@
       "USERNAME_INVALID": "Invalid username (4–30 chars, no spaces, not a reserved name)",
       "USERNAME_TAKEN": "Username already exists in the system"
     },
+    "sessionError": {
+      "description": "An error occurred while loading account details. Please try again.",
+      "title": "Could not load page"
+    },
     "steps": {
       "ariaLabel": "Bulk account provisioning steps",
       "step1": "Download template & upload file",
@@ -313,7 +317,7 @@
       },
       "dropzoneHint": "Only .xlsx files accepted, up to 2,000 rows and 5 MB",
       "dropzoneTitle": "Drag a file here or click to browse",
-      "fileSizeKb": "{size} KB",
+      "fileSizeKb": "{size, number} KB",
       "footerNote": "Imported accounts receive the Student role. Existing accounts are not overwritten.",
       "mustChangePassword": "Require password change on first sign-in",
       "ruleClassCode": "Code of an active class. Leave blank if the account belongs to no class",

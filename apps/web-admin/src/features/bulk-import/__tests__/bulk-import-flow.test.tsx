@@ -192,7 +192,45 @@ describe("BulkImportUploadView (Step 1)", () => {
       expect(routerMock.push).toHaveBeenCalledWith(`/tai-khoan/cap-hang-loat/${BATCH_ID}`);
     });
   });
+
+  it("phiên tải /me lỗi: không hiện form tải lên, báo lỗi phiên và thử lại được", async () => {
+    let attempts = 0;
+    const deps = makeDeps();
+    renderWithProviders(
+      <SessionProvider
+        loadSession={async () => {
+          attempts += 1;
+          if (attempts === 1) throw new Error("network down");
+          return TEST_ADMIN_SESSION;
+        }}
+      >
+        <BulkImportUploadView deps={deps} />
+      </SessionProvider>,
+      { locale: "vi", messages: viMessages },
+    );
+
+    expect(await screen.findByText("Không tải được trang")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Chọn tệp")).not.toBeInTheDocument();
+    expect(deps.uploadImportBatch).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(await screen.findByLabelText("Chọn tệp")).toBeInTheDocument();
+  });
+
+  it("hiển thị dung lượng tệp theo định dạng số của locale", async () => {
+    renderUpload(makeDeps());
+
+    const fileInput = await screen.findByLabelText("Chọn tệp");
+    const bigFile = new File(["x"], "students.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    Object.defineProperty(bigFile, "size", { value: 2 * 1024 * 1024 });
+    fireEvent.change(fileInput, { target: { files: [bigFile] } });
+
+    expect(await screen.findByText("2.048 KB")).toBeInTheDocument();
+  });
 });
+
 
 describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
   it("bước 2: hiển thị lỗi theo rowNo/column/code (dịch theo locale en/vi), lọc dòng lỗi, phân trang và tải file lỗi", async () => {
@@ -471,5 +509,235 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
     await userEvent.click(within(deleteDialog).getByRole("button", { name: "Xóa file kết quả" }));
     await waitFor(() => expect(deps.deleteImportResult).toHaveBeenCalledWith(BATCH_ID));
     expect(await screen.findByText("File kết quả đã được xóa khỏi hệ thống.")).toBeInTheDocument();
+  });
+
+  it("phiên tải /me lỗi: không gọi API đợt, báo lỗi phiên và thử lại được", async () => {
+    let attempts = 0;
+    const deps = makeDeps();
+    renderWithProviders(
+      <SessionProvider
+        loadSession={async () => {
+          attempts += 1;
+          if (attempts === 1) throw new Error("network down");
+          return TEST_ADMIN_SESSION;
+        }}
+      >
+        <BulkImportBatchView batchId={BATCH_ID} deps={deps} />
+      </SessionProvider>,
+      { locale: "vi", messages: viMessages },
+    );
+
+    expect(await screen.findByText("Không tải được trang")).toBeInTheDocument();
+    expect(deps.getImportBatch).not.toHaveBeenCalled();
+    expect(deps.listImportBatchRows).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => expect(deps.getImportBatch).toHaveBeenCalledWith(BATCH_ID));
+  });
+
+  it("hiển thị số đếm và phân trang theo định dạng số của locale", async () => {
+    const depsVi = makeDeps({
+      getImportBatch: vi.fn(async () =>
+        makeBatch({
+          status: "VALIDATED",
+          totalRows: 1000,
+          validRows: 1000,
+          invalidRows: 0,
+          canConfirm: true,
+        }),
+      ),
+      listImportBatchRows: vi.fn(async () => ({
+        items: [],
+        page: 0,
+        size: 20,
+        totalItems: 2000,
+        totalPages: 100,
+      })),
+    });
+    const { unmount } = renderBatch(depsVi);
+
+    expect((await screen.findAllByText("1.000")).length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findByText("Hiển thị 1–20 trên 2.000")).toBeInTheDocument();
+    unmount();
+
+    const depsEn = makeDeps({
+      getImportBatch: vi.fn(async () =>
+        makeBatch({
+          status: "VALIDATED",
+          totalRows: 1000,
+          validRows: 1000,
+          invalidRows: 0,
+          canConfirm: true,
+        }),
+      ),
+      listImportBatchRows: vi.fn(async () => ({
+        items: [],
+        page: 0,
+        size: 20,
+        totalItems: 2000,
+        totalPages: 100,
+      })),
+    });
+    renderBatch(depsEn, TEST_ADMIN_SESSION, "en");
+
+    expect((await screen.findAllByText("1,000")).length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findByText("Showing 1–20 of 2,000")).toBeInTheDocument();
+  });
+
+  it("bước 3: IMPORT_HAS_ERRORS đưa về bước 2 với số liệu và lỗi dòng đã kiểm tra lại", async () => {
+    const revalidatedRow: ImportRow = {
+      id: "row-taken",
+      rowNo: 2,
+      username: "student02",
+      fullName: "Học viên 02",
+      classCode: "LOP-A",
+      passwordGenerated: true,
+      status: "INVALID",
+      errors: [
+        {
+          rowNo: 2,
+          column: "Tên đăng nhập",
+          code: "USERNAME_TAKEN",
+          message: "Backend raw taken",
+        },
+      ],
+    };
+
+    let batchFetches = 0;
+    const getBatchMock = vi.fn<BulkImportApiDeps["getImportBatch"]>(async () => {
+      batchFetches += 1;
+      if (batchFetches === 1) {
+        return makeBatch({
+          totalRows: 2,
+          validRows: 2,
+          invalidRows: 0,
+          hasErrors: false,
+          canConfirm: true,
+        });
+      }
+      return makeBatch({
+        totalRows: 2,
+        validRows: 1,
+        invalidRows: 1,
+        hasErrors: true,
+        canConfirm: false,
+      });
+    });
+    const listRowsMock = vi.fn<BulkImportApiDeps["listImportBatchRows"]>(async () => ({
+      items: batchFetches > 1 ? [revalidatedRow] : [],
+      page: 0,
+      size: 20,
+      totalItems: batchFetches > 1 ? 1 : 0,
+      totalPages: batchFetches > 1 ? 1 : 0,
+    }));
+    const confirmMock = vi
+      .fn<BulkImportApiDeps["confirmImportBatch"]>()
+      .mockRejectedValue(new BulkImportApiError(409, "raw", "IMPORT_HAS_ERRORS"));
+
+    const deps = makeDeps({
+      getImportBatch: getBatchMock,
+      listImportBatchRows: listRowsMock,
+      confirmImportBatch: confirmMock,
+    });
+
+    renderBatch(deps);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Xác nhận cấp 2 tài khoản" }),
+    );
+    expect(await screen.findByText("Kiểm tra lần cuối")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận cấp 2 tài khoản" }));
+
+    // IMPORT_HAS_ERRORS -> quay lại bước xem trước với dữ liệu đã kiểm tra lại
+    expect(await screen.findByText("Xem trước")).toBeInTheDocument();
+    expect(screen.queryByText("Kiểm tra lần cuối")).not.toBeInTheDocument();
+    expect(
+      (await screen.findAllByRole("alert")).some((el) =>
+        el.textContent?.includes(viMessages.bulkImport.confirm.errorsRemainWarning),
+      ),
+    ).toBe(true);
+
+    // Số liệu mới: 1 hợp lệ / 1 lỗi, lỗi dòng mới hiển thị theo mã
+    expect(await screen.findByText("student02")).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(viMessages.bulkImport.rowErrorCodes.USERNAME_TAKEN)),
+    ).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole("button", { name: "Xác nhận cấp 1 tài khoản" });
+    expect(confirmBtn).toBeDisabled();
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("bước 4 kết quả: chặn điều hướng lịch sử (Back) khi chưa tải file kết quả, giữ nguyên khi Ở lại và rời khi xác nhận", async () => {
+    // Hai mục history sạch liên tiếp: go(-2) từ sentinel sẽ đổ về mục sạch phía
+    // trước "trang hiện tại" trong jsdom, không dính sentinel của test trước.
+    window.history.pushState({}, "");
+    window.history.pushState({}, "");
+
+    const deps = makeDeps({
+      getImportBatch: vi.fn(async () =>
+        makeBatch({
+          status: "COMPLETED",
+          totalRows: 1,
+          validRows: 1,
+          createdRows: 1,
+          failedRows: 0,
+          hasGeneratedPasswords: true,
+          resultAvailable: true,
+        }),
+      ),
+      listImportBatchRows: vi.fn(async () => ({
+        items: [],
+        page: 0,
+        size: 20,
+        totalItems: 0,
+        totalPages: 0,
+      })),
+    });
+
+    renderBatch(deps);
+    expect(await screen.findByText("Kết quả từng dòng")).toBeInTheDocument();
+
+    // Sentinel đã được đặt: Back đầu tiên bị chặn và hiện cảnh báo.
+    expect(
+      (window.history.state as Record<string, unknown> | null)?.[
+        "__thi360BulkImportLeaveGuard"
+      ],
+    ).toBeTruthy();
+
+    window.history.back();
+    await sleep(50);
+    const leaveDialog = await screen.findByRole("dialog");
+    expect(
+      within(leaveDialog).getByText("Rời trang khi chưa tải file kết quả?"),
+    ).toBeInTheDocument();
+
+    // Ở lại: sentinel được khôi phục, không rời trang.
+    await userEvent.click(within(leaveDialog).getByRole("button", { name: "Ở lại trang" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByText("Kết quả từng dòng")).toBeInTheDocument();
+    expect(
+      (window.history.state as Record<string, unknown> | null)?.[
+        "__thi360BulkImportLeaveGuard"
+      ],
+    ).toBeTruthy();
+
+    // Back lần nữa rồi chọn "Vẫn rời trang": history.go(-2) đi qua sentinel + trang
+    // hiện tại tới mục phía trước; popstate bị bỏ qua và marker biến mất khỏi state.
+    window.history.back();
+    await sleep(50);
+    const leaveDialog2 = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(leaveDialog2).getByRole("button", { name: "Vẫn rời trang" }),
+    );
+    await sleep(50);
+    await waitFor(() => {
+      expect(
+        (window.history.state as Record<string, unknown> | null)?.[
+          "__thi360BulkImportLeaveGuard"
+        ],
+      ).toBeFalsy();
+    });
   });
 });

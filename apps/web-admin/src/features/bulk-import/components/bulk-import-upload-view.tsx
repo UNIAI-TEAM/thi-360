@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Button, Card, Checkbox, cn, Label, Skeleton } from "@thi360/ui";
-import { FileSpreadsheet, Upload } from "lucide-react";
+import { Button, Card, Checkbox, cn, EmptyState, Label, Skeleton } from "@thi360/ui";
+import { FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, type DragEvent, useId, useRef, useState } from "react";
@@ -18,6 +18,8 @@ export interface BulkImportUploadViewProps {
 }
 
 export function BulkImportUploadView({ deps }: BulkImportUploadViewProps) {
+  const t = useTranslations("bulkImport");
+  const common = useTranslations("common");
   const sessionState = useSession();
   const { can } = usePermissions();
 
@@ -25,11 +27,45 @@ export function BulkImportUploadView({ deps }: BulkImportUploadViewProps) {
     return <BulkImportUploadSkeleton />;
   }
 
-  if (sessionState.status === "ready" && !can("USER.MODIFY")) {
+  if (sessionState.status === "error") {
+    return (
+      <SessionErrorView
+        title={t("sessionError.title")}
+        description={t("sessionError.description")}
+        retryLabel={common("retry")}
+        onRetry={sessionState.retry}
+      />
+    );
+  }
+
+  if (!can("USER.MODIFY")) {
     return <ForbiddenView />;
   }
 
   return <BulkImportUploadContent deps={{ ...defaultBulkImportApiDeps, ...deps }} />;
+}
+
+function SessionErrorView({
+  title,
+  description,
+  retryLabel,
+  onRetry,
+}: {
+  title: string;
+  description: string;
+  retryLabel: string;
+  onRetry: () => void;
+}) {
+  return (
+    <Card>
+      <EmptyState
+        icon={<TriangleAlert />}
+        title={title}
+        description={description}
+        action={<Button onClick={onRetry}>{retryLabel}</Button>}
+      />
+    </Card>
+  );
 }
 
 function BulkImportUploadSkeleton() {

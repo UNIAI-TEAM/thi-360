@@ -106,9 +106,9 @@
         "mustChangePassword": "Bắt đổi mật khẩu lần đầu",
         "passwordMode": "Mật khẩu",
         "willCreate": "Sẽ tạo",
-        "willCreateValue": "{count} tài khoản"
+        "willCreateValue": "{count, number} tài khoản"
       },
-      "confirmAction": "Xác nhận cấp {count} tài khoản",
+      "confirmAction": "Xác nhận cấp {count, number} tài khoản",
       "errorsRemainWarning": "Dữ liệu đã thay đổi và phát sinh dòng lỗi mới. Đã quay lại bước xem trước để kiểm tra.",
       "fields": {
         "invalidRows": "Dòng lỗi",
@@ -173,9 +173,9 @@
     "pagination": {
       "nav": "Phân trang danh sách dòng",
       "next": "Sau",
-      "page": "Trang {page}",
+      "page": "Trang {page, number}",
       "previous": "Trước",
-      "range": "Hiển thị {from}–{to} trên {total}",
+      "range": "Hiển thị {from, number}–{to, number} trên {total, number}",
       "rowsPerPage": "Số dòng mỗi trang"
     },
     "preview": {
@@ -185,21 +185,21 @@
         "total": "Tổng số dòng",
         "valid": "Hợp lệ"
       },
-      "continueConfirm": "Xác nhận cấp {count} tài khoản",
-      "downloadErrors": "Tải file lỗi ({count} dòng)",
+      "continueConfirm": "Xác nhận cấp {count, number} tài khoản",
+      "downloadErrors": "Tải file lỗi ({count, number} dòng)",
       "downloadErrorsError": "Không tải được file lỗi. Hãy thử lại.",
       "emptyDescription": "Không có dòng dữ liệu nào khớp với bộ lọc hiện tại.",
       "emptyTitle": "Không có dòng dữ liệu",
       "errorDescription": "Không tải được danh sách dòng dữ liệu. Hãy thử lại.",
       "errorTitle": "Không tải được dữ liệu xem trước",
-      "errorsRemainHint": "Còn {count} dòng lỗi. Sửa tệp và tải lên lại; chỉ xác nhận được khi không còn lỗi dữ liệu.",
+      "errorsRemainHint": "Còn {count, number} dòng lỗi. Sửa tệp và tải lên lại; chỉ xác nhận được khi không còn lỗi dữ liệu.",
       "footnote": "File kết quả tải ở bước 4 sau khi đợt cấp chạy xong. File chỉ chứa mật khẩu của những dòng do hệ thống sinh; hãy tải trước khi rời trang.",
       "mustChangePasswordLabel": "Bắt đổi mật khẩu ở lần đăng nhập đầu:",
       "no": "Không",
       "onlyErrors": "Chỉ hiện dòng lỗi",
       "passwordGenerated": "Để trống, hệ thống sinh",
       "passwordProvided": "Đã nhập, đạt quy tắc",
-      "readyHint": "Tất cả {count} dòng đều hợp lệ. Sẵn sàng chuyển sang bước xác nhận.",
+      "readyHint": "Tất cả {count, number} dòng đều hợp lệ. Sẵn sàng chuyển sang bước xác nhận.",
       "reupload": "Tải lên lại",
       "rowErrorItem": "{column}: {message}",
       "sectionTitle": "Xem trước",
@@ -219,9 +219,9 @@
     },
     "processing": {
       "awayNotice": "Đợt cấp vẫn chạy nếu rời trang này. Nhưng file kết quả (có mật khẩu do hệ thống sinh) chỉ tải được ở đây, nên hãy ở lại đến khi xong.",
-      "counts": "Thành công {created} · Thất bại {failed} · Còn lại {remaining}. Tiến độ tự cập nhật, không cần tải lại trang.",
+      "counts": "Thành công {created, number} · Thất bại {failed, number} · Còn lại {remaining, number}. Tiến độ tự cập nhật, không cần tải lại trang.",
       "progressAriaLabel": "Tiến độ đợt cấp",
-      "progressValue": "{processed} / {total} dòng",
+      "progressValue": "{processed, number} / {total, number} dòng",
       "title": "Đang tạo tài khoản"
     },
     "result": {
@@ -233,7 +233,7 @@
         "failed": "Thất bại",
         "file": "Tệp",
         "processed": "Đã xử lý",
-        "processedValue": "{processed} / {total}"
+        "processedValue": "{processed, number} / {total, number}"
       },
       "deleteConfirm": {
         "cancel": "Hủy",
@@ -291,6 +291,10 @@
       "USERNAME_INVALID": "Tên đăng nhập không đúng quy tắc (4–30 ký tự, không khoảng trắng, không thuộc tên dành riêng)",
       "USERNAME_TAKEN": "Tên đăng nhập đã tồn tại trong hệ thống"
     },
+    "sessionError": {
+      "description": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
+      "title": "Không tải được trang"
+    },
     "steps": {
       "ariaLabel": "Các bước cấp tài khoản hàng loạt",
       "step1": "Tải mẫu và chọn tệp",
@@ -313,7 +317,7 @@
       },
       "dropzoneHint": "Chỉ nhận tệp .xlsx, tối đa 2.000 dòng, không quá 5 MB",
       "dropzoneTitle": "Kéo tệp vào đây hoặc bấm để chọn",
-      "fileSizeKb": "{size} KB",
+      "fileSizeKb": "{size, number} KB",
       "footerNote": "Tài khoản tạo từ tệp nhận vai trò Học viên. Tài khoản đã có không bị ghi đè.",
       "mustChangePassword": "Bắt đổi mật khẩu ở lần đăng nhập đầu",
       "ruleClassCode": "Mã của lớp đang hoạt động. Để trống thì tài khoản không thuộc lớp nào",

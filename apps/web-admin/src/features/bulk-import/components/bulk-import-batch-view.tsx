@@ -16,8 +16,8 @@ import {
   StatusChip,
   Table,
 } from "@thi360/ui";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Trash2, Upload } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Trash2, TriangleAlert, Upload } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -55,6 +55,8 @@ export interface BulkImportBatchViewProps {
 }
 
 export function BulkImportBatchView({ batchId, deps }: BulkImportBatchViewProps) {
+  const t = useTranslations("bulkImport");
+  const common = useTranslations("common");
   const sessionState = useSession();
   const { can } = usePermissions();
 
@@ -62,7 +64,24 @@ export function BulkImportBatchView({ batchId, deps }: BulkImportBatchViewProps)
     return <BulkImportBatchSkeleton />;
   }
 
-  if (sessionState.status === "ready" && !can("USER.MODIFY")) {
+  if (sessionState.status === "error") {
+    return (
+      <div className="flex flex-col gap-4">
+        <BulkImportHeader deps={{ ...defaultBulkImportApiDeps, ...deps }} />
+        <BulkImportStepper currentStep={2} />
+        <Card>
+          <EmptyState
+            icon={<TriangleAlert />}
+            title={t("sessionError.title")}
+            description={t("sessionError.description")}
+            action={<Button onClick={sessionState.retry}>{common("retry")}</Button>}
+          />
+        </Card>
+      </div>
+    );
+  }
+
+  if (!can("USER.MODIFY")) {
     return <ForbiddenView />;
   }
 
@@ -100,8 +119,14 @@ function BulkImportBatchContent({
 }) {
   const t = useTranslations("bulkImport");
   const common = useTranslations("common");
+  const format = useFormatter();
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  const num = useCallback(
+    (value: number) => format.number(value),
+    [format],
+  );
 
   const [confirmStepActive, setConfirmStepActive] = useState(false);
   const [onlyErrors, setOnlyErrors] = useState(false);
@@ -110,10 +135,14 @@ function BulkImportBatchContent({
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [hasDownloadedResult, setHasDownloadedResult] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
+  const [pendingLeave, setPendingLeave] = useState<
+    { kind: "href"; href: string } | { kind: "history" } | null
+  >(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const idempotencyKeyRef = useRef<string | null>(null);
+  const leaveGuardTokenRef = useRef<string | null>(null);
+  const historyLeavingRef = useRef(false);
 
   const onlyErrorsId = useId();
   const onlyFailedId = useId();
@@ -185,6 +214,51 @@ function BulkImportBatchContent({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [shouldWarnOnLeave]);
 
+  // Chặn điều hướng Lùi/ Tiến của trình duyệt (cùng tài liệu, không qua click link):
+  // đặt một mục history "sentinel" trùng URL hiện tại; khi popstate đưa vị trí ra khỏi
+  // sentinel (người dùng bấm Back) thì đẩy lại sentinel và hỏi xác nhận thay vì để
+  // trang unmount. Xác nhận "Vẫn rời trang" thì lùi hai bước (sentinel -> trang hiện
+  // tại -> trang trước) qua history.go(-2) một lần.
+  useEffect(() => {
+    if (!shouldWarnOnLeave) return;
+    if (!leaveGuardTokenRef.current) {
+      leaveGuardTokenRef.current = generateIdempotencyKey();
+    }
+    const token = leaveGuardTokenRef.current;
+    const sentinelState = () => ({
+      ...(window.history.state ?? {}),
+      __thi360BulkImportLeaveGuard: token,
+    });
+    const alreadyGuarded = Boolean(
+      (window.history.state as Record<string, unknown> | null)?.[
+        "__thi360BulkImportLeaveGuard"
+      ],
+    );
+    if (!alreadyGuarded) {
+      window.history.pushState(sentinelState(), "");
+    }
+
+    const handlePopState = () => {
+      const state = window.history.state as Record<string, unknown> | null;
+      if (state?.__thi360BulkImportLeaveGuard) {
+        // Đáp xuống một mục sentinel (của mount này hoặc mount trước cùng trang) ->
+        // vẫn là URL được bảo vệ, không cần hỏi.
+        return;
+      }
+      if (historyLeavingRef.current) {
+        // Đang trong quá trình rời trang đã xác nhận -> không chặn nữa.
+        historyLeavingRef.current = false;
+        return;
+      }
+      // Người dùng vừa Back khỏi sentinel: khôi phục sentinel rồi hỏi xác nhận.
+      window.history.pushState(sentinelState(), "");
+      setPendingLeave({ kind: "history" });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [shouldWarnOnLeave]);
+
   useEffect(() => {
     if (!shouldWarnOnLeave) return;
     const handleDocumentClick = (event: MouseEvent) => {
@@ -219,7 +293,7 @@ function BulkImportBatchContent({
 
       event.preventDefault();
       event.stopPropagation();
-      setPendingLeaveHref(nextRoute);
+      setPendingLeave({ kind: "href", href: nextRoute });
     };
 
     document.addEventListener("click", handleDocumentClick, true);
@@ -355,7 +429,7 @@ function BulkImportBatchContent({
         header: t("preview.table.rowNo"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-muted tabular-nums">{row.original.rowNo}</span>
+          <span className="text-text-muted tabular-nums">{num(row.original.rowNo)}</span>
         ),
       },
       {
@@ -417,7 +491,7 @@ function BulkImportBatchContent({
         },
       },
     ],
-    [t, formatRowErrorText],
+    [t, num, formatRowErrorText],
   );
 
   const resultColumns = useMemo<ColumnDef<ImportRow>[]>(
@@ -427,7 +501,7 @@ function BulkImportBatchContent({
         header: t("result.table.rowNo"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-muted tabular-nums">{row.original.rowNo}</span>
+          <span className="text-text-muted tabular-nums">{num(row.original.rowNo)}</span>
         ),
       },
       {
@@ -494,7 +568,7 @@ function BulkImportBatchContent({
         },
       },
     ],
-    [t, formatRowErrorText],
+    [t, num, formatRowErrorText],
   );
 
   if (batchQuery.isLoading) {
@@ -568,13 +642,13 @@ function BulkImportBatchContent({
             <Card padding="md">
               <div className="text-body text-text-muted">{t("preview.cards.total")}</div>
               <div className="mt-1 text-page-title font-bold text-text tabular-nums">
-                {batch.totalRows}
+                {num(batch.totalRows)}
               </div>
             </Card>
             <Card padding="md">
               <div className="text-body text-text-muted">{t("preview.cards.valid")}</div>
               <div className="mt-1 text-page-title font-bold text-success tabular-nums">
-                {batch.validRows}
+                {num(batch.validRows)}
               </div>
             </Card>
             <Card
@@ -588,7 +662,7 @@ function BulkImportBatchContent({
                   batch.invalidRows > 0 ? "text-danger" : "text-text",
                 )}
               >
-                {batch.invalidRows}
+                {num(batch.invalidRows)}
               </div>
             </Card>
           </div>
@@ -685,7 +759,8 @@ function BulkImportBatchContent({
                     next: t("pagination.next"),
                     rowsPerPage: t("pagination.rowsPerPage"),
                     page: (pageNum) => t("pagination.page", { page: pageNum }),
-                    range: ({ from, to, total }) => t("pagination.range", { from, to, total }),
+                    range: ({ from, to, total }) =>
+                      t("pagination.range", { from, to, total }),
                   }}
                 />
               </div>
@@ -891,7 +966,7 @@ function BulkImportBatchContent({
             <Card padding="md">
               <div className="text-body text-text-muted">{t("result.cards.created")}</div>
               <div className="mt-1 text-page-title font-bold text-success tabular-nums">
-                {batch.createdRows}
+                {num(batch.createdRows)}
               </div>
             </Card>
             <Card padding="md" className={batch.failedRows > 0 ? "border-danger/40" : undefined}>
@@ -902,7 +977,7 @@ function BulkImportBatchContent({
                   batch.failedRows > 0 ? "text-danger" : "text-text",
                 )}
               >
-                {batch.failedRows}
+                {num(batch.failedRows)}
               </div>
             </Card>
           </div>
@@ -1029,7 +1104,8 @@ function BulkImportBatchContent({
                     next: t("pagination.next"),
                     rowsPerPage: t("pagination.rowsPerPage"),
                     page: (pageNum) => t("pagination.page", { page: pageNum }),
-                    range: ({ from, to, total }) => t("pagination.range", { from, to, total }),
+                    range: ({ from, to, total }) =>
+                      t("pagination.range", { from, to, total }),
                   }}
                 />
               </div>
@@ -1066,9 +1142,9 @@ function BulkImportBatchContent({
       />
 
       <ConfirmDialog
-        open={pendingLeaveHref !== null}
+        open={pendingLeave !== null}
         onOpenChange={(open) => {
-          if (!open) setPendingLeaveHref(null);
+          if (!open) setPendingLeave(null);
         }}
         title={t("leaveWarning.title")}
         description={t("leaveWarning.description")}
@@ -1077,11 +1153,17 @@ function BulkImportBatchContent({
         closeLabel={t("leaveWarning.close")}
         tone="danger"
         onConfirm={() => {
-          const target = pendingLeaveHref;
-          setPendingLeaveHref(null);
-          if (target) {
-            router.push(target);
+          const leave = pendingLeave;
+          setPendingLeave(null);
+          if (!leave) return;
+          if (leave.kind === "href") {
+            router.push(leave.href);
+            return;
           }
+          // Rời bằng điều hướng lịch sử: đang đứng trên sentinel, phía dưới là trang
+          // hiện tại rồi trang trước đó -> history.go(-2) tới đúng trang đích.
+          historyLeavingRef.current = true;
+          window.history.go(-2);
         }}
       />
     </div>
