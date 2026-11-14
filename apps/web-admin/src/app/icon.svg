@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Dấu logo của Thi 360 như ở thanh trên cùng: ô vuông bo góc màu primary-fill mặc định (#047857), chữ "360" màu on-primary. -->
+  <rect width="64" height="64" rx="14" fill="#047857"/>
+  <text x="32" y="41.5" text-anchor="middle" font-family="'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">360</text>
+</svg>
