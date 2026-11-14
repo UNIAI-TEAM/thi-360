@@ -53,8 +53,13 @@ export type TableProps<TData> = {
   refreshing?: boolean;
   /**
    * Ghim cột khi bảng phải cuộn ngang, để không mất ngữ cảnh của dòng: `start` ghim cột dữ liệu đầu tiên
-   * (tên/mã của dòng; đứng sau cột chọn dòng nếu có), `end` ghim cột cuối (cột Thao tác). Cột ghim có nền đặc.
-   * TODO(UNI-2581, nhánh kit): hiện mới khai báo kiểu để các màn dùng trước; phần hiển thị làm ở nhánh kit.
+   * (tên/mã của dòng) vào mép đầu dòng, kèm cột chọn dòng đứng trước nó nếu có; `end` ghim cột cuối (cột Thao tác)
+   * vào mép cuối dòng. Ô ghim có nền đặc đi theo trạng thái của dòng (thường, hover, đang chọn) và nằm trên các ô
+   * cuộn qua bên dưới; mép trong của cột ghim hiện một vạch kẻ chỉ khi có nội dung nằm khuất dưới nó. Bảng vừa
+   * khung thì ô ghim đứng đúng vị trí thường, không che gì. Bảng chỉ có một cột dữ liệu thì `end` không có tác dụng.
+   *
+   * Khi bật, khung cuộn của bảng là vùng truy vấn trạng thái cuộn (`container-type: scroll-state`): cần truy vấn
+   * theo bề rộng thì đặt `@container` lên phần tử bọc ngoài, không truyền qua `className` của bảng.
    */
   stickyColumns?: { start?: boolean; end?: boolean };
   /** Có giá trị thì hiện thay cho dữ liệu, thường là thông báo kèm nút thử lại. */
@@ -71,8 +76,51 @@ const SELECT_COLUMN_ID = "select";
 const EMPTY_SORTING: SortingState = [];
 const EMPTY_ROW_SELECTION: RowSelectionState = {};
 
-const headCell = "h-11 bg-table-head px-4 text-left text-field-label font-semibold whitespace-nowrap text-text-muted";
-const bodyCell = "h-12 px-4 align-middle text-body text-text tabular-nums";
+/*
+ * Đường kẻ ngang nằm ở ô, không ở dòng, và bảng dùng `border-separate`: với `border-collapse`, đường kẻ thuộc về
+ * lưới của bảng nên không đi theo ô `position: sticky`, nền đặc của ô ghim sẽ che mất đường kẻ dưới nó.
+ */
+const cellBorder = "border-b border-border";
+const headCell = cn(
+  "h-11 bg-table-head px-4 text-left text-field-label font-semibold whitespace-nowrap text-text-muted",
+  cellBorder,
+);
+const bodyCell = cn("h-12 px-4 align-middle text-body text-text tabular-nums", cellBorder);
+/** Cột chọn dòng: đệm ngang 2rem + ô chọn 1.25rem. Bề rộng này cũng là độ lệch của cột ghim đứng sau nó (`start-13`). */
+const selectCell = "w-13";
+
+/*
+ * Ô ghim (`stickyColumns`). `z-1` để nằm trên cả phần tử có `position` trong các ô cuộn qua bên dưới. Nền của ô
+ * thân bảng lấy từ dòng (`bg-inherit`), nên dòng phải có nền đặc (`pinnedRow`) và ô không tự chuyển màu: màu nền
+ * thừa kế đã đổi dần theo dòng.
+ */
+const pinnedCell = "sticky z-1";
+const pinnedBodyCell = "bg-inherit";
+const pinnedRow = "bg-surface";
+/*
+ * Vạch kẻ ở mép trong của cột ghim, vẽ bằng viền của phần tử giả (không chiếm chỗ, còn thấy ở chế độ tương phản
+ * cao). Viền chỉ tồn tại khi khung cuộn còn cuộn được về phía cột ghim đó, tức là đang có nội dung khuất dưới nó.
+ * Trình duyệt chưa có truy vấn trạng thái cuộn thì hiện vạch kẻ suốt lúc bảng tràn ngang (`data-overflows`).
+ */
+const pinnedEdge = "after:pointer-events-none after:absolute after:inset-y-0 after:border-border-strong";
+const pinnedEdgeStart =
+  "after:end-0 [@container_scroll-state(scrollable:inline-start)]:after:border-e not-supports-[container-type:scroll-state]:group-data-[overflows]/table:after:border-e";
+const pinnedEdgeEnd =
+  "after:start-0 [@container_scroll-state(scrollable:inline-end)]:after:border-s not-supports-[container-type:scroll-state]:group-data-[overflows]/table:after:border-s";
+
+/**
+ * Chừa chỗ cho cột ghim khi trình duyệt tự cuộn tới phần tử vừa nhận focus: không có `scroll-padding`, một liên
+ * kết hay nút trong ô thường có thể dừng lại ngay dưới cột ghim và bị che (WCAG 2.4.11). Bề rộng cột ghim theo
+ * nội dung nên phải đo ở hàng tiêu đề; bảng không ghim cột thì hai giá trị được xóa.
+ */
+function syncPinnedScrollPadding(scroller: HTMLElement) {
+  const padding = { start: 0, end: 0 };
+  for (const cell of scroller.querySelectorAll<HTMLElement>("thead [data-pinned]")) {
+    padding[cell.dataset.pinned === "end" ? "end" : "start"] += cell.offsetWidth;
+  }
+  scroller.style.setProperty("scroll-padding-inline-start", padding.start > 0 ? `${padding.start}px` : "");
+  scroller.style.setProperty("scroll-padding-inline-end", padding.end > 0 ? `${padding.end}px` : "");
+}
 
 /**
  * Theo dõi khung bọc có đang tràn ngang hay không. Chỉ khi tràn, khung mới cần là điểm dừng Tab và là vùng có
@@ -90,6 +138,7 @@ function useInlineOverflow() {
     // Lệch 1px là do làm tròn khi thu phóng lẻ, chưa phải tràn thật.
     const observer = new ResizeObserver(() => {
       setOverflows(scroller.scrollWidth - scroller.clientWidth > 1);
+      syncPinnedScrollPadding(scroller);
     });
     observer.observe(scroller);
     if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
@@ -109,6 +158,7 @@ export function Table<TData>({
   loading = false,
   loadingRows = 5,
   refreshing = false,
+  stickyColumns,
   error,
   empty,
   className,
@@ -151,21 +201,54 @@ export function Table<TData>({
         ? "indeterminate"
         : false;
 
+  const firstDataIndex = hasSelection ? 1 : 0;
+  const lastIndex = columnCount - 1;
+  const pinStart = stickyColumns?.start === true;
+  const pinEnd = stickyColumns?.end === true && lastIndex > firstDataIndex;
+  const pinned = pinStart || pinEnd;
+  /** Cột thứ `index` (tính cả cột chọn dòng) ghim về mép nào; `undefined` là không ghim. */
+  function pinnedSide(index: number): "start" | "end" | undefined {
+    if (pinStart && index <= firstDataIndex) return "start";
+    if (pinEnd && index === lastIndex) return "end";
+    return undefined;
+  }
+  /** Lớp ghim của ô ở cột thứ `index`; cột không ghim thì không có lớp nào. */
+  function pinnedClass(index: number): string | false {
+    const side = pinnedSide(index);
+    if (side === "end") return cn(pinnedCell, pinnedEdge, pinnedEdgeEnd, "end-0");
+    if (side !== "start") return false;
+    // Cột chọn dòng: bề rộng cố định để cột dữ liệu ghim sau nó biết lệch bao nhiêu; vạch kẻ chỉ ở cột dữ liệu.
+    if (index < firstDataIndex) return cn(pinnedCell, "start-0 min-w-13 max-w-13");
+    return cn(pinnedCell, pinnedEdge, pinnedEdgeStart, hasSelection ? "start-13" : "start-0");
+  }
+  /** Lớp của ô thân bảng ở cột thứ `index`: ô ghim thêm vị trí ghim và lấy nền từ dòng. */
+  function bodyCellClass(index: number, extra?: string): string {
+    const pin = pinnedClass(index);
+    return cn(bodyCell, extra, pin && [pin, pinnedBodyCell]);
+  }
+
   return (
     <div
       ref={scrollerRef}
       {...(overflows ? { role: "region", "aria-label": ariaLabel, tabIndex: 0 } : null)}
-      className={cn("overflow-x-auto", focusRingInset, className)}
+      data-overflows={overflows || undefined}
+      className={cn(
+        "overflow-x-auto",
+        // `isolate`: ô ghim (`z-1`) không trồi lên phần tử bên ngoài bảng, và vòng focus của khung vẽ trên ô ghim.
+        pinned && "group/table isolate [container-type:scroll-state]",
+        focusRingInset,
+        className,
+      )}
     >
       <table
         aria-label={ariaLabel}
         aria-busy={loading || refreshing || undefined}
-        className="w-full border-collapse"
+        className="w-full border-separate border-spacing-0"
       >
         <thead>
           {table.getHeaderGroups().map((group) => (
-            <tr key={group.id} className="border-b border-border">
-              {group.headers.map((header) => {
+            <tr key={group.id}>
+              {group.headers.map((header, headerIndex) => {
                 const sorted = header.column.getIsSorted();
                 const sortable = header.column.getCanSort();
                 return (
@@ -181,7 +264,12 @@ export function Table<TData>({
                             : "none"
                         : undefined
                     }
-                    className={cn(headCell, header.column.id === SELECT_COLUMN_ID && "w-12")}
+                    data-pinned={pinnedSide(headerIndex)}
+                    className={cn(
+                      headCell,
+                      header.column.id === SELECT_COLUMN_ID && selectCell,
+                      pinnedClass(headerIndex),
+                    )}
                   >
                     {header.column.id === SELECT_COLUMN_ID && selection ? (
                       <Checkbox
@@ -222,9 +310,9 @@ export function Table<TData>({
         >
           {loading ? (
             Array.from({ length: loadingRows }, (_, rowIndex) => (
-              <tr key={rowIndex} className="border-b border-border">
+              <tr key={rowIndex} className={cn(pinned && pinnedRow)}>
                 {allColumns.map((_, cellIndex) => (
-                  <td key={cellIndex} className={bodyCell}>
+                  <td key={cellIndex} className={bodyCellClass(cellIndex)}>
                     <Skeleton className="h-4 w-full max-w-40" />
                   </td>
                 ))}
@@ -245,10 +333,13 @@ export function Table<TData>({
               <tr
                 key={row.id}
                 data-state={row.getIsSelected() ? "selected" : undefined}
-                className="border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-subtle data-[state=selected]:bg-primary-50 motion-reduce:transition-none"
+                className={cn(
+                  "group/row transition-colors duration-150 hover:bg-subtle data-[state=selected]:bg-primary-50 motion-reduce:transition-none",
+                  pinned && pinnedRow,
+                )}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className={bodyCell}>
+                {row.getVisibleCells().map((cell, cellIndex) => (
+                  <td key={cell.id} className={bodyCellClass(cellIndex, "group-last/row:border-b-0")}>
                     {cell.column.id === SELECT_COLUMN_ID && selection ? (
                       <Checkbox
                         aria-label={selection.rowLabel(row.index, row.original)}
