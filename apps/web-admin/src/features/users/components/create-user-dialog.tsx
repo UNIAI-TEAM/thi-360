@@ -66,7 +66,7 @@ export function CreateUserDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
       <DialogContent
-        size="md"
+        size="xl"
         closeLabel={t("createDialog.close")}
         onEscapeKeyDown={(event) => {
           if (submitting) event.preventDefault();
@@ -354,6 +354,12 @@ function CreateUserFormBody({
         </div>
       )}
 
+      {/*
+        Hai cột từ bề rộng md: trái là thông tin đăng nhập, phải là thông tin cá nhân và phân quyền.
+        Thứ tự trong DOM (và thứ tự Tab) đi hết cột trái rồi mới sang cột phải. Màn hình hẹp xếp một cột.
+      */}
+      <div className="grid grid-cols-1 gap-x-6 gap-y-3.5 md:grid-cols-2">
+      <div className="flex min-w-0 flex-col gap-3.5">
       <FormField
         label={t("createDialog.usernameLabel")}
         required
@@ -423,6 +429,7 @@ function CreateUserFormBody({
                 autoComplete="new-password"
                 placeholder={t("createDialog.passwordPlaceholder")}
                 showRules
+                rulesColumns={2}
                 allowGenerate
                 revealOnGenerate
                 labels={passwordLabels}
@@ -433,6 +440,26 @@ function CreateUserFormBody({
         )}
       </FormField>
 
+      <div className="flex min-h-10 items-center gap-2.5">
+        <Controller
+          control={control}
+          name="mustChangePassword"
+          render={({ field }) => (
+            <Checkbox
+              id={mustChangeId}
+              checked={field.value}
+              onCheckedChange={(checked) => field.onChange(checked === true)}
+              disabled={mutation.isPending}
+            />
+          )}
+        />
+        <Label htmlFor={mustChangeId} className="cursor-pointer font-normal text-text">
+          {t("createDialog.mustChangePasswordLabel")}
+        </Label>
+      </div>
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-3.5">
       <FormField
         label={t("createDialog.fullNameLabel")}
         required
@@ -610,22 +637,7 @@ function CreateUserFormBody({
         </FormField>
       )}
 
-      <div className="flex min-h-10 items-center gap-2.5">
-        <Controller
-          control={control}
-          name="mustChangePassword"
-          render={({ field }) => (
-            <Checkbox
-              id={mustChangeId}
-              checked={field.value}
-              onCheckedChange={(checked) => field.onChange(checked === true)}
-              disabled={mutation.isPending}
-            />
-          )}
-        />
-        <Label htmlFor={mustChangeId} className="cursor-pointer font-normal text-text">
-          {t("createDialog.mustChangePasswordLabel")}
-        </Label>
+      </div>
       </div>
 
       </div>
