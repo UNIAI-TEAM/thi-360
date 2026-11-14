@@ -73,7 +73,7 @@ test.describe("Hồ sơ học tập của học viên (UNI-2549)", () => {
       await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
 
       await page.getByLabel("Tìm kiếm").fill("student01");
-      await page.getByRole("link", { name: "student01" }).click();
+      await page.getByRole("link", { name: "student01", exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/[^/]+$`));
       await expect(page.getByRole("heading", { name: /Học viên 01/ })).toBeVisible();
 
@@ -183,7 +183,7 @@ test.describe("Hồ sơ học tập của học viên (UNI-2549)", () => {
       await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
 
       await page.getByLabel("Tìm kiếm").fill("student01");
-      await page.getByRole("link", { name: "student01" }).click();
+      await page.getByRole("link", { name: "student01", exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/[^/]+$`));
       await expect(page.getByRole("heading", { name: /Học viên 01/ })).toBeVisible();
 
