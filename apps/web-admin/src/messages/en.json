@@ -649,6 +649,7 @@
       "assignRolesConfirm": "Save roles",
       "assignRolesDescription": "Select roles to assign to this account.",
       "assignRolesTitle": "Assign roles to account",
+      "deletedAccountNote": "This account has been deleted, so live permission data is unavailable. The roles below come from the account record and are read-only.",
       "directDialogSubmit": "Add permissions",
       "directDialogTitle": "Add direct permissions",
       "directEmpty": "This account has no direct permissions.",

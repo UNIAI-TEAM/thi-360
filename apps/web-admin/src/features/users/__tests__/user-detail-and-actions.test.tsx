@@ -100,6 +100,7 @@ function stubRbacFetch({
     },
   ],
   hasManageRole = false,
+  deleted = false,
 }: {
   roles?: Array<{
     roleId: string;
@@ -111,49 +112,52 @@ function stubRbacFetch({
     assignedAt: string;
   }>;
   hasManageRole?: boolean;
+  /** Backend thật trả 404 cho cả ba API đọc phân quyền của tài khoản đã xóa mềm. */
+  deleted?: boolean;
 } = {}) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      if (url.endsWith("/effective-permissions")) {
-        return new Response(
-          JSON.stringify({
-            userId: BASE_USER.id,
-            effectiveAccess: hasManageRole ? "MANAGE" : "EXAM",
-            hasManageRole,
-            inactiveDirectPermissions: [],
-            permissions: [],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      if (url.endsWith("/permissions")) {
-        return new Response(
-          JSON.stringify({
-            userId: BASE_USER.id,
-            hasManageRole,
-            permissions: [],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      if (url.endsWith("/roles")) {
-        return new Response(
-          JSON.stringify({
-            userId: BASE_USER.id,
-            access: hasManageRole ? "MANAGE" : "EXAM",
-            roles,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({}), {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (deleted && /\/users\/[^/]+\/(roles|permissions|effective-permissions)$/.test(url)) {
+      return new Response(JSON.stringify({ code: "USER_NOT_FOUND", message: "User not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
-    }),
-  );
+    }
+    if (url.endsWith("/effective-permissions")) {
+      return new Response(
+        JSON.stringify({
+          userId: BASE_USER.id,
+          effectiveAccess: hasManageRole ? "MANAGE" : "EXAM",
+          hasManageRole,
+          inactiveDirectPermissions: [],
+          permissions: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    if (url.endsWith("/permissions")) {
+      return new Response(
+        JSON.stringify({ userId: BASE_USER.id, hasManageRole, permissions: [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    if (url.endsWith("/roles")) {
+      return new Response(
+        JSON.stringify({
+          userId: BASE_USER.id,
+          access: hasManageRole ? "MANAGE" : "EXAM",
+          roles,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return new Response(JSON.stringify({}), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
 }
 
 function renderDetail(
@@ -441,6 +445,7 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     ).not.toBeInTheDocument();
     unmount();
 
+    const fetchMock = stubRbacFetch({ deleted: true });
     renderDetail(
       makeDeps({
         getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({
@@ -453,14 +458,48 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     );
 
     await userEvent.click(await screen.findByRole("tab", { name: "Vai trò & quyền" }));
+    expect(await screen.findByText(viMessages.rbac.userRbac.deletedAccountNote)).toBeInTheDocument();
+    expect(screen.getByText("Học viên")).toBeInTheDocument();
+    expect(screen.getByText("STUDENT")).toBeInTheDocument();
     expect(
-      await screen.findByRole("heading", { name: viMessages.rbac.userRbac.directSectionTitle }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: viMessages.rbac.userRbac.directSectionTitle }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: viMessages.rbac.userRbac.assignRolesButton }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: viMessages.rbac.actions.retry })).not.toBeInTheDocument();
+    expect(screen.queryByText(viMessages.rbac.userRbac.errorTitle)).not.toBeInTheDocument();
+
+    const requestedUrls = fetchMock.mock.calls.map(([input]) =>
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url,
+    );
     expect(
-      screen.queryByRole("button", { name: viMessages.rbac.userRbac.addDirectButton }),
-    ).not.toBeInTheDocument();
+      requestedUrls.filter((url) =>
+        /\/users\/[^/]+\/(roles|permissions|effective-permissions)$/.test(url),
+      ),
+    ).toEqual([]);
+  });
+
+  it("tab Vai trò & quyền của tài khoản đã xóa hiện ghi chú tiếng Anh khi locale là en", async () => {
+    stubRbacFetch({ deleted: true });
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UserDetailView
+          userId={BASE_USER.id}
+          deps={makeDeps({
+            getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({
+              ...BASE_USER,
+              status: "INACTIVE",
+              deletedAt: "2026-11-13T10:00:00Z",
+              deleteReason: "Đã nghỉ học",
+            })),
+          })}
+        />
+      </SessionProvider>,
+      { locale: "en", messages: en },
+    );
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Roles & permissions" }));
+    expect(await screen.findByText(en.rbac.userRbac.deletedAccountNote)).toBeInTheDocument();
   });
 });

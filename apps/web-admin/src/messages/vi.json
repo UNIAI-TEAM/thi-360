@@ -649,6 +649,7 @@
       "assignRolesConfirm": "Lưu vai trò",
       "assignRolesDescription": "Chọn các vai trò muốn gán cho tài khoản này.",
       "assignRolesTitle": "Gán vai trò cho tài khoản",
+      "deletedAccountNote": "Tài khoản đã bị xóa nên không có dữ liệu phân quyền hiện hành. Danh sách vai trò dưới đây lấy từ hồ sơ tài khoản và chỉ để xem.",
       "directDialogSubmit": "Thêm quyền",
       "directDialogTitle": "Thêm quyền riêng",
       "directEmpty": "Tài khoản này chưa có quyền gán trực tiếp nào.",
