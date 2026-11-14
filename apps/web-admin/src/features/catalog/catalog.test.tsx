@@ -1409,6 +1409,27 @@ const KNOWLEDGE_KT1: CatalogTreeNodeResponse = {
   version: 0,
 };
 
+const KNOWLEDGE_KT2: CatalogTreeNodeResponse = {
+  id: "node-kt2",
+  groupId: "grp-knowledge",
+  parentId: "node-b1",
+  code: "KT2",
+  nameVi: "GTLN GTNN",
+  nameEn: "Max Min",
+  displayOrder: 1,
+  status: "ACTIVE",
+  effectiveStatus: "ACTIVE",
+  depth: 3,
+  path: "/node-ch1/node-b1/node-kt2/",
+  hasChildren: false,
+  childCount: 0,
+  matched: false,
+  ownRefs: [],
+  inheritedRefs: KNOWLEDGE_BAI1.inheritedRefs,
+  value: 5,
+  version: 0,
+};
+
 function toTreeItemDetail(node: CatalogTreeNodeResponse): CatalogItemResponse {
   return {
     id: node.id,
@@ -2110,6 +2131,64 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     await waitFor(() => {
       expect(within(detailPane).getByRole("heading", { name: "Hàm số" })).toBeInTheDocument();
     });
+  });
+
+  it("hiện trạng thái tải/lỗi/thử lại và chỉ đếm nút lá thành công cho phạm vi câu hỏi (R2-02)", async () => {
+    const twoLeaves = [
+      {
+        id: "node-kt1",
+        code: "KT1",
+        nameVi: "Cực trị",
+        nameEn: "Extrema",
+        depth: 3,
+        parentId: "node-b1",
+        path: "/node-ch1/node-b1/node-kt1/",
+        value: 4,
+      },
+      {
+        id: "node-kt2",
+        code: "KT2",
+        nameVi: "GTLN GTNN",
+        nameEn: "Max Min",
+        depth: 3,
+        parentId: "node-b1",
+        path: "/node-ch1/node-b1/node-kt2/",
+        value: 5,
+      },
+    ];
+    const getDescendants = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("descendants fail"))
+      .mockResolvedValue(twoLeaves);
+    const api = createTreeMockApi({ getDescendants });
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    // Expand CH1 and select B1 (1 direct child, 2 leaf descendants on success)
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    await userEvent.click(await screen.findByText("Tính đơn điệu"));
+
+    const detailPane = await screen.findByRole("complementary", {
+      name: "Chi tiết nút đang chọn",
+    });
+
+    // Rejected descendants -> localized error + retry, never the childCount fallback
+    expect(
+      await within(detailPane).findByText(viMessages.catalog.tree.questionScopeError),
+    ).toBeInTheDocument();
+    expect(
+      within(detailPane).queryByText(/câu hỏi của 1 kiến thức/),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(within(detailPane).getByRole("button", { name: "Thử lại" }));
+
+    // Retry succeeds -> definitive leaf count (2), not the direct-child count (1)
+    await waitFor(() =>
+      expect(
+        within(detailPane).getByText("Đề gắn nút này lấy câu hỏi của 2 kiến thức."),
+      ).toBeInTheDocument(),
+    );
+    expect(getDescendants).toHaveBeenCalledTimes(2);
   });
 
   it("chặn hiển thị chi tiết khi ?node= thuộc danh mục khác (R1-10)", async () => {

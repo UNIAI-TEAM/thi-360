@@ -833,7 +833,7 @@ export function TreeItemsPanel({
   const questionScopeLeafCount = activeNode
     ? activeNodeIsLeaf
       ? 1
-      : (activeNodeDescendantsQuery.data?.length ?? activeNode.childCount)
+      : (activeNodeDescendantsQuery.data?.length ?? 0)
     : 0;
 
   return (
@@ -1607,12 +1607,40 @@ export function TreeItemsPanel({
               </dl>
 
               {/* Question scope callout */}
-              <p className="rounded-md border border-border bg-surface px-3 py-2 text-caption text-text-secondary">
-                {t("tree.questionScope", {
-                  count: questionScopeLeafCount,
-                  leafName: leafLevelName.toLowerCase(),
-                })}
-              </p>
+              {activeNodeIsLeaf ? (
+                <p className="rounded-md border border-border bg-surface px-3 py-2 text-caption text-text-secondary">
+                  {t("tree.questionScope", {
+                    count: questionScopeLeafCount,
+                    leafName: leafLevelName.toLowerCase(),
+                  })}
+                </p>
+              ) : activeNodeDescendantsQuery.isPending ? (
+                <div
+                  role="status"
+                  aria-label={commonT("loading")}
+                  className="rounded-md border border-border bg-surface px-3 py-2"
+                >
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              ) : activeNodeDescendantsQuery.isError ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-caption text-danger">
+                  <span>{t("tree.questionScopeError")}</span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void activeNodeDescendantsQuery.refetch()}
+                  >
+                    {commonT("retry")}
+                  </Button>
+                </div>
+              ) : (
+                <p className="rounded-md border border-border bg-surface px-3 py-2 text-caption text-text-secondary">
+                  {t("tree.questionScope", {
+                    count: questionScopeLeafCount,
+                    leafName: leafLevelName.toLowerCase(),
+                  })}
+                </p>
+              )}
 
               {/* References section (own + inherited) */}
               <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3">

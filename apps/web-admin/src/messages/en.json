@@ -470,6 +470,8 @@
       "notUsedYet": "Not referenced by any question or exam yet",
       "pickRefValuesLabel": "Choose {name} values",
       "questionScope": "Exams targeting this node draw questions from {count, number} {leafName}.",
+      "questionScopeError": "Could not load the question scope.",
+      "questionScopeLoading": "Loading question scope…",
       "refAddedToast": "Linked {name}.",
       "refGroupAddedToast": "Added linked catalog {name}.",
       "refGroupDefaultHint": "Default",

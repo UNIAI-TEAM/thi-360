@@ -470,6 +470,8 @@
       "notUsedYet": "Chưa được câu hỏi hay đề nào tham chiếu",
       "pickRefValuesLabel": "Chọn giá trị {name}",
       "questionScope": "Đề gắn nút này lấy câu hỏi của {count, number} {leafName}.",
+      "questionScopeError": "Không tải được phạm vi câu hỏi.",
+      "questionScopeLoading": "Đang tải phạm vi câu hỏi…",
       "refAddedToast": "Đã gắn liên kết {name}.",
       "refGroupAddedToast": "Đã thêm danh mục liên kết {name}.",
       "refGroupDefaultHint": "Mặc định",
