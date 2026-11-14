@@ -3,6 +3,7 @@ package vn.unicom.thi360.identity.infrastructure;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -26,6 +27,21 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
     Optional<UserAccount> findActiveByEmailNormalized(@Param("emailNormalized") String emailNormalized);
 
     @Query("""
+            SELECT u.usernameNormalized FROM UserAccount u
+            WHERE u.deletedAt IS NULL
+              AND u.usernameNormalized IN :usernames
+            """)
+    Set<String> findActiveUsernamesNormalizedIn(@Param("usernames") Collection<String> usernames);
+
+    @Query("""
+            SELECT u.emailNormalized FROM UserAccount u
+            WHERE u.deletedAt IS NULL
+              AND u.emailNormalized IS NOT NULL
+              AND u.emailNormalized IN :emails
+            """)
+    Set<String> findActiveEmailsNormalizedIn(@Param("emails") Collection<String> emails);
+
+    @Query("""
             SELECT u FROM UserAccount u
             WHERE u.deletedAt IS NOT NULL
               AND u.idpCleanupPending = true
@@ -37,6 +53,12 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
             @Param("usernameNormalized") String usernameNormalized,
             @Param("emailNormalized") String emailNormalized);
     List<UserAccount> findAllByIdIn(Collection<UUID> ids);
+    @Query("""
+            SELECT u FROM UserAccount u
+            WHERE u.importRowId = :importRowId
+              AND u.deletedAt IS NULL
+            """)
+    Optional<UserAccount> findByImportRowIdAndDeletedAtIsNull(@Param("importRowId") UUID importRowId);
 
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(

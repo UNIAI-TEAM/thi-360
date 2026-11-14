@@ -59,6 +59,7 @@ import vn.unicom.thi360.identity.api.UserRoleSummary;
 import vn.unicom.thi360.identity.api.UserSummaryResponse;
 import vn.unicom.thi360.identity.api.UsernameAvailabilityResponse;
 import vn.unicom.thi360.identity.domain.IdentityProvider;
+import vn.unicom.thi360.identity.domain.ImportBatchStatus;
 import vn.unicom.thi360.identity.domain.Normalizer;
 import vn.unicom.thi360.identity.domain.PasswordPolicy;
 import vn.unicom.thi360.identity.domain.Role;
@@ -69,6 +70,8 @@ import vn.unicom.thi360.identity.domain.UserRole;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.domain.UsernamePolicy;
+import vn.unicom.thi360.identity.infrastructure.ImportRowRepository;
+import vn.unicom.thi360.identity.infrastructure.ImportBatchRepository;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
@@ -95,6 +98,7 @@ import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 import vn.unicom.thi360.shared.security.Access;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.security.PermissionSet;
 import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.security.SessionStore;
 
@@ -124,6 +128,8 @@ public class UserAdminService {
     private final UserIdentityRepository userIdentityRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final ImportRowRepository importRowRepository;
+    private final ImportBatchRepository importBatchRepository;
     private final UsernamePolicy usernamePolicy;
     private final PasswordPolicy passwordPolicy;
     private final PrivilegeGuard privilegeGuard;
@@ -147,6 +153,8 @@ public class UserAdminService {
             UserIdentityRepository userIdentityRepository,
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
+            ImportRowRepository importRowRepository,
+            ImportBatchRepository importBatchRepository,
             UsernamePolicy usernamePolicy,
             PasswordPolicy passwordPolicy,
             PrivilegeGuard privilegeGuard,
@@ -167,6 +175,8 @@ public class UserAdminService {
         this.userIdentityRepository = userIdentityRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
+        this.importRowRepository = importRowRepository;
+        this.importBatchRepository = importBatchRepository;
         this.usernamePolicy = usernamePolicy;
         this.passwordPolicy = passwordPolicy;
         this.privilegeGuard = privilegeGuard;
@@ -325,9 +335,49 @@ public class UserAdminService {
 
     public UserDetailResponse createUser(CreateUserRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
+        return createUserInternal(request, actor, true, null, null, null);
+    }
 
+    public UserDetailResponse createStudentForImport(
+            CreateUserRequest request,
+            UUID importRowId,
+            UUID importBatchId,
+            UUID importLeaseToken,
+            UUID actorId,
+            String actorUsername,
+            boolean platformActor) {
+        Objects.requireNonNull(importRowId, "importRowId must not be null");
+        Objects.requireNonNull(importBatchId, "importBatchId must not be null");
+        Objects.requireNonNull(importLeaseToken, "importLeaseToken must not be null");
+        CurrentUser actor = new CurrentUser(
+                actorId,
+                actorUsername,
+                platformActor ? Realm.MASTER : Realm.APP,
+                Access.MANAGE,
+                PermissionSet.empty());
+        CreateUserRequest studentRequest = new CreateUserRequest(
+                request.username(),
+                request.password(),
+                request.fullName(),
+                request.email(),
+                request.phone(),
+                null,
+                request.classIds(),
+                request.mustChangePassword());
+        return createUserInternal(studentRequest, actor, false, importRowId, importBatchId, importLeaseToken);
+    }
+
+    private UserDetailResponse createUserInternal(
+            CreateUserRequest request,
+            CurrentUser actor,
+            boolean enforceClassModifyPermission,
+            UUID importRowId,
+            UUID importBatchId,
+            UUID importLeaseToken) {
+        boolean cleanupIncompleteProvisioningForImport = importRowId != null;
+        boolean fencedImport = importBatchId != null && importLeaseToken != null;
         boolean hasClassIds = request.classIds() != null && !request.classIds().isEmpty();
-        if (hasClassIds && !actor.permissions().hasCode(Permissions.CLASS_MODIFY)) {
+        if (enforceClassModifyPermission && hasClassIds && !actor.permissions().hasCode(Permissions.CLASS_MODIFY)) {
             throw new ForbiddenException("FORBIDDEN", null);
         }
         List<UUID> targetClassIds = !hasClassIds
@@ -345,20 +395,45 @@ public class UserAdminService {
 
         String normalizedUsername = Normalizer.normalize(trimmedUsername);
         String normalizedEmail = Normalizer.normalize(trimmedEmail);
+        if (importRowId != null) {
+            if (fencedImport) {
+                assertBatchLeaseHeld(importBatchId, importLeaseToken);
+            }
+            Optional<UserAccount> owned = userAccountRepository.findByImportRowIdAndDeletedAtIsNull(importRowId);
+            if (owned.isPresent()) {
+                UserAccount ownedAccount = owned.get();
+                if (ownedAccount.getStatus() == UserStatus.ACTIVE) {
+                    if (fencedImport) {
+                        assertBatchLeaseHeld(importBatchId, importLeaseToken);
+                    }
+                    List<UserRoleSummary> roleSummaries = loadRolesForUsers(List.of(ownedAccount.getId()))
+                            .getOrDefault(ownedAccount.getId(), toRoleSummaries(targetRoles));
+                    return toDetailResponse(ownedAccount, roleSummaries);
+                }
+                if (ownedAccount.getStatus() == UserStatus.PROVISIONING) {
+                    cleanupOwnedProvisioningBeforeRetry(ownedAccount, importBatchId, importLeaseToken);
+                }
+            }
+        }
         if (userAccountRepository.findActiveByUsernameNormalized(normalizedUsername).isPresent()) {
             throw new ConflictException(ERROR_USERNAME_TAKEN);
         }
         if (normalizedEmail != null && userAccountRepository.findActiveByEmailNormalized(normalizedEmail).isPresent()) {
             throw new ConflictException(ERROR_EMAIL_TAKEN);
         }
-
         UUID provisionalId = Ids.newId();
         Instant now = Instant.now(clock);
         String roleIdsIntent = targetRoles.stream()
                 .map(role -> role.getId().toString())
                 .collect(Collectors.joining(","));
+        if (fencedImport) {
+            assertBatchLeaseHeld(importBatchId, importLeaseToken);
+        }
         try {
             transactionTemplate.executeWithoutResult(status -> {
+                if (fencedImport) {
+                    requireBatchLeaseHeldForUpdate(importBatchId, importLeaseToken);
+                }
                 Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
                 String code = String.format("U%06d", seq == null ? 1L : seq);
                 UserAccount provisional = new UserAccount(
@@ -374,12 +449,25 @@ public class UserAdminService {
                         now,
                         actor.id());
                 provisional.setProvisioningRoleIds(roleIdsIntent);
+                provisional.setImportRowId(importRowId);
                 userAccountRepository.saveAndFlush(provisional);
+                if (importRowId != null) {
+                    int updatedRow = importRowRepository.updateProvisionalUserId(importRowId, provisionalId);
+                    if (updatedRow != 1) {
+                        throw new IllegalStateException("Expected 1 updated import_row for provisionalUserId: " + importRowId);
+                    }
+                }
             });
         } catch (DataIntegrityViolationException ex) {
+            if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+            }
             throw mapUniqueConstraintViolation(ex);
         }
 
+        if (fencedImport) {
+            assertBatchLeaseHeld(importBatchId, importLeaseToken);
+        }
         String[] names = splitFullName(trimmedFullName);
         UUID keycloakUserId;
         try {
@@ -390,12 +478,23 @@ public class UserAdminService {
                     trimmedEmail,
                     normalizedEmail,
                     names[0],
-                    names[1]);
+                    names[1],
+                    importBatchId,
+                    importLeaseToken);
         } catch (ConflictException | ValidationException ex) {
-            deleteProvisionalUserQuietly(provisionalId);
+            if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+            }
+            deleteProvisionalUserQuietly(provisionalId, importBatchId, importLeaseToken);
             throw ex;
         } catch (ExternalServiceException ex) {
-            if (userAccountRepository.findById(provisionalId).isPresent()) {
+            if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+            }
+            if (cleanupIncompleteProvisioningForImport) {
+                cleanupUncreatedProvisioningQuietly(
+                        provisionalId, normalizedUsername, importBatchId, importLeaseToken);
+            } else if (userAccountRepository.findById(provisionalId).isPresent()) {
                 log.atError()
                         .addKeyValue("event", "user.create.keycloak_failed")
                         .addKeyValue("provisionalUserId", provisionalId.toString())
@@ -403,16 +502,25 @@ public class UserAdminService {
             }
             throw ex;
         }
+        if (fencedImport) {
+            assertBatchLeaseHeld(importBatchId, importLeaseToken);
+        }
         try {
             keycloakClient.setPassword(keycloakUserId, request.password(), false);
         } catch (ValidationException ex) {
+            if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+            }
             if (deleteKeycloakUserQuietly(keycloakUserId)) {
-                deleteProvisionalUserQuietly(provisionalId);
+                deleteProvisionalUserQuietly(provisionalId, importBatchId, importLeaseToken);
             } else {
-                markProvisionalIdpCleanupPendingQuietly(provisionalId);
+                markProvisionalIdpCleanupPendingQuietly(provisionalId, importBatchId, importLeaseToken);
             }
             throw ex;
         } catch (ExternalServiceException ex) {
+            if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+            }
             log.atError()
                     .addKeyValue("event", "user.create.set_password_failed")
                     .addKeyValue("provisionalUserId", provisionalId.toString())
@@ -424,6 +532,9 @@ public class UserAdminService {
         Instant activatedAt = Instant.now(clock);
         try {
             return transactionTemplate.execute(status -> {
+                if (fencedImport) {
+                    requireBatchLeaseHeldForUpdate(importBatchId, importLeaseToken);
+                }
                 int updated = userAccountRepository.promoteProvisionedUser(
                         provisionalId,
                         keycloakUserId,
@@ -477,10 +588,16 @@ public class UserAdminService {
                 return toDetailResponse(account, toRoleSummaries(targetRoles));
             });
         } catch (RuntimeException ex) {
+            if (ex instanceof StaleBatchLeaseException) {
+                throw ex;
+            }
+            if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+            }
             if (deleteKeycloakUserQuietly(keycloakUserId)) {
-                deleteProvisionalUserQuietly(provisionalId);
+                deleteProvisionalUserQuietly(provisionalId, importBatchId, importLeaseToken);
             } else {
-                markProvisionalIdpCleanupPendingQuietly(provisionalId);
+                markProvisionalIdpCleanupPendingQuietly(provisionalId, importBatchId, importLeaseToken);
             }
             throw ex;
         }
@@ -1001,7 +1118,10 @@ public class UserAdminService {
             String trimmedEmail,
             String normalizedEmail,
             String firstName,
-            String lastName) {
+            String lastName,
+            UUID importBatchId,
+            UUID importLeaseToken) {
+        boolean fencedImport = importBatchId != null && importLeaseToken != null;
         KeycloakIdentityClient.CreateUserCommand cmd = new KeycloakIdentityClient.CreateUserCommand(
                 trimmedUsername,
                 trimmedEmail,
@@ -1014,12 +1134,18 @@ public class UserAdminService {
         try {
             return keycloakClient.createUser(cmd);
         } catch (ConflictException conflictEx) {
+            if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+            }
             List<UserAccount> pendingRows = userAccountRepository.findPendingIdpCleanupByUsernameOrEmail(
                     normalizedUsername, normalizedEmail);
             if (pendingRows.isEmpty()) {
                 throw conflictEx;
             }
             for (UserAccount pending : pendingRows) {
+                if (fencedImport) {
+                    assertBatchLeaseHeld(importBatchId, importLeaseToken);
+                }
                 try {
                     if (pending.getStatus() != UserStatus.PROVISIONING) {
                         keycloakClient.deleteUser(pending.getId());
@@ -1029,17 +1155,31 @@ public class UserAdminService {
                     } else {
                         Optional<UUID> orphanKcId = keycloakClient.findUserIdByUsername(pending.getUsername());
                         if (orphanKcId.isPresent()) {
+                            if (fencedImport) {
+                                assertBatchLeaseHeld(importBatchId, importLeaseToken);
+                            }
                             keycloakClient.deleteUser(orphanKcId.get());
                         }
-                        deleteProvisionalUserQuietly(pending.getId());
+                        deleteProvisionalUserQuietly(pending.getId(), importBatchId, importLeaseToken);
                     }
+                } catch (StaleBatchLeaseException ex) {
+                    throw ex;
                 } catch (ExternalServiceException ex) {
-                    deleteProvisionalUserQuietly(provisionalId);
+                    if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                        throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+                    }
+                    deleteProvisionalUserQuietly(provisionalId, importBatchId, importLeaseToken);
                     throw ex;
                 } catch (RuntimeException ex) {
-                    deleteProvisionalUserQuietly(provisionalId);
+                    if (fencedImport && !isBatchLeaseHeld(importBatchId, importLeaseToken)) {
+                        throw new StaleBatchLeaseException(importBatchId, importLeaseToken);
+                    }
+                    deleteProvisionalUserQuietly(provisionalId, importBatchId, importLeaseToken);
                     throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
                 }
+            }
+            if (fencedImport) {
+                assertBatchLeaseHeld(importBatchId, importLeaseToken);
             }
             return keycloakClient.createUser(cmd);
         }
@@ -1356,8 +1496,21 @@ public class UserAdminService {
     }
 
     private void deleteProvisionalUserQuietly(UUID provisionalId) {
+        deleteProvisionalUserQuietly(provisionalId, null, null);
+    }
+
+    private void deleteProvisionalUserQuietly(UUID provisionalId, UUID importBatchId, UUID importLeaseToken) {
         try {
-            requiresNewTx.executeWithoutResult(status -> userAccountRepository.deleteById(provisionalId));
+            requiresNewTx.executeWithoutResult(status -> {
+                if (importBatchId != null && importLeaseToken != null) {
+                    requireBatchLeaseHeldForUpdate(importBatchId, importLeaseToken);
+                }
+                userAccountRepository.findById(provisionalId)
+                        .filter(u -> u.getStatus() == UserStatus.PROVISIONING)
+                        .ifPresent(userAccountRepository::delete);
+            });
+        } catch (StaleBatchLeaseException ex) {
+            throw ex;
         } catch (RuntimeException ex) {
             log.atWarn()
                     .setCause(ex)
@@ -1366,10 +1519,17 @@ public class UserAdminService {
         }
     }
 
-    private void markProvisionalIdpCleanupPendingQuietly(UUID provisionalId) {
+    private void markProvisionalIdpCleanupPendingQuietly(
+            UUID provisionalId, UUID importBatchId, UUID importLeaseToken) {
         try {
-            requiresNewTx.executeWithoutResult(status ->
-                    userAccountRepository.updateIdpCleanupPending(provisionalId, true, Instant.now(clock)));
+            requiresNewTx.executeWithoutResult(status -> {
+                if (importBatchId != null && importLeaseToken != null) {
+                    requireBatchLeaseHeldForUpdate(importBatchId, importLeaseToken);
+                }
+                userAccountRepository.updateIdpCleanupPending(provisionalId, true, Instant.now(clock));
+            });
+        } catch (StaleBatchLeaseException ex) {
+            throw ex;
         } catch (RuntimeException ex) {
             log.atWarn()
                     .setCause(ex)
@@ -1389,6 +1549,56 @@ public class UserAdminService {
                     .log("Failed to clean up Keycloak user during rollback");
             return false;
         }
+    }
+
+    private void cleanupOwnedProvisioningBeforeRetry(
+            UserAccount ownedStale, UUID importBatchId, UUID importLeaseToken) {
+        boolean fencedImport = importBatchId != null && importLeaseToken != null;
+        if (fencedImport) {
+            assertBatchLeaseHeld(importBatchId, importLeaseToken);
+        }
+        Optional<UUID> kcId = keycloakClient.findUserIdByUsername(ownedStale.getUsernameNormalized());
+        if (kcId.isPresent()) {
+            if (fencedImport) {
+                assertBatchLeaseHeld(importBatchId, importLeaseToken);
+            }
+            keycloakClient.deleteUser(kcId.get());
+        }
+        deleteProvisionalUserQuietly(ownedStale.getId(), importBatchId, importLeaseToken);
+    }
+
+    private void cleanupUncreatedProvisioningQuietly(
+            UUID provisionalId, String normalizedUsername, UUID importBatchId, UUID importLeaseToken) {
+        boolean fencedImport = importBatchId != null && importLeaseToken != null;
+        try {
+            if (fencedImport) {
+                assertBatchLeaseHeld(importBatchId, importLeaseToken);
+            }
+            Optional<UUID> kcId = keycloakClient.findUserIdByUsername(normalizedUsername);
+            if (kcId.isEmpty()) {
+                deleteProvisionalUserQuietly(provisionalId, importBatchId, importLeaseToken);
+            }
+        } catch (StaleBatchLeaseException ex) {
+            throw ex;
+        } catch (RuntimeException ignored) {
+            // Keycloak unreachable; leave PROVISIONING row for reconciler or retry cleanup.
+        }
+    }
+
+    private void assertBatchLeaseHeld(UUID batchId, UUID leaseToken) {
+        if (!isBatchLeaseHeld(batchId, leaseToken)) {
+            throw new StaleBatchLeaseException(batchId, leaseToken);
+        }
+    }
+
+    private boolean isBatchLeaseHeld(UUID batchId, UUID leaseToken) {
+        return importBatchRepository.existsByIdAndStatusAndLeaseToken(
+                batchId, ImportBatchStatus.PROCESSING, leaseToken);
+    }
+
+    private void requireBatchLeaseHeldForUpdate(UUID batchId, UUID leaseToken) {
+        importBatchRepository.findOwnedForUpdate(batchId, leaseToken)
+                .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
     }
 
     private static RuntimeException mapUniqueConstraintViolation(DataIntegrityViolationException ex) {
