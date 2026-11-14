@@ -56,16 +56,18 @@ export function DialogContent({
         {/*
           Vùng cuộn: cao tối đa bằng phần còn lại của hộp thoại (max-h theo viewport) nên
           nội dung dài cuộn bên trong, tiêu đề (DialogHeader) và chân (DialogFooter) dính
-          mép trên/dưới. Margin âm + padding chừa chỗ cho vòng focus (overflow cắt), không đổi
-          kích thước nội dung.
+          mép trên/dưới. Margin âm + padding chỉ theo chiều ngang (chừa chỗ cho vòng focus bị
+          overflow cắt); theo chiều dọc KHÔNG có padding/margin âm, nếu không nội dung cuộn
+          sẽ lộ ra phía trên tiêu đề dính (V2-4).
         */}
-        <div className="-mx-2 -my-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 py-1">
+        <div className="-mx-2 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2">
           {children}
         </div>
+        {/* z-20 > z-10 của DialogHeader/DialogFooter dính: nút × luôn là phần tử trên cùng tại tâm của nó (V2-2). */}
         <DialogPrimitive.Close
           aria-label={closeLabel ?? common.close}
           className={cn(
-            "absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
+            "absolute top-4 right-4 z-20 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
             focusRing,
           )}
         >
@@ -79,7 +81,7 @@ export function DialogContent({
 export function DialogHeader({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("sticky top-0 z-10 flex flex-col gap-1.5 bg-surface pr-8", className)}
+      className={cn("sticky top-0 z-10 flex flex-col gap-1.5 bg-surface pr-10", className)}
       {...props}
     />
   );
@@ -113,7 +115,7 @@ export function DialogDescription({
 export function DialogFooter({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("sticky bottom-0 z-10 flex justify-end gap-3 bg-surface", className)}
+      className={cn("sticky bottom-0 z-10 flex justify-end gap-3 bg-surface pb-1", className)}
       {...props}
     />
   );

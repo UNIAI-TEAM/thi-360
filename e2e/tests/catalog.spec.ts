@@ -393,9 +393,19 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=KNOWLEDGE`);
     await expect(page.getByRole("heading", { name: "Cấu trúc kiến thức" })).toBeVisible();
 
-    // 1. Add chapter
+    // 0. V2-2: the dialog's close X must be the top element at its centre, so a real click closes it
     await page.getByRole("button", { name: "Thêm Chương", exact: true }).first().click();
     let dlg = page.getByRole("dialog");
+    const closeX = dlg.getByRole("button", { name: "Đóng", exact: true });
+    await closeX.click({ trial: true }); // waits for the box to be stable and not covered
+    const closeBox = await closeX.boundingBox();
+    expect(closeBox).not.toBeNull();
+    await page.mouse.click(closeBox!.x + closeBox!.width / 2, closeBox!.y + closeBox!.height / 2);
+    await expect(dlg).toBeHidden();
+
+    // 1. Add chapter
+    await page.getByRole("button", { name: "Thêm Chương", exact: true }).first().click();
+    dlg = page.getByRole("dialog");
     await dlg.getByLabel(/Mã giá trị/).fill(chapCode);
     await dlg.getByLabel(/Tên tiếng Việt/).fill(chapName);
     await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
