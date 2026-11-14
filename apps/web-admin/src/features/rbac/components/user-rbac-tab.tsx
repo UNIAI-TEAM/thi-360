@@ -385,6 +385,7 @@ export function UserRbacTab({
 
   function handleSaveDirectPermissions(event: React.FormEvent) {
     event.preventDefault();
+    if (!allPermissionsQuery.isSuccess) return;
     const existingSet = new Set(directPermissions.map((p) => p.permissionCode));
     const hasAddedNew = draftDirectCodes.some((code) => !existingSet.has(code));
     if (hasAddedNew && directReason.trim().length === 0) {
@@ -633,6 +634,17 @@ export function UserRbacTab({
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
+          ) : allRolesQuery.isError ? (
+            <EmptyState
+              icon={<TriangleAlert />}
+              title={t("userRbac.errorRolesTitle")}
+              description={t("userRbac.errorRolesDescription")}
+              action={
+                <Button variant="secondary" onClick={() => void allRolesQuery.refetch()}>
+                  {t("actions.retry")}
+                </Button>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-3">
               <Input
@@ -696,7 +708,11 @@ export function UserRbacTab({
             <Button
               variant="primary"
               loading={updateRolesMutation.isPending}
-              onClick={() => updateRolesMutation.mutate(draftRoleIds)}
+              disabled={!allRolesQuery.isSuccess || updateRolesMutation.isPending}
+              onClick={() => {
+                if (!allRolesQuery.isSuccess) return;
+                updateRolesMutation.mutate(draftRoleIds);
+              }}
             >
               {t("userRbac.assignRolesConfirm")}
             </Button>
@@ -726,13 +742,35 @@ export function UserRbacTab({
             )}
 
             <div className="max-h-[48vh] overflow-y-auto pr-1">
-              <ObjectPermissionPicker
-                groups={permissionGroups}
-                selectedCodes={draftDirectCodes}
-                onChange={setDraftDirectCodes}
-                lockedObjects={lockedObjects}
-                inheritedCodes={inheritedRoleCodes}
-              />
+              {allPermissionsQuery.isPending ? (
+                <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : allPermissionsQuery.isError ? (
+                <EmptyState
+                  icon={<TriangleAlert />}
+                  title={t("userRbac.errorPermissionsTitle")}
+                  description={t("userRbac.errorPermissionsDescription")}
+                  action={
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => void allPermissionsQuery.refetch()}
+                    >
+                      {t("actions.retry")}
+                    </Button>
+                  }
+                />
+              ) : (
+                <ObjectPermissionPicker
+                  groups={permissionGroups}
+                  selectedCodes={draftDirectCodes}
+                  onChange={setDraftDirectCodes}
+                  lockedObjects={lockedObjects}
+                  inheritedCodes={inheritedRoleCodes}
+                />
+              )}
             </div>
 
             <label className="flex flex-col gap-1.5">
@@ -756,7 +794,12 @@ export function UserRbacTab({
               >
                 {t("actions.cancel")}
               </Button>
-              <Button type="submit" variant="primary" loading={updateDirectMutation.isPending}>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={updateDirectMutation.isPending}
+                disabled={!allPermissionsQuery.isSuccess || updateDirectMutation.isPending}
+              >
                 {t("userRbac.directDialogSubmit")}
               </Button>
             </DialogFooter>

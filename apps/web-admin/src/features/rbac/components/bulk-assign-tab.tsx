@@ -789,6 +789,17 @@ export function BulkAssignTab({
               </div>
               {rolesQuery.isPending ? (
                 <Skeleton className="h-10 w-full" />
+              ) : rolesQuery.isError ? (
+                <EmptyState
+                  icon={<TriangleAlert />}
+                  title={t("bulk.errorRolesTitle")}
+                  description={t("bulk.errorRolesDescription")}
+                  action={
+                    <Button variant="secondary" onClick={() => void rolesQuery.refetch()}>
+                      {t("actions.retry")}
+                    </Button>
+                  }
+                />
               ) : roles.length === 0 ? (
                 <p className="text-caption text-text-muted">{t("bulk.rolesEmpty")}</p>
               ) : (
@@ -849,52 +860,67 @@ export function BulkAssignTab({
                 })}{" "}
                 <span className="text-danger">*</span>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {selectedPermissionCodes.map((code) => {
-                  const perm = permissionByCode.get(code);
-                  const display = perm
-                    ? `${resolveObjectName(rbacT, perm.groupCode, perm.groupName)} · ${resolvePermissionName(rbacT, perm.code, perm.name)}`
-                    : resolvePermissionShortName(rbacT, code);
-                  const shortName = resolvePermissionShortName(rbacT, code, perm?.name);
-                  return (
-                    <span
-                      key={code}
-                      className="inline-flex h-8 items-center gap-1 rounded-full bg-primary-50 pl-3 pr-1 text-body font-medium text-primary-text"
-                    >
-                      <span>{display}</span>
-                      <button
-                        type="button"
-                        disabled={isApplying}
-                        aria-label={t("bulk.removePermissionAria", { name: shortName })}
-                        onClick={() => {
-                          if (isApplying) return;
-                          setAppliedBatch(null);
-                          setSelectedPermissionCodes((prev) =>
-                            prev.filter((item) => item !== code),
-                          );
-                        }}
-                        className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-primary-text hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+              {permissionsQuery.isPending ? (
+                <Skeleton className="h-10 w-full" />
+              ) : permissionsQuery.isError ? (
+                <EmptyState
+                  icon={<TriangleAlert />}
+                  title={t("bulk.errorPermissionsTitle")}
+                  description={t("bulk.errorPermissionsDescription")}
+                  action={
+                    <Button variant="secondary" onClick={() => void permissionsQuery.refetch()}>
+                      {t("actions.retry")}
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedPermissionCodes.map((code) => {
+                    const perm = permissionByCode.get(code);
+                    const display = perm
+                      ? `${resolveObjectName(rbacT, perm.groupCode, perm.groupName)} · ${resolvePermissionName(rbacT, perm.code, perm.name)}`
+                      : resolvePermissionShortName(rbacT, code);
+                    const shortName = resolvePermissionShortName(rbacT, code, perm?.name);
+                    return (
+                      <span
+                        key={code}
+                        className="inline-flex h-8 items-center gap-1 rounded-full bg-primary-50 pl-3 pr-1 text-body font-medium text-primary-text"
                       >
-                        <X aria-hidden="true" className="size-3.5" />
-                      </button>
-                    </span>
-                  );
-                })}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  disabled={isApplying}
-                  onClick={() => {
-                    if (isApplying) return;
-                    setPickerDraftCodes(selectedPermissionCodes);
-                    setPickerOpen(true);
-                  }}
-                >
-                  <Plus aria-hidden="true" className="size-4" />
-                  <span>{t("bulk.addPermission")}</span>
-                </Button>
-              </div>
+                        <span>{display}</span>
+                        <button
+                          type="button"
+                          disabled={isApplying}
+                          aria-label={t("bulk.removePermissionAria", { name: shortName })}
+                          onClick={() => {
+                            if (isApplying) return;
+                            setAppliedBatch(null);
+                            setSelectedPermissionCodes((prev) =>
+                              prev.filter((item) => item !== code),
+                            );
+                          }}
+                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-primary-text hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <X aria-hidden="true" className="size-3.5" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={isApplying || !permissionsQuery.isSuccess}
+                    onClick={() => {
+                      if (isApplying || !permissionsQuery.isSuccess) return;
+                      setPickerDraftCodes(selectedPermissionCodes);
+                      setPickerOpen(true);
+                    }}
+                  >
+                    <Plus aria-hidden="true" className="size-4" />
+                    <span>{t("bulk.addPermission")}</span>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

@@ -977,6 +977,112 @@ describe("BulkAssignTab & UserRbacTab", () => {
     });
   }, 15_000);
 
+  it("BulkAssignTab & UserRbacTab (R1-6): hiện lỗi + Thử lại khi lookup vai trò/quyền lỗi và khóa nút lưu cho tới khi có dữ liệu", async () => {
+    const user = userEvent.setup();
+    const listRolesBulk = vi
+      .fn()
+      .mockRejectedValueOnce(new RbacApiError(500, "Server error"))
+      .mockResolvedValueOnce(ROLES_PAGE);
+    const listPermissionsBulk = vi
+      .fn()
+      .mockRejectedValueOnce(new RbacApiError(500, "Server error"))
+      .mockResolvedValueOnce(PERMISSIONS_LIST);
+
+    const { unmount } = renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <BulkAssignTab
+          listUsers={async () => USERS_PAGE}
+          listRoles={listRolesBulk}
+          listPermissions={listPermissionsBulk}
+        />
+      </SessionProvider>,
+    );
+
+    expect(await screen.findByText(viMessages.rbac.bulk.errorRolesTitle)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: viMessages.rbac.actions.retry }));
+    expect(await screen.findByText("Học viên")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: viMessages.rbac.bulk.targetPermission }));
+    expect(
+      await screen.findByText(viMessages.rbac.bulk.errorPermissionsTitle),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: viMessages.rbac.bulk.addPermission }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: viMessages.rbac.actions.retry }));
+    expect(
+      await screen.findByRole("button", { name: viMessages.rbac.bulk.addPermission }),
+    ).toBeEnabled();
+    unmount();
+
+    const listRolesUser = vi
+      .fn()
+      .mockRejectedValueOnce(new RbacApiError(500, "Server error"))
+      .mockResolvedValueOnce(ROLES_PAGE);
+    const listPermissionsUser = vi
+      .fn()
+      .mockRejectedValueOnce(new RbacApiError(500, "Server error"))
+      .mockResolvedValueOnce(PERMISSIONS_LIST);
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <Toaster />
+        <UserRbacTab
+          userId="u-ops"
+          getUserRoles={async () => ({ userId: "u-ops", access: "MANAGE", roles: [] })}
+          getUserPermissions={async () => ({
+            userId: "u-ops",
+            hasManageRole: true,
+            permissions: [],
+          })}
+          getEffectivePermissions={async () => ({
+            userId: "u-ops",
+            effectiveAccess: "MANAGE",
+            hasManageRole: true,
+            inactiveDirectPermissions: [],
+            permissions: [],
+          })}
+          listRoles={listRolesUser}
+          listPermissions={listPermissionsUser}
+        />
+      </SessionProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Gán vai trò" }));
+    let dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText(viMessages.rbac.userRbac.errorRolesTitle),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Lưu vai trò" })).toBeDisabled();
+
+    await user.click(within(dialog).getByRole("button", { name: viMessages.rbac.actions.retry }));
+    expect(await within(dialog).findByText("Học viên")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Lưu vai trò" })).toBeEnabled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Thêm quyền" }));
+    dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText(viMessages.rbac.userRbac.errorPermissionsTitle),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: viMessages.rbac.userRbac.directDialogSubmit }),
+    ).toBeDisabled();
+
+    await user.click(within(dialog).getByRole("button", { name: viMessages.rbac.actions.retry }));
+    expect(
+      await within(dialog).findByRole("checkbox", { name: "Cấp đối tượng Nhật ký" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: viMessages.rbac.userRbac.directDialogSubmit }),
+    ).toBeEnabled();
+  }, 15_000);
+
   it("ánh xạ toàn bộ reasonCode và mã lỗi RBAC sang câu hiển thị tiếng Việt và tiếng Anh", () => {
     const viT = makeTranslator(viMessages.rbac);
     const enT = makeTranslator(enMessages.rbac);
