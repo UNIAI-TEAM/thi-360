@@ -56,7 +56,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
-import { focusRingInset, useInlineOverflow } from "../scroll-region";
+import { useInlineOverflow } from "../scroll-region";
+import { focusRingInset, STATIC_CHIP } from "../styles";
 import { pickName } from "../utils";
 
 /**
@@ -88,6 +89,9 @@ type ColumnLayout = {
   /** Phần các môn của dòng phụ: ẩn khi cột Các môn đã hiện. */
   summarySubjects: string;
 };
+
+/** Chip môn học trong ô bảng: bản gọn cao 24px của chip tĩnh. */
+const STATIC_CHIP_COMPACT = `${STATIC_CHIP} h-6 px-2`;
 
 const SIMPLE_ONLY = {
   version: "",
@@ -784,7 +788,7 @@ function SortableItemRow({
             {orderedSubjects.length > 0 ? (
               <div className="flex flex-wrap items-center gap-1">
                 {orderedSubjects.map((subject) => (
-                  <Chip key={subject.subjectItemId} size="sm">
+                  <Chip key={subject.subjectItemId} variant="tag" className={STATIC_CHIP_COMPACT}>
                     {pickName(subject, locale)}
                     {subject.status === "INACTIVE" ? ` (${t("statuses.INACTIVE")})` : ""}
                   </Chip>

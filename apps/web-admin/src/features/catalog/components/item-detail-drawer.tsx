@@ -30,6 +30,7 @@ import {
   type CatalogItemResponse,
   type CombinationVersionResponse,
 } from "../api";
+import { STATIC_CHIP } from "../styles";
 import {
   pickName,
   resolveCatalogAuditActionKey,
@@ -265,7 +266,7 @@ function ItemDetailBody({
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {orderedCombinationSubjects.map((subject, idx) => (
-                  <Chip key={subject.subjectItemId} size="sm">
+                  <Chip key={subject.subjectItemId} variant="tag" className={STATIC_CHIP}>
                     {idx + 1}. {pickName(subject, locale)} ({subject.code})
                     {subject.status === "INACTIVE" ? ` · ${t("statuses.INACTIVE")}` : ""}
                   </Chip>
@@ -495,7 +496,7 @@ function VersionCard({
 
       <div className="flex flex-wrap gap-1.5">
         {orderedSubjects.map((subject, idx) => (
-          <Chip key={subject.subjectItemId} size="sm">
+          <Chip key={subject.subjectItemId} variant="tag" className={STATIC_CHIP}>
             {idx + 1}. {pickName(subject, locale)}
             {subject.status === "INACTIVE" ? ` (${t("statuses.INACTIVE")})` : ""}
           </Chip>

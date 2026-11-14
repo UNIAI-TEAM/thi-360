@@ -1310,6 +1310,28 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(within(table).getByText("v1")).toBeInTheDocument();
   });
 
+  it("chip môn học chỉ để đọc: không phải nút bật/tắt, không vào thứ tự Tab (C-04)", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+
+    const chip = await within(table).findByText("Toán học");
+    expect(chip.tagName).toBe("SPAN");
+    expect(chip).toHaveAttribute("data-variant", "tag");
+    expect(chip).not.toHaveAttribute("aria-pressed");
+    expect(chip).not.toHaveAttribute("tabindex");
+    expect(table.querySelector("[aria-pressed]")).toBeNull();
+    expect(within(table).queryByRole("button", { name: "Toán học" })).not.toBeInTheDocument();
+
+    await userEvent.click(within(table).getByRole("button", { name: "Chi tiết QĐ01" }));
+    const drawer = await screen.findByRole("dialog");
+    const drawerChip = await within(drawer).findByText(/1\. Toán học \(TOAN\)/);
+    expect(drawerChip.tagName).toBe("SPAN");
+    expect(drawer.querySelector("[aria-pressed]")).toBeNull();
+    await userEvent.click(within(drawer).getByRole("tab", { name: "Phiên bản" }));
+    await within(drawer).findByText(/^1\. Toán học$/);
+    expect(drawer.querySelector("[aria-pressed]")).toBeNull();
+  });
+
   it("dialog tổ hợp: tạo mới chọn kỳ thi, thêm & đổi thứ tự môn, nguồn quy ước; khi sửa tổ hợp đang dùng hiện cảnh báo phiên bản mới", async () => {
     const api = createMockApi({
       getItemUsages: vi.fn(async (itemId) => ({
@@ -2144,7 +2166,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       });
     });
     // Filter by linked ref SUBJECT=TOAN (passes OpenAPI `ref` param)
-    const filterTrigger = screen.getByRole("button", { name: "Lọc theo Môn học" });
+    const filterTrigger = screen.getByRole("button", { name: "Tất cả Môn học" });
     await userEvent.click(filterTrigger);
     await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Toán học" }));
     await waitFor(() => {
@@ -2153,6 +2175,9 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       });
     });
     await userEvent.keyboard("{Escape}");
+    // C-03: tên truy cập của nút lọc là dòng chữ đang hiện, gồm cả giá trị đang lọc.
+    expect(filterTrigger).not.toHaveAttribute("aria-label");
+    expect(filterTrigger).toHaveAccessibleName("Môn học: Toán học");
     unmount();
 
     // CATALOG.VIEW only: sees tree + detail action, no write controls
@@ -2247,7 +2272,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api, search: "group=KNOWLEDGE" });
     expect(await screen.findByText("Hàm số")).toBeInTheDocument();
 
-    const gradeFilterBtn = screen.getByRole("button", { name: "Lọc theo Khối lớp" });
+    const gradeFilterBtn = screen.getByRole("button", { name: "Tất cả Khối lớp" });
     await userEvent.click(gradeFilterBtn);
     await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Lớp 10" }));
     await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Lớp 11" }));
@@ -2257,6 +2282,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
         ref: ["item-g10", "item-g11"],
       });
     });
+    expect(gradeFilterBtn).toHaveAccessibleName("Khối lớp (2)");
   });
 
   it("hiển thị tay cầm kéo thả cho các nút cùng cha khi có quyền và không lọc, ẩn khi lọc hoặc chỉ có CATALOG.VIEW", async () => {

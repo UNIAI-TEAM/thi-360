@@ -1119,6 +1119,8 @@ export function TreeItemsPanel({
                         count: selectedVals.length,
                       });
 
+              // Không đặt aria-label cố định: tên truy cập của nút là chính dòng chữ đang hiện (đã có tên danh mục
+              // và giá trị đang lọc), nên trình đọc màn hình biết bộ lọc nào đang bật (WCAG 2.5.3).
               return (
                 <DropdownMenu key={rg.refGroupId}>
                   <DropdownMenuTrigger asChild>
@@ -1126,7 +1128,6 @@ export function TreeItemsPanel({
                       type="button"
                       variant="secondary"
                       size="md"
-                      aria-label={t("tree.filterByRefLabel", { name: rgLabel })}
                       className={cn(
                         "min-w-44 justify-between gap-2 font-normal",
                         selectedVals.length > 0 && "border-primary-600 bg-primary-50 text-primary-text",
