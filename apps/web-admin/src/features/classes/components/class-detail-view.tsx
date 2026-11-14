@@ -35,6 +35,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
+import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import type { UserSummary } from "@/features/users/api";
 import type { ListUsersQuery, PageResponseUserSummary, RoleSummary } from "@/features/users/api";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -150,6 +151,7 @@ function ClassDetailContent({
     queryKey: CLASSES_QUERY_KEYS.detail(classId),
     queryFn: () => deps.getClass(classId),
   });
+  useSetBreadcrumbLeaf(classQuery.data?.code);
 
   const sortParam = useMemo(() => {
     const first = sorting[0];
