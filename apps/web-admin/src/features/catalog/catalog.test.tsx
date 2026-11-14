@@ -1,5 +1,5 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
@@ -686,26 +686,146 @@ describe("resolveImportColumnLabel", () => {
   });
 });
 
-describe("CatalogView: cột thao tác của bảng giá trị (VIS-8)", { timeout: 20_000 }, () => {
-  it("cột thao tác dính mép phải nên vẫn bấm được khi bảng rộng hơn thẻ", async () => {
+describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VIS-8, C-01)", { timeout: 20_000 }, () => {
+  /** Thay `ResizeObserver` của jsdom (không bao giờ báo) bằng bản gọi tay được. */
+  function installResizeObserver() {
+    const callbacks: ResizeObserverCallback[] = [];
+    class FakeResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        callbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    return callbacks;
+  }
+
+  function resize(
+    scroller: HTMLElement,
+    callbacks: ResizeObserverCallback[],
+    size: { scrollWidth: number; clientWidth: number },
+  ) {
+    Object.defineProperty(scroller, "scrollWidth", { configurable: true, value: size.scrollWidth });
+    Object.defineProperty(scroller, "clientWidth", { configurable: true, value: size.clientWidth });
+    act(() => {
+      for (const callback of callbacks) callback([], {} as ResizeObserver);
+    });
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("nhóm danh sách: thẻ là vùng chứa, cột phụ bỏ dần theo bề rộng thẻ, cột thao tác chỉ dính khi bảng vừa thẻ", async () => {
     renderCatalog({ search: "group=SUBJECT" });
     const table = await screen.findByRole("table");
+    expect(table.closest("section")).toHaveClass("@container");
+
     const header = within(table).getByRole("columnheader", { name: "Thao tác" });
-    expect(header).toHaveClass("sticky", "right-0", "bg-table-head");
+    expect(header).toHaveClass("@min-[672px]:sticky", "@min-[672px]:right-0", "bg-table-head");
+    expect(header).not.toHaveClass("sticky");
 
     const row = (await within(table).findByText("Toán học")).closest("tr")!;
     const actionsCell = within(row).getByRole("button", { name: "Sửa Toán học" }).closest("td")!;
-    expect(actionsCell).toHaveClass("sticky", "right-0", "bg-surface");
+    expect(actionsCell).toHaveClass("@min-[672px]:sticky", "@min-[672px]:right-0", "bg-surface");
+    expect(actionsCell).not.toHaveClass("sticky");
     expect(within(actionsCell).getByRole("button", { name: "Xóa Toán học" })).toBeInTheDocument();
 
-    // Tên tiếng Anh và Giá trị chỉ hiện từ 1360px để bảng vừa thẻ ở ~1280px (cả khung xương và dòng dữ liệu).
-    for (const name of ["Tên tiếng Anh", "Giá trị"]) {
-      expect(within(table).getByRole("columnheader", { name })).toHaveClass(
-        "hidden",
-        "min-[1360px]:table-cell",
-      );
+    // Bỏ Tên tiếng Anh trước, rồi tới Giá trị; cột luôn hiện có bề rộng tối thiểu thay vì bị bóp.
+    expect(within(table).getByRole("columnheader", { name: "Tên tiếng Anh" })).toHaveClass(
+      "hidden",
+      "@min-[864px]:table-cell",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Giá trị" })).toHaveClass(
+      "hidden",
+      "@min-[752px]:table-cell",
+    );
+    expect(within(row).getByText("Mathematics").closest("td")).toHaveClass(
+      "hidden",
+      "@min-[864px]:table-cell",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Mã" })).toHaveClass("min-w-28");
+    expect(within(table).getByRole("columnheader", { name: "Tên tiếng Việt" })).toHaveClass("min-w-28");
+    expect(within(table).getByRole("columnheader", { name: "Trạng thái" })).toHaveClass("min-w-38");
+    // Không còn ngưỡng theo bề rộng màn hình.
+    expect(table.innerHTML).not.toContain("min-[1360px]");
+  });
+
+  it("nhóm tổ hợp: thứ tự bỏ cột là Tên tiếng Anh, Giá trị, Phiên bản, tên kỳ thi, Kỳ thi, Các môn", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    const expected: [string, string][] = [
+      ["Tên tiếng Anh", "@min-[1304px]:table-cell"],
+      ["Giá trị", "@min-[1192px]:table-cell"],
+      ["Phiên bản", "@min-[1112px]:table-cell"],
+      ["Kỳ thi", "@min-[920px]:table-cell"],
+      ["Các môn", "@min-[840px]:table-cell"],
+    ];
+    for (const [name, visibleFrom] of expected) {
+      expect(within(table).getByRole("columnheader", { name })).toHaveClass("hidden", visibleFrom);
     }
-    expect(within(row).getByText("Mathematics")).toHaveClass("hidden", "min-[1360px]:table-cell");
+    expect(within(table).getByRole("columnheader", { name: "Kỳ thi" })).toHaveClass(
+      "min-w-20",
+      "@min-[1016px]:min-w-44",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Các môn" })).toHaveClass("min-w-42");
+
+    // Ô kỳ thi: mã và tên là một dòng chữ liền, tối đa hai dòng; thẻ hẹp chỉ còn mã.
+    const examName = await within(table).findByText("Đánh giá năng lực Bộ Quốc phòng");
+    expect(examName).toHaveClass("hidden", "@min-[1016px]:inline");
+    const examText = examName.parentElement!;
+    expect(examText).toHaveClass("line-clamp-2");
+    expect(examText).toHaveTextContent("QDA Đánh giá năng lực Bộ Quốc phòng");
+    expect(examText.closest("td")).toHaveClass("hidden", "@min-[920px]:table-cell");
+
+    // Khi cột Kỳ thi và Các môn bị bỏ, nội dung của chúng hiện thành dòng phụ dưới tên.
+    const nameCell = within(table).getByText("QĐ01").closest("td")!;
+    const summary = within(nameCell).getByText("QDA").parentElement!;
+    expect(summary).toHaveClass("@min-[920px]:hidden", "line-clamp-2");
+    expect(summary).toHaveTextContent("QDA · Toán học, Ngữ văn");
+    expect(within(summary).getByText(/Toán học, Ngữ văn/)).toHaveClass("@min-[840px]:hidden");
+  });
+
+  it("người chỉ xem: không có cột sắp xếp nên các ngưỡng thấp hơn", async () => {
+    renderCatalog({ permissions: ["CATALOG.VIEW"], search: "group=SUBJECT_COMBINATION" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    expect(within(table).getByRole("columnheader", { name: "Thao tác" })).toHaveClass(
+      "@min-[480px]:sticky",
+      "min-w-24",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Các môn" })).toHaveClass(
+      "hidden",
+      "@min-[648px]:table-cell",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Tên tiếng Anh" })).toHaveClass(
+      "hidden",
+      "@min-[1112px]:table-cell",
+    );
+  });
+
+  it("bảng tràn ngang: khung cuộn thành vùng có tên, nhận focus bàn phím; hết tràn thì bỏ", async () => {
+    const callbacks = installResizeObserver();
+    renderCatalog({ search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    await within(table).findByText("Toán học");
+    const scroller = table.parentElement as HTMLElement;
+    expect(scroller).toHaveClass("overflow-x-auto", "focus-visible:outline-3");
+
+    resize(scroller, callbacks, { scrollWidth: 666, clientWidth: 666 });
+    expect(scroller).not.toHaveAttribute("tabindex");
+    expect(screen.queryByRole("region", { name: "Danh sách giá trị danh mục" })).toBeNull();
+
+    resize(scroller, callbacks, { scrollWidth: 666, clientWidth: 455 });
+    expect(screen.getByRole("region", { name: "Danh sách giá trị danh mục" })).toBe(scroller);
+    expect(scroller).toHaveAttribute("tabindex", "0");
+    scroller.focus();
+    expect(scroller).toHaveFocus();
+
+    resize(scroller, callbacks, { scrollWidth: 666, clientWidth: 666 });
+    expect(scroller).not.toHaveAttribute("tabindex");
+    expect(scroller).not.toHaveAttribute("role");
   });
 });
 
