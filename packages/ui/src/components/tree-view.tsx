@@ -214,8 +214,15 @@ export function TreeView({
             ? "text-body font-semibold"
             : level === 2
               ? "text-body font-medium"
-              : "text-body font-normal text-text-secondary";
+              : "text-body font-normal";
 
+        const nameColor = item.inactive
+          ? "text-text-muted"
+          : isSelected
+            ? "text-primary-text"
+            : level >= 3
+              ? "text-text-secondary"
+              : "text-text";
         return (
           <div
             key={item.id}
@@ -297,13 +304,7 @@ export function TreeView({
                 {item.code}
               </span>
 
-              <span
-                className={cn(
-                  "min-w-0 flex-1 truncate",
-                  nameStyle,
-                  item.inactive ? "text-text-muted" : isSelected ? "text-primary-text" : "text-text",
-                )}
-              >
+              <span className={cn("min-w-0 flex-1 truncate", nameStyle, nameColor)}>
                 {item.name}
               </span>
 

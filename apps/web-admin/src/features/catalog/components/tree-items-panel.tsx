@@ -649,7 +649,7 @@ export function TreeItemsPanel({
       <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-section-title font-bold text-text">{pickName(group, locale)}</h2>
+            <h2 className="text-h3 font-bold text-text">{pickName(group, locale)}</h2>
             <StatusChip tone={group.status === "ACTIVE" ? "success" : "neutral"}>
               {t(`statuses.${group.status}`)}
             </StatusChip>
@@ -751,7 +751,7 @@ export function TreeItemsPanel({
               <Chip key={rg.refGroupId} variant="tag">
                 <span>{label}</span>
                 {rg.isDefault && (
-                  <span className="text-micro opacity-80">
+                  <span className="text-caption opacity-80">
                     ({t("tree.refGroupDefaultHint")})
                   </span>
                 )}
@@ -761,7 +761,7 @@ export function TreeItemsPanel({
                     aria-label={t("tree.removeRefGroupLabel", { name: label })}
                     onClick={() => void handleRemoveRefGroup(rg.refGroupId, label)}
                     disabled={refActionPending}
-                    className="inline-flex size-4 items-center justify-center rounded-full text-primary-700 hover:bg-primary-100"
+                    className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
                   >
                     <X aria-hidden="true" className="size-3" />
                   </button>
@@ -1130,7 +1130,7 @@ export function TreeItemsPanel({
                   )}
                 </div>
 
-                <h3 className="mt-2 text-card-title font-bold text-text">
+                <h3 className="mt-2 text-h3 font-bold text-text">
                   {pickName(activeNode, locale)}
                 </h3>
                 {activeNode.nameEn && !locale.toLowerCase().startsWith("en") && (
@@ -1252,7 +1252,7 @@ export function TreeItemsPanel({
                                       )
                                     }
                                     disabled={refActionPending}
-                                    className="inline-flex size-4 items-center justify-center rounded-full text-primary-700 hover:bg-primary-100"
+                                    className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
                                   >
                                     <X aria-hidden="true" className="size-3" />
                                   </button>

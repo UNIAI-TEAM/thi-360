@@ -235,4 +235,25 @@ describe("TreeView", () => {
     expect(onTrailingClick).toHaveBeenCalledTimes(2);
     expect(onSelect).not.toHaveBeenCalled();
   });
+
+  it("giữ nguyên lớp text-text-secondary cho nút cấp 3 đang hoạt động", () => {
+    const activeDepth3Items: TreeViewItem[] = [
+      SAMPLE_ITEMS[0]!,
+      SAMPLE_ITEMS[1]!,
+      {
+        id: "n-1-1-active",
+        parentId: "n-1-1",
+        depth: 3,
+        code: "0D1-1-2",
+        name: "Mệnh đề kéo theo",
+        hasChildren: false,
+      },
+    ];
+
+    render(<TreeHarness initialItems={activeDepth3Items} initialExpanded={["n-1", "n-1-1"]} />);
+
+    const label = screen.getByText("Mệnh đề kéo theo");
+    expect(label).toHaveClass("text-body", "font-normal", "text-text-secondary");
+    expect(label).not.toHaveClass("text-text");
+  });
 });

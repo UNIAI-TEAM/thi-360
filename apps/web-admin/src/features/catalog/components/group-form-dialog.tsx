@@ -586,7 +586,7 @@ function GroupFormBody({
                                     name: refName,
                                   })}
                                   onClick={() => handleRemoveRefGroup(refGroupId)}
-                                  className="inline-flex size-4 items-center justify-center rounded-full hover:bg-subtle"
+                                  className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
                                 >
                                   <X aria-hidden className="size-3" />
                                 </button>
