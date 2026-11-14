@@ -220,12 +220,12 @@ public class S3ObjectStorage implements ObjectStorage {
     private void logExternalFailure(String operation, String key, long startNanos, SdkException ex) {
         long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
         externalLog.atWarn()
-                .setCause(ex)
                 .addKeyValue("target", "s3")
                 .addKeyValue("operation", operation)
                 .addKeyValue("bucket", bucket)
                 .addKeyValue("key", key)
                 .addKeyValue("outcome", "error")
+                .addKeyValue("errorType", ex.getClass().getSimpleName())
                 .addKeyValue("durationMs", durationMs)
                 .log("S3 storage operation failed");
     }
