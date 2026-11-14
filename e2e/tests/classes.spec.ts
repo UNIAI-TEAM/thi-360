@@ -61,17 +61,6 @@ test.describe("Quản lý lớp học (UNI-2547)", () => {
       await createDialogB.getByRole("button", { name: "Tạo lớp" }).click();
       await expect(createDialogB).toBeHidden();
 
-      // Ghi nhận ID lớp mới để dọn dẹp sau test
-      const listRes = await api.get(`${ADMIN_URL}/api/v1/admin/classes?q=${suffix}&size=20`);
-      if (listRes.ok()) {
-        const listJson = (await listRes.json()) as { items?: Array<{ id: string; code: string }> };
-        for (const item of listJson.items ?? []) {
-          if (item.code === classACode || item.code === classBCode) {
-            createdClassIds.push(item.id);
-          }
-        }
-      }
-
       // 2. Mở chi tiết lớp A và thêm student01, student02
       await page.getByLabel("Tìm kiếm").fill(classACode);
       const classALink = page.getByRole("link", { name: classACode });
@@ -125,6 +114,18 @@ test.describe("Quản lý lớp học (UNI-2547)", () => {
       await expect(page.getByText("Chuyển đi")).toBeVisible();
       await expect(page.getByText("E2E chuyển lớp").first()).toBeVisible();
     } finally {
+      const listRes = await api.get(`${ADMIN_URL}/api/v1/admin/classes?q=${suffix}&size=20`);
+      if (listRes.ok()) {
+        const listJson = (await listRes.json()) as { items?: Array<{ id: string; code: string }> };
+        for (const item of listJson.items ?? []) {
+          if (
+            (item.code === classACode || item.code === classBCode) &&
+            !createdClassIds.includes(item.id)
+          ) {
+            createdClassIds.push(item.id);
+          }
+        }
+      }
       for (const classId of createdClassIds) {
         await api.delete(`${ADMIN_URL}/api/v1/admin/classes/${classId}?reason=E2E+cleanup`, {
           headers: {
