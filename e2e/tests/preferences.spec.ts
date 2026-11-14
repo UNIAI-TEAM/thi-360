@@ -233,4 +233,79 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
       await freshContext.close();
     }
   });
+
+  test("admin đã tự chọn chế độ qua cookie khi Lưu và áp dụng trên /tuy-chinh-giao-dien vẫn giữ data-theme cá nhân và cập nhật bảng màu", async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    let originalAppearance: { palette: unknown; mode: "light" | "dark"; version: number } | null = null;
+    let currentVersion: number | null = null;
+    let xsrfToken = "";
+
+    try {
+      const initialRes = await adminContext.request.get(`${API_URL}/api/v1/appearance`);
+      expect(initialRes.ok()).toBe(true);
+      originalAppearance = (await initialRes.json()) as {
+        palette: unknown;
+        mode: "light" | "dark";
+        version: number;
+      };
+
+      await loginOnWeb(adminPage, "sys.admin", DEV_PASSWORD);
+      await expect(adminPage).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+
+      const adminCookies = await adminContext.cookies(ADMIN_URL);
+      xsrfToken = cookieValue(adminCookies, "thi360_xsrf") ?? "";
+      expect(xsrfToken).not.toBe("");
+
+      await adminPage.goto(`${ADMIN_URL}/tuy-chinh-giao-dien`);
+      await expect(adminPage.getByRole("heading", { name: "Tùy chỉnh giao diện" })).toBeVisible();
+
+      const chosenMode = originalAppearance.mode === "light" ? "dark" : "light";
+      const savedDefaultMode = originalAppearance.mode;
+      const toggleName =
+        chosenMode === "dark" ? "Chuyển sang chế độ tối" : "Chuyển sang chế độ sáng";
+      await adminPage.getByRole("button", { name: toggleName }).click();
+      await expect(adminPage.locator("html")).toHaveAttribute("data-theme", chosenMode);
+
+      await adminPage.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }).click();
+      await adminPage
+        .getByRole("tab", { name: savedDefaultMode === "light" ? "Sáng" : "Tối" })
+        .click();
+      await adminPage.getByRole("button", { name: "Lưu và áp dụng" }).click();
+
+      await expect(
+        adminPage.getByText("Đã lưu và áp dụng giao diện mới cho toàn hệ thống."),
+      ).toBeVisible();
+      await expect(adminPage.locator("html")).toHaveAttribute("data-theme", chosenMode);
+      await expect(adminPage.locator("#thi360-theme-vars")).toContainText("#0f3c6e");
+
+      const afterSaveCookies = await adminContext.cookies(ADMIN_URL);
+      expect(cookieValue(afterSaveCookies, "thi360_theme")).toBe(chosenMode);
+
+      const updatedRes = await adminContext.request.get(`${API_URL}/api/v1/appearance`);
+      if (updatedRes.ok()) {
+        const updated = (await updatedRes.json()) as { version: number };
+        currentVersion = updated.version;
+      }
+    } finally {
+      if (originalAppearance && currentVersion !== null && xsrfToken) {
+        await adminPage.request.put(`${ADMIN_URL}/api/v1/admin/appearance`, {
+          headers: {
+            "content-type": "application/json",
+            "x-xsrf-token": xsrfToken,
+            origin: ADMIN_URL,
+          },
+          data: {
+            palette: originalAppearance.palette,
+            mode: originalAppearance.mode,
+            version: currentVersion,
+          },
+        });
+      }
+      await adminContext.close();
+    }
+  });
 });
