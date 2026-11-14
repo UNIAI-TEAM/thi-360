@@ -82,6 +82,8 @@ export function TreeNodeFormDialog({
     mode === "edit" && node ? node.depth : parentNode ? parentNode.depth + 1 : 1;
   const levelName = resolveTreeLevelLabel(levels[targetDepth - 1], {
     isSystemGroup,
+    groupCode: group.code,
+    levelIndex: targetDepth - 1,
     translateLevel: (key) => t(`tree.systemLevels.${key}`),
     fallback: t("tree.rootNodeBadge"),
   });
@@ -282,6 +284,8 @@ function TreeNodeFormBody({
   const parentLevelName = resolvedParent
     ? resolveTreeLevelLabel(levels[resolvedParent.depth - 1], {
         isSystemGroup,
+        groupCode: group.code,
+        levelIndex: resolvedParent.depth - 1,
         translateLevel: (key) => t(`tree.systemLevels.${key}`),
       })
     : null;

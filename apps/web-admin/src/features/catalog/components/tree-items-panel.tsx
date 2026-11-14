@@ -418,13 +418,15 @@ export function TreeItemsPanel({
   const levels = useMemo(() => group.levels ?? [], [group.levels]);
   const displayLevels = useMemo(
     () =>
-      levels.map((levelName) =>
+      levels.map((levelName, levelIndex) =>
         resolveTreeLevelLabel(levelName, {
           isSystemGroup,
+          groupCode: group.code,
+          levelIndex,
           translateLevel: (key) => t(`tree.systemLevels.${key}`),
         }),
       ),
-    [isSystemGroup, levels, t],
+    [group.code, isSystemGroup, levels, t],
   );
   const levelsBreadcrumb = displayLevels.join(" → ");
   const rootLevelName = displayLevels[0] ?? t("tree.defaultLevelName");

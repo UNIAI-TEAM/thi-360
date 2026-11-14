@@ -132,38 +132,43 @@ export function pickName(item: BilingualName, locale = "vi"): string {
   return vi.length > 0 ? vi : en;
 }
 
-const SYSTEM_TREE_LEVEL_KEYS = {
-  chương: "chapter",
-  bài: "lesson",
-  "kiến thức": "knowledge",
-} as const;
-
-export type SystemTreeLevelKey =
-  (typeof SYSTEM_TREE_LEVEL_KEYS)[keyof typeof SYSTEM_TREE_LEVEL_KEYS];
+export type SystemTreeLevelKey = "chapter" | "lesson" | "knowledge";
 
 /**
- * Ánh xạ tên cấp của cây hệ thống (Chương / Bài / Kiến thức) sang khóa dịch vi/en;
- * giữ nguyên tên cấp người dùng tự nhập ở cây tùy chỉnh.
+ * Cấp của các cây hệ thống do seed tạo (V202611140020): nhận diện theo mã nhóm + chỉ số cấp,
+ * không so khớp tên cấp đã lưu, để tên hiển thị đi qua khóa dịch vi/en.
  */
-export function resolveSystemTreeLevelKey(levelName: string): SystemTreeLevelKey | null {
-  const normalized = levelName.trim().toLowerCase();
-  if (normalized in SYSTEM_TREE_LEVEL_KEYS) {
-    return SYSTEM_TREE_LEVEL_KEYS[normalized as keyof typeof SYSTEM_TREE_LEVEL_KEYS];
-  }
-  return null;
+const SYSTEM_TREE_LEVEL_KEYS: Record<string, readonly SystemTreeLevelKey[]> = {
+  KNOWLEDGE: ["chapter", "lesson", "knowledge"],
+};
+
+/**
+ * Khóa dịch của cấp (0-based) trong cây hệ thống; `null` với cây tùy chỉnh hoặc cấp ngoài seed.
+ */
+export function resolveSystemTreeLevelKey(
+  groupCode: string | undefined,
+  levelIndex: number,
+): SystemTreeLevelKey | null {
+  if (!groupCode || !Object.hasOwn(SYSTEM_TREE_LEVEL_KEYS, groupCode)) return null;
+  return SYSTEM_TREE_LEVEL_KEYS[groupCode]?.[levelIndex] ?? null;
 }
 
+/**
+ * Tên cấp hiển thị: cây hệ thống dùng khóa dịch, cây tùy chỉnh giữ nguyên tên người dùng nhập.
+ */
 export function resolveTreeLevelLabel(
   levelName: string | undefined,
   options: {
     isSystemGroup?: boolean;
+    groupCode?: string;
+    levelIndex: number;
     translateLevel: (key: SystemTreeLevelKey) => string;
     fallback?: string;
   },
 ): string {
   if (!levelName) return options.fallback ?? "";
   if (options.isSystemGroup) {
-    const key = resolveSystemTreeLevelKey(levelName);
+    const key = resolveSystemTreeLevelKey(options.groupCode, options.levelIndex);
     if (key) return options.translateLevel(key);
   }
   return levelName;

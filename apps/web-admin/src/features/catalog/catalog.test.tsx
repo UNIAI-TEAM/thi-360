@@ -547,25 +547,32 @@ describe("pickName", () => {
 
 describe("resolveTreeLevelLabel", () => {
   it("dịch 3 cấp hệ thống (Chương, Bài, Kiến thức) theo vi/en và giữ nguyên cấp tùy chỉnh", () => {
-    expect(resolveSystemTreeLevelKey("Chương")).toBe("chapter");
-    expect(resolveSystemTreeLevelKey("Bài")).toBe("lesson");
-    expect(resolveSystemTreeLevelKey("Kiến thức")).toBe("knowledge");
-    expect(resolveSystemTreeLevelKey("Chủ đề")).toBeNull();
+    expect(resolveSystemTreeLevelKey("KNOWLEDGE", 0)).toBe("chapter");
+    expect(resolveSystemTreeLevelKey("KNOWLEDGE", 1)).toBe("lesson");
+    expect(resolveSystemTreeLevelKey("KNOWLEDGE", 2)).toBe("knowledge");
+    expect(resolveSystemTreeLevelKey("KNOWLEDGE", 3)).toBeNull();
+    expect(resolveSystemTreeLevelKey("CUSTOM_TREE", 0)).toBeNull();
+    expect(resolveSystemTreeLevelKey("toString", 0)).toBeNull();
+    expect(resolveSystemTreeLevelKey(undefined, 0)).toBeNull();
 
     const systemLevels = ["Chương", "Bài", "Kiến thức"];
     expect(
-      systemLevels.map((lvl) =>
+      systemLevels.map((lvl, levelIndex) =>
         resolveTreeLevelLabel(lvl, {
           isSystemGroup: true,
+          groupCode: "KNOWLEDGE",
+          levelIndex,
           translateLevel: (key) => viMessages.catalog.tree.systemLevels[key],
         }),
       ),
     ).toEqual(["Chương", "Bài", "Kiến thức"]);
 
     expect(
-      systemLevels.map((lvl) =>
+      systemLevels.map((lvl, levelIndex) =>
         resolveTreeLevelLabel(lvl, {
           isSystemGroup: true,
+          groupCode: "KNOWLEDGE",
+          levelIndex,
           translateLevel: (key) => en.catalog.tree.systemLevels[key],
         }),
       ),
@@ -573,9 +580,11 @@ describe("resolveTreeLevelLabel", () => {
 
     const customLevels = ["Khối", "Chủ đề", "Chương"];
     expect(
-      customLevels.map((lvl) =>
+      customLevels.map((lvl, levelIndex) =>
         resolveTreeLevelLabel(lvl, {
           isSystemGroup: false,
+          groupCode: "KNOWLEDGE",
+          levelIndex,
           translateLevel: (key) => en.catalog.tree.systemLevels[key],
         }),
       ),
@@ -584,6 +593,8 @@ describe("resolveTreeLevelLabel", () => {
     expect(
       resolveTreeLevelLabel(undefined, {
         isSystemGroup: true,
+        groupCode: "KNOWLEDGE",
+        levelIndex: 0,
         translateLevel: (key) => en.catalog.tree.systemLevels[key],
         fallback: "Root",
       }),

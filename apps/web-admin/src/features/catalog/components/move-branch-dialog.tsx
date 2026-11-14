@@ -129,6 +129,8 @@ function MoveBranchBody({
   const levels = group.levels ?? [];
   const levelName = resolveTreeLevelLabel(levels[node.depth - 1], {
     isSystemGroup,
+    groupCode: group.code,
+    levelIndex: node.depth - 1,
     translateLevel: (key) => t(`tree.systemLevels.${key}`),
     fallback: t("tree.rootNodeBadge"),
   });
