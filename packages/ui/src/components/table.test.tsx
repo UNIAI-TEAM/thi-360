@@ -159,4 +159,41 @@ describe("Table", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getAllByRole("row")).toHaveLength(1 + 5);
   });
+
+  it("bảng không bật sorting/selection render ổn định: không tự render lại liên tục (vòng lặp đặt lại trang)", async () => {
+    let cellRenders = 0;
+    const countingColumns: ColumnDef<Person>[] = [
+      {
+        accessorKey: "name",
+        header: "Họ tên",
+        cell: ({ getValue }) => {
+          cellRenders += 1;
+          return String(getValue());
+        },
+      },
+    ];
+    function Stable() {
+      const [tick, setTick] = useState(0);
+      return (
+        <div>
+          <button type="button" onClick={() => setTick(tick + 1)}>
+            render lại {tick}
+          </button>
+          <Table<Person>
+            aria-label="Danh sách người"
+            columns={countingColumns}
+            data={people}
+            getRowId={(person) => person.id}
+            empty={<p>Không có người nào</p>}
+          />
+        </div>
+      );
+    }
+    render(<Stable />);
+    await userEvent.click(screen.getByRole("button", { name: /render lại/ }));
+    const settled = cellRenders;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(cellRenders).toBe(settled);
+    expect(cellRenders).toBeLessThan(people.length * 6);
+  });
 });
