@@ -673,6 +673,44 @@ describe("CatalogView: cột thao tác của bảng giá trị (VIS-8)", () => {
   });
 });
 
+describe("CatalogView: một bộ định dạng ngày trong ngăn chi tiết (VIS-9)", () => {
+  // 2026-11-14T00:00:00Z = 07:00 giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7).
+  const INSTANT = "2026-11-14T00:00:00Z";
+
+  async function readDrawerDates(locale: string) {
+    const api = createMockApi({
+      listItemVersions: vi.fn(async () =>
+        COMBINATION_VERSIONS.map((version) => ({ ...version, createdAt: INSTANT })),
+      ),
+    });
+    renderCatalog({ api, locale, search: "group=SUBJECT_COMBINATION" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: locale === "en" ? "Details for QD01" : "Chi tiết QĐ01" }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    const createdLabel = locale === "en" ? "Created at" : "Ngày tạo";
+    const created = within(drawer).getByText(createdLabel).nextElementSibling?.textContent;
+
+    await userEvent.click(
+      within(drawer).getByRole("tab", { name: locale === "en" ? "Versions" : "Phiên bản" }),
+    );
+    const versionDate = (await within(drawer).findAllByText(/\d{2}:\d{2}/))[0]?.textContent;
+    return { created, versionDate };
+  }
+
+  it("ngày tạo và ngày của phiên bản cho cùng thời điểm thì hiển thị y hệt (vi)", async () => {
+    const { created, versionDate } = await readDrawerDates("vi");
+    expect(created).toBe("07:00 14/11/2026");
+    expect(versionDate).toBe(created);
+  });
+
+  it("ngày tạo và ngày của phiên bản y hệt và theo dd/MM/yyyy ở en", async () => {
+    const { created, versionDate } = await readDrawerDates("en");
+    expect(created).toMatch(/^14\/11\/2026,? 07:00$/);
+    expect(versionDate).toBe(created);
+  });
+});
+
 describe("CatalogView: chip danh mục liên kết mặc định (VIS-6)", () => {
   it("chữ (Mặc định) dùng token chữ primary, không giảm opacity", async () => {
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
