@@ -36,16 +36,18 @@ export const USERS_QUERY_KEYS = {
 export class UsersApiError extends ApiStatusError {
   readonly code?: string;
   readonly fieldErrors: readonly FieldError[];
+  readonly httpStatus: number;
 
   constructor(status: number, message = "", code?: string, fieldErrors: readonly FieldError[] = []) {
-    super(status, message);
+    super(code === "PRIVILEGE_ESCALATION" ? 409 : status, message);
     this.name = "UsersApiError";
+    this.httpStatus = status;
     this.code = code;
     this.fieldErrors = fieldErrors;
   }
 }
 
-function toUsersApiError(status: number, error: unknown): UsersApiError {
+export function toUsersApiError(status: number, error: unknown): UsersApiError {
   if (typeof error === "object" && error !== null) {
     const body = error as Partial<ApiError>;
     const code = typeof body.code === "string" ? body.code : undefined;

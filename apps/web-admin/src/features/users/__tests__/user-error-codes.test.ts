@@ -44,7 +44,17 @@ describe("D/T07 error code mapping", () => {
 
     expect(
       resolveUsersErrorMessage(
-        new UsersApiError(400, "raw", "UNKNOWN_TOP_CODE", [
+        new UsersApiError(400, "raw", "VALIDATION_FAILED", [
+          { field: "reason", code: "REASON_REQUIRED", message: "raw" },
+        ]),
+        translate,
+        "fallback",
+      ),
+    ).toBe(vi.users.errorCodes.REASON_REQUIRED);
+
+    expect(
+      resolveUsersErrorMessage(
+        new UsersApiError(400, "raw", "PASSWORD_WEAK", [
           { field: "password", code: "PASSWORD_SAME_AS_USERNAME", message: "raw" },
         ]),
         translate,
@@ -52,6 +62,31 @@ describe("D/T07 error code mapping", () => {
       ),
     ).toBe(vi.users.errorCodes.PASSWORD_SAME_AS_USERNAME);
 
+    expect(
+      resolveUsersErrorMessage(
+        new UsersApiError(400, "raw", "VALIDATION_FAILED", []),
+        translate,
+        "fallback",
+      ),
+    ).toBe(vi.users.errorCodes.VALIDATION_FAILED);
+
+    expect(
+      resolveUsersErrorMessage(
+        new UsersApiError(409, "raw", "IDEMPOTENCY_KEY_REUSED"),
+        translate,
+        "fallback",
+      ),
+    ).toBe(vi.users.errorCodes.IDEMPOTENCY_KEY_REUSED);
+
+    expect(
+      resolveUsersErrorMessage(
+        new UsersApiError(400, "raw", "VALIDATION_FAILED", [
+          { field: "userIds", code: "NOTEMPTY", message: "raw" },
+        ]),
+        translate,
+        "fallback",
+      ),
+    ).toBe(vi.users.errorCodes.NOTEMPTY);
     expect(
       resolveUsersErrorMessage(new UsersApiError(404, "missing"), translate, "fallback"),
     ).toBe(vi.users.errorCodes.NOT_FOUND);

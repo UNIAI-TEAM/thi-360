@@ -55,9 +55,11 @@ export const KNOWN_USER_ERROR_CODES = [
   "EMAIL_TAKEN",
   "FORBIDDEN",
   "IDEMPOTENCY_KEY_REQUIRED",
+  "IDEMPOTENCY_KEY_REUSED",
   "IDENTITY_PROVIDER_ERROR",
   "INTERNAL_ERROR",
   "NOTBLANK",
+  "NOTEMPTY",
   "NOT_FOUND",
   "PASSWORD_DIGIT",
   "PASSWORD_LENGTH",
@@ -94,9 +96,11 @@ const KNOWN_CODE_MAP: Record<KnownUserErrorCode, true> = {
   EMAIL_TAKEN: true,
   FORBIDDEN: true,
   IDEMPOTENCY_KEY_REQUIRED: true,
+  IDEMPOTENCY_KEY_REUSED: true,
   IDENTITY_PROVIDER_ERROR: true,
   INTERNAL_ERROR: true,
   NOTBLANK: true,
+  NOTEMPTY: true,
   NOT_FOUND: true,
   PASSWORD_DIGIT: true,
   PASSWORD_LENGTH: true,
@@ -133,6 +137,10 @@ export function resolveUsersErrorMessage(
   fallbackMessage: string,
 ): string {
   if (error instanceof UsersApiError) {
+    if (error.code === "VALIDATION_FAILED" || error.code === "PASSWORD_WEAK") {
+      const firstFieldCode = mapUserErrorCodeToKey(error.fieldErrors[0]?.code);
+      if (firstFieldCode) return translateCode(firstFieldCode);
+    }
     const mapped = mapUserErrorCodeToKey(error.code);
     if (mapped) return translateCode(mapped);
     const firstFieldCode = mapUserErrorCodeToKey(error.fieldErrors[0]?.code);
