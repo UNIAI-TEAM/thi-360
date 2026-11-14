@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Button,
@@ -15,17 +16,21 @@ import {
   IconButton,
   Input,
   Select,
+  Skeleton,
   Textarea,
 } from "@thi360/ui";
-import { Lock, Plus, X } from "lucide-react";
+import { Lock, Plus, TriangleAlert, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import type {
-  CatalogGroupResponse,
-  CatalogStatus,
-  CreateCatalogGroupRequest,
-  UpdateCatalogGroupRequest,
+import {
+  catalogQueryKeys,
+  defaultCatalogApi,
+  type CatalogApi,
+  type CatalogGroupResponse,
+  type CatalogStatus,
+  type CreateCatalogGroupRequest,
+  type UpdateCatalogGroupRequest,
 } from "../api";
 import { createGroupFormSchema, type GroupFormValues } from "../schemas";
 import {
@@ -33,6 +38,7 @@ import {
   getCatalogFieldErrors,
   pickName,
   resolveCatalogErrorMessage,
+  resolveCatalogUsageTypeKey,
 } from "../utils";
 
 export type GroupFormDialogProps = {
@@ -40,6 +46,7 @@ export type GroupFormDialogProps = {
   mode: "create" | "edit";
   group: CatalogGroupResponse | null;
   allGroups: CatalogGroupResponse[];
+  api?: CatalogApi;
   onOpenChange: (open: boolean) => void;
   onSubmit: (
     payload:
@@ -53,6 +60,7 @@ export function GroupFormDialog({
   mode,
   group,
   allGroups,
+  api = defaultCatalogApi,
   onOpenChange,
   onSubmit,
 }: GroupFormDialogProps) {
@@ -81,6 +89,7 @@ export function GroupFormDialog({
             mode={mode}
             group={group}
             allGroups={allGroups}
+            api={api}
             onCancel={() => onOpenChange(false)}
             onSubmittingChange={setSubmitting}
             onSubmit={onSubmit}
@@ -95,6 +104,7 @@ function GroupFormBody({
   mode,
   group,
   allGroups,
+  api,
   onCancel,
   onSubmittingChange,
   onSubmit,
@@ -102,13 +112,15 @@ function GroupFormBody({
   mode: "create" | "edit";
   group: CatalogGroupResponse | null;
   allGroups: CatalogGroupResponse[];
+  api: CatalogApi;
   onCancel: () => void;
   onSubmittingChange: (submitting: boolean) => void;
   onSubmit: GroupFormDialogProps["onSubmit"];
 }) {
   const t = useTranslations("catalog");
-  const locale = useLocale();
+  const commonT = useTranslations("common");
   const [codeLocked, setCodeLocked] = useState(false);
+  const locale = useLocale();
   const [levelsLocked, setLevelsLocked] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [refGroupPickerValue, setRefGroupPickerValue] = useState("");
@@ -181,6 +193,16 @@ function GroupFormBody({
   const showReason = mode === "edit" && group?.status === "ACTIVE" && watchedStatus === "INACTIVE";
   const effectiveLevelsLocked =
     levelsLocked || (mode === "edit" && Boolean(group && group.itemCount > 0));
+  const usagesQuery = useQuery({
+    queryKey: group
+      ? catalogQueryKeys.groupUsages(group.id)
+      : (["catalog", "group-usages", "none"] as const),
+    queryFn: () => api.getGroupUsages(group!.id),
+    enabled: Boolean(group) && showReason,
+  });
+  const stopBlocked =
+    showReason &&
+    (usagesQuery.isPending || usagesQuery.isError || Boolean(usagesQuery.data?.blocking));
 
   const simpleGroupLookup = useMemo(() => {
     const map = new Map<string, CatalogGroupResponse>();
@@ -265,6 +287,7 @@ function GroupFormBody({
     );
   }
   async function handleFormSubmit(values: GroupFormValues) {
+    if (stopBlocked) return;
     setServerError(null);
     onSubmittingChange(true);
     const trimmedCode = values.code.trim();
@@ -612,6 +635,55 @@ function GroupFormBody({
             </>
           )}
           {showReason && (
+            <>
+              {usagesQuery.isPending ? (
+                <div className="flex flex-col gap-1.5" role="status" aria-label={commonT("loading")}>
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : usagesQuery.isError ? (
+                <div
+                  role="alert"
+                  className="flex items-center justify-between gap-3 rounded-md border border-danger bg-danger-bg px-3.5 py-2.5 text-field-label text-danger"
+                >
+                  <span className="flex items-center gap-2">
+                    <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+                    {t("stopItemDialog.usagesLoadError")}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void usagesQuery.refetch()}
+                  >
+                    {commonT("retry")}
+                  </Button>
+                </div>
+              ) : usagesQuery.data && usagesQuery.data.usages.length > 0 ? (
+                <div
+                  role={usagesQuery.data.blocking ? "alert" : "note"}
+                  className={cn(
+                    "flex flex-col gap-1.5 rounded-md border px-3.5 py-2.5 text-field-label",
+                    usagesQuery.data.blocking
+                      ? "border-danger bg-danger-bg text-danger"
+                      : "border-warning bg-warning-bg text-warning",
+                  )}
+                >
+                  <p className="font-medium">
+                    {usagesQuery.data.blocking
+                      ? t("stopItemDialog.blockedAlert")
+                      : t("detailDrawer.usagesTotalSummary", {
+                          count: usagesQuery.data.totalCount,
+                        })}
+                  </p>
+                  <ul className="list-disc pl-5">
+                    {usagesQuery.data.usages.map((usage) => (
+                      <li key={`${usage.source}-${usage.objectType}`}>
+                        {t(`usageTypes.${resolveCatalogUsageTypeKey(usage.objectType)}`)} ({usage.count})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
             <FormField
               label={t("groupDialog.reasonLabel")}
               required
@@ -627,6 +699,7 @@ function GroupFormBody({
                 />
               )}
             </FormField>
+            </>
           )}
 
           <FormField label={t("groupDialog.descriptionLabel")} error={errors.description?.message}>
@@ -648,7 +721,7 @@ function GroupFormBody({
             >
               {t("cancel")}
             </Button>
-            <Button type="submit" variant="primary" loading={isSubmitting}>
+            <Button type="submit" variant="primary" loading={isSubmitting} disabled={stopBlocked}>
               {t("groupDialog.save")}
             </Button>
           </DialogFooter>

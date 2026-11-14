@@ -1,5 +1,5 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
 import { useMemo, useSyncExternalStore } from "react";
@@ -339,6 +339,13 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
       version: CUSTOM_SOURCE_GROUP.version + 1,
     })),
     deleteGroup: vi.fn(async () => undefined),
+    getGroupUsages: vi.fn(async (groupId) => ({
+      targetId: groupId,
+      targetCode: "SOURCE",
+      totalCount: 0,
+      blocking: false,
+      usages: [],
+    })),
     listItems: vi.fn(async (groupId, query) => {
       const source =
         groupId === "grp-subject"
@@ -1186,6 +1193,68 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(within(sidebar).getByRole("button", { name: /^Subject\s*SUBJECT\s*\d+$/ })).toBeInTheDocument();
     expect(within(sidebar).getByText(/System ·/)).toBeInTheDocument();
     expect(within(sidebar).getByText(/Custom ·/)).toBeInTheDocument();
+  });
+
+  it("đóng ngăn chi tiết ngay khi xóa giá trị đang mở và đặt lại itemDialog khi đổi danh mục (R1-12)", async () => {
+    const api = createMockApi();
+    renderCatalog({ api, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Chi tiết Toán học" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getAllByText("TOAN").length).toBeGreaterThan(0);
+
+    // Trigger delete while detail drawer is open
+    fireEvent.click(screen.getByRole("button", { name: "Xóa Toán học", hidden: true }));
+    const confirmDlg = await screen.findByRole("dialog", { name: "Xóa giá trị?" });
+    await userEvent.type(within(confirmDlg).getByLabelText(/Lý do xóa/), "Dọn dữ liệu test");
+    await userEvent.click(within(confirmDlg).getByRole("button", { name: "Xóa giá trị" }));
+
+    await waitFor(() => expect(api.deleteItem).toHaveBeenCalledWith("item-toan", "Dọn dữ liệu test"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("truy vấn getGroupUsages và khóa Lưu khi nhóm tùy chỉnh chuyển Ngừng sử dụng bị chặn hoặc lỗi tải (R1-15)", async () => {
+    const getGroupUsages = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce({
+        targetId: "grp-source",
+        targetCode: "SOURCE",
+        totalCount: 3,
+        blocking: true,
+        usages: [
+          {
+            source: "Ngân hàng câu hỏi",
+            objectType: "QUESTION",
+            count: 3,
+            blocking: true,
+            sampleLabels: ["Q-001"],
+          },
+        ],
+      });
+    const api = createMockApi({ getGroupUsages });
+    renderCatalog({ api, search: "group=QUESTION_SOURCE" });
+
+    expect(await screen.findByRole("heading", { name: "Nguồn câu hỏi" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Thao tác danh mục" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Sửa danh mục" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: /Trạng thái/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "Ngừng sử dụng" }));
+
+    await waitFor(() => expect(getGroupUsages).toHaveBeenCalledWith("grp-source"));
+    expect(
+      await within(dialog).findByText(viMessages.catalog.stopItemDialog.usagesLoadError),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Lưu" })).toBeDisabled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Thử lại" }));
+    expect(
+      await within(dialog).findByText(viMessages.catalog.stopItemDialog.blockedAlert),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText("Ngân hàng câu hỏi (3)")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Lưu" })).toBeDisabled();
   });
 });
 

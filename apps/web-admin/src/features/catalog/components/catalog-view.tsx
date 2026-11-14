@@ -231,6 +231,8 @@ function CatalogWorkspace({
     setStatusFilter("ALL");
     setPage(0);
     setDetailItem(null);
+    setGroupDialog({ open: false });
+    setItemDialog({ open: false });
     setStopItem(null);
     setMoveBranchNode(null);
     setImportDialogOpen(false);
@@ -312,6 +314,7 @@ function CatalogWorkspace({
         data: payload.data,
       });
       await queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] });
+      await queryClient.invalidateQueries({ queryKey: ["catalog", "group-usages", updated.id] });
       setGroupDialog({ open: false });
       if (selectedGroup && selectedGroup.id === updated.id && selectedGroup.code !== updated.code) {
         updateGroupParam(updated.code);
@@ -399,11 +402,19 @@ function CatalogWorkspace({
         await deleteGroupMutation.mutateAsync({ id: deleteTarget.group.id, reason });
         await queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] });
         if (selectedGroup?.id === deleteTarget.group.id) {
+          setItemDialog({ open: false });
+          setTreeNodeDialog({ open: false });
+          setDetailItem(null);
+          setStopItem(null);
+          setMoveBranchNode(null);
+          setImportDialogOpen(false);
+          setDeleteInUseState(null);
           updateGroupParam(null);
         }
         notify.success(t("deleteGroupDialog.success", { code: deleteTarget.group.code }));
       } else {
-        await deleteItemMutation.mutateAsync({ itemId: deleteTarget.item.id, reason });
+        const deletedId = deleteTarget.item.id;
+        await deleteItemMutation.mutateAsync({ itemId: deletedId, reason });
         if (selectedGroup) {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: ["catalog", "items", selectedGroup.id] }),
@@ -412,7 +423,21 @@ function CatalogWorkspace({
             queryClient.invalidateQueries({ queryKey: ["catalog", "item"] }),
           ]);
         }
-        if (selectedNodeParam === deleteTarget.item.id) {
+        if (detailItem?.id === deletedId) setDetailItem(null);
+        if (stopItem?.id === deletedId) setStopItem(null);
+        if (moveBranchNode?.id === deletedId) setMoveBranchNode(null);
+        if (deleteInUseState?.item.id === deletedId) setDeleteInUseState(null);
+        if (itemDialog.open && itemDialog.mode === "edit" && itemDialog.item.id === deletedId) {
+          setItemDialog({ open: false });
+        }
+        if (
+          treeNodeDialog.open &&
+          treeNodeDialog.mode === "edit" &&
+          treeNodeDialog.node.id === deletedId
+        ) {
+          setTreeNodeDialog({ open: false });
+        }
+        if (selectedNodeParam === deletedId) {
           updateNodeParam(null);
         }
         notify.success(t("deleteItemDialog.success", { code: deleteTarget.item.code }));
@@ -666,6 +691,7 @@ function CatalogWorkspace({
             mode={groupDialog.open ? groupDialog.mode : "create"}
             group={groupDialog.open && groupDialog.mode === "edit" ? groupDialog.group : null}
             allGroups={groups}
+            api={api}
             onOpenChange={(open) => {
               if (!open) setGroupDialog({ open: false });
             }}

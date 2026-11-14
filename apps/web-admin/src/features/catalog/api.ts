@@ -94,6 +94,7 @@ export const catalogQueryKeys = {
   descendants: (nodeId: string, leafOnly?: boolean) =>
     ["catalog", "descendants", nodeId, leafOnly ?? true] as const,
   itemUsages: (itemId: string) => ["catalog", "item-usages", itemId] as const,
+  groupUsages: (groupId: string) => ["catalog", "group-usages", groupId] as const,
   itemVersions: (itemId: string) => ["catalog", "item-versions", itemId] as const,
   itemAudit: (itemId: string, page?: number) => ["catalog", "item-audit", itemId, page ?? 0] as const,
 };
@@ -103,6 +104,7 @@ export interface CatalogApi {
   createGroup: (payload: CreateCatalogGroupRequest) => Promise<CatalogGroupResponse>;
   updateGroup: (id: string, payload: UpdateCatalogGroupRequest) => Promise<CatalogGroupResponse>;
   deleteGroup: (id: string, reason: string) => Promise<void>;
+  getGroupUsages: (groupId: string) => Promise<CatalogUsagesResponse>;
   listItems: (
     groupId: string,
     query?: ListCatalogItemsQuery,
@@ -203,6 +205,15 @@ export async function deleteCatalogGroup(id: string, reason: string): Promise<vo
     params: { path: { id }, query: { reason } },
   });
   if (!response.ok) throw toCatalogApiError(response.status, error);
+}
+
+export async function getCatalogGroupUsages(groupId: string): Promise<CatalogUsagesResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/catalog/groups/{id}/usages", {
+    params: { path: { id: groupId } },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
 }
 
 export async function listCatalogItems(
@@ -519,6 +530,7 @@ export const defaultCatalogApi: CatalogApi = {
   createGroup: createCatalogGroup,
   updateGroup: updateCatalogGroup,
   deleteGroup: deleteCatalogGroup,
+  getGroupUsages: getCatalogGroupUsages,
   listItems: listCatalogItems,
   createItem: createCatalogItem,
   updateItem: updateCatalogItem,
