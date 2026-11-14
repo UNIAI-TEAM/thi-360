@@ -381,6 +381,27 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
     }
 
     @Test
+    void overlengthFullNameAndPhone_returnFullNameTooLongAndPhoneTooLongWithColumnKeys() throws Exception {
+        String sfx = suffix();
+        List<String[]> rows = List.of(
+                new String[] {"long.name." + sfx, "Valid@1234", "N".repeat(201), "", "", ""},
+                new String[] {"long.phone." + sfx, "Valid@1234", "Long Phone", "", "0".repeat(31), ""},
+                new String[] {"ok.len." + sfx, "Valid@1234", "N".repeat(200), "", "0".repeat(30), ""}
+        );
+        UUID batchId = uploadBatch(buildImportXlsx(rows), false, Permissions.USER_MODIFY);
+
+        MvcResult rowsRes = mockMvc.perform(get("/api/v1/admin/import-batches/{id}/rows", batchId)
+                        .param("status", "INVALID")
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode items = objectMapper.readTree(rowsRes.getResponse().getContentAsString()).get("items");
+        assertThat(items).hasSize(2);
+        assertRowHasError(items.get(0), 2, "Họ và tên", "FULL_NAME", "FULL_NAME_TOO_LONG");
+        assertRowHasError(items.get(1), 3, "Số điện thoại", "PHONE", "PHONE_TOO_LONG");
+    }
+
+    @Test
     void weakPasswordRow_returnsPasswordWeakAtRightRowAndColumn_andRemainsInvalidAfterRepeatedConfirms()
             throws Exception {
         String sfx = suffix();
