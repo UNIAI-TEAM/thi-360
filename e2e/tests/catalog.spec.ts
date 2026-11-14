@@ -380,7 +380,8 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await expect(page.getByText(lessonName)).toBeVisible();
 
     // 5. Stop chapter -> lesson shows "Ngừng theo cấp trên"
-    await page.getByRole("button", { name: `Ngừng sử dụng ${chapName}` }).click();
+    await page.getByRole("button", { name: `Thao tác của ${chapName}`, exact: true }).click();
+    await page.getByRole("menuitem", { name: "Ngừng sử dụng", exact: true }).click();
     const stopDialog = page.getByRole("dialog");
     await expect(stopDialog).toContainText(/2 nút bên dưới sẽ chuyển sang Ngừng theo cấp trên/);
     await stopDialog.getByLabel(/Lý do ngừng sử dụng/).fill("Ngừng chương E2E");

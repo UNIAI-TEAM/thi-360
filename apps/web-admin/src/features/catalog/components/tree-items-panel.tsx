@@ -48,6 +48,7 @@ import {
   ArrowUp,
   Ban,
   ChevronDown,
+  ChevronRight,
   ChevronsDownUp,
   ChevronsUpDown,
   Download,
@@ -56,10 +57,12 @@ import {
   FolderTree,
   GripVertical,
   Lock,
+  MoreHorizontal,
   Pencil,
   Plus,
   Search,
   Trash2,
+  TriangleAlert,
   Upload,
   X,
 } from "lucide-react";
@@ -81,6 +84,7 @@ import {
   getCatalogErrorCode,
   pickName,
   resolveCatalogErrorMessage,
+  resolveCatalogUsageTypeKey,
   resolveTreeLevelLabel,
 } from "../utils";
 import type { StatusFilter } from "./simple-items-panel";
@@ -216,9 +220,15 @@ export function TreeItemsPanel({
   const trimmedSearch = searchQuery.trim();
   const isFiltered = Boolean(trimmedSearch) || statusFilter !== "ALL" || selectedRefItemIds.length > 0;
 
+  const refGroupsQuery = useQuery({
+    queryKey: catalogQueryKeys.refGroups(group.id),
+    queryFn: () => api.listRefGroups(group.id),
+  });
+  const effectiveRefGroups = refGroupsQuery.data ?? group.refGroups;
+
   // Fetch active options for every linked ref-group (used in filter bar + detail pane)
   const refGroupOptionQueries = useQueries({
-    queries: group.refGroups.map((rg) => ({
+    queries: effectiveRefGroups.map((rg) => ({
       queryKey: catalogQueryKeys.options(rg.code),
       queryFn: () => api.getOptions(rg.code),
     })),
@@ -233,12 +243,22 @@ export function TreeItemsPanel({
     enabled: Boolean(selectedNodeId),
   });
 
+  const crossGroupMismatch = Boolean(
+    selectedNodeId &&
+      selectedNodeDetailQuery.data &&
+      selectedNodeDetailQuery.data.groupId !== group.id,
+  );
+  const selectedDetail =
+    selectedNodeDetailQuery.data && selectedNodeDetailQuery.data.groupId === group.id
+      ? selectedNodeDetailQuery.data
+      : null;
+
   const deepLinkAncestorIds = useMemo(() => {
-    const path = selectedNodeDetailQuery.data?.path;
+    const path = selectedDetail?.path;
     if (!path) return [];
     const parts = path.split("/").filter(Boolean);
     return parts.slice(0, -1);
-  }, [selectedNodeDetailQuery.data?.path]);
+  }, [selectedDetail?.path]);
 
   // Root / filtered tree query
   const rootQueryParams = useMemo<ListCatalogTreeQuery>(
@@ -280,10 +300,10 @@ export function TreeItemsPanel({
     })),
   });
 
-  const { visibleRows, knownNodeById, loadingIds } = useMemo(() => {
+  const { visibleRows, knownNodeById, loadingIds, failedChildRetryByParent } = useMemo(() => {
     const nodeMap = new Map<string, CatalogTreeNodeResponse>();
     const loadingSet = new Set<string>();
-
+    const failedRetryMap = new Map<string, () => void>();
     if (isFiltered) {
       const flat = rootTreeQuery.data ?? [];
       const byParent = new Map<string, CatalogTreeNodeResponse[]>();
@@ -322,7 +342,12 @@ export function TreeItemsPanel({
         });
       }
       walkFiltered("__ROOT__", 1);
-      return { visibleRows: rows, knownNodeById: nodeMap, loadingIds: loadingSet };
+      return {
+        visibleRows: rows,
+        knownNodeById: nodeMap,
+        loadingIds: loadingSet,
+        failedChildRetryByParent: failedRetryMap,
+      };
     }
 
     const roots = rootTreeQuery.data ?? [];
@@ -336,6 +361,9 @@ export function TreeItemsPanel({
       if (!q) return;
       if (q.isPending) {
         loadingSet.add(parentId);
+      }
+      if (q.isError) {
+        failedRetryMap.set(parentId, () => void q.refetch());
       }
       if (q.data) {
         childrenByParent.set(parentId, q.data);
@@ -368,7 +396,12 @@ export function TreeItemsPanel({
     }
 
     walkLazy(roots, 1);
-    return { visibleRows: rows, knownNodeById: nodeMap, loadingIds: loadingSet };
+    return {
+      visibleRows: rows,
+      knownNodeById: nodeMap,
+      loadingIds: loadingSet,
+      failedChildRetryByParent: failedRetryMap,
+    };
   }, [
     childTreeQueries,
     expandedCandidateIds,
@@ -378,8 +411,6 @@ export function TreeItemsPanel({
   ]);
 
   const selectedTreeNode = selectedNodeId ? knownNodeById.get(selectedNodeId) ?? null : null;
-  const selectedDetail = selectedNodeDetailQuery.data ?? null;
-
   const isSystemGroup = group.type === "SYSTEM" || group.system;
   const deleteGroupDisabled = group.itemCount > 0;
   const levels = useMemo(() => group.levels ?? [], [group.levels]);
@@ -397,17 +428,18 @@ export function TreeItemsPanel({
   const rootLevelName = displayLevels[0] ?? t("tree.defaultLevelName");
 
   const availableRefGroupsToAdd = useMemo(() => {
-    const linkedIds = new Set(group.refGroups.map((rg) => rg.refGroupId));
+    const linkedIds = new Set(effectiveRefGroups.map((rg) => rg.refGroupId));
     return availableSimpleGroups.filter(
       (g) => g.kind === "SIMPLE" && g.status === "ACTIVE" && !linkedIds.has(g.id),
     );
-  }, [availableSimpleGroups, group.refGroups]);
+  }, [availableSimpleGroups, effectiveRefGroups]);
 
   async function invalidateTreeAndItem(itemId?: string) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["catalog", "tree", group.id] }),
       queryClient.invalidateQueries({ queryKey: ["catalog", "items", group.id] }),
       queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
+      queryClient.invalidateQueries({ queryKey: catalogQueryKeys.refGroups(group.id) }),
       queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
       ...(itemId
         ? [queryClient.invalidateQueries({ queryKey: catalogQueryKeys.item(itemId) })]
@@ -724,17 +756,48 @@ export function TreeItemsPanel({
     { value: "INACTIVE", label: t("statuses.INACTIVE") },
   ];
 
-  const activeNode = selectedDetail ?? selectedTreeNode;
+  const activeNode = crossGroupMismatch ? null : (selectedDetail ?? selectedTreeNode);
   const activeNodeLevelName = activeNode
     ? displayLevels[activeNode.depth - 1] ?? `${t("tree.defaultLevelName")} ${activeNode.depth}`
     : null;
   const activeNodeCanAddChild = activeNode ? activeNode.depth < levels.length : false;
+  const activeNodeAddChildDisabled = activeNode
+    ? group.status === "INACTIVE" || activeNode.effectiveStatus === "INACTIVE"
+    : false;
   const activeNodeCanMove = activeNode ? activeNode.depth > 1 : false;
   const activeNodeHasChildren =
     selectedDetail ? selectedDetail.childCount > 0 : (selectedTreeNode?.hasChildren ?? false);
   const activeNodeNextLevelName = activeNode
     ? displayLevels[activeNode.depth] ?? t("tree.defaultLevelName")
     : "";
+  const activeNodePath = activeNode?.path ?? null;
+  const activeNodeBreadcrumbIds = useMemo(() => {
+    if (!activeNodePath) return [];
+    const parts = activeNodePath.split("/").filter(Boolean);
+    return parts.slice(0, -1);
+  }, [activeNodePath]);
+
+  const activeNodeUsagesQuery = useQuery({
+    queryKey: activeNode
+      ? catalogQueryKeys.itemUsages(activeNode.id)
+      : (["catalog", "item-usages", "none"] as const),
+    queryFn: () => api.getItemUsages(activeNode!.id),
+    enabled: Boolean(activeNode),
+  });
+  const activeNodeIsLeaf = activeNode ? activeNode.depth >= levels.length : false;
+  const activeNodeDescendantsQuery = useQuery({
+    queryKey: activeNode
+      ? catalogQueryKeys.descendants(activeNode.id, true)
+      : (["catalog", "descendants", "none", true] as const),
+    queryFn: () => api.getDescendants({ nodeId: activeNode!.id, leafOnly: true }),
+    enabled: Boolean(activeNode && !activeNodeIsLeaf),
+  });
+  const leafLevelName = displayLevels[levels.length - 1] ?? t("tree.defaultLevelName");
+  const questionScopeLeafCount = activeNode
+    ? activeNodeIsLeaf
+      ? 1
+      : (activeNodeDescendantsQuery.data?.length ?? activeNode.childCount)
+    : 0;
 
   return (
     <Card className="min-w-0 flex-1" padding="md">
@@ -832,14 +895,15 @@ export function TreeItemsPanel({
         <span className="text-caption font-semibold text-text-secondary">
           {t("tree.refGroupsLabel")}:
         </span>
-        {group.refGroups.length === 0 ? (
+        {effectiveRefGroups.length === 0 ? (
           <span className="text-caption text-text-muted">{t("tree.refGroupsEmpty")}</span>
         ) : (
-          group.refGroups.map((rg) => {
+          effectiveRefGroups.map((rg) => {
             const label = pickName(
               { nameVi: rg.nameVi, nameEn: rg.nameEn },
               locale,
             );
+            const lockedByUsage = rg.linkedItemCount > 0;
             return (
               <Chip key={rg.refGroupId} variant="tag">
                 <span>{label}</span>
@@ -849,20 +913,38 @@ export function TreeItemsPanel({
                   </span>
                 )}
                 {canModify && !rg.isDefault && (
-                  <button
-                    type="button"
-                    aria-label={t("tree.removeRefGroupLabel", { name: label })}
-                    onClick={() => void handleRemoveRefGroup(rg.refGroupId, label)}
-                    disabled={refActionPending}
-                    className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
-                  >
-                    <X aria-hidden="true" className="size-3" />
-                  </button>
+                  lockedByUsage ? (
+                    <Tooltip content={t("tree.refGroupInUseHint", { count: rg.linkedItemCount })}>
+                      <span className="-mr-1 inline-flex">
+                        <button
+                          type="button"
+                          aria-label={t("tree.removeRefGroupLabel", { name: label })}
+                          aria-disabled="true"
+                          disabled
+                          className="inline-flex size-6 cursor-not-allowed items-center justify-center rounded-full text-primary-text opacity-45"
+                        >
+                          <X aria-hidden="true" className="size-3" />
+                        </button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={t("tree.removeRefGroupLabel", { name: label })}
+                      onClick={() => void handleRemoveRefGroup(rg.refGroupId, label)}
+                      disabled={refActionPending}
+                      className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
+                    >
+                      <X aria-hidden="true" className="size-3" />
+                    </button>
+                  )
                 )}
               </Chip>
             );
           })
         )}
+
+        <span className="text-caption text-text-muted">{t("tree.addRefGroupHint")}</span>
 
         {canModify && availableRefGroupsToAdd.length > 0 && (
           <div className="ml-auto w-56">
@@ -950,9 +1032,9 @@ export function TreeItemsPanel({
           </div>
         </div>
 
-        {group.refGroups.length > 0 && (
+        {effectiveRefGroups.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            {group.refGroups.map((rg, index) => {
+            {effectiveRefGroups.map((rg, index) => {
               const rgLabel = pickName(
                 { nameVi: rg.nameVi, nameEn: rg.nameEn },
                 locale,
@@ -1053,6 +1135,12 @@ export function TreeItemsPanel({
             )}
           </div>
         )}
+
+        {isFiltered && (
+          <p className="rounded-md border border-border bg-page px-3 py-1.5 text-caption text-text-secondary">
+            {t("tree.filterBanner")}
+          </p>
+        )}
       </form>
 
       {/* Main split: Tree (left) + 340px Node Detail Pane (right) */}
@@ -1092,10 +1180,21 @@ export function TreeItemsPanel({
                     {t("resetFilters")}
                   </Button>
                 ) : canModify ? (
-                  <Button variant="primary" size="sm" onClick={onAddRootNode}>
-                    <Plus aria-hidden="true" className="size-4" />
-                    {t("tree.addNodeAction", { levelName: rootLevelName })}
-                  </Button>
+                  group.status === "INACTIVE" ? (
+                    <Tooltip content={t("inactiveGroupCreateHint")}>
+                      <span>
+                        <Button variant="primary" size="sm" disabled>
+                          <Plus aria-hidden="true" className="size-4" />
+                          {t("tree.addNodeAction", { levelName: rootLevelName })}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <Button variant="primary" size="sm" onClick={onAddRootNode}>
+                      <Plus aria-hidden="true" className="size-4" />
+                      {t("tree.addNodeAction", { levelName: rootLevelName })}
+                    </Button>
+                  )
                 ) : undefined
               }
             />
@@ -1126,9 +1225,25 @@ export function TreeItemsPanel({
                     const rowMeta = rowById.get(treeItem.id);
                     const dragDisabled =
                       !canModify || isFiltered || reordering || (rowMeta?.siblingCount ?? 0) < 2;
+                    const retryChildren = failedChildRetryByParent.get(treeItem.id);
                     return (
                       <SortableTreeRow id={treeItem.id} disabled={dragDisabled}>
                         {row}
+                        {retryChildren && rowMeta && (
+                          <div
+                            role="alert"
+                            style={{ paddingLeft: `${rowMeta.level * 24 + 28}px` }}
+                            className="my-1 flex items-center justify-between gap-2 rounded-md border border-danger bg-danger-bg px-3 py-1.5 text-caption text-danger"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
+                              {t("tree.childrenLoadError")}
+                            </span>
+                            <Button variant="secondary" size="sm" onClick={retryChildren}>
+                              {commonT("retry")}
+                            </Button>
+                          </div>
+                        )}
                       </SortableTreeRow>
                     );
                   }}
@@ -1147,124 +1262,141 @@ export function TreeItemsPanel({
                     );
                   }}
                   renderTrailing={(treeItem) => {
-                const row = rowById.get(treeItem.id);
-                if (!row) return null;
-                const node = row.node;
-                const displayName = pickName(node, locale);
-                const canAddChild = node.depth < levels.length;
-                const canMove = node.depth > 1;
-                const nextLevelName =
-                  displayLevels[node.depth] ?? t("tree.defaultLevelName");
+                    const row = rowById.get(treeItem.id);
+                    if (!row) return null;
+                    const node = row.node;
+                    const displayName = pickName(node, locale);
+                    const canAddChild = node.depth < levels.length;
+                    const childAddDisabled =
+                      group.status === "INACTIVE" || node.effectiveStatus === "INACTIVE";
+                    const canMove = node.depth > 1;
+                    const nextLevelName =
+                      displayLevels[node.depth] ?? t("tree.defaultLevelName");
 
-                return (
-                  <div
-                    className="flex shrink-0 items-center gap-0.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <IconButton
-                      aria-label={t("detailItem", { name: displayName })}
-                      tooltip={t("detailItem", { name: displayName })}
-                      icon={<Eye />}
-                      size="md"
-                      onClick={() => onViewNodeDetail(node)}
-                    />
+                    if (!canModify) {
+                      return (
+                        <div
+                          className="flex shrink-0 items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <IconButton
+                            aria-label={t("detailItem", { name: displayName })}
+                            tooltip={t("detailItem", { name: displayName })}
+                            icon={<Eye />}
+                            size="md"
+                            onClick={() => onViewNodeDetail(node)}
+                          />
+                        </div>
+                      );
+                    }
 
-                    {canModify && (
-                      <>
+                    return (
+                      <div
+                        className="flex shrink-0 items-center gap-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {canAddChild && (
                           <IconButton
                             aria-label={t("tree.addChildLabel", {
                               levelName: nextLevelName,
                               name: displayName,
                             })}
-                            tooltip={t("tree.addChildAction", { levelName: nextLevelName })}
+                            tooltip={
+                              childAddDisabled
+                                ? group.status === "INACTIVE"
+                                  ? t("inactiveGroupCreateHint")
+                                  : t("tree.stoppedParentAddChildHint")
+                                : t("tree.addChildAction", { levelName: nextLevelName })
+                            }
                             icon={<Plus />}
                             size="md"
+                            disabled={childAddDisabled}
                             onClick={() => onAddChildNode(node)}
                           />
                         )}
 
-                        {!isFiltered && row.siblingCount > 1 && (
-                          <>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <IconButton
-                              aria-label={t("moveUpLabel", { name: displayName })}
-                              icon={<ArrowUp />}
+                              icon={<MoreHorizontal />}
+                              aria-label={t("tree.rowActionsLabel", { name: displayName })}
+                              tooltip={t("tree.rowActionsLabel", { name: displayName })}
                               size="md"
-                              disabled={reordering || row.siblingIndex === 0}
-                              onClick={() =>
-                                void handleReorderSiblings(
-                                  node.parentId ?? null,
-                                  row.siblings,
-                                  row.siblingIndex,
-                                  row.siblingIndex - 1,
-                                )
-                              }
                             />
-                            <IconButton
-                              aria-label={t("moveDownLabel", { name: displayName })}
-                              icon={<ArrowDown />}
-                              size="md"
-                              disabled={
-                                reordering || row.siblingIndex === row.siblingCount - 1
-                              }
-                              onClick={() =>
-                                void handleReorderSiblings(
-                                  node.parentId ?? null,
-                                  row.siblings,
-                                  row.siblingIndex,
-                                  row.siblingIndex + 1,
-                                )
-                              }
-                            />
-                          </>
-                        )}
-
-                        {canMove && (
-                          <IconButton
-                            aria-label={t("tree.moveBranchLabel", { name: displayName })}
-                            tooltip={t("tree.moveBranchAction")}
-                            icon={<FolderInput />}
-                            size="md"
-                            onClick={() => onMoveNode(node)}
-                          />
-                        )}
-
-                        <IconButton
-                          aria-label={t("editItem", { name: displayName })}
-                          tooltip={t("tree.editAction")}
-                          icon={<Pencil />}
-                          size="md"
-                          onClick={() => onEditNode(node)}
-                        />
-
-                        {node.status === "ACTIVE" && (
-                          <IconButton
-                            aria-label={t("stopItem", { name: displayName })}
-                            tooltip={t("tree.stopAction")}
-                            icon={<Ban />}
-                            size="md"
-                            onClick={() => onStopNode(node)}
-                          />
-                        )}
-
-                        <IconButton
-                          aria-label={t("deleteItem", { name: displayName })}
-                          tooltip={
-                            node.hasChildren
-                              ? t("tree.deleteBlockedChildren")
-                              : t("tree.deleteAction")
-                          }
-                          icon={<Trash2 />}
-                          tone="danger"
-                          size="md"
-                          disabled={node.hasChildren}
-                          onClick={() => onDeleteNode(node)}
-                        />
-                      </>
-                    )}
-                  </div>
-                );
-              }}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => onViewNodeDetail(node)}>
+                              <Eye aria-hidden="true" />
+                              <span>{t("detailItem", { name: displayName })}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => onEditNode(node)}>
+                              <Pencil aria-hidden="true" />
+                              <span>{t("tree.editAction")}</span>
+                            </DropdownMenuItem>
+                            {!isFiltered && row.siblingCount > 1 && (
+                              <>
+                                <DropdownMenuItem
+                                  disabled={reordering || row.siblingIndex === 0}
+                                  onSelect={() =>
+                                    void handleReorderSiblings(
+                                      node.parentId ?? null,
+                                      row.siblings,
+                                      row.siblingIndex,
+                                      row.siblingIndex - 1,
+                                    )
+                                  }
+                                >
+                                  <ArrowUp aria-hidden="true" />
+                                  <span>{t("moveUpLabel", { name: displayName })}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={
+                                    reordering || row.siblingIndex === row.siblingCount - 1
+                                  }
+                                  onSelect={() =>
+                                    void handleReorderSiblings(
+                                      node.parentId ?? null,
+                                      row.siblings,
+                                      row.siblingIndex,
+                                      row.siblingIndex + 1,
+                                    )
+                                  }
+                                >
+                                  <ArrowDown aria-hidden="true" />
+                                  <span>{t("moveDownLabel", { name: displayName })}</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {canMove && (
+                              <DropdownMenuItem onSelect={() => onMoveNode(node)}>
+                                <FolderInput aria-hidden="true" />
+                                <span>{t("tree.moveBranchAction")}</span>
+                              </DropdownMenuItem>
+                            )}
+                            {node.status === "ACTIVE" && (
+                              <DropdownMenuItem onSelect={() => onStopNode(node)}>
+                                <Ban aria-hidden="true" />
+                                <span>{t("tree.stopAction")}</span>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              destructive
+                              disabled={node.hasChildren}
+                              onSelect={() => onDeleteNode(node)}
+                            >
+                              <Trash2 aria-hidden="true" />
+                              <span>
+                                {node.hasChildren
+                                  ? t("tree.deleteBlockedChildren")
+                                  : t("tree.deleteAction")}
+                              </span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    );
+                  }}
                 />
               </SortableContext>
             </DndContext>
@@ -1286,31 +1418,112 @@ export function TreeItemsPanel({
                 {t("tree.noSelectionDescription")}
               </p>
             </div>
+          ) : crossGroupMismatch ? (
+            <EmptyState
+              icon={<TriangleAlert />}
+              title={t("tree.nodeWrongGroup")}
+              action={
+                <Button variant="secondary" size="sm" onClick={() => onSelectNode(null)}>
+                  {t("tree.deselectNode")}
+                </Button>
+              }
+            />
           ) : selectedNodeDetailQuery.isPending && !selectedTreeNode ? (
             <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-3">
               <Skeleton className="h-5 w-24" />
               <Skeleton className="h-7 w-48" />
               <Skeleton className="h-24 w-full" />
             </div>
+          ) : selectedNodeDetailQuery.isError && !activeNode ? (
+            <EmptyState
+              icon={<TriangleAlert />}
+              title={t("tree.detailLoadError")}
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void selectedNodeDetailQuery.refetch()}
+                >
+                  {commonT("retry")}
+                </Button>
+              }
+            />
           ) : activeNode ? (
             <div className="flex flex-col gap-4">
+              {selectedNodeDetailQuery.isError && (
+                <div
+                  role="alert"
+                  className="flex items-center justify-between gap-2 rounded-md border border-danger bg-danger-bg px-3 py-2 text-caption text-danger"
+                >
+                  <span>{t("tree.detailLoadError")}</span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void selectedNodeDetailQuery.refetch()}
+                  >
+                    {commonT("retry")}
+                  </Button>
+                </div>
+              )}
+
+              {/* Ancestor breadcrumb */}
+              <nav
+                aria-label={t("tree.breadcrumbRoot")}
+                className="flex flex-wrap items-center gap-1 text-caption text-text-muted"
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelectNode(null)}
+                  className="rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text"
+                >
+                  {t("tree.breadcrumbRoot")}
+                </button>
+                {activeNodeBreadcrumbIds.map((ancId) => {
+                  const anc = knownNodeById.get(ancId);
+                  if (!anc) return null;
+                  return (
+                    <span key={ancId} className="inline-flex items-center gap-1">
+                      <ChevronRight aria-hidden="true" className="size-3 shrink-0" />
+                      <button
+                        type="button"
+                        onClick={() => onSelectNode(anc.id)}
+                        className="rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text"
+                      >
+                        {pickName(anc, locale)}
+                      </button>
+                    </span>
+                  );
+                })}
+                <ChevronRight aria-hidden="true" className="size-3 shrink-0" />
+                <span className="font-medium text-text">{pickName(activeNode, locale)}</span>
+              </nav>
+
               {/* Node identity */}
               <div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge>{activeNodeLevelName}</Badge>
-                  <span className="rounded-sm bg-subtle px-2 py-0.5 font-mono text-caption font-semibold text-text">
-                    {activeNode.code}
-                  </span>
-                  {activeNode.effectiveStatus === "INACTIVE" &&
-                  activeNode.status === "ACTIVE" ? (
-                    <StatusChip tone="warning">{t("tree.statusInheritedInactive")}</StatusChip>
-                  ) : (
-                    <StatusChip
-                      tone={activeNode.status === "ACTIVE" ? "success" : "neutral"}
-                    >
-                      {t(`statuses.${activeNode.status as CatalogStatus}`)}
-                    </StatusChip>
-                  )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge>{activeNodeLevelName}</Badge>
+                    <span className="rounded-sm bg-subtle px-2 py-0.5 font-mono text-caption font-semibold text-text">
+                      {activeNode.code}
+                    </span>
+                    {activeNode.effectiveStatus === "INACTIVE" &&
+                    activeNode.status === "ACTIVE" ? (
+                      <StatusChip tone="warning">{t("tree.statusInheritedInactive")}</StatusChip>
+                    ) : (
+                      <StatusChip
+                        tone={activeNode.status === "ACTIVE" ? "success" : "neutral"}
+                      >
+                        {t(`statuses.${activeNode.status as CatalogStatus}`)}
+                      </StatusChip>
+                    )}
+                  </div>
+                  <IconButton
+                    icon={<X />}
+                    size="md"
+                    aria-label={t("tree.deselectNode")}
+                    tooltip={t("tree.deselectNode")}
+                    onClick={() => onSelectNode(null)}
+                  />
                 </div>
 
                 <h3 className="mt-2 text-h3 font-bold text-text">
@@ -1328,7 +1541,7 @@ export function TreeItemsPanel({
               </div>
 
               {/* Metrics */}
-              <dl className="grid grid-cols-2 gap-2 rounded-md border border-border bg-surface p-3 text-caption">
+              <dl className="grid grid-cols-3 gap-2 rounded-md border border-border bg-surface p-3 text-caption">
                 <div>
                   <dt className="text-text-muted">{t("detailDrawer.displayOrderLabel")}</dt>
                   <dd className="font-semibold tabular-nums text-text">
@@ -1341,34 +1554,51 @@ export function TreeItemsPanel({
                     {selectedDetail?.childCount ?? selectedTreeNode?.childCount ?? 0}
                   </dd>
                 </div>
+                <div>
+                  <dt className="text-text-muted">{t("detailDrawer.valueLabel")}</dt>
+                  <dd className="font-semibold tabular-nums text-text">
+                    {activeNode.value ?? "—"}
+                  </dd>
+                </div>
                 {selectedDetail?.description && (
-                  <div className="col-span-2 border-t border-border pt-2">
+                  <div className="col-span-3 border-t border-border pt-2">
                     <dt className="text-text-muted">{t("itemDialog.descriptionLabel")}</dt>
                     <dd className="mt-0.5 text-text-secondary">{selectedDetail.description}</dd>
                   </div>
                 )}
               </dl>
 
+              {/* Question scope callout */}
+              <p className="rounded-md border border-border bg-surface px-3 py-2 text-caption text-text-secondary">
+                {t("tree.questionScope", {
+                  count: questionScopeLeafCount,
+                  leafName: leafLevelName.toLowerCase(),
+                })}
+              </p>
+
               {/* References section (own + inherited) */}
               <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3">
-                <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted">
-                  {t("tree.linksHeader")}
-                </h4>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted">
+                    {t("tree.linksHeader")}
+                  </h4>
+                  <span className="text-caption text-text-muted">{t("tree.linksLiveHint")}</span>
+                </div>
 
-                {group.refGroups.length === 0 ? (
+                {effectiveRefGroups.length === 0 ? (
                   <p className="text-caption text-text-muted">{t("tree.refGroupsEmpty")}</p>
                 ) : (
-                  group.refGroups.map((rg, index) => {
+                  effectiveRefGroups.map((rg, index) => {
                     const rgName = pickName(
                       { nameVi: rg.nameVi, nameEn: rg.nameEn },
                       locale,
                     );
                     const opts = refGroupOptionQueries[index]?.data ?? [];
                     const inheritedRefs: CatalogInheritedRefResponse[] = (
-                      selectedDetail?.inheritedRefs ?? []
+                      selectedDetail?.inheritedRefs ?? activeNode.inheritedRefs
                     ).filter((r) => r.refGroupId === rg.refGroupId);
                     const ownRefs: CatalogItemRefResponse[] = (
-                      selectedDetail?.ownRefs ?? []
+                      selectedDetail?.ownRefs ?? activeNode.ownRefs
                     ).filter((r) => r.refGroupId === rg.refGroupId);
                     const takenIds = new Set([
                       ...inheritedRefs.map((r) => r.refItemId),
@@ -1407,10 +1637,18 @@ export function TreeItemsPanel({
                                   name: fromName,
                                 })}
                               >
-                                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-0.5 text-caption text-text-secondary">
+                                <button
+                                  type="button"
+                                  aria-label={t("tree.jumpToAncestor", {
+                                    code: ref.fromItemCode,
+                                    name: fromName,
+                                  })}
+                                  onClick={() => onSelectNode(ref.fromItemId)}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-0.5 text-caption text-text-secondary transition-colors hover:border-primary-600 hover:text-primary-text"
+                                >
                                   <Lock aria-hidden="true" className="size-3 shrink-0" />
                                   <span>{refName}</span>
-                                </span>
+                                </button>
                               </Tooltip>
                             );
                           })}
@@ -1484,6 +1722,47 @@ export function TreeItemsPanel({
                 )}
               </div>
 
+              {/* Usages section */}
+              <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3">
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted">
+                  {t("detailDrawer.usagesTab")}
+                </h4>
+                {activeNodeUsagesQuery.isPending ? (
+                  <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-1.5">
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : activeNodeUsagesQuery.isError ? (
+                  <div className="flex items-center justify-between gap-2 text-caption text-danger">
+                    <span>{t("detailDrawer.usagesError")}</span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void activeNodeUsagesQuery.refetch()}
+                    >
+                      {commonT("retry")}
+                    </Button>
+                  </div>
+                ) : !activeNodeUsagesQuery.data || activeNodeUsagesQuery.data.usages.length === 0 ? (
+                  <p className="text-caption text-text-muted">{t("tree.notUsedYet")}</p>
+                ) : (
+                  <ul className="flex flex-col gap-1.5 text-caption">
+                    {activeNodeUsagesQuery.data.usages.map((usage) => (
+                      <li
+                        key={`${usage.source}-${usage.objectType}`}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="font-medium text-text">
+                          {t(`usageTypes.${resolveCatalogUsageTypeKey(usage.objectType)}`)}
+                        </span>
+                        <span className="text-text-muted tabular-nums">
+                          {t("detailDrawer.usageCount", { count: usage.count })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {/* Detail pane actions */}
               <div className="flex flex-col gap-2">
                 <Button
@@ -1498,14 +1777,31 @@ export function TreeItemsPanel({
                 {canModify && (
                   <div className="flex flex-wrap gap-2">
                     {activeNodeCanAddChild && selectedTreeNode && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => onAddChildNode(selectedTreeNode)}
-                      >
-                        <Plus aria-hidden="true" className="size-4" />
-                        {t("tree.addNodeAction", { levelName: activeNodeNextLevelName })}
-                      </Button>
+                      activeNodeAddChildDisabled ? (
+                        <Tooltip
+                          content={
+                            group.status === "INACTIVE"
+                              ? t("inactiveGroupCreateHint")
+                              : t("tree.stoppedParentAddChildHint")
+                          }
+                        >
+                          <span>
+                            <Button variant="primary" size="sm" disabled>
+                              <Plus aria-hidden="true" className="size-4" />
+                              {t("tree.addNodeAction", { levelName: activeNodeNextLevelName })}
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => onAddChildNode(selectedTreeNode)}
+                        >
+                          <Plus aria-hidden="true" className="size-4" />
+                          {t("tree.addNodeAction", { levelName: activeNodeNextLevelName })}
+                        </Button>
+                      )
                     )}
 
                     <Button

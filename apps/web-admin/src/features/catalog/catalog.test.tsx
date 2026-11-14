@@ -13,6 +13,7 @@ import { renderWithProviders } from "@/test/render";
 import {
   CatalogApiError,
   type CatalogApi,
+  type CatalogGroupRefResponse,
   type CatalogGroupResponse,
   type CatalogItemResponse,
   type CatalogTreeNodeResponse,
@@ -318,7 +319,6 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
         CUSTOM_SOURCE_GROUP,
       ]),
     ),
-    getGroup: vi.fn(async () => SYSTEM_SUBJECT_GROUP),
     createGroup: vi.fn(async (payload) => ({
       ...CUSTOM_SOURCE_GROUP,
       id: "grp-new",
@@ -437,7 +437,6 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
       usages: [],
     })),
     listItemVersions: vi.fn(async () => COMBINATION_VERSIONS),
-    getCombinationVersion: vi.fn(async () => COMBINATION_VERSIONS[0]!),
     listItemAuditEvents: vi.fn<CatalogApi["listItemAuditEvents"]>(async (itemId) => ({
       items: [
         {
@@ -1464,6 +1463,14 @@ function createTreeMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
       if (query?.parentId) return [];
       return [KNOWLEDGE_CH1, KNOWLEDGE_CH2];
     }),
+    listRefGroups: vi.fn(async (groupId) => {
+      if (overrides.listGroups) {
+        const page = await overrides.listGroups();
+        const found = page.items.find((g) => g.id === groupId);
+        if (found) return found.refGroups;
+      }
+      return groupId === SYSTEM_KNOWLEDGE_GROUP.id ? SYSTEM_KNOWLEDGE_GROUP.refGroups : [];
+    }),
     getItem: vi.fn(async (itemId) => {
       const found = nodes.find((n) => n.id === itemId) ?? KNOWLEDGE_CH1;
       return toTreeItemDetail(found);
@@ -1605,20 +1612,22 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
 
     expect(await screen.findByText("Hàm số")).toBeInTheDocument();
 
-    // Delete disabled on node with children
-    expect(screen.getByRole("button", { name: "Xóa Hàm số" })).toHaveAttribute(
+    // Delete disabled on node with children (via row actions dropdown)
+    await userEvent.click(screen.getByRole("button", { name: "Thao tác của Hàm số" }));
+    expect(await screen.findByRole("menuitem", { name: "Không xóa được vì còn nút con bên dưới." })).toHaveAttribute(
       "aria-disabled",
       "true",
     );
+    await userEvent.keyboard("{Escape}");
 
-    // Same-parent sibling reorder
-    await userEvent.click(screen.getByRole("button", { name: "Di chuyển Tích phân lên" }));
+    // Same-parent sibling reorder via row actions dropdown
+    await userEvent.click(screen.getByRole("button", { name: "Thao tác của Tích phân" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Di chuyển Tích phân lên" }));
     await waitFor(() => {
       expect(api.reorderItems).toHaveBeenCalledWith("grp-knowledge", {
         itemIds: ["node-ch2", "node-ch1"],
       });
     });
-
     // Filter by linked ref SUBJECT=TOAN (passes OpenAPI `ref` param)
     const filterTrigger = screen.getByRole("button", { name: "Lọc theo Môn học" });
     await userEvent.click(filterTrigger);
@@ -1640,8 +1649,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(await screen.findByText("Hàm số")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Chi tiết Hàm số" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Thêm Chương/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Sửa Hàm số" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Xóa Hàm số" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Thao tác của Hàm số" })).not.toBeInTheDocument();
   });
 
   it("hỗ trợ thêm nút con, chuyển nhánh và ngừng sử dụng kèm phạm vi nút con", async () => {
@@ -1670,9 +1678,10 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       );
     });
 
-    // Expand CH1 -> Move B1 to CH2
+    // Expand CH1 -> Move B1 to CH2 via row dropdown
     await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Chuyển nhánh Tính đơn điệu" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Thao tác của Tính đơn điệu" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Chuyển nhánh" }));
     const moveDialog = await screen.findByRole("dialog");
     await userEvent.click(await within(moveDialog).findByRole("radio", { name: /Tích phân/ }));
     await userEvent.click(within(moveDialog).getByRole("button", { name: "Chuyển" }));
@@ -1684,8 +1693,9 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       });
     });
 
-    // Stop CH1 -> StopItemDialog displays descendant impact bullet from getDescendants
-    await userEvent.click(screen.getByRole("button", { name: "Ngừng sử dụng Hàm số" }));
+    // Stop CH1 via row dropdown -> StopItemDialog displays descendant impact bullet from getDescendants
+    await userEvent.click(screen.getByRole("button", { name: "Thao tác của Hàm số" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Ngừng sử dụng" }));
     const stopDialog = await screen.findByRole("dialog");
     expect(
       await within(stopDialog).findByText(
@@ -1852,7 +1862,8 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
 
     // 3. moveItem 401 -> MutationCache.onError
     await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Chuyển nhánh Tính đơn điệu" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Thao tác của Tính đơn điệu" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Chuyển nhánh" }));
     const moveDlg = await screen.findByRole("dialog");
     await userEvent.click(await within(moveDlg).findByRole("radio", { name: /Tích phân/ }));
     await userEvent.click(within(moveDlg).getByRole("button", { name: "Chuyển" }));
@@ -1870,8 +1881,8 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api, search: "group=KNOWLEDGE" });
 
     await userEvent.click(await screen.findByRole("button", { name: "Mở Hàm số" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Sửa Tính đơn điệu" }));
-
+    await userEvent.click(await screen.findByRole("button", { name: "Thao tác của Tính đơn điệu" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Sửa" }));
     const dialog = await screen.findByRole("dialog");
     await waitFor(() => expect(api.getItem).toHaveBeenCalledWith(KNOWLEDGE_CH1.id));
     expect(await within(dialog).findByText(KNOWLEDGE_CH1.code)).toBeInTheDocument();
@@ -1939,6 +1950,169 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
         within(dialog).queryByText(viMessages.catalog.combinationDialog.optionsLoadError),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("khóa bỏ nhóm liên kết khi linkedItemCount > 0, hiển thị breadcrumb/value/jump/usages/questionScope ở pane 340px (R1-08)", async () => {
+    const refGroupsWithLinked: CatalogGroupRefResponse[] = [
+      ...SYSTEM_KNOWLEDGE_GROUP.refGroups,
+      {
+        refGroupId: "grp-grade",
+        code: "GRADE",
+        nameVi: "Khối lớp",
+        nameEn: "Grade",
+        status: "ACTIVE",
+        isDefault: false,
+        position: 1,
+        linkedItemCount: 2,
+      },
+    ];
+    const api = createTreeMockApi({
+      listRefGroups: vi.fn(async () => refGroupsWithLinked),
+      getItemUsages: vi.fn(async (id) => ({
+        targetId: id,
+        targetCode: "B1",
+        totalCount: 4,
+        blocking: false,
+        usages: [
+          {
+            source: "Ngân hàng câu hỏi",
+            objectType: "QUESTION",
+            count: 4,
+            blocking: false,
+            sampleLabels: ["Q-1"],
+          },
+        ],
+      })),
+      getDescendants: vi.fn(async () => [
+        {
+          id: "node-kt1",
+          code: "KT1",
+          nameVi: "Cực trị",
+          depth: 3,
+          parentId: "node-b1",
+          path: "/node-ch1/node-b1/node-kt1/",
+          value: 4,
+        },
+      ]),
+    });
+
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+    await waitFor(() => expect(api.listRefGroups).toHaveBeenCalledWith("grp-knowledge"));
+
+    // Non-default ref group with linkedItemCount > 0 has disabled remove button
+    expect(
+      await screen.findByRole("button", { name: "Bỏ danh mục liên kết Khối lớp" }),
+    ).toBeDisabled();
+
+    // Expand CH1 and select B1 -> detail pane shows breadcrumb, value, jump button, usages, question scope
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    await userEvent.click(await screen.findByText("Tính đơn điệu"));
+
+    const detailPane = screen.getByRole("complementary", { name: "Chi tiết nút đang chọn" });
+    const breadcrumbNav = within(detailPane).getByRole("navigation", {
+      name: viMessages.catalog.tree.breadcrumbRoot,
+    });
+    expect(within(breadcrumbNav).getByRole("button", { name: "Hàm số" })).toBeInTheDocument();
+    expect(within(detailPane).getByText("3")).toBeInTheDocument();
+    expect(await within(detailPane).findByText("Ngân hàng câu hỏi")).toBeInTheDocument();
+    expect(
+      within(detailPane).getByText("Đề gắn nút này lấy câu hỏi của 1 kiến thức."),
+    ).toBeInTheDocument();
+
+    // Click inherited ref pill to jump to source ancestor CH1
+    await userEvent.click(
+      within(detailPane).getByRole("button", { name: "Đi tới CH1 — Hàm số" }),
+    );
+    await waitFor(() => {
+      expect(within(detailPane).getByRole("heading", { name: "Hàm số" })).toBeInTheDocument();
+    });
+  });
+
+  it("chặn hiển thị chi tiết khi ?node= thuộc danh mục khác (R1-10)", async () => {
+    const api = createTreeMockApi({
+      getItem: vi.fn(async () => ({
+        ...SUBJECT_ITEMS[0]!,
+        id: "item-toan",
+        groupId: "grp-subject",
+        groupCode: "SUBJECT",
+      })),
+    });
+    renderCatalog({ api, search: "group=KNOWLEDGE&node=item-toan" });
+
+    const detailPane = await screen.findByRole("complementary", { name: "Chi tiết nút đang chọn" });
+    expect(
+      await within(detailPane).findByText(viMessages.catalog.tree.nodeWrongGroup),
+    ).toBeInTheDocument();
+    expect(within(detailPane).queryByText("TOAN")).not.toBeInTheDocument();
+    expect(within(detailPane).queryByRole("button", { name: "Sửa" })).not.toBeInTheDocument();
+  });
+
+  it("khóa nút thêm nút con trên nút đã ngừng hoặc nhóm cây đang ngừng sử dụng (R1-11)", async () => {
+    const stoppedChapter: CatalogTreeNodeResponse = {
+      ...KNOWLEDGE_CH1,
+      status: "INACTIVE",
+      effectiveStatus: "INACTIVE",
+    };
+    const api = createTreeMockApi({
+      listTree: vi.fn(async () => [stoppedChapter]),
+    });
+    const { unmount } = renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Thêm Bài vào Hàm số" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    unmount();
+
+    const inactiveTreeGroup: CatalogGroupResponse = {
+      ...SYSTEM_KNOWLEDGE_GROUP,
+      status: "INACTIVE",
+      itemCount: 0,
+    };
+    renderCatalog({
+      api: createTreeMockApi({
+        listGroups: vi.fn(async () => pageOfGroups([inactiveTreeGroup])),
+        listTree: vi.fn(async () => []),
+      }),
+      search: "group=KNOWLEDGE",
+    });
+    const addButtons = await screen.findAllByRole("button", { name: "Thêm Chương" });
+    for (const btn of addButtons) {
+      expect(btn).toBeDisabled();
+    }
+  });
+
+  it("hiện lỗi và nút Thử lại khi tải lười nút con hoặc chi tiết nút deep-link thất bại (R1-14)", async () => {
+    const api = createTreeMockApi({
+      listTree: vi
+        .fn()
+        .mockResolvedValueOnce([KNOWLEDGE_CH1, KNOWLEDGE_CH2])
+        .mockRejectedValueOnce(new Error("Lazy fail"))
+        .mockResolvedValueOnce([KNOWLEDGE_BAI1]),
+      getItem: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("Detail fail"))
+        .mockResolvedValueOnce(toTreeItemDetail(KNOWLEDGE_CH1)),
+    });
+    renderCatalog({ api, search: "group=KNOWLEDGE&node=node-ch1" });
+
+    const detailPane = await screen.findByRole("complementary", { name: "Chi tiết nút đang chọn" });
+    expect(
+      await within(detailPane).findByText(viMessages.catalog.tree.detailLoadError),
+    ).toBeInTheDocument();
+    await userEvent.click(within(detailPane).getByRole("button", { name: "Thử lại" }));
+    await waitFor(() =>
+      expect(
+        within(detailPane).queryByText(viMessages.catalog.tree.detailLoadError),
+      ).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    expect(await screen.findByText(viMessages.catalog.tree.childrenLoadError)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(await screen.findByText("Tính đơn điệu")).toBeInTheDocument();
   });
 });
 
@@ -2172,7 +2346,8 @@ describe("CatalogView: dịch cấp cây hệ thống và pickName theo useLocal
     await userEvent.click(within(childDialog).getByRole("button", { name: "Cancel" }));
 
     // Open move branch dialog for B1 -> summary includes "Moving Lesson"
-    await userEvent.click(screen.getByRole("button", { name: "Move branch Monotonicity" }));
+    await userEvent.click(screen.getByRole("button", { name: "Actions for Monotonicity" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Move branch" }));
     const moveDialog = await screen.findByRole("dialog");
     expect(within(moveDialog).getByText(/Moving: Lesson B1 — Monotonicity/)).toBeInTheDocument();
     await userEvent.click(within(moveDialog).getByRole("button", { name: "Cancel" }));

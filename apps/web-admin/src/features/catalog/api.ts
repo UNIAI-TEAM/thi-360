@@ -100,7 +100,6 @@ export const catalogQueryKeys = {
 };
 export interface CatalogApi {
   listGroups: (query?: ListCatalogGroupsQuery) => Promise<PageResponseCatalogGroupResponse>;
-  getGroup: (id: string) => Promise<CatalogGroupResponse>;
   createGroup: (payload: CreateCatalogGroupRequest) => Promise<CatalogGroupResponse>;
   updateGroup: (id: string, payload: UpdateCatalogGroupRequest) => Promise<CatalogGroupResponse>;
   deleteGroup: (id: string, reason: string) => Promise<void>;
@@ -142,7 +141,6 @@ export interface CatalogApi {
   ) => Promise<CatalogDescendantNodeResponse[]>;
   getItemUsages: (itemId: string) => Promise<CatalogUsagesResponse>;
   listItemVersions: (itemId: string) => Promise<CombinationVersionResponse[]>;
-  getCombinationVersion: (versionId: string) => Promise<CombinationVersionResponse>;
   listItemAuditEvents: (
     itemId: string,
     query?: Omit<ListAuditEventsQuery, "targetType" | "targetId">,
@@ -166,14 +164,6 @@ export async function listCatalogGroups(
   return data;
 }
 
-export async function getCatalogGroup(id: string): Promise<CatalogGroupResponse> {
-  const client = createBrowserApiClient();
-  const { data, error, response } = await client.GET("/api/v1/admin/catalog/groups/{id}", {
-    params: { path: { id } },
-  });
-  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
-  return data;
-}
 
 export async function createCatalogGroup(
   payload: CreateCatalogGroupRequest,
@@ -307,19 +297,6 @@ export async function listCatalogItemVersions(
   return data;
 }
 
-export async function getCombinationVersion(
-  versionId: string,
-): Promise<CombinationVersionResponse> {
-  const client = createBrowserApiClient();
-  const { data, error, response } = await client.GET(
-    "/api/v1/admin/catalog/combination-versions/{versionId}",
-    {
-      params: { path: { versionId } },
-    },
-  );
-  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
-  return data;
-}
 
 export async function listCatalogItemAuditEvents(
   itemId: string,
@@ -526,7 +503,6 @@ export async function confirmCatalogImport(
 
 export const defaultCatalogApi: CatalogApi = {
   listGroups: listCatalogGroups,
-  getGroup: getCatalogGroup,
   createGroup: createCatalogGroup,
   updateGroup: updateCatalogGroup,
   deleteGroup: deleteCatalogGroup,
@@ -548,7 +524,6 @@ export const defaultCatalogApi: CatalogApi = {
   getDescendants: getCatalogDescendants,
   getItemUsages: getCatalogItemUsages,
   listItemVersions: listCatalogItemVersions,
-  getCombinationVersion: getCombinationVersion,
   listItemAuditEvents: listCatalogItemAuditEvents,
   exportItems: exportCatalogItems,
   previewImport: previewCatalogImport,
