@@ -165,7 +165,7 @@
       "auditEmpty": "No change history events for this value yet.",
       "auditError": "Could not load change history.",
       "auditPaginationNav": "Change history pagination",
-      "auditPermissionDenied": "You need the AUDIT.VIEW permission to view change history.",
+      "auditPermissionDenied": "You have not been granted access to the audit log, so change history is unavailable.",
       "auditReasonLabel": "Reason: {reason}",
       "auditTab": "Change history",
       "combinationSectionTitle": "Current combination configuration",

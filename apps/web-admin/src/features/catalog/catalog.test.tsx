@@ -673,6 +673,14 @@ describe("CatalogView: cột thao tác của bảng giá trị (VIS-8)", () => {
   });
 });
 
+describe("thông báo thiếu quyền xem lịch sử không lộ mã quyền (VIS-12)", () => {
+  it("vi và en không chứa mã quyền dạng MODULE.ACTION", () => {
+    const permissionCode = /\b[A-Z]{2,}\.[A-Z_]{2,}\b/;
+    expect(viMessages.catalog.detailDrawer.auditPermissionDenied).not.toMatch(permissionCode);
+    expect(en.catalog.detailDrawer.auditPermissionDenied).not.toMatch(permissionCode);
+  });
+});
+
 describe("CatalogView: một bộ định dạng ngày trong ngăn chi tiết (VIS-9)", () => {
   // 2026-11-14T00:00:00Z = 07:00 giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7).
   const INSTANT = "2026-11-14T00:00:00Z";
@@ -1266,6 +1274,8 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(
       await within(simpleDrawer).findByText(viMessages.catalog.detailDrawer.auditPermissionDenied),
     ).toBeInTheDocument();
+    // VIS-12: không lộ mã quyền (AUDIT.VIEW) trong chữ người dùng thấy
+    expect(within(simpleDrawer).queryByText(/[A-Z]{2,}\.[A-Z_]{2,}/)).not.toBeInTheDocument();
     expect(listAuditMock).not.toHaveBeenCalled();
   });
 

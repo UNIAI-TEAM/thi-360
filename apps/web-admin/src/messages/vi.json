@@ -165,7 +165,7 @@
       "auditEmpty": "Chưa có sự kiện thay đổi nào cho giá trị này.",
       "auditError": "Không tải được lịch sử thay đổi.",
       "auditPaginationNav": "Phân trang lịch sử thay đổi",
-      "auditPermissionDenied": "Bạn cần quyền AUDIT.VIEW để xem lịch sử thay đổi.",
+      "auditPermissionDenied": "Bạn chưa được cấp quyền xem nhật ký nên không xem được lịch sử thay đổi.",
       "auditReasonLabel": "Lý do: {reason}",
       "auditTab": "Lịch sử thay đổi",
       "combinationSectionTitle": "Cấu hình tổ hợp hiện hành",
