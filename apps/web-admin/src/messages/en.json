@@ -527,6 +527,34 @@
       "tableAriaLabel": "Account change history",
       "title": "Change history"
     },
+    "learning": {
+      "blocks": {
+        "assessments": {
+          "description": "Student competency assessment results will appear here once the exam module is connected.",
+          "title": "Competency assessments"
+        },
+        "attempts": {
+          "description": "Student exam attempts and submissions will appear here once the exam module is connected.",
+          "title": "Exam attempt history"
+        },
+        "entitlements": {
+          "description": "Student exam entitlements and packages will appear here once the exam module is connected.",
+          "title": "Entitlements & exam packages"
+        },
+        "practice": {
+          "description": "Student practice history will appear here once the exam module is connected.",
+          "title": "Practice history"
+        },
+        "supportRequests": {
+          "description": "Student support requests will appear here once the exam and support modules are connected.",
+          "title": "Support requests"
+        }
+      },
+      "emptyTitle": "No data yet",
+      "errorDescription": "Could not load learning profile. Please try again.",
+      "errorTitle": "Could not load learning profile",
+      "tabLabel": "Learning profile"
+    },
     "list": {
       "description": "Admin-provisioned and self-registered accounts, including those that have never signed in.",
       "emptyDescription": "No accounts exist in the system yet.",
