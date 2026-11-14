@@ -78,6 +78,40 @@ describe("Table", () => {
     expect(screen.getByRole("columnheader", { name: "Họ tên" })).toHaveAttribute("aria-sort", "descending");
   });
 
+  it("aria-sort chỉ có ở cột đang sắp xếp: cột chưa sắp xếp và cột không sắp xếp được đều không mang thuộc tính", async () => {
+    render(<Harness withSorting />);
+    for (const header of screen.getAllByRole("columnheader")) {
+      expect(header).not.toHaveAttribute("aria-sort");
+    }
+
+    await userEvent.click(screen.getByRole("button", { name: "Họ tên" }));
+    expect(screen.getByRole("columnheader", { name: "Họ tên" })).toHaveAttribute("aria-sort", "ascending");
+    expect(screen.getByRole("columnheader", { name: "Tuổi" })).not.toHaveAttribute("aria-sort");
+    expect(screen.getByRole("columnheader", { name: "Thao tác" })).not.toHaveAttribute("aria-sort");
+    expect(document.querySelectorAll("[aria-sort]")).toHaveLength(1);
+
+    // Bấm lần thứ ba bỏ sắp xếp: thuộc tính được gỡ, không quay về "none".
+    await userEvent.click(screen.getByRole("button", { name: "Họ tên" }));
+    await userEvent.click(screen.getByRole("button", { name: "Họ tên" }));
+    expect(document.querySelectorAll("[aria-sort]")).toHaveLength(0);
+  });
+
+  it("nút sắp xếp có vùng bấm phủ hết ô tiêu đề và vẫn có vòng focus", () => {
+    render(<Harness withSorting />);
+    const button = screen.getByRole("button", { name: "Họ tên" });
+    expect(button).toHaveClass("after:absolute", "after:inset-0", "focus-visible:ring-3");
+    expect(button.closest("th")).toHaveClass("relative");
+    // Cột không sắp xếp được không cần mốc định vị.
+    expect(screen.getByRole("columnheader", { name: "Thao tác" })).not.toHaveClass("relative");
+  });
+
+  it("cột ghim sắp xếp được vẫn là sticky (không bị relative ghi đè)", () => {
+    render(<Harness withSorting stickyColumns={{ start: true }} />);
+    const header = screen.getByRole("columnheader", { name: "Họ tên" });
+    expect(header).toHaveClass("sticky");
+    expect(header).not.toHaveClass("relative");
+  });
+
   it("cột không sắp xếp được thì tiêu đề không phải nút; bảng không bật sorting thì không cột nào là nút", () => {
     const { unmount } = render(<Harness withSorting />);
     expect(screen.queryByRole("button", { name: "Thao tác" })).toBeNull();
@@ -168,6 +202,12 @@ describe("Table", () => {
     render(<Harness error={<span>Không tải được danh sách</span>} />);
     expect(screen.getByRole("alert")).toHaveTextContent("Không tải được danh sách");
     expect(screen.queryByText("Cường")).toBeNull();
+    // Vùng alert nằm trong ô; ô vẫn là ô của bảng, trải hết các cột.
+    const cell = screen.getByRole("alert").parentElement as HTMLElement;
+    expect(cell.tagName).toBe("TD");
+    expect(cell).not.toHaveAttribute("role");
+    expect(cell).toHaveAttribute("colspan", "3");
+    expect(screen.getAllByRole("cell")).toContain(cell);
   });
 
   it("thử lại sau lỗi: đang tải thì hiện khung xương, không hiện lại thông báo lỗi cũ", () => {

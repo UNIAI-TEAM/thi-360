@@ -44,7 +44,10 @@ export type TableProps<TData> = {
   /** Bật cột chọn dòng khi truyền. */
   selection?: TableSelection<TData>;
   loading?: boolean;
-  /** Số dòng khung xương khi đang tải. */
+  /**
+   * Số dòng khung xương khi đang tải (mặc định 5). Bảng có phân trang nên truyền số dòng mỗi trang
+   * (`loadingRows={pageSize}`), để thẻ chứa bảng không đổi chiều cao khi dữ liệu về.
+   */
   loadingRows?: number;
   /**
    * Đang tải lại trong khi vẫn hiện dữ liệu cũ (đổi bộ lọc, trang, sắp xếp). Bảng giữ nguyên các dòng,
@@ -255,18 +258,14 @@ export function Table<TData>({
                   <th
                     key={header.id}
                     scope="col"
-                    aria-sort={
-                      sortable
-                        ? sorted === "asc"
-                          ? "ascending"
-                          : sorted === "desc"
-                            ? "descending"
-                            : "none"
-                        : undefined
-                    }
+                    // Chỉ cột đang sắp xếp mới mang `aria-sort`; cột sắp xếp được nhưng chưa sắp xếp thì nút trong ô
+                    // đã cho biết là bấm được, `aria-sort="none"` chỉ làm trình đọc màn hình đọc thừa ở mọi cột.
+                    aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
                     data-pinned={pinnedSide(headerIndex)}
                     className={cn(
                       headCell,
+                      // Mốc cho vùng bấm của nút sắp xếp (`after:inset-0`); ô ghim đã là `sticky` nên không cần.
+                      sortable && "relative",
                       header.column.id === SELECT_COLUMN_ID && selectCell,
                       pinnedClass(headerIndex),
                     )}
@@ -282,7 +281,11 @@ export function Table<TData>({
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
-                        className={cn("inline-flex items-center gap-1.5 rounded-sm font-semibold", focusRing)}
+                        // Vùng bấm phủ hết ô tiêu đề (phần tử giả), không chỉ dòng chữ cao 20px; bố cục ô không đổi.
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-sm font-semibold after:absolute after:inset-0",
+                          focusRing,
+                        )}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {sorted === "asc" ? (
@@ -320,8 +323,9 @@ export function Table<TData>({
             ))
           ) : error ? (
             <tr>
-              <td colSpan={columnCount} role="alert">
-                {error}
+              {/* `role="alert"` nằm ở phần tử bọc: đặt lên `<td>` thì ô mất vai trò ô của bảng. */}
+              <td colSpan={columnCount}>
+                <div role="alert">{error}</div>
               </td>
             </tr>
           ) : rows.length === 0 ? (
