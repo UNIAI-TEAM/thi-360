@@ -5,15 +5,19 @@ import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import type { ListUsersQuery, RoleSummary, UserSummary } from "@/features/users/api";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import {
   ClassesApiError,
   type ClassesApiDeps,
   type ClassDetail,
   type ClassMember,
+  type ClassSummary,
+  type ListClassMembersQuery,
   defaultClassesApiDeps,
 } from "../api";
 import { ClassDetailView } from "../components/class-detail-view";
+import { STUDENT_ROLE_ID } from "../components/add-members-dialog";
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -122,6 +126,13 @@ function makeDeps(overrides: Partial<ClassesApiDeps> = {}): Partial<ClassesApiDe
       size: 20,
       totalItems: SAMPLE_MEMBERS.length,
       totalPages: 1,
+    })),
+    listClasses: vi.fn<ClassesApiDeps["listClasses"]>(async () => ({
+      items: [],
+      page: 0,
+      size: 20,
+      totalItems: 0,
+      totalPages: 0,
     })),
     listAllClasses: vi.fn<ClassesApiDeps["listAllClasses"]>(async () => [
       {
@@ -374,5 +385,330 @@ describe("ClassDetailView", () => {
         "Hoàn thành khóa",
       );
     });
+  });
+
+  it("AddMembersDialog phân trang ứng viên >20 và fallback STUDENT_ROLE_ID khi thiếu ROLE.VIEW", async () => {
+    const user = userEvent.setup();
+    const manyCandidates = Array.from({ length: 25 }, (_, i) => ({
+      ...STUDENT_CANDIDATES[0]!,
+      id: `cand-${i}`,
+      username: `cand${String(i + 1).padStart(2, "0")}`,
+      fullName: `Ứng viên ${i + 1}`,
+    }));
+    const listUsersMock = vi.fn(async (query: ListUsersQuery) => {
+      const page = query.page ?? 0;
+      const size = query.size ?? 20;
+      const start = page * size;
+      return {
+        items: manyCandidates.slice(start, start + size),
+        page,
+        size,
+        totalItems: manyCandidates.length,
+        totalPages: Math.ceil(manyCandidates.length / size),
+      };
+    });
+
+    // Session thiếu ROLE.VIEW → không gọi listActiveRoles, fallback STUDENT_ROLE_ID
+    const sessionNoRoleView: Session = {
+      ...TEST_ADMIN_SESSION,
+      permissions: TEST_ADMIN_SESSION.permissions.filter((p) => p !== "ROLE.VIEW"),
+    };
+    renderDetail(makeDeps(), sessionNoRoleView, listUsersMock);
+
+    await screen.findByRole("heading", { name: "Lớp A" });
+    await user.click(screen.getByRole("button", { name: /Thêm học viên/ }));
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("cand01");
+    expect(within(dialog).queryByText("cand21")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(listUsersMock).toHaveBeenCalledWith(
+        expect.objectContaining({ roleId: STUDENT_ROLE_ID, page: 0, size: 20 }),
+      );
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Sau" }));
+    await within(dialog).findByText("cand21");
+    expect(listUsersMock).toHaveBeenCalledWith(
+      expect.objectContaining({ roleId: STUDENT_ROLE_ID, page: 1, size: 20 }),
+    );
+  });
+
+  it("AddMembersDialog thiếu USER.VIEW → EmptyState không quyền, không gọi listUsers, ẩn nút submit", async () => {
+    const user = userEvent.setup();
+    const listUsersMock = vi.fn(async () => ({
+      items: STUDENT_CANDIDATES,
+      page: 0,
+      size: 20,
+      totalItems: STUDENT_CANDIDATES.length,
+      totalPages: 1,
+    }));
+    const sessionNoUserView: Session = {
+      ...TEST_ADMIN_SESSION,
+      permissions: TEST_ADMIN_SESSION.permissions.filter((p) => p !== "USER.VIEW"),
+    };
+    renderDetail(makeDeps(), sessionNoUserView, listUsersMock);
+
+    await screen.findByRole("heading", { name: "Lớp A" });
+    await user.click(screen.getByRole("button", { name: /Thêm học viên/ }));
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("Không có quyền xem danh sách tài khoản");
+    expect(listUsersMock).not.toHaveBeenCalled();
+    expect(
+      within(dialog).queryByRole("button", { name: /Thêm \d+ học viên/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("TransferMemberDialog lỗi tải danh sách lớp → báo lỗi, nút Thử lại refetch", async () => {
+    const user = userEvent.setup();
+    const listAllClassesMock = vi
+      .fn<ClassesApiDeps["listAllClasses"]>()
+      .mockRejectedValueOnce(new ClassesApiError(500, "boom"))
+      .mockResolvedValueOnce([
+        {
+          id: "00000000-0000-4000-8000-000000000302",
+          code: "LOP-B",
+          name: "Lớp B",
+          status: "ACTIVE",
+          memberCount: 1,
+          version: 0,
+          createdAt: BASE_CLASS.createdAt,
+          updatedAt: BASE_CLASS.updatedAt,
+        } as ClassSummary,
+      ]);
+
+    renderDetail(makeDeps({ listAllClasses: listAllClassesMock }));
+
+    await screen.findByText("student01");
+    await user.click(screen.getByRole("button", { name: "Chuyển student01 sang lớp khác" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("Không tải được danh sách lớp đích. Hãy thử lại.");
+
+    await user.click(within(dialog).getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => {
+      expect(listAllClassesMock).toHaveBeenCalledTimes(2);
+    });
+    // Sau retry thành công, select lớp đích được enable và có option LOP-B
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole("combobox", { name: /Lớp đích/ }),
+      ).not.toBeDisabled();
+    });
+  });
+
+  it("Members badge fallback về memberCount khi đang tải, không hiện '0 học viên'; sau khi tải xong hiện đúng số", async () => {
+    let resolveMembers!: (value: {
+      items: ClassMember[];
+      page: number;
+      size: number;
+      totalItems: number;
+      totalPages: number;
+    }) => void;
+    const pendingMembers = new Promise<{
+      items: ClassMember[];
+      page: number;
+      size: number;
+      totalItems: number;
+      totalPages: number;
+    }>((resolve) => {
+      resolveMembers = resolve;
+    });
+    const listClassMembersMock = vi
+      .fn<ClassesApiDeps["listClassMembers"]>()
+      .mockImplementationOnce(() => pendingMembers);
+
+    renderDetail(makeDeps({ listClassMembers: listClassMembersMock }));
+
+    await screen.findByRole("heading", { name: "Lớp A" });
+    // membersQuery đang pending, không có search → badge fallback về memberCount=2,
+    // không bao giờ hiển thị "0 học viên" (R1-8)
+    expect(screen.queryByText(/0 học viên/)).not.toBeInTheDocument();
+    expect(screen.getByText("2 học viên")).toBeInTheDocument();
+
+    resolveMembers({
+      items: SAMPLE_MEMBERS,
+      page: 0,
+      size: 20,
+      totalItems: 2,
+      totalPages: 1,
+    });
+
+    await screen.findByText("student01");
+    expect(screen.getByText("2 học viên")).toBeInTheDocument();
+  });
+
+  it("Members lỗi tải → EmptyState 'Không tải được thành viên' + nút Thử lại refetch", async () => {
+    const user = userEvent.setup();
+    const listClassMembersMock = vi
+      .fn<ClassesApiDeps["listClassMembers"]>()
+      .mockRejectedValueOnce(new ClassesApiError(500, "boom"))
+      .mockResolvedValueOnce({
+        items: SAMPLE_MEMBERS,
+        page: 0,
+        size: 20,
+        totalItems: 2,
+        totalPages: 1,
+      });
+
+    renderDetail(makeDeps({ listClassMembers: listClassMembersMock }));
+
+    await screen.findByRole("heading", { name: "Lớp A" });
+    await screen.findByText("Không tải được thành viên");
+
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    await screen.findByText("student01");
+    expect(listClassMembersMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("Members ở trang >1 rỗng → tự lùi về trang hợp lệ", async () => {
+    let pageZeroCalls = 0;
+    const listClassMembersMock = vi
+      .fn<ClassesApiDeps["listClassMembers"]>()
+      .mockImplementation(async (_id, query?: ListClassMembersQuery) => {
+        const page = query?.page ?? 0;
+        if (page === 1) {
+          // Trang 2 (index 1) rỗng: dữ liệu đã giảm còn 1 trang → step-back về trang 0
+          return { items: [], page: 1, size: 20, totalItems: 20, totalPages: 1 };
+        }
+        pageZeroCalls += 1;
+        const items = Array.from({ length: 20 }, (_, i) => ({
+          userId: `u-${i}`,
+          userCode: `U${i}`,
+          username: `member${String(i + 1).padStart(2, "0")}`,
+          fullName: `Member ${i + 1}`,
+          userStatus: "ACTIVE" as const,
+          joinedAt: "2026-11-10T08:00:00Z",
+        }));
+        // Lần đầu (trang 1): 25 items / 2 trang để nút "Sau" enabled.
+        // Sau step-back: 20 items / 1 trang.
+        const first = pageZeroCalls === 1;
+        return {
+          items,
+          page: 0,
+          size: 20,
+          totalItems: first ? 25 : 20,
+          totalPages: first ? 2 : 1,
+        };
+      });
+
+    renderDetail(makeDeps({ listClassMembers: listClassMembersMock }));
+
+    await screen.findByText("member01");
+
+    // Sang trang 2
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Sau" }));
+
+    // Sau khi trang 2 trả về rỗng, effect step-back gọi lại trang 0
+    await waitFor(() => {
+      const calls = listClassMembersMock.mock.calls.map((c) => c[1]?.page);
+      expect(calls).toContain(1);
+      expect(calls.filter((p) => p === 0).length).toBeGreaterThanOrEqual(2);
+    });
+    await screen.findByText("member01");
+  });
+
+  it("Remove member ở trang cuối → step-back về trang trước và hiển thị member còn lại", async () => {
+    const user = userEvent.setup();
+    let memberList = [...SAMPLE_MEMBERS];
+    const listClassMembersMock = vi
+      .fn<ClassesApiDeps["listClassMembers"]>()
+      .mockImplementation(async (_id, query?: ListClassMembersQuery) => {
+        const page = query?.page ?? 0;
+        const size = query?.size ?? 20;
+        const items = memberList.slice(page * size, (page + 1) * size);
+        return {
+          items,
+          page,
+          size,
+          totalItems: memberList.length,
+          totalPages: Math.max(1, Math.ceil(memberList.length / size)),
+        };
+      });
+    const removeMock = vi.fn(async () => {
+      memberList = memberList.filter((m) => m.userId !== SAMPLE_MEMBERS[1]!.userId);
+    });
+
+    // 21 members → 2 trang; trang 2 có đúng 1 member
+    memberList = [
+      ...Array.from({ length: 20 }, (_, i) => ({
+        userId: `u-${i}`,
+        userCode: `U${i}`,
+        username: `member${String(i + 1).padStart(2, "0")}`,
+        fullName: `Member ${i + 1}`,
+        userStatus: "ACTIVE" as const,
+        joinedAt: "2026-11-10T08:00:00Z",
+      })),
+      SAMPLE_MEMBERS[1]!,
+    ];
+
+    renderDetail(
+      makeDeps({ listClassMembers: listClassMembersMock, removeClassMember: removeMock }),
+    );
+
+    await screen.findByText("member01");
+
+    // Sang trang 2
+    await user.click(screen.getByRole("button", { name: "Sau" }));
+    await screen.findByText("student02");
+
+    // Loại student02 khỏi lớp
+    await user.click(screen.getByRole("button", { name: "Loại student02 khỏi lớp" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Loại khỏi lớp" }));
+
+    await waitFor(() => {
+      expect(removeMock).toHaveBeenCalled();
+    });
+
+    // Sau khi xóa, trang 2 rỗng → step-back về trang 1, hiển thị member01
+    await waitFor(() => {
+      const calls = listClassMembersMock.mock.calls.map((c) => c[1]?.page);
+      expect(calls).toContain(0);
+    });
+    await screen.findByText("member01");
+    expect(screen.queryByText("student02")).not.toBeInTheDocument();
+  });
+
+  it("Locale en: không render text tiếng Việt trên màn hình lớp học", async () => {
+    const enClass: ClassDetail = { ...BASE_CLASS, name: "Class A", code: "CLS-A" };
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <ClassDetailView
+          classId={enClass.id}
+          deps={makeDeps({ getClass: vi.fn(async () => enClass) })}
+          listActiveRolesForAdd={async () => ROLES}
+          listUsersForAdd={async () => ({
+            items: STUDENT_CANDIDATES,
+            page: 0,
+            size: 20,
+            totalItems: STUDENT_CANDIDATES.length,
+            totalPages: 1,
+          })}
+        />
+      </SessionProvider>,
+      { locale: "en", messages: en },
+    );
+
+    expect(await screen.findByRole("heading", { name: "Class A" })).toBeInTheDocument();
+    expect(screen.getByText("Add students")).toBeInTheDocument();
+    expect(screen.getByText("Back to classes")).toBeInTheDocument();
+    // Không có chuỗi UI tiếng Việt nào (fixture dữ liệu lớp/học viên không tính)
+    const bodyText = document.body.textContent ?? "";
+    for (const viText of [
+      "Chi tiết lớp học",
+      "Quay lại danh sách",
+      "Thêm học viên",
+      "Sửa thông tin",
+      "Ngừng sử dụng",
+      "Xóa lớp",
+      "Thành viên",
+      "học viên",
+    ]) {
+      expect(bodyText).not.toContain(viText);
+    }
   });
 });

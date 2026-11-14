@@ -626,4 +626,39 @@ describe("UsersListView (Slice 1)", () => {
       );
     });
   });
+
+  it("CreateUserDialog: lỗi tải danh sách lớp → báo lỗi + nút Thử lại, retry thành công hiển thị checkbox lớp", async () => {
+    const user = userEvent.setup();
+    const listAllClassesMock = vi
+      .fn<UsersApiDeps["listAllClasses"]>()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce([
+        {
+          id: "00000000-0000-4000-8000-000000000301",
+          code: "LOP-A",
+          name: "Lớp A",
+          status: "ACTIVE",
+          memberCount: 2,
+          version: 0,
+          createdAt: "2026-11-10T08:00:00Z",
+          updatedAt: "2026-11-10T08:00:00Z",
+        },
+      ]);
+
+    renderUsersView(makeDeps({ listAllClasses: listAllClassesMock }), TEST_ADMIN_SESSION, false);
+
+    await screen.findByText("student01");
+    await user.click(screen.getByRole("button", { name: /Tạo tài khoản/ }));
+
+    const dialog = screen.getByRole("dialog");
+    // Lỗi tải lớp → hiện classesError + nút Thử lại
+    await within(dialog).findByText("Không tải được danh sách lớp học. Hãy thử lại.");
+
+    await user.click(within(dialog).getByRole("button", { name: "Thử lại" }));
+
+    // Sau retry, nhóm lớp hiển thị checkbox LOP-A
+    const classGroup = await within(dialog).findByRole("group", { name: "Lớp học" });
+    expect(within(classGroup).getByRole("checkbox", { name: /LOP-A/ })).toBeInTheDocument();
+    expect(listAllClassesMock).toHaveBeenCalledTimes(2);
+  });
 });

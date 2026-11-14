@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import {
   ClassesApiError,
@@ -291,5 +292,145 @@ describe("ClassesListView", () => {
     await waitFor(() => {
       expect(deleteMock).toHaveBeenCalledWith(SAMPLE_CLASSES[0]!.id, "Tạo nhầm");
     });
+  });
+
+  it("đang ở trang >1 và trang rỗng → tự lùi về trang cuối hợp lệ", async () => {
+    let pageZeroCalls = 0;
+    const listMock = vi.fn<ClassesApiDeps["listClasses"]>(async (query) => {
+      const page = query.page ?? 0;
+      const size = query.size ?? 20;
+      if (page === 1) {
+        // Trang 2 (index 1) rỗng: dữ liệu đã giảm còn 1 trang → step-back về trang 0
+        return { items: [], page: 1, size, totalItems: 20, totalPages: 1 };
+      }
+      pageZeroCalls += 1;
+      const items = Array.from({ length: 20 }, (_, i) => ({
+        ...SAMPLE_CLASSES[0]!,
+        id: `cls-${i}`,
+        code: `LOP-${String(i + 1).padStart(2, "0")}`,
+        name: `Lớp ${i + 1}`,
+      }));
+      const first = pageZeroCalls === 1;
+      return {
+        items,
+        page: 0,
+        size,
+        totalItems: first ? 25 : 20,
+        totalPages: first ? 2 : 1,
+      };
+    });
+
+    renderListView(makeDeps({ listClasses: listMock }));
+
+    await screen.findByText("LOP-01");
+
+    // Sang trang 2
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Sau" }));
+
+    // Sau khi trang 2 trả về rỗng, effect step-back gọi lại trang 0
+    await waitFor(() => {
+      const calls = listMock.mock.calls.map((c) => c[0]?.page);
+      expect(calls).toContain(1);
+      expect(calls.filter((p) => p === 0).length).toBeGreaterThanOrEqual(2);
+    });
+    await screen.findByText("LOP-01");
+  });
+
+  it("Xóa lớp ở trang cuối → step-back và hiển thị lại danh sách trang trước", async () => {
+    const user = userEvent.setup();
+    const page2Class: ClassSummary = {
+      ...SAMPLE_CLASSES[0]!,
+      id: "cls-last",
+      code: "LOP-LAST",
+      name: "Lớp cuối",
+    };
+    let deleted = false;
+    const listMockWithPage2 = vi.fn<ClassesApiDeps["listClasses"]>(async (query) => {
+      const page = query.page ?? 0;
+      const size = query.size ?? 20;
+      if (page === 1) {
+        // Trang 2 có 1 lớp; sau khi xóa → rỗng, totalItems giảm còn 20
+        if (deleted) {
+          return { items: [], page: 1, size, totalItems: 20, totalPages: 1 };
+        }
+        return { items: [page2Class], page: 1, size, totalItems: 21, totalPages: 2 };
+      }
+      const items = Array.from({ length: 20 }, (_, i) => ({
+        ...SAMPLE_CLASSES[0]!,
+        id: `cls-${i}`,
+        code: `LOP-${String(i + 1).padStart(2, "0")}`,
+        name: `Lớp ${i + 1}`,
+      }));
+      return { items, page: 0, size, totalItems: deleted ? 20 : 21, totalPages: deleted ? 1 : 2 };
+    });
+
+    const deleteMock = vi.fn(async () => {
+      deleted = true;
+    });
+
+    renderListView(
+      makeDeps({ listClasses: listMockWithPage2, deleteClass: deleteMock }),
+    );
+
+    await screen.findByText("LOP-01");
+
+    // Sang trang 2
+    await user.click(screen.getByRole("button", { name: "Sau" }));
+    await screen.findByText("LOP-LAST");
+
+    // Xóa LOP-LAST
+    await user.click(screen.getByRole("button", { name: "Thao tác khác với lớp LOP-LAST" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Xóa lớp" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/Lý do xóa lớp/), "Dọn lớp");
+    await user.click(within(dialog).getByRole("button", { name: "Xóa lớp" }));
+
+    await waitFor(() => {
+      expect(deleteMock).toHaveBeenCalled();
+    });
+
+    // Sau khi xóa, trang 2 rỗng → step-back về trang 1, hiển thị LOP-01
+    await waitFor(() => {
+      const calls = listMockWithPage2.mock.calls.map((c) => c[0]?.page);
+      expect(calls.filter((p) => p === 0).length).toBeGreaterThanOrEqual(2);
+    });
+    await screen.findByText("LOP-01");
+    expect(screen.queryByText("LOP-LAST")).not.toBeInTheDocument();
+  });
+
+  it("Locale en: ClassesListView hiển thị tiếng Anh, không có text tiếng Việt", async () => {
+    const enClasses: ClassSummary[] = [
+      {
+        ...SAMPLE_CLASSES[0]!,
+        name: "Class A",
+        code: "CLS-A",
+      },
+    ];
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <ClassesListView
+          deps={makeDeps({
+            listClasses: vi.fn(async () => ({
+              items: enClasses,
+              page: 0,
+              size: 20,
+              totalItems: 1,
+              totalPages: 1,
+            })),
+          })}
+          listActiveUsers={async () => []}
+        />
+      </SessionProvider>,
+      { locale: "en", messages: en },
+    );
+
+    expect(await screen.findByText("CLS-A")).toBeInTheDocument();
+    expect(screen.getByText("Classes")).toBeInTheDocument();
+    expect(screen.getByText("Create class")).toBeInTheDocument();
+    const bodyText = document.body.textContent ?? "";
+    for (const viText of ["Lớp học", "Tạo lớp", "Thành viên", "học viên"]) {
+      expect(bodyText).not.toContain(viText);
+    }
   });
 });
