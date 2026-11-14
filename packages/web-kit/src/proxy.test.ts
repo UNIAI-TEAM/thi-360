@@ -102,14 +102,31 @@ describe("proxyApiRequest Idempotency-Key và multipart stream", () => {
     expect(lastHeaders().get("idempotency-key")).toBe("idem-12345");
   });
 
-  it("stream body multipart/form-data (không parse JSON) kèm content-type và idempotency-key", async () => {
-    const form = new FormData();
-    const payload = new Uint8Array(1024 * 64);
+  it("stream body multipart/form-data 4 MB (không parse JSON) kèm content-type và idempotency-key", async () => {
+    const fourMb = 4 * 1024 * 1024;
+    const payload = new Uint8Array(fourMb);
     payload[0] = 0x50;
     payload[1] = 0x4b;
-    form.append("file", new File([payload], "catalog.xlsx", {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }));
+    payload[fourMb - 1] = 0x21;
+
+    let receivedFile: unknown = null;
+    let capturedInit: (RequestInit & { duplex?: string }) | undefined;
+    fetchMock.mockImplementationOnce(async (_url: unknown, init?: RequestInit) => {
+      capturedInit = init as RequestInit & { duplex?: string };
+      const parsedForm = await new Response(init?.body ?? null, {
+        headers: init?.headers,
+      }).formData();
+      receivedFile = parsedForm.get("file");
+      return Response.json({ ok: true });
+    });
+
+    const form = new FormData();
+    form.append(
+      "file",
+      new File([payload], "catalog-4mb.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+    );
 
     const req = new NextRequest(
       "http://localhost:3000/api/v1/admin/catalog/groups/g1/items/import/preview",
@@ -117,22 +134,23 @@ describe("proxyApiRequest Idempotency-Key và multipart stream", () => {
         method: "POST",
         body: form,
         headers: {
-          "idempotency-key": "idem-upload-1",
+          "idempotency-key": "idem-upload-4mb",
         },
       },
     );
 
-    await handlers.POST(
+    const res = await handlers.POST(
       req,
       context("v1", "admin", "catalog", "groups", "g1", "items", "import", "preview"),
     );
 
-    const call = fetchMock.mock.calls.at(-1);
-    expect(call).toBeDefined();
-    const init = call![1] as RequestInit & { duplex?: string };
-    expect(init.duplex).toBe("half");
-    expect(init.body).toBeInstanceOf(ReadableStream);
+    expect(res.status).toBe(200);
+    expect(capturedInit?.duplex).toBe("half");
+    expect(capturedInit?.body).toBeInstanceOf(ReadableStream);
     expect(lastHeaders().get("content-type")).toMatch(/^multipart\/form-data;/);
-    expect(lastHeaders().get("idempotency-key")).toBe("idem-upload-1");
+    expect(lastHeaders().get("idempotency-key")).toBe("idem-upload-4mb");
+    expect(receivedFile).toBeInstanceOf(File);
+    expect((receivedFile as File).size).toBe(fourMb);
+    expect((receivedFile as File).name).toBe("catalog-4mb.xlsx");
   });
 });

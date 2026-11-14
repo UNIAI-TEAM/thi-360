@@ -1868,6 +1868,28 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
     ).toBeInTheDocument();
   });
 
+  it("hiển thị đúng thông báo lỗi khi máy chủ trả về IMPORT_FILE_TOO_LARGE", async () => {
+    const api = createTreeMockApi({
+      previewImport: vi.fn(async () => {
+        throw new CatalogApiError(400, "File too large", "IMPORT_FILE_TOO_LARGE");
+      }),
+    });
+    renderCatalog({ api, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Nhập Excel" }));
+    const dialog = await screen.findByRole("dialog");
+    const fileInput = within(dialog).getByLabelText(/Tệp Excel/) as HTMLInputElement;
+    const validFile = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "subject.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    await userEvent.upload(fileInput, validFile);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kiểm tra tệp" }));
+
+    expect(
+      await within(dialog).findByText(viMessages.catalog.errorCodes.IMPORT_FILE_TOO_LARGE),
+    ).toBeInTheDocument();
+  });
+
   it("hiển thị bảng lỗi, nút tải file lỗi khi previewImport có lỗi và cho phép xác nhận khi hợp lệ", async () => {
     const api = createTreeMockApi({
       previewImport: vi
