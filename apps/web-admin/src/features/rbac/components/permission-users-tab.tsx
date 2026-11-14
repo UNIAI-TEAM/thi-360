@@ -380,17 +380,17 @@ export function PermissionUsersTab({
   const totalUsers = usersQuery.data?.totalItems ?? 0;
 
   return (
-    // Hai khung xếp cạnh nhau theo bề rộng của chính vùng này (truy vấn vùng chứa), không theo cửa sổ: sidebar
-    // 248px đã lấy một phần cửa sổ. Một vùng chứa không tự truy vấn được chính nó, nên nó luôn là hàng có xuống
-    // dòng, còn hai khung con đổi kích thước: dưới ngưỡng mỗi khung chiếm trọn một dòng (xếp chồng). Ngưỡng
-    // `@5xl` = 64rem (1024px): trừ cột trái 320px và khe 16px, khung phải còn từ 688px, đủ cho bảng năm cột
-    // (ước tính cần khoảng 670px để không phải cuộn ngang) và hàng bộ lọc.
+    // Hai khung xếp theo bề rộng của chính vùng chứa (container query), không theo bề rộng màn hình: vùng nội
+    // dung đã hẹp hơn màn hình 248px vì có sidebar. Ngưỡng `@4xl` = 56rem (896px, tức cửa sổ từ khoảng 1210px):
+    // cột trái 280px, khung phải còn từ 600px và đạt 673px ở cửa sổ 1280px, vừa bảng năm cột. Từ `@5xl` = 64rem
+    // (cửa sổ từ khoảng 1340px) cột trái về 320px. Dưới ngưỡng thì xếp chồng, danh sách quyền cao tối đa 320px
+    // để bảng không bị đẩy quá xa xuống dưới.
     <div className="@container flex flex-wrap items-start gap-4">
       <Card
         padding="none"
         role="region"
         aria-labelledby="rbac-perm-picker-heading"
-        className="w-full overflow-hidden @5xl:w-[320px] @5xl:shrink-0"
+        className="w-full overflow-hidden @4xl:w-[280px] @4xl:shrink-0 @5xl:w-[320px]"
       >
         <div className="flex flex-col gap-2.5 p-4">
           <h2 id="rbac-perm-picker-heading" className="text-title font-semibold text-text">
@@ -438,7 +438,7 @@ export function PermissionUsersTab({
         ) : (
           // Khi xếp chồng, danh sách thấp lại để bảng bên dưới không bị đẩy khỏi màn hình; bóng ở mép báo còn
           // quyền để cuộn tới.
-          <ul className="scroll-shadows-y m-0 max-h-80 list-none overflow-y-auto p-0 @5xl:max-h-[640px]">
+          <ul className="scroll-shadows-y m-0 max-h-80 list-none overflow-y-auto p-0 @4xl:max-h-[640px]">
             {filteredPermissions.map((perm) => {
               const isSelected = activePermission?.id === perm.id;
               const objName = resolveObjectName(rbacT, perm.groupCode, perm.groupName);
@@ -483,7 +483,7 @@ export function PermissionUsersTab({
         padding="none"
         role="region"
         aria-labelledby="rbac-perm-users-heading"
-        className="min-w-0 flex-[1_1_100%] overflow-hidden @5xl:flex-1"
+        className="min-w-0 flex-[1_1_100%] overflow-hidden @4xl:flex-1"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">

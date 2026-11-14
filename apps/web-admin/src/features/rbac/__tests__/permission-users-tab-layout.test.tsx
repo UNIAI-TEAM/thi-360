@@ -99,8 +99,8 @@ describe("PermissionUsersTab: bố cục cột chọn quyền", () => {
     const usersPane = container.querySelector('[aria-labelledby="rbac-perm-users-heading"]') as HTMLElement;
 
     expect(container).toHaveClass("@container", "flex", "flex-wrap");
-    expect(picker).toHaveClass("w-full", "@5xl:w-[320px]", "@5xl:shrink-0");
-    expect(usersPane).toHaveClass("min-w-0", "flex-[1_1_100%]", "@5xl:flex-1");
+    expect(picker).toHaveClass("w-full", "@4xl:w-[280px]", "@4xl:shrink-0", "@5xl:w-[320px]");
+    expect(usersPane).toHaveClass("min-w-0", "flex-[1_1_100%]", "@4xl:flex-1");
     for (const element of [container, picker, usersPane]) {
       expect(element.className).not.toMatch(/(^|\s)(sm|md|lg|xl|2xl):/);
     }
