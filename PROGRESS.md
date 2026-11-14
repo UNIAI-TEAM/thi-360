@@ -2,9 +2,9 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
-## Trạng thái hiện tại (2026-11-13)
+## Trạng thái hiện tại (2026-11-14)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 102/105 điểm (T01–T15, T17, T18, T19 đã vào nhánh tích hợp; còn T16 nghiệm thu cuối); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
+**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 105/105 điểm (T01–T19 đã vào nhánh tích hợp; chờ người duyệt PR `integration/dot-1` → `develop`); còn T16 nghiệm thu cuối); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
@@ -27,14 +27,14 @@
 - T10 (UNI-2547) pha B (giao diện lớp học) đã nghiệm thu và merge vào `integration/dot-1` (PR #21, `6f1b1c5`): `/lop-hoc`, `/lop-hoc/[id]`, menu Lớp học, tab "Lớp học" ở chi tiết tài khoản, lọc theo lớp và chọn lớp khi tạo tài khoản, lớp mẫu dev LOP-A/LOP-B (`DevClassSeeder`). Bộ e2e: đăng nhập `platform` dùng chung (`e2e/tests/helpers/platform.ts`), nâng ngưỡng đăng nhập theo IP khi chạy e2e bằng biến môi trường `THI360_SECURITY_RATELIMIT_LOGINPERIPLIMIT`, test tìm theo mã trước khi kiểm tra dòng mới trong danh sách phân trang. T10 xong cả hai pha.
 - T11 (UNI-2548) pha B (giao diện cấp tài khoản hàng loạt) đã nghiệm thu và merge vào `integration/dot-1` (PR #22): `/tai-khoan/cap-hang-loat` bốn bước, nút "Cấp hàng loạt" ở danh sách tài khoản (cần `USER.MODIFY`), cảnh báo rời trang khi chưa tải tệp kết quả có mật khẩu do hệ thống sinh. Lỗi theo dòng có thêm mã cột ổn định `columnKey` để giao diện dịch tên cột theo ngôn ngữ. Bộ e2e: hàm đăng nhập `platform` dùng chung tự kiểm tra và đăng nhập lại khi phiên bị loại; lượt chạy e2e nâng giới hạn phiên mỗi tài khoản bằng `THI360_SECURITY_SESSION_MAXPERUSER` (mặc định sản phẩm là 5 phiên, phiên cũ nhất bị loại). T11 xong cả hai pha.
 - T15 (UNI-2552) đã nghiệm thu và merge vào `integration/dot-1` (PR #23, `80363ea`): màn `/cau-hinh-chung` (nhóm menu Nội dung, cần `CATALOG.VIEW`; nút ghi cần `CATALOG.MODIFY`) gồm danh mục dạng danh sách, mã tổ hợp, cây kiến thức nhiều cấp (thêm nút, chuyển nhánh, ngừng theo cấp trên, danh mục liên kết và lọc cây theo liên kết), nhập/xuất Excel; thành phần `TreeView` trong `packages/ui`. Hộp thoại dùng chung: phần đầu và phần chân dính khi nội dung cuộn, nút đóng luôn bấm được. Dưới 1600px ngăn chi tiết nằm dưới cây và tự cuộn vào tầm nhìn khi chọn nút. Thông báo "phiên bản mới" của mã tổ hợp đang dùng chưa kiểm tra được vì chưa module nào tham chiếu mã tổ hợp.
-- Đang mở: T16 (UNI-2553) nghiệm thu đợt 1, trên máy Windows. Mọi task tính năng của đợt 1 đã ở trên nhánh tích hợp.
+- T16 (UNI-2553) đã nghiệm thu và merge vào `integration/dot-1` (PR #24, `14cdf95`): bảng nghiệm thu `docs/acceptance/dot-1.md` (tiêu chí spec mục 12, 15.7 và T19 ↔ tên test; mục "Chưa đạt / hoãn"; mục "Việc để lại"), `AdminApiForbiddenMatrixIT` (78 endpoint quản trị: thiếu quyền → 403, học viên → 403, không cookie → 401), `NoHardDeleteIT`, `AuditAppLoginIT`, sửa số ít/số nhiều tiếng Anh ở cấp hàng loạt và chuyển nhánh, README chạy từ bản clone mới, bỏ theo dõi `tsconfig.tsbuildinfo`. Lượt chạy cuối trên Windows ở `f4c61f0`: backend 215 test, web và e2e 29/29 đều qua, không lệch OpenAPI. AC-01.7 chỉ đạt phần tài khoản và lớp; phần học tập chờ module thi.
 - 2026-11-14: M.Trường yêu cầu làm luôn phần danh mục đã hoãn (PBI-02: T13, T14, T15). Plan mục A7, A4, Phần C, hợp đồng T13–T15 và T16 đã sửa theo; T13 (UNI-2550) mở ngay trên VPS, T14 sau T13, T15 sau T13, T14, T18.
 - 2026-11-14: M.Trường yêu cầu đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh). Thêm T19 (UNI-2561) vào plan, chạy sau T17 và T18; mọi lane có giao diện thêm khóa tiếng Anh cho chuỗi của mình ngay từ bây giờ (`en.json` cùng bộ khóa với `vi.json`).
 - 2026-11-14: M.Trường chốt chế độ sáng/tối **theo từng người**, bật tắt bằng nút ở thanh trên cùng (cạnh nút ngôn ngữ, bên trái avatar). Cấu hình hệ thống của T17 chỉ còn giữ chế độ mặc định. Nút và cookie `thi360_theme` làm trong T19. Spec §13, `DESIGN.md` §5/§8/§9 và plan T17/T19 đã sửa.
 
 **Bước tiếp theo**
 
-1. T16: bảng đối chiếu tiêu chí ↔ test (`docs/acceptance/dot-1.md`), `AdminApiForbiddenMatrixIT`, chạy toàn bộ ba bộ test, rồi mở PR `integration/dot-1` → `develop` (không tự merge).
+1. Người duyệt và merge PR `integration/dot-1` → `develop` (agent không tự merge). Việc để lại của đợt 1 nằm ở mục 6 của `docs/acceptance/dot-1.md`.
 2. Tài khoản mẫu dev (B13: `sys.admin`, `content.admin`, `ops.admin`, `student01`…`05`) làm trong T18; lớp mẫu làm trong T10.
 
 **Vướng / việc treo**

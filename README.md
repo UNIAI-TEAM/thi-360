@@ -17,7 +17,7 @@ Cổng luyện thi trực tuyến cho kỳ thi đánh giá năng lực HSA và Q
 - Docker (có Docker Compose); backend test dùng Testcontainers nên Docker phải chạy
 - `uniai` CLI và `gh` (để làm việc theo issue, xem `RULES.md` mục 2)
 
-Trên Windows, wrapper Maven là `mvnw.cmd`. Chạy `./mvnw` từ Git Bash báo sai `JAVA_HOME`; dùng `./mvnw.cmd` (Git Bash) hoặc `.\mvnw.cmd` (PowerShell, đặt các tham số `-D...` trong dấu nháy kép). Ví dụ trong README ghi `./mvnw`; thay bằng `mvnw.cmd` khi ở Windows.
+Trên Windows, `./mvnw` chạy được từ Git Bash khi `JAVA_HOME` trỏ tới JDK 21 theo đường dẫn Windows (ví dụ `C:\Users\<tên>\.jdks\corretto-21.0.10`). Nếu `./mvnw` báo sai `JAVA_HOME`, hoặc khi dùng PowerShell, dùng `mvnw.cmd`: `./mvnw.cmd` (Git Bash) hoặc `.\mvnw.cmd` (PowerShell, đặt các tham số `-D...` trong dấu nháy kép).
 
 ## Chạy từ bản clone mới
 

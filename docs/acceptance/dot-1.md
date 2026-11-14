@@ -75,7 +75,7 @@
 
 ## 5. Chưa đạt / hoãn
 
-Mọi phần của bảng trên không có test tự động nằm ở đây, mỗi mục kèm lý do. Không mục nào ở dưới được tính là đạt. Số H4 và H7 đã đóng ở lượt này và bỏ khỏi bảng; không dùng lại số cũ để các báo cáo của lane vẫn trỏ đúng.
+Mọi phần của bảng trên không có test tự động nằm ở đây, mỗi mục kèm lý do. Không mục nào ở dưới được tính là đạt. Số H4, H7 và H8 đã đóng ở lượt này và bỏ khỏi bảng (H8: hai ca e2e `callbackUrl` đã chạy và đạt ở lượt chạy cuối, xem §15.7-4); không dùng lại số cũ để các báo cáo của lane vẫn trỏ đúng.
 
 | # | Phần | Tình trạng | Lý do | Xử lý tiếp |
 |---|---|---|---|---|
@@ -84,7 +84,6 @@ Mọi phần của bảng trên không có test tự động nằm ở đây, m�
 | H3 | **T15, tên theo ngôn ngữ trong danh sách "đang được dùng ở"** | Chưa đạt | Cần backend trả tên đã địa hóa của nơi dùng; phía web không có dữ liệu để dịch. Không có test vì chưa có hành vi | Đổi backend ở một lane sau (xem UNI-2571) |
 | H5 | **Chụp và đọc từng màn, sáng/tối × vi/en** (không lẫn ngôn ngữ, không tràn chữ, tương phản đo thật) | Không có test tự động | Là kiểm tra bằng mắt trên trình duyệt; kết quả của từng lane nằm trong `reports/<lane>/visual-*.md` và `reports/T19/T19-tester-visual-1..3.md` (cùng các tệp ảnh). Test tự động chỉ phủ khóa dịch, quét mã nguồn, token và tương phản của bộ màu (mục 3). Không kiểm: khung nhìn hẹp, lặp lại theo từng vai trò (quyết định của Advisor ở T19) | Lặp lại thủ công khi đổi giao diện lớn |
 | H6 | **Tương phản không phải chữ ở chế độ tối** (nền nút chính, viền, mục đang chọn dưới 3:1 với bộ màu tối) | Mở, chờ quyết định của người dùng | Câu hỏi thiết kế còn mở (UNI-2562); lane nghiệm thu không đổi token | UNI-2562 |
-| H8 | **E2E mới thêm ở lane nghiệm thu** (`callbackUrl` ngoài hệ thống, hai ca trong `e2e/tests/sso.spec.ts`) | Chưa chạy khi viết | Worker docs không chạy e2e (cần khóa dev-stack); lead chạy ở lượt cuối | Cột "Kết quả lượt chạy cuối" của §15.7-4 |
 | H9 | **Màn tra cứu nhật ký** cho người quản trị | Chưa có trong đợt 1 | Plan không có task giao diện nhật ký; đợt này có API (`GET /api/v1/admin/audit-events`) và tab "Lịch sử thay đổi" trong chi tiết tài khoản và giá trị danh mục. T08 ghi nhận E2E 1 và E2E 3 kiểm quyền qua `/me` vì chưa có menu "Nhật ký" | Task sau của PBI nhật ký |
 
 ## 6. Việc để lại
@@ -118,3 +117,5 @@ Lượt chạy đầy đủ cuối trên `eb8ccc8` (đầu nhánh lúc chạy; c
 | Web | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` (Cursor cloud; chạy lại tại máy, Node 22) | 0 | web-admin 345, web-student 45, ui 36 tệp, web-kit 5 tệp, api-client 1 tệp | `eb8ccc8` | 2026-11-14 | `cloud-test-web-eb8ccc85.md`, `web-local.log` |
 | OpenAPI | `diff -u packages/api-client/openapi.json backend/target/openapi.json`; `pnpm --filter @thi360/api-client generate && git diff --exit-code packages/api-client` | 0 | không áp dụng | `eb8ccc8` | 2026-11-14 | `cloud-test-drift-eb8ccc85.md`, `drift-web-local.log` |
 | E2E | `SPRING_FLYWAY_OUT_OF_ORDER=true THI360_DB_PORT=54320 E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test` (Node 22, cổng mặc định 8080/3000/3001) | 0 | 29 | `eb8ccc8` | 2026-11-14 | `e2e-final.log` |
+
+Advisor chạy lại cả ba bộ trên máy Windows ở đầu nhánh PR `f4c61f0` (cây mã trùng với kết quả merge vào `integration/dot-1`), ngày 2026-11-14: backend `./mvnw -B -ntp verify` mã thoát 0, 215 test, 0 lỗi; OpenAPI và api-client không lệch; web lint, typecheck, test, build mã thoát 0 (web-admin 345, web-student 45); e2e 29/29. Nhật ký ở `RUN/reports/T16/advisor-accept/`.
