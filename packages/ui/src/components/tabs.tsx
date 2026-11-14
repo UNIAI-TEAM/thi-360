@@ -1,7 +1,7 @@
 "use client";
 
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { createContext, use, type ComponentProps } from "react";
+import { createContext, use, useEffect, useRef, type ComponentProps } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 
@@ -23,15 +23,56 @@ export function Tabs({ variant = "content", ...props }: TabsProps) {
   );
 }
 
-export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
+/**
+ * Cuộn riêng thanh tab (không cuộn trang) để tab đang chọn hiện trọn, kèm một phần tab kế bên: bấm vào một tab
+ * đang lộ một nửa thì tab sau nó cũng ló ra, người dùng chuột không có bánh xe ngang vẫn tới được mọi tab.
+ * Tự tính `scrollLeft` thay cho `scrollIntoView`: trình duyệt chưa hỗ trợ `container: "nearest"` sẽ cuộn cả trang.
+ */
+function revealTab(list: HTMLElement, tab: HTMLElement) {
+  const peek = tab.offsetHeight;
+  const listBox = list.getBoundingClientRect();
+  const tabBox = tab.getBoundingClientRect();
+  const hiddenAtStart = tabBox.left - peek - listBox.left;
+  const hiddenAtEnd = tabBox.right + peek - listBox.right;
+  if (hiddenAtStart < 0) list.scrollLeft += hiddenAtStart;
+  else if (hiddenAtEnd > 0) list.scrollLeft += hiddenAtEnd;
+}
+
+export function TabsList({ className, ref, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
   const variant = use(TabsVariantContext);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const scrolls = variant === "content";
+
+  // Radix giữ giá trị đang chọn trong context riêng, nên theo dõi `data-state` của các tab: đúng cho cả chế độ
+  // có kiểm soát lẫn không, và cho cả lần hiển thị đầu (tab mặc định có thể nằm ngoài phần đang thấy).
+  useEffect(() => {
+    const list = listRef.current;
+    if (!scrolls || !list) return;
+    const reveal = () => {
+      const active = list.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
+      if (active) revealTab(list, active);
+    };
+    reveal();
+    if (typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(reveal);
+    observer.observe(list, { attributes: true, attributeFilter: ["data-state"], subtree: true });
+    return () => observer.disconnect();
+  }, [scrolls]);
+
   return (
     <TabsPrimitive.List
+      ref={(node) => {
+        listRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      }}
       data-variant={variant}
       className={cn(
         variant === "segmented"
           ? "flex h-12 w-full items-center gap-1 rounded-lg bg-subtle p-1"
-          : "inline-flex items-center gap-1",
+          : // Luôn một hàng, tự cuộn ngang khi không đủ chỗ (DESIGN.md mục 5.5) thay vì đẩy cả trang cuộn ngang.
+            // Đệm 4px bù bằng lề âm: vùng cuộn cắt mọi thứ tràn ra ngoài, kể cả vòng focus 3px của tab.
+            "-m-1 flex items-center gap-1 overflow-x-auto p-1 [scrollbar-width:thin]",
         className,
       )}
       {...props}
@@ -53,7 +94,7 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
         "after:pointer-events-none after:absolute after:inset-x-3 after:bottom-1 data-[state=active]:after:border-b-2 data-[state=active]:after:border-current",
         variant === "segmented"
           ? "flex-1 text-text-muted data-[state=active]:bg-surface data-[state=active]:text-primary-text data-[state=active]:shadow-sm"
-          : "text-neutral hover:bg-subtle data-[state=active]:bg-primary-50 data-[state=active]:text-primary-text",
+          : "shrink-0 text-neutral hover:bg-subtle data-[state=active]:bg-primary-50 data-[state=active]:text-primary-text",
         focusRing,
         className,
       )}
