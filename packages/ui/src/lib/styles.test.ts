@@ -50,3 +50,41 @@ describe("vòng focus ở chế độ tương phản cao (C-13, S-04)", () => {
     expect(focusRingInset).not.toMatch(/ring-/);
   });
 });
+
+/*
+ * S-10. Viền của ô nhập đang focus là dấu hiệu trạng thái (WCAG 1.4.11: >= 3:1 trên bề mặt). `primary-600` là
+ * màu gốc của bộ màu, không được chỉnh theo nền; `primary-text` thì được suy ra để đọc được ở cả hai chế độ.
+ */
+describe("fieldBase: viền focus theo token đã chỉnh tương phản (S-10)", () => {
+  it("dùng primary-text cho viền và quầng, không dùng primary-600", () => {
+    const classes = fieldBase.split(/\s+/);
+    expect(classes).toContain("focus:border-primary-text");
+    expect(classes).toContain("focus:ring-primary-text/15");
+    expect(fieldBase).not.toContain("primary-600");
+  });
+
+  it("viền focus (primary-text) đạt >= 3:1 trên bề mặt và nền phụ của ô bị khóa, sáng và tối, mọi bộ màu", () => {
+    for (const palette of PRESET_PALETTES) {
+      for (const mode of ["light", "dark"] as const) {
+        const tokens = deriveTokens({ primary: palette.primary, accent: palette.accent, mode });
+        for (const background of [tokens.surface, tokens.subtle]) {
+          expect(
+            getContrastRatio(tokens.primaryText, background),
+            `${palette.id} ${mode} primaryText/${background}`,
+          ).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
+  it("primary-600 chưa chỉnh thì KHÔNG đạt 3:1 với ít nhất một bộ có sẵn (lý do đổi token)", () => {
+    const failing: string[] = [];
+    for (const palette of PRESET_PALETTES) {
+      for (const mode of ["light", "dark"] as const) {
+        const tokens = deriveTokens({ primary: palette.primary, accent: palette.accent, mode });
+        if (getContrastRatio(tokens.primary600, tokens.surface) < 3) failing.push(`${palette.id} ${mode}`);
+      }
+    }
+    expect(failing.length).toBeGreaterThan(0);
+  });
+});

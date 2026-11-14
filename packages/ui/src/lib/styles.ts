@@ -21,7 +21,11 @@ export const focusRingInset =
 
 /**
  * Nền chung của ô nhập, vùng nhập và nút chọn (DESIGN.md mục 5.2). Lỗi hiển thị theo `aria-invalid`.
- * Chế độ tương phản cao: `outline-hidden` như `focusRing`.
+ *
+ * Focus: viền `primary-text` kèm quầng 3px cùng màu ở 15%. Viền là dấu hiệu chính nên phải đạt >= 3:1 trên
+ * bề mặt với mọi bộ màu; `primary-600` không được chỉnh theo bộ màu (2,21:1 với một bộ có sẵn ở chế độ sáng,
+ * 1,2–1,8:1 với các bộ tối), còn `primary-text` thì có (S-10). Chế độ tương phản cao: `outline-hidden` như
+ * `focusRing`.
  */
 export const fieldBase =
-  "w-full rounded-md border border-border bg-surface text-body text-text shadow-xs transition-colors duration-150 motion-reduce:transition-none placeholder:text-text-placeholder hover:border-border-strong focus:outline-hidden focus:border-primary-600 focus:ring-3 focus:ring-primary-600/15 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/15 disabled:cursor-not-allowed disabled:bg-subtle disabled:opacity-60";
+  "w-full rounded-md border border-border bg-surface text-body text-text shadow-xs transition-colors duration-150 motion-reduce:transition-none placeholder:text-text-placeholder hover:border-border-strong focus:outline-hidden focus:border-primary-text focus:ring-3 focus:ring-primary-text/15 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/15 disabled:cursor-not-allowed disabled:bg-subtle disabled:opacity-60";
