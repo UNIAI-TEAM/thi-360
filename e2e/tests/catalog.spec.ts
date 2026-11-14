@@ -184,7 +184,7 @@ async function provisionCatalogViewerUser(browser: Browser, suffix: string) {
   await loginThroughSso(adminPage, "sys.admin", DEV_PASSWORD);
 
   const cookies = await adminContext.cookies();
-  const xsrf = cookies.find((c) => c.name === "XSRF-TOKEN")?.value ?? "";
+  const xsrf = cookies.find((c) => c.name === "thi360_xsrf")?.value ?? "";
   const headers: Record<string, string> = {
     "content-type": "application/json",
     origin: ADMIN_URL,
@@ -243,7 +243,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     const groupDialog = page.getByRole("dialog");
     await groupDialog.getByLabel(/Mã danh mục/).fill(groupCode);
     await groupDialog.getByLabel(/Tên tiếng Việt/).fill(groupName);
-    await groupDialog.getByRole("button", { name: "Lưu" }).click();
+    await groupDialog.getByRole("button", { name: "Lưu", exact: true }).click();
     await expect(page.getByRole("heading", { name: groupName })).toBeVisible();
 
     // 2. Add three values
@@ -270,7 +270,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await page.getByRole("button", { name: `Ngừng sử dụng Giá trị 2 ${suffix}` }).click();
     const stopDialog = page.getByRole("dialog");
     await stopDialog.getByLabel(/Lý do ngừng sử dụng/).fill("Ngừng trong E2E");
-    await stopDialog.getByRole("button", { name: "Ngừng sử dụng" }).click();
+    await stopDialog.getByRole("button", { name: "Ngừng sử dụng", exact: true }).click();
     await expect(rowsAfterReload.nth(2)).toContainText("Ngừng sử dụng");
 
     // 5. Create subject then combination using it, verify deleting subject is blocked
@@ -291,10 +291,10 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await comboDialog.getByRole("combobox", { name: /Kỳ thi/ }).click();
     await page.getByRole("option").first().click();
 
-    await comboDialog.getByRole("combobox", { name: /Thêm môn học/ }).click();
+    await comboDialog.getByRole("combobox", { name: "Thêm môn", exact: true }).click();
     await page.getByRole("option", { name: new RegExp(subjName) }).click();
 
-    await comboDialog.getByRole("button", { name: "Lưu" }).click();
+    await comboDialog.getByRole("button", { name: "Lưu", exact: true }).click();
     await expect(page.getByText(comboName)).toBeVisible();
 
     await page.getByRole("button", { name: /Môn học/ }).click();
@@ -346,37 +346,37 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await expect(page.getByRole("heading", { name: "Cấu trúc kiến thức" })).toBeVisible();
 
     // 1. Add chapter
-    await page.getByRole("button", { name: "Thêm Chương" }).click();
+    await page.getByRole("button", { name: "Thêm Chương", exact: true }).first().click();
     let dlg = page.getByRole("dialog");
     await dlg.getByLabel(/Mã giá trị/).fill(chapCode);
     await dlg.getByLabel(/Tên tiếng Việt/).fill(chapName);
-    await dlg.getByRole("button", { name: "Lưu" }).click();
+    await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
     await expect(page.getByText(chapName)).toBeVisible();
 
     // 2. Add lesson under chapter
-    await page.getByRole("button", { name: `Thêm Bài vào ${chapName}` }).click();
+    await page.getByRole("button", { name: `Thêm Bài vào ${chapName}`, exact: true }).click();
     dlg = page.getByRole("dialog");
     await dlg.getByLabel(/Mã giá trị/).fill(lessonCode);
     await dlg.getByLabel(/Tên tiếng Việt/).fill(lessonName);
-    await dlg.getByRole("button", { name: "Lưu" }).click();
+    await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
 
-    await page.getByRole("button", { name: `Mở ${chapName}` }).click();
+    await page.getByRole("button", { name: `Mở ${chapName}`, exact: true }).click();
     await expect(page.getByText(lessonName)).toBeVisible();
 
     // 3. Add knowledge under lesson
-    await page.getByRole("button", { name: `Thêm Kiến thức vào ${lessonName}` }).click();
+    await page.getByRole("button", { name: `Thêm Kiến thức vào ${lessonName}`, exact: true }).click();
     dlg = page.getByRole("dialog");
     await dlg.getByLabel(/Mã giá trị/).fill(knowCode);
     await dlg.getByLabel(/Tên tiếng Việt/).fill(knowName);
-    await dlg.getByRole("button", { name: "Lưu" }).click();
+    await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
 
-    await page.getByRole("button", { name: `Mở ${lessonName}` }).click();
+    await page.getByRole("button", { name: `Mở ${lessonName}`, exact: true }).click();
     await expect(page.getByText(knowName)).toBeVisible();
 
     // 4. Collapse & re-expand
-    await page.getByRole("button", { name: "Thu gọn" }).click();
+    await page.getByRole("button", { name: "Thu gọn", exact: true }).click();
     await expect(page.getByText(knowName)).toHaveCount(0);
-    await page.getByRole("button", { name: `Mở ${chapName}` }).click();
+    await page.getByRole("button", { name: `Mở ${chapName}`, exact: true }).click();
     await expect(page.getByText(lessonName)).toBeVisible();
 
     // 5. Stop chapter -> lesson shows "Ngừng theo cấp trên"
@@ -384,7 +384,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     const stopDialog = page.getByRole("dialog");
     await expect(stopDialog).toContainText(/2 nút bên dưới sẽ chuyển sang Ngừng theo cấp trên/);
     await stopDialog.getByLabel(/Lý do ngừng sử dụng/).fill("Ngừng chương E2E");
-    await stopDialog.getByRole("button", { name: "Ngừng sử dụng" }).click();
+    await stopDialog.getByRole("button", { name: "Ngừng sử dụng", exact: true }).click();
 
     await expect(
       page.getByRole("treeitem", { name: new RegExp(lessonName) }),
