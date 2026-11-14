@@ -926,7 +926,7 @@ export function TreeItemsPanel({
               <Chip key={rg.refGroupId} variant="tag">
                 <span>{label}</span>
                 {rg.isDefault && (
-                  <span className="text-caption opacity-80">
+                  <span className="text-caption text-primary-text">
                     ({t("tree.refGroupDefaultHint")})
                   </span>
                 )}

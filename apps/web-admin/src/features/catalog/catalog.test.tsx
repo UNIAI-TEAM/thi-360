@@ -650,6 +650,18 @@ describe("resolveImportColumnLabel", () => {
   });
 });
 
+describe("CatalogView: chip danh mục liên kết mặc định (VIS-6)", () => {
+  it("chữ (Mặc định) dùng token chữ primary, không giảm opacity", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+
+    const suffix = (await screen.findAllByText(/^\(Mặc định\)$/))[0]!;
+    // Tương phản >= 4.5:1 của primary-text trên primary-50/100 ở cả hai chế độ do theme.test.ts bảo đảm.
+    expect(suffix).toHaveClass("text-primary-text");
+    expect(suffix.className).not.toMatch(/opacity/);
+  });
+});
+
 describe("buildCatalogDndAccessibility (VIS-5)", () => {
   const names = new Map([
     ["01a1d874-0000-7000-8000-000000000001", "Toán học"],
