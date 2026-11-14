@@ -774,6 +774,99 @@ describe("BulkAssignTab & UserRbacTab", () => {
     expect(onForbidden).not.toHaveBeenCalled();
   });
 
+  it("BulkAssignTab (R1-3): khóa các nút chỉnh sửa batch khi apply đang chạy, giữ nguyên payload đã bind và đồng bộ initialPermissionCode khi prop đổi", async () => {
+    const user = userEvent.setup();
+    const deferredApply = Promise.withResolvers<BulkAuthzResponse>();
+    const applyBulkAuthz = vi.fn(() => deferredApply.promise);
+    const previewBulkAuthz = vi.fn(async (payload: BulkAuthzRequest): Promise<BulkAuthzResponse> => ({
+      willChange: payload.userIds.length,
+      noChange: 0,
+      skipped: 0,
+      items: payload.userIds.map((userId) => ({
+        userId,
+        username: "ops.admin",
+        outcome: "WILL_CHANGE",
+        added: payload.permissionIds ?? payload.roleIds ?? [],
+        removed: [],
+      })),
+    }));
+
+    const { rerender } = renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <Toaster />
+        <BulkAssignTab
+          initialPermissionCode="AUDIT.VIEW"
+          listUsers={async () => USERS_PAGE}
+          listRoles={async () => ROLES_PAGE}
+          listPermissions={async () => PERMISSIONS_LIST}
+          previewBulkAuthz={previewBulkAuthz}
+          applyBulkAuthz={applyBulkAuthz}
+        />
+      </SessionProvider>,
+    );
+
+    expect(await screen.findByText("ops.admin")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: /ops\.admin/ }));
+    await user.type(
+      screen.getByPlaceholderText("Ví dụ: Hỗ trợ rà soát danh mục trước kỳ thi"),
+      "Hỗ trợ audit",
+    );
+
+    const applyBtn = await screen.findByRole("button", { name: "Áp dụng cho 1 tài khoản" });
+    await user.click(applyBtn);
+
+    await waitFor(() => {
+      expect(applyBulkAuthz).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByRole("button", { name: viMessages.rbac.bulk.actionGrant })).toBeDisabled();
+    expect(screen.getByRole("button", { name: viMessages.rbac.bulk.actionRevoke })).toBeDisabled();
+    expect(screen.getByRole("button", { name: viMessages.rbac.bulk.targetRole })).toBeDisabled();
+    expect(screen.getByRole("button", { name: viMessages.rbac.bulk.targetPermission })).toBeDisabled();
+    expect(screen.getByRole("button", { name: viMessages.rbac.bulk.addPermission })).toBeDisabled();
+    expect(screen.getByPlaceholderText(viMessages.rbac.bulk.reasonPlaceholder)).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /ops\.admin/ })).toBeDisabled();
+
+    deferredApply.resolve({
+      batchId: "batch-locked",
+      willChange: 1,
+      noChange: 0,
+      skipped: 0,
+      items: [
+        {
+          userId: "u-ops",
+          username: "ops.admin",
+          outcome: "WILL_CHANGE",
+          added: ["AUDIT.VIEW"],
+          removed: [],
+        },
+      ],
+    });
+
+    expect(
+      await screen.findByText(/Đã hoàn tất áp dụng: thay đổi 1 tài khoản/),
+    ).toBeInTheDocument();
+
+    rerender(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <Toaster />
+        <BulkAssignTab
+          initialPermissionCode="USER.ASSIGN"
+          listUsers={async () => USERS_PAGE}
+          listRoles={async () => ROLES_PAGE}
+          listPermissions={async () => PERMISSIONS_LIST}
+          previewBulkAuthz={previewBulkAuthz}
+          applyBulkAuthz={applyBulkAuthz}
+        />
+      </SessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Bỏ quyền/ })).toBeInTheDocument();
+    });
+  });
+
   it("ánh xạ toàn bộ reasonCode và mã lỗi RBAC sang câu hiển thị tiếng Việt và tiếng Anh", () => {
     const viT = makeTranslator(viMessages.rbac);
     const enT = makeTranslator(enMessages.rbac);

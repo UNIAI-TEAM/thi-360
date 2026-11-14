@@ -83,6 +83,12 @@ export interface BulkAssignTabProps {
   ) => Promise<BulkAuthzResponse>;
 }
 
+interface ApplyBulkVariables {
+  signature: string;
+  payload: BulkAuthzRequest;
+  idempotencyKey: string;
+}
+
 function readStoredBulkUserIds(): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -165,6 +171,17 @@ export function BulkAssignTab({
   const requestSeqRef = useRef(0);
   const idempotencyKeyRef = useRef<string>(generateIdempotencyKey());
   const lastKeySignatureRef = useRef<string | null>(null);
+  const prevInitialPermissionRef = useRef<string | null>(initialPermissionCode ?? null);
+
+  useEffect(() => {
+    const next = initialPermissionCode ?? null;
+    if (next && next !== prevInitialPermissionRef.current) {
+      setTarget("PERMISSION");
+      setSelectedPermissionCodes([next]);
+      setAppliedBatch(null);
+    }
+    prevInitialPermissionRef.current = next;
+  }, [initialPermissionCode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -326,16 +343,10 @@ export function BulkAssignTab({
   }, [previewBulkAuthz, previewPayload, requestSignature]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyMutation = useMutation({
-    mutationFn: async () => {
-      if (!previewPayload) {
-        throw new Error("Missing bulk payload");
-      }
-      return applyBulkAuthz(previewPayload, idempotencyKeyRef.current);
-    },
-    onSuccess: async (result) => {
-      if (requestSignature) {
-        setAppliedBatch({ signature: requestSignature, data: result });
-      }
+    mutationFn: async (variables: ApplyBulkVariables) =>
+      applyBulkAuthz(variables.payload, variables.idempotencyKey),
+    onSuccess: async (result, variables) => {
+      setAppliedBatch({ signature: variables.signature, data: result });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["rbac", "roles"] }),
         queryClient.invalidateQueries({ queryKey: ["rbac", "permissions"] }),
@@ -349,6 +360,7 @@ export function BulkAssignTab({
       notify.error(resolveRbacErrorMessage(rbacT, error, "bulk.applyFailed"));
     },
   });
+  const isApplying = applyMutation.isPending;
 
   function toggleUserSelection(user: UserSummaryResponse, checked: boolean) {
     setAppliedBatch(null);
@@ -456,13 +468,24 @@ export function BulkAssignTab({
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={visibleUsers.length === 0}
-                onClick={handleSelectCurrentPage}
+                disabled={isApplying || visibleUsers.length === 0}
+                onClick={() => {
+                  if (isApplying) return;
+                  handleSelectCurrentPage();
+                }}
               >
                 {t("bulk.selectCurrentPage")}
               </Button>
               {selectedUserIds.length > 0 && (
-                <Button size="sm" variant="secondary" onClick={handleClearSelection}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={isApplying}
+                  onClick={() => {
+                    if (isApplying) return;
+                    handleClearSelection();
+                  }}
+                >
                   {t("bulk.clearSelection")}
                 </Button>
               )}
@@ -589,7 +612,11 @@ export function BulkAssignTab({
                   >
                     <Checkbox
                       checked={isChecked}
-                      onCheckedChange={(checked) => toggleUserSelection(user, Boolean(checked))}
+                      disabled={isApplying}
+                      onCheckedChange={(checked) => {
+                        if (isApplying) return;
+                        toggleUserSelection(user, Boolean(checked));
+                      }}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-text">
@@ -663,13 +690,15 @@ export function BulkAssignTab({
                     <button
                       key={option}
                       type="button"
+                      disabled={isApplying}
                       aria-pressed={active}
                       onClick={() => {
+                        if (isApplying) return;
                         setAppliedBatch(null);
                         setAction(option);
                       }}
                       className={cn(
-                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30",
+                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50",
                         active
                           ? "bg-surface font-semibold text-primary-text shadow-xs"
                           : "font-medium text-text-secondary hover:text-text",
@@ -692,6 +721,7 @@ export function BulkAssignTab({
                 {(["ROLE", "PERMISSION"] as const).map((option) => {
                   const active = effectiveTarget === option;
                   const targetDisabled =
+                    isApplying ||
                     (option === "ROLE" && !canViewRoles) ||
                     (option === "PERMISSION" && !canViewPermissions);
                   return (
@@ -756,7 +786,9 @@ export function BulkAssignTab({
                         key={role.id}
                         variant="filter"
                         selected={selected}
+                        disabled={isApplying}
                         onClick={() => {
+                          if (isApplying) return;
                           setAppliedBatch(null);
                           setSelectedRoleIds((prev) =>
                             prev.includes(role.id)
@@ -802,14 +834,16 @@ export function BulkAssignTab({
                       <span>{display}</span>
                       <button
                         type="button"
+                        disabled={isApplying}
                         aria-label={t("bulk.removePermissionAria", { name: shortName })}
                         onClick={() => {
+                          if (isApplying) return;
                           setAppliedBatch(null);
                           setSelectedPermissionCodes((prev) =>
                             prev.filter((item) => item !== code),
                           );
                         }}
-                        className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-primary-text hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/30"
+                        className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-primary-text hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <X aria-hidden="true" className="size-3.5" />
                       </button>
@@ -820,7 +854,9 @@ export function BulkAssignTab({
                   type="button"
                   size="sm"
                   variant="secondary"
+                  disabled={isApplying}
                   onClick={() => {
+                    if (isApplying) return;
                     setPickerDraftCodes(selectedPermissionCodes);
                     setPickerOpen(true);
                   }}
@@ -841,13 +877,14 @@ export function BulkAssignTab({
               <Textarea
                 rows={2}
                 value={reason}
+                disabled={isApplying}
                 placeholder={t("bulk.reasonPlaceholder")}
                 onChange={(event) => {
+                  if (isApplying) return;
                   setAppliedBatch(null);
                   setReason(event.target.value);
                 }}
               />
-              <span className="text-caption text-text-muted">{t("bulk.reasonHelper")}</span>
             </label>
           )}
         </Card>
@@ -954,9 +991,22 @@ export function BulkAssignTab({
                   ) : (
                     <Button
                       variant="primary"
-                      loading={applyMutation.isPending}
-                      disabled={displayBatch.willChange === 0 || isPreviewLoading}
-                      onClick={() => applyMutation.mutate()}
+                      loading={isApplying}
+                      disabled={
+                        isApplying ||
+                        displayBatch.willChange === 0 ||
+                        isPreviewLoading ||
+                        !previewPayload ||
+                        !requestSignature
+                      }
+                      onClick={() => {
+                        if (!previewPayload || !requestSignature || isApplying) return;
+                        applyMutation.mutate({
+                          signature: requestSignature,
+                          payload: previewPayload,
+                          idempotencyKey: idempotencyKeyRef.current,
+                        });
+                      }}
                     >
                       {t("bulk.applyButton", { count: displayBatch.willChange })}
                     </Button>
@@ -968,7 +1018,13 @@ export function BulkAssignTab({
         </Card>
       </div>
 
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+      <Dialog
+        open={pickerOpen}
+        onOpenChange={(open) => {
+          if (isApplying) return;
+          setPickerOpen(open);
+        }}
+      >
         <DialogContent size="lg" closeLabel={t("actions.close")}>
           <DialogHeader>
             <DialogTitle>{t("bulk.pickerTitle")}</DialogTitle>
