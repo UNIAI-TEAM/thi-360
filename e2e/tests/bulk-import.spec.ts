@@ -214,7 +214,13 @@ test.describe("Cấp tài khoản hàng loạt (UNI-2548)", () => {
       const breadcrumb = page.getByRole("navigation", { name: "Vị trí hiện tại" });
       await expect(breadcrumb).toContainText("Tài khoản");
       await expect(breadcrumb).toContainText("Cấp hàng loạt");
-      await expect(page.getByRole("link", { name: "Tài khoản", exact: true })).toHaveAttribute(
+      await expect(breadcrumb.getByRole("link", { name: "Tài khoản" })).toHaveAttribute(
+        "href",
+        "/tai-khoan",
+      );
+
+      const mainNav = page.getByRole("navigation", { name: "Menu chính" });
+      await expect(mainNav.getByRole("link", { name: "Tài khoản", exact: true })).toHaveAttribute(
         "aria-current",
         "page",
       );
