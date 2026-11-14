@@ -57,6 +57,10 @@ import { useCallback, useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { useCatalogDndAccessibility } from "../dnd-accessibility";
 import { pickName } from "../utils";
+
+/** Cột phụ (Tên tiếng Anh, Giá trị) chỉ hiện từ 1360px; dưới đó bảng vừa thẻ, chi tiết nằm trong ngăn chi tiết. */
+const WIDE_ONLY_COLUMN = "hidden min-[1360px]:table-cell";
+
 export type StatusFilter = "ALL" | CatalogStatus;
 
 export type SimpleItemsPanelProps = {
@@ -168,8 +172,11 @@ export function SimpleItemsPanel({
     { value: "INACTIVE", label: t("statuses.INACTIVE") },
   ];
 
-  const colCount =
-    (canModify && supportsReorder ? 1 : 0) + 5 + (isCombinationGroup ? 3 : 0) + 1;
+  const dragCols = canModify && supportsReorder ? 1 : 0;
+  const colCount = dragCols + 5 + (isCombinationGroup ? 3 : 0) + 1;
+  // Chỉ số cột (0-based) của Tên tiếng Anh và Giá trị, để ẩn cùng lúc ở hàng khung xương.
+  const nameEnColIndex = dragCols + 2;
+  const valueColIndex = dragCols + 3 + (isCombinationGroup ? 3 : 0);
   return (
     <section
       aria-labelledby="catalog-items-heading"
@@ -347,7 +354,7 @@ export function SimpleItemsPanel({
                   <th scope="col" className="px-3 py-2.5">
                     {t("columns.nameVi")}
                   </th>
-                  <th scope="col" className="px-3 py-2.5">
+                  <th scope="col" className={cn("px-3 py-2.5", WIDE_ONLY_COLUMN)}>
                     {t("columns.nameEn")}
                   </th>
                   {isCombinationGroup && (
@@ -363,13 +370,13 @@ export function SimpleItemsPanel({
                       </th>
                     </>
                   )}
-                  <th scope="col" className="w-20 px-3 py-2.5">
+                  <th scope="col" className={cn("w-20 px-3 py-2.5", WIDE_ONLY_COLUMN)}>
                     {t("columns.value")}
                   </th>
                   <th scope="col" className="w-36 px-3 py-2.5">
                     {t("columns.status")}
                   </th>
-                  <th scope="col" className="w-36 py-2.5 pr-5 pl-3 text-right">
+                  <th scope="col" className="sticky right-0 w-36 bg-table-head py-2.5 pr-5 pl-3 text-right">
                     {t("columns.actions")}
                   </th>
                 </tr>
@@ -379,7 +386,14 @@ export function SimpleItemsPanel({
                   Array.from({ length: 5 }, (_, rowIndex) => (
                     <tr key={rowIndex} className="border-b border-border last:border-b-0">
                       {Array.from({ length: colCount }, (__, colIndex) => (
-                        <td key={colIndex} className="h-13 px-3">
+                        <td
+                          key={colIndex}
+                          className={cn(
+                            "h-13 px-3",
+                            (colIndex === nameEnColIndex || colIndex === valueColIndex) &&
+                              WIDE_ONLY_COLUMN,
+                          )}
+                        >
                           <Skeleton className="h-4 w-full max-w-28" />
                         </td>
                       ))}
@@ -533,7 +547,7 @@ function SortableItemRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "h-13 border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-subtle motion-reduce:transition-none",
+        "group/row h-13 border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-subtle motion-reduce:transition-none",
         isDragging && "relative z-10 bg-primary-50 shadow-sm",
       )}
     >
@@ -589,7 +603,7 @@ function SortableItemRow({
         </span>
       </td>
       <td className="px-3 font-medium text-text">{item.nameVi}</td>
-      <td className="px-3 text-text-secondary">{item.nameEn || "—"}</td>
+      <td className={cn("px-3 text-text-secondary", WIDE_ONLY_COLUMN)}>{item.nameEn || "—"}</td>
       {isCombinationGroup && (
         <>
           <td className="px-3 text-text-secondary">
@@ -636,13 +650,21 @@ function SortableItemRow({
           </td>
         </>
       )}
-      <td className="px-3 text-text-secondary tabular-nums">{item.value}</td>
+      <td className={cn("px-3 text-text-secondary tabular-nums", WIDE_ONLY_COLUMN)}>
+        {item.value}
+      </td>
       <td className="px-3">
         <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
           {t(`statuses.${item.status}`)}
         </StatusChip>
       </td>
-      <td className="py-1 pr-3 pl-2 text-right whitespace-nowrap">
+      <td
+        className={cn(
+          // Cột thao tác dính mép phải để luôn bấm được khi bảng rộng hơn thẻ (màn hình ~1280px).
+          "sticky right-0 bg-surface py-1 pr-3 pl-2 text-right whitespace-nowrap transition-colors duration-150 group-hover/row:bg-subtle motion-reduce:transition-none",
+          isDragging && "bg-primary-50",
+        )}
+      >
         <div className="inline-flex items-center justify-end gap-0.5">
           <IconButton
             icon={<Eye />}

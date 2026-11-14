@@ -650,6 +650,29 @@ describe("resolveImportColumnLabel", () => {
   });
 });
 
+describe("CatalogView: cột thao tác của bảng giá trị (VIS-8)", () => {
+  it("cột thao tác dính mép phải nên vẫn bấm được khi bảng rộng hơn thẻ", async () => {
+    renderCatalog({ search: "group=SUBJECT" });
+    const table = await screen.findByRole("table");
+    const header = within(table).getByRole("columnheader", { name: "Thao tác" });
+    expect(header).toHaveClass("sticky", "right-0", "bg-table-head");
+
+    const row = (await within(table).findByText("Toán học")).closest("tr")!;
+    const actionsCell = within(row).getByRole("button", { name: "Sửa Toán học" }).closest("td")!;
+    expect(actionsCell).toHaveClass("sticky", "right-0", "bg-surface");
+    expect(within(actionsCell).getByRole("button", { name: "Xóa Toán học" })).toBeInTheDocument();
+
+    // Tên tiếng Anh và Giá trị chỉ hiện từ 1360px để bảng vừa thẻ ở ~1280px (cả khung xương và dòng dữ liệu).
+    for (const name of ["Tên tiếng Anh", "Giá trị"]) {
+      expect(within(table).getByRole("columnheader", { name })).toHaveClass(
+        "hidden",
+        "min-[1360px]:table-cell",
+      );
+    }
+    expect(within(row).getByText("Mathematics")).toHaveClass("hidden", "min-[1360px]:table-cell");
+  });
+});
+
 describe("CatalogView: chip danh mục liên kết mặc định (VIS-6)", () => {
   it("chữ (Mặc định) dùng token chữ primary, không giảm opacity", async () => {
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
