@@ -41,6 +41,10 @@ function platformApiSession(): Promise<PlatformSession> {
   if (cachedSession && Date.now() - cachedSession.createdAt < SESSION_MAX_AGE_MS) {
     return cachedSession.promise;
   }
+  return loginPlatformApiSession();
+}
+
+function loginPlatformApiSession(): Promise<PlatformSession> {
   const promise = (async () => {
     const loginApi = await playwrightRequest.newContext({ baseURL: ADMIN_URL });
     const loginRes = await loginApi.post(`${WEB_URL}/api/v1/auth/login`, {
@@ -66,8 +70,29 @@ function platformApiSession(): Promise<PlatformSession> {
   return promise;
 }
 
+// The backend caps live sessions per user and evicts the oldest, so browser
+// logins of other specs can revoke the cached session before its age expires.
+// A cheap authenticated call tells a live session from an evicted one.
+async function openValidatedContext(session: PlatformSession): Promise<APIRequestContext | undefined> {
+  const api = await playwrightRequest.newContext({ baseURL: ADMIN_URL, storageState: session.storageState });
+  const meRes = await api.get("/api/v1/me");
+  if (meRes.status() === 401) {
+    await api.dispose();
+    return undefined;
+  }
+  return api;
+}
+
 export async function createPlatformApiContext(): Promise<{ api: APIRequestContext; xsrf: string }> {
-  const { storageState, xsrf } = await platformApiSession();
-  const api = await playwrightRequest.newContext({ baseURL: ADMIN_URL, storageState });
-  return { api, xsrf };
+  let session = await platformApiSession();
+  let api = await openValidatedContext(session);
+  if (!api) {
+    cachedSession = undefined;
+    session = await loginPlatformApiSession();
+    api = await openValidatedContext(session);
+    if (!api) {
+      throw new Error("Platform API session rejected with 401 right after login");
+    }
+  }
+  return { api, xsrf: session.xsrf };
 }

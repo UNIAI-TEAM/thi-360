@@ -70,6 +70,11 @@ export default defineConfig({
         // platform logins cannot trip RateLimitFilter. Applies only to the
         // backend spawned for e2e runs.
         THI360_SECURITY_RATELIMIT_LOGINPERIPLIMIT: process.env.THI360_SECURITY_RATELIMIT_LOGINPERIPLIMIT ?? "200",
+        // Relax the per-user live-session cap (default 5,
+        // thi360.security.session.max-per-user): one run logs `platform` in
+        // from several specs and SessionStore evicts the oldest session
+        // beyond the cap, which revoked the cached helper session.
+        THI360_SECURITY_SESSION_MAXPERUSER: process.env.THI360_SECURITY_SESSION_MAXPERUSER ?? "50",
       },
     },
     {
