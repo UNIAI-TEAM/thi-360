@@ -62,6 +62,9 @@ describe("AppShell", () => {
     expect(nav).toContainElement(dashboardLink);
     expect(dashboardLink).toHaveAttribute("aria-current", "page");
     expect(dashboardLink).toHaveClass("before:w-0.5", "before:bg-primary-text");
+    // Vòng focus dùng chung của kit (màu đặc `primary-text`), không tự viết vòng mờ 30%.
+    expect(dashboardLink).toHaveClass("focus-visible:ring-primary-text");
+    expect(dashboardLink.className).not.toContain("ring-primary-600/30");
 
     const breadcrumb = screen.getByRole("navigation", { name: "Vị trí hiện tại" });
     expect(breadcrumb).toHaveTextContent("Tổng quan");
@@ -75,6 +78,8 @@ describe("AppShell", () => {
     expect(localeButton.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(themeButton.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(trigger).toHaveTextContent("ops.admin");
+    expect(trigger).toHaveClass("focus-visible:ring-primary-text");
+    expect(trigger.className).not.toContain("ring-primary-600/30");
     await userEvent.click(trigger);
 
     expect(screen.getByRole("menuitem", { name: "Trang quản trị" })).toHaveAttribute("href", "/");

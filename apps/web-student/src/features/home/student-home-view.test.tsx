@@ -47,6 +47,9 @@ describe("StudentHomeView", () => {
     expect(localeButton.compareDocumentPosition(menuButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(themeButton.compareDocumentPosition(menuButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(menuButton).toHaveTextContent("HV");
+    // Vòng focus dùng chung của kit, không tự viết vòng mờ.
+    expect(menuButton).toHaveClass("focus-visible:ring-primary-text");
+    expect(menuButton.className).not.toContain("ring-primary-600/30");
     await userEvent.click(menuButton);
     expect(screen.queryByRole("menuitem", { name: "Trang quản trị" })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();

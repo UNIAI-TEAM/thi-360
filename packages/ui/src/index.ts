@@ -1,4 +1,5 @@
 export { cn } from "./lib/cn";
+export { focusRing, focusRingInset } from "./lib/styles";
 
 export { Badge } from "./components/badge";
 export { Breadcrumb, type BreadcrumbItem, type BreadcrumbProps } from "./components/breadcrumb";

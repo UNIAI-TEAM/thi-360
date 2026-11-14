@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@thi360/ui";
+import { cn, focusRing } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -49,7 +49,7 @@ export function Sidebar() {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative flex h-10 items-center gap-2.5 rounded-sm px-3 text-label transition-colors duration-150 motion-reduce:transition-none",
-                    "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                    focusRing,
                     active
                       ? "bg-primary-50 font-semibold text-primary-text before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary-text"
                       : "font-medium text-text-secondary hover:bg-subtle",

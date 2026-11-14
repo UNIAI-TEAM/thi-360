@@ -6,6 +6,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  cn,
+  focusRing,
   notify,
 } from "@thi360/ui";
 import { initialsOf } from "@thi360/web-kit/client";
@@ -41,7 +43,10 @@ export function StudentUserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={t("trigger")}
-        className="flex h-11 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-2.5 pl-1.5 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none motion-reduce:transition-none"
+        className={cn(
+          "flex h-11 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-2.5 pl-1.5 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong motion-reduce:transition-none",
+          focusRing,
+        )}
       >
         <span
           aria-hidden
