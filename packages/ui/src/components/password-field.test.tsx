@@ -96,4 +96,14 @@ describe("PasswordField", () => {
     expect(byStrings.every((r) => r.met)).toBe(true);
     expect(byStrings[0]?.label).toBe("8 to 64 characters");
   });
+
+  it("tự hiện mật khẩu khi revealOnGenerate được bật", async () => {
+    render(<PasswordField aria-label="Mật khẩu tạm" allowGenerate revealOnGenerate />);
+    const input = screen.getByLabelText("Mật khẩu tạm");
+    expect(input).toHaveAttribute("type", "password");
+
+    await userEvent.click(screen.getByRole("button", { name: "Tạo ngẫu nhiên" }));
+    expect(input).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "Ẩn mật khẩu" })).toHaveAttribute("aria-pressed", "true");
+  });
 });

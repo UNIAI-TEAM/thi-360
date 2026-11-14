@@ -137,6 +137,7 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
     private final List<UUID> createdUserIds = new ArrayList<>();
     private final List<UUID> createdKeycloakUserIds = new ArrayList<>();
     private final List<UUID> createdPlatformIds = new ArrayList<>();
+    private final List<UUID> createdClassIds = new ArrayList<>();
 
     @BeforeEach
     void setup() {
@@ -160,6 +161,8 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         createdKeycloakUserIds.clear();
 
         for (UUID userId : createdUserIds) {
+            jdbcTemplate.update("DELETE FROM classroom.class_member_history WHERE user_id = ?", userId);
+            jdbcTemplate.update("DELETE FROM classroom.class_member WHERE user_id = ?", userId);
             jdbcTemplate.update("DELETE FROM identity.user_identity WHERE user_id = ?", userId);
             jdbcTemplate.update("DELETE FROM identity.user_permission WHERE user_id = ?", userId);
             jdbcTemplate.update("DELETE FROM identity.user_role WHERE user_id = ?", userId);
@@ -175,6 +178,12 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
             platformAdminRepository.deleteById(pid);
         }
         createdPlatformIds.clear();
+        for (UUID classId : createdClassIds) {
+            jdbcTemplate.update("DELETE FROM classroom.class_member_history WHERE class_id = ? OR related_class_id = ?", classId, classId);
+            jdbcTemplate.update("DELETE FROM classroom.class_member WHERE class_id = ?", classId);
+            jdbcTemplate.update("DELETE FROM classroom.class_room WHERE id = ?", classId);
+        }
+        createdClassIds.clear();
     }
 
     @Test
@@ -319,12 +328,23 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(bulkUser.getId().toString()));
 
-        // classId filter rejected clearly until T10
+        // classId filter returns only users belonging to that class
+        UUID filterClassId = createTestClass("FILTER-" + sfx, "Filter Class " + sfx, true);
+        jdbcTemplate.update(
+                "INSERT INTO classroom.class_member (class_id, user_id, joined_at) VALUES (?, ?, now())",
+                filterClassId, adminCreated.getId());
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .param("classId", filterClassId.toString())
+                        .with(asUser(Permissions.USER_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(adminCreated.getId().toString()));
+
         mockMvc.perform(get("/api/v1/admin/users")
                         .param("classId", Ids.newId().toString())
                         .with(asUser(Permissions.USER_VIEW)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("CLASS_NOT_SUPPORTED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
     }
 
     @Test
@@ -440,20 +460,138 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
     }
 
     @Test
-    void createUser_nonEmptyClassIds_returns400ClassNotSupported() throws Exception {
+    void createUser_withClassIds_assignsMemberships_andRejectsUnknownOrInactiveClass() throws Exception {
+        String sfx = suffix();
+        UUID activeClass1 = createTestClass("C1-" + sfx, "Active Class 1", true);
+        UUID activeClass2 = createTestClass("C2-" + sfx, "Active Class 2", true);
+        UUID inactiveClass = createTestClass("CIN-" + sfx, "Inactive Class", false);
+
+        // Non-empty classIds without CLASS.MODIFY -> 403 FORBIDDEN before any validation or Keycloak write
+        String forbiddenUsername = "class.forbidden." + sfx;
         mockMvc.perform(post("/api/v1/admin/users")
                         .with(asUser(Permissions.USER_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "username": "class.reject.%s",
+                                  "username": "%s",
                                   "password": "Valid@1234",
-                                  "fullName": "Class Reject",
+                                  "fullName": "No Class Perm",
                                   "classIds": ["%s"]
                                 }
-                                """.formatted(suffix(), Ids.newId())))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("CLASS_NOT_SUPPORTED"));
+                                """.formatted(forbiddenUsername, activeClass1)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        assertThat(keycloakClient.findUserIdByUsername(forbiddenUsername)).isEmpty();
+        assertThat(userAccountRepository.findActiveByUsernameNormalized(forbiddenUsername)).isEmpty();
+
+        // Unknown class -> 404 NOT_FOUND, user not provisioned in Keycloak
+        String missingUsername = "class.missing." + sfx;
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "Valid@1234",
+                                  "fullName": "Missing Class",
+                                  "classIds": ["%s"]
+                                }
+                                """.formatted(missingUsername, Ids.newId())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        assertThat(keycloakClient.findUserIdByUsername(missingUsername)).isEmpty();
+
+        // Inactive class -> 409 CLASS_INACTIVE, user not provisioned in Keycloak
+        String inactiveUsername = "class.inactive." + sfx;
+        mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "Valid@1234",
+                                  "fullName": "Inactive Class User",
+                                  "classIds": ["%s"]
+                                }
+                                """.formatted(inactiveUsername, inactiveClass)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CLASS_INACTIVE"));
+        assertThat(keycloakClient.findUserIdByUsername(inactiveUsername)).isEmpty();
+
+        // Valid active classes with USER.MODIFY + CLASS.MODIFY -> 201, memberships, JOIN history & CLASS_MEMBER_ADDED audits persisted
+        while (outboxRelay.relayBatch() > 0) {
+            // drain outbox backlog before asserting class-member audit rows
+        }
+        UUID creatorId = Ids.newId();
+        String creatorUsername = "creator." + sfx;
+        String okUsername = "class.ok." + sfx;
+        MvcResult createdRes = mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(creatorId, creatorUsername, Permissions.USER_MODIFY, Permissions.CLASS_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "Valid@1234",
+                                  "fullName": "Assigned Class User",
+                                  "classIds": ["%s", "%s", "%s"]
+                                }
+                                """.formatted(okUsername, activeClass1, activeClass2, activeClass1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        UUID createdUserId = UUID.fromString(
+                objectMapper.readTree(createdRes.getResponse().getContentAsString()).get("id").asText());
+        createdUserIds.add(createdUserId);
+        createdKeycloakUserIds.add(createdUserId);
+
+        Integer memberCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM classroom.class_member WHERE user_id = ?",
+                Integer.class,
+                createdUserId);
+        assertThat(memberCount).isEqualTo(2);
+
+        Integer joinHistoryCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM classroom.class_member_history WHERE user_id = ? AND action = 1",
+                Integer.class,
+                createdUserId);
+        assertThat(joinHistoryCount).isEqualTo(2);
+
+        while (outboxRelay.relayBatch() > 0) {
+            // drain outbox to materialize audit.audit_event
+        }
+        List<String> addedTargets = jdbcTemplate.queryForList(
+                "SELECT target_id FROM audit.audit_event WHERE action = 'CLASS_MEMBER_ADDED' AND target_id IN (?, ?) AND actor_id = ? AND actor_username = ?",
+                String.class,
+                activeClass1.toString(),
+                activeClass2.toString(),
+                creatorId,
+                creatorUsername);
+        assertThat(addedTargets).containsExactlyInAnyOrder(activeClass1.toString(), activeClass2.toString());
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .param("classId", activeClass1.toString())
+                        .with(asUser(Permissions.USER_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(createdUserId.toString()));
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .param("classId", activeClass2.toString())
+                        .with(asUser(Permissions.USER_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(createdUserId.toString()));
+    }
+
+    private UUID createTestClass(String code, String name, boolean active) {
+        UUID id = Ids.newId();
+        jdbcTemplate.update(
+                """
+                INSERT INTO classroom.class_room (id, code, code_normalized, name, status)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                id, code, code.trim().toLowerCase(), name, active ? (short) 1 : (short) 2);
+        createdClassIds.add(id);
+        return id;
     }
 
     @Test

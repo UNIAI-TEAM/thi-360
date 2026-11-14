@@ -49,7 +49,7 @@ public class AdminUserController {
             @RequestParam(required = false) UserStatus status,
             @Parameter(description = "Lọc theo vai trò")
             @RequestParam(required = false) UUID roleId,
-            @Parameter(description = "Lọc theo lớp học (tạm thời chưa hỗ trợ trước T10)")
+            @Parameter(description = "Lọc theo lớp học")
             @RequestParam(required = false) UUID classId,
             @Parameter(description = "Lọc tài khoản chưa từng đăng nhập")
             @RequestParam(required = false) Boolean neverLoggedIn,
