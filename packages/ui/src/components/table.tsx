@@ -56,6 +56,9 @@ export type TableProps<TData> = {
 };
 
 const SELECT_COLUMN_ID = "select";
+/** Hằng ổn định: `?? []`/`?? {}` tạo đối tượng mới mỗi lần render làm TanStack tính lại hàng và tự đặt lại trang (vòng lặp render). */
+const EMPTY_SORTING: SortingState = [];
+const EMPTY_ROW_SELECTION: RowSelectionState = {};
 
 const headCell = "h-11 bg-table-head px-4 text-left text-field-label font-semibold whitespace-nowrap text-text-muted";
 const bodyCell = "h-12 px-4 align-middle text-body text-text tabular-nums";
@@ -89,7 +92,12 @@ export function Table<TData>({
     manualSorting: sorting?.manual ?? false,
     enableSorting: sorting !== undefined,
     enableRowSelection: selection !== undefined,
-    state: { sorting: sorting?.state ?? [], rowSelection: selection?.state ?? {} },
+    /** Bảng không phân trang nội bộ (trang do máy chủ/Pagination bên ngoài), nên không cần tự đặt lại chỉ số trang. */
+    autoResetPageIndex: false,
+    state: {
+      sorting: sorting?.state ?? EMPTY_SORTING,
+      rowSelection: selection?.state ?? EMPTY_ROW_SELECTION,
+    },
     onSortingChange: sorting?.onChange,
     onRowSelectionChange: selection?.onChange,
   });
