@@ -315,12 +315,12 @@
         "refItems": "Danh mục liên kết",
         "status": "Trạng thái"
       },
-      "confirmButton": "Nhập {count, number} dòng hợp lệ",
+      "confirmButton": "{count, plural, other {Nhập # dòng hợp lệ}}",
       "downloadErrorFile": "Tải tệp lỗi",
       "downloadTemplate": "Tải tệp mẫu",
       "dropHint": "Chọn tệp .xlsx (tối đa 5 MB, 5.000 dòng).",
       "errorColumnCol": "Cột",
-      "errorFileBanner": "Tệp có {count, number} dòng lỗi. Hãy sửa trong tệp Excel hoặc tải báo cáo lỗi bên dưới rồi tải lên lại.",
+      "errorFileBanner": "{count, plural, other {Tệp có # dòng lỗi. Hãy sửa trong tệp Excel hoặc tải báo cáo lỗi bên dưới rồi tải lên lại.}}",
       "errorMessageCol": "Chi tiết",
       "errorRowCol": "Dòng",
       "errorsLabel": "Dòng lỗi",
@@ -337,7 +337,7 @@
       "treeRuleHint": "Chỉ thêm mới: không sửa tên, không gỡ liên kết của nút đã có. Ô trống ở cột cấp trên lấy theo dòng trước; mã đã có đúng cha sẽ được dùng lại.",
       "uploadButton": "Kiểm tra tệp",
       "uploadStep": "Tải tệp",
-      "validBanner": "Tất cả {count, number} dòng đều hợp lệ và sẵn sàng nhập.",
+      "validBanner": "{count, plural, other {Tất cả # dòng đều hợp lệ và sẵn sàng nhập.}}",
       "wrongExtension": "Chỉ hỗ trợ định dạng .xlsx (không chấp nhận .xlsm hoặc tệp khác)."
     },
     "importExcel": "Nhập Excel",

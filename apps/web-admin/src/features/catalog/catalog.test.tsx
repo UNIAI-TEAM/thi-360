@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
+import { createTranslator } from "next-intl";
 import { useMemo, useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
@@ -2813,6 +2814,32 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
     expect(within(rows[1]!).getByText("Lesson (Vietnamese)")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Knowledge (English)")).toBeInTheDocument();
     expect(within(errorTable).queryByText(/Chương|Bài|Kiến thức/)).not.toBeInTheDocument();
+  });
+});
+
+describe("importDialog: số nhiều ICU cho số dòng (V2-5)", () => {
+  const translators = {
+    en: createTranslator({ locale: "en", messages: en, namespace: "catalog.importDialog" }),
+    vi: createTranslator({ locale: "vi", messages: viMessages, namespace: "catalog.importDialog" }),
+  };
+
+  it("en: một dòng dùng số ít, nhiều dòng dùng số nhiều, số lớn có dấu phân cách", () => {
+    const t = translators.en;
+    expect(t("confirmButton", { count: 1 })).toBe("Import 1 valid row");
+    expect(t("confirmButton", { count: 2 })).toBe("Import 2 valid rows");
+    expect(t("confirmButton", { count: 1200 })).toBe("Import 1,200 valid rows");
+    expect(t("validBanner", { count: 1 })).toBe("The row is valid and ready to import.");
+    expect(t("validBanner", { count: 5 })).toBe("All 5 rows are valid and ready to import.");
+    expect(t("errorFileBanner", { count: 1 })).toMatch(/^The file has 1 invalid row\. Fix it /);
+    expect(t("errorFileBanner", { count: 3 })).toMatch(/^The file has 3 invalid rows\. Fix them /);
+  });
+
+  it("vi: câu giữ nguyên cho mọi số lượng", () => {
+    const t = translators.vi;
+    expect(t("confirmButton", { count: 1 })).toBe("Nhập 1 dòng hợp lệ");
+    expect(t("confirmButton", { count: 3 })).toBe("Nhập 3 dòng hợp lệ");
+    expect(t("validBanner", { count: 1 })).toBe("Tất cả 1 dòng đều hợp lệ và sẵn sàng nhập.");
+    expect(t("errorFileBanner", { count: 2 })).toMatch(/^Tệp có 2 dòng lỗi\./);
   });
 });
 
