@@ -784,6 +784,34 @@
       "tableAriaLabel": "Lịch sử thay đổi tài khoản",
       "title": "Lịch sử thay đổi"
     },
+    "learning": {
+      "blocks": {
+        "assessments": {
+          "description": "Kết quả đánh giá năng lực của học viên sẽ hiển thị tại đây khi module thi được kết nối.",
+          "title": "Đánh giá năng lực"
+        },
+        "attempts": {
+          "description": "Lịch sử lượt thi và bài làm của học viên sẽ hiển thị tại đây khi module thi được kết nối.",
+          "title": "Lịch sử lượt thi"
+        },
+        "entitlements": {
+          "description": "Quyền sử dụng và gói bài thi của học viên sẽ hiển thị tại đây khi module thi được kết nối.",
+          "title": "Quyền sử dụng & gói bài thi"
+        },
+        "practice": {
+          "description": "Lịch sử ôn luyện của học viên sẽ hiển thị tại đây khi module thi được kết nối.",
+          "title": "Lịch sử ôn luyện"
+        },
+        "supportRequests": {
+          "description": "Yêu cầu hỗ trợ của học viên sẽ hiển thị tại đây khi module thi và hỗ trợ được kết nối.",
+          "title": "Yêu cầu hỗ trợ"
+        }
+      },
+      "emptyTitle": "Chưa có dữ liệu",
+      "errorDescription": "Không tải được hồ sơ học tập. Hãy thử lại.",
+      "errorTitle": "Không tải được hồ sơ học tập",
+      "tabLabel": "Hồ sơ học tập"
+    },
     "list": {
       "description": "Tài khoản do quản trị viên cấp và tài khoản tự đăng ký, kể cả chưa từng đăng nhập.",
       "emptyDescription": "Chưa có tài khoản nào trong hệ thống.",

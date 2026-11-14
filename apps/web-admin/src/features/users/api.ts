@@ -6,6 +6,7 @@ import { ApiStatusError } from "@/lib/api/query-client";
 export type UserSummary = components["schemas"]["UserSummaryResponse"];
 export type UserDetail = components["schemas"]["UserDetailResponse"];
 export type UserRoleSummary = components["schemas"]["UserRoleSummary"];
+export type StudentLearning = components["schemas"]["StudentLearningResponse"];
 export type PageResponseUserSummary = components["schemas"]["PageResponseUserSummaryResponse"];
 export type CreateUserRequest = components["schemas"]["CreateUserRequest"];
 export type UpdateUserRequest = components["schemas"]["UpdateUserRequest"];
@@ -29,6 +30,7 @@ export const USERS_QUERY_KEYS = {
   lists: () => ["users", "list"] as const,
   list: (query: ListUsersQuery) => ["users", "list", query] as const,
   detail: (id: string) => ["users", "detail", id] as const,
+  learning: (id: string) => ["users", "learning", id] as const,
   roles: () => ["users", "roles"] as const,
   audit: (userId: string, query: Omit<ListAuditEventsQuery, "targetType" | "targetId">) =>
     ["users", "audit", userId, query] as const,
@@ -71,6 +73,15 @@ export async function listUsers(query: ListUsersQuery): Promise<PageResponseUser
 export async function getUser(id: string): Promise<UserDetail> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/users/{id}", {
+    params: { path: { id } },
+  });
+  if (!response.ok || !data) throw toUsersApiError(response.status, error);
+  return data;
+}
+
+export async function getUserLearning(id: string): Promise<StudentLearning> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/users/{id}/learning", {
     params: { path: { id } },
   });
   if (!response.ok || !data) throw toUsersApiError(response.status, error);
@@ -217,6 +228,7 @@ export async function listUserAuditEvents(
 export interface UsersApiDeps {
   listUsers: typeof listUsers;
   getUser: typeof getUser;
+  getUserLearning: typeof getUserLearning;
   createUser: typeof createUser;
   updateUser: typeof updateUser;
   deactivateUser: typeof deactivateUser;
@@ -237,6 +249,7 @@ export interface UsersApiDeps {
 export const defaultUsersApiDeps: UsersApiDeps = {
   listUsers,
   getUser,
+  getUserLearning,
   createUser,
   updateUser,
   deactivateUser,
