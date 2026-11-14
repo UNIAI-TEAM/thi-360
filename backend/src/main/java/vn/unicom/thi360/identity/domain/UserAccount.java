@@ -75,6 +75,8 @@ public class UserAccount {
     private boolean idpCleanupPending;
     @Column(name = "idp_enabled_sync_pending", nullable = false)
     private boolean idpEnabledSyncPending;
+    @Column(name = "import_row_id")
+    private UUID importRowId;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -223,6 +225,9 @@ public class UserAccount {
         this.idpCleanupPending = pending;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
+    public void setImportRowId(UUID importRowId) {
+        this.importRowId = importRowId;
+    }
 
     public boolean isDeleted() {
         return deletedAt != null;
@@ -312,6 +317,9 @@ public class UserAccount {
     }
     public boolean isIdpEnabledSyncPending() {
         return idpEnabledSyncPending;
+    }
+    public UUID getImportRowId() {
+        return importRowId;
     }
 
 

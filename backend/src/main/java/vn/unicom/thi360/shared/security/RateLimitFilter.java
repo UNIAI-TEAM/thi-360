@@ -32,7 +32,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
     private static final String LOGIN_PATH = "/api/v1/auth/login";
+    private static final String IMPORT_UPLOAD_PATH = "/api/v1/admin/import-batches";
     public static final String KEY_PREFIX = "rl:login:ip:";
+    public static final String UPLOAD_KEY_PREFIX = "rl:upload:ip:";
 
     private final ClientIpResolver clientIpResolver;
     private final SecurityProperties securityProperties;
@@ -58,8 +60,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        String path = extractPath(request);
-        return !LOGIN_PATH.equals(path);
+        return resolvePolicy(extractPath(request)) == null;
     }
 
     @Override
@@ -68,9 +69,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain)
             throws ServletException, IOException {
+        RateLimitPolicy policy = resolvePolicy(extractPath(request));
+        if (policy == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String clientIp = clientIpResolver.resolve(request);
-        int limit = Math.max(1, securityProperties.rateLimit().loginPerIpLimit());
-        Duration window = securityProperties.rateLimit().loginPerIpWindow();
+        int limit = Math.max(1, policy.limit());
+        Duration window = policy.window();
 
         ConsumptionProbe probe;
         try {
@@ -81,7 +88,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                             .refillIntervally(limit, window)
                             .build())
                     .build();
-            Bucket bucket = manager.builder().build(KEY_PREFIX + clientIp, configSupplier);
+            Bucket bucket = manager.builder().build(policy.keyPrefix() + clientIp, configSupplier);
             probe = bucket.tryConsumeAndReturnRemaining(1);
         } catch (RuntimeException ex) {
             securityLog.atWarn()
@@ -103,13 +110,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1L);
         response.setHeader("Retry-After", Long.toString(retryAfterSeconds));
         securityLog.atWarn()
-                .addKeyValue("event", "rate_limit.login_ip_exceeded")
+                .addKeyValue("event", policy.exceededEvent())
                 .addKeyValue("clientIp", clientIp)
                 .addKeyValue("limit", limit)
-                .log("Per-IP login rate limit exceeded");
+                .log(policy.exceededMessage());
         errorWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", "RATE_LIMITED");
     }
-
     public void close() {
         StatefulRedisConnection<String, byte[]> conn = this.connection;
         if (conn != null) {
@@ -132,8 +138,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 StatefulRedisConnection<String, byte[]> conn =
                         redisClient.connect(RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE));
                 this.connection = conn;
-                Duration window = securityProperties.rateLimit().loginPerIpWindow();
-                Duration maxTtl = window.multipliedBy(2);
+                Duration loginWindow = securityProperties.rateLimit().loginPerIpWindow();
+                Duration uploadWindow = securityProperties.rateLimit().uploadPerIpWindow();
+                Duration maxWindow = uploadWindow.compareTo(loginWindow) > 0 ? uploadWindow : loginWindow;
+                Duration maxTtl = maxWindow.multipliedBy(2);
                 current = Bucket4jLettuce.casBasedBuilder(conn)
                         .expirationAfterWrite(
                                 ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(maxTtl))
@@ -144,6 +152,33 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
+    private RateLimitPolicy resolvePolicy(String path) {
+        if (LOGIN_PATH.equals(path)) {
+            return new RateLimitPolicy(
+                    KEY_PREFIX,
+                    securityProperties.rateLimit().loginPerIpLimit(),
+                    securityProperties.rateLimit().loginPerIpWindow(),
+                    "rate_limit.login_ip_exceeded",
+                    "Per-IP login rate limit exceeded");
+        }
+        if (IMPORT_UPLOAD_PATH.equals(path) || (IMPORT_UPLOAD_PATH + "/").equals(path)) {
+            return new RateLimitPolicy(
+                    UPLOAD_KEY_PREFIX,
+                    securityProperties.rateLimit().uploadPerIpLimit(),
+                    securityProperties.rateLimit().uploadPerIpWindow(),
+                    "rate_limit.upload_ip_exceeded",
+                    "Per-IP import upload rate limit exceeded");
+        }
+        return null;
+    }
+
+    private record RateLimitPolicy(
+            String keyPrefix,
+            int limit,
+            Duration window,
+            String exceededEvent,
+            String exceededMessage) {
+    }
     private static String extractPath(HttpServletRequest request) {
         String uri = request.getRequestURI();
         String contextPath = request.getContextPath();
