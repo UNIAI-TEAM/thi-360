@@ -1,14 +1,22 @@
-import { GraduationCap, LayoutDashboard, Shield, SlidersVertical, Users, type LucideIcon } from "lucide-react";
+import {
+  GraduationCap,
+  LayoutDashboard,
+  List,
+  Shield,
+  SlidersVertical,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
 
 /**
  * Menu chính của web admin, nguồn duy nhất cho sidebar, breadcrumb và lối tắt ở Bảng điều khiển.
  *
- * Chữ hiển thị nằm trong `messages/vi.json`: nhóm `nav.groups.<id>`, mục `nav.items.<id>.label`,
- * và `nav.items.<id>.description` cho mục hiện thành lối tắt.
+ * Chữ hiển thị nằm trong `messages/vi.json` và `messages/en.json`: nhóm `nav.groups.<id>`,
+ * mục `nav.items.<id>.label`, và `nav.items.<id>.description` cho mục hiện thành lối tắt.
  *
- * Mỗi task thêm đúng mục của mình vào nhóm (Người dùng: T09 Tài khoản, T10 Lớp học; Hệ thống:
- * T08 Phân quyền, T17 Tùy chỉnh giao diện). Không có nhóm Nội dung và mục Cấu hình chung (plan A7).
+ * Mỗi task thêm đúng mục của mình vào nhóm (Người dùng: T09 Tài khoản, T10 Lớp học;
+ * Nội dung: T15 Cấu hình chung; Hệ thống: T08 Phân quyền, T17 Tùy chỉnh giao diện).
  * Ẩn mục theo quyền chỉ để tiện dùng; backend mới là nơi chặn.
  */
 
@@ -54,6 +62,17 @@ export const NAVIGATION: readonly NavGroup[] = [
         href: "/lop-hoc",
         icon: GraduationCap,
         permission: "CLASS.VIEW",
+      },
+    ],
+  },
+  {
+    id: "content",
+    items: [
+      {
+        id: "catalog",
+        href: "/cau-hinh-chung",
+        icon: List,
+        permission: "CATALOG.VIEW",
       },
     ],
   },

@@ -115,6 +115,12 @@ export {
   type UiStrings,
 } from "./messages/ui-strings";
 export {
+  TreeView,
+  type TreeViewItem,
+  type TreeViewLabels,
+  type TreeViewProps,
+} from "./components/tree-view";
+export {
   buildScale,
   buildThemeVars,
   checkPaletteWarnings,

@@ -99,10 +99,18 @@ describe("resolveBreadcrumb", () => {
 });
 
 describe("NAVIGATION của đợt 1", () => {
-  it("chỉ có ba nhóm Tổng quan, Người dùng, Hệ thống; không có Nội dung hay Cấu hình chung (plan A7)", () => {
-    expect(NAVIGATION.map((g) => g.id)).toEqual(["overview", "users", "system"]);
-    const hrefs = NAVIGATION.flatMap((g) => g.items.map((i) => i.href));
-    expect(hrefs).not.toContain("/cau-hinh-chung");
+  it("có đủ bốn nhóm Tổng quan, Người dùng, Nội dung, Hệ thống và mục Cấu hình chung", () => {
+    expect(NAVIGATION.map((g) => g.id)).toEqual(["overview", "users", "content", "system"]);
+    const contentGroup = NAVIGATION.find((g) => g.id === "content");
+    expect(contentGroup?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "catalog",
+          href: "/cau-hinh-chung",
+          permission: "CATALOG.VIEW",
+        }),
+      ]),
+    );
   });
 
   it("có mục Tùy chỉnh giao diện trong nhóm Hệ thống với quyền APPEARANCE.MODIFY", () => {

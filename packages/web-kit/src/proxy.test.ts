@@ -162,3 +162,57 @@ describe("proxyApiRequest header forwarding", () => {
     expect(forwarded.get("x-unlisted-header")).toBeNull();
   });
 });
+
+describe("proxyApiRequest multipart stream", () => {
+  it("stream body multipart/form-data 4 MB (không parse JSON) kèm content-type và idempotency-key", async () => {
+    const fourMb = 4 * 1024 * 1024;
+    const payload = new Uint8Array(fourMb);
+    payload[0] = 0x50;
+    payload[1] = 0x4b;
+    payload[fourMb - 1] = 0x21;
+
+    let receivedFile: unknown = null;
+    let capturedInit: (RequestInit & { duplex?: string }) | undefined;
+    fetchMock.mockImplementationOnce(async (_url: unknown, init?: RequestInit) => {
+      capturedInit = init as RequestInit & { duplex?: string };
+      const parsedForm = await new Response(init?.body ?? null, {
+        headers: init?.headers,
+      }).formData();
+      receivedFile = parsedForm.get("file");
+      return Response.json({ ok: true });
+    });
+
+    const form = new FormData();
+    form.append(
+      "file",
+      new File([payload], "catalog-4mb.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+    );
+
+    const req = new NextRequest(
+      "http://localhost:3000/api/v1/admin/catalog/groups/g1/items/import/preview",
+      {
+        method: "POST",
+        body: form,
+        headers: {
+          "idempotency-key": "idem-upload-4mb",
+        },
+      },
+    );
+
+    const res = await handlers.POST(
+      req,
+      context("v1", "admin", "catalog", "groups", "g1", "items", "import", "preview"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(capturedInit?.duplex).toBe("half");
+    expect(capturedInit?.body).toBeInstanceOf(ReadableStream);
+    expect(lastHeaders().get("content-type")).toMatch(/^multipart\/form-data;/);
+    expect(lastHeaders().get("idempotency-key")).toBe("idem-upload-4mb");
+    expect(receivedFile).toBeInstanceOf(File);
+    expect((receivedFile as File).size).toBe(fourMb);
+    expect((receivedFile as File).name).toBe("catalog-4mb.xlsx");
+  });
+});

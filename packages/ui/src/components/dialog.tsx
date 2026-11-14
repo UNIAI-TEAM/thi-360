@@ -53,11 +53,21 @@ export function DialogContent({
         )}
         {...props}
       >
-        {children}
+        {/*
+          Vùng cuộn: cao tối đa bằng phần còn lại của hộp thoại (max-h theo viewport) nên
+          nội dung dài cuộn bên trong, tiêu đề (DialogHeader) và chân (DialogFooter) dính
+          mép trên/dưới. Margin âm + padding chỉ theo chiều ngang (chừa chỗ cho vòng focus bị
+          overflow cắt); theo chiều dọc KHÔNG có padding/margin âm, nếu không nội dung cuộn
+          sẽ lộ ra phía trên tiêu đề dính (V2-4).
+        */}
+        <div className="-mx-2 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2">
+          {children}
+        </div>
+        {/* z-20 > z-10 của DialogHeader/DialogFooter dính: nút × luôn là phần tử trên cùng tại tâm của nó (V2-2). */}
         <DialogPrimitive.Close
           aria-label={closeLabel ?? common.close}
           className={cn(
-            "absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
+            "absolute top-4 right-4 z-20 inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-subtle",
             focusRing,
           )}
         >
@@ -69,7 +79,12 @@ export function DialogContent({
 }
 
 export function DialogHeader({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("flex flex-col gap-1.5 pr-8", className)} {...props} />;
+  return (
+    <div
+      className={cn("sticky top-0 z-10 flex flex-col gap-1.5 bg-surface pb-2 pr-10", className)}
+      {...props}
+    />
+  );
 }
 
 export function DialogTitle({
@@ -98,5 +113,10 @@ export function DialogDescription({
 
 /** Nút căn phải, nút chính ở ngoài cùng bên phải (đặt nút chính cuối cùng). */
 export function DialogFooter({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("flex justify-end gap-3", className)} {...props} />;
+  return (
+    <div
+      className={cn("sticky bottom-0 z-10 flex justify-end gap-3 bg-surface pt-2 pb-1", className)}
+      {...props}
+    />
+  );
 }
