@@ -85,6 +85,7 @@ export {
   type TabsProps,
   type TabsVariant,
 } from "./components/tabs";
+export { NavTab, NavTabs, type NavTabProps, type NavTabsProps } from "./components/nav-tabs";
 export {
   Table,
   type TableProps,

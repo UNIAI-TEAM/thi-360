@@ -19,6 +19,7 @@ import {
 import { Eye, Pencil, Search, Shield, Trash2, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { usePermissions } from "@/features/session/session-provider";
 import {
   deleteRole as defaultDeleteRole,
@@ -119,6 +120,7 @@ export function RolesTab({
   const rolesQuery = useQuery({
     queryKey: rbacKeys.roles(rolesParams),
     queryFn: () => listRoles(rolesParams),
+    placeholderData: keepPreviousWhileSameScope(rbacKeys.roles(rolesParams)),
   });
 
   const permissionsQuery = useQuery({
@@ -360,11 +362,12 @@ export function RolesTab({
         </div>
 
         <Table
-          aria-label={t("tabs.vai-tro")}
+          aria-label={t("tabs.roles")}
           columns={columns}
           data={items}
           getRowId={(row) => row.id}
           loading={rolesQuery.isPending}
+          refreshing={rolesQuery.isPlaceholderData}
           error={
             rolesQuery.isError ? (
               <EmptyState

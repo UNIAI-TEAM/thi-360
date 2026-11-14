@@ -1621,16 +1621,16 @@
     },
     "tabs": {
       "ariaLabel": "Các tab phân quyền",
-      "gan-hang-loat": "Gán hàng loạt",
-      "nguoi-dung": "Người dùng theo quyền",
-      "quyen": "Quyền",
-      "vai-tro": "Vai trò"
+      "bulk-assign": "Gán hàng loạt",
+      "permissions": "Quyền",
+      "roles": "Vai trò",
+      "users": "Người dùng theo quyền"
     },
     "tabsDescription": {
-      "gan-hang-loat": "Tab Gán hàng loạt: gán hoặc gỡ vai trò, quyền cho nhiều tài khoản trong một lần. Xem trước kết quả từng tài khoản rồi mới áp dụng.",
-      "nguoi-dung": "Tab Người dùng theo quyền: chọn một quyền để xem những tài khoản đang có quyền đó và có từ đâu.",
-      "quyen": "Tab Quyền: danh sách quyền của hệ thống, chỉ để xem. Quyền được gán cho vai trò và cho từng tài khoản ở các tab khác.",
-      "vai-tro": "Tab Vai trò: mỗi vai trò có một phạm vi truy cập và một tập quyền. Phạm vi quyết định người giữ vai trò vào trang nào sau khi đăng nhập."
+      "bulk-assign": "Tab Gán hàng loạt: gán hoặc gỡ vai trò, quyền cho nhiều tài khoản trong một lần. Xem trước kết quả từng tài khoản rồi mới áp dụng.",
+      "permissions": "Tab Quyền: danh sách quyền của hệ thống, chỉ để xem. Quyền được gán cho vai trò và cho từng tài khoản ở các tab khác.",
+      "roles": "Tab Vai trò: mỗi vai trò có một phạm vi truy cập và một tập quyền. Phạm vi quyết định người giữ vai trò vào trang nào sau khi đăng nhập.",
+      "users": "Tab Người dùng theo quyền: chọn một quyền để xem những tài khoản đang có quyền đó và có từ đâu."
     },
     "title": "Phân quyền",
     "userRbac": {

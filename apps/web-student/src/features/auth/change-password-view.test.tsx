@@ -106,8 +106,8 @@ describe("ChangePasswordView", () => {
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("http://localhost:3000/home"));
   });
 
-  it("bỏ qua callbackUrl trỏ về /doi-mat-khau hoặc /dang-nhap để tránh vòng lặp", async () => {
-    mocks.callbackUrl = "http://localhost:3000/doi-mat-khau?callbackUrl=%2Fhome";
+  it("bỏ qua callbackUrl trỏ về /change-password hoặc /login để tránh vòng lặp", async () => {
+    mocks.callbackUrl = "http://localhost:3000/change-password?callbackUrl=%2Fhome";
     mocks.changeAccountPassword.mockResolvedValue(undefined);
 
     renderWithProviders(
@@ -123,7 +123,7 @@ describe("ChangePasswordView", () => {
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("http://localhost:3000/home"));
   });
 
-  it("401 khi gửi biểu mẫu: gọi /auth/refresh một lần rồi thử lại, hoặc về /dang-nhap nếu refresh trả 401", async () => {
+  it("401 khi gửi biểu mẫu: gọi /auth/refresh một lần rồi thử lại, hoặc về /login nếu refresh trả 401", async () => {
     mocks.changeAccountPassword
       .mockRejectedValueOnce(new ApiStatusError(401, "expired"))
       .mockResolvedValueOnce(undefined);
@@ -150,7 +150,7 @@ describe("ChangePasswordView", () => {
 
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith(
-        `http://localhost:3000/dang-nhap?callbackUrl=${encodeURIComponent(window.location.href)}`,
+        `http://localhost:3000/login?callbackUrl=${encodeURIComponent(window.location.href)}`,
       ),
     );
     expect(mocks.clearSessionBestEffort).not.toHaveBeenCalled();

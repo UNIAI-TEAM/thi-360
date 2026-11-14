@@ -13,7 +13,7 @@ import { UserActionDialogs, useUserActionController } from "../components/user-a
 
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
-  pathname: { current: "/tai-khoan" },
+  pathname: { current: "/users" },
   refreshSession: vi.fn(),
   clearSessionBestEffort: vi.fn(),
   navigate: vi.fn(),
@@ -68,7 +68,7 @@ function DeactivateProbe({
 }
 
 beforeEach(() => {
-  mocks.pathname.current = "/tai-khoan";
+  mocks.pathname.current = "/users";
   mocks.refreshSession.mockResolvedValue(undefined);
   mocks.clearSessionBestEffort.mockResolvedValue(undefined);
   window.sessionStorage.clear();

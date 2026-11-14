@@ -55,6 +55,7 @@ Sáng, sạch, thân thiện với học sinh. Nền trắng và xám rất nh�
 | `border` | `#E8E8EC` | Viền mặc định |
 | `border-strong` | `#D4D4D8` | Viền khi hover |
 | `border-primary` | `#D4EEE0` | Viền ô nhập trên nền xanh nhạt |
+| `scroll-shadow` | đen 14% (sáng), đen 50% (tối) | Bóng mờ báo vùng cuộn còn nội dung (lớp `scroll-shadows-y`, mục 5.13) |
 
 ### 2.4 Màu trạng thái
 
@@ -161,8 +162,20 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 
 ### 5.5 Tab
 
-- **Tab phân đoạn** (đăng nhập/đăng ký, chuyển chế độ xem): thanh nền `bg-subtle` bo góc 12px, cao 48px; tab đang chọn nền trắng, `shadow-sm`, chữ `primary-text` đậm 600.
-- **Tab nội dung** (chi tiết tài khoản): tab đang chọn nền `primary-50`, chữ `primary-text`, bo góc 10px, cao 40px; tab khác chữ `#54545A`.
+Có ba kiểu, chọn theo việc tab làm gì chứ không theo hình dáng:
+
+| Kiểu | Dùng khi | Thành phần (`packages/ui`) |
+|---|---|---|
+| Tab phân đoạn | Chuyển chế độ trong cùng một khối (đăng nhập/đăng ký, chế độ xem) | `Tabs variant="segmented"` |
+| Tab nội dung | Đổi phần nội dung **trong cùng một trang**, không có đường dẫn riêng (các tab ở chi tiết tài khoản) | `Tabs variant="content"` |
+| Tab điều hướng | Mỗi tab là **một trang con có đường dẫn riêng** (bốn trang con của Phân quyền: `/rbac/roles`, `/rbac/permissions`, `/rbac/users`, `/rbac/bulk-assign`) | `NavTabs` + `NavTab` bọc `<Link>` |
+
+- **Tab phân đoạn:** thanh nền `bg-subtle` bo góc 12px, cao 48px; tab đang chọn nền trắng, `shadow-sm`, chữ `primary-text`.
+- **Tab nội dung và tab điều hướng** trông giống nhau: tab đang chọn nền `primary-50`, chữ `primary-text`, bo góc 10px, cao 40px; tab khác chữ `#54545A`.
+- **Dấu hiệu đang chọn (mọi kiểu):** ngoài màu phải có **gạch chân 2px** vẽ bằng `border` của phần tử giả `::after`, chỉ tồn tại ở tab đang chọn. Không dùng nền hay `box-shadow` làm dấu hiệu duy nhất (chế độ tương phản cao của hệ điều hành bỏ cả hai), không để viền trong suốt ở tab thường (chế độ đó tô lại thành gạch chân).
+- **Độ đậm chữ không đổi theo trạng thái** (luôn 500): đổi độ đậm làm tab đổi bề rộng và đẩy các tab bên cạnh.
+- **Tab điều hướng là liên kết, không phải `role="tablist"`:** nằm trong `<nav>` có tên, mục đang mở mang `aria-current="page"`. Nhờ vậy mở được ở tab trình duyệt mới và nút Back đúng nghĩa. Tiêu đề trang và thanh tab đặt ở `layout.tsx` của nhóm route để không dựng lại khi đổi trang con; phần nội dung đổi trang dùng hiệu ứng `animate-route-in` (mục 7).
+- Thanh tab luôn **một hàng**; không đủ chỗ thì cuộn ngang, không xuống dòng.
 
 ### 5.6 Tiêu đề khối
 
@@ -191,6 +204,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 - Sidebar: mục cao 40px, bo góc 8px, icon lucide 18px; mục đang chọn nền `primary-50`, chữ và icon `primary-text`, đậm 600. Tên nhóm menu dùng kiểu `overline`.
 - Nền vùng nội dung `bg-page`.
+- **Phạm vi màn hình:** web admin thiết kế cho 768–1920px (máy tính và tablet); điện thoại chưa thuộc phạm vi. Web học viên phải dùng được từ 360px.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
 - Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện, Nhật ký). Chức năng phụ của một mục là nút hoặc tab bên trong màn đó, không thành mục menu riêng: Cấp hàng loạt là nút trong màn Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền.
 
@@ -203,10 +217,13 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - Tối đa ba icon trên một dòng; nhiều hơn thì gom phần còn lại vào menu "⋯".
 - Phía trên bảng: tổng số bản ghi theo bộ lọc. Phía dưới: phân trang và chọn số dòng mỗi trang.
 - Trạng thái rỗng: icon, một câu giải thích, nút hành động (nếu có quyền).
+- **Đang tải:** khung chờ (`loading`) chỉ dùng cho **lần tải đầu**. Khi đổi bộ lọc, trang hoặc sắp xếp, bảng **giữ dữ liệu đang hiện**, làm mờ nhẹ và báo `aria-busy` (`refreshing`) cho tới khi dữ liệu mới về; không thay bằng khung chờ, để chiều cao bảng và vị trí cột không nhảy. Truy vấn danh sách dùng `placeholderData: keepPreviousWhileSameScope(queryKey)` (`apps/web-admin/src/lib/api/keep-previous.ts`): chỉ giữ khi tham số lọc đổi, đổi đối tượng (lớp khác, nhóm khác, quyền khác) thì hiện khung chờ như lần đầu.
+- **Bảng rộng hơn khung:** cuộn ngang trong khung của bảng, không làm cả trang cuộn ngang. Thành phần `Table` tự biến khung thành vùng có tên, nhận focus bàn phím (vòng focus nằm trong khung) khi và chỉ khi bảng thực sự tràn.
 
 ### 5.10 Dialog, drawer, thông báo
 
-- **Dialog:** bo góc 24px, `shadow-xl`, rộng 480px (biểu mẫu ngắn) hoặc 720px; nút căn phải, nút chính ở ngoài cùng bên phải.
+- **Dialog:** bo góc 24px, `shadow-xl`; nút căn phải, nút chính ở ngoài cùng bên phải. Ba cỡ của `DialogContent`: `md` 480px (biểu mẫu ngắn, xác nhận), `lg` 720px (bảng chọn, biểu mẫu vừa), `xl` 920px (biểu mẫu dài chia hai cột).
+- **Biểu mẫu trong dialog phải hiện đủ mà không cuộn ở 1366×768 và 1280×720.** Một cột không đủ thì dùng cỡ `xl` và chia hai cột từ bề rộng `md`: cột trái là nhóm trường chính (ví dụ thông tin đăng nhập), cột phải là nhóm còn lại; thứ tự trong DOM (và thứ tự Tab) đi hết cột trái rồi sang cột phải; màn hình hẹp xếp lại một cột và cuộn trong dialog. Danh sách quy tắc dài (quy tắc mật khẩu) xếp hai cột (`PasswordField rulesColumns={2}`). Tiêu đề và hàng nút luôn dính mép trên/dưới, nút đóng (×) luôn bấm được.
 - **Dialog xác nhận hành động nhạy cảm** (khóa, xóa, reset, ngừng sử dụng): nêu rõ đối tượng và số bản ghi bị ảnh hưởng, có ô **lý do** khi quy tắc yêu cầu, nút xác nhận kiểu Nguy hiểm.
 - **Drawer:** trượt từ phải, rộng 520px, dùng cho chi tiết (nơi đang dùng, lịch sử thay đổi).
 - **Toast:** góc trên phải, tự ẩn sau 4 giây; lỗi không tự ẩn.
@@ -226,6 +243,17 @@ Trái 264px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm; mỗi dò
 
 Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-light` có logo, khẩu hiệu, ba ý chính; phải là biểu mẫu với tab phân đoạn, ô nhập cao 48px có icon, nút chính `xl`. Nút "Đăng nhập với Google" (kiểu Phụ, cao 48px) chỉ hiện khi tính năng được bật.
 
+### 5.13 Quy ước dùng chung cho mọi màn
+
+Các quy ước dưới đây rút từ đợt rà soát theo bộ hướng dẫn modern-web-guidance (2026-11-14). Màn mới và màn sửa đều áp dụng; đã có thành phần hoặc lớp tiện ích thì dùng lại, không tự viết bản khác.
+
+- **Chữ dài:** tên, nhãn có thể dài thì cho xuống **tối đa hai dòng** (`line-clamp-2`), không cắt một dòng bằng dấu ba chấm khi người dùng không còn cách nào đọc đủ. Không dựa vào thuộc tính `title` để lộ phần bị cắt (bàn phím và màn hình cảm ứng không tới được). Chỉ cắt một dòng ở nơi chật cố định (ô bảng, mã) và khi nội dung đầy đủ có ở chỗ khác trên cùng màn hình.
+- **Vùng cuộn dọc có chiều cao giới hạn** (danh sách chọn, cột bên): thêm lớp `scroll-shadows-y` lên chính phần tử cuộn để có bóng mờ báo còn nội dung ở phía còn cuộn được. Lớp này là CSS thuần (`packages/ui/src/styles/utilities.css`), màu lấy từ token `scroll-shadow`. Mục con trong vùng cuộn để nền trong suốt ở trạng thái thường.
+- **Thanh cuộn của trang:** trang luôn giữ chỗ cho thanh cuộn dọc (`scrollbar-gutter: stable` trong `globals.css` của hai web), để nội dung dài/ngắn hay việc mở dialog không làm trang lệch ngang.
+- **Bố cục nhiều cột chia theo bề rộng vùng chứa, không theo bề rộng màn hình:** vùng nội dung của admin hẹp hơn màn hình 248px vì có sidebar. Đặt `@container` lên khối chứa và dùng biến thể container của Tailwind (`@5xl:` …) cho các cột bên trong; chọn ngưỡng sao cho cột chứa bảng còn đủ rộng cho bảng của nó. Dưới ngưỡng thì xếp chồng.
+- **Đường dẫn trang** viết bằng tiếng Anh, trùng tên thư mục feature và tên tài nguyên của API (`/users`, `/classes`, `/catalog`, `/rbac`, `/appearance`, `/login`, `/change-password`). Phần có nội dung và dữ liệu riêng là **trang con** (`/users/bulk-import`, `/rbac/roles`), không phải giá trị query. Query chỉ dùng cho bộ lọc và lựa chọn trong trang (`?permission=USER.VIEW`, `?group=SUBJECT`), tên và giá trị cũng không dùng tiếng Việt không dấu.
+- **Trạng thái đang chọn, đang mở, lỗi** không truyền đạt chỉ bằng màu hay nền: luôn có thêm hình (gạch chân, thanh dọc, icon) hoặc chữ, vẽ bằng `border`/`outline` để còn thấy ở chế độ tương phản cao.
+
 ## 6. Icon và hình ảnh
 
 - Icon: **lucide-react**, nét 1.75–2px, 16px trong nút, 18px trong menu, 20px độc lập.
@@ -236,7 +264,9 @@ Khung giữa trang, bo góc 24px, `shadow-xl`, chia đôi: trái nền `hero-lig
 
 - Chuyển trạng thái màu, viền, bóng: 150ms `ease-out`.
 - Dialog và drawer: 200ms.
-- Tôn trọng `prefers-reduced-motion`.
+- Đổi trang con trong nhóm tab điều hướng: nội dung mới hiện dần và trượt lên 4px trong 200ms `ease-out` (`animate-route-in`, khai báo ở `tokens.css`); tiêu đề trang và thanh tab đứng yên. Không chuyển focus bằng mã: focus ở lại liên kết vừa bấm.
+- Bảng đang tải lại: phần thân mờ còn 60% trong 150ms, không đổi kích thước.
+- Tôn trọng `prefers-reduced-motion`: mọi hiệu ứng trên kèm `motion-reduce:animate-none` / `motion-reduce:transition-none`.
 
 ## 8. Truy cập và ngôn ngữ
 

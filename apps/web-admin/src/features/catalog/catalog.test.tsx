@@ -40,7 +40,7 @@ import {
 const routerMock = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   const state = {
-    pathname: "/cau-hinh-chung",
+    pathname: "/catalog",
     search: "",
     /** Simulates Next >= 14.1 mirroring `history.replaceState` into `useSearchParams`. */
     syncFromHistory: (url: string) => {
@@ -940,7 +940,7 @@ describe("CatalogView: phân quyền và bốn trạng thái", { timeout: 20_000
     expect(replaceStateSpy).toHaveBeenCalledWith(
       null,
       "",
-      "/cau-hinh-chung?group=QUESTION_SOURCE",
+      "/catalog?group=QUESTION_SOURCE",
     );
     expect(await screen.findByRole("heading", { name: "Chưa có giá trị" })).toBeInTheDocument();
   });

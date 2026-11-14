@@ -27,8 +27,8 @@ export function DialogOverlay({
 }
 
 export type DialogContentProps = ComponentProps<typeof DialogPrimitive.Content> & {
-  /** `md` rộng 480px (biểu mẫu ngắn), `lg` rộng 720px. */
-  size?: "md" | "lg";
+  /** `md` rộng 480px (biểu mẫu ngắn), `lg` rộng 720px, `xl` rộng 920px (biểu mẫu hai cột). */
+  size?: "md" | "lg" | "xl";
   /** Tên nút đóng (×) cho trình đọc màn hình. Bắt buộc vì không có chuỗi mặc định. */
   closeLabel?: string;
 };
@@ -48,7 +48,7 @@ export function DialogContent({
         className={cn(
           "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-surface p-6 shadow-xl",
           "data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out motion-reduce:animate-none",
-          size === "lg" ? "max-w-[720px]" : "max-w-[480px]",
+          size === "xl" ? "max-w-[920px]" : size === "lg" ? "max-w-[720px]" : "max-w-[480px]",
           className,
         )}
         {...props}

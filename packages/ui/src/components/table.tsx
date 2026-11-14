@@ -11,9 +11,9 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "../lib/cn";
-import { focusRing } from "../lib/styles";
+import { focusRing, focusRingInset } from "../lib/styles";
 import { Checkbox } from "./checkbox";
 import { Skeleton } from "./skeleton";
 
@@ -46,11 +46,16 @@ export type TableProps<TData> = {
   loading?: boolean;
   /** Số dòng khung xương khi đang tải. */
   loadingRows?: number;
+  /**
+   * Đang tải lại trong khi vẫn hiện dữ liệu cũ (đổi bộ lọc, trang, sắp xếp). Bảng giữ nguyên các dòng,
+   * làm mờ nhẹ và báo `aria-busy`; không thay bằng khung xương nên bố cục không nhảy.
+   */
+  refreshing?: boolean;
   /** Có giá trị thì hiện thay cho dữ liệu, thường là thông báo kèm nút thử lại. */
   error?: ReactNode;
   /** Hiện khi không lỗi, không tải và không có dòng nào. */
   empty: ReactNode;
-  /** Tên bảng cho trình đọc màn hình. */
+  /** Tên bảng cho trình đọc màn hình. Khi bảng tràn ngang, vùng cuộn bọc ngoài cũng mang tên này. */
   "aria-label": string;
   className?: string;
 };
@@ -63,6 +68,31 @@ const EMPTY_ROW_SELECTION: RowSelectionState = {};
 const headCell = "h-11 bg-table-head px-4 text-left text-field-label font-semibold whitespace-nowrap text-text-muted";
 const bodyCell = "h-12 px-4 align-middle text-body text-text tabular-nums";
 
+/**
+ * Theo dõi khung bọc có đang tràn ngang hay không. Chỉ khi tràn, khung mới cần là điểm dừng Tab và là vùng có
+ * tên: người chỉ dùng bàn phím cuộn ngang được bằng phím mũi tên, còn bảng vừa khung thì không thêm điểm dừng
+ * vô ích và trình đọc màn hình không đọc tên bảng hai lần. Tràn hay không phụ thuộc cả bề rộng khung (cửa sổ,
+ * sidebar) lẫn bề rộng bảng (dữ liệu), CSS không tự đặt `tabindex` được, nên dùng `ResizeObserver` trên cả hai.
+ */
+function useInlineOverflow() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const scroller = ref.current;
+    if (!scroller || typeof ResizeObserver === "undefined") return;
+    // Lệch 1px là do làm tròn khi thu phóng lẻ, chưa phải tràn thật.
+    const observer = new ResizeObserver(() => {
+      setOverflows(scroller.scrollWidth - scroller.clientWidth > 1);
+    });
+    observer.observe(scroller);
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, overflows] as const;
+}
+
 /** Bọc TanStack Table: sắp xếp, chọn dòng, trạng thái tải/rỗng/lỗi (DESIGN.md mục 5.9). */
 export function Table<TData>({
   columns,
@@ -72,6 +102,7 @@ export function Table<TData>({
   selection,
   loading = false,
   loadingRows = 5,
+  refreshing = false,
   error,
   empty,
   className,
@@ -102,6 +133,8 @@ export function Table<TData>({
     onRowSelectionChange: selection?.onChange,
   });
 
+  const [scrollerRef, overflows] = useInlineOverflow();
+
   const columnCount = allColumns.length;
   const rows = table.getRowModel().rows;
   const selectedOnPage = rows.reduce((count, row) => count + (row.getIsSelected() ? 1 : 0), 0);
@@ -113,8 +146,16 @@ export function Table<TData>({
         : false;
 
   return (
-    <div className={cn("overflow-x-auto", className)}>
-      <table aria-label={ariaLabel} aria-busy={loading || undefined} className="w-full border-collapse">
+    <div
+      ref={scrollerRef}
+      {...(overflows ? { role: "region", "aria-label": ariaLabel, tabIndex: 0 } : null)}
+      className={cn("overflow-x-auto", focusRingInset, className)}
+    >
+      <table
+        aria-label={ariaLabel}
+        aria-busy={loading || refreshing || undefined}
+        className="w-full border-collapse"
+      >
         <thead>
           {table.getHeaderGroups().map((group) => (
             <tr key={group.id} className="border-b border-border">
@@ -167,7 +208,12 @@ export function Table<TData>({
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody
+          className={cn(
+            "transition-opacity duration-150 motion-reduce:transition-none",
+            refreshing && !loading && "opacity-60",
+          )}
+        >
           {loading ? (
             Array.from({ length: loadingRows }, (_, rowIndex) => (
               <tr key={rowIndex} className="border-b border-border">

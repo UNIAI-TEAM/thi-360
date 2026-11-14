@@ -25,12 +25,12 @@ test.describe("Quản lý lớp học (UNI-2547)", () => {
     const createdClassIds: string[] = [];
 
     try {
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, "platform", PLATFORM_PASSWORD);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       await page.getByRole("link", { name: "Lớp học", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/lop-hoc`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/classes`);
       await expect(page.getByRole("heading", { name: "Lớp học" })).toBeVisible();
 
       // 1. Tạo hai lớp học mới
@@ -54,7 +54,7 @@ test.describe("Quản lý lớp học (UNI-2547)", () => {
       await expect(classALink).toBeVisible();
       await classALink.click();
 
-      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/lop-hoc/[^/]+$`));
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/classes/[^/]+$`));
       await expect(page.getByRole("heading", { name: classAName })).toBeVisible();
       await expect(page.getByText(/Lịch sử thành viên/i)).toBeHidden();
 
@@ -90,7 +90,7 @@ test.describe("Quản lý lớp học (UNI-2547)", () => {
 
       // 5. Vào chi tiết tài khoản student01 -> tab Lớp học hiện lớp hiện tại và lịch sử chuyển lớp
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users`);
       await page.getByLabel("Tìm kiếm").fill("student01");
       await page.getByRole("link", { name: "student01", exact: true }).click();
 

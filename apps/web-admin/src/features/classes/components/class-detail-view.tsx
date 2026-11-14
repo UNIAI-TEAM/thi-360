@@ -33,6 +33,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -173,6 +174,7 @@ function ClassDetailContent({
   const membersQuery = useQuery({
     queryKey: CLASSES_QUERY_KEYS.members(classId, membersQueryParams),
     queryFn: () => deps.listClassMembers(classId, membersQueryParams),
+    placeholderData: keepPreviousWhileSameScope(CLASSES_QUERY_KEYS.members(classId, membersQueryParams)),
     enabled: Boolean(classQuery.data),
   });
 
@@ -201,7 +203,7 @@ function ClassDetailContent({
     deps,
     onMutated: refreshClassAndMembers,
     onDeleted: () => {
-      router.push("/lop-hoc");
+      router.push("/classes");
     },
   });
 
@@ -234,7 +236,7 @@ function ClassDetailContent({
         cell: ({ row }) => (
           <div className="flex flex-col">
             <Link
-              href={`/tai-khoan/${row.original.userId}`}
+              href={`/users/${row.original.userId}`}
               className="whitespace-nowrap font-semibold text-primary-text hover:underline"
             >
               {row.original.username}
@@ -306,7 +308,7 @@ function ClassDetailContent({
     return (
       <div className="flex flex-col gap-4">
         <Link
-          href="/lop-hoc"
+          href="/classes"
           className="inline-flex items-center gap-1.5 self-start text-body font-medium text-primary-text hover:underline"
         >
           <ArrowLeft className="size-4" />
@@ -320,7 +322,7 @@ function ClassDetailContent({
             action={
               isNotFound ? (
                 <Button asChild variant="secondary">
-                  <Link href="/lop-hoc">{t("detail.backToList")}</Link>
+                  <Link href="/classes">{t("detail.backToList")}</Link>
                 </Button>
               ) : (
                 <Button variant="secondary" onClick={() => void classQuery.refetch()}>
@@ -351,7 +353,7 @@ function ClassDetailContent({
   return (
     <div className="flex flex-col gap-5">
       <Link
-        href="/lop-hoc"
+        href="/classes"
         className="inline-flex items-center gap-1.5 self-start text-body font-medium text-primary-text hover:underline"
       >
         <ArrowLeft className="size-4" />
@@ -486,6 +488,7 @@ function ClassDetailContent({
           data={members}
           getRowId={(row) => row.userId}
           loading={membersQuery.isLoading}
+          refreshing={membersQuery.isPlaceholderData}
           sorting={{
             state: sorting,
             manual: true,

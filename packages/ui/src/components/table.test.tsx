@@ -1,8 +1,8 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Table, type TableProps } from "./table";
 
 type Person = { id: string; name: string; age: number };
@@ -141,6 +141,23 @@ describe("Table", () => {
     expect(screen.getAllByRole("row")).toHaveLength(1 + 3);
   });
 
+  it("đang tải lại (refreshing): giữ nguyên các dòng đang hiện, không hiện khung xương, đánh dấu aria-busy", () => {
+    const { rerender } = render(<Harness refreshing />);
+    expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    expect(names()).toEqual(["Cường", "An", "Bình"]);
+    expect(screen.getAllByRole("row")).toHaveLength(1 + 3);
+
+    rerender(<Harness />);
+    expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    expect(names()).toEqual(["Cường", "An", "Bình"]);
+  });
+
+  it("refreshing cùng lúc với loading (lần tải đầu): khung xương thắng", () => {
+    render(<Harness loading refreshing loadingRows={2} />);
+    expect(screen.queryByText("Cường")).toBeNull();
+    expect(screen.getAllByRole("row")).toHaveLength(1 + 2);
+  });
+
   it("rỗng: hiện nội dung empty trong một ô trải hết cột", () => {
     render(<Harness data={[]} />);
     expect(screen.getByText("Không có người nào")).toBeInTheDocument();
@@ -195,5 +212,139 @@ describe("Table", () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(cellRenders).toBe(settled);
     expect(cellRenders).toBeLessThan(people.length * 6);
+  });
+});
+
+describe("Table: vùng cuộn ngang dùng được bằng bàn phím", () => {
+  /** Thay `ResizeObserver` của jsdom (không bao giờ báo) bằng bản gọi tay được. */
+  function installResizeObserver() {
+    const instances: { callback: ResizeObserverCallback; targets: Element[]; disconnected: boolean }[] = [];
+    class FakeResizeObserver {
+      private readonly record: (typeof instances)[number];
+      constructor(callback: ResizeObserverCallback) {
+        this.record = { callback, targets: [], disconnected: false };
+        instances.push(this.record);
+      }
+      observe(target: Element) {
+        this.record.targets.push(target);
+      }
+      unobserve() {}
+      disconnect() {
+        this.record.disconnected = true;
+      }
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    return instances;
+  }
+
+  /** Đặt bề rộng nội dung và bề rộng khung rồi báo cho observer, như khi trình duyệt đo lại. */
+  function resize(
+    scroller: HTMLElement,
+    instances: ReturnType<typeof installResizeObserver>,
+    size: { scrollWidth: number; clientWidth: number },
+  ) {
+    Object.defineProperty(scroller, "scrollWidth", { configurable: true, value: size.scrollWidth });
+    Object.defineProperty(scroller, "clientWidth", { configurable: true, value: size.clientWidth });
+    act(() => {
+      for (const { callback, disconnected } of instances) {
+        if (!disconnected) callback([], {} as ResizeObserver);
+      }
+    });
+  }
+
+  function scrollerOf(table: HTMLElement): HTMLElement {
+    return table.parentElement as HTMLElement;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("bảng vừa khung: khung bọc không là điểm dừng Tab, không là vùng có tên", () => {
+    const instances = installResizeObserver();
+    render(<Harness />);
+    const scroller = scrollerOf(screen.getByRole("table", { name: "Danh sách người" }));
+    resize(scroller, instances, { scrollWidth: 800, clientWidth: 800 });
+
+    expect(scroller).not.toHaveAttribute("tabindex");
+    expect(scroller).not.toHaveAttribute("role");
+    expect(scroller).not.toHaveAttribute("aria-label");
+    expect(screen.queryByRole("region")).toBeNull();
+  });
+
+  it("bảng tràn ngang: khung bọc thành vùng mang tên bảng, focus được và có vòng focus", () => {
+    const instances = installResizeObserver();
+    render(<Harness />);
+    const table = screen.getByRole("table", { name: "Danh sách người" });
+    const scroller = scrollerOf(table);
+    resize(scroller, instances, { scrollWidth: 1200, clientWidth: 800 });
+
+    expect(screen.getByRole("region", { name: "Danh sách người" })).toBe(scroller);
+    expect(scroller).toHaveAttribute("tabindex", "0");
+    expect(scroller).toHaveClass(
+      "overflow-x-auto",
+      "focus-visible:outline-3",
+      "focus-visible:-outline-offset-3",
+      "focus-visible:outline-primary-text",
+    );
+    // Bảng vẫn giữ tên của mình để còn tìm được theo tên bảng.
+    expect(table).toHaveAttribute("aria-label", "Danh sách người");
+
+    scroller.focus();
+    expect(scroller).toHaveFocus();
+  });
+
+  it("theo dõi cả khung bọc lẫn bảng, và bỏ điểm dừng khi hết tràn", () => {
+    const instances = installResizeObserver();
+    const { unmount } = render(<Harness />);
+    const table = screen.getByRole("table");
+    const scroller = scrollerOf(table);
+    const own = instances.find((instance) => instance.targets.includes(scroller));
+    expect(own?.targets).toEqual([scroller, table]);
+
+    resize(scroller, instances, { scrollWidth: 1200, clientWidth: 800 });
+    expect(scroller).toHaveAttribute("tabindex", "0");
+
+    resize(scroller, instances, { scrollWidth: 1200, clientWidth: 1200 });
+    expect(scroller).not.toHaveAttribute("tabindex");
+    expect(screen.queryByRole("region")).toBeNull();
+
+    unmount();
+    expect(own?.disconnected).toBe(true);
+  });
+
+  it("lệch 1px do làm tròn không tính là tràn", () => {
+    const instances = installResizeObserver();
+    render(<Harness />);
+    const scroller = scrollerOf(screen.getByRole("table"));
+    resize(scroller, instances, { scrollWidth: 801, clientWidth: 800 });
+    expect(scroller).not.toHaveAttribute("tabindex");
+  });
+
+  it("tràn ngang không đổi hành vi tải: aria-busy vẫn ở bảng, refreshing giữ dòng, loading hiện khung xương", () => {
+    const instances = installResizeObserver();
+    const { rerender } = render(<Harness refreshing />);
+    const table = screen.getByRole("table");
+    const scroller = scrollerOf(table);
+    resize(scroller, instances, { scrollWidth: 1200, clientWidth: 800 });
+
+    expect(table).toHaveAttribute("aria-busy", "true");
+    expect(scroller).not.toHaveAttribute("aria-busy");
+    expect(names()).toEqual(["Cường", "An", "Bình"]);
+    expect(table.querySelector("tbody")).toHaveClass("opacity-60");
+
+    rerender(<Harness loading loadingRows={2} />);
+    expect(screen.getByRole("region", { name: "Danh sách người" })).toBe(scroller);
+    expect(table).toHaveAttribute("aria-busy", "true");
+    expect(screen.getAllByRole("row")).toHaveLength(1 + 2);
+    expect(table.querySelector("tbody")).not.toHaveClass("opacity-60");
+  });
+
+  it("môi trường không có ResizeObserver: bảng vẫn hiện, khung bọc không là điểm dừng", () => {
+    vi.stubGlobal("ResizeObserver", undefined);
+    render(<Harness />);
+    const scroller = scrollerOf(screen.getByRole("table", { name: "Danh sách người" }));
+    expect(scroller).not.toHaveAttribute("tabindex");
+    expect(names()).toEqual(["Cường", "An", "Bình"]);
   });
 });

@@ -13,7 +13,7 @@ async function submitLoginForm(page: Page, identifier: string, password: string)
 
 test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò", () => {
   test("ops.admin đăng nhập ở web học viên rồi vào thẳng web admin không cần đăng nhập lại", async ({ page }) => {
-    await page.goto(`${WEB_URL}/dang-nhap`);
+    await page.goto(`${WEB_URL}/login`);
     await submitLoginForm(page, "ops.admin", DEV_PASSWORD);
 
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
@@ -22,7 +22,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
   });
 
   test("student01 đăng nhập được đưa tới /home trên web học viên", async ({ page }) => {
-    await page.goto(`${WEB_URL}/dang-nhap`);
+    await page.goto(`${WEB_URL}/login`);
     await submitLoginForm(page, "student01", DEV_PASSWORD);
 
     await expect(page).toHaveURL(`${WEB_URL}/home`);
@@ -34,7 +34,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
     page,
   }) => {
     await page.goto(`${ADMIN_URL}/users`);
-    await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/dang-nhap\\?callbackUrl=`));
+    await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/login\\?callbackUrl=`));
 
     await submitLoginForm(page, "ops.admin", DEV_PASSWORD);
     await expect(page).toHaveURL(`${ADMIN_URL}/users`);
@@ -42,7 +42,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
 
   test("callbackUrl trỏ ra ngoài hệ thống bị bỏ qua: ops.admin tới trang chủ web admin", async ({ page }) => {
     const foreign = encodeURIComponent("https://trang-la.example");
-    await page.goto(`${WEB_URL}/dang-nhap?callbackUrl=${foreign}`);
+    await page.goto(`${WEB_URL}/login?callbackUrl=${foreign}`);
     await submitLoginForm(page, "ops.admin", DEV_PASSWORD);
 
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
@@ -51,7 +51,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
 
   test("callbackUrl trỏ ra ngoài hệ thống bị bỏ qua: student01 tới /home", async ({ page }) => {
     const foreign = encodeURIComponent("https://trang-la.example");
-    await page.goto(`${WEB_URL}/dang-nhap?callbackUrl=${foreign}`);
+    await page.goto(`${WEB_URL}/login?callbackUrl=${foreign}`);
     await submitLoginForm(page, "student01", DEV_PASSWORD);
 
     await expect(page).toHaveURL(`${WEB_URL}/home`);
@@ -59,7 +59,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
   });
 
   test("student01 mở web admin bị chặn ở /forbidden và API quản trị trả 403", async ({ page }) => {
-    await page.goto(`${WEB_URL}/dang-nhap`);
+    await page.goto(`${WEB_URL}/login`);
     await submitLoginForm(page, "student01", DEV_PASSWORD);
     await expect(page).toHaveURL(`${WEB_URL}/home`);
 
@@ -72,20 +72,20 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
   });
 
   test("đăng xuất ở web admin xóa phiên trên cả web học viên", async ({ page }) => {
-    await page.goto(`${WEB_URL}/dang-nhap`);
+    await page.goto(`${WEB_URL}/login`);
     await submitLoginForm(page, "ops.admin", DEV_PASSWORD);
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
     await page.getByRole("button", { name: "Menu tài khoản" }).click();
     await page.getByRole("menuitem", { name: "Đăng xuất" }).click();
-    await expect(page).toHaveURL(`${WEB_URL}/dang-nhap`);
+    await expect(page).toHaveURL(`${WEB_URL}/login`);
 
     await page.goto(`${WEB_URL}/home`);
-    await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/dang-nhap\\?callbackUrl=`));
+    await expect(page).toHaveURL(new RegExp(`^${WEB_URL}/login\\?callbackUrl=`));
   });
 
   test("tài khoản platform (realm master) đăng nhập vào được web admin", async ({ page }) => {
-    await page.goto(`${WEB_URL}/dang-nhap`);
+    await page.goto(`${WEB_URL}/login`);
     await submitLoginForm(page, "platform", PLATFORM_PASSWORD);
 
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));

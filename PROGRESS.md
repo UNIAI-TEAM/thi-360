@@ -4,7 +4,31 @@
 
 ## Trạng thái hiện tại (2026-11-14)
 
-**Giai đoạn:** đợt 1 đang chạy bằng `zone17-cook-plan` (run `run_eca484e0edbf`), nhánh tích hợp `integration/dot-1`. Tiến độ plan: 105/105 điểm (T01–T19 đã vào nhánh tích hợp; chờ người duyệt PR `integration/dot-1` → `develop`); còn T16 nghiệm thu cuối); từ 2026-11-14 tính trên 105 điểm vì phần danh mục (T13–T15) được mở lại và thêm T19 (đa ngôn ngữ).
+**Giai đoạn:** đợt 1 (nền, PBI-01, PBI-02) đã merge vào `develop` ngày 2026-11-14 (PR #25, `14f983c`; 105/105 điểm của plan). Đang làm các việc phát sinh sau khi dùng thử bản demo; mỗi việc một issue và một PR vào `develop`. Các mục `T…` bên dưới là nhật ký của đợt 1, đường dẫn trang trong đó là tên cũ (xem bảng đổi tên ở mục "Sau đợt 1").
+
+### Sau đợt 1 (2026-11-14)
+
+- **Bản demo tạm** chạy trên VPS từ `develop`: web học viên `https://thi360.zone17.click`, web admin `https://admin.thi360.zone17.click` (profile `api,worker,dev`, có tài khoản mẫu). Cách vận hành nằm trên VPS ở `~/deploy/thi360-demo/README.md`, ngoài kho mã.
+- **UNI-2574** (PR #26): access token hết hạn (5 phút) làm trang tải lại hoặc bị đưa về trang đăng nhập. Sửa: proxy `/api/[...path]` và middleware trang của hai web tự làm mới phiên ở phía máy chủ; trang đăng nhập quay lại `callbackUrl` hợp lệ khi đã có phiên. Triển khai sau nginx cần `proxy_buffer_size 16k` (README, mục chạy trên máy chủ Keycloak thật); cách làm mới dựa vào việc realm không bật "Revoke Refresh Token".
+- **UNI-2577** (PR #28): danh sách bị nhảy khi đổi bộ lọc. Sửa: bảng giữ dữ liệu cũ trong lúc tải lại (`Table.refreshing`, `keepPreviousWhileSameScope`), giữ chỗ cho thanh cuộn dọc.
+- **UNI-2578** (PR #27): hộp thoại Tạo tài khoản bố cục hai cột, hiện đủ trong một khung (cỡ `xl` của `DialogContent`, `PasswordField.rulesColumns`).
+- **UNI-2576** (PR #29): đổi đường dẫn trang sang tiếng Anh. Chữ hiển thị không đổi; không có chuyển hướng từ đường dẫn cũ.
+
+  | Web | Cũ | Mới |
+  |---|---|---|
+  | học viên | `/dang-nhap` | `/login` |
+  | học viên | `/doi-mat-khau` | `/change-password` |
+  | admin | `/tai-khoan`, `/tai-khoan/[id]` | `/users`, `/users/[id]` |
+  | admin | `/tai-khoan/cap-hang-loat`, `/tai-khoan/cap-hang-loat/[id]` | `/users/bulk-import`, `/users/bulk-import/[id]` |
+  | admin | `/lop-hoc`, `/lop-hoc/[id]` | `/classes`, `/classes/[id]` |
+  | admin | `/phan-quyen` | `/rbac` |
+  | admin | `/cau-hinh-chung` | `/catalog` |
+  | admin | `/tuy-chinh-giao-dien` | `/appearance` |
+
+  Spec và plan của đợt 1 (`docs/specs/`, `docs/plans/`) là tài liệu theo ngày và vẫn ghi đường dẫn cũ. Tên tệp mẫu tải về `mau-cap-tai-khoan-hang-loat.xlsx` không phải đường dẫn nên giữ nguyên.
+- Việc để lại đã biết: test `privilege-escalation.test.tsx` (hộp thoại Tạo tài khoản, 403) phụ thuộc thời điểm, từng fail một lần khi máy rất bận; chưa chạy thử phiên tự làm mới với Keycloak bật thu hồi refresh token.
+
+### Nhật ký đợt 1
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
 - T06 (UNI-2543) đã nghiệm thu và merge vào `integration/dot-1` (PR #5, `4a3c7ac`).
@@ -34,7 +58,7 @@
 
 **Bước tiếp theo**
 
-1. Người duyệt và merge PR `integration/dot-1` → `develop` (agent không tự merge). Việc để lại của đợt 1 nằm ở mục 6 của `docs/acceptance/dot-1.md`.
+1. Người duyệt và merge các PR sau đợt 1 theo thứ tự #26, #28, #27 rồi #29 (UNI-2576, chồng lên ba PR kia). Việc để lại của đợt 1 nằm ở mục 6 của `docs/acceptance/dot-1.md`.
 2. Tài khoản mẫu dev (B13: `sys.admin`, `content.admin`, `ops.admin`, `student01`…`05`) làm trong T18; lớp mẫu làm trong T10.
 
 **Vướng / việc treo**

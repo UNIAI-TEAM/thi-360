@@ -208,13 +208,13 @@ describe("UsersListView (Slice 1)", () => {
     expect(screen.queryByLabelText("Lớp")).not.toBeInTheDocument();
   });
 
-  it("hiện nút Cấp hàng loạt dẫn tới /tai-khoan/cap-hang-loat khi có quyền USER.MODIFY", async () => {
+  it("hiện nút Cấp hàng loạt dẫn tới /users/bulk-import khi có quyền USER.MODIFY", async () => {
     const deps = makeDeps();
     renderUsersView(deps, { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW", "USER.MODIFY"] });
 
     expect(await screen.findByText("student01", undefined, { timeout: 3000 })).toBeInTheDocument();
     const bulkLink = screen.getByRole("link", { name: "Cấp hàng loạt" });
-    expect(bulkLink).toHaveAttribute("href", "/tai-khoan/cap-hang-loat");
+    expect(bulkLink).toHaveAttribute("href", "/users/bulk-import");
   });
 
   it("gửi đúng tham số bộ lọc tìm kiếm, chưa đăng nhập và hiện tài khoản đã xóa", async () => {
@@ -275,6 +275,38 @@ describe("UsersListView (Slice 1)", () => {
     await userEvent.click(retry);
 
     expect(await screen.findByText("student01")).toBeInTheDocument();
+  });
+
+  it("đổi bộ lọc khi đã có dữ liệu: các dòng cũ ở lại cho tới khi có dữ liệu mới, không hiện khung chờ (UNI-2577)", async () => {
+    const first = SAMPLE_USERS[0]!;
+    let releaseFiltered: () => void = () => {};
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async (query) => {
+      if (query.neverLoggedIn) {
+        await new Promise<void>((resolve) => {
+          releaseFiltered = resolve;
+        });
+        return { items: [first], page: 0, size: 20, totalItems: 1, totalPages: 1 };
+      }
+      return { items: SAMPLE_USERS, page: 0, size: 20, totalItems: SAMPLE_USERS.length, totalPages: 1 };
+    });
+    renderUsersView(makeDeps({ listUsers: listUsersMock }));
+
+    const table = await screen.findByRole("table");
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + SAMPLE_USERS.length));
+
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+    await waitFor(() =>
+      expect(listUsersMock).toHaveBeenLastCalledWith(expect.objectContaining({ neverLoggedIn: true })),
+    );
+
+    // Dữ liệu mới chưa về: bảng vẫn đủ các dòng cũ và báo đang bận, không thay bằng khung chờ.
+    expect(within(table).getAllByRole("row")).toHaveLength(1 + SAMPLE_USERS.length);
+    expect(table).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("Đang tải danh sách tài khoản...")).not.toBeInTheDocument();
+
+    releaseFiltered();
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + 1));
+    expect(table).not.toHaveAttribute("aria-busy");
   });
 
   it("khi đang tải danh sách không hiển thị 0 tài khoản khớp bộ lọc", async () => {
@@ -412,7 +444,7 @@ describe("UsersListView (Slice 1)", () => {
     expect(window.sessionStorage.getItem("rbac.bulk.userIds")).toBe(
       JSON.stringify([SAMPLE_USERS[0]!.id, SAMPLE_USERS[3]!.id]),
     );
-    expect(routerMock.push).toHaveBeenCalledWith("/phan-quyen?tab=gan-hang-loat");
+    expect(routerMock.push).toHaveBeenCalledWith("/rbac/bulk-assign");
 
     await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
     expect(previewMock).toHaveBeenCalledWith({

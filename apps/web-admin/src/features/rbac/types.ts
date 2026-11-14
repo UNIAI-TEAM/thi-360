@@ -42,7 +42,8 @@ export type BulkAuthzRequest = components["schemas"]["BulkAuthzRequest"];
 export type BulkAuthzResponse = components["schemas"]["BulkAuthzResponse"];
 export type BulkAuthzItemResponse = components["schemas"]["BulkAuthzItemResponse"];
 
-export type RbacTabKey = "vai-tro" | "quyen" | "nguoi-dung" | "gan-hang-loat";
+/** Khóa tab, đồng thời là đoạn đường dẫn của trang con: `/rbac/<khóa>`. */
+export type RbacTabKey = "roles" | "permissions" | "users" | "bulk-assign";
 
 export interface PermissionObjectGroup {
   objectCode: string;
