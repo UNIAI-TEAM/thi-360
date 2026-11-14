@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
-import { useSyncExternalStore } from "react";
+import { StrictMode, useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import viMessages from "@/messages/vi.json";
@@ -431,6 +431,25 @@ describe("RbacPageView & RolesTab", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     // Bấm "+ Tạo vai trò" lại vẫn mở được dialog mới bình thường
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("StrictMode: bấm + Tạo vai trò mở dialog không bị treo", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <StrictMode>
+        <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+          <RbacPageView
+            rolesTabProps={{
+              listRoles: async () => ({ items: ROLES_FIXTURE, page: 0, size: 20, totalItems: 3, totalPages: 1 }),
+              listPermissions: async () => PERMISSIONS_FIXTURE,
+            }}
+          />
+        </SessionProvider>
+      </StrictMode>,
+    );
+    await screen.findByText("Theo dõi lớp");
     await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });

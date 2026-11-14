@@ -14,7 +14,7 @@ import {
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { hasPermission } from "@/features/session/permissions";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -60,7 +60,7 @@ export function resolveActiveRbacTab(
 }
 
 export interface RbacPageViewProps {
-  rolesTabProps?: Omit<RolesTabProps, "createRequestNonce" | "onCreateRequestConsumed">;
+  rolesTabProps?: Omit<RolesTabProps, "createOpen" | "onCreateOpenChange">;
   permissionsTabProps?: Omit<PermissionsTabProps, "onSelectPermissionUsers">;
   permissionUsersTabProps?: Omit<
     PermissionUsersTabProps,
@@ -88,11 +88,7 @@ export function RbacPageView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [createRoleNonce, setCreateRoleNonce] = useState(0);
-  const [consumedCreateNonce, setConsumedCreateNonce] = useState(0);
-  const handleCreateRequestConsumed = useCallback((nonce: number) => {
-    setConsumedCreateNonce((prev) => Math.max(prev, nonce));
-  }, []);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const allowedTabs = useMemo(
     () => getAllowedRbacTabs(permissions),
     [permissions],
@@ -151,6 +147,7 @@ export function RbacPageView({
 
   function navigateToTab(nextTab: RbacTabKey, permissionCode?: string) {
     if (!(allowedTabs as readonly string[]).includes(nextTab)) return;
+    setCreateDialogOpen(false);
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set("tab", nextTab);
     if (permissionCode) {
@@ -173,7 +170,7 @@ export function RbacPageView({
         description={t(`tabsDescription.${currentTab}`)}
         actions={
           canCreateRole ? (
-            <Button onClick={() => setCreateRoleNonce((prev) => prev + 1)}>
+            <Button onClick={() => setCreateDialogOpen(true)}>
               {t("rolesTab.createButton")}
             </Button>
           ) : undefined
@@ -196,8 +193,8 @@ export function RbacPageView({
         {allowedTabs.includes("vai-tro") && (
           <TabsContent value="vai-tro">
             <RolesTab
-              createRequestNonce={createRoleNonce > consumedCreateNonce ? createRoleNonce : 0}
-              onCreateRequestConsumed={handleCreateRequestConsumed}
+              createOpen={createDialogOpen}
+              onCreateOpenChange={setCreateDialogOpen}
               {...rolesTabProps}
             />
           </TabsContent>

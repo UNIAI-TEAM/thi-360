@@ -18,7 +18,7 @@ import {
 } from "@thi360/ui";
 import { Eye, Pencil, Search, Shield, Trash2, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
 import {
   deleteRole as defaultDeleteRole,
@@ -47,8 +47,8 @@ import { groupPermissionsByObject } from "./object-permission-picker";
 import { RoleDialog, type RoleDialogProps } from "./role-dialog";
 
 export interface RolesTabProps {
-  createRequestNonce?: number;
-  onCreateRequestConsumed?: (nonce: number) => void;
+  createOpen?: boolean;
+  onCreateOpenChange?: (open: boolean) => void;
   listRoles?: (params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse>;
   listPermissions?: () => Promise<PermissionResponse[]>;
   deleteRole?: (id: string) => Promise<void>;
@@ -79,8 +79,8 @@ function buildFallbackPermissions(t: RbacTranslator): PermissionResponse[] {
 }
 
 export function RolesTab({
-  createRequestNonce = 0,
-  onCreateRequestConsumed,
+  createOpen = false,
+  onCreateOpenChange,
   listRoles = defaultListRoles,
   listPermissions = defaultListPermissions,
   deleteRole = defaultDeleteRole,
@@ -104,8 +104,6 @@ export function RolesTab({
     mode: "create" | "edit" | "view";
     roleId?: string;
   }>({ open: false, mode: "create" });
-  const lastConsumedNonceRef = useRef(0);
-
   const [deleteTarget, setDeleteTarget] = useState<RoleSummaryResponse | null>(null);
 
   const rolesParams: ListRolesParams = useMemo(
@@ -157,24 +155,17 @@ export function RolesTab({
     },
   });
 
-  useEffect(() => {
-    if (!canModify || createRequestNonce <= 0) return;
-    if (lastConsumedNonceRef.current >= createRequestNonce) return;
-    lastConsumedNonceRef.current = createRequestNonce;
-    setDialogState({
-      open: true,
-      mode: "create",
-    });
-    onCreateRequestConsumed?.(createRequestNonce);
-  }, [canModify, createRequestNonce, onCreateRequestConsumed]);
+  const effectiveDialogOpen = dialogState.open || (canModify && createOpen);
+  const effectiveDialogMode = dialogState.open ? dialogState.mode : "create";
+  const effectiveDialogRoleId = dialogState.open ? dialogState.roleId : undefined;
 
   function closeDialog() {
     setDialogState({
       open: false,
       mode: "create",
     });
+    onCreateOpenChange?.(false);
   }
-
   const columns = useMemo<ColumnDef<RoleSummaryResponse>[]>(() => {
     const baseColumns: ColumnDef<RoleSummaryResponse>[] = [
       {
@@ -396,12 +387,16 @@ export function RolesTab({
               action={
                 canModify ? (
                   <Button
-                    onClick={() =>
-                      setDialogState({
-                        open: true,
-                        mode: "create",
-                      })
-                    }
+                    onClick={() => {
+                      if (onCreateOpenChange) {
+                        onCreateOpenChange(true);
+                      } else {
+                        setDialogState({
+                          open: true,
+                          mode: "create",
+                        });
+                      }
+                    }}
                   >
                     {t("rolesTab.createButton")}
                   </Button>
@@ -442,13 +437,12 @@ export function RolesTab({
       </Card>
 
       <RoleDialog
-        open={dialogState.open}
+        open={effectiveDialogOpen}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) closeDialog();
-          else setDialogState((prev) => ({ ...prev, open: true }));
         }}
-        mode={dialogState.mode}
-        roleId={dialogState.roleId}
+        mode={effectiveDialogMode}
+        roleId={effectiveDialogRoleId}
         permissionGroups={permissionGroups}
         {...roleDialogApi}
       />

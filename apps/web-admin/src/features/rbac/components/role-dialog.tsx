@@ -21,7 +21,7 @@ import {
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import {
   createRole as defaultCreateRole,
   getRole as defaultGetRole,
@@ -131,7 +131,7 @@ export function RoleDialog({
           />
         )}
 
-        {(isCreate || (!isCreate && detailQuery.data)) && (
+        {open && (isCreate || (!isCreate && detailQuery.data)) && (
           <RoleDialogBody
             key={`${mode}-${roleId ?? "new"}-${detailQuery.data?.version ?? 0}`}
             mode={mode}
@@ -199,8 +199,8 @@ function RoleDialogBody({
     },
   });
 
-  const currentAccess = useWatch({ control: form.control, name: "access" });
-  const currentStatus = useWatch({ control: form.control, name: "status" });
+  const [currentAccess, setCurrentAccess] = useState<AccessScope>(detail?.access ?? "MANAGE");
+  const [currentStatus, setCurrentStatus] = useState<RoleStatus>(detail?.status ?? "ACTIVE");
 
 
   const mutation = useMutation({
@@ -281,6 +281,7 @@ function RoleDialogBody({
 
   function handleScopeChange(nextAccess: AccessScope) {
     if (accessLocked) return;
+    setCurrentAccess(nextAccess);
     form.setValue("access", nextAccess, { shouldDirty: true });
   }
 
@@ -402,9 +403,11 @@ function RoleDialogBody({
                 value={currentStatus}
                 disabled={isView || Boolean(detail?.system) || mutation.isPending}
                 options={statusOptions}
-                onValueChange={(value) =>
-                  form.setValue("status", value as RoleStatus, { shouldDirty: true })
-                }
+                onValueChange={(value) => {
+                  const nextStatus = value as RoleStatus;
+                  setCurrentStatus(nextStatus);
+                  form.setValue("status", nextStatus, { shouldDirty: true });
+                }}
               />
             )}
           </FormField>
