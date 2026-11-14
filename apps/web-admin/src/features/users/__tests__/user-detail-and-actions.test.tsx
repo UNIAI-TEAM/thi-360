@@ -87,6 +87,75 @@ function makeDeps(overrides: Partial<UsersApiDeps> = {}): Partial<UsersApiDeps> 
   };
 }
 
+function stubRbacFetch({
+  roles = [
+    {
+      roleId: "r-student",
+      roleCode: "STUDENT",
+      roleName: "Học viên",
+      access: "EXAM",
+      status: "ACTIVE",
+      system: true,
+      assignedAt: "2026-11-10T08:00:00Z",
+    },
+  ],
+  hasManageRole = false,
+}: {
+  roles?: Array<{
+    roleId: string;
+    roleCode: string;
+    roleName: string;
+    access: "MANAGE" | "EXAM";
+    status: "ACTIVE" | "INACTIVE";
+    system: boolean;
+    assignedAt: string;
+  }>;
+  hasManageRole?: boolean;
+} = {}) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.endsWith("/effective-permissions")) {
+        return new Response(
+          JSON.stringify({
+            userId: BASE_USER.id,
+            effectiveAccess: hasManageRole ? "MANAGE" : "EXAM",
+            hasManageRole,
+            inactiveDirectPermissions: [],
+            permissions: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/permissions")) {
+        return new Response(
+          JSON.stringify({
+            userId: BASE_USER.id,
+            hasManageRole,
+            permissions: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/roles")) {
+        return new Response(
+          JSON.stringify({
+            userId: BASE_USER.id,
+            access: hasManageRole ? "MANAGE" : "EXAM",
+            roles,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({}), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }),
+  );
+}
+
 function renderDetail(
   deps: Partial<UsersApiDeps>,
   session: Session = TEST_ADMIN_SESSION,
@@ -100,14 +169,16 @@ function renderDetail(
 
 beforeEach(() => {
   routerMock.push.mockReset();
+  stubRbacFetch();
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 describe("UserDetailView & action dialogs (Slice 2)", () => {
-  it("hiển thị mã tài khoản, lần đăng nhập cuối, tab chỗ chờ T10/T08 và lịch sử thay đổi", async () => {
+  it("hiển thị mã tài khoản, lần đăng nhập cuối, tab chỗ chờ T10, tab Vai trò & quyền thật và lịch sử thay đổi", async () => {
     const deps = makeDeps();
     renderDetail(deps);
 
@@ -120,8 +191,11 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: "Vai trò & quyền" }));
     expect(
-      await screen.findByText("Chưa kết nối dữ liệu vai trò & quyền"),
+      await screen.findByRole("heading", { name: viMessages.rbac.userRbac.directSectionTitle }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: viMessages.rbac.userRbac.assignRolesButton })).toBeEnabled();
+    expect(screen.getByText("Học viên")).toBeInTheDocument();
+    expect(screen.queryByText("Chưa kết nối dữ liệu vai trò & quyền")).not.toBeInTheDocument();
     expect(screen.queryByText(/\(T08\)|\(T10\)/)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Lịch sử thay đổi" }));
@@ -235,6 +309,29 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
   });
 
   it("tab Vai trò & quyền và hộp thoại chặn xóa hiển thị khóa dịch tiếng Anh khi locale là en", async () => {
+    stubRbacFetch({
+      hasManageRole: true,
+      roles: [
+        {
+          roleId: "r-sys",
+          roleCode: "SYSTEM_ADMIN",
+          roleName: "Quản trị hệ thống",
+          access: "MANAGE",
+          status: "ACTIVE",
+          system: true,
+          assignedAt: "2026-11-10T08:00:00Z",
+        },
+        {
+          roleId: "r-custom",
+          roleCode: "GRADER",
+          roleName: "Essay Grader",
+          access: "MANAGE",
+          status: "ACTIVE",
+          system: false,
+          assignedAt: "2026-11-10T08:00:00Z",
+        },
+      ],
+    });
     const deps = makeDeps({
       getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({
         ...BASE_USER,
@@ -324,5 +421,46 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
         reason: "Cấp lại mật khẩu",
       });
     });
+  });
+
+  it("tab Vai trò & quyền chuyển sang chế độ chỉ xem khi thiếu USER.ASSIGN hoặc tài khoản đã xóa", async () => {
+    const { unmount } = renderDetail(makeDeps(), {
+      ...TEST_ADMIN_SESSION,
+      permissions: ["USER.VIEW"],
+    });
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Vai trò & quyền" }));
+    expect(
+      await screen.findByRole("heading", { name: viMessages.rbac.userRbac.directSectionTitle }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: viMessages.rbac.userRbac.assignRolesButton }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: viMessages.rbac.userRbac.addDirectButton }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    renderDetail(
+      makeDeps({
+        getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({
+          ...BASE_USER,
+          status: "INACTIVE",
+          deletedAt: "2026-11-13T10:00:00Z",
+          deleteReason: "Đã nghỉ học",
+        })),
+      }),
+    );
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Vai trò & quyền" }));
+    expect(
+      await screen.findByRole("heading", { name: viMessages.rbac.userRbac.directSectionTitle }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: viMessages.rbac.userRbac.assignRolesButton }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: viMessages.rbac.userRbac.addDirectButton }),
+    ).not.toBeInTheDocument();
   });
 });

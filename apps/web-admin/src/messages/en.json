@@ -1002,12 +1002,6 @@
       "success": "Reset password for {username}.",
       "title": "Reset password"
     },
-    "rolesPlaceholder": {
-      "currentRolesLabel": "Current roles",
-      "description": "Role and direct permission assignment controls will appear here once authorization management is connected.",
-      "noRoles": "No roles assigned.",
-      "title": "Roles & permissions not connected yet"
-    },
     "sources": {
       "ADMIN_CREATED": "Admin created",
       "BULK_IMPORT": "Bulk import",

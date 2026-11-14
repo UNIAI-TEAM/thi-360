@@ -1002,12 +1002,6 @@
       "success": "Đã đặt lại mật khẩu cho {username}.",
       "title": "Reset mật khẩu"
     },
-    "rolesPlaceholder": {
-      "currentRolesLabel": "Vai trò hiện tại",
-      "description": "Giao diện gán vai trò và quyền gán trực tiếp sẽ hiển thị tại đây khi chức năng phân quyền được kết nối.",
-      "noRoles": "Chưa có vai trò nào.",
-      "title": "Chưa kết nối dữ liệu vai trò & quyền"
-    },
     "sources": {
       "ADMIN_CREATED": "Admin tạo",
       "BULK_IMPORT": "Cấp hàng loạt",
