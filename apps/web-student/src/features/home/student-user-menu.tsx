@@ -15,6 +15,7 @@ import { initialsOf } from "@thi360/web-kit/client";
 import { ChevronDown, KeyRound, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { CHANGE_PASSWORD_MENU_SOURCE } from "@/features/auth/change-password-view";
 import { logoutSession, type StudentSession } from "@/features/session/api";
 import { adminUrl } from "@/lib/env";
 
@@ -88,7 +89,7 @@ export function StudentUserMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/change-password">
+          <Link href={`/change-password?source=${CHANGE_PASSWORD_MENU_SOURCE}`}>
             <KeyRound aria-hidden />
             {t("changePassword")}
           </Link>

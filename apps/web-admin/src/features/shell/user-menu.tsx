@@ -71,7 +71,8 @@ export function UserMenu() {
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href={`${webUrl()}/change-password`}>
+          {/* `source=account-menu`: trang Đổi mật khẩu của web học viên hiện lối quay lại cho người tự mở từ menu. */}
+          <a href={`${webUrl()}/change-password?source=account-menu`}>
             <KeyRound aria-hidden />
             {t("changePassword")}
           </a>

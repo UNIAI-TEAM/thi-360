@@ -49,6 +49,9 @@ type ChangePasswordErrorKey =
   | "confirmPasswordRequired"
   | "confirmPasswordMismatch";
 
+/** Giá trị query `source` mà menu tài khoản của hai web gắn vào liên kết Đổi mật khẩu. */
+export const CHANGE_PASSWORD_MENU_SOURCE = "account-menu";
+
 type ChangePasswordValues = {
   oldPassword: string;
   newPassword: string;
@@ -67,6 +70,10 @@ export function ChangePasswordView({
   const errT = useTranslations("errors");
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl");
+  // Người tự mở trang từ menu tài khoản (liên kết có `source=account-menu`) được thêm lối quay lại. Người bị buộc đổi
+  // mật khẩu sau đăng nhập tới đây không có dấu này nên trang giữ nguyên như trước: `MeResponse` không cho biết
+  // tài khoản có đang bị buộc đổi hay không.
+  const openedFromAccountMenu = searchParams.get("source") === CHANGE_PASSWORD_MENU_SOURCE;
 
   const sessionQuery = useQuery({
     queryKey: SESSION_QUERY_KEY,
@@ -261,9 +268,10 @@ export function ChangePasswordView({
   }
 
   const session = sessionQuery.data;
+  // Ba nút hiện/ẩn mật khẩu mang tên riêng theo ô, để không có ba nút trùng tên trên cùng màn hình.
   const ruleLabels = {
-    showPassword: t("rules.showPassword"),
-    hidePassword: t("rules.hidePassword"),
+    showPassword: t("toggles.newShow"),
+    hidePassword: t("toggles.newHide"),
     generate: t("rules.generate"),
     rulesLabel: t("rules.rulesLabel"),
     ruleLength: t("rules.ruleLength"),
@@ -284,6 +292,17 @@ export function ChangePasswordView({
             {common("logoMark")}
           </span>
           <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+          {openedFromAccountMenu && (
+            <a
+              href={session.homeUrl}
+              className={cn(
+                "ml-auto text-label font-medium text-primary-text transition-colors duration-150 hover:underline",
+                coarseTextHitArea,
+              )}
+            >
+              ← {t("back")}
+            </a>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -332,8 +351,8 @@ export function ChangePasswordView({
                       className={touchFieldText}
                       leadingIcon={<Lock />}
                       labels={{
-                        showPassword: ruleLabels.showPassword,
-                        hidePassword: ruleLabels.hidePassword,
+                        showPassword: t("toggles.oldShow"),
+                        hidePassword: t("toggles.oldHide"),
                       }}
                     />
                   )}
@@ -388,8 +407,8 @@ export function ChangePasswordView({
                       className={touchFieldText}
                       leadingIcon={<Lock />}
                       labels={{
-                        showPassword: ruleLabels.showPassword,
-                        hidePassword: ruleLabels.hidePassword,
+                        showPassword: t("toggles.confirmShow"),
+                        hidePassword: t("toggles.confirmHide"),
                       }}
                     />
                   )}

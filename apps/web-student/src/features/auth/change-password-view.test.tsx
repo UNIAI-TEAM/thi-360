@@ -13,6 +13,7 @@ import { ChangePasswordView } from "./change-password-view";
 
 const mocks = vi.hoisted(() => ({
   callbackUrl: null as string | null,
+  source: null as string | null,
   changeAccountPassword: vi.fn(),
   logoutSession: vi.fn(),
   refreshSession: vi.fn(),
@@ -21,7 +22,10 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("next/navigation", () => ({
   useSearchParams: () =>
-    new URLSearchParams(mocks.callbackUrl ? { callbackUrl: mocks.callbackUrl } : {}),
+    new URLSearchParams({
+      ...(mocks.callbackUrl ? { callbackUrl: mocks.callbackUrl } : {}),
+      ...(mocks.source ? { source: mocks.source } : {}),
+    }),
 }));
 
 vi.mock("@/features/session/api", async () => {
@@ -47,6 +51,7 @@ const STUDENT_SESSION = {
 
 beforeEach(() => {
   mocks.callbackUrl = null;
+  mocks.source = null;
 });
 
 afterEach(() => {
@@ -250,10 +255,51 @@ describe("ChangePasswordView", () => {
     );
 
     expect(await screen.findByText("student03")).toBeInTheDocument();
-    const showButtons = screen.getAllByRole("button", { name: "Show password" });
-    expect(showButtons).toHaveLength(3);
+    // Ba nút hiện mật khẩu mang tên riêng theo ô, không trùng nhau.
+    expect(screen.queryByRole("button", { name: "Show password" })).toBeNull();
+    const showCurrent = screen.getByRole("button", { name: "Show current password" });
+    expect(screen.getByRole("button", { name: "Show new password" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show confirmed password" })).toBeInTheDocument();
 
-    await userEvent.click(showButtons[0]!);
-    expect(screen.getByRole("button", { name: "Hide password" })).toBeInTheDocument();
+    await userEvent.click(showCurrent);
+    expect(screen.getByRole("button", { name: "Hide current password" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Current password/)).toHaveAttribute("type", "text");
+    expect(screen.getByLabelText(/^New password/)).toHaveAttribute("type", "password");
+  });
+
+  it("lời dẫn trung tính; lối Quay lại về homeUrl chỉ hiện khi mở từ menu tài khoản; lỗi của ô dịch theo ngôn ngữ đang dùng", async () => {
+    const forcedView = renderWithProviders(
+      <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+    expect(screen.getByText(/Đặt mật khẩu mới cho tài khoản/)).toBeInTheDocument();
+    expect(screen.queryByText(/trước khi tiếp tục/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Quay lại/ })).toBeNull();
+    const names = screen
+      .getAllByRole("button", { name: /^Hiện mật khẩu/ })
+      .map((button) => button.getAttribute("aria-label"));
+    expect(names).toEqual(["Hiện mật khẩu hiện tại", "Hiện mật khẩu mới", "Hiện mật khẩu nhập lại"]);
+    forcedView.unmount();
+
+    mocks.source = "account-menu";
+    mocks.changeAccountPassword.mockRejectedValueOnce(
+      new ApiStatusError(400, "wrong", { code: "WRONG_OLD_PASSWORD" }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
+        <QueryClientProvider client={client}>
+          <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />
+        </QueryClientProvider>
+      </NextIntlClientProvider>,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Back/ })).toHaveAttribute("href", "http://localhost:3000/home");
+
+    await userEvent.type(screen.getByLabelText(/Current password/), "Wrong1!");
+    await userEvent.type(screen.getByLabelText(/^New password/), "NewPass1!");
+    await userEvent.type(screen.getByLabelText(/Confirm new password/), "NewPass1!");
+    await userEvent.click(screen.getByRole("button", { name: en_messages.changePassword.submit }));
+    expect(await screen.findByText(en_messages.changePassword.wrongOldPassword)).toBeInTheDocument();
   });
 });

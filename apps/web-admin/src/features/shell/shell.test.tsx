@@ -95,7 +95,7 @@ describe("AppShell", () => {
     expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
       "href",
-      "http://localhost:3000/change-password",
+      "http://localhost:3000/change-password?source=account-menu",
     );
 
     await userEvent.click(screen.getByRole("menuitem", { name: "Đăng xuất" }));

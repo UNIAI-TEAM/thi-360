@@ -61,6 +61,10 @@ describe("StudentHomeView", () => {
     expect(screen.queryByRole("menuitem", { name: "Trang quản trị" })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Trang học viên" })).toHaveAttribute("href", "/home");
+    expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
+      "href",
+      "/change-password?source=account-menu",
+    );
   });
 
   it("menu avatar hiện Trang quản trị khi access = MANAGE", async () => {
