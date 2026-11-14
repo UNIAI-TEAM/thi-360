@@ -112,17 +112,18 @@ export function ChangePasswordView({
     return sessionQuery.data?.homeUrl ?? "/home";
   }
 
+  // Lỗi máy chủ gắn vào ô nào thì đưa focus về ô đó, để người dùng bàn phím và trình đọc màn hình tới ngay chỗ cần sửa.
   function applyPasswordFieldError(error: ApiStatusError): boolean {
     if (error.code === "WRONG_OLD_PASSWORD") {
-      setError("oldPassword", { message: t("wrongOldPassword") });
+      setError("oldPassword", { message: t("wrongOldPassword") }, { shouldFocus: true });
       return true;
     }
     if (error.code === "PASSWORD_WEAK") {
       const fieldCode = error.fieldErrors[0]?.code;
       if (fieldCode === "PASSWORD_SAME_AS_USERNAME") {
-        setError("newPassword", { message: t("newPasswordSameAsUsername") });
+        setError("newPassword", { message: t("newPasswordSameAsUsername") }, { shouldFocus: true });
       } else {
-        setError("newPassword", { message: t("newPasswordWeak") });
+        setError("newPassword", { message: t("newPasswordWeak") }, { shouldFocus: true });
       }
       return true;
     }
@@ -279,6 +280,7 @@ export function ChangePasswordView({
                   render={({ field: controllerField }) => (
                     <PasswordField
                       {...field}
+                      ref={controllerField.ref}
                       name={controllerField.name}
                       value={controllerField.value}
                       onChange={controllerField.onChange}
@@ -304,6 +306,7 @@ export function ChangePasswordView({
                   render={({ field: controllerField }) => (
                     <PasswordField
                       {...field}
+                      ref={controllerField.ref}
                       name={controllerField.name}
                       value={controllerField.value}
                       onChange={controllerField.onChange}
@@ -327,6 +330,7 @@ export function ChangePasswordView({
                   render={({ field: controllerField }) => (
                     <PasswordField
                       {...field}
+                      ref={controllerField.ref}
                       name={controllerField.name}
                       value={controllerField.value}
                       onChange={controllerField.onChange}

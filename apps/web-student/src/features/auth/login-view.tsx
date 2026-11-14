@@ -166,6 +166,7 @@ export function LoginView({
                   render={({ field: controllerField }) => (
                     <PasswordField
                       {...field}
+                      ref={controllerField.ref}
                       name={controllerField.name}
                       value={controllerField.value}
                       onChange={controllerField.onChange}

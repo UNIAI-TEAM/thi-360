@@ -101,9 +101,34 @@ describe("ChangePasswordView", () => {
     await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
 
     expect(await screen.findByText("Mật khẩu hiện tại không đúng.")).toBeInTheDocument();
+    // Lỗi máy chủ gắn vào ô nào thì focus về ô đó.
+    await waitFor(() => expect(screen.getByLabelText(/Mật khẩu hiện tại/)).toHaveFocus());
 
     await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("http://localhost:3000/home"));
+  });
+
+  it("gửi biểu mẫu trống: focus chuyển tới ô lỗi đầu tiên; lỗi PASSWORD_WEAK từ máy chủ đưa focus về ô mật khẩu mới", async () => {
+    mocks.changeAccountPassword.mockRejectedValueOnce(
+      new ApiStatusError(400, "weak", { code: "PASSWORD_WEAK" }),
+    );
+    renderWithProviders(
+      <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
+    expect(await screen.findByText("Vui lòng nhập mật khẩu hiện tại.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText(/Mật khẩu hiện tại/)).toHaveFocus());
+    expect(mocks.changeAccountPassword).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText(/Mật khẩu hiện tại/), "OldPass1!");
+    await userEvent.type(screen.getByLabelText(/^Mật khẩu mới/), "NewPass1!");
+    await userEvent.type(screen.getByLabelText(/Nhập lại mật khẩu mới/), "NewPass1!");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu và tiếp tục" }));
+
+    expect(await screen.findByText("Mật khẩu mới chưa đáp ứng đủ năm điều kiện.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText(/^Mật khẩu mới/)).toHaveFocus());
   });
 
   it("bỏ qua callbackUrl trỏ về /change-password hoặc /login để tránh vòng lặp", async () => {

@@ -100,6 +100,23 @@ describe("LoginView", () => {
     expect(identifierInput).toHaveValue("student01");
   });
 
+  it("gửi khi thiếu mật khẩu: focus chuyển tới ô mật khẩu; thiếu cả hai thì tới ô tên đăng nhập", async () => {
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    const identifierInput = screen.getByLabelText(/Tên đăng nhập hoặc email/);
+    const passwordInput = screen.getByLabelText(/Mật khẩu/);
+    await userEvent.type(identifierInput, "student01");
+    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+
+    expect(await screen.findByText("Vui lòng nhập mật khẩu.")).toBeInTheDocument();
+    await waitFor(() => expect(passwordInput).toHaveFocus());
+    expect(mocks.loginWithPassword).not.toHaveBeenCalled();
+
+    await userEvent.clear(identifierInput);
+    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+    await waitFor(() => expect(identifierInput).toHaveFocus());
+  });
+
   it("dùng nhãn Show/Hide password theo ngôn ngữ tiếng Anh cho PasswordField", async () => {
     render(
       <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
