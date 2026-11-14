@@ -217,6 +217,7 @@
     "editItem": "Sửa {name}",
     "emptyItemsDescription": "Danh mục này chưa có giá trị nào. Thêm giá trị đầu tiên để bắt đầu sử dụng.",
     "emptyItemsFilteredDescription": "Không có giá trị nào khớp với từ khóa hoặc bộ lọc trạng thái hiện tại.",
+    "emptyItemsFilteredTitle": "Không có kết quả phù hợp",
     "emptyItemsTitle": "Chưa có giá trị",
     "errorCodes": {
       "CATALOG_CHANGE_BLOCKED": "Không thể ngừng sử dụng vì danh mục đang bị ràng buộc bởi dữ liệu hoạt động.",

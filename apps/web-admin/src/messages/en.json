@@ -217,6 +217,7 @@
     "editItem": "Edit {name}",
     "emptyItemsDescription": "This catalog has no values yet. Add the first value to start using it.",
     "emptyItemsFilteredDescription": "No values match the current search query or status filter.",
+    "emptyItemsFilteredTitle": "No matching results",
     "emptyItemsTitle": "No values yet",
     "errorCodes": {
       "CATALOG_CHANGE_BLOCKED": "Cannot deactivate because this catalog is constrained by active data.",
