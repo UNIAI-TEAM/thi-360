@@ -1,6 +1,9 @@
-/** Vòng focus nhìn thấy được cho mọi điều khiển (DESIGN.md mục 8). */
+/**
+ * Vòng focus nhìn thấy được cho mọi điều khiển (DESIGN.md mục 8). Màu đặc (không alpha):
+ * `primary-text` đạt >= 3:1 (WCAG 1.4.11) trên nền trang, bề mặt và nền phụ ở cả hai chế độ.
+ */
 export const focusRing =
-  "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30";
+  "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-text";
 
 /** Nền chung của ô nhập, vùng nhập và nút chọn (DESIGN.md mục 5.2). Lỗi hiển thị theo `aria-invalid`. */
 export const fieldBase =

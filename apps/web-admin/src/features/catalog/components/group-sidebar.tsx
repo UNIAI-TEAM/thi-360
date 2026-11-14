@@ -195,7 +195,7 @@ function GroupSection({
                 onClick={() => onSelectGroup(group)}
                 className={cn(
                   "relative flex min-h-14 w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors duration-150 motion-reduce:transition-none",
-                  "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                  "focus-visible:ring-3 focus-visible:ring-primary-text focus-visible:outline-none",
                   selected
                     ? "bg-primary-50 text-primary-text before:absolute before:top-2 before:bottom-2 before:left-0 before:w-[3px] before:rounded-full before:bg-primary-600"
                     : "text-text hover:bg-subtle",
