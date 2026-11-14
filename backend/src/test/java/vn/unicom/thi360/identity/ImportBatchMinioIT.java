@@ -18,8 +18,10 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.io.ByteArrayResource;
@@ -50,9 +52,9 @@ import vn.unicom.thi360.identity.domain.ImportBatchStatus;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUserCommand;
 import vn.unicom.thi360.shared.security.AuthCookieService;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 import vn.unicom.thi360.shared.storage.S3ObjectStorage;
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ImportBatchMinioIT extends AbstractKeycloakIntegrationTest {
@@ -102,14 +104,26 @@ class ImportBatchMinioIT extends AbstractKeycloakIntegrationTest {
 
     @Autowired
     private ImportBatchProcessorJob importBatchProcessorJob;
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     private UUID adminUserId;
     private UUID batchId;
     private UUID createdStudentId;
     private String idempotencyKey;
 
+    @BeforeEach
+    void clearRateLimitBefore() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + "127.0.0.1",
+                RateLimitFilter.UPLOAD_KEY_PREFIX + "127.0.0.1"));
+    }
+
     @AfterEach
     void cleanup() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.KEY_PREFIX + "127.0.0.1",
+                RateLimitFilter.UPLOAD_KEY_PREFIX + "127.0.0.1"));
         if (batchId != null) {
             jdbcTemplate.update("DELETE FROM identity.import_row WHERE batch_id = ?", batchId);
             jdbcTemplate.update("DELETE FROM identity.import_batch WHERE id = ?", batchId);

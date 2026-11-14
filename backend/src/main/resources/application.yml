@@ -109,6 +109,9 @@ thi360:
     import-batch:
       scheduling:
         enabled: true
+      lease-duration: PT5M
+      retry-delay: PT5S
+      max-attempts: 3
 
 ---
 spring:

@@ -70,12 +70,23 @@ public class ImportBatch {
     @Column(name = "confirmed_by")
     private UUID confirmedBy;
 
+    @Column(name = "confirmed_by_username")
+    private String confirmedByUsername;
+
+    @Column(name = "lease_expires_at")
+    private Instant leaseExpiresAt;
+
+    @Column(name = "next_retry_at")
+    private Instant nextRetryAt;
+
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount;
+
     @Column(name = "started_at")
     private Instant startedAt;
 
     @Column(name = "completed_at")
     private Instant completedAt;
-
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
@@ -134,20 +145,33 @@ public class ImportBatch {
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
-    public void markConfirmed(String idempotencyKey, UUID actorId, Instant now) {
+    public void markConfirmed(String idempotencyKey, UUID actorId, String actorUsername, Instant now) {
         this.idempotencyKey = idempotencyKey;
         this.status = ImportBatchStatus.CONFIRMED;
         this.confirmedAt = now;
         this.confirmedBy = actorId;
+        this.confirmedByUsername = actorUsername;
         this.updatedAt = now;
         this.updatedBy = actorId;
     }
 
-    public void markProcessing(Instant now) {
+    public void markProcessing(Instant leaseExpiresAt, Instant now) {
         this.status = ImportBatchStatus.PROCESSING;
         if (this.startedAt == null) {
             this.startedAt = now;
         }
+        this.leaseExpiresAt = leaseExpiresAt;
+        this.nextRetryAt = null;
+        this.updatedAt = now;
+    }
+
+    public void scheduleRetry(Instant nextRetryAt, int createdRows, int failedRows, Instant now) {
+        this.status = ImportBatchStatus.PROCESSING;
+        this.leaseExpiresAt = null;
+        this.nextRetryAt = nextRetryAt;
+        this.retryCount = this.retryCount + 1;
+        this.createdRows = createdRows;
+        this.failedRows = failedRows;
         this.updatedAt = now;
     }
 
@@ -156,6 +180,8 @@ public class ImportBatch {
         this.createdRows = createdRows;
         this.failedRows = failedRows;
         this.status = failedRows == 0 ? ImportBatchStatus.COMPLETED : ImportBatchStatus.COMPLETED_WITH_ERRORS;
+        this.leaseExpiresAt = null;
+        this.nextRetryAt = null;
         this.completedAt = now;
         this.updatedAt = now;
     }
@@ -165,6 +191,8 @@ public class ImportBatch {
         this.errorMessage = errorMessage;
         this.createdRows = createdRows;
         this.failedRows = failedRows;
+        this.leaseExpiresAt = null;
+        this.nextRetryAt = null;
         this.completedAt = now;
         this.updatedAt = now;
     }
@@ -256,6 +284,21 @@ public class ImportBatch {
 
     public UUID getConfirmedBy() {
         return confirmedBy;
+    }
+    public String getConfirmedByUsername() {
+        return confirmedByUsername;
+    }
+
+    public Instant getLeaseExpiresAt() {
+        return leaseExpiresAt;
+    }
+
+    public Instant getNextRetryAt() {
+        return nextRetryAt;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
     }
 
     public Instant getStartedAt() {

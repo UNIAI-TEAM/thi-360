@@ -27,7 +27,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -40,29 +49,39 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.application.ImportBatchProcessorJob;
 import vn.unicom.thi360.identity.application.ImportBatchService;
+import vn.unicom.thi360.identity.application.ImportWorkbookCodec;
 import vn.unicom.thi360.identity.domain.ImportBatchStatus;
+import vn.unicom.thi360.identity.domain.ImportRow;
+import vn.unicom.thi360.identity.domain.ImportRowStatus;
 import vn.unicom.thi360.identity.domain.PasswordPolicy;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
+import vn.unicom.thi360.identity.infrastructure.ImportRowRepository;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
+import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
+import vn.unicom.thi360.shared.security.SecurityProperties;
+import vn.unicom.thi360.shared.storage.EncryptedObjectStorage;
 import vn.unicom.thi360.shared.storage.InMemoryObjectStorage;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
-
 @ExtendWith(OutputCaptureExtension.class)
 class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
 
@@ -90,11 +109,29 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
     @Autowired
     private OutboxRelay outboxRelay;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private SecurityProperties securityProperties;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @MockitoSpyBean
     private KeycloakIdentityClient keycloakClient;
 
     @MockitoSpyBean
     private AuditRecorder auditRecorder;
+
+    @MockitoSpyBean
+    private ImportRowRepository importRowRepository;
+
+    @MockitoSpyBean
+    private EncryptedObjectStorage encryptedObjectStorage;
+
+    @MockitoSpyBean
+    private ImportWorkbookCodec workbookCodec;
 
     private final List<UUID> createdBatchIds = new ArrayList<>();
     private final List<UUID> createdUserIds = new ArrayList<>();
@@ -104,12 +141,14 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
 
     @BeforeEach
     void setup() {
-        clearInvocations(auditRecorder, keycloakClient);
+        clearInvocations(auditRecorder, keycloakClient, importRowRepository, encryptedObjectStorage, workbookCodec);
+        clearRateLimitKeys();
     }
 
     @AfterEach
     void cleanup() {
-        reset(keycloakClient, auditRecorder);
+        reset(keycloakClient, auditRecorder, importRowRepository, encryptedObjectStorage, workbookCodec);
+        clearRateLimitKeys();
         if (objectStorage instanceof InMemoryObjectStorage mem) {
             mem.clear();
         }
@@ -340,11 +379,13 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
     }
 
     @Test
-    void weakPasswordRow_returnsPasswordWeakAtRightRowAndColumn() throws Exception {
+    void weakPasswordRow_returnsPasswordWeakAtRightRowAndColumn_andRemainsInvalidAfterRepeatedConfirms()
+            throws Exception {
         String sfx = suffix();
+        String weakUsername = "weak.pwd." + sfx;
         List<String[]> rows = List.of(
                 new String[] {"good.pwd." + sfx, "Valid@1234", "Good Password", "", "", ""},
-                new String[] {"weak.pwd." + sfx, "weak", "Weak Password", "", "", ""}
+                new String[] {weakUsername, "weak", "Weak Password", "", "", ""}
         );
         UUID batchId = uploadBatch(buildImportXlsx(rows), false, Permissions.USER_MODIFY);
 
@@ -356,6 +397,37 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
         JsonNode items = objectMapper.readTree(rowsRes.getResponse().getContentAsString()).get("items");
         assertThat(items).hasSize(1);
         assertRowHasError(items.get(0), 3, "Mật khẩu", "PASSWORD_WEAK");
+
+        // R1-4: Revalidation at confirm MUST preserve PASSWORD_WEAK and reject repeated confirms with 409
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchId)
+                            .header("Idempotency-Key", "weak-confirm-" + attempt + "-" + sfx)
+                            .with(asUser(Permissions.USER_MODIFY)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("IMPORT_HAS_ERRORS"));
+
+            mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchId)
+                            .with(asUser(Permissions.USER_MODIFY)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("VALIDATED"))
+                    .andExpect(jsonPath("$.invalidRows").value(1))
+                    .andExpect(jsonPath("$.canConfirm").value(false))
+                    .andExpect(jsonPath("$.sourceAvailable").value(true));
+        }
+
+        MvcResult rowsAfter = mockMvc.perform(get("/api/v1/admin/import-batches/{id}/rows", batchId)
+                        .param("status", "INVALID")
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode itemsAfter = objectMapper.readTree(rowsAfter.getResponse().getContentAsString()).get("items");
+        assertThat(itemsAfter).hasSize(1);
+        assertRowHasError(itemsAfter.get(0), 3, "Mật khẩu", "PASSWORD_WEAK");
+
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}/errors", batchId)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk());
+        assertThat(userAccountRepository.findActiveByUsernameNormalized(weakUsername)).isEmpty();
     }
 
     @Test
@@ -476,64 +548,112 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
     }
 
     @Test
-    void processNextConfirmedBatch_claimsWithSkipLocked_andResumesInterruptedProcessingOnlyForUnfinishedRows()
+    void processNextConfirmedBatch_claimsWithSkipLocked_neverStealsLiveLease_andRecoversStaleProcessingViaDispatcher()
             throws Exception {
         String sfx = suffix();
-        UUID batchId = uploadBatch(
-                buildImportXlsx(List.of(
-                        new String[] {"skip.u1." + sfx, "Valid@1234", "Skip One", "", "", ""},
-                        new String[] {"skip.u2." + sfx, "Valid@1234", "Skip Two", "", "", ""})),
+        UUID batchA = uploadBatch(
+                buildImportXlsx(List.<String[]>of(
+                        new String[] {"skip.a1." + sfx, "Valid@1234", "Skip A1", "", "", ""})),
                 false,
                 Permissions.USER_MODIFY);
-        String key = "skip-confirm-" + sfx;
-        createdIdempotencyKeys.add(key);
-        mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchId)
-                        .header("Idempotency-Key", key)
-                        .with(asUser(Permissions.USER_MODIFY)))
-                .andExpect(status().isOk());
+        UUID batchB = uploadBatch(
+                buildImportXlsx(List.<String[]>of(
+                        new String[] {"skip.b1." + sfx, "Valid@1234", "Skip B1", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchA, "skip-a-" + sfx);
+        confirmBatch(batchB, "skip-b-" + sfx);
 
-        UUID claimed = importBatchProcessorJob.processNextConfirmedBatch().orElseThrow();
-        assertThat(claimed).isEqualTo(batchId);
+        // R1-15: Hold FOR UPDATE lock on batchA in tx1 while dispatcher runs -> SKIP LOCKED skips A and processes B
+        CountDownLatch lockAcquired = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<?> lockHolder = executor.submit(() -> {
+            TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+            txTemplate.executeWithoutResult(tx -> {
+                jdbcTemplate.queryForObject(
+                        "SELECT id FROM identity.import_batch WHERE id = ? FOR UPDATE",
+                        UUID.class,
+                        batchA);
+                lockAcquired.countDown();
+                try {
+                    releaseLock.await(15, TimeUnit.SECONDS);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+        });
+        try {
+            assertThat(lockAcquired.await(10, TimeUnit.SECONDS)).isTrue();
+            UUID claimedWhileALocked = importBatchProcessorJob.processNextConfirmedBatch().orElseThrow();
+            assertThat(claimedWhileALocked).isEqualTo(batchB);
+            assertThat(importBatchProcessorJob.processNextConfirmedBatch()).isEmpty();
+        } finally {
+            releaseLock.countDown();
+            lockHolder.get(10, TimeUnit.SECONDS);
+            executor.shutdownNow();
+        }
+
+        // Release A -> dispatcher now claims and completes A
+        UUID claimedA = importBatchProcessorJob.processNextConfirmedBatch().orElseThrow();
+        assertThat(claimedA).isEqualTo(batchA);
         assertThat(importBatchProcessorJob.processNextConfirmedBatch()).isEmpty();
 
-        mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchId)
+        // R1-1 + R1-15: Crash during PROCESSING after row 1 is genuinely CREATED; active lease protects against steal,
+        // expired lease recovers via production dispatcher without re-creating row 1, and row 1 result password logs in.
+        String resU1 = "res.u1." + sfx;
+        String resU2 = "res.u2." + sfx;
+        UUID interruptedBatchId = uploadBatch(
+                buildImportXlsx(List.of(
+                        new String[] {resU1, "", "Resume One", "", "", ""},
+                        new String[] {resU2, "Valid@1234", "Resume Two", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(interruptedBatchId, "resume-confirm-" + sfx);
+
+        doAnswer(invocation -> {
+            KeycloakIdentityClient.CreateUserCommand cmd = invocation.getArgument(0);
+            if (resU2.equalsIgnoreCase(cmd.username())) {
+                throw new SimulatedWorkerCrashError("Simulated worker crash after row 1");
+            }
+            return invocation.callRealMethod();
+        }).when(keycloakClient).createUser(any());
+
+        try {
+            dispatcherWorker().runScheduledImportBatches();
+        } catch (SimulatedWorkerCrashError expected) {
+            // Simulated abrupt worker death during PROCESSING
+        }
+        reset(keycloakClient);
+
+        // Live worker lease (> now) MUST NOT be stolen by another dispatcher
+        assertThat(importBatchProcessorJob.processNextConfirmedBatch()).isEmpty();
+
+        // Expire lease -> production dispatcher resumes stale PROCESSING batch and processes ONLY row 2
+        jdbcTemplate.update(
+                "UPDATE identity.import_batch SET lease_expires_at = now() - interval '1 minute' WHERE id = ?",
+                interruptedBatchId);
+        clearInvocations(keycloakClient);
+
+        dispatcherWorker().runScheduledImportBatches();
+
+        verify(keycloakClient, times(1)).createUser(argThat(cmd ->
+                cmd != null && resU2.equalsIgnoreCase(cmd.username())));
+
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}", interruptedBatchId)
                         .with(asUser(Permissions.USER_MODIFY)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.createdRows").value(2));
 
-        // Simulate worker interruption during PROCESSING: row 2 already CREATED, row 3 still VALID
-        UUID interruptedBatchId = uploadBatch(
-                buildImportXlsx(List.of(
-                        new String[] {"res.u1." + sfx, "Valid@1234", "Resume One", "", "", ""},
-                        new String[] {"res.u2." + sfx, "Valid@1234", "Resume Two", "", "", ""})),
-                false,
-                Permissions.USER_MODIFY);
-        String key2 = "resume-confirm-" + sfx;
-        createdIdempotencyKeys.add(key2);
-        mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", interruptedBatchId)
-                        .header("Idempotency-Key", key2)
-                        .with(asUser(Permissions.USER_MODIFY)))
-                .andExpect(status().isOk());
-
-        UUID existingId = Ids.newId();
-        jdbcTemplate.update(
-                "UPDATE identity.import_batch SET status = 4, started_at = now() WHERE id = ?",
-                interruptedBatchId);
-        jdbcTemplate.update(
-                "UPDATE identity.import_row SET status = 3, created_user_id = ?, processed_at = now() WHERE batch_id = ? AND row_no = 2",
-                existingId,
-                interruptedBatchId);
-
-        clearInvocations(keycloakClient);
-        ImportBatchStatus resumedStatus = importBatchProcessorJob.processBatch(interruptedBatchId);
-        assertThat(resumedStatus).isEqualTo(ImportBatchStatus.COMPLETED);
-        verify(keycloakClient, times(1)).createUser(argThat(cmd ->
-                cmd != null && ("res.u2." + sfx).equalsIgnoreCase(cmd.username())));
+        String row1GenPwd = readResultCell(interruptedBatchId, 1, 5);
+        assertThat(row1GenPwd).isNotBlank();
+        assertLoginSucceeds(resU1, row1GenPwd);
     }
 
     @Test
-    void fakeKeycloakFailureRow3Of5_marksCompletedWithErrors_andRerunProcessesOnlyFailedRow() throws Exception {
+    void fakeKeycloakFailureRow3Of5_autoRetriesViaDispatcherBeforeTerminal_andExhaustedExplicitRowWipesSecrets()
+            throws Exception {
         String sfx = suffix();
         String clsCode = "CLS-KC-" + sfx;
         UUID classId = createTestClass(clsCode, "KC Fail Class", true);
@@ -546,13 +666,7 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 new String[] {"kc.r5." + sfx, "", "Row Five", "", "", ""}
         );
         UUID batchId = uploadBatch(buildImportXlsx(rows), false, Permissions.USER_MODIFY, Permissions.CLASS_MODIFY);
-        String key = "kc-fail-confirm-" + sfx;
-        createdIdempotencyKeys.add(key);
-
-        mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchId)
-                        .header("Idempotency-Key", key)
-                        .with(asUser(Permissions.USER_MODIFY, Permissions.CLASS_MODIFY)))
-                .andExpect(status().isOk());
+        confirmBatch(batchId, "kc-fail-confirm-" + sfx, Permissions.USER_MODIFY, Permissions.CLASS_MODIFY);
 
         // Fake Keycloak failure on row 3 (username kc.r3.<sfx>)
         String failUsername = "kc.r3." + sfx;
@@ -564,21 +678,18 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
             return invocation.callRealMethod();
         }).when(keycloakClient).createUser(any());
 
-        ImportBatchStatus firstStatus = importBatchProcessorJob.processBatch(batchId);
-        assertThat(firstStatus).isEqualTo(ImportBatchStatus.COMPLETED_WITH_ERRORS);
+        dispatcherWorker().runScheduledImportBatches();
 
+        // Retryable row failure keeps batch in PROCESSING with next_retry_at scheduled (not terminal yet)
         mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchId)
                         .with(asUser(Permissions.USER_MODIFY)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("COMPLETED_WITH_ERRORS"))
+                .andExpect(jsonPath("$.status").value("PROCESSING"))
                 .andExpect(jsonPath("$.createdRows").value(4))
                 .andExpect(jsonPath("$.failedRows").value(1));
 
-        // After completion (even COMPLETED_WITH_ERRORS), source file is gone -> 409 IMPORT_SOURCE_GONE
-        mockMvc.perform(get("/api/v1/admin/import-batches/{id}/errors", batchId)
-                        .with(asUser(Permissions.USER_MODIFY)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("IMPORT_SOURCE_GONE"));
+        // Before next_retry_at, dispatcher does not prematurely retry
+        assertThat(importBatchProcessorJob.processNextConfirmedBatch()).isEmpty();
 
         // Verify row 1 assigned to class and STUDENT role
         UserAccount row1User = userAccountRepository.findActiveByUsernameNormalized("kc.r1." + sfx).orElseThrow();
@@ -589,12 +700,14 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 row1User.getId());
         assertThat(membership).isEqualTo(1);
 
-        // Recover Keycloak, clear invocations, and rerun -> MUST process ONLY row 3!
+        // Recover Keycloak, advance retry window, and run dispatcher -> MUST process ONLY row 3!
         reset(keycloakClient);
         clearInvocations(keycloakClient);
+        jdbcTemplate.update(
+                "UPDATE identity.import_batch SET next_retry_at = now() - interval '1 second' WHERE id = ?",
+                batchId);
 
-        ImportBatchStatus rerunStatus = importBatchProcessorJob.processBatch(batchId);
-        assertThat(rerunStatus).isEqualTo(ImportBatchStatus.COMPLETED);
+        dispatcherWorker().runScheduledImportBatches();
 
         verify(keycloakClient, times(1)).createUser(argThat(cmd ->
                 cmd != null && failUsername.equalsIgnoreCase(cmd.username())));
@@ -606,20 +719,547 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.createdRows").value(5))
                 .andExpect(jsonPath("$.failedRows").value(0));
 
-        // Verify result file now has generated passwords for rows 1, 3, 5 and NONE for rows 2, 4
-        MvcResult resultRes = mockMvc.perform(get("/api/v1/admin/import-batches/{id}/result", batchId)
+        assertThat(readResultCell(batchId, 1, 5)).isNotBlank();
+        assertThat(readResultCell(batchId, 2, 5)).isEmpty();
+        assertThat(readResultCell(batchId, 3, 5)).isNotBlank();
+        assertThat(readResultCell(batchId, 4, 5)).isEmpty();
+        assertThat(readResultCell(batchId, 5, 5)).isNotBlank();
+
+        // R1-5 + R1-17 Part A: Pending retry of an explicit-password row preserves user's intended password
+        String expRetryOk = "exp.retry.ok." + sfx;
+        String expRetryTarget = "exp.retry.tgt." + sfx;
+        String intendedPwd = "IntendedPwd@99";
+        UUID explicitRetryBatchId = uploadBatch(
+                buildImportXlsx(List.of(
+                        new String[] {expRetryOk, "Valid@1234", "Explicit OK", "", "", ""},
+                        new String[] {expRetryTarget, intendedPwd, "Explicit Retry", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(explicitRetryBatchId, "exp-retry-" + sfx);
+
+        doAnswer(invocation -> {
+            KeycloakIdentityClient.CreateUserCommand cmd = invocation.getArgument(0);
+            if (expRetryTarget.equalsIgnoreCase(cmd.username())) {
+                throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Transient KC fail", null);
+            }
+            return invocation.callRealMethod();
+        }).when(keycloakClient).createUser(any());
+
+        dispatcherWorker().runScheduledImportBatches();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT status FROM identity.import_batch WHERE id = ?",
+                Short.class,
+                explicitRetryBatchId)).isEqualTo(ImportBatchStatus.PROCESSING.code());
+        String pendingRaw = jdbcTemplate.queryForObject(
+                "SELECT raw::text FROM identity.import_row WHERE batch_id = ? AND row_no = 3",
+                String.class,
+                explicitRetryBatchId);
+        assertThat(pendingRaw).doesNotContain(intendedPwd);
+        assertThat(objectMapper.readTree(pendingRaw).path("passwordEnc").asText()).isNotBlank();
+
+        reset(keycloakClient);
+        jdbcTemplate.update(
+                "UPDATE identity.import_batch SET next_retry_at = now() - interval '1 second' WHERE id = ?",
+                explicitRetryBatchId);
+        dispatcherWorker().runScheduledImportBatches();
+        assertLoginSucceeds(expRetryTarget, intendedPwd);
+
+        // R1-5 + R1-17 Part B: Exhausted retryable failure on explicit-password row -> terminal COMPLETED_WITH_ERRORS,
+        // source gone, and EVERY terminal row has zero password material in raw or generated_password_enc.
+        String termPwd1 = "TermPass@111";
+        String termPwd2 = "TermFail@222";
+        String termFailUser = "exp.term.fail." + sfx;
+        UUID exhaustedBatchId = uploadBatch(
+                buildImportXlsx(List.of(
+                        new String[] {"exp.term.ok." + sfx, termPwd1, "Terminal OK", "", "", ""},
+                        new String[] {termFailUser, termPwd2, "Terminal Fail", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(exhaustedBatchId, "exp-term-" + sfx);
+
+        doAnswer(invocation -> {
+            KeycloakIdentityClient.CreateUserCommand cmd = invocation.getArgument(0);
+            if (termFailUser.equalsIgnoreCase(cmd.username())) {
+                throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", "Persistent KC outage", null);
+            }
+            return invocation.callRealMethod();
+        }).when(keycloakClient).createUser(any());
+
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            if (attempt > 1) {
+                jdbcTemplate.update(
+                        "UPDATE identity.import_batch SET next_retry_at = now() - interval '1 second' WHERE id = ?",
+                        exhaustedBatchId);
+            }
+            dispatcherWorker().runScheduledImportBatches();
+        }
+        reset(keycloakClient);
+
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}", exhaustedBatchId)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED_WITH_ERRORS"))
+                .andExpect(jsonPath("$.createdRows").value(1))
+                .andExpect(jsonPath("$.failedRows").value(1));
+
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}/errors", exhaustedBatchId)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IMPORT_SOURCE_GONE"));
+
+        List<Map<String, Object>> terminalRows = jdbcTemplate.queryForList(
+                "SELECT raw::text AS raw_text, generated_password_enc FROM identity.import_row WHERE batch_id = ?",
+                exhaustedBatchId);
+        assertThat(terminalRows).hasSize(2);
+        for (Map<String, Object> r : terminalRows) {
+            String rawJson = (String) r.get("raw_text");
+            JsonNode node = objectMapper.readTree(rawJson);
+            assertThat(node.path("passwordEnc").isNull() || node.path("passwordEnc").isMissingNode()).isTrue();
+            assertThat(rawJson).doesNotContain(termPwd1).doesNotContain(termPwd2);
+            assertThat(r.get("generated_password_enc")).isNull();
+        }
+        assertThat(readResultCell(exhaustedBatchId, 1, 5)).isEmpty();
+        assertThat(readResultCell(exhaustedBatchId, 2, 5)).isEmpty();
+    }
+
+    @Test
+    void crashAfterAccountActivationBeforeRowCheckpoint_recoversExactAccountWithoutDuplicate() throws Exception {
+        String sfx = suffix();
+        String u1 = "r1.2.u1." + sfx;
+        String u2 = "r1.2.u2." + sfx;
+        UUID batchId = uploadBatch(
+                buildImportXlsx(List.of(
+                        new String[] {u1, "", "Crash Activate 1", "", "", ""},
+                        new String[] {u2, "Valid@1234", "Crash Activate 2", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchId, "r1-2-" + sfx);
+
+        AtomicBoolean crashedOnce = new AtomicBoolean(false);
+        doAnswer(invocation -> {
+            ImportRow row = invocation.getArgument(0);
+            if (row != null && row.getRowNo() == 2 && row.getStatus() == ImportRowStatus.CREATED
+                    && crashedOnce.compareAndSet(false, true)) {
+                throw new SimulatedWorkerCrashError("Simulated crash after account activation before row checkpoint");
+            }
+            return invocation.callRealMethod();
+        }).when(importRowRepository).saveAndFlush(any());
+
+        try {
+            dispatcherWorker().runScheduledImportBatches();
+        } catch (SimulatedWorkerCrashError expected) {
+            // Simulated abrupt worker death after UserAdminService committed ACTIVE account
+        }
+        reset(importRowRepository);
+
+        // User account 1 is already ACTIVE in DB & Keycloak, while import_row 2 is still VALID (uncheckpointed)
+        UserAccount activeUser1 = userAccountRepository.findActiveByUsernameNormalized(u1).orElseThrow();
+        assertThat(activeUser1.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        ImportRow uncheckpointedRow1 = importRowRepository.findByBatchIdOrderByRowNoAsc(batchId).getFirst();
+        assertThat(uncheckpointedRow1.getStatus()).isEqualTo(ImportRowStatus.VALID);
+        assertThat(uncheckpointedRow1.getCreatedUserId()).isNull();
+        assertThat(uncheckpointedRow1.getProvisionalUserId()).isNotNull();
+
+        // Expire lease and recover through production dispatcher
+        jdbcTemplate.update(
+                "UPDATE identity.import_batch SET lease_expires_at = now() - interval '1 minute' WHERE id = ?",
+                batchId);
+        clearInvocations(keycloakClient);
+
+        dispatcherWorker().runScheduledImportBatches();
+
+        // Must NOT call Keycloak createUser again for u1; only u2 is created
+        verify(keycloakClient, times(1)).createUser(any());
+        verify(keycloakClient, times(1)).createUser(argThat(cmd -> cmd != null && u2.equalsIgnoreCase(cmd.username())));
+
+        Integer u1Count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM identity.user_account WHERE username_normalized = ? AND deleted_at IS NULL",
+                Integer.class,
+                u1.toLowerCase());
+        assertThat(u1Count).isEqualTo(1);
+
+        List<ImportRow> finalRows = importRowRepository.findByBatchIdOrderByRowNoAsc(batchId);
+        assertThat(finalRows.get(0).getStatus()).isEqualTo(ImportRowStatus.CREATED);
+        assertThat(finalRows.get(0).getCreatedUserId()).isEqualTo(activeUser1.getId());
+        assertThat(finalRows.get(1).getStatus()).isEqualTo(ImportRowStatus.CREATED);
+
+        String recoveredPwd = readResultCell(batchId, 1, 5);
+        assertThat(recoveredPwd).isNotBlank();
+        assertLoginSucceeds(u1, recoveredPwd);
+    }
+
+    @Test
+    void crashAfterGeneratedRowCreatedAndResultUploadFailure_preservesExactGeneratedPassword() throws Exception {
+        String sfx = suffix();
+        // Part A: crash after row 1 CREATED before row 2 & before result upload
+        String u1 = "r1.3.a1." + sfx;
+        String u2 = "r1.3.a2." + sfx;
+        UUID batchA = uploadBatch(
+                buildImportXlsx(List.of(
+                        new String[] {u1, "", "Gen Crash 1", "", "", ""},
+                        new String[] {u2, "", "Gen Crash 2", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchA, "r1-3-a-" + sfx);
+
+        doAnswer(invocation -> {
+            KeycloakIdentityClient.CreateUserCommand cmd = invocation.getArgument(0);
+            if (u2.equalsIgnoreCase(cmd.username())) {
+                throw new SimulatedWorkerCrashError("Simulated crash before row 2");
+            }
+            return invocation.callRealMethod();
+        }).when(keycloakClient).createUser(any());
+
+        try {
+            dispatcherWorker().runScheduledImportBatches();
+        } catch (SimulatedWorkerCrashError expected) {
+            // Simulated crash
+        }
+        reset(keycloakClient);
+
+        // Row 1 is CREATED with raw.passwordEnc == null, generated_password_enc != null
+        String rawRow1 = jdbcTemplate.queryForObject(
+                "SELECT raw::text FROM identity.import_row WHERE batch_id = ? AND row_no = 2",
+                String.class,
+                batchA);
+        assertThat(objectMapper.readTree(rawRow1).path("passwordEnc").isNull()).isTrue();
+        String stagedEnc = jdbcTemplate.queryForObject(
+                "SELECT generated_password_enc FROM identity.import_row WHERE batch_id = ? AND row_no = 2",
+                String.class,
+                batchA);
+        assertThat(stagedEnc).isNotBlank();
+
+        jdbcTemplate.update(
+                "UPDATE identity.import_batch SET lease_expires_at = now() - interval '1 minute' WHERE id = ?",
+                batchA);
+        dispatcherWorker().runScheduledImportBatches();
+
+        // After completion, generated_password_enc is wiped and exact password authenticates
+        Integer remainingStaged = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM identity.import_row WHERE batch_id = ? AND generated_password_enc IS NOT NULL",
+                Integer.class,
+                batchA);
+        assertThat(remainingStaged).isZero();
+        String pwdA1 = readResultCell(batchA, 1, 5);
+        String pwdA2 = readResultCell(batchA, 2, 5);
+        assertLoginSucceeds(u1, pwdA1);
+        assertLoginSucceeds(u2, pwdA2);
+
+        // Part B: Result upload fails -> retries cleanly without recreating user and keeps exact password
+        String u3 = "r1.3.b1." + sfx;
+        UUID batchB = uploadBatch(
+                buildImportXlsx(List.<String[]>of(new String[] {u3, "", "Upload Fail Gen", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchB, "r1-3-b-" + sfx);
+
+        AtomicBoolean failResultPut = new AtomicBoolean(true);
+        doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            if (key != null && key.endsWith("/result.xlsx") && failResultPut.compareAndSet(true, false)) {
+                throw new ExternalServiceException("INTERNAL_ERROR", "Simulated S3 upload outage", null);
+            }
+            return invocation.callRealMethod();
+        }).when(encryptedObjectStorage).putEncrypted(any(), any());
+
+        dispatcherWorker().runScheduledImportBatches();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT status FROM identity.import_batch WHERE id = ?",
+                Short.class,
+                batchB)).isEqualTo(ImportBatchStatus.PROCESSING.code());
+
+        reset(encryptedObjectStorage);
+        clearInvocations(keycloakClient);
+        jdbcTemplate.update(
+                "UPDATE identity.import_batch SET next_retry_at = now() - interval '1 second' WHERE id = ?",
+                batchB);
+        dispatcherWorker().runScheduledImportBatches();
+
+        verify(keycloakClient, times(0)).createUser(any());
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchB)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        String pwdB = readResultCell(batchB, 1, 5);
+        assertLoginSucceeds(u3, pwdB);
+    }
+
+    @Test
+    void importDoesNotDeleteForeignProvisioningAccount_andFailsRowWithUsernameTaken() throws Exception {
+        String sfx = suffix();
+        String sharedUsername = "r1.6.shared." + sfx;
+        String interactiveFullName = "Interactive Original Owner";
+        String interactivePwd = "Interactive@1234";
+        UUID batchId = uploadBatch(
+                buildImportXlsx(List.<String[]>of(
+                        new String[] {sharedUsername, "Import@1234", "Import Overwrite Attempt", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        confirmBatch(batchId, "r1-6-" + sfx);
+
+        CountDownLatch kcUserCreated = new CountDownLatch(1);
+        CountDownLatch releaseSetPassword = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            kcUserCreated.countDown();
+            assertThat(releaseSetPassword.await(15, TimeUnit.SECONDS)).isTrue();
+            return invocation.callRealMethod();
+        }).when(keycloakClient).setPassword(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<MvcResult> interactiveFuture = executor.submit(() -> mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "%s",
+                                  "fullName": "%s"
+                                }
+                                """.formatted(sharedUsername, interactivePwd, interactiveFullName)))
+                .andReturn());
+
+        try {
+            assertThat(kcUserCreated.await(15, TimeUnit.SECONDS)).isTrue();
+
+            // Interactive create is paused in PROVISIONING with a real Keycloak user.
+            // Run the confirmed import for the exact same username.
+            dispatcherWorker().runScheduledImportBatches();
+            // Release paused interactive create
+            releaseSetPassword.countDown();
+            MvcResult interactiveRes = interactiveFuture.get(15, TimeUnit.SECONDS);
+            assertThat(interactiveRes.getResponse().getStatus()).isEqualTo(201);
+
+            UUID interactiveId = UUID.fromString(
+                    objectMapper.readTree(interactiveRes.getResponse().getContentAsString()).get("id").asText());
+            createdUserIds.add(interactiveId);
+            createdKeycloakUserIds.add(interactiveId);
+
+            // Original interactive account survived untouched and authenticates with its password
+            UserAccount persisted = userAccountRepository.findById(interactiveId).orElseThrow();
+            assertThat(persisted.getStatus()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(persisted.getFullName()).isEqualTo(interactiveFullName);
+            assertLoginSucceeds(sharedUsername, interactivePwd);
+
+            // Import batch failed that row with stable USERNAME_TAKEN conflict
+            mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchId)
+                            .with(asUser(Permissions.USER_MODIFY)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("COMPLETED_WITH_ERRORS"))
+                    .andExpect(jsonPath("$.createdRows").value(0))
+                    .andExpect(jsonPath("$.failedRows").value(1));
+
+            mockMvc.perform(get("/api/v1/admin/import-batches/{id}/rows", batchId)
+                            .with(asUser(Permissions.USER_MODIFY)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[0].status").value("FAILED"))
+                    .andExpect(jsonPath("$.items[0].failureCode").value("USERNAME_TAKEN"));
+        } finally {
+            releaseSetPassword.countDown();
+            reset(keycloakClient);
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void uploadAndConfirmByDifferentAdmins_auditsConfirmerIdAndUsername() throws Exception {
+        String sfx = suffix();
+        String uploaderUsername = "r1.7.uploader." + sfx;
+        String confirmerUsername = "r1.7.confirmer." + sfx;
+        UUID uploaderId = insertActiveUser(uploaderUsername, null);
+        UUID confirmerId = insertActiveUser(confirmerUsername, null);
+        String studentUsername = "r1.7.stu." + sfx;
+
+        MvcResult uploadRes = mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                        .file(multipartXlsx("diff-admin.xlsx", buildImportXlsx(List.<String[]>of(
+                                new String[] {studentUsername, "Valid@1234", "Actor Check Student", "", "", ""}))))
+                        .with(asUser(uploaderId, uploaderUsername, Permissions.USER_MODIFY)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID batchId = UUID.fromString(objectMapper.readTree(uploadRes.getResponse().getContentAsString()).get("id").asText());
+        createdBatchIds.add(batchId);
+
+        String key = "r1-7-" + sfx;
+        createdIdempotencyKeys.add(key);
+        mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchId)
+                        .header("Idempotency-Key", key)
+                        .with(asUser(confirmerId, confirmerUsername, Permissions.USER_MODIFY)))
+                .andExpect(status().isOk());
+
+        dispatcherWorker().runScheduledImportBatches();
+
+        while (outboxRelay.relayBatch() > 0) {
+            // drain to audit.audit_event
+        }
+
+        UUID createdStudentId = jdbcTemplate.queryForObject(
+                "SELECT created_user_id FROM identity.import_row WHERE batch_id = ?",
+                UUID.class,
+                batchId);
+
+        Map<String, Object> userCreatedAudit = jdbcTemplate.queryForMap(
+                "SELECT actor_id, actor_username FROM audit.audit_event WHERE action = 'USER_CREATED' AND target_id = ?",
+                createdStudentId.toString());
+        assertThat(userCreatedAudit.get("actor_id")).isEqualTo(confirmerId);
+        assertThat(userCreatedAudit.get("actor_username")).isEqualTo(confirmerUsername);
+
+        Map<String, Object> batchCompletedAudit = jdbcTemplate.queryForMap(
+                "SELECT actor_id, actor_username FROM audit.audit_event WHERE action = 'IMPORT_BATCH_COMPLETED' AND target_id = ?",
+                batchId.toString());
+        assertThat(batchCompletedAudit.get("actor_id")).isEqualTo(confirmerId);
+        assertThat(batchCompletedAudit.get("actor_username")).isEqualTo(confirmerUsername);
+    }
+
+    @Test
+    void confirmTwoBatchesWithSameIdempotencyKey_returns409SequentiallyAndConcurrently() throws Exception {
+        String sfx = suffix();
+        UUID batchA = uploadBatch(
+                buildImportXlsx(List.<String[]>of(
+                        new String[] {"r1.9.a." + sfx, "Valid@1234", "Batch A", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        UUID batchB = uploadBatch(
+                buildImportXlsx(List.<String[]>of(
+                        new String[] {"r1.9.b." + sfx, "Valid@1234", "Batch B", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+
+        String seqKey = "r1-9-seq-" + sfx;
+        createdIdempotencyKeys.add(seqKey);
+        MvcResult confirmA = mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchA)
+                        .header("Idempotency-Key", seqKey)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andReturn();
+
+        mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchB)
+                        .header("Idempotency-Key", seqKey)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+
+        // Batch B stays VALIDATED; replay of Batch A stays identical
+        mockMvc.perform(get("/api/v1/admin/import-batches/{id}", batchB)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("VALIDATED"));
+
+        MvcResult replayA = mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchA)
+                        .header("Idempotency-Key", seqKey)
                         .with(asUser(Permissions.USER_MODIFY)))
                 .andExpect(status().isOk())
                 .andReturn();
-        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(resultRes.getResponse().getContentAsByteArray()))) {
-            Sheet sheet = wb.getSheetAt(0);
-            DataFormatter fmt = new DataFormatter();
-            assertThat(fmt.formatCellValue(sheet.getRow(1).getCell(5))).isNotBlank();
-            assertThat(fmt.formatCellValue(sheet.getRow(2).getCell(5))).isEmpty();
-            assertThat(fmt.formatCellValue(sheet.getRow(3).getCell(5))).isNotBlank();
-            assertThat(fmt.formatCellValue(sheet.getRow(4).getCell(5))).isEmpty();
-            assertThat(fmt.formatCellValue(sheet.getRow(5).getCell(5))).isNotBlank();
+        assertThat(replayA.getResponse().getContentAsString()).isEqualTo(confirmA.getResponse().getContentAsString());
+
+        // Concurrent cross-batch reuse race
+        UUID batchC = uploadBatch(
+                buildImportXlsx(List.<String[]>of(
+                        new String[] {"r1.9.c." + sfx, "Valid@1234", "Batch C", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        UUID batchD = uploadBatch(
+                buildImportXlsx(List.<String[]>of(
+                        new String[] {"r1.9.d." + sfx, "Valid@1234", "Batch D", "", "", ""})),
+                false,
+                Permissions.USER_MODIFY);
+        String concKey = "r1-9-conc-" + sfx;
+        createdIdempotencyKeys.add(concKey);
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Callable<MvcResult> callC = () -> {
+                ready.countDown();
+                start.await(10, TimeUnit.SECONDS);
+                return mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchC)
+                                .header("Idempotency-Key", concKey)
+                                .with(asUser(Permissions.USER_MODIFY)))
+                        .andReturn();
+            };
+            Callable<MvcResult> callD = () -> {
+                ready.countDown();
+                start.await(10, TimeUnit.SECONDS);
+                return mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchD)
+                                .header("Idempotency-Key", concKey)
+                                .with(asUser(Permissions.USER_MODIFY)))
+                        .andReturn();
+            };
+            Future<MvcResult> futC = executor.submit(callC);
+            Future<MvcResult> futD = executor.submit(callD);
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            MvcResult resC = futC.get(15, TimeUnit.SECONDS);
+            MvcResult resD = futD.get(15, TimeUnit.SECONDS);
+            int statusC = resC.getResponse().getStatus();
+            int statusD = resD.getResponse().getStatus();
+            assertThat(List.of(statusC, statusD)).containsExactlyInAnyOrder(200, 409);
+            MvcResult conflictRes = statusC == 409 ? resC : resD;
+            assertThat(objectMapper.readTree(conflictRes.getResponse().getContentAsString()).get("code").asText())
+                    .isEqualTo("IDEMPOTENCY_KEY_REUSED");
+        } finally {
+            executor.shutdownNow();
         }
+    }
+
+    @Test
+    void uploadRateLimit_returns429BeforeWorkbookParsing_andIsolatesClients() throws Exception {
+        String sfx = suffix();
+        String clientA = "203.0.113.91";
+        String clientB = "203.0.113.92";
+        int limit = securityProperties.rateLimit().uploadPerIpLimit();
+        byte[] xlsx = buildImportXlsx(List.<String[]>of(
+                new String[] {"rl.u." + sfx, "Valid@1234", "Rate Limit User", "", "", ""}));
+
+        for (int i = 1; i <= limit; i++) {
+            MvcResult res = mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                            .file(multipartXlsx("rl-" + i + ".xlsx", xlsx))
+                            .with(req -> {
+                                req.setRemoteAddr("127.0.0.1");
+                                return req;
+                            })
+                            .header(ClientIpResolver.X_FORWARDED_FOR, clientA)
+                            .with(asUser(Permissions.USER_MODIFY)))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+            createdBatchIds.add(UUID.fromString(
+                    objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText()));
+        }
+
+        int batchesBeforeLimit = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM identity.import_batch", Integer.class);
+        clearInvocations(workbookCodec);
+
+        mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                        .file(multipartXlsx("rl-blocked.xlsx", xlsx))
+                        .with(req -> {
+                            req.setRemoteAddr("127.0.0.1");
+                            return req;
+                        })
+                        .header(ClientIpResolver.X_FORWARDED_FOR, clientA)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().exists("Retry-After"))
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+        verify(workbookCodec, times(0)).parseUploadedWorkbook(any(), any());
+        int batchesAfterLimit = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM identity.import_batch", Integer.class);
+        assertThat(batchesAfterLimit).isEqualTo(batchesBeforeLimit);
+
+        // Independent client B is allowed
+        MvcResult clientBRes = mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                        .file(multipartXlsx("rl-client-b.xlsx", xlsx))
+                        .with(req -> {
+                            req.setRemoteAddr("127.0.0.1");
+                            return req;
+                        })
+                        .header(ClientIpResolver.X_FORWARDED_FOR, clientB)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        createdBatchIds.add(UUID.fromString(
+                objectMapper.readTree(clientBRes.getResponse().getContentAsString()).get("id").asText()));
     }
 
     @Test
@@ -636,13 +1276,7 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 new String[] {"exp.u4." + sfx, explicitPwd2, "Explicit Four", "", "", ""}
         );
         UUID batchId = uploadBatch(buildImportXlsx(rows), false, Permissions.USER_MODIFY);
-        String key = "enc-confirm-" + sfx;
-        createdIdempotencyKeys.add(key);
-
-        mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchId)
-                        .header("Idempotency-Key", key)
-                        .with(asUser(Permissions.USER_MODIFY)))
-                .andExpect(status().isOk());
+        confirmBatch(batchId, "enc-confirm-" + sfx);
 
         ImportBatchStatus statusAfter = importBatchProcessorJob.processBatch(batchId);
         assertThat(statusAfter).isEqualTo(ImportBatchStatus.COMPLETED);
@@ -659,7 +1293,6 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
         String resultKey = ImportBatchService.resultObjectKey(batchId);
         byte[] rawStoredBytes = ((InMemoryObjectStorage) objectStorage).rawBytes(resultKey).orElseThrow();
         assertThat(rawStoredBytes.length).isGreaterThan(20);
-        // Must NOT start with ZIP magic PK (0x50, 0x4B)
         assertThat(rawStoredBytes[0] == 0x50 && rawStoredBytes[1] == 0x4B).isFalse();
         String rawAsText = new String(rawStoredBytes, StandardCharsets.UTF_8);
         assertThat(rawAsText).doesNotContain("gen.u1." + sfx).doesNotContain(explicitPwd1).doesNotContain(explicitPwd2);
@@ -694,15 +1327,16 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
         }
 
         // 4. import_row.raw in DB has NO password on any row after completion
-        List<String> rawJsons = jdbcTemplate.queryForList(
-                "SELECT raw::text FROM identity.import_row WHERE batch_id = ?",
-                String.class,
+        List<Map<String, Object>> dbRows = jdbcTemplate.queryForList(
+                "SELECT raw::text AS raw_text, generated_password_enc FROM identity.import_row WHERE batch_id = ?",
                 batchId);
-        assertThat(rawJsons).hasSize(4);
-        for (String rawJson : rawJsons) {
+        assertThat(dbRows).hasSize(4);
+        for (Map<String, Object> dbRow : dbRows) {
+            String rawJson = (String) dbRow.get("raw_text");
             JsonNode node = objectMapper.readTree(rawJson);
             assertThat(node.path("passwordEnc").isNull() || node.path("passwordEnc").isMissingNode()).isTrue();
             assertThat(rawJson).doesNotContain(explicitPwd1).doesNotContain(explicitPwd2);
+            assertThat(dbRow.get("generated_password_enc")).isNull();
         }
 
         // 5. Logs contain NO passwords (neither user-supplied nor system-generated)
@@ -713,9 +1347,48 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 .doesNotContain(genPwd1)
                 .doesNotContain(genPwd3);
 
-        // 6. Audit outbox contains NO passwords
+        // 6. R1-14: Persisted audit outbox AND relayed audit_event payloads contain expected actions and NO secrets
+        List<String> createdUserIdsForBatch = jdbcTemplate.queryForList(
+                "SELECT created_user_id::text FROM identity.import_row WHERE batch_id = ? AND created_user_id IS NOT NULL",
+                String.class,
+                batchId);
+        List<String> targetIds = new ArrayList<>();
+        targetIds.add(batchId.toString());
+        targetIds.addAll(createdUserIdsForBatch);
+
+        List<String> outboxPayloads = jdbcTemplate.queryForList(
+                "SELECT payload::text FROM shared.outbox_event WHERE topic = 'audit' AND payload->>'targetId' = ANY (?)",
+                String.class,
+                (Object) targetIds.toArray(String[]::new));
+        assertThat(outboxPayloads).isNotEmpty();
+        assertThat(String.join("\n", outboxPayloads))
+                .contains("IMPORT_BATCH_UPLOADED")
+                .contains("IMPORT_BATCH_CONFIRMED")
+                .contains("USER_CREATED")
+                .contains("IMPORT_BATCH_COMPLETED")
+                .contains("IMPORT_RESULT_DOWNLOADED")
+                .doesNotContain(explicitPwd1)
+                .doesNotContain(explicitPwd2)
+                .doesNotContain(genPwd1)
+                .doesNotContain(genPwd3)
+                .doesNotContain("passwordEnc");
+
         while (outboxRelay.relayBatch() > 0) {
             // drain
+        }
+
+        List<Map<String, Object>> persistedAudits = jdbcTemplate.queryForList(
+                "SELECT action, before::text AS before_txt, after::text AS after_txt, reason FROM audit.audit_event WHERE target_id = ANY (?)",
+                (Object) targetIds.toArray(String[]::new));
+        assertThat(persistedAudits).isNotEmpty();
+        for (Map<String, Object> ev : persistedAudits) {
+            String combined = ev.get("before_txt") + "|" + ev.get("after_txt") + "|" + ev.get("reason");
+            assertThat(combined)
+                    .doesNotContain(explicitPwd1)
+                    .doesNotContain(explicitPwd2)
+                    .doesNotContain(genPwd1)
+                    .doesNotContain(genPwd3)
+                    .doesNotContain("passwordEnc");
         }
 
         // 7. DELETE /{id}/result deletes object, records audit, and subsequent GET -> 404
@@ -734,7 +1407,9 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
     }
 
     @Test
-    void upload_rejectsOver2000Rows_andRejectsFormulas() throws Exception {
+    void upload_rejectsOver2000Rows_formulas_macros_zipBomb_andNonZip() throws Exception {
+        int batchesBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM identity.import_batch", Integer.class);
+
         byte[] over2000 = buildLargeImportXlsx(2_001);
         mockMvc.perform(multipart("/api/v1/admin/import-batches")
                         .file(multipartXlsx("too-many-rows.xlsx", over2000))
@@ -759,6 +1434,127 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                         .with(asUser(Permissions.USER_MODIFY)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("IMPORT_FORMULA_NOT_ALLOWED"));
+
+        // R1-16: .xlsm macro filename
+        byte[] validXlsx = buildImportXlsx(List.<String[]>of(
+                new String[] {"macro.u." + suffix(), "Valid@1234", "Macro User", "", "", ""}));
+        mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                        .file(new MockMultipartFile(
+                                "file",
+                                "macro.xlsm",
+                                "application/vnd.ms-excel.sheet.macroEnabled.12",
+                                validXlsx))
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_MACRO_NOT_ALLOWED"));
+
+        // R1-16: .xlsx disguise with embedded xl/vbaProject.bin
+        byte[] disguisedMacro = injectZipEntry(validXlsx, "xl/vbaProject.bin", "fake-vba-bytes".getBytes(StandardCharsets.UTF_8));
+        mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                        .file(multipartXlsx("disguised-macro.xlsx", disguisedMacro))
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_MACRO_NOT_ALLOWED"));
+
+        // R1-16: Zip bomb (high-compression giant XML entry > ZipSecureFile limits)
+        byte[] zipBomb = injectZipEntry(
+                validXlsx,
+                "xl/sharedStrings.xml",
+                "A".repeat(12 * 1024 * 1024).getBytes(StandardCharsets.UTF_8));
+        mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                        .file(multipartXlsx("bomb.xlsx", zipBomb))
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_INVALID_FILE"));
+
+        // R1-16: Non-zip payload
+        mockMvc.perform(multipart("/api/v1/admin/import-batches")
+                        .file(multipartXlsx("notzip.xlsx", "not-a-zip".getBytes(StandardCharsets.UTF_8)))
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_INVALID_FILE"));
+
+        int batchesAfter = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM identity.import_batch", Integer.class);
+        assertThat(batchesAfter).isEqualTo(batchesBefore);
+    }
+
+    private ImportBatchProcessorJob.ImportBatchProcessorWorker dispatcherWorker() {
+        return new ImportBatchProcessorJob.ImportBatchProcessorWorker(importBatchProcessorJob);
+    }
+
+    private void confirmBatch(UUID batchId, String idempotencyKey, String... permissions) throws Exception {
+        createdIdempotencyKeys.add(idempotencyKey);
+        String[] effectivePermissions = permissions.length == 0
+                ? new String[] {Permissions.USER_MODIFY}
+                : permissions;
+        mockMvc.perform(post("/api/v1/admin/import-batches/{id}/confirm", batchId)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .with(asUser(effectivePermissions)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    private String readResultCell(UUID batchId, int dataRowIndex1Based, int cellIndex) throws Exception {
+        MvcResult resultRes = mockMvc.perform(get("/api/v1/admin/import-batches/{id}/result", batchId)
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isOk())
+                .andReturn();
+        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(resultRes.getResponse().getContentAsByteArray()))) {
+            Sheet sheet = wb.getSheetAt(0);
+            DataFormatter fmt = new DataFormatter();
+            return fmt.formatCellValue(sheet.getRow(dataRowIndex1Based).getCell(cellIndex));
+        }
+    }
+
+    private void assertLoginSucceeds(String username, String password) throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, "203.0.113.99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "identifier", username,
+                                "password", password))))
+                .andExpect(status().isOk());
+    }
+
+    private void clearRateLimitKeys() {
+        redisTemplate.delete(List.of(
+                RateLimitFilter.UPLOAD_KEY_PREFIX + "127.0.0.1",
+                RateLimitFilter.UPLOAD_KEY_PREFIX + "203.0.113.91",
+                RateLimitFilter.UPLOAD_KEY_PREFIX + "203.0.113.92",
+                RateLimitFilter.KEY_PREFIX + "127.0.0.1",
+                RateLimitFilter.KEY_PREFIX + "203.0.113.99"));
+    }
+
+    private static byte[] injectZipEntry(byte[] baseZipBytes, String entryName, byte[] entryContent) throws IOException {
+        try (ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(baseZipBytes));
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                ZipOutputStream zout = new ZipOutputStream(out)) {
+            ZipEntry entry;
+            boolean replaced = false;
+            while ((entry = zin.getNextEntry()) != null) {
+                zout.putNextEntry(new ZipEntry(entry.getName()));
+                if (entry.getName().equals(entryName)) {
+                    zout.write(entryContent);
+                    replaced = true;
+                } else {
+                    zin.transferTo(zout);
+                }
+                zout.closeEntry();
+            }
+            if (!replaced) {
+                zout.putNextEntry(new ZipEntry(entryName));
+                zout.write(entryContent);
+                zout.closeEntry();
+            }
+            zout.finish();
+            return out.toByteArray();
+        }
+    }
+
+    private static final class SimulatedWorkerCrashError extends Error {
+        SimulatedWorkerCrashError(String message) {
+            super(message);
+        }
     }
 
     private UUID uploadBatch(byte[] xlsxBytes, boolean mustChangePassword, String... permissions) throws Exception {

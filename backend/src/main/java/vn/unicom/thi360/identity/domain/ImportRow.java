@@ -61,6 +61,17 @@ public class ImportRow {
 
     @Column(name = "processed_at")
     private Instant processedAt;
+    @Column(name = "provisional_user_id")
+    private UUID provisionalUserId;
+
+    @Column(name = "generated_password_enc")
+    private String generatedPasswordEnc;
+
+    @Column(name = "retryable", nullable = false)
+    private boolean retryable;
+
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount;
 
     protected ImportRow() {
     }
@@ -100,24 +111,38 @@ public class ImportRow {
         this.createdUserId = Objects.requireNonNull(createdUserId, "createdUserId must not be null");
         this.failureCode = null;
         this.failureReason = null;
+        this.retryable = false;
         this.processedAt = processedAt;
         this.raw = this.raw.withoutPassword();
     }
 
-    public void markFailed(String failureCode, String failureReason, boolean wipePassword, Instant processedAt) {
+    public void markFailed(String failureCode, String failureReason, boolean retryable, Instant processedAt) {
         this.status = ImportRowStatus.FAILED;
         this.failureCode = failureCode;
         this.failureReason = failureReason;
+        this.retryable = retryable;
+        this.attemptCount = this.attemptCount + 1;
         this.processedAt = processedAt;
-        if (wipePassword) {
+        if (!retryable) {
             this.raw = this.raw.withoutPassword();
+            this.generatedPasswordEnc = null;
         }
     }
 
-    public void wipePassword() {
+    public void wipeSecrets() {
         if (this.raw != null && this.raw.passwordEnc() != null) {
             this.raw = this.raw.withoutPassword();
         }
+        this.generatedPasswordEnc = null;
+        this.retryable = false;
+    }
+
+    public void setProvisionalUserId(UUID provisionalUserId) {
+        this.provisionalUserId = provisionalUserId;
+    }
+
+    public void setGeneratedPasswordEnc(String generatedPasswordEnc) {
+        this.generatedPasswordEnc = generatedPasswordEnc;
     }
 
     public UUID getId() {
@@ -178,5 +203,20 @@ public class ImportRow {
 
     public Instant getProcessedAt() {
         return processedAt;
+    }
+    public UUID getProvisionalUserId() {
+        return provisionalUserId;
+    }
+
+    public String getGeneratedPasswordEnc() {
+        return generatedPasswordEnc;
+    }
+
+    public boolean isRetryable() {
+        return retryable;
+    }
+
+    public int getAttemptCount() {
+        return attemptCount;
     }
 }

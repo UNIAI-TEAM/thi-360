@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -55,7 +56,7 @@ public class ImportBatchService {
 
     private static final String MODULE = "IDENTITY";
     private static final String TARGET_TYPE = "IMPORT_BATCH";
-    private static final String CONFIRM_IDEMPOTENCY_SCOPE_PREFIX = "POST:/api/v1/admin/import-batches/";
+    private static final String CONFIRM_IDEMPOTENCY_SCOPE = "POST:/api/v1/admin/import-batches/confirm";
 
     private final ImportBatchRepository importBatchRepository;
     private final ImportRowRepository importRowRepository;
@@ -271,13 +272,19 @@ public class ImportBatchService {
             throw new ForbiddenException("IMPORT_CLASS_PERMISSION_REQUIRED", null);
         }
 
-        String scope = CONFIRM_IDEMPOTENCY_SCOPE_PREFIX + batchId + "/confirm";
-        return idempotencyService.executeOnce(
-                trimmedKey,
-                scope,
-                batchId.toString(),
-                ImportBatchResponse.class,
-                () -> confirmBatchInsideIdempotency(batchId, trimmedKey, actor, locale));
+        try {
+            return idempotencyService.executeOnce(
+                    trimmedKey,
+                    CONFIRM_IDEMPOTENCY_SCOPE,
+                    batchId.toString(),
+                    ImportBatchResponse.class,
+                    () -> confirmBatchInsideIdempotency(batchId, trimmedKey, actor, locale));
+        } catch (DataIntegrityViolationException ex) {
+            if (isIdempotencyKeyConstraintViolation(ex)) {
+                throw new ConflictException(IdempotencyService.ERROR_IDEMPOTENCY_KEY_REUSED);
+            }
+            throw ex;
+        }
     }
 
     private ImportBatchResponse confirmBatchInsideIdempotency(
@@ -310,7 +317,7 @@ public class ImportBatchService {
             throw new ConflictException("IMPORT_HAS_ERRORS");
         }
         Instant now = Instant.now(clock);
-        refreshed.markConfirmed(idempotencyKey, actor.id(), now);
+        refreshed.markConfirmed(idempotencyKey, actor.id(), actor.username(), now);
         importBatchRepository.saveAndFlush(refreshed);
 
         Map<String, Object> after = new LinkedHashMap<>();
@@ -454,5 +461,16 @@ public class ImportBatchService {
                 row.getFailureCode(),
                 row.getFailureReason(),
                 row.getProcessedAt());
+    }
+    private static boolean isIdempotencyKeyConstraintViolation(DataIntegrityViolationException ex) {
+        Throwable cursor = ex;
+        while (cursor != null) {
+            String msg = cursor.getMessage();
+            if (msg != null && msg.toLowerCase(Locale.ROOT).contains("uq_import_batch_idempotency_key")) {
+                return true;
+            }
+            cursor = cursor.getCause();
+        }
+        return false;
     }
 }

@@ -53,6 +53,12 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
             @Param("usernameNormalized") String usernameNormalized,
             @Param("emailNormalized") String emailNormalized);
     List<UserAccount> findAllByIdIn(Collection<UUID> ids);
+    @Query("""
+            SELECT u FROM UserAccount u
+            WHERE u.importRowId = :importRowId
+              AND u.deletedAt IS NULL
+            """)
+    Optional<UserAccount> findByImportRowIdAndDeletedAtIsNull(@Param("importRowId") UUID importRowId);
 
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(

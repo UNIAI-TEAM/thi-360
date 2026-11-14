@@ -69,6 +69,7 @@ import vn.unicom.thi360.identity.domain.UserRole;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.domain.UsernamePolicy;
+import vn.unicom.thi360.identity.infrastructure.ImportRowRepository;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
@@ -125,6 +126,7 @@ public class UserAdminService {
     private final UserIdentityRepository userIdentityRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final ImportRowRepository importRowRepository;
     private final UsernamePolicy usernamePolicy;
     private final PasswordPolicy passwordPolicy;
     private final PrivilegeGuard privilegeGuard;
@@ -148,6 +150,7 @@ public class UserAdminService {
             UserIdentityRepository userIdentityRepository,
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
+            ImportRowRepository importRowRepository,
             UsernamePolicy usernamePolicy,
             PasswordPolicy passwordPolicy,
             PrivilegeGuard privilegeGuard,
@@ -168,6 +171,7 @@ public class UserAdminService {
         this.userIdentityRepository = userIdentityRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
+        this.importRowRepository = importRowRepository;
         this.usernamePolicy = usernamePolicy;
         this.passwordPolicy = passwordPolicy;
         this.privilegeGuard = privilegeGuard;
@@ -326,11 +330,12 @@ public class UserAdminService {
 
     public UserDetailResponse createUser(CreateUserRequest request) {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
-        return createUserInternal(request, actor, true, false);
+        return createUserInternal(request, actor, true, null);
     }
 
     public UserDetailResponse createStudentForImport(
-            CreateUserRequest request, UUID actorId, String actorUsername, boolean platformActor) {
+            CreateUserRequest request, UUID importRowId, UUID actorId, String actorUsername, boolean platformActor) {
+        Objects.requireNonNull(importRowId, "importRowId must not be null");
         CurrentUser actor = new CurrentUser(
                 actorId,
                 actorUsername,
@@ -346,14 +351,15 @@ public class UserAdminService {
                 null,
                 request.classIds(),
                 request.mustChangePassword());
-        return createUserInternal(studentRequest, actor, false, true);
+        return createUserInternal(studentRequest, actor, false, importRowId);
     }
 
     private UserDetailResponse createUserInternal(
             CreateUserRequest request,
             CurrentUser actor,
             boolean enforceClassModifyPermission,
-            boolean cleanupIncompleteProvisioningForImport) {
+            UUID importRowId) {
+        boolean cleanupIncompleteProvisioningForImport = importRowId != null;
         boolean hasClassIds = request.classIds() != null && !request.classIds().isEmpty();
         if (enforceClassModifyPermission && hasClassIds && !actor.permissions().hasCode(Permissions.CLASS_MODIFY)) {
             throw new ForbiddenException("FORBIDDEN", null);
@@ -373,8 +379,19 @@ public class UserAdminService {
 
         String normalizedUsername = Normalizer.normalize(trimmedUsername);
         String normalizedEmail = Normalizer.normalize(trimmedEmail);
-        if (cleanupIncompleteProvisioningForImport) {
-            cleanupStaleProvisioningBeforeRetry(normalizedUsername);
+        if (importRowId != null) {
+            Optional<UserAccount> owned = userAccountRepository.findByImportRowIdAndDeletedAtIsNull(importRowId);
+            if (owned.isPresent()) {
+                UserAccount ownedAccount = owned.get();
+                if (ownedAccount.getStatus() == UserStatus.ACTIVE) {
+                    List<UserRoleSummary> roleSummaries = loadRolesForUsers(List.of(ownedAccount.getId()))
+                            .getOrDefault(ownedAccount.getId(), toRoleSummaries(targetRoles));
+                    return toDetailResponse(ownedAccount, roleSummaries);
+                }
+                if (ownedAccount.getStatus() == UserStatus.PROVISIONING) {
+                    cleanupOwnedProvisioningBeforeRetry(ownedAccount);
+                }
+            }
         }
         if (userAccountRepository.findActiveByUsernameNormalized(normalizedUsername).isPresent()) {
             throw new ConflictException(ERROR_USERNAME_TAKEN);
@@ -382,7 +399,6 @@ public class UserAdminService {
         if (normalizedEmail != null && userAccountRepository.findActiveByEmailNormalized(normalizedEmail).isPresent()) {
             throw new ConflictException(ERROR_EMAIL_TAKEN);
         }
-
         UUID provisionalId = Ids.newId();
         Instant now = Instant.now(clock);
         String roleIdsIntent = targetRoles.stream()
@@ -405,7 +421,11 @@ public class UserAdminService {
                         now,
                         actor.id());
                 provisional.setProvisioningRoleIds(roleIdsIntent);
+                provisional.setImportRowId(importRowId);
                 userAccountRepository.saveAndFlush(provisional);
+                if (importRowId != null) {
+                    importRowRepository.updateProvisionalUserId(importRowId, provisionalId);
+                }
             });
         } catch (DataIntegrityViolationException ex) {
             throw mapUniqueConstraintViolation(ex);
@@ -1424,16 +1444,12 @@ public class UserAdminService {
         }
     }
 
-    private void cleanupStaleProvisioningBeforeRetry(String normalizedUsername) {
-        Optional<UserAccount> existing = userAccountRepository.findActiveByUsernameNormalized(normalizedUsername);
-        if (existing.isEmpty() || existing.get().getStatus() != UserStatus.PROVISIONING) {
-            return;
+    private void cleanupOwnedProvisioningBeforeRetry(UserAccount ownedStale) {
+        Optional<UUID> kcId = keycloakClient.findUserIdByUsername(ownedStale.getUsernameNormalized());
+        if (kcId.isPresent()) {
+            keycloakClient.deleteUser(kcId.get());
         }
-        UserAccount stale = existing.get();
-        Optional<UUID> kcId = keycloakClient.findUserIdByUsername(normalizedUsername);
-        if (kcId.isEmpty() || deleteKeycloakUserQuietly(kcId.get())) {
-            deleteProvisionalUserQuietly(stale.getId());
-        }
+        deleteProvisionalUserQuietly(ownedStale.getId());
     }
 
     private void cleanupUncreatedProvisioningQuietly(UUID provisionalId, String normalizedUsername) {

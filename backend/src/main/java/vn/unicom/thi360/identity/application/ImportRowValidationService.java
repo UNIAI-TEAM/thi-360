@@ -20,6 +20,7 @@ import vn.unicom.thi360.identity.domain.UsernamePolicy;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.spi.ClassMembershipPort;
 import vn.unicom.thi360.identity.spi.ClassMembershipPort.ClassLookupInfo;
+import vn.unicom.thi360.shared.storage.EncryptedObjectStorage;
 
 @Component
 public class ImportRowValidationService {
@@ -35,18 +36,21 @@ public class ImportRowValidationService {
     private final UserAccountRepository userAccountRepository;
     private final ClassMembershipPort classMembershipPort;
     private final ImportExcelSchemaHelper schemaHelper;
+    private final EncryptedObjectStorage encryptedObjectStorage;
 
     public ImportRowValidationService(
             UsernamePolicy usernamePolicy,
             PasswordPolicy passwordPolicy,
             UserAccountRepository userAccountRepository,
             ClassMembershipPort classMembershipPort,
-            ImportExcelSchemaHelper schemaHelper) {
+            ImportExcelSchemaHelper schemaHelper,
+            EncryptedObjectStorage encryptedObjectStorage) {
         this.usernamePolicy = usernamePolicy;
         this.passwordPolicy = passwordPolicy;
         this.userAccountRepository = userAccountRepository;
         this.classMembershipPort = classMembershipPort;
         this.schemaHelper = schemaHelper;
+        this.encryptedObjectStorage = encryptedObjectStorage;
     }
 
     public List<ValidatedRow> validateParsedRows(List<ParsedImportRow> parsedRows, Locale locale) {
@@ -217,6 +221,16 @@ public class ImportRowValidationService {
                     if (takenUsernames.contains(usernameNorm)) {
                         errors.add(error(row.getRowNo(), ImportColumn.USERNAME, "USERNAME_TAKEN", locale));
                     }
+                }
+            }
+            if (!row.isPasswordGenerated()) {
+                String enc = row.getRaw().passwordEnc();
+                String plainPassword = enc == null || enc.isBlank()
+                        ? null
+                        : encryptedObjectStorage.decryptText(enc);
+                if (plainPassword == null || plainPassword.isBlank()
+                        || !passwordPolicy.isValid(plainPassword, rawUsername)) {
+                    errors.add(error(row.getRowNo(), ImportColumn.PASSWORD, "PASSWORD_WEAK", locale));
                 }
             }
 
