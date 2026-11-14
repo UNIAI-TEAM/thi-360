@@ -9,6 +9,13 @@ export type UpdateCatalogGroupRequest = components["schemas"]["UpdateCatalogGrou
 export type CreateCatalogItemRequest = components["schemas"]["CreateCatalogItemRequest"];
 export type UpdateCatalogItemRequest = components["schemas"]["UpdateCatalogItemRequest"];
 export type ReorderCatalogItemsRequest = components["schemas"]["ReorderCatalogItemsRequest"];
+export type CatalogOptionResponse = components["schemas"]["CatalogOptionResponse"];
+export type CatalogUsageResponse = components["schemas"]["CatalogUsageResponse"];
+export type CatalogUsagesResponse = components["schemas"]["CatalogUsagesResponse"];
+export type CombinationSubjectResponse = components["schemas"]["CombinationSubjectResponse"];
+export type CombinationVersionResponse = components["schemas"]["CombinationVersionResponse"];
+export type AuditEventResponse = components["schemas"]["AuditEventResponse"];
+export type PageResponseAuditEventResponse = components["schemas"]["PageResponseAuditEventResponse"];
 export type PageResponseCatalogGroupResponse =
   components["schemas"]["PageResponseCatalogGroupResponse"];
 export type PageResponseCatalogItemResponse =
@@ -20,7 +27,7 @@ export type CatalogStatus = CatalogGroupResponse["status"];
 
 export type ListCatalogGroupsQuery = operations["listGroups"]["parameters"]["query"];
 export type ListCatalogItemsQuery = operations["listItems"]["parameters"]["query"];
-
+export type ListAuditEventsQuery = operations["listAuditEvents"]["parameters"]["query"];
 export class CatalogApiError extends ApiStatusError {
   readonly code?: string;
   readonly fieldErrors: FieldError[];
@@ -64,8 +71,11 @@ export const catalogQueryKeys = {
   groups: (query?: ListCatalogGroupsQuery) => ["catalog", "groups", query ?? {}] as const,
   items: (groupId: string, query?: ListCatalogItemsQuery) =>
     ["catalog", "items", groupId, query ?? {}] as const,
+  options: (groupCode: string) => ["catalog", "options", groupCode] as const,
+  itemUsages: (itemId: string) => ["catalog", "item-usages", itemId] as const,
+  itemVersions: (itemId: string) => ["catalog", "item-versions", itemId] as const,
+  itemAudit: (itemId: string, page?: number) => ["catalog", "item-audit", itemId, page ?? 0] as const,
 };
-
 export interface CatalogApi {
   listGroups: (query?: ListCatalogGroupsQuery) => Promise<PageResponseCatalogGroupResponse>;
   getGroup: (id: string) => Promise<CatalogGroupResponse>;
@@ -89,8 +99,15 @@ export interface CatalogApi {
     groupId: string,
     payload: ReorderCatalogItemsRequest,
   ) => Promise<CatalogItemResponse[]>;
+  getOptions: (groupCode: string) => Promise<CatalogOptionResponse[]>;
+  getItemUsages: (itemId: string) => Promise<CatalogUsagesResponse>;
+  listItemVersions: (itemId: string) => Promise<CombinationVersionResponse[]>;
+  getCombinationVersion: (versionId: string) => Promise<CombinationVersionResponse>;
+  listItemAuditEvents: (
+    itemId: string,
+    query?: Omit<ListAuditEventsQuery, "targetType" | "targetId">,
+  ) => Promise<PageResponseAuditEventResponse>;
 }
-
 export async function listCatalogGroups(
   query?: ListCatalogGroupsQuery,
 ): Promise<PageResponseCatalogGroupResponse> {
@@ -205,6 +222,68 @@ export async function reorderCatalogItems(
   return data;
 }
 
+export async function getCatalogOptions(groupCode: string): Promise<CatalogOptionResponse[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/catalog/options", {
+    params: { query: { group: groupCode } },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function getCatalogItemUsages(itemId: string): Promise<CatalogUsagesResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/catalog/items/{id}/usages", {
+    params: { path: { id: itemId } },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function listCatalogItemVersions(
+  itemId: string,
+): Promise<CombinationVersionResponse[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/catalog/items/{id}/versions", {
+    params: { path: { id: itemId } },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function getCombinationVersion(
+  versionId: string,
+): Promise<CombinationVersionResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET(
+    "/api/v1/admin/catalog/combination-versions/{versionId}",
+    {
+      params: { path: { versionId } },
+    },
+  );
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
+export async function listCatalogItemAuditEvents(
+  itemId: string,
+  query?: Omit<ListAuditEventsQuery, "targetType" | "targetId">,
+): Promise<PageResponseAuditEventResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/audit-events", {
+    params: {
+      query: {
+        targetType: "CATALOG_ITEM",
+        targetId: itemId,
+        sort: "occurredAt,desc",
+        ...query,
+      },
+    },
+  });
+  if (!response.ok || !data) throw toCatalogApiError(response.status, error);
+  return data;
+}
+
 export const defaultCatalogApi: CatalogApi = {
   listGroups: listCatalogGroups,
   getGroup: getCatalogGroup,
@@ -216,4 +295,9 @@ export const defaultCatalogApi: CatalogApi = {
   updateItem: updateCatalogItem,
   deleteItem: deleteCatalogItem,
   reorderItems: reorderCatalogItems,
+  getOptions: getCatalogOptions,
+  getItemUsages: getCatalogItemUsages,
+  listItemVersions: listCatalogItemVersions,
+  getCombinationVersion: getCombinationVersion,
+  listItemAuditEvents: listCatalogItemAuditEvents,
 };

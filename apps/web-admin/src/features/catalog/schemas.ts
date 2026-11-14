@@ -91,3 +91,52 @@ export function createItemFormSchema(
       }
     });
 }
+
+export interface CombinationValidationMessages extends CatalogValidationMessages {
+  examRequired: string;
+  subjectsRequired: string;
+}
+
+export interface CombinationFormValues extends ItemFormValues {
+  examItemId: string;
+  subjectItemIds: string[];
+  sourceNote: string;
+}
+
+export function createCombinationFormSchema(
+  initialStatus: CatalogStatus | undefined,
+  messages: CombinationValidationMessages,
+) {
+  return z
+    .object({
+      code: z
+        .string()
+        .trim()
+        .min(1, messages.codeRequired)
+        .regex(CATALOG_CODE_REGEX, messages.codePattern),
+      displayOrder: z
+        .string()
+        .trim()
+        .refine(
+          (value) => value === "" || /^\d+$/.test(value),
+          messages.displayOrderInvalid,
+        ),
+      nameVi: z.string().trim().min(1, messages.nameViRequired),
+      nameEn: z.string(),
+      status: z.enum(["ACTIVE", "INACTIVE"]),
+      examItemId: z.string().trim().min(1, messages.examRequired),
+      subjectItemIds: z.array(z.string()).min(1, messages.subjectsRequired),
+      sourceNote: z.string(),
+      description: z.string(),
+      reason: z.string(),
+    })
+    .superRefine((values, ctx) => {
+      if (initialStatus === "ACTIVE" && values.status === "INACTIVE" && !values.reason.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["reason"],
+          message: messages.reasonRequired,
+        });
+      }
+    });
+}

@@ -14,6 +14,8 @@ import {
   type CatalogApi,
   type CatalogGroupResponse,
   type CatalogItemResponse,
+  type CatalogOptionResponse,
+  type CombinationVersionResponse,
   type PageResponseCatalogGroupResponse,
   type PageResponseCatalogItemResponse,
 } from "./api";
@@ -107,6 +109,21 @@ const SYSTEM_TASK_TYPE_GROUP: CatalogGroupResponse = {
   updatedAt: "2026-11-14T00:00:00Z",
   version: 0,
 };
+const SYSTEM_COMBINATION_GROUP: CatalogGroupResponse = {
+  id: "grp-combination",
+  code: "SUBJECT_COMBINATION",
+  nameVi: "Mã tổ hợp",
+  nameEn: "Subject Combination",
+  status: "ACTIVE",
+  type: "SYSTEM",
+  system: true,
+  kind: "COMBINATION",
+  refGroups: [],
+  itemCount: 1,
+  createdAt: "2026-11-14T00:00:00Z",
+  updatedAt: "2026-11-14T00:00:00Z",
+  version: 0,
+};
 
 const CUSTOM_SOURCE_GROUP: CatalogGroupResponse = {
   id: "grp-source",
@@ -189,6 +206,78 @@ const SUBJECT_ITEMS: CatalogItemResponse[] = [
   },
 ];
 
+const COMBINATION_VERSIONS: CombinationVersionResponse[] = [
+  {
+    id: "comb-v1",
+    itemId: "item-qd01",
+    itemCode: "QDA_QD01",
+    itemNameVi: "QĐ01",
+    itemNameEn: "QD01",
+    versionNo: 1,
+    examItemId: "exam-qda",
+    examCode: "QDA",
+    examNameVi: "Đánh giá năng lực Bộ Quốc phòng",
+    examNameEn: "QDA Exam",
+    examStatus: "ACTIVE",
+    sourceNote: "[MẪU] Dữ liệu thử nghiệm",
+    isCurrent: true,
+    createdAt: "2026-11-14T00:00:00Z",
+    subjects: [
+      {
+        subjectItemId: "item-toan",
+        code: "TOAN",
+        nameVi: "Toán học",
+        nameEn: "Mathematics",
+        position: 0,
+        status: "ACTIVE",
+      },
+      {
+        subjectItemId: "item-van",
+        code: "VAN",
+        nameVi: "Ngữ văn",
+        nameEn: "Literature",
+        position: 1,
+        status: "ACTIVE",
+      },
+    ],
+  },
+];
+
+const COMBINATION_ITEMS: CatalogItemResponse[] = [
+  {
+    id: "item-qd01",
+    groupId: "grp-combination",
+    groupCode: "SUBJECT_COMBINATION",
+    code: "QDA_QD01",
+    value: 1,
+    nameVi: "QĐ01",
+    nameEn: "QD01",
+    displayOrder: 0,
+    status: "ACTIVE",
+    effectiveStatus: "ACTIVE",
+    system: false,
+    depth: 1,
+    path: "/item-qd01/",
+    childCount: 0,
+    ownRefs: [],
+    inheritedRefs: [],
+    combination: COMBINATION_VERSIONS[0],
+    createdAt: "2026-11-14T00:00:00Z",
+    updatedAt: "2026-11-14T00:00:00Z",
+    version: 0,
+  },
+];
+
+const EXAM_OPTIONS: CatalogOptionResponse[] = [
+  { id: "exam-qda", code: "QDA", nameVi: "Đánh giá năng lực Bộ Quốc phòng", nameEn: "QDA Exam", value: 1, displayOrder: 0 },
+  { id: "exam-hsa", code: "HSA", nameVi: "Đánh giá năng lực ĐHQG Hà Nội", nameEn: "HSA Exam", value: 2, displayOrder: 1 },
+];
+
+const SUBJECT_OPTIONS: CatalogOptionResponse[] = [
+  { id: "item-toan", code: "TOAN", nameVi: "Toán học", nameEn: "Mathematics", value: 1, displayOrder: 0 },
+  { id: "item-van", code: "VAN", nameVi: "Ngữ văn", nameEn: "Literature", value: 2, displayOrder: 1 },
+  { id: "item-anh", code: "ANH", nameVi: "Tiếng Anh", nameEn: "English", value: 3, displayOrder: 2 },
+];
 function pageOfGroups(items: CatalogGroupResponse[]): PageResponseCatalogGroupResponse {
   return {
     items,
@@ -216,6 +305,7 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
         SYSTEM_SUBJECT_GROUP,
         SYSTEM_FORMAT_GROUP,
         SYSTEM_TASK_TYPE_GROUP,
+        SYSTEM_COMBINATION_GROUP,
         CUSTOM_SOURCE_GROUP,
       ]),
     ),
@@ -241,7 +331,12 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
     })),
     deleteGroup: vi.fn(async () => undefined),
     listItems: vi.fn(async (groupId, query) => {
-      const source = groupId === "grp-subject" ? SUBJECT_ITEMS : [];
+      const source =
+        groupId === "grp-subject"
+          ? SUBJECT_ITEMS
+          : groupId === "grp-combination"
+            ? COMBINATION_ITEMS
+            : [];
       const q = query?.q?.trim().toLowerCase() ?? "";
       const filtered = source.filter((item) => {
         const matchesStatus = !query?.status || item.status === query.status;
@@ -294,6 +389,40 @@ function createMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
         })
         .filter((x): x is CatalogItemResponse => x !== null),
     ),
+    getOptions: vi.fn(async (groupCode) => {
+      if (groupCode === "EXAM") return EXAM_OPTIONS;
+      if (groupCode === "SUBJECT") return SUBJECT_OPTIONS;
+      return [];
+    }),
+    getItemUsages: vi.fn(async (itemId) => ({
+      targetId: itemId,
+      targetCode: itemId === "item-qd01" ? "QDA_QD01" : "TOAN",
+      totalCount: 0,
+      blocking: false,
+      usages: [],
+    })),
+    listItemVersions: vi.fn(async () => COMBINATION_VERSIONS),
+    getCombinationVersion: vi.fn(async () => COMBINATION_VERSIONS[0]!),
+    listItemAuditEvents: vi.fn<CatalogApi["listItemAuditEvents"]>(async (itemId) => ({
+      items: [
+        {
+          id: "audit-1",
+          action: "CATALOG_ITEM_CREATED",
+          actorType: "USER",
+          actorUsername: "ops.admin",
+          actorRoles: ["ADMIN"],
+          module: "catalog",
+          occurredAt: "2026-11-14T01:00:00Z",
+          outcome: "SUCCESS",
+          targetId: itemId,
+          targetType: "CATALOG_ITEM",
+        },
+      ],
+      page: 0,
+      size: 10,
+      totalItems: 1,
+      totalPages: 1,
+    })),
   };
   for (const [key, value] of Object.entries(overrides)) {
     if (value !== undefined) {
@@ -394,8 +523,10 @@ describe("CatalogView: phân quyền và bốn trạng thái", () => {
     expect(screen.queryByRole("button", { name: "Thao tác danh mục" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Sửa Toán học/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Xóa Toán học/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ngừng sử dụng / })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Kéo để đổi thứ tự/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Di chuyển Toán học/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chi tiết Toán học" })).toBeInTheDocument();
   });
 
   it("hiện trạng thái đang tải, lỗi (Thử lại), chưa chọn nhóm, và rỗng giá trị", async () => {
@@ -660,6 +791,289 @@ describe("CatalogView: dialog nhóm và dialog giá trị", () => {
       expect(api.deleteGroup).toHaveBeenCalledWith("grp-source", "Không còn dùng");
     });
   });
+});
+
+describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng và xóa đang dùng", () => {
+  it("nhóm COMBINATION hiển thị thêm cột Kỳ thi, Các môn theo thứ tự và Phiên bản", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    expect(within(table).getByRole("columnheader", { name: "Kỳ thi" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Các môn" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Phiên bản" })).toBeInTheDocument();
+
+    expect(await within(table).findByText("QDA_QD01")).toBeInTheDocument();
+    expect(within(table).getByText("QĐ01")).toBeInTheDocument();
+    expect(within(table).getByText("Đánh giá năng lực Bộ Quốc phòng")).toBeInTheDocument();
+    expect(within(table).getByText("Toán học")).toBeInTheDocument();
+    expect(within(table).getByText("Ngữ văn")).toBeInTheDocument();
+    expect(within(table).getByText("v1")).toBeInTheDocument();
+  });
+
+  it("dialog tổ hợp: tạo mới chọn kỳ thi, thêm & đổi thứ tự môn, nguồn quy ước; khi sửa tổ hợp đang dùng hiện cảnh báo phiên bản mới", async () => {
+    const api = createMockApi({
+      getItemUsages: vi.fn(async (itemId) => ({
+        targetId: itemId,
+        targetCode: "QDA_QD01",
+        totalCount: 2,
+        blocking: false,
+        usages: [
+          {
+            source: "Đề thi",
+            objectType: "EXAM_BLUEPRINT",
+            count: 2,
+            blocking: false,
+            sampleLabels: ["Đề QĐ01 - 2026"],
+          },
+        ],
+      })),
+    });
+    renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Thêm giá trị" }));
+    const createDialog = await screen.findByRole("dialog");
+
+    await userEvent.type(within(createDialog).getByLabelText(/Mã giá trị/), "HSA_Q02");
+    await userEvent.type(within(createDialog).getByLabelText(/Tên tiếng Việt/), "Q02");
+
+    // Kiểm tra validate bắt buộc kỳ thi & môn
+    await userEvent.click(within(createDialog).getByRole("button", { name: "Lưu" }));
+    expect(
+      await within(createDialog).findByText(viMessages.catalog.validation.examRequired),
+    ).toBeInTheDocument();
+    expect(
+      within(createDialog).getByText(viMessages.catalog.validation.subjectsRequired),
+    ).toBeInTheDocument();
+
+    // Chọn kỳ thi
+    await userEvent.click(within(createDialog).getByRole("combobox", { name: /Kỳ thi/ }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "HSA — Đánh giá năng lực ĐHQG Hà Nội" }),
+    );
+
+    // Thêm 2 môn rồi đổi thứ tự môn thứ 2 lên đầu
+    await userEvent.click(within(createDialog).getByRole("combobox", { name: /Thêm môn/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "TOAN — Toán học" }));
+    await userEvent.click(within(createDialog).getByRole("combobox", { name: /Thêm môn/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "ANH — Tiếng Anh" }));
+
+    await userEvent.click(
+      within(createDialog).getByRole("button", { name: "Di chuyển Tiếng Anh (ANH) lên" }),
+    );
+    await userEvent.type(within(createDialog).getByLabelText(/Nguồn quy ước/), "Quy ước mới");
+    await userEvent.click(within(createDialog).getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => {
+      expect(api.createItem).toHaveBeenCalledWith("grp-combination", {
+        code: "HSA_Q02",
+        nameVi: "Q02",
+        status: "ACTIVE",
+        examItemId: "exam-hsa",
+        subjectItemIds: ["item-anh", "item-toan"],
+        sourceNote: "Quy ước mới",
+      });
+    });
+
+    // Mở dialog sửa QDA_QD01: đổi thứ tự môn khi tổ hợp đang được dùng -> hiện cảnh báo phiên bản 2
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa QĐ01" }));
+    const editDialog = await screen.findByRole("dialog");
+    expect(
+      await within(editDialog).findByText(/Phiên bản hiện tại: 1/),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      await within(editDialog).findByRole("button", { name: "Di chuyển Ngữ văn (VAN) lên" }),
+    );
+    expect(
+      await within(editDialog).findByText(/sẽ tạo phiên bản 2/),
+    ).toBeInTheDocument();
+    expect(
+      within(editDialog).getByRole("button", { name: "Lưu thành phiên bản mới" }),
+    ).toBeInTheDocument();
+  });
+
+  it("ngăn chi tiết giá trị: xem Thông tin, Nơi đang dùng, Lịch sử thay đổi (ẩn nếu thiếu AUDIT.VIEW) và Phiên bản cho tổ hợp", async () => {
+    const historyVersions: CombinationVersionResponse[] = [
+      {
+        ...COMBINATION_VERSIONS[0]!,
+        id: "comb-v2",
+        versionNo: 2,
+        isCurrent: true,
+        sourceNote: "Bản cập nhật",
+      },
+      {
+        ...COMBINATION_VERSIONS[0]!,
+        id: "comb-v1",
+        versionNo: 1,
+        isCurrent: false,
+      },
+    ];
+    const api = createMockApi({
+      listItemVersions: vi.fn(async () => historyVersions),
+      getItemUsages: vi.fn(async (itemId) => ({
+        targetId: itemId,
+        targetCode: "QDA_QD01",
+        totalCount: 3,
+        blocking: false,
+        usages: [
+          {
+            source: "Mã tổ hợp",
+            objectType: "SUBJECT_COMBINATION",
+            count: 3,
+            blocking: false,
+            sampleLabels: ["QĐ01"],
+          },
+        ],
+      })),
+    });
+
+    const { unmount } = renderCatalog({
+      api,
+      permissions: ["CATALOG.VIEW", "AUDIT.VIEW"],
+      search: "group=SUBJECT_COMBINATION",
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Chi tiết QĐ01" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByText("Cấu hình tổ hợp hiện hành")).toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("tab", { name: "Nơi đang dùng" }));
+    expect(await within(drawer).findByText("Tổng cộng 3 lượt tham chiếu")).toBeInTheDocument();
+    expect(within(drawer).getByText("Mã tổ hợp")).toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("tab", { name: "Lịch sử thay đổi" }));
+    expect(await within(drawer).findByText("Tạo mới giá trị")).toBeInTheDocument();
+    expect(within(drawer).getByText("ops.admin")).toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("tab", { name: "Phiên bản" }));
+    expect(await within(drawer).findByText("Phiên bản 2")).toBeInTheDocument();
+    expect(within(drawer).getByText("Phiên bản 1")).toBeInTheDocument();
+    expect(within(drawer).getByText("Hiện hành")).toBeInTheDocument();
+    unmount();
+
+    // Nhóm SIMPLE không có tab Phiên bản, và thiếu AUDIT.VIEW sẽ hiện thông báo quyền thay vì gọi API audit
+    const listAuditMock = vi.fn();
+    renderCatalog({
+      api: createMockApi({ listItemAuditEvents: listAuditMock }),
+      permissions: ["CATALOG.VIEW"],
+      search: "group=SUBJECT",
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Chi tiết Toán học" }));
+    const simpleDrawer = await screen.findByRole("dialog");
+    expect(within(simpleDrawer).queryByRole("tab", { name: "Phiên bản" })).not.toBeInTheDocument();
+    await userEvent.click(within(simpleDrawer).getByRole("tab", { name: "Lịch sử thay đổi" }));
+    expect(
+      await within(simpleDrawer).findByText(viMessages.catalog.detailDrawer.auditPermissionDenied),
+    ).toBeInTheDocument();
+    expect(listAuditMock).not.toHaveBeenCalled();
+  });
+
+  it("luồng ngừng sử dụng gọi usages trước, khóa khi blocking và gửi lý do khi hợp lệ", async () => {
+    const blockedApi = createMockApi({
+      getItemUsages: vi.fn(async () => ({
+        targetId: "item-toan",
+        targetCode: "TOAN",
+        totalCount: 1,
+        blocking: true,
+        usages: [
+          {
+            source: "Mã tổ hợp",
+            objectType: "SUBJECT_COMBINATION",
+            count: 1,
+            blocking: true,
+            sampleLabels: ["QĐ01"],
+          },
+        ],
+      })),
+    });
+    const { unmount } = renderCatalog({ api: blockedApi, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ngừng sử dụng Toán học" }));
+    const blockedDialog = await screen.findByRole("dialog");
+    expect(
+      await within(blockedDialog).findByText(viMessages.catalog.stopItemDialog.blockedAlert),
+    ).toBeInTheDocument();
+    expect(
+      within(blockedDialog).getByRole("button", { name: "Ngừng sử dụng" }),
+    ).toBeDisabled();
+    unmount();
+
+    const allowedApi = createMockApi({
+      getItemUsages: vi.fn(async () => ({
+        targetId: "item-toan",
+        targetCode: "TOAN",
+        totalCount: 0,
+        blocking: false,
+        usages: [],
+      })),
+    });
+    renderCatalog({ api: allowedApi, search: "group=SUBJECT" });
+    await userEvent.click(await screen.findByRole("button", { name: "Ngừng sử dụng Toán học" }));
+    const stopDialog = await screen.findByRole("dialog");
+
+    const confirmStopBtn = await within(stopDialog).findByRole("button", { name: "Ngừng sử dụng" });
+    await waitFor(() => expect(confirmStopBtn).not.toBeDisabled());
+    await userEvent.click(confirmStopBtn);
+    expect(
+      await within(stopDialog).findByText(viMessages.catalog.validation.reasonRequired),
+    ).toBeInTheDocument();
+
+    await userEvent.type(within(stopDialog).getByLabelText(/Lý do ngừng sử dụng/), "Tạm ẩn");
+    await userEvent.click(confirmStopBtn);
+
+    await waitFor(() => {
+      expect(allowedApi.updateItem).toHaveBeenCalledWith("item-toan", {
+        status: "INACTIVE",
+        reason: "Tạm ẩn",
+        version: 0,
+      });
+    });
+  });
+
+  it("xóa giá trị đang dùng (CATALOG_ITEM_IN_USE) hiện nơi đang dùng và gợi ý chuyển sang ngừng sử dụng", async () => {
+    const api = createMockApi({
+      deleteItem: vi.fn(async () => {
+        throw new CatalogApiError(409, "In use", "CATALOG_ITEM_IN_USE", [
+          { field: "id", code: "CATALOG_ITEM_IN_USE", message: "Mã tổ hợp (1): QĐ01" },
+        ]);
+      }),
+      getItemUsages: vi.fn(async () => ({
+        targetId: "item-toan",
+        targetCode: "TOAN",
+        totalCount: 1,
+        blocking: false,
+        usages: [
+          {
+            source: "Mã tổ hợp",
+            objectType: "SUBJECT_COMBINATION",
+            count: 1,
+            blocking: false,
+            sampleLabels: ["QĐ01"],
+          },
+        ],
+      })),
+    });
+    renderCatalog({ api, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Xóa Toán học" }));
+    const deleteConfirmDialog = await screen.findByRole("dialog");
+    await userEvent.type(within(deleteConfirmDialog).getByLabelText(/Lý do xóa/), "Không dùng nữa");
+    await userEvent.click(within(deleteConfirmDialog).getByRole("button", { name: "Xóa giá trị" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Không thể xóa giá trị đang được dùng" }),
+    ).toBeInTheDocument();
+    const inUseDialog = screen.getByRole("dialog");
+    expect(await within(inUseDialog).findByText("Mã tổ hợp")).toBeInTheDocument();
+    expect(within(inUseDialog).getByText("QĐ01")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(inUseDialog).getByRole("button", { name: "Chuyển sang ngừng sử dụng" }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Ngừng sử dụng giá trị?" }),
+    ).toBeInTheDocument();
+  });
 
   it("hiển thị đúng tiếng Anh và dùng pickName dự phòng nameVi khi locale là en", async () => {
     renderCatalog({ locale: "en", search: "group=SUBJECT" });
@@ -667,7 +1081,7 @@ describe("CatalogView: dialog nhóm và dialog giá trị", () => {
     expect(await screen.findByText("Toán học")).toBeInTheDocument();
     expect(screen.getByText("Mathematics")).toBeInTheDocument();
     const sidebar = screen.getByRole("heading", { name: /Catalogs/ }).closest("section")!;
-    expect(within(sidebar).getByRole("button", { name: /Subject/ })).toBeInTheDocument();
+    expect(within(sidebar).getByRole("button", { name: /^Subject\s*SUBJECT\s*\d+$/ })).toBeInTheDocument();
     expect(within(sidebar).getByText(/System ·/)).toBeInTheDocument();
     expect(within(sidebar).getByText(/Custom ·/)).toBeInTheDocument();
   });

@@ -18,7 +18,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Badge,
   Button,
+  Chip,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +38,8 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  Ban,
+  Eye,
   GripVertical,
   List,
   Lock,
@@ -47,10 +51,9 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { pickName } from "../utils";
-
 export type StatusFilter = "ALL" | CatalogStatus;
 
 export type SimpleItemsPanelProps = {
@@ -75,11 +78,12 @@ export type SimpleItemsPanelProps = {
   onEditGroup: () => void;
   onDeleteGroup: () => void;
   onAddItem: () => void;
+  onViewItem: (item: CatalogItemResponse) => void;
   onEditItem: (item: CatalogItemResponse) => void;
+  onStopItem: (item: CatalogItemResponse) => void;
   onDeleteItem: (item: CatalogItemResponse) => void;
   onReorder: (nextItems: CatalogItemResponse[]) => void;
 };
-
 export function SimpleItemsPanel({
   group,
   items,
@@ -102,7 +106,9 @@ export function SimpleItemsPanel({
   onEditGroup,
   onDeleteGroup,
   onAddItem,
+  onViewItem,
   onEditItem,
+  onStopItem,
   onDeleteItem,
   onReorder,
 }: SimpleItemsPanelProps) {
@@ -111,12 +117,12 @@ export function SimpleItemsPanel({
   const locale = useLocale();
 
   const isSystemGroup = group.type === "SYSTEM" || group.system;
+  const isCombinationGroup = group.kind === "COMBINATION";
   const isFiltered = searchQuery.trim().length > 0 || statusFilter !== "ALL";
   const supportsReorder = group.kind !== "TREE";
   const reorderEnabled =
     canModify && supportsReorder && !isFiltered && !reordering && totalPages <= 1 && items.length > 1;
   const groupDisplayName = pickName(group, locale);
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -145,8 +151,8 @@ export function SimpleItemsPanel({
     { value: "INACTIVE", label: t("statuses.INACTIVE") },
   ];
 
-  const colCount = canModify ? (supportsReorder ? 7 : 6) : 5;
-
+  const colCount =
+    (canModify && supportsReorder ? 1 : 0) + 5 + (isCombinationGroup ? 3 : 0) + 1;
   return (
     <section
       aria-labelledby="catalog-items-heading"
@@ -303,17 +309,28 @@ export function SimpleItemsPanel({
                   <th scope="col" className="px-3 py-2.5">
                     {t("columns.nameEn")}
                   </th>
+                  {isCombinationGroup && (
+                    <>
+                      <th scope="col" className="px-3 py-2.5">
+                        {t("columns.exam")}
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        {t("columns.subjects")}
+                      </th>
+                      <th scope="col" className="w-24 px-3 py-2.5">
+                        {t("columns.version")}
+                      </th>
+                    </>
+                  )}
                   <th scope="col" className="w-20 px-3 py-2.5">
                     {t("columns.value")}
                   </th>
                   <th scope="col" className="w-36 px-3 py-2.5">
                     {t("columns.status")}
                   </th>
-                  {canModify && (
-                    <th scope="col" className="w-28 py-2.5 pr-5 pl-3 text-right">
-                      {t("columns.actions")}
-                    </th>
-                  )}
+                  <th scope="col" className="w-36 py-2.5 pr-5 pl-3 text-right">
+                    {t("columns.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -365,13 +382,16 @@ export function SimpleItemsPanel({
                         index={index}
                         total={items.length}
                         locale={locale}
+                        isCombinationGroup={isCombinationGroup}
                         canModify={canModify}
                         showReorder={canModify && supportsReorder}
                         reorderEnabled={reorderEnabled}
                         isFiltered={isFiltered}
                         onMoveUp={() => handleMoveByIndex(index, -1)}
                         onMoveDown={() => handleMoveByIndex(index, 1)}
+                        onView={() => onViewItem(item)}
                         onEdit={() => onEditItem(item)}
+                        onStop={() => onStopItem(item)}
                         onDelete={() => onDeleteItem(item)}
                       />
                     ))}
@@ -418,26 +438,32 @@ function SortableItemRow({
   index,
   total,
   locale,
+  isCombinationGroup,
   canModify,
   showReorder,
   reorderEnabled,
   isFiltered,
   onMoveUp,
   onMoveDown,
+  onView,
   onEdit,
+  onStop,
   onDelete,
 }: {
   item: CatalogItemResponse;
   index: number;
   total: number;
   locale: string;
+  isCombinationGroup: boolean;
   canModify: boolean;
   showReorder: boolean;
   reorderEnabled: boolean;
   isFiltered: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onView: () => void;
   onEdit: () => void;
+  onStop: () => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("catalog");
@@ -453,6 +479,13 @@ function SortableItemRow({
 
   const displayName = pickName(item, locale);
   const dragTooltip = isFiltered ? t("dragDisabledFiltered") : t("dragHandleTitle");
+  const orderedSubjects = useMemo(
+    () =>
+      item.combination
+        ? [...item.combination.subjects].sort((a, b) => a.position - b.position)
+        : [],
+    [item.combination],
+  );
 
   return (
     <tr
@@ -516,35 +549,99 @@ function SortableItemRow({
       </td>
       <td className="px-3 font-medium text-text">{item.nameVi}</td>
       <td className="px-3 text-text-secondary">{item.nameEn || "—"}</td>
+      {isCombinationGroup && (
+        <>
+          <td className="px-3 text-text-secondary">
+            {item.combination ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-medium text-text">{item.combination.examCode}</span>
+                <span>
+                  {pickName(
+                    {
+                      nameVi: item.combination.examNameVi,
+                      nameEn: item.combination.examNameEn,
+                    },
+                    locale,
+                  )}
+                </span>
+                {item.combination.examStatus === "INACTIVE" && (
+                  <Badge>{t("statuses.INACTIVE")}</Badge>
+                )}
+              </div>
+            ) : (
+              "—"
+            )}
+          </td>
+          <td className="px-3">
+            {orderedSubjects.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1">
+                {orderedSubjects.map((subject) => (
+                  <Chip key={subject.subjectItemId} size="sm">
+                    {pickName(subject, locale)}
+                    {subject.status === "INACTIVE" ? ` (${t("statuses.INACTIVE")})` : ""}
+                  </Chip>
+                ))}
+              </div>
+            ) : (
+              "—"
+            )}
+          </td>
+          <td className="px-3">
+            {item.combination ? (
+              <Badge>{t("versionBadge", { version: item.combination.versionNo })}</Badge>
+            ) : (
+              "—"
+            )}
+          </td>
+        </>
+      )}
       <td className="px-3 text-text-secondary tabular-nums">{item.value}</td>
       <td className="px-3">
         <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
           {t(`statuses.${item.status}`)}
         </StatusChip>
       </td>
-      {canModify && (
-        <td className="py-1 pr-3 pl-2 text-right whitespace-nowrap">
-          <div className="inline-flex items-center justify-end gap-0.5">
-            <IconButton
-              icon={<Pencil />}
-              aria-label={t("editItem", { name: displayName })}
-              tooltip={t("editItem", { name: displayName })}
-              onClick={onEdit}
-              className="text-primary-text"
-            />
-            <IconButton
-              icon={<Trash2 />}
-              tone="danger"
-              aria-label={t("deleteItem", { name: displayName })}
-              tooltip={
-                item.system ? t("systemItemLocked") : t("deleteItem", { name: displayName })
-              }
-              disabled={item.system}
-              onClick={onDelete}
-            />
-          </div>
-        </td>
-      )}
+      <td className="py-1 pr-3 pl-2 text-right whitespace-nowrap">
+        <div className="inline-flex items-center justify-end gap-0.5">
+          <IconButton
+            icon={<Eye />}
+            aria-label={t("detailItem", { name: displayName })}
+            tooltip={t("detailItem", { name: displayName })}
+            onClick={onView}
+            className="text-primary-text"
+          />
+          {canModify && (
+            <>
+              <IconButton
+                icon={<Pencil />}
+                aria-label={t("editItem", { name: displayName })}
+                tooltip={t("editItem", { name: displayName })}
+                onClick={onEdit}
+                className="text-primary-text"
+              />
+              {item.status === "ACTIVE" && (
+                <IconButton
+                  icon={<Ban />}
+                  aria-label={t("stopItem", { name: displayName })}
+                  tooltip={t("stopItem", { name: displayName })}
+                  onClick={onStop}
+                  className="text-warning"
+                />
+              )}
+              <IconButton
+                icon={<Trash2 />}
+                tone="danger"
+                aria-label={t("deleteItem", { name: displayName })}
+                tooltip={
+                  item.system ? t("systemItemLocked") : t("deleteItem", { name: displayName })
+                }
+                disabled={item.system}
+                onClick={onDelete}
+              />
+            </>
+          )}
+        </div>
+      </td>
     </tr>
   );
 }

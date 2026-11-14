@@ -45,6 +45,19 @@ export const CATALOG_ERROR_CODES = [
 ] as const;
 
 export type CatalogErrorCode = (typeof CATALOG_ERROR_CODES)[number];
+export const CATALOG_AUDIT_ACTIONS = [
+  "CATALOG_ITEM_CREATED",
+  "CATALOG_ITEM_UPDATED",
+  "CATALOG_ITEM_DEACTIVATED",
+  "CATALOG_ITEM_ACTIVATED",
+  "CATALOG_ITEM_DELETED",
+  "CATALOG_ITEM_MOVED",
+  "CATALOG_ITEM_REFS_UPDATED",
+  "COMBINATION_VERSION_CREATED",
+] as const;
+
+export type CatalogAuditAction = (typeof CATALOG_AUDIT_ACTIONS)[number];
+
 const KNOWN_ERROR_CODE_MAP: Record<string, true> = CATALOG_ERROR_CODES.reduce<Record<string, true>>(
   (acc, code) => {
     acc[code] = true;
@@ -53,6 +66,20 @@ const KNOWN_ERROR_CODE_MAP: Record<string, true> = CATALOG_ERROR_CODES.reduce<Re
   {},
 );
 
+const KNOWN_AUDIT_ACTION_MAP: Record<string, true> = CATALOG_AUDIT_ACTIONS.reduce<
+  Record<string, true>
+>((acc, action) => {
+  acc[action] = true;
+  return acc;
+}, {});
+
+export function resolveCatalogAuditActionKey(
+  action: string | undefined,
+): CatalogAuditAction | "UNKNOWN_ACTION" {
+  return action && action in KNOWN_AUDIT_ACTION_MAP
+    ? (action as CatalogAuditAction)
+    : "UNKNOWN_ACTION";
+}
 export interface BilingualName {
   nameVi?: string | null;
   nameEn?: string | null;

@@ -25,16 +25,25 @@ import {
   type CatalogItemResponse,
   type CreateCatalogGroupRequest,
   type CreateCatalogItemRequest,
+  type FieldError,
   type PageResponseCatalogItemResponse,
   type UpdateCatalogGroupRequest,
   type UpdateCatalogItemRequest,
 } from "../api";
-import { pickName, resolveCatalogErrorMessage } from "../utils";
+import {
+  getCatalogErrorCode,
+  getCatalogFieldErrors,
+  pickName,
+  resolveCatalogErrorMessage,
+} from "../utils";
+import { CombinationFormDialog } from "./combination-form-dialog";
+import { DeleteInUseDialog } from "./delete-in-use-dialog";
 import { GroupFormDialog } from "./group-form-dialog";
 import { GroupSidebar } from "./group-sidebar";
+import { ItemDetailDrawer } from "./item-detail-drawer";
 import { ItemFormDialog } from "./item-form-dialog";
 import { SimpleItemsPanel, type StatusFilter } from "./simple-items-panel";
-
+import { StopItemDialog } from "./stop-item-dialog";
 export interface CatalogViewProps {
   api?: CatalogApi;
 }
@@ -66,7 +75,13 @@ export function CatalogView({ api = defaultCatalogApi }: CatalogViewProps) {
     return <ForbiddenView />;
   }
 
-  return <CatalogWorkspace api={api} canModify={can("CATALOG.MODIFY")} />;
+  return (
+    <CatalogWorkspace
+      api={api}
+      canModify={can("CATALOG.MODIFY")}
+      canAudit={can("AUDIT.VIEW")}
+    />
+  );
 }
 
 export function CatalogPageSkeleton() {
@@ -82,7 +97,15 @@ export function CatalogPageSkeleton() {
   );
 }
 
-function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: boolean }) {
+function CatalogWorkspace({
+  api,
+  canModify,
+  canAudit,
+}: {
+  api: CatalogApi;
+  canModify: boolean;
+  canAudit: boolean;
+}) {
   const t = useTranslations("catalog");
   const locale = useLocale();
   const router = useRouter();
@@ -99,6 +122,12 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
   const [groupDialog, setGroupDialog] = useState<GroupDialogState>({ open: false });
   const [itemDialog, setItemDialog] = useState<ItemDialogState>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const [detailItem, setDetailItem] = useState<CatalogItemResponse | null>(null);
+  const [stopItem, setStopItem] = useState<CatalogItemResponse | null>(null);
+  const [deleteInUseState, setDeleteInUseState] = useState<{
+    item: CatalogItemResponse;
+    fieldErrors: FieldError[];
+  } | null>(null);
 
   const groupsQuery = useQuery({
     queryKey: catalogQueryKeys.groups({ size: 100 }),
@@ -153,9 +182,11 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
     setSearchQuery("");
     setStatusFilter("ALL");
     setPage(0);
+    setDetailItem(null);
+    setStopItem(null);
+    setDeleteInUseState(null);
     updateGroupParam(group.code);
   }
-
   function handleSearchChange(q: string) {
     setSearchQuery(q);
     setPage(0);
@@ -246,6 +277,7 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["catalog", "items", payload.groupId] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
       ]);
       if (!payload.addAnother) {
         setItemDialog({ open: false });
@@ -260,11 +292,37 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["catalog", "items", selectedGroup.id] }),
           queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
+          queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
+          queryClient.invalidateQueries({ queryKey: ["catalog", "item-usages", payload.itemId] }),
+          queryClient.invalidateQueries({ queryKey: ["catalog", "item-versions", payload.itemId] }),
+          queryClient.invalidateQueries({ queryKey: ["catalog", "item-audit", payload.itemId] }),
         ]);
       }
       setItemDialog({ open: false });
       notify.success(t("itemDialog.updateSuccess", { code: updated.code }));
     }
+  }
+
+  async function handleConfirmStop(item: CatalogItemResponse, reason: string) {
+    const updated = await updateItemMutation.mutateAsync({
+      itemId: item.id,
+      data: {
+        status: "INACTIVE",
+        reason,
+        version: item.version,
+      },
+    });
+    if (selectedGroup) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["catalog", "items", selectedGroup.id] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "groups"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "options"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "item-usages", item.id] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "item-audit", item.id] }),
+      ]);
+    }
+    setStopItem(null);
+    notify.success(t("stopItemDialog.success", { code: updated.code }));
   }
 
   async function handleConfirmDelete(reason: string) {
@@ -291,6 +349,13 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
     } catch (error) {
       const status = getErrorStatus(error);
       if (status === 401 || status === 403) return;
+      if (deleteTarget.type === "item" && getCatalogErrorCode(error) === "CATALOG_ITEM_IN_USE") {
+        const blockedItem = deleteTarget.item;
+        const fieldErrors = getCatalogFieldErrors(error);
+        setDeleteTarget(null);
+        setDeleteInUseState({ item: blockedItem, fieldErrors });
+        return;
+      }
       const msg = resolveCatalogErrorMessage(error, (code) => t(`errorCodes.${code}`));
       notify.error(msg);
       setDeleteTarget(null);
@@ -360,7 +425,9 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
   }
 
   const deleting = deleteGroupMutation.isPending || deleteItemMutation.isPending;
-
+  const resolvedDetailItem = detailItem
+    ? (itemsQuery.data?.items.find((i) => i.id === detailItem.id) ?? detailItem)
+    : null;
   return (
     <>
       <PageHeader title={t("title")} />
@@ -413,7 +480,9 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
             }
             onDeleteGroup={() => setDeleteTarget({ type: "group", group: selectedGroup })}
             onAddItem={() => setItemDialog({ open: true, mode: "create", item: null })}
+            onViewItem={(item) => setDetailItem(item)}
             onEditItem={(item) => setItemDialog({ open: true, mode: "edit", item })}
+            onStopItem={(item) => setStopItem(item)}
             onDeleteItem={(item) => setDeleteTarget({ type: "item", item })}
             onReorder={(nextItems) => void handleReorder(nextItems)}
           />
@@ -432,19 +501,56 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
             onSubmit={handleSubmitGroup}
           />
 
+          {selectedGroup &&
+            (selectedGroup.kind === "COMBINATION" ? (
+              <CombinationFormDialog
+                open={itemDialog.open}
+                mode={itemDialog.open ? itemDialog.mode : "create"}
+                group={selectedGroup}
+                item={itemDialog.open && itemDialog.mode === "edit" ? itemDialog.item : null}
+                api={api}
+                onOpenChange={(open) => {
+                  if (!open) setItemDialog({ open: false });
+                }}
+                onSubmit={handleSubmitItem}
+              />
+            ) : (
+              <ItemFormDialog
+                open={itemDialog.open}
+                mode={itemDialog.open ? itemDialog.mode : "create"}
+                group={selectedGroup}
+                item={itemDialog.open && itemDialog.mode === "edit" ? itemDialog.item : null}
+                api={api}
+                onOpenChange={(open) => {
+                  if (!open) setItemDialog({ open: false });
+                }}
+                onSubmit={handleSubmitItem}
+              />
+            ))}
+
           {selectedGroup && (
-            <ItemFormDialog
-              open={itemDialog.open}
-              mode={itemDialog.open ? itemDialog.mode : "create"}
+            <StopItemDialog
+              open={Boolean(stopItem)}
               group={selectedGroup}
-              item={itemDialog.open && itemDialog.mode === "edit" ? itemDialog.item : null}
+              item={stopItem}
+              api={api}
               onOpenChange={(open) => {
-                if (!open) setItemDialog({ open: false });
+                if (!open) setStopItem(null);
               }}
-              onSubmit={handleSubmitItem}
+              onConfirmStop={handleConfirmStop}
             />
           )}
 
+          <DeleteInUseDialog
+            open={Boolean(deleteInUseState)}
+            item={deleteInUseState?.item ?? null}
+            fieldErrors={deleteInUseState?.fieldErrors ?? []}
+            api={api}
+            onOpenChange={(open) => {
+              if (!open) setDeleteInUseState(null);
+            }}
+            onSuggestStop={(blockedItem) => setStopItem(blockedItem)}
+          />
           <ConfirmDialog
             open={Boolean(deleteTarget)}
             onOpenChange={(open) => {
@@ -486,6 +592,24 @@ function CatalogWorkspace({ api, canModify }: { api: CatalogApi; canModify: bool
             onConfirm={(reason) => void handleConfirmDelete(reason)}
           />
         </>
+      )}
+
+      {selectedGroup && (
+        <ItemDetailDrawer
+          open={Boolean(resolvedDetailItem)}
+          group={selectedGroup}
+          item={resolvedDetailItem}
+          api={api}
+          canModify={canModify}
+          canAudit={canAudit}
+          onOpenChange={(open) => {
+            if (!open) setDetailItem(null);
+          }}
+          onStopItem={(target) => {
+            setDetailItem(null);
+            setStopItem(target);
+          }}
+        />
       )}
     </>
   );

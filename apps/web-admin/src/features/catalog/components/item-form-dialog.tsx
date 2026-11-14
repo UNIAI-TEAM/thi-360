@@ -1,8 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import {
   Button,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,12 +20,15 @@ import { AlertTriangle, Lock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import type {
-  CatalogGroupResponse,
-  CatalogItemResponse,
-  CatalogStatus,
-  CreateCatalogItemRequest,
-  UpdateCatalogItemRequest,
+import {
+  catalogQueryKeys,
+  defaultCatalogApi,
+  type CatalogApi,
+  type CatalogGroupResponse,
+  type CatalogItemResponse,
+  type CatalogStatus,
+  type CreateCatalogItemRequest,
+  type UpdateCatalogItemRequest,
 } from "../api";
 import { createItemFormSchema, type ItemFormValues } from "../schemas";
 import {
@@ -39,6 +44,7 @@ export type ItemFormDialogProps = {
   mode: "create" | "edit";
   group: CatalogGroupResponse;
   item: CatalogItemResponse | null;
+  api?: CatalogApi;
   onOpenChange: (open: boolean) => void;
   onSubmit: (
     payload:
@@ -52,6 +58,7 @@ export function ItemFormDialog({
   mode,
   group,
   item,
+  api = defaultCatalogApi,
   onOpenChange,
   onSubmit,
 }: ItemFormDialogProps) {
@@ -80,6 +87,7 @@ export function ItemFormDialog({
             mode={mode}
             group={group}
             item={item}
+            api={api}
             onCancel={() => onOpenChange(false)}
             onSubmittingChange={setSubmitting}
             onSubmit={onSubmit}
@@ -94,6 +102,7 @@ function ItemFormBody({
   mode,
   group,
   item,
+  api,
   onCancel,
   onSubmittingChange,
   onSubmit,
@@ -101,6 +110,7 @@ function ItemFormBody({
   mode: "create" | "edit";
   group: CatalogGroupResponse;
   item: CatalogItemResponse | null;
+  api: CatalogApi;
   onCancel: () => void;
   onSubmittingChange: (submitting: boolean) => void;
   onSubmit: ItemFormDialogProps["onSubmit"];
@@ -161,6 +171,12 @@ function ItemFormBody({
 
   const watchedStatus = useWatch({ control, name: "status" });
   const showReason = mode === "edit" && item?.status === "ACTIVE" && watchedStatus === "INACTIVE";
+  const usagesQuery = useQuery({
+    queryKey: catalogQueryKeys.itemUsages(item?.id ?? "none"),
+    queryFn: () => api.getItemUsages(item!.id),
+    enabled: showReason && Boolean(item?.id),
+  });
+  const stopBlocked = showReason && Boolean(usagesQuery.data?.blocking);
   const statusOptions = useMemo(
     () => [
       { value: "ACTIVE" satisfies CatalogStatus, label: t("statuses.ACTIVE") },
@@ -170,6 +186,7 @@ function ItemFormBody({
   );
 
   async function handleFormSubmit(values: ItemFormValues, addAnother: boolean) {
+    if (stopBlocked) return;
     setServerError(null);
     onSubmittingChange(true);
     const trimmedCode = values.code.trim();
@@ -391,23 +408,51 @@ function ItemFormBody({
           </FormField>
 
           {showReason && (
-            <FormField
-              label={t("itemDialog.reasonLabel")}
-              required
-              hint={t("itemDialog.reasonHint")}
-              error={errors.reason?.message}
-            >
-              {(fieldProps) => (
-                <Textarea
-                  {...fieldProps}
-                  {...register("reason")}
-                  rows={2}
-                  disabled={isSubmitting}
-                />
+            <>
+              {usagesQuery.data && usagesQuery.data.usages.length > 0 && (
+                <div
+                  role={usagesQuery.data.blocking ? "alert" : "note"}
+                  className={cn(
+                    "flex flex-col gap-1.5 rounded-md border px-3.5 py-2.5 text-field-label",
+                    usagesQuery.data.blocking
+                      ? "border-danger bg-danger-bg text-danger"
+                      : "border-warning bg-warning-bg text-warning",
+                  )}
+                >
+                  <p className="font-medium">
+                    {usagesQuery.data.blocking
+                      ? t("stopItemDialog.blockedAlert")
+                      : t("detailDrawer.usagesTotalSummary", {
+                          count: usagesQuery.data.totalCount,
+                        })}
+                  </p>
+                  <ul className="list-disc pl-5">
+                    {usagesQuery.data.usages.map((usage) => (
+                      <li key={`${usage.source}-${usage.objectType}`}>
+                        {usage.source} ({usage.count})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
-            </FormField>
-          )}
 
+              <FormField
+                label={t("itemDialog.reasonLabel")}
+                required
+                hint={t("itemDialog.reasonHint")}
+                error={errors.reason?.message}
+              >
+                {(fieldProps) => (
+                  <Textarea
+                    {...fieldProps}
+                    {...register("reason")}
+                    rows={2}
+                    disabled={isSubmitting}
+                  />
+                )}
+              </FormField>
+            </>
+          )}
           <FormField label={t("itemDialog.descriptionLabel")} error={errors.description?.message}>
             {(fieldProps) => (
               <Textarea
@@ -443,7 +488,7 @@ function ItemFormBody({
                 {t("itemDialog.saveAndAddMore")}
               </Button>
             )}
-            <Button type="submit" variant="primary" loading={isSubmitting}>
+            <Button type="submit" variant="primary" loading={isSubmitting} disabled={stopBlocked}>
               {t("itemDialog.save")}
             </Button>
           </DialogFooter>
