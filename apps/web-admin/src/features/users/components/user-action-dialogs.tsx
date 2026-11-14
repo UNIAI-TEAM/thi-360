@@ -81,15 +81,6 @@ export function useUserActionController({
       setDialog({ kind: "none" });
       onMutated();
     },
-    onError: (error) => {
-      notify.error(
-        resolveUsersErrorMessage(
-          error,
-          (code) => t(`errorCodes.${code}`),
-          t("errorCodes.INTERNAL_ERROR"),
-        ),
-      );
-    },
   });
 
   const activateMutation = useMutation({
@@ -98,15 +89,6 @@ export function useUserActionController({
       notify.success(t("activateDialog.success", { username: updated.username }));
       setDialog({ kind: "none" });
       onMutated();
-    },
-    onError: (error) => {
-      notify.error(
-        resolveUsersErrorMessage(
-          error,
-          (code) => t(`errorCodes.${code}`),
-          t("errorCodes.INTERNAL_ERROR"),
-        ),
-      );
     },
   });
 
@@ -136,20 +118,31 @@ export function useUserActionController({
                 },
               ];
         setDialog({ kind: "blocked-delete", user, blockers });
-        return;
       }
-
-      notify.error(
-        resolveUsersErrorMessage(
-          error,
-          (code) => t(`errorCodes.${code}`),
-          t("errorCodes.INTERNAL_ERROR"),
-        ),
-      );
     },
   });
 
+  /**
+   * Lỗi của lần xác nhận vừa rồi hiện ngay trong hộp thoại xác nhận (`ConfirmDialog error`), không dùng toast:
+   * toast nằm sau lớp phủ của hộp thoại đang mở nên bàn phím và trình đọc màn hình không tới được. Lỗi lấy thẳng
+   * từ trạng thái của mutation, nên thử lại là tự xóa; đóng hoặc mở hộp thoại khác thì gọi `resetErrors`.
+   */
+  function describeError(error: unknown): string {
+    return resolveUsersErrorMessage(
+      error,
+      (code) => t(`errorCodes.${code}`),
+      t("errorCodes.INTERNAL_ERROR"),
+    );
+  }
+
+  function resetErrors() {
+    deactivateMutation.reset();
+    activateMutation.reset();
+    deleteMutation.reset();
+  }
+
   async function openDeactivate(user: UserActionSubject) {
+    resetErrors();
     setCheckingAction(true);
     try {
       const check = await deps.checkUserDeactivation(user.id);
@@ -168,6 +161,7 @@ export function useUserActionController({
   }
 
   async function openDelete(user: UserActionSubject) {
+    resetErrors();
     setCheckingAction(true);
     try {
       const check = await deps.checkUserDeletion(user.id);
@@ -207,12 +201,21 @@ export function useUserActionController({
     checkingAction,
     openResetPassword: (user: ResetPasswordTarget) => setDialog({ kind: "reset-password", user }),
     openDeactivate,
-    openActivate: (user: UserActionSubject) => setDialog({ kind: "activate", user }),
+    openActivate: (user: UserActionSubject) => {
+      resetErrors();
+      setDialog({ kind: "activate", user });
+    },
     openDelete,
-    closeDialog: () => setDialog({ kind: "none" }),
+    closeDialog: () => {
+      resetErrors();
+      setDialog({ kind: "none" });
+    },
     deactivateMutation,
     activateMutation,
     deleteMutation,
+    deactivateError: deactivateMutation.isError ? describeError(deactivateMutation.error) : undefined,
+    activateError: activateMutation.isError ? describeError(activateMutation.error) : undefined,
+    deleteError: deleteMutation.isError ? describeError(deleteMutation.error) : undefined,
     resetUserPassword: deps.resetUserPassword,
     onMutated,
   };
@@ -264,6 +267,7 @@ export function UserActionDialogs({
         closeLabel={t("deactivateDialog.close")}
         tone="danger"
         loading={controller.deactivateMutation.isPending}
+        error={controller.deactivateError}
         onConfirm={(reason) => {
           if (dialog.kind === "deactivate") {
             controller.deactivateMutation.mutate({ id: dialog.user.id, reason });
@@ -287,6 +291,7 @@ export function UserActionDialogs({
         closeLabel={t("activateDialog.close")}
         tone="primary"
         loading={controller.activateMutation.isPending}
+        error={controller.activateError}
         onConfirm={() => {
           if (dialog.kind === "activate") {
             controller.activateMutation.mutate(dialog.user.id);
@@ -312,6 +317,7 @@ export function UserActionDialogs({
         closeLabel={t("deleteDialog.close")}
         tone="danger"
         loading={controller.deleteMutation.isPending}
+        error={controller.deleteError}
         onConfirm={(reason) => {
           if (dialog.kind === "delete") {
             controller.deleteMutation.mutate({

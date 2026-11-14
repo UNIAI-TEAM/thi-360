@@ -7,6 +7,7 @@ import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
+import { notify } from "@thi360/ui";
 import { defaultUsersApiDeps, type UserDetail, type UsersApiDeps, UsersApiError } from "../api";
 import { UserDetailView } from "../components/user-detail-view";
 
@@ -545,5 +546,83 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     await userEvent.click(await screen.findByRole("tab", { name: "Roles & permissions" }));
     expect(await screen.findByText(en.rbac.userRbac.deletedAccountNote)).toBeInTheDocument();
+  });
+});
+
+describe("Hộp thoại xác nhận báo lỗi ngay bên trong, không dùng toast (U-07)", () => {
+  it("ngừng hoạt động thất bại: lỗi hiện trong hộp thoại, thử lại thì xóa lỗi, đóng rồi mở lại không còn lỗi cũ", async () => {
+    const deactivateMock = vi
+      .fn<UsersApiDeps["deactivateUser"]>()
+      .mockRejectedValueOnce(new UsersApiError(409, "raw backend text", "ALREADY_INACTIVE"))
+      .mockRejectedValueOnce(new UsersApiError(500, "raw backend text", "INTERNAL_ERROR"))
+      .mockResolvedValueOnce({ ...BASE_USER, status: "INACTIVE" });
+    const toastError = vi.spyOn(notify, "error");
+    renderDetail(makeDeps({ deactivateUser: deactivateMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ngừng hoạt động" }));
+    let dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Lý do ngừng hoạt động/), "Vi phạm");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Ngừng hoạt động" }));
+
+    // Lần 1 thất bại: hộp thoại còn mở, lỗi nằm bên trong dưới dạng role=alert, không có toast.
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert).toHaveTextContent(viMessages.users.errorCodes.ALREADY_INACTIVE);
+    expect(screen.queryByText(/raw backend text/)).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+
+    // Thử lại: lỗi cũ được thay bằng lỗi của lần mới.
+    await userEvent.click(within(dialog).getByRole("button", { name: "Ngừng hoạt động" }));
+    await waitFor(() =>
+      expect(within(dialog).getByRole("alert")).toHaveTextContent(viMessages.users.errorCodes.INTERNAL_ERROR),
+    );
+    expect(within(dialog).getAllByRole("alert")).toHaveLength(1);
+
+    // Đóng rồi mở lại: không mang lỗi của lần trước sang.
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("xóa thất bại (không phải lỗi chặn xóa): lỗi hiện trong hộp thoại xóa", async () => {
+    const deleteMock = vi
+      .fn<UsersApiDeps["deleteUser"]>()
+      .mockRejectedValueOnce(new UsersApiError(403, "raw", "SELF_DELETE"));
+    const toastError = vi.spyOn(notify, "error");
+    renderDetail(makeDeps({ deleteUser: deleteMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Xóa" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Lý do xóa tài khoản/), "Trùng");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Xóa tài khoản" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      viMessages.users.errorCodes.SELF_DELETE,
+    );
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("kích hoạt lại thất bại: lỗi hiện trong hộp thoại kích hoạt", async () => {
+    const activateMock = vi
+      .fn<UsersApiDeps["activateUser"]>()
+      .mockRejectedValueOnce(new UsersApiError(409, "raw", "ALREADY_ACTIVE"));
+    const toastError = vi.spyOn(notify, "error");
+    renderDetail(
+      makeDeps({
+        getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({ ...BASE_USER, status: "INACTIVE" })),
+        activateUser: activateMock,
+      }),
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Kích hoạt lại" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kích hoạt lại" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      viMessages.users.errorCodes.ALREADY_ACTIVE,
+    );
+    expect(toastError).not.toHaveBeenCalled();
   });
 });

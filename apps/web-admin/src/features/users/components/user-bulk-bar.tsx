@@ -123,16 +123,20 @@ export function UserBulkBar({
         );
       }
     },
-    onError: (error) => {
-      notify.error(
-        resolveUsersErrorMessage(
-          error,
-          (code) => t(`errorCodes.${code}`),
-          t("errorCodes.INTERNAL_ERROR"),
-        ),
-      );
-    },
   });
+  // Lỗi của lần áp dụng vừa rồi hiện ngay trong hộp thoại xác nhận (xem ghi chú ở user-action-dialogs).
+  const applyError = applyMutation.isError
+    ? resolveUsersErrorMessage(
+        applyMutation.error,
+        (code) => t(`errorCodes.${code}`),
+        t("errorCodes.INTERNAL_ERROR"),
+      )
+    : null;
+
+  function closeConfirmDialog() {
+    applyMutation.reset();
+    setDialog({ kind: "none" });
+  }
 
   function handleAssignRolesAndPermissions() {
     if (typeof window !== "undefined") {
@@ -145,6 +149,7 @@ export function UserBulkBar({
     setPreviewLoadingAction(action);
     try {
       const preview = await previewBulkUserActions({ action, userIds: selectedIds });
+      applyMutation.reset();
       setReason("");
       setDialog({
         kind: "confirm",
@@ -286,7 +291,7 @@ export function UserBulkBar({
         open={dialog.kind === "confirm"}
         onOpenChange={(open) => {
           if (!applyMutation.isPending && !open) {
-            setDialog({ kind: "none" });
+            closeConfirmDialog();
           }
         }}
       >
@@ -370,12 +375,21 @@ export function UserBulkBar({
                 </FormField>
               )}
 
+              {applyError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-caption text-danger"
+                >
+                  {applyError}
+                </div>
+              )}
+
               <DialogFooter>
                 <Button
                   type="button"
                   variant="secondary"
                   disabled={applyMutation.isPending}
-                  onClick={() => setDialog({ kind: "none" })}
+                  onClick={closeConfirmDialog}
                 >
                   {t("bulk.cancel")}
                 </Button>

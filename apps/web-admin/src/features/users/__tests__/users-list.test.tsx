@@ -6,7 +6,8 @@ import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
-import { defaultUsersApiDeps, type UsersApiDeps, type UserSummary } from "../api";
+import { notify } from "@thi360/ui";
+import { defaultUsersApiDeps, type UsersApiDeps, UsersApiError, type UserSummary } from "../api";
 import { UsersListView } from "../components/users-list-view";
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
@@ -932,5 +933,41 @@ describe("UsersListView: thanh thao tác hàng loạt có chỗ giữ sẵn (U-0
     expect(
       within(dialog).getByText("Áp dụng cho: bulk1, bulk2, bulk3, bulk4, bulk5 và 2 tài khoản khác."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("UsersListView: áp dụng hàng loạt thất bại báo lỗi trong hộp thoại (U-07)", () => {
+  it("lỗi hiện trong hộp thoại xác nhận, không dùng toast; đóng rồi mở lại không còn lỗi cũ", async () => {
+    const previewMock = vi.fn<UsersApiDeps["previewBulkUserActions"]>(async () => ({
+      total: 1,
+      affected: 1,
+      skipped: [],
+    }));
+    const applyMock = vi
+      .fn<UsersApiDeps["applyBulkUserActions"]>()
+      .mockRejectedValueOnce(new UsersApiError(429, "raw backend text", "RATE_LIMITED"));
+    const toastError = vi.spyOn(notify, "error");
+    renderUsersView(
+      makeDeps({ previewBulkUserActions: previewMock, applyBulkUserActions: applyMock }),
+    );
+
+    await screen.findByText("student01");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    await userEvent.click(screen.getByRole("button", { name: "Kích hoạt lại" }));
+
+    let dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kích hoạt 1 tài khoản" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+    );
+    expect(screen.queryByText(/raw backend text/)).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Kích hoạt lại" }));
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
   });
 });
