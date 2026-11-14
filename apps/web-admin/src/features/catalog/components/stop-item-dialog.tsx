@@ -27,7 +27,11 @@ import {
   type CatalogTreeNodeResponse,
 } from "../api";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { pickName, resolveCatalogErrorMessage } from "../utils";
+import {
+  pickName,
+  resolveCatalogErrorMessage,
+  resolveCatalogUsageTypeKey,
+} from "../utils";
 
 export type StopItemDialogProps = {
   open: boolean;
@@ -214,7 +218,9 @@ function StopItemBody({
               >
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-field-label font-medium text-text">{usage.source}</p>
+                    <p className="text-field-label font-medium text-text">
+                      {t(`usageTypes.${resolveCatalogUsageTypeKey(usage.objectType)}`)}
+                    </p>
                     <p className="text-caption text-text-muted">
                       {t("detailDrawer.usageCount", { count: usage.count })}
                     </p>

@@ -37,6 +37,7 @@ import {
   getCatalogFieldErrors,
   pickName,
   resolveCatalogErrorMessage,
+  resolveCatalogUsageTypeKey,
 } from "../utils";
 
 export type ItemFormDialogProps = {
@@ -429,7 +430,7 @@ function ItemFormBody({
                   <ul className="list-disc pl-5">
                     {usagesQuery.data.usages.map((usage) => (
                       <li key={`${usage.source}-${usage.objectType}`}>
-                        {usage.source} ({usage.count})
+                        {t(`usageTypes.${resolveCatalogUsageTypeKey(usage.objectType)}`)} ({usage.count})
                       </li>
                     ))}
                   </ul>

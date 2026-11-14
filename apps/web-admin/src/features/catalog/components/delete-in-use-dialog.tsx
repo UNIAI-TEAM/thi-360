@@ -22,7 +22,11 @@ import {
   type CatalogTreeNodeResponse,
   type FieldError,
 } from "../api";
-import { pickName } from "../utils";
+import {
+  pickName,
+  resolveCatalogErrorMessage,
+  resolveCatalogUsageTypeKey,
+} from "../utils";
 
 export type DeleteInUseDialogProps = {
   open: boolean;
@@ -81,7 +85,9 @@ export function DeleteInUseDialog({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-field-label font-medium text-text">{usage.source}</p>
+                        <p className="text-field-label font-medium text-text">
+                          {t(`usageTypes.${resolveCatalogUsageTypeKey(usage.objectType)}`)}
+                        </p>
                         <p className="text-caption text-text-muted">
                           {t("detailDrawer.usageCount", { count: usage.count })}
                         </p>
@@ -105,7 +111,12 @@ export function DeleteInUseDialog({
             ) : fieldErrors.length > 0 ? (
               <ul className="list-disc space-y-1 rounded-md border border-border bg-page py-2.5 pr-3.5 pl-8 text-field-label text-text">
                 {fieldErrors.map((fe, idx) => (
-                  <li key={`${fe.field}-${idx}`}>{fe.message}</li>
+                  <li key={`${fe.field}-${idx}`}>
+                    {resolveCatalogErrorMessage(
+                      { code: fe.code },
+                      (code) => t(`errorCodes.${code}`),
+                    )}
+                  </li>
                 ))}
               </ul>
             ) : null}

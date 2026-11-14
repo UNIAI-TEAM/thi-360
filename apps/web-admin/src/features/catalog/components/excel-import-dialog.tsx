@@ -25,7 +25,6 @@ import {
 import {
   MAX_IMPORT_FILE_BYTES,
   buildImportErrorCsv,
-  isKnownCatalogErrorCode,
   pickName,
   resolveCatalogErrorMessage,
   triggerBlobDownload,
@@ -213,6 +212,10 @@ function ExcelImportBody({
 
   function handleDownloadErrorReport() {
     if (!preview || preview.errors.length === 0) return;
+    const localizedErrors = preview.errors.map((err) => ({
+      ...err,
+      message: resolveCatalogErrorMessage({ code: err.code }, (code) => t(`errorCodes.${code}`)),
+    }));
     const blob = buildImportErrorCsv(
       {
         row: t("importDialog.errorRowCol"),
@@ -220,7 +223,7 @@ function ExcelImportBody({
         code: t("importDialog.errorCodeCol"),
         message: t("importDialog.errorMessageCol"),
       },
-      preview.errors,
+      localizedErrors,
     );
     triggerBlobDownload(blob, `${group.code.toLowerCase()}-import-errors.csv`);
   }
@@ -430,9 +433,10 @@ function ExcelImportBody({
                         <Badge>{err.code}</Badge>
                       </td>
                       <td className="px-3 py-2 text-danger">
-                        {isKnownCatalogErrorCode(err.code)
-                          ? t(`errorCodes.${err.code}`)
-                          : err.message}
+                        {resolveCatalogErrorMessage(
+                          { code: err.code },
+                          (code) => t(`errorCodes.${code}`),
+                        )}
                       </td>
                     </tr>
                   ))}

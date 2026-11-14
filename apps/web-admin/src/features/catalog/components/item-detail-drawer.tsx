@@ -20,7 +20,7 @@ import {
   TabsTrigger,
 } from "@thi360/ui";
 import { Ban, History, Layers, Link2, TriangleAlert } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import {
   catalogQueryKeys,
@@ -30,7 +30,11 @@ import {
   type CatalogItemResponse,
   type CombinationVersionResponse,
 } from "../api";
-import { pickName, resolveCatalogAuditActionKey } from "../utils";
+import {
+  pickName,
+  resolveCatalogAuditActionKey,
+  resolveCatalogUsageTypeKey,
+} from "../utils";
 
 export type ItemDetailDrawerProps = {
   open: boolean;
@@ -158,18 +162,19 @@ function ItemDetailBody({
     [versionsQuery.data],
   );
 
-  const dateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale.startsWith("en") ? "en-US" : "vi-VN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
+  const format = useFormatter();
 
   function formatDate(iso: string): string {
     const parsed = new Date(iso);
-    return Number.isNaN(parsed.getTime()) ? iso : dateFormatter.format(parsed);
+    return Number.isNaN(parsed.getTime())
+      ? iso
+      : format.dateTime(parsed, {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
   }
 
   function resolveActorLabel(event: AuditEventResponse): string {
@@ -325,9 +330,10 @@ function ItemDetailBody({
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-text">{usage.source}</p>
+                      <p className="font-medium text-text">
+                        {t(`usageTypes.${resolveCatalogUsageTypeKey(usage.objectType)}`)}
+                      </p>
                       <p className="text-caption text-text-muted">
-                        {usage.objectType} ·{" "}
                         {t("detailDrawer.usageCount", { count: usage.count })}
                       </p>
                     </div>

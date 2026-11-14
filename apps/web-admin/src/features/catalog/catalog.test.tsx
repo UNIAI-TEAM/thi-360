@@ -495,12 +495,12 @@ function renderCatalog({
 }: {
   permissions?: readonly string[];
   api?: CatalogApi;
-  locale?: "vi" | "en";
+  locale?: string;
   search?: string;
   client?: QueryClient;
 } = {}) {
   routerMock.search = search;
-  const activeMessages = locale === "en" ? en : viMessages;
+  const activeMessages = locale.toLowerCase().startsWith("en") ? en : viMessages;
   return {
     api,
     ...renderWithProviders(
@@ -2085,5 +2085,154 @@ describe("CatalogView: dịch cấp cây hệ thống và pickName theo useLocal
     const childDialog = await screen.findByRole("dialog");
     expect(within(childDialog).getByRole("heading", { name: "Add Chủ đề" })).toBeInTheDocument();
     expect(within(childDialog).getByText("Khối")).toBeInTheDocument();
+  });
+
+  it("dịch đầy đủ mã lỗi dòng Excel, nơi đang dùng, fallback fieldErrors, hành động audit và ngày giờ qua next-intl ở locale en", async () => {
+    const createObjectUrlSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+    const api = createTreeMockApi({
+      deleteItem: vi.fn(async () => {
+        throw new CatalogApiError(409, "In use", "CATALOG_ITEM_IN_USE", [
+          { field: "id", code: "CATALOG_ITEM_IN_USE", message: "Mã tổ hợp (1): QĐ01" },
+        ]);
+      }),
+      getItemUsages: vi
+        .fn()
+        .mockResolvedValueOnce({
+          targetId: "item-toan",
+          targetCode: "TOAN",
+          totalCount: 2,
+          blocking: false,
+          usages: [
+            {
+              source: "Mã tổ hợp",
+              objectType: "SUBJECT_COMBINATION",
+              count: 1,
+              blocking: false,
+              sampleLabels: ["QD01"],
+            },
+            {
+              source: "Danh mục cây",
+              objectType: "TREE_NODE",
+              count: 1,
+              blocking: false,
+              sampleLabels: ["CH1"],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          targetId: "item-toan",
+          targetCode: "TOAN",
+          totalCount: 0,
+          blocking: false,
+          usages: [],
+        }),
+      listItemAuditEvents: vi.fn(async (itemId: string) => ({
+        items: [
+          {
+            id: "audit-reorder",
+            action: "CATALOG_ITEM_REORDERED",
+            actorType: "USER" as const,
+            actorUsername: "content.admin",
+            actorRoles: ["ADMIN"],
+            module: "catalog",
+            occurredAt: "2026-11-14T01:00:00Z",
+            outcome: "SUCCESS" as const,
+            targetId: itemId,
+            targetType: "CATALOG_ITEM",
+          },
+        ],
+        page: 0,
+        size: 10,
+        totalItems: 1,
+        totalPages: 1,
+      })),
+      previewImport: vi.fn(async () => ({
+        previewId: "prev-en-err",
+        groupId: "grp-subject",
+        groupCode: "SUBJECT",
+        groupKind: "SIMPLE" as const,
+        totalRows: 3,
+        validRows: 0,
+        errorRows: 3,
+        canConfirm: false,
+        errors: [
+          { rowNo: 2, column: "code", code: "REQUIRED", message: "Thiếu mã" },
+          { rowNo: 3, column: "code", code: "CODE_INVALID", message: "Mã sai" },
+          {
+            rowNo: 4,
+            column: "code",
+            code: "CATALOG_CODE_DUPLICATE_IN_FILE",
+            message: "Trùng mã",
+          },
+        ],
+      })),
+    });
+
+    renderCatalog({
+      api,
+      locale: "en-GB",
+      permissions: ["CATALOG.VIEW", "CATALOG.MODIFY", "AUDIT.VIEW"],
+      search: "group=SUBJECT",
+    });
+
+    // 1. ItemDetailDrawer usages, audit (CATALOG_ITEM_REORDERED), and dd/MM/yyyy date formatting
+    await userEvent.click(await screen.findByRole("button", { name: "Details for Mathematics" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getAllByText(/14\/11\/2026/).length).toBeGreaterThan(0);
+
+    await userEvent.click(within(drawer).getByRole("tab", { name: "Usages" }));
+    expect(await within(drawer).findByText("Subject combinations")).toBeInTheDocument();
+    expect(within(drawer).getByText("Tree catalogs")).toBeInTheDocument();
+    expect(
+      within(drawer).queryByText(/Mã tổ hợp|Danh mục cây|SUBJECT_COMBINATION|TREE_NODE/),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("tab", { name: "Change history" }));
+    expect(await within(drawer).findByText("Reordered values")).toBeInTheDocument();
+    expect(within(drawer).getByText(/14\/11\/2026/)).toBeInTheDocument();
+    await userEvent.click(within(drawer).getByRole("button", { name: "Close" }));
+
+    // 2. DeleteInUseDialog fallback fieldErrors localized (not raw fe.message)
+    await userEvent.click(screen.getByRole("button", { name: "Delete Mathematics" }));
+    const confirmDlg = await screen.findByRole("dialog");
+    await userEvent.type(within(confirmDlg).getByLabelText(/Reason for deletion/), "Cleanup");
+    await userEvent.click(within(confirmDlg).getByRole("button", { name: "Delete value" }));
+    const inUseDlg = await screen.findByRole("dialog");
+    expect(
+      await within(inUseDlg).findByText(en.catalog.errorCodes.CATALOG_ITEM_IN_USE),
+    ).toBeInTheDocument();
+    expect(within(inUseDlg).queryByText(/Mã tổ hợp/)).not.toBeInTheDocument();
+    await userEvent.click(within(inUseDlg).getAllByRole("button", { name: "Close" })[0]!);
+
+    // 3. Excel row errors + localized CSV export in en
+    await userEvent.click(screen.getByRole("button", { name: "Import Excel" }));
+    const importDlg = await screen.findByRole("dialog");
+    const fileInput = within(importDlg).getByLabelText(/Excel file/) as HTMLInputElement;
+    const validXlsx = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "subject.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    await userEvent.upload(fileInput, validXlsx);
+    await userEvent.click(within(importDlg).getByRole("button", { name: "Validate file" }));
+
+    expect(await within(importDlg).findByText(en.catalog.errorCodes.REQUIRED)).toBeInTheDocument();
+    expect(within(importDlg).getByText(en.catalog.errorCodes.CODE_INVALID)).toBeInTheDocument();
+    expect(
+      within(importDlg).getByText(en.catalog.errorCodes.CATALOG_CODE_DUPLICATE_IN_FILE),
+    ).toBeInTheDocument();
+    expect(within(importDlg).queryByText(/Thiếu mã|Mã sai|Trùng mã/)).not.toBeInTheDocument();
+
+    await userEvent.click(within(importDlg).getByRole("button", { name: "Download error report" }));
+    expect(createObjectUrlSpy).toHaveBeenCalled();
+    const exportedBlob = createObjectUrlSpy.mock.calls.at(-1)?.[0] as Blob;
+    const { promise: csvPromise, resolve: resolveCsv } = Promise.withResolvers<string>();
+    const reader = new FileReader();
+    reader.onload = () => resolveCsv(String(reader.result ?? ""));
+    reader.readAsText(exportedBlob);
+    const csvText = await csvPromise;
+    expect(csvText).toContain(en.catalog.errorCodes.REQUIRED);
+    expect(csvText).not.toContain("Thiếu mã");
+    vi.restoreAllMocks();
   });
 });

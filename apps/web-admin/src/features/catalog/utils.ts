@@ -12,12 +12,14 @@ export const BEHAVIOR_WARNING_GROUP_CODES: Record<string, true> = {
 
 export const CATALOG_ERROR_CODES = [
   "CATALOG_CHANGE_BLOCKED",
+  "CATALOG_CODE_DUPLICATE_IN_FILE",
   "CATALOG_CODE_LOCKED",
   "CATALOG_CODE_TAKEN",
   "CATALOG_GROUP_INACTIVE",
   "CATALOG_GROUP_NOT_EMPTY",
   "CATALOG_GROUP_SYSTEM",
   "CATALOG_ITEM_IN_USE",
+  "CATALOG_ITEM_NOT_FOUND",
   "CATALOG_ITEM_SYSTEM",
   "CATALOG_LEVELS_LOCKED",
   "CATALOG_NODE_HAS_CHILDREN",
@@ -28,6 +30,7 @@ export const CATALOG_ERROR_CODES = [
   "CATALOG_REF_INVALID",
   "CATALOG_TREE_DEPTH_EXCEEDED",
   "CATALOG_TREE_TOO_LARGE",
+  "CODE_INVALID",
   "IMPORT_EMPTY_FILE",
   "IMPORT_FILE_TOO_LARGE",
   "IMPORT_FORMULA_NOT_ALLOWED",
@@ -41,7 +44,11 @@ export const CATALOG_ERROR_CODES = [
   "IMPORT_ROW_LIMIT_EXCEEDED",
   "INTERNAL_ERROR",
   "NOT_FOUND",
+  "PARENT_REQUIRED",
   "RATE_LIMITED",
+  "REQUIRED",
+  "SIZE",
+  "STATUS_INVALID",
   "VALIDATION_FAILED",
   "VERSION_CONFLICT",
 ] as const;
@@ -50,6 +57,7 @@ export type CatalogErrorCode = (typeof CATALOG_ERROR_CODES)[number];
 export const CATALOG_AUDIT_ACTIONS = [
   "CATALOG_ITEM_CREATED",
   "CATALOG_ITEM_UPDATED",
+  "CATALOG_ITEM_REORDERED",
   "CATALOG_ITEM_DEACTIVATED",
   "CATALOG_ITEM_ACTIVATED",
   "CATALOG_ITEM_DELETED",
@@ -60,6 +68,16 @@ export const CATALOG_AUDIT_ACTIONS = [
 
 export type CatalogAuditAction = (typeof CATALOG_AUDIT_ACTIONS)[number];
 
+export const CATALOG_USAGE_TYPES = [
+  "EXAM_BLUEPRINT",
+  "EXAM_DEFINITION",
+  "PUBLISHED_EXAM",
+  "QUESTION",
+  "SUBJECT_COMBINATION",
+  "TREE_NODE",
+] as const;
+
+export type CatalogUsageType = (typeof CATALOG_USAGE_TYPES)[number];
 const KNOWN_ERROR_CODE_MAP: Record<string, true> = CATALOG_ERROR_CODES.reduce<Record<string, true>>(
   (acc, code) => {
     acc[code] = true;
@@ -75,12 +93,27 @@ const KNOWN_AUDIT_ACTION_MAP: Record<string, true> = CATALOG_AUDIT_ACTIONS.reduc
   return acc;
 }, {});
 
+const KNOWN_USAGE_TYPE_MAP: Record<string, true> = CATALOG_USAGE_TYPES.reduce<
+  Record<string, true>
+>((acc, usageType) => {
+  acc[usageType] = true;
+  return acc;
+}, {});
+
 export function resolveCatalogAuditActionKey(
   action: string | undefined,
 ): CatalogAuditAction | "UNKNOWN_ACTION" {
   return action && action in KNOWN_AUDIT_ACTION_MAP
     ? (action as CatalogAuditAction)
     : "UNKNOWN_ACTION";
+}
+
+export function resolveCatalogUsageTypeKey(
+  objectType: string | undefined,
+): CatalogUsageType | "UNKNOWN_USAGE" {
+  return objectType && objectType in KNOWN_USAGE_TYPE_MAP
+    ? (objectType as CatalogUsageType)
+    : "UNKNOWN_USAGE";
 }
 export interface BilingualName {
   nameVi?: string | null;
