@@ -25,6 +25,7 @@ import {
 import { Plus, Search, TriangleAlert, Users, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePermissions } from "@/features/session/session-provider";
 import {
   applyBulkAuthz as defaultApplyBulkAuthz,
   listPermissions as defaultListPermissions,
@@ -120,7 +121,12 @@ export function BulkAssignTab({
   const t = useTranslations("rbac");
   const commonT = useTranslations("common");
   const rbacT: RbacTranslator = (key, values) => t(key, values);
+  const { can, isLoading: sessionLoading } = usePermissions();
   const queryClient = useQueryClient();
+
+  const canViewRoles = !sessionLoading && can("ROLE.VIEW");
+  const canViewPermissions = !sessionLoading && can("PERMISSION.VIEW");
+  const canViewUsers = !sessionLoading && can("USER.VIEW");
 
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(readStoredBulkUserIds);
   const [userLookup, setUserLookup] = useState<Record<string, UserSummaryResponse>>({});
@@ -180,19 +186,29 @@ export function BulkAssignTab({
     [accountSearch, page, pageSize, roleFilter, statusFilter],
   );
 
+  const effectiveTarget: BulkAuthzTarget =
+    target === "PERMISSION" && !canViewPermissions && canViewRoles
+      ? "ROLE"
+      : target === "ROLE" && !canViewRoles && canViewPermissions
+        ? "PERMISSION"
+        : target;
+
   const usersQuery = useQuery({
     queryKey: rbacKeys.users(usersParams),
     queryFn: () => listUsers(usersParams),
+    enabled: canViewUsers,
   });
 
   const rolesQuery = useQuery({
     queryKey: rbacKeys.roles({ page: 0, size: 100 }),
     queryFn: () => listRoles({ page: 0, size: 100 }),
+    enabled: canViewRoles,
   });
 
   const permissionsQuery = useQuery({
     queryKey: rbacKeys.permissions(),
     queryFn: () => listPermissions(),
+    enabled: canViewPermissions && effectiveTarget === "PERMISSION",
   });
 
   const permissionGroups = useMemo(
@@ -238,10 +254,10 @@ export function BulkAssignTab({
     [t],
   );
 
-  const needsReason = action === "GRANT" && target === "PERMISSION";
+  const needsReason = action === "GRANT" && effectiveTarget === "PERMISSION";
   const hasSelection =
     selectedUserIds.length > 0 &&
-    (target === "ROLE" ? selectedRoleIds.length > 0 : selectedPermissionIds.length > 0);
+    (effectiveTarget === "ROLE" ? selectedRoleIds.length > 0 : selectedPermissionIds.length > 0);
   const missingReason = needsReason && reason.trim().length === 0;
 
   const previewPayload = useMemo<BulkAuthzRequest | null>(() => {
@@ -249,12 +265,23 @@ export function BulkAssignTab({
     const trimmedReason = reason.trim();
     return {
       action,
-      target,
+      target: effectiveTarget,
       userIds: selectedUserIds,
-      ...(target === "ROLE" ? { roleIds: selectedRoleIds } : { permissionIds: selectedPermissionIds }),
+      ...(effectiveTarget === "ROLE"
+        ? { roleIds: selectedRoleIds }
+        : { permissionIds: selectedPermissionIds }),
       ...(trimmedReason ? { reason: trimmedReason } : {}),
     };
-  }, [action, hasSelection, missingReason, reason, selectedPermissionIds, selectedRoleIds, selectedUserIds, target]);
+  }, [
+    action,
+    effectiveTarget,
+    hasSelection,
+    missingReason,
+    reason,
+    selectedPermissionIds,
+    selectedRoleIds,
+    selectedUserIds,
+  ]);
 
   const requestSignature = useMemo(
     () => (previewPayload ? JSON.stringify(previewPayload) : null),
@@ -390,7 +417,7 @@ export function BulkAssignTab({
   }
 
   function resolveItemLabel(code: string): string {
-    if (target === "PERMISSION") {
+    if (effectiveTarget === "PERMISSION") {
       const perm = permissionByCode.get(code);
       if (perm) {
         return `${resolveObjectName(rbacT, perm.groupCode, perm.groupName)} · ${resolvePermissionName(rbacT, perm.code, perm.name)}`;
@@ -463,18 +490,20 @@ export function BulkAssignTab({
               />
             </label>
 
-            <div className="flex min-w-[140px] flex-[1_1_140px] flex-col gap-1">
-              <span className="text-caption text-text-muted">{t("bulk.roleFilter")}</span>
-              <Select
-                aria-label={t("bulk.roleFilter")}
-                value={roleFilter}
-                options={roleFilterOptions}
-                onValueChange={(next) => {
-                  setRoleFilter(next);
-                  setPage(1);
-                }}
-              />
-            </div>
+            {canViewRoles && (
+              <div className="flex min-w-[140px] flex-[1_1_140px] flex-col gap-1">
+                <span className="text-caption text-text-muted">{t("bulk.roleFilter")}</span>
+                <Select
+                  aria-label={t("bulk.roleFilter")}
+                  value={roleFilter}
+                  options={roleFilterOptions}
+                  onValueChange={(next) => {
+                    setRoleFilter(next);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            )}
 
             {ENABLE_CLASS_FILTER && (
               <div className="flex min-w-[130px] flex-[1_1_130px] flex-col gap-1">
@@ -503,7 +532,15 @@ export function BulkAssignTab({
           </div>
         </div>
 
-        {usersQuery.isPending ? (
+        {!sessionLoading && !canViewUsers ? (
+          <div className="p-4">
+            <EmptyState
+              icon={<Users />}
+              title={t("bulk.missingUserViewTitle")}
+              description={t("bulk.missingUserViewNote")}
+            />
+          </div>
+        ) : sessionLoading || usersQuery.isPending ? (
           <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-2 p-4">
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-14 w-full" />
@@ -653,18 +690,23 @@ export function BulkAssignTab({
                 className="inline-flex h-11 gap-1 rounded-lg bg-subtle p-1"
               >
                 {(["ROLE", "PERMISSION"] as const).map((option) => {
-                  const active = target === option;
+                  const active = effectiveTarget === option;
+                  const targetDisabled =
+                    (option === "ROLE" && !canViewRoles) ||
+                    (option === "PERMISSION" && !canViewPermissions);
                   return (
                     <button
                       key={option}
                       type="button"
+                      disabled={targetDisabled}
                       aria-pressed={active}
                       onClick={() => {
+                        if (targetDisabled) return;
                         setAppliedBatch(null);
                         setTarget(option);
                       }}
                       className={cn(
-                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30",
+                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50",
                         active
                           ? "bg-surface font-semibold text-primary-text shadow-xs"
                           : "font-medium text-text-secondary hover:text-text",
@@ -675,10 +717,23 @@ export function BulkAssignTab({
                   );
                 })}
               </div>
+              {!sessionLoading && !canViewRoles && (
+                <span className="text-caption text-text-muted">
+                  {t("bulk.missingRoleViewNote")}
+                </span>
+              )}
+              {!sessionLoading && !canViewPermissions && (
+                <span className="text-caption text-text-muted">
+                  {t("bulk.missingPermissionViewNote")}
+                </span>
+              )}
             </fieldset>
           </div>
 
-          {target === "ROLE" ? (
+          {effectiveTarget === "ROLE" ? (
+            !canViewRoles ? (
+              <p className="text-body text-text-muted">{t("bulk.missingRoleViewNote")}</p>
+            ) : (
             <div className="flex flex-col gap-2">
               <div className="text-field-label font-medium text-text-secondary">
                 {t("bulk.rolesLabel", {
@@ -720,6 +775,9 @@ export function BulkAssignTab({
                 </div>
               )}
             </div>
+            )
+          ) : !canViewPermissions ? (
+            <p className="text-body text-text-muted">{t("bulk.missingPermissionViewNote")}</p>
           ) : (
             <div className="flex flex-col gap-2">
               <div className="text-field-label font-medium text-text-secondary">
@@ -774,7 +832,7 @@ export function BulkAssignTab({
             </div>
           )}
 
-          {target === "PERMISSION" && (
+          {effectiveTarget === "PERMISSION" && canViewPermissions && (
             <label className="flex flex-col gap-1.5">
               <span className="text-field-label font-medium text-text-secondary">
                 {t("bulk.reasonLabel")}{" "}

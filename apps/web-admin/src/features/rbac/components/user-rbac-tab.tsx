@@ -39,8 +39,6 @@ import {
   type ListRolesParams,
 } from "../api";
 import {
-  KNOWN_OBJECT_CODES,
-  KNOWN_PERMISSION_CODES,
   resolveObjectName,
   resolvePermissionName,
   resolvePermissionShortName,
@@ -82,26 +80,6 @@ export interface UserRbacTabProps {
   listPermissions?: () => Promise<PermissionResponse[]>;
 }
 
-function buildFallbackPermissions(t: RbacTranslator): PermissionResponse[] {
-  return KNOWN_PERMISSION_CODES.map((code, index) => {
-    const objectCode = code.split(".")[0] ?? "USER";
-    const groupCode = (KNOWN_OBJECT_CODES as readonly string[]).includes(objectCode)
-      ? objectCode
-      : "USER";
-    return {
-      id: code,
-      code,
-      bitIndex: index,
-      groupCode,
-      groupName: resolveObjectName(t, groupCode),
-      name: resolvePermissionName(t, code),
-      scope: "MANAGE",
-      roleCount: 0,
-      userCount: 0,
-    };
-  });
-}
-
 export function UserRbacTab({
   userId,
   readOnly = false,
@@ -119,10 +97,10 @@ export function UserRbacTab({
   const commonT = useTranslations("common");
   const formatter = useFormatter();
   const rbacT: RbacTranslator = (key, values) => t(key, values);
-  const { can } = usePermissions();
+  const { can, isLoading: sessionLoading } = usePermissions();
   const queryClient = useQueryClient();
 
-  const canEdit = !readOnly && can("USER.ASSIGN");
+  const canEdit = !readOnly && !sessionLoading && can("USER.ASSIGN");
   const canFetchPermissions = canEdit && can("PERMISSION.VIEW");
   const canFetchRoles = canEdit && can("ROLE.VIEW");
 
@@ -160,19 +138,19 @@ export function UserRbacTab({
   const allRolesQuery = useQuery({
     queryKey: rbacKeys.roles({ page: 0, size: 100 }),
     queryFn: () => listRoles({ page: 0, size: 100 }),
-    enabled: canFetchRoles || rolesDialogOpen,
+    enabled: canFetchRoles && rolesDialogOpen,
   });
 
   const allPermissionsQuery = useQuery({
     queryKey: rbacKeys.permissions(),
     queryFn: () => listPermissions(),
-    enabled: canFetchPermissions || directDialogOpen,
+    enabled: canFetchPermissions && directDialogOpen,
   });
 
-  const permissionGroups = useMemo(() => {
-    const items = allPermissionsQuery.data ?? buildFallbackPermissions(rbacT);
-    return groupPermissionsByObject(items, rbacT);
-  }, [allPermissionsQuery.data, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  const permissionGroups = useMemo(
+    () => groupPermissionsByObject(allPermissionsQuery.data ?? [], rbacT),
+    [allPermissionsQuery.data, t], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const lockedObjects = useMemo(() => {
     const effective = effectiveQuery.data?.permissions ?? [];
@@ -373,12 +351,14 @@ export function UserRbacTab({
   const hasInactiveDirect = directPermissions.some((item) => !item.effective);
 
   function openAssignRolesDialog() {
+    if (!canFetchRoles) return;
     setDraftRoleIds(assignedRoles.map((r) => r.roleId));
     setRolesDialogError(null);
     setRolesDialogOpen(true);
   }
 
   function openAddDirectDialog() {
+    if (!canFetchPermissions) return;
     setDraftDirectCodes(directPermissions.map((p) => p.permissionCode));
     setDirectReason("");
     setDirectDialogError(null);
@@ -407,11 +387,19 @@ export function UserRbacTab({
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-title font-semibold text-text">{t("userRbac.rolesSectionTitle")}</h2>
             {canEdit && (
-              <Button size="sm" variant="soft" onClick={openAssignRolesDialog}>
+              <Button
+                size="sm"
+                variant="soft"
+                disabled={!canFetchRoles}
+                onClick={openAssignRolesDialog}
+              >
                 {t("userRbac.assignRolesButton")}
               </Button>
             )}
           </div>
+          {canEdit && !sessionLoading && !canFetchRoles && (
+            <p className="text-caption text-text-muted">{t("userRbac.missingRoleViewNote")}</p>
+          )}
 
           {assignedRoles.length === 0 ? (
             <p className="text-body text-text-muted">{t("userRbac.rolesEmpty")}</p>
@@ -469,11 +457,7 @@ export function UserRbacTab({
               {t("userRbac.directSectionTitle")}
             </h2>
             {canEdit &&
-              (hasManageRole ? (
-                <Button size="sm" variant="soft" onClick={openAddDirectDialog}>
-                  {t("userRbac.addDirectButton")}
-                </Button>
-              ) : (
+              (!hasManageRole ? (
                 <Tooltip content={t("userRbac.addDirectDisabledTooltip")}>
                   <span className="inline-flex">
                     <Button size="sm" variant="soft" disabled>
@@ -481,8 +465,22 @@ export function UserRbacTab({
                     </Button>
                   </span>
                 </Tooltip>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="soft"
+                  disabled={!canFetchPermissions}
+                  onClick={openAddDirectDialog}
+                >
+                  {t("userRbac.addDirectButton")}
+                </Button>
               ))}
           </div>
+          {canEdit && hasManageRole && !sessionLoading && !canFetchPermissions && (
+            <p className="text-caption text-text-muted">
+              {t("userRbac.missingPermissionViewNote")}
+            </p>
+          )}
 
           {!hasManageRole && directPermissions.length === 0 ? (
             <div className="flex items-start gap-3 rounded-md border border-dashed border-border-strong bg-table-head p-3.5">
