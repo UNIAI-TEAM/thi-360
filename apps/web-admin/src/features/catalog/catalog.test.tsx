@@ -2520,7 +2520,7 @@ describe("CatalogView: dịch cấp cây hệ thống và pickName theo useLocal
 
     renderCatalog({
       api,
-      locale: "en-GB",
+      locale: "en",
       permissions: ["CATALOG.VIEW", "CATALOG.MODIFY", "AUDIT.VIEW"],
       search: "group=SUBJECT",
     });

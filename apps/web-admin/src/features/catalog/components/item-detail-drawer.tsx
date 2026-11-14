@@ -166,15 +166,30 @@ function ItemDetailBody({
 
   function formatDate(iso: string): string {
     const parsed = new Date(iso);
-    return Number.isNaN(parsed.getTime())
-      ? iso
-      : format.dateTime(parsed, {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+    if (Number.isNaN(parsed.getTime())) return iso;
+    // English locales default to month-first; the catalog contract requires
+    // dd/MM/yyyy for every locale, so rebuild the day-first string from parts.
+    if (locale.toLowerCase().startsWith("en")) {
+      const parts = new Intl.DateTimeFormat("en", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZone: "Asia/Ho_Chi_Minh",
+      }).formatToParts(parsed);
+      const pick = (type: string) =>
+        parts.find((part) => part.type === type)?.value ?? "";
+      return `${pick("day")}/${pick("month")}/${pick("year")} ${pick("hour")}:${pick("minute")}`;
+    }
+    return format.dateTime(parsed, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   function resolveActorLabel(event: AuditEventResponse): string {
