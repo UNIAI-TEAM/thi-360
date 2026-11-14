@@ -103,7 +103,7 @@
       "title": "Kích hoạt lại lớp học"
     },
     "addMembersDialog": {
-      "allSkipped": "Tất cả {skipped} học viên đã thuộc lớp, không có học viên nào được thêm mới.",
+      "allSkipped": "Tất cả {skipped, number} học viên đã thuộc lớp, không có học viên nào được thêm mới.",
       "cancel": "Hủy",
       "clearSelection": "Bỏ chọn",
       "close": "Đóng",
@@ -116,12 +116,12 @@
       "noPermissionDescription": "Bạn cần quyền USER.VIEW để tìm kiếm và chọn học viên.",
       "noPermissionTitle": "Không có quyền xem danh sách tài khoản",
       "paginationNav": "Phân trang danh sách học viên",
-      "partialSuccess": "Đã thêm {added} học viên vào lớp, bỏ qua {skipped} học viên đã thuộc lớp.",
+      "partialSuccess": "Đã thêm {added, number} học viên vào lớp, bỏ qua {skipped, number} học viên đã thuộc lớp.",
       "searchLabel": "Tìm học viên",
       "searchPlaceholder": "Tìm theo mã, tên đăng nhập, họ tên, email",
-      "selectedCount": "Đã chọn {count} học viên",
-      "submit": "Thêm {count} học viên",
-      "success": "Đã thêm {added} học viên vào lớp.",
+      "selectedCount": "Đã chọn {count, number} học viên",
+      "submit": "Thêm {count, number} học viên",
+      "success": "Đã thêm {added, number} học viên vào lớp.",
       "title": "Thêm học viên vào lớp {code}"
     },
     "deactivateDialog": {
@@ -152,7 +152,7 @@
       "inactiveBanner": "Lớp đang ngừng sử dụng: chức năng thêm hoặc chuyển học viên vào lớp này đã bị vô hiệu hóa. Dữ liệu thành viên và lịch sử vẫn được giữ nguyên.",
       "notFoundDescription": "Lớp học không tồn tại hoặc đã bị xóa khỏi hệ thống.",
       "notFoundTitle": "Không tìm thấy lớp học",
-      "subtitle": "{code} · {descriptionPart}Người phụ trách: {owner} · {count} học viên",
+      "subtitle": "{code} · {descriptionPart}Người phụ trách: {owner} · {count, number} học viên",
       "title": "Chi tiết lớp học"
     },
     "errorCodes": {
@@ -216,7 +216,7 @@
       "emptyTitle": "Chưa có lớp học",
       "errorDescription": "Không tải được danh sách lớp học. Hãy thử lại.",
       "errorTitle": "Không tải được danh sách",
-      "filteredCount": "{count} lớp",
+      "filteredCount": "{count, number} lớp",
       "footnote": "Ngừng sử dụng một lớp sẽ chặn thêm thành viên mới và giữ nguyên dữ liệu lịch sử. Xóa lớp không xóa tài khoản hay kết quả của học viên.",
       "loadingCount": "Đang tải danh sách lớp học...",
       "paginationNav": "Phân trang danh sách lớp học",
@@ -229,7 +229,7 @@
       "title": "Lớp học"
     },
     "members": {
-      "countBadge": "{count} học viên",
+      "countBadge": "{count, number} học viên",
       "emptyDescription": "Chưa có học viên nào trong lớp này.",
       "emptyFilteredDescription": "Không có học viên nào khớp với từ khóa tìm kiếm.",
       "emptyFilteredTitle": "Không tìm thấy học viên",

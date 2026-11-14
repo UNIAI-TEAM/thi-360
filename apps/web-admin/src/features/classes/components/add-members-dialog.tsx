@@ -256,11 +256,7 @@ function AddMembersBody({
           />
 
           <div className="flex items-center justify-between text-caption text-text-muted">
-            <span>
-              {t("addMembersDialog.selectedCount", {
-                count: format.number(selectedIds.length),
-              })}
-            </span>
+            <span>{t("addMembersDialog.selectedCount", { count: selectedIds.length })}</span>
             {selectedIds.length > 0 && (
               <button
                 type="button"
@@ -377,9 +373,7 @@ function AddMembersBody({
               mutation.mutate();
             }}
           >
-            {t("addMembersDialog.submit", {
-              count: format.number(selectedIds.length),
-            })}
+            {t("addMembersDialog.submit", { count: selectedIds.length })}
           </Button>
         )}
       </DialogFooter>

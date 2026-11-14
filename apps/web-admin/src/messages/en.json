@@ -103,7 +103,7 @@
       "title": "Activate class"
     },
     "addMembersDialog": {
-      "allSkipped": "All {skipped} selected students are already in this class; no new members were added.",
+      "allSkipped": "All {skipped, number} selected students are already in this class; no new members were added.",
       "cancel": "Cancel",
       "clearSelection": "Clear selection",
       "close": "Close",
@@ -116,12 +116,12 @@
       "noPermissionDescription": "You need USER.VIEW permission to search and select students.",
       "noPermissionTitle": "No permission to view accounts",
       "paginationNav": "Student candidates pagination",
-      "partialSuccess": "Added {added} students to the class and skipped {skipped} already enrolled.",
+      "partialSuccess": "Added {added, number} students to the class and skipped {skipped, number} already enrolled.",
       "searchLabel": "Search students",
       "searchPlaceholder": "Search by code, username, full name, or email",
-      "selectedCount": "{count} students selected",
-      "submit": "Add {count} students",
-      "success": "Added {added} students to the class.",
+      "selectedCount": "{count, number} students selected",
+      "submit": "Add {count, number} students",
+      "success": "Added {added, number} students to the class.",
       "title": "Add students to class {code}"
     },
     "deactivateDialog": {
@@ -152,7 +152,7 @@
       "inactiveBanner": "This class is inactive: adding or transferring students into this class is disabled. Existing members and history are preserved.",
       "notFoundDescription": "This class does not exist or has been removed.",
       "notFoundTitle": "Class not found",
-      "subtitle": "{code} · {descriptionPart}Owner: {owner} · {count} students",
+      "subtitle": "{code} · {descriptionPart}Owner: {owner} · {count, number} students",
       "title": "Class details"
     },
     "errorCodes": {
@@ -216,7 +216,7 @@
       "emptyTitle": "No classes yet",
       "errorDescription": "Could not load classes. Please try again.",
       "errorTitle": "Could not load list",
-      "filteredCount": "{count} classes",
+      "filteredCount": "{count, number} classes",
       "footnote": "Deactivating a class blocks adding new members while preserving history. Deleting a class never deletes student accounts or exam results.",
       "loadingCount": "Loading classes...",
       "paginationNav": "Class list pagination",
@@ -229,7 +229,7 @@
       "title": "Classes"
     },
     "members": {
-      "countBadge": "{count} students",
+      "countBadge": "{count, number} students",
       "emptyDescription": "No students are enrolled in this class yet.",
       "emptyFilteredDescription": "No students match your search query.",
       "emptyFilteredTitle": "No matching students",

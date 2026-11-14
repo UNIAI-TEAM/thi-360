@@ -173,16 +173,19 @@ function ClassDetailContent({
     enabled: Boolean(classQuery.data),
   });
 
-  useEffect(() => {
-    if (
-      page > 1 &&
-      membersQuery.data &&
-      membersQuery.data.items.length === 0 &&
-      membersQuery.data.totalItems > 0
-    ) {
-      setPage(Math.max(1, membersQuery.data.totalPages));
-    }
-  }, [page, membersQuery.data]);
+  // Điều chỉnh trang trong render (thay cho effect): khi đang ở trang >1 mà trang đó
+  // rỗng (vd sau khi xóa/transfer phần tử cuối), lùi về trang cuối hợp lệ ngay lập tức.
+  const membersData = membersQuery.data;
+  const effectiveMembersPage =
+    page > 1 &&
+    membersData &&
+    membersData.items.length === 0 &&
+    membersData.totalItems > 0
+      ? Math.max(1, membersData.totalPages)
+      : page;
+  if (effectiveMembersPage !== page) {
+    setPage(effectiveMembersPage);
+  }
 
   function refreshClassAndMembers() {
     void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.detail(classId) });
@@ -365,7 +368,7 @@ function ClassDetailContent({
               code: classDetail.code,
               descriptionPart: classDetail.description ? `${classDetail.description} · ` : "",
               owner: classDetail.ownerUsername ?? "—",
-              count: format.number(classDetail.memberCount),
+              count: classDetail.memberCount,
             })}
           </p>
         </div>
@@ -455,7 +458,7 @@ function ClassDetailContent({
             <h2 className="text-title font-semibold text-text">{t("members.title")}</h2>
             {badgeCount !== null ? (
               <span className="rounded-full border border-border px-2.5 py-0.5 text-caption font-medium text-text-muted tabular-nums">
-                {t("members.countBadge", { count: format.number(badgeCount) })}
+                {t("members.countBadge", { count: badgeCount })}
               </span>
             ) : (
               <Skeleton className="h-5 w-20 rounded-full" />
@@ -542,7 +545,7 @@ function ClassDetailContent({
         {totalMembers > 0 && (
           <div className="border-t border-border px-4 py-3">
             <Pagination
-              page={page}
+              page={effectiveMembersPage}
               pageSize={pageSize}
               total={totalMembers}
               onPageChange={setPage}

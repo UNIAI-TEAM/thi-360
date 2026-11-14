@@ -159,16 +159,20 @@ function ClassesListContent({
     queryFn: () => deps.listClasses(queryParams),
   });
 
-  useEffect(() => {
-    if (
-      page > 1 &&
-      classesQuery.data &&
-      classesQuery.data.items.length === 0 &&
-      classesQuery.data.totalItems > 0
-    ) {
-      setPage(Math.max(1, classesQuery.data.totalPages));
-    }
-  }, [page, classesQuery.data]);
+  // Điều chỉnh trang trong render (thay cho effect): khi đang ở trang >1 mà trang đó
+  // rỗng (vd sau khi xóa phần tử cuối hoặc trang vượt quá totalPages), lùi về trang
+  // cuối hợp lệ ngay lập tức thay vì chờ effect.
+  const classesData = classesQuery.data;
+  const effectivePage =
+    page > 1 &&
+    classesData &&
+    classesData.items.length === 0 &&
+    classesData.totalItems > 0
+      ? Math.max(1, classesData.totalPages)
+      : page;
+  if (effectivePage !== page) {
+    setPage(effectivePage);
+  }
 
   const hasActiveFilters = Boolean(debouncedSearch || status !== ALL_VALUE);
 
@@ -244,7 +248,7 @@ function ClassesListContent({
         header: t("table.memberCount"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="tabular-nums text-text">{format.number(row.original.memberCount)}</span>
+          <span className="tabular-nums text-text">{row.original.memberCount}</span>
         ),
       },
       {
@@ -347,7 +351,7 @@ function ClassesListContent({
         },
       },
     ],
-    [t, format, canModify, router, actionController],
+    [t, canModify, router, actionController],
   );
 
   const items = classesQuery.data?.items ?? [];
@@ -421,7 +425,7 @@ function ClassesListContent({
               ? t("list.loadingCount")
               : classesQuery.isError
                 ? t("list.errorTitle")
-                : t("list.filteredCount", { count: format.number(totalItems) })}
+                : t("list.filteredCount", { count: totalItems })}
           </p>
         </div>
 
@@ -491,7 +495,7 @@ function ClassesListContent({
         {totalItems > 0 && (
           <div className="border-t border-border px-4 py-3">
             <Pagination
-              page={page}
+              page={effectivePage}
               pageSize={pageSize}
               total={totalItems}
               onPageChange={setPage}
