@@ -1,4 +1,5 @@
 import type { FieldError } from "@thi360/api-client";
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import { getErrorStatus } from "@/lib/api/query-client";
 
 export const CATALOG_CODE_REGEX = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,49}$/;
@@ -126,7 +127,7 @@ export interface BilingualName {
 export function pickName(item: BilingualName, locale = "vi"): string {
   const vi = item.nameVi?.trim() ?? "";
   const en = item.nameEn?.trim() ?? "";
-  if (locale.toLowerCase().startsWith("en") && en.length > 0) {
+  if (normalizeUiLocale(locale) === "en" && en.length > 0) {
     return en;
   }
   return vi.length > 0 ? vi : en;

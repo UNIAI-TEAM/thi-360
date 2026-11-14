@@ -2,6 +2,7 @@ import { MutationCache, QueryClient } from "@tanstack/react-query";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import { useMemo, useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
@@ -506,7 +507,7 @@ function renderCatalog({
   client?: QueryClient;
 } = {}) {
   routerMock.search = search;
-  const activeMessages = locale.toLowerCase().startsWith("en") ? en : viMessages;
+  const activeMessages = normalizeUiLocale(locale) === "en" ? en : viMessages;
   return {
     api,
     ...renderWithProviders(
@@ -541,6 +542,7 @@ describe("pickName", () => {
     expect(pickName({ nameVi: "Toán học", nameEn: "Mathematics" }, "en")).toBe("Mathematics");
     expect(pickName({ nameVi: "Địa lí", nameEn: "   " }, "en")).toBe("Địa lí");
     expect(pickName({ nameVi: "Địa lí", nameEn: undefined }, "en-US")).toBe("Địa lí");
+    expect(pickName({ nameVi: "Toán học", nameEn: "Mathematics" }, "en-GB")).toBe("Mathematics");
     expect(pickName({ nameVi: "   ", nameEn: "Physics" }, "vi")).toBe("Physics");
   });
 });

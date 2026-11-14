@@ -69,6 +69,7 @@ import {
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import { createContext, useCallback, useContext, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
@@ -1574,7 +1575,7 @@ export function TreeItemsPanel({
                 <h3 className="mt-2 text-h3 font-bold text-text">
                   {pickName(activeNode, locale)}
                 </h3>
-                {activeNode.nameEn && !locale.toLowerCase().startsWith("en") && (
+                {activeNode.nameEn && normalizeUiLocale(locale) !== "en" && (
                   <p className="text-caption text-text-muted">{activeNode.nameEn}</p>
                 )}
                 {activeNode.effectiveStatus === "INACTIVE" &&
