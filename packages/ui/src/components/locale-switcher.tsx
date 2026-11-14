@@ -1,13 +1,16 @@
 "use client";
 
 import { Check, Languages } from "lucide-react";
+import { useRef } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import type { UiLocale } from "../messages/ui-strings";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuItemIndicator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 import { Tooltip } from "./tooltip";
@@ -37,6 +40,7 @@ export function LocaleSwitcher({
   const strings = useUiStrings();
   const currentLocale: UiLocale = controlledLocale ?? prefs?.locale ?? "vi";
   const label = strings.localeSwitcher.label;
+  const needsInitialFocusRef = useRef(false);
 
   function handleSelect(next: UiLocale) {
     if (onLocaleChange) {
@@ -51,7 +55,11 @@ export function LocaleSwitcher({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        needsInitialFocusRef.current = open;
+      }}
+    >
       <Tooltip content={label}>
         <DropdownMenuTrigger asChild>
           <button
@@ -67,21 +75,40 @@ export function LocaleSwitcher({
           </button>
         </DropdownMenuTrigger>
       </Tooltip>
-      <DropdownMenuContent align="end" className="min-w-40">
-        {LOCALE_OPTIONS.map((itemLocale) => {
-          const selected = currentLocale === itemLocale;
-          return (
-            <DropdownMenuItem
-              key={itemLocale}
-              aria-current={selected ? "true" : undefined}
-              className={cn(selected && "bg-primary-50 font-semibold text-primary-text")}
-              onSelect={() => handleSelect(itemLocale)}
-            >
+      <DropdownMenuContent
+        align="end"
+        loop
+        className="min-w-40"
+        onFocus={(event) => {
+          if (!needsInitialFocusRef.current || event.target !== event.currentTarget) return;
+          needsInitialFocusRef.current = false;
+          const container = event.currentTarget;
+          queueMicrotask(() => {
+            if (!container.isConnected || !container.contains(document.activeElement)) return;
+            const target =
+              container.querySelector<HTMLElement>('[role="menuitemradio"][aria-checked="true"]') ??
+              container.querySelector<HTMLElement>('[role="menuitemradio"]');
+            target?.focus({ preventScroll: true });
+          });
+        }}
+      >
+        <DropdownMenuRadioGroup
+          value={currentLocale}
+          onValueChange={(value) => {
+            if (value === "vi" || value === "en") {
+              handleSelect(value);
+            }
+          }}
+        >
+          {LOCALE_OPTIONS.map((itemLocale) => (
+            <DropdownMenuRadioItem key={itemLocale} value={itemLocale}>
               <span>{strings.localeSwitcher.options[itemLocale]}</span>
-              {selected && <Check aria-hidden className="ml-auto size-4" />}
-            </DropdownMenuItem>
-          );
-        })}
+              <DropdownMenuItemIndicator className="ml-auto flex items-center">
+                <Check aria-hidden className="size-4" />
+              </DropdownMenuItemIndicator>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

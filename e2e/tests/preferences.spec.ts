@@ -34,10 +34,14 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
       const localeButton = page.getByRole("button", { name: "Chọn ngôn ngữ" });
       await localeButton.focus();
       await page.keyboard.press("Enter");
-      const englishItem = page.getByRole("menuitem", { name: "English" });
-      await englishItem.focus();
+      const viItem = page.getByRole("menuitemradio", { name: "Tiếng Việt" });
+      const englishItem = page.getByRole("menuitemradio", { name: "English" });
+      await expect(viItem).toHaveAttribute("aria-checked", "true");
+      await expect(englishItem).toHaveAttribute("aria-checked", "false");
+      await expect(viItem).toBeFocused();
+      await page.keyboard.press("ArrowDown");
+      await expect(englishItem).toBeFocused();
       await page.keyboard.press("Enter");
-
       await expect(page.locator("html")).toHaveAttribute("lang", "en");
       await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
       await expect(page.getByLabel(/Username or email/)).toHaveValue("ops.admin");
@@ -55,8 +59,12 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
 
       // Đổi lại Tiếng Việt từ thanh trên của web-admin
       await page.getByRole("button", { name: "Change language" }).click();
-      await page.getByRole("menuitem", { name: "Tiếng Việt" }).click();
-
+      const adminEnItem = page.getByRole("menuitemradio", { name: "English" });
+      const adminViItem = page.getByRole("menuitemradio", { name: "Tiếng Việt" });
+      await expect(adminEnItem).toHaveAttribute("aria-checked", "true");
+      await expect(adminViItem).toHaveAttribute("aria-checked", "false");
+      await expect(adminEnItem).toBeFocused();
+      await adminViItem.click();
       await expect(page.locator("html")).toHaveAttribute("lang", "vi");
       await expect(page.getByRole("heading", { name: /Xin chào, / })).toBeVisible();
       await expect(page.getByRole("link", { name: "Bảng điều khiển" })).toBeVisible();

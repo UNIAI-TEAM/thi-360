@@ -144,10 +144,12 @@ describe("LoginView", () => {
     expect(switcher).toHaveFocus();
 
     await user.keyboard("{Enter}");
-    const englishItem = await screen.findByRole("menuitem", { name: "English" });
-    englishItem.focus();
-    await user.keyboard("{Enter}");
-
+    const viItem = await screen.findByRole("menuitemradio", { name: "Tiếng Việt" });
+    const englishItem = screen.getByRole("menuitemradio", { name: "English" });
+    expect(viItem).toHaveAttribute("aria-checked", "true");
+    expect(englishItem).toHaveAttribute("aria-checked", "false");
+    expect(viItem).toHaveFocus();
+    await user.keyboard("{ArrowDown}{Enter}");
     await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument());
     expect(document.cookie).toContain("thi360_locale=en");
     expect(screen.getByLabelText(/Username or email/)).toBe(identifierInput);

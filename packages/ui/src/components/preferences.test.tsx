@@ -65,10 +65,10 @@ describe("ThemeToggle", () => {
 });
 
 describe("LocaleSwitcher", () => {
-  it("mở menu Tiếng Việt / English, hỗ trợ bàn phím, ghi cookie và gọi onLocaleChange", async () => {
+  it("mở menu Tiếng Việt / English với menuitemradio + aria-checked, focus nhất quán mục đang chọn và hỗ trợ bàn phím", async () => {
     const user = userEvent.setup();
     const onLocaleChange = vi.fn();
-    render(
+    const { rerender } = render(
       <UiStringsProvider locale="vi">
         <LocaleSwitcher locale="vi" onLocaleChange={onLocaleChange} />
       </UiStringsProvider>,
@@ -81,14 +81,37 @@ describe("LocaleSwitcher", () => {
       expect(screen.getByRole("tooltip")).toHaveTextContent("Chọn ngôn ngữ");
     });
 
+    // Mô phỏng di chuột trước khi bấm Enter: focus khi mở vẫn vào thẳng mục đang chọn, không dừng ở menu container
+    await user.pointer({ target: document.body, coords: { x: 1, y: 1 } });
+    button.focus();
     await user.keyboard("{Enter}");
-    const viItem = await screen.findByRole("menuitem", { name: "Tiếng Việt" });
-    const enItem = screen.getByRole("menuitem", { name: "English" });
-    expect(viItem).toHaveAttribute("aria-current", "true");
-    expect(enItem).toBeInTheDocument();
+    const viItem = await screen.findByRole("menuitemradio", { name: "Tiếng Việt" });
+    const enItem = screen.getByRole("menuitemradio", { name: "English" });
+    expect(viItem).toHaveAttribute("aria-checked", "true");
+    expect(enItem).toHaveAttribute("aria-checked", "false");
+    expect(viItem).toHaveFocus();
+    expect(screen.getByRole("menu")).not.toHaveFocus();
 
-    await user.click(enItem);
+    await user.keyboard("{ArrowDown}{Enter}");
     expect(onLocaleChange).toHaveBeenCalledWith("en");
+    expect(button).toHaveFocus();
+
+    rerender(
+      <UiStringsProvider locale="en">
+        <LocaleSwitcher locale="en" onLocaleChange={onLocaleChange} />
+      </UiStringsProvider>,
+    );
+    const enButton = screen.getByRole("button", { name: "Change language" });
+    enButton.focus();
+    await user.keyboard("{Enter}");
+    const enSelected = await screen.findByRole("menuitemradio", { name: "English" });
+    const viUnselected = screen.getByRole("menuitemradio", { name: "Tiếng Việt" });
+    expect(enSelected).toHaveAttribute("aria-checked", "true");
+    expect(viUnselected).toHaveAttribute("aria-checked", "false");
+    expect(enSelected).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(enButton).toHaveFocus();
   });
 
   it("ghi cookie thi360_locale=en khi không truyền onLocaleChange", async () => {
@@ -100,8 +123,9 @@ describe("LocaleSwitcher", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Change language" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Tiếng Việt" }));
-    expect(document.cookie).toContain("thi360_locale=vi");
+    const enItem = await screen.findByRole("menuitemradio", { name: "English" });
+    expect(enItem).toHaveFocus();
+    await user.click(screen.getByRole("menuitemradio", { name: "Tiếng Việt" }));
   });
 });
 

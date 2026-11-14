@@ -53,7 +53,7 @@ describe("web-student PreferencesProvider", () => {
       expect(mocks.refresh).not.toHaveBeenCalled();
 
       await user.click(screen.getByRole("button", { name: "Chọn ngôn ngữ" }));
-      await user.click(screen.getByRole("menuitem", { name: "English" }));
+      await user.click(screen.getByRole("menuitemradio", { name: "English" }));
       expect(writes.at(-1)).toBe(
         buildPreferenceCookieString("thi360_locale", "en", { domain: ".thi360.vn" }),
       );
