@@ -1,6 +1,7 @@
 package vn.unicom.thi360.catalog.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,9 +22,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.LocaleResolver;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import vn.unicom.thi360.catalog.application.CatalogAdminService;
 import vn.unicom.thi360.catalog.application.CatalogExcelService;
 import vn.unicom.thi360.shared.api.GlobalExceptionHandler;
+import vn.unicom.thi360.catalog.application.CatalogConflictException;
+import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.web.LocaleConfig;
 
 class CatalogExceptionHandlerTest {
@@ -106,8 +112,9 @@ class CatalogExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("CATALOG_CODE_TAKEN"))
                 .andExpect(jsonPath("$.message").value("Catalog group or item code already exists"));
 
-        when(catalogAdminService.createGroup(any()))
-                .thenThrow(new DataIntegrityViolationException("other constraint"));
+        doThrow(new DataIntegrityViolationException("other constraint"))
+                .when(catalogAdminService)
+                .createGroup(any());
 
         mockMvc.perform(post("/api/v1/admin/catalog/groups")
                         .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
@@ -116,5 +123,53 @@ class CatalogExceptionHandlerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(jsonPath("$.message").value("An internal system error occurred, please try again later"));
+    }
+
+    @Test
+    void catalogConflictException_andMaxUploadSizeExceeded_areLocalized() throws Exception {
+        UUID itemId = UUID.randomUUID();
+        doThrow(new CatalogConflictException(
+                "CATALOG_ITEM_IN_USE",
+                List.of(new FieldError("SUBJECT_COMBINATION", "BLOCKING", "Subject combination (1)"))))
+                .when(catalogAdminService)
+                .deleteItem(any(), any());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/admin/catalog/items/{id}", itemId)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                        .param("reason", "cleanup"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CATALOG_ITEM_IN_USE"))
+                .andExpect(jsonPath("$.message").value("Cannot perform action because the catalog item is currently in use"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("SUBJECT_COMBINATION"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/admin/catalog/items/{id}", itemId)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "fr")
+                        .param("reason", "cleanup"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CATALOG_ITEM_IN_USE"))
+                .andExpect(jsonPath("$.message").value("Không thể thực hiện thao tác vì giá trị danh mục đang được sử dụng"));
+
+        doThrow(new MaxUploadSizeExceededException(5L * 1024L * 1024L))
+                .when(catalogAdminService)
+                .createGroup(any());
+
+        String payload = "{\"code\":\"ANY\",\"nameVi\":\"Any\"}";
+        mockMvc.perform(post("/api/v1/admin/catalog/groups")
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_FILE_TOO_LARGE"))
+                .andExpect(jsonPath("$.message").value("Excel file size exceeds the allowed limit (maximum 5 MB)"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Excel file size exceeds the allowed limit (maximum 5 MB)"));
+
+        mockMvc.perform(post("/api/v1/admin/catalog/groups")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_FILE_TOO_LARGE"))
+                .andExpect(jsonPath("$.message").value("Dung lượng tệp Excel vượt quá giới hạn cho phép (tối đa 5 MB)"));
     }
 }

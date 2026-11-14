@@ -70,6 +70,7 @@ import vn.unicom.thi360.shared.idempotency.IdempotencyService;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 
 @Service
 public class CatalogExcelService {
@@ -175,16 +176,16 @@ public class CatalogExcelService {
         }
         if (file == null || file.isEmpty()) {
             throw new ValidationException("IMPORT_EMPTY_FILE", null, List.of(
-                    new FieldError("file", "IMPORT_EMPTY_FILE", schemaHelper.rowMessage("IMPORT_EMPTY_FILE", "Tệp Excel trống"))));
+                    new FieldError("file", "IMPORT_EMPTY_FILE", schemaHelper.message("IMPORT_EMPTY_FILE"))));
         }
         if (file.getSize() > MAX_FILE_BYTES) {
             throw new ValidationException("IMPORT_FILE_TOO_LARGE", null, List.of(
-                    new FieldError("file", "IMPORT_FILE_TOO_LARGE", schemaHelper.rowMessage("IMPORT_FILE_TOO_LARGE", "Tệp vượt quá 5 MB"))));
+                    new FieldError("file", "IMPORT_FILE_TOO_LARGE", schemaHelper.message("IMPORT_FILE_TOO_LARGE"))));
         }
         String originalFilename = file.getOriginalFilename();
         if (originalFilename != null && originalFilename.toLowerCase(Locale.ROOT).endsWith(".xlsm")) {
             throw new ValidationException("IMPORT_MACRO_NOT_ALLOWED", null, List.of(
-                    new FieldError("file", "IMPORT_MACRO_NOT_ALLOWED", schemaHelper.rowMessage("IMPORT_MACRO_NOT_ALLOWED", "Không chấp nhận tệp chứa macro"))));
+                    new FieldError("file", "IMPORT_MACRO_NOT_ALLOWED", schemaHelper.message("IMPORT_MACRO_NOT_ALLOWED"))));
         }
 
         Path tempFile = null;
@@ -202,7 +203,7 @@ public class CatalogExcelService {
                     Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
                     if (sheet == null) {
                         throw new ValidationException("IMPORT_EMPTY_FILE", null, List.of(
-                                new FieldError("file", "IMPORT_EMPTY_FILE", schemaHelper.rowMessage("IMPORT_EMPTY_FILE", "Tệp Excel trống"))));
+                                new FieldError("file", "IMPORT_EMPTY_FILE", schemaHelper.message("IMPORT_EMPTY_FILE"))));
                     }
 
                     StagedImportPayload staged = group.getKind() == CatalogGroupKind.TREE
@@ -211,7 +212,7 @@ public class CatalogExcelService {
 
                     if (staged.totalRows() == 0) {
                         throw new ValidationException("IMPORT_EMPTY_FILE", null, List.of(
-                                new FieldError("file", "IMPORT_EMPTY_FILE", schemaHelper.rowMessage("IMPORT_EMPTY_FILE", "Tệp Excel không có dòng dữ liệu"))));
+                                new FieldError("file", "IMPORT_EMPTY_FILE", schemaHelper.message("IMPORT_EMPTY_FILE"))));
                     }
 
                     UUID previewId = Ids.newId();
@@ -252,7 +253,7 @@ public class CatalogExcelService {
             throw ex;
         } catch (Exception ex) {
             throw new ValidationException("IMPORT_INVALID_FILE", null, List.of(
-                    new FieldError("file", "IMPORT_INVALID_FILE", schemaHelper.rowMessage("IMPORT_INVALID_FILE", "Tệp Excel không hợp lệ"))));
+                    new FieldError("file", "IMPORT_INVALID_FILE", schemaHelper.message("IMPORT_INVALID_FILE"))));
         } finally {
             if (tempFile != null) {
                 try {
@@ -450,7 +451,7 @@ public class CatalogExcelService {
 
         List<String> headers = new ArrayList<>();
         for (CatalogGroupRefResponse refGroup : refGroups) {
-            headers.add(refGroup.nameVi());
+            headers.add(schemaHelper.refGroupHeader(refGroup));
         }
         for (String level : levels) {
             headers.add(schemaHelper.treeLevelCodeHeader(level));
@@ -559,7 +560,7 @@ public class CatalogExcelService {
         Row headerRow = sheet.getRow(0);
         if (headerRow == null) {
             throw new ValidationException("IMPORT_INVALID_HEADER", null, List.of(
-                    new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.rowMessage("IMPORT_INVALID_HEADER", "Thiếu dòng tiêu đề"))));
+                    new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.message("IMPORT_INVALID_HEADER"))));
         }
 
         int codeCol = -1;
@@ -573,8 +574,10 @@ public class CatalogExcelService {
             String norm = CatalogExcelSchemaHelper.normalizeHeader(formatter.formatCellValue(cell));
             switch (norm) {
                 case "mã", "ma", "code" -> codeCol = cell.getColumnIndex();
-                case "tên tiếng việt", "ten tieng viet", "namevi", "name_vi" -> nameViCol = cell.getColumnIndex();
-                case "tên tiếng anh", "ten tieng anh", "nameen", "name_en" -> nameEnCol = cell.getColumnIndex();
+                case "tên tiếng việt", "ten tieng viet", "vietnamese name", "namevi", "name_vi", "name (vi)" ->
+                        nameViCol = cell.getColumnIndex();
+                case "tên tiếng anh", "ten tieng anh", "english name", "nameen", "name_en", "name (en)" ->
+                        nameEnCol = cell.getColumnIndex();
                 case "mô tả", "mo ta", "description" -> descCol = cell.getColumnIndex();
                 case "trạng thái", "trang thai", "status" -> statusCol = cell.getColumnIndex();
                 default -> {
@@ -584,7 +587,7 @@ public class CatalogExcelService {
 
         if (codeCol < 0 || nameViCol < 0) {
             throw new ValidationException("IMPORT_INVALID_HEADER", null, List.of(
-                    new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.rowMessage("IMPORT_INVALID_HEADER", "Thiếu cột Mã hoặc Tên tiếng Việt"))));
+                    new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.message("IMPORT_INVALID_HEADER"))));
         }
 
         Set<String> existingCodes = loadExistingCodesNormalized(group.getId());
@@ -615,7 +618,7 @@ public class CatalogExcelService {
             totalRows++;
             if (totalRows > MAX_IMPORT_ROWS) {
                 throw new ValidationException("IMPORT_ROW_LIMIT_EXCEEDED", null, List.of(
-                        new FieldError("file", "IMPORT_ROW_LIMIT_EXCEEDED", schemaHelper.rowMessage("IMPORT_ROW_LIMIT_EXCEEDED", "Vượt quá 5.000 dòng"))));
+                        new FieldError("file", "IMPORT_ROW_LIMIT_EXCEEDED", schemaHelper.message("IMPORT_ROW_LIMIT_EXCEEDED"))));
             }
 
             int rowNo = rowIdx + 1;
@@ -624,42 +627,42 @@ public class CatalogExcelService {
             String trimmedCode = CatalogNormalizer.trimToNull(codeRaw);
             String codeNorm = null;
             if (trimmedCode == null) {
-                errors.add(new CatalogImportRowError(rowNo, "code", "REQUIRED", "Mã giá trị không được để trống"));
+                errors.add(new CatalogImportRowError(rowNo, "code", "REQUIRED", schemaHelper.message("import.catalog.row.code.required")));
             } else if (!CatalogNormalizer.CODE_PATTERN.matcher(trimmedCode).matches()) {
-                errors.add(new CatalogImportRowError(rowNo, "code", "CODE_INVALID", "Mã không đúng định dạng"));
+                errors.add(new CatalogImportRowError(rowNo, "code", "CODE_INVALID", schemaHelper.message("import.catalog.row.code.invalid")));
             } else {
                 codeNorm = CatalogNormalizer.normalizeCode(trimmedCode);
                 if (!seenInFile.add(codeNorm)) {
-                    errors.add(new CatalogImportRowError(rowNo, "code", "CATALOG_CODE_DUPLICATE_IN_FILE", "Mã bị trùng trong tệp"));
+                    errors.add(new CatalogImportRowError(rowNo, "code", "CATALOG_CODE_DUPLICATE_IN_FILE", schemaHelper.message("import.catalog.row.code.duplicateInFile")));
                 } else if (existingCodes.contains(codeNorm)) {
                     errors.add(new CatalogImportRowError(
                             rowNo,
                             "code",
                             "CATALOG_CODE_TAKEN",
-                            schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã giá trị đã tồn tại")));
+                            schemaHelper.message("CATALOG_CODE_TAKEN")));
                 }
             }
 
             String trimmedNameVi = CatalogNormalizer.trimToNull(nameViRaw);
             if (trimmedNameVi == null) {
-                errors.add(new CatalogImportRowError(rowNo, "nameVi", "REQUIRED", "Tên tiếng Việt không được để trống"));
+                errors.add(new CatalogImportRowError(rowNo, "nameVi", "REQUIRED", schemaHelper.message("import.catalog.row.nameVi.required")));
             } else if (trimmedNameVi.length() > 255) {
-                errors.add(new CatalogImportRowError(rowNo, "nameVi", "SIZE", "Tên tiếng Việt tối đa 255 ký tự"));
+                errors.add(new CatalogImportRowError(rowNo, "nameVi", "SIZE", schemaHelper.message("import.catalog.row.nameVi.size")));
             }
 
             String trimmedNameEn = CatalogNormalizer.trimToNull(nameEnRaw);
             if (trimmedNameEn != null && trimmedNameEn.length() > 255) {
-                errors.add(new CatalogImportRowError(rowNo, "nameEn", "SIZE", "Tên tiếng Anh tối đa 255 ký tự"));
+                errors.add(new CatalogImportRowError(rowNo, "nameEn", "SIZE", schemaHelper.message("import.catalog.row.nameEn.size")));
             }
 
             String trimmedDesc = CatalogNormalizer.trimToNull(descRaw);
             if (trimmedDesc != null && trimmedDesc.length() > 1000) {
-                errors.add(new CatalogImportRowError(rowNo, "description", "SIZE", "Mô tả tối đa 1000 ký tự"));
+                errors.add(new CatalogImportRowError(rowNo, "description", "SIZE", schemaHelper.message("import.catalog.row.description.size")));
             }
 
             CatalogStatus parsedStatus = schemaHelper.parseStatus(statusRaw);
             if (parsedStatus == null) {
-                errors.add(new CatalogImportRowError(rowNo, "status", "STATUS_INVALID", "Trạng thái không hợp lệ"));
+                errors.add(new CatalogImportRowError(rowNo, "status", "STATUS_INVALID", schemaHelper.message("import.catalog.row.status.invalid")));
             }
 
             if (errors.size() == errBefore) {
@@ -683,7 +686,7 @@ public class CatalogExcelService {
         Row headerRow = sheet.getRow(0);
         if (headerRow == null) {
             throw new ValidationException("IMPORT_INVALID_HEADER", null, List.of(
-                    new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.rowMessage("IMPORT_INVALID_HEADER", "Thiếu dòng tiêu đề"))));
+                    new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.message("IMPORT_INVALID_HEADER"))));
         }
 
         List<String> levels = group.getLevels() == null ? List.of() : group.getLevels();
@@ -705,6 +708,9 @@ public class CatalogExcelService {
         for (int i = 0; i < refGroups.size(); i++) {
             CatalogGroupRefResponse rg = refGroups.get(i);
             Integer idx = headerIndexByNorm.get(CatalogExcelSchemaHelper.normalizeHeader(rg.nameVi()));
+            if (idx == null && rg.nameEn() != null && !rg.nameEn().isBlank()) {
+                idx = headerIndexByNorm.get(CatalogExcelSchemaHelper.normalizeHeader(rg.nameEn()));
+            }
             if (idx == null) {
                 idx = headerIndexByNorm.get(CatalogExcelSchemaHelper.normalizeHeader(rg.code()));
             }
@@ -717,30 +723,35 @@ public class CatalogExcelService {
         for (int d = 0; d < levelCount; d++) {
             String levelName = levels.get(d);
             String normLevel = CatalogExcelSchemaHelper.normalizeHeader(levelName);
-            Integer codeIdx = headerIndexByNorm.get(
-                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelCodeHeader(levelName)));
-            if (codeIdx == null) {
-                codeIdx = headerIndexByNorm.get("mã " + normLevel);
-            }
+            Integer codeIdx = firstHeaderIndex(
+                    headerIndexByNorm,
+                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelCodeHeader(levelName, LocaleConfig.DEFAULT_LOCALE)),
+                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelCodeHeader(levelName, LocaleConfig.ENGLISH_LOCALE)),
+                    "mã " + normLevel,
+                    "ma " + normLevel,
+                    normLevel + " code",
+                    "code " + normLevel);
 
-            Integer nameViIdx = headerIndexByNorm.get(
-                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelNameViHeader(levelName)));
-            if (nameViIdx == null) {
-                nameViIdx = headerIndexByNorm.get(normLevel);
-            }
-            if (nameViIdx == null) {
-                nameViIdx = headerIndexByNorm.get("tên " + normLevel);
-            }
+            Integer nameViIdx = firstHeaderIndex(
+                    headerIndexByNorm,
+                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelNameViHeader(levelName, LocaleConfig.DEFAULT_LOCALE)),
+                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelNameViHeader(levelName, LocaleConfig.ENGLISH_LOCALE)),
+                    normLevel,
+                    "tên " + normLevel,
+                    "ten " + normLevel,
+                    normLevel + " (vi)");
 
-            Integer nameEnIdx = headerIndexByNorm.get(
-                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelNameEnHeader(levelName)));
-            if (nameEnIdx == null) {
-                nameEnIdx = headerIndexByNorm.get("tên " + normLevel + " (en)");
-            }
+            Integer nameEnIdx = firstHeaderIndex(
+                    headerIndexByNorm,
+                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelNameEnHeader(levelName, LocaleConfig.DEFAULT_LOCALE)),
+                    CatalogExcelSchemaHelper.normalizeHeader(schemaHelper.treeLevelNameEnHeader(levelName, LocaleConfig.ENGLISH_LOCALE)),
+                    "tên " + normLevel + " (en)",
+                    "ten " + normLevel + " (en)",
+                    normLevel + " (en)");
 
             if (codeIdx == null || nameViIdx == null) {
                 throw new ValidationException("IMPORT_INVALID_HEADER", null, List.of(
-                        new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.rowMessage("IMPORT_INVALID_HEADER", "Thiếu cột của cấp " + levelName))));
+                        new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.message("import.catalog.header.missingLevel", levelName))));
             }
             codeCols[d] = codeIdx;
             nameViCols[d] = nameViIdx;
@@ -823,14 +834,14 @@ public class CatalogExcelService {
             totalRows++;
             if (totalRows > MAX_IMPORT_ROWS) {
                 throw new ValidationException("IMPORT_ROW_LIMIT_EXCEEDED", null, List.of(
-                        new FieldError("file", "IMPORT_ROW_LIMIT_EXCEEDED", schemaHelper.rowMessage("IMPORT_ROW_LIMIT_EXCEEDED", "Vượt quá 5.000 dòng"))));
+                        new FieldError("file", "IMPORT_ROW_LIMIT_EXCEEDED", schemaHelper.message("IMPORT_ROW_LIMIT_EXCEEDED"))));
             }
 
             int rowNo = rowIdx + 1;
             int errBefore = errors.size();
 
             if (firstExplicit < 0) {
-                errors.add(new CatalogImportRowError(rowNo, "level1Code", "REQUIRED", "Thiếu thông tin nút cây"));
+                errors.add(new CatalogImportRowError(rowNo, "level1Code", "REQUIRED", schemaHelper.message("import.catalog.row.treeNodeRequired")));
                 errorRows++;
                 continue;
             }
@@ -839,7 +850,7 @@ public class CatalogExcelService {
             for (int d = 0; d < firstExplicit; d++) {
                 if (prevLevels[d] == null) {
                     errors.add(new CatalogImportRowError(
-                            rowNo, "level" + (d + 1) + "Code", "PARENT_REQUIRED", "Thiếu thông tin cấp cha " + levels.get(d)));
+                            rowNo, "level" + (d + 1) + "Code", "PARENT_REQUIRED", schemaHelper.message("import.catalog.row.parentLevelRequired", levels.get(d))));
                 } else {
                     resolved[d] = prevLevels[d];
                 }
@@ -895,23 +906,23 @@ public class CatalogExcelService {
                 String colNameEn = "level" + depth + "NameEn";
 
                 if (cell.code() == null) {
-                    errors.add(new CatalogImportRowError(rowNo, colCode, "REQUIRED", "Thiếu mã " + levels.get(d)));
+                    errors.add(new CatalogImportRowError(rowNo, colCode, "REQUIRED", schemaHelper.message("import.catalog.row.levelCodeRequired", levels.get(d))));
                     break;
                 }
                 if (!CatalogNormalizer.CODE_PATTERN.matcher(cell.code()).matches()) {
-                    errors.add(new CatalogImportRowError(rowNo, colCode, "CODE_INVALID", "Mã không đúng định dạng"));
+                    errors.add(new CatalogImportRowError(rowNo, colCode, "CODE_INVALID", schemaHelper.message("import.catalog.row.code.invalid")));
                     break;
                 }
                 if (cell.nameVi() == null) {
-                    errors.add(new CatalogImportRowError(rowNo, colNameVi, "REQUIRED", "Thiếu tên " + levels.get(d)));
+                    errors.add(new CatalogImportRowError(rowNo, colNameVi, "REQUIRED", schemaHelper.message("import.catalog.row.levelNameRequired", levels.get(d))));
                     break;
                 }
                 if (cell.nameVi().length() > 255) {
-                    errors.add(new CatalogImportRowError(rowNo, colNameVi, "SIZE", "Tên tiếng Việt tối đa 255 ký tự"));
+                    errors.add(new CatalogImportRowError(rowNo, colNameVi, "SIZE", schemaHelper.message("import.catalog.row.nameVi.size")));
                     break;
                 }
                 if (cell.nameEn() != null && cell.nameEn().length() > 255) {
-                    errors.add(new CatalogImportRowError(rowNo, colNameEn, "SIZE", "Tên tiếng Anh tối đa 255 ký tự"));
+                    errors.add(new CatalogImportRowError(rowNo, colNameEn, "SIZE", schemaHelper.message("import.catalog.row.nameEn.size")));
                     break;
                 }
 
@@ -926,7 +937,7 @@ public class CatalogExcelService {
                                 rowNo,
                                 colCode,
                                 "CATALOG_CODE_TAKEN",
-                                schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã nút đã tồn tại ở vị trí khác")));
+                                schemaHelper.message("import.catalog.row.nodeCodeTakenElsewhere")));
                         break;
                     }
                     if (d < lastExplicit && existing.status() != CatalogStatus.ACTIVE) {
@@ -957,7 +968,7 @@ public class CatalogExcelService {
                                 rowNo,
                                 colCode,
                                 "CATALOG_PARENT_INACTIVE",
-                                schemaHelper.rowMessage("CATALOG_PARENT_INACTIVE", "Nút cha đang ngừng sử dụng")));
+                                schemaHelper.message("CATALOG_PARENT_INACTIVE")));
                         break;
                     }
                     StagedNodeTracker staged = stagedByCode.get(codeNorm);
@@ -970,7 +981,7 @@ public class CatalogExcelService {
                                     rowNo,
                                     colCode,
                                     "CATALOG_CODE_TAKEN",
-                                    schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã nút bị trùng ở vị trí khác trong tệp")));
+                                    schemaHelper.message("import.catalog.row.nodeCodeDuplicateElsewhere")));
                             break;
                         }
                     } else {
@@ -1015,7 +1026,10 @@ public class CatalogExcelService {
                                 rowNo,
                                 refGroup.code(),
                                 "CATALOG_REF_INVALID",
-                                "Giá trị liên kết '" + trimmedToken + "' không tồn tại hoặc đã ngừng trong " + refGroup.nameVi()));
+                                schemaHelper.message(
+                                        "import.catalog.row.refInvalidInGroup",
+                                        trimmedToken,
+                                        schemaHelper.refGroupHeader(refGroup))));
                     } else {
                         rowRefEntries.add(new StagedRootRefEntry(refItemId, rowNo, refGroup.code(), trimmedToken));
                     }
@@ -1078,7 +1092,7 @@ public class CatalogExcelService {
                         row.rowNo(),
                         "code",
                         "CATALOG_CODE_TAKEN",
-                        schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã giá trị đã tồn tại")));
+                        schemaHelper.message("CATALOG_CODE_TAKEN")));
             }
         }
         if (!recheckErrors.isEmpty()) {
@@ -1172,7 +1186,7 @@ public class CatalogExcelService {
             if (node.parentCodeNormalized() != null && parent == null) {
                 failedBranchCodes.add(node.codeNormalized());
                 recheckErrors.add(new CatalogImportRowError(
-                        rowNo, col, "PARENT_REQUIRED", "Không tìm thấy nút cha " + node.parentCodeNormalized()));
+                        rowNo, col, "PARENT_REQUIRED", schemaHelper.message("import.catalog.row.parentNotFound", node.parentCodeNormalized())));
                 continue;
             }
             UUID parentId = parent == null ? null : parent.id();
@@ -1183,7 +1197,7 @@ public class CatalogExcelService {
                 if (node.expectedId() != null && byId == null) {
                     failedBranchCodes.add(node.codeNormalized());
                     recheckErrors.add(new CatalogImportRowError(
-                            rowNo, col, "CATALOG_ITEM_NOT_FOUND", "Nút danh mục đã bị xóa trước khi xác nhận"));
+                            rowNo, col, "CATALOG_ITEM_NOT_FOUND", schemaHelper.message("import.catalog.row.nodeDeletedBeforeConfirm")));
                     continue;
                 }
                 if (byCode == null || (byId != null && !byCode.id().equals(byId.id()))) {
@@ -1192,7 +1206,7 @@ public class CatalogExcelService {
                             rowNo,
                             col,
                             "CATALOG_CODE_TAKEN",
-                            schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Nút danh mục đã bị đổi mã trước khi xác nhận")));
+                            schemaHelper.message("import.catalog.row.nodeRenamedBeforeConfirm")));
                     continue;
                 }
                 boolean sameParent = node.depth() == 1
@@ -1206,7 +1220,7 @@ public class CatalogExcelService {
                             rowNo,
                             col,
                             "CATALOG_CODE_TAKEN",
-                            schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã nút đã tồn tại ở vị trí khác")));
+                            schemaHelper.message("import.catalog.row.nodeCodeTakenElsewhere")));
                     continue;
                 }
                 reusedCount++;
@@ -1225,7 +1239,7 @@ public class CatalogExcelService {
                             rowNo,
                             col,
                             "CATALOG_CODE_TAKEN",
-                            schemaHelper.rowMessage("CATALOG_CODE_TAKEN", "Mã nút đã tồn tại ở vị trí khác")));
+                            schemaHelper.message("import.catalog.row.nodeCodeTakenElsewhere")));
                     continue;
                 }
                 if (parent != null && !parent.effectiveActive()) {
@@ -1234,7 +1248,7 @@ public class CatalogExcelService {
                             rowNo,
                             col,
                             "CATALOG_PARENT_INACTIVE",
-                            schemaHelper.rowMessage("CATALOG_PARENT_INACTIVE", "Nút cha đang ngừng sử dụng")));
+                            schemaHelper.message("CATALOG_PARENT_INACTIVE")));
                     continue;
                 }
                 UUID itemId = Ids.newId();
@@ -1291,7 +1305,7 @@ public class CatalogExcelService {
                                 entry.rowNo() > 0 ? entry.rowNo() : 2,
                                 entry.column() != null ? entry.column() : "refItemIds",
                                 "CATALOG_REF_INVALID",
-                                "Giá trị liên kết '" + entry.refCode() + "' không hợp lệ, đã bị xóa hoặc đã ngừng sử dụng"));
+                                schemaHelper.message("import.catalog.row.refInvalidBeforeConfirm", entry.refCode())));
                     } else {
                         toAdd.add(entry.refItemId());
                     }
@@ -1440,13 +1454,13 @@ public class CatalogExcelService {
         return result;
     }
 
-    private static void verifyZipSignature(Path tempFile) throws IOException {
+    private void verifyZipSignature(Path tempFile) throws IOException {
         byte[] header = new byte[4];
         try (InputStream in = Files.newInputStream(tempFile)) {
             int read = in.readNBytes(header, 0, 4);
             if (read < 4 || header[0] != 0x50 || header[1] != 0x4B || header[2] != 0x03 || header[3] != 0x04) {
                 throw new ValidationException("IMPORT_INVALID_FILE", null, List.of(
-                        new FieldError("file", "IMPORT_INVALID_FILE", "Tệp tải lên không phải định dạng .xlsx hợp lệ")));
+                        new FieldError("file", "IMPORT_INVALID_FILE", schemaHelper.message("IMPORT_INVALID_FILE"))));
             }
         }
     }
@@ -1465,7 +1479,7 @@ public class CatalogExcelService {
                 String name = entry.getName().toLowerCase(Locale.ROOT);
                 if (name.contains("vbaproject")) {
                     throw new ValidationException("IMPORT_MACRO_NOT_ALLOWED", null, List.of(
-                            new FieldError("file", "IMPORT_MACRO_NOT_ALLOWED", schemaHelper.rowMessage("IMPORT_MACRO_NOT_ALLOWED", "Không chấp nhận tệp chứa macro"))));
+                            new FieldError("file", "IMPORT_MACRO_NOT_ALLOWED", schemaHelper.message("IMPORT_MACRO_NOT_ALLOWED"))));
                 }
             }
         }
@@ -1477,7 +1491,7 @@ public class CatalogExcelService {
             String contentType = part.getContentType() == null ? "" : part.getContentType().toLowerCase(Locale.ROOT);
             if (partName.contains("vbaproject") || contentType.contains("macro") || contentType.contains("vbaproject")) {
                 throw new ValidationException("IMPORT_MACRO_NOT_ALLOWED", null, List.of(
-                        new FieldError("file", "IMPORT_MACRO_NOT_ALLOWED", schemaHelper.rowMessage("IMPORT_MACRO_NOT_ALLOWED", "Không chấp nhận tệp chứa macro"))));
+                        new FieldError("file", "IMPORT_MACRO_NOT_ALLOWED", schemaHelper.message("IMPORT_MACRO_NOT_ALLOWED"))));
             }
         }
     }
@@ -1492,7 +1506,7 @@ public class CatalogExcelService {
                                 new FieldError(
                                         "file",
                                         "IMPORT_FORMULA_NOT_ALLOWED",
-                                        schemaHelper.rowMessage("IMPORT_FORMULA_NOT_ALLOWED", "Không chấp nhận công thức trong tệp Excel"))));
+                                        schemaHelper.message("IMPORT_FORMULA_NOT_ALLOWED"))));
                     }
                 }
             }
@@ -1507,7 +1521,7 @@ public class CatalogExcelService {
                     new FieldError(
                             "file",
                             "IMPORT_MERGED_REGION_TOO_LARGE",
-                            schemaHelper.rowMessage("IMPORT_MERGED_REGION_TOO_LARGE", "Vùng ô gộp vượt quá giới hạn cho phép"))));
+                            schemaHelper.message("IMPORT_MERGED_REGION_TOO_LARGE"))));
         }
         int maxSheetRow = sheet.getLastRowNum();
         Map<CellKey, String> map = new HashMap<>();
@@ -1531,7 +1545,7 @@ public class CatalogExcelService {
                         new FieldError(
                                 "file",
                                 "IMPORT_MERGED_REGION_TOO_LARGE",
-                                schemaHelper.rowMessage("IMPORT_MERGED_REGION_TOO_LARGE", "Vùng ô gộp vượt quá giới hạn cho phép"))));
+                                schemaHelper.message("IMPORT_MERGED_REGION_TOO_LARGE"))));
             }
             Row firstRowObj = sheet.getRow(firstRow);
             if (firstRowObj == null) {
@@ -1558,7 +1572,7 @@ public class CatalogExcelService {
                                 new FieldError(
                                         "file",
                                         "IMPORT_MERGED_REGION_TOO_LARGE",
-                                        schemaHelper.rowMessage("IMPORT_MERGED_REGION_TOO_LARGE", "Vùng ô gộp vượt quá giới hạn cho phép"))));
+                                        schemaHelper.message("IMPORT_MERGED_REGION_TOO_LARGE"))));
                     }
                     map.put(new CellKey(r, c), val);
                 }
@@ -1682,6 +1696,19 @@ public class CatalogExcelService {
     private static String safe(String value) {
         return value == null ? "" : value;
     }
+    private static Integer firstHeaderIndex(Map<String, Integer> headerIndexByNorm, String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate == null || candidate.isBlank()) {
+                continue;
+            }
+            Integer idx = headerIndexByNorm.get(candidate);
+            if (idx != null) {
+                return idx;
+            }
+        }
+        return null;
+    }
+
 
     public record ExportedWorkbook(String filename, byte[] bytes) {
     }

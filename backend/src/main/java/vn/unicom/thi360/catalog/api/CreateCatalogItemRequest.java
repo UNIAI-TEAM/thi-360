@@ -38,7 +38,7 @@ public record CreateCatalogItemRequest(
         @Schema(description = "Danh sách ID môn học theo thứ tự (bắt buộc cho nhóm COMBINATION, không trùng)")
         List<UUID> subjectItemIds,
         @Schema(description = "Ghi chú nguồn quy ước (tùy chọn cho nhóm COMBINATION)")
-        @Size(max = 500, message = "Nguồn quy ước tối đa 500 ký tự")
+        @Size(max = 500, message = "{validation.catalog.combination.sourceNote.size}")
         String sourceNote
 ) {
     public CreateCatalogItemRequest(

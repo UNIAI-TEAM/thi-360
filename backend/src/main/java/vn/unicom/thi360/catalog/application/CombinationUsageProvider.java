@@ -2,28 +2,37 @@ package vn.unicom.thi360.catalog.application;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.catalog.domain.CatalogNormalizer;
+import vn.unicom.thi360.shared.web.AppMessages;
 import vn.unicom.thi360.catalog.spi.CatalogUsage;
 import vn.unicom.thi360.catalog.spi.CatalogUsageProvider;
 
 @Component
 public class CombinationUsageProvider implements CatalogUsageProvider {
 
-    private static final String SOURCE = "Mã tổ hợp";
+    private static final String SOURCE_KEY = "catalog.usage.source.combination";
     private static final String OBJECT_TYPE = "SUBJECT_COMBINATION";
 
     private final JdbcTemplate jdbcTemplate;
+    private final AppMessages messages;
 
     public CombinationUsageProvider(JdbcTemplate jdbcTemplate) {
+        this(jdbcTemplate, AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public CombinationUsageProvider(JdbcTemplate jdbcTemplate, AppMessages messages) {
         this.jdbcTemplate = jdbcTemplate;
+        this.messages = messages != null ? messages : AppMessages.defaultInstance();
     }
 
     @Override
     public String source() {
-        return SOURCE;
+        return messages.get(SOURCE_KEY);
     }
 
     @Override
@@ -80,7 +89,7 @@ public class CombinationUsageProvider implements CatalogUsageProvider {
                 (rs, rowNum) -> rs.getString("label"),
                 examItemId);
         return List.of(new CatalogUsage(
-                SOURCE, OBJECT_TYPE, summary.totalCount(), summary.blockingCount() > 0L, labels));
+                source(), OBJECT_TYPE, summary.totalCount(), summary.blockingCount() > 0L, labels));
     }
 
     private List<CatalogUsage> queryBySubject(UUID subjectItemId) {
@@ -118,7 +127,7 @@ public class CombinationUsageProvider implements CatalogUsageProvider {
                 (rs, rowNum) -> rs.getString("label"),
                 subjectItemId);
         return List.of(new CatalogUsage(
-                SOURCE, OBJECT_TYPE, summary.totalCount(), summary.blockingCount() > 0L, labels));
+                source(), OBJECT_TYPE, summary.totalCount(), summary.blockingCount() > 0L, labels));
     }
 
     private record UsageSummary(long totalCount, long blockingCount) {

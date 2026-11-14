@@ -624,7 +624,7 @@ public class CatalogAdminService {
                 || (request.subjectItemIds() != null && !request.subjectItemIds().isEmpty())
                 || CatalogNormalizer.trimToNull(request.sourceNote()) != null) {
             throw new ValidationException(List.of(new FieldError(
-                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", messages.get("validation.catalog.combination.onlyCombinationGroup"))));
         }
 
         int maxExistingValue = catalogItemRepository.findMaxValueByGroupId(groupId);
@@ -824,7 +824,7 @@ public class CatalogAdminService {
                 || request.subjectItemIds() != null
                 || request.sourceNote() != null) {
             throw new ValidationException(List.of(new FieldError(
-                    "examItemId", "INVALID_FOR_NON_COMBINATION", "Chỉ nhóm COMBINATION mới có thông tin tổ hợp")));
+                    "examItemId", "INVALID_FOR_NON_COMBINATION", messages.get("validation.catalog.combination.onlyCombinationGroup"))));
         }
 
         item.updateDetails(
@@ -1874,7 +1874,7 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         if (group.getKind() != CatalogGroupKind.COMBINATION) {
             throw new ValidationException(List.of(
-                    new FieldError("id", "NOT_COMBINATION", "Giá trị này không thuộc nhóm mã tổ hợp")));
+                    new FieldError("id", "NOT_COMBINATION", messages.get("validation.catalog.combination.notCombination"))));
         }
         return catalogSupportDao.loadCombinationVersionsByItemId(itemId);
     }
@@ -2009,7 +2009,7 @@ public class CatalogAdminService {
     private List<UUID> validateCombinationForCreate(UUID examItemId, List<UUID> rawSubjectIds) {
         if (examItemId == null) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+                    new FieldError("examItemId", "REQUIRED", messages.get("validation.catalog.combination.examRequired"))));
         }
         List<UUID> subjectIds = validateSubjectIdsList(rawSubjectIds);
         TreeSet<UUID> toLock = new TreeSet<>();
@@ -2042,7 +2042,7 @@ public class CatalogAdminService {
                 : (current != null ? current.getExamItemId() : null);
         if (targetExamId == null) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "REQUIRED", "Kỳ thi của mã tổ hợp là bắt buộc")));
+                    new FieldError("examItemId", "REQUIRED", messages.get("validation.catalog.combination.examRequired"))));
         }
         boolean examChanged = current == null || !targetExamId.equals(current.getExamItemId());
 
@@ -2054,7 +2054,7 @@ public class CatalogAdminService {
         } else {
             if (currentSubjectIds.isEmpty()) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+                        new FieldError("subjectItemIds", "REQUIRED", messages.get("validation.catalog.combination.subjectsRequired"))));
             }
             targetSubjectIds = currentSubjectIds;
             subjectsChanged = false;
@@ -2101,33 +2101,33 @@ public class CatalogAdminService {
     private void validateExamItem(UUID examItemId, boolean requireActive, Map<UUID, CatalogItem> lockedItems) {
         CatalogGroup examGroup = catalogGroupRepository.findByCodeNormalized(EXAM_GROUP_CODE_NORMALIZED)
                 .orElseThrow(() -> new ValidationException(List.of(
-                        new FieldError("examItemId", "INVALID_EXAM", "Không tìm thấy nhóm danh mục kỳ thi"))));
+                        new FieldError("examItemId", "INVALID_EXAM", messages.get("validation.catalog.combination.examGroupNotFound")))));
         CatalogItem examItem = lockedItems.get(examItemId);
         if (examItem == null || !examItem.getGroupId().equals(examGroup.getId())) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "INVALID_EXAM", "Kỳ thi không hợp lệ hoặc không thuộc nhóm EXAM")));
+                    new FieldError("examItemId", "INVALID_EXAM", messages.get("validation.catalog.combination.examInvalid"))));
         }
         if (requireActive && (examGroup.getStatus() != CatalogStatus.ACTIVE || examItem.getStatus() != CatalogStatus.ACTIVE)) {
             throw new ValidationException(List.of(
-                    new FieldError("examItemId", "INACTIVE_EXAM", "Kỳ thi đang ngừng sử dụng")));
+                    new FieldError("examItemId", "INACTIVE_EXAM", messages.get("validation.catalog.combination.examInactive"))));
         }
     }
 
     private List<UUID> validateSubjectIdsList(List<UUID> rawSubjectIds) {
         if (rawSubjectIds == null || rawSubjectIds.isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("subjectItemIds", "REQUIRED", "Mã tổ hợp phải có ít nhất một môn học")));
+                    new FieldError("subjectItemIds", "REQUIRED", messages.get("validation.catalog.combination.subjectsRequired"))));
         }
         List<UUID> result = new ArrayList<>(rawSubjectIds.size());
         Set<UUID> seen = new LinkedHashSet<>();
         for (UUID subjectId : rawSubjectIds) {
             if (subjectId == null) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INVALID", "Danh sách môn học chứa ID trống")));
+                        new FieldError("subjectItemIds", "INVALID", messages.get("validation.catalog.combination.subjectNullId"))));
             }
             if (!seen.add(subjectId)) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "DUPLICATE", "Danh sách môn học không được trùng lặp")));
+                        new FieldError("subjectItemIds", "DUPLICATE", messages.get("validation.catalog.combination.subjectDuplicate"))));
             }
             result.add(subjectId);
         }
@@ -2138,17 +2138,17 @@ public class CatalogAdminService {
             List<UUID> subjectIds, Set<UUID> existingSubjectIds, Map<UUID, CatalogItem> lockedItems) {
         CatalogGroup subjectGroup = catalogGroupRepository.findByCodeNormalized(SUBJECT_GROUP_CODE_NORMALIZED)
                 .orElseThrow(() -> new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Không tìm thấy nhóm danh mục môn học"))));
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", messages.get("validation.catalog.combination.subjectGroupNotFound")))));
         for (UUID subjectId : subjectIds) {
             CatalogItem subject = lockedItems.get(subjectId);
             if (subject == null || !subject.getGroupId().equals(subjectGroup.getId())) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INVALID_SUBJECT", "Môn học không hợp lệ hoặc không thuộc nhóm SUBJECT")));
+                        new FieldError("subjectItemIds", "INVALID_SUBJECT", messages.get("validation.catalog.combination.subjectInvalid"))));
             }
             boolean isNewlyAdded = !existingSubjectIds.contains(subjectId);
             if (isNewlyAdded && (subjectGroup.getStatus() != CatalogStatus.ACTIVE || subject.getStatus() != CatalogStatus.ACTIVE)) {
                 throw new ValidationException(List.of(
-                        new FieldError("subjectItemIds", "INACTIVE_SUBJECT", "Môn học đang ngừng sử dụng")));
+                        new FieldError("subjectItemIds", "INACTIVE_SUBJECT", messages.get("validation.catalog.combination.subjectInactive"))));
             }
         }
     }
