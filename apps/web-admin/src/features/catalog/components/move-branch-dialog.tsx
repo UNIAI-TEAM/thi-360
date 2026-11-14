@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Badge,
   Button,
@@ -24,6 +24,7 @@ import {
   type CatalogGroupResponse,
   type CatalogItemResponse,
   type CatalogTreeNodeResponse,
+  type MoveCatalogItemRequest,
 } from "../api";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { pickName, resolveCatalogErrorMessage, resolveTreeLevelLabel } from "../utils";
@@ -100,8 +101,10 @@ function MoveBranchBody({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedParentId, setSelectedParentId] = useState<string>("");
   const [serverError, setServerError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
+  const moveMutation = useMutation({
+    mutationFn: (payload: MoveCatalogItemRequest) => api.moveItem(node.id, payload),
+  });
+  const submitting = moveMutation.isPending;
   const targetDepth = Math.max(1, node.depth - 1);
   const candidatesQuery = useQuery({
     queryKey: catalogQueryKeys.tree(group.id, { depth: targetDepth }),
@@ -133,10 +136,9 @@ function MoveBranchBody({
   async function handleSubmit() {
     if (!selectedParentId || submitting) return;
     setServerError(null);
-    setSubmitting(true);
     onSubmittingChange(true);
     try {
-      const updated = await api.moveItem(node.id, {
+      const updated = await moveMutation.mutateAsync({
         parentId: selectedParentId,
         version: node.version,
       });
@@ -146,7 +148,6 @@ function MoveBranchBody({
       if (status === 401 || status === 403) return;
       setServerError(resolveCatalogErrorMessage(error, (code) => t(`errorCodes.${code}`)));
     } finally {
-      setSubmitting(false);
       onSubmittingChange(false);
     }
   }

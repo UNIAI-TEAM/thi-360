@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Badge,
   Button,
@@ -181,10 +181,33 @@ export function TreeItemsPanel({
   const [selectedRefByGroup, setSelectedRefByGroup] = useState<Record<string, string[]>>({});
   const [expandedOverrides, setExpandedOverrides] = useState<Record<string, boolean>>({});
   const [expandingAll, setExpandingAll] = useState(false);
-  const [reordering, setReordering] = useState(false);
-  const [refActionPending, setRefActionPending] = useState(false);
   const [addRefGroupValue, setAddRefGroupValue] = useState("");
   const [addItemRefByGroup, setAddItemRefByGroup] = useState<Record<string, string>>({});
+
+  const reorderTreeMutation = useMutation({
+    mutationFn: (itemIds: string[]) => api.reorderItems(group.id, { itemIds }),
+  });
+  const addRefGroupMutation = useMutation({
+    mutationFn: (refGroupId: string) => api.addRefGroup(group.id, refGroupId),
+  });
+  const removeRefGroupMutation = useMutation({
+    mutationFn: (refGroupId: string) => api.removeRefGroup(group.id, refGroupId),
+  });
+  const addItemRefMutation = useMutation({
+    mutationFn: ({ nodeId, refItemId }: { nodeId: string; refItemId: string }) =>
+      api.addItemRef(nodeId, refItemId),
+  });
+  const removeItemRefMutation = useMutation({
+    mutationFn: ({ nodeId, refItemId }: { nodeId: string; refItemId: string }) =>
+      api.removeItemRef(nodeId, refItemId),
+  });
+
+  const reordering = reorderTreeMutation.isPending;
+  const refActionPending =
+    addRefGroupMutation.isPending ||
+    removeRefGroupMutation.isPending ||
+    addItemRefMutation.isPending ||
+    removeItemRefMutation.isPending;
 
   const selectedRefItemIds = useMemo(
     () => Object.values(selectedRefByGroup).flat().filter(Boolean),
@@ -485,9 +508,8 @@ export function TreeItemsPanel({
     );
     const snapshot = queryClient.getQueryData<CatalogTreeNodeResponse[]>(cacheKey);
     queryClient.setQueryData<CatalogTreeNodeResponse[]>(cacheKey, nextOrder);
-    setReordering(true);
     try {
-      await api.reorderItems(group.id, { itemIds: nextOrder.map((n) => n.id) });
+      await reorderTreeMutation.mutateAsync(nextOrder.map((n) => n.id));
       await invalidateTreeAndItem();
       toast.success(t("reorderSuccess"), {
         action: {
@@ -495,9 +517,7 @@ export function TreeItemsPanel({
           onClick: () => {
             void (async () => {
               try {
-                await api.reorderItems(group.id, {
-                  itemIds: previousOrder.map((n) => n.id),
-                });
+                await reorderTreeMutation.mutateAsync(previousOrder.map((n) => n.id));
                 await invalidateTreeAndItem();
                 notify.success(t("undoSuccess"));
               } catch (undoErr) {
@@ -516,8 +536,6 @@ export function TreeItemsPanel({
       if (status !== 401 && status !== 403) {
         notify.error(t("reorderError"));
       }
-    } finally {
-      setReordering(false);
     }
   }
 
@@ -525,9 +543,8 @@ export function TreeItemsPanel({
     if (!refGroupId || refActionPending) return;
     const targetGroup = availableSimpleGroups.find((g) => g.id === refGroupId);
     const label = targetGroup ? pickName(targetGroup, locale) : refGroupId;
-    setRefActionPending(true);
     try {
-      await api.addRefGroup(group.id, refGroupId);
+      await addRefGroupMutation.mutateAsync(refGroupId);
       setAddRefGroupValue("");
       await invalidateTreeAndItem();
       notify.success(t("tree.refGroupAddedToast", { name: label }));
@@ -536,16 +553,13 @@ export function TreeItemsPanel({
       if (status !== 401 && status !== 403) {
         notify.error(resolveCatalogErrorMessage(error, (code) => t(`errorCodes.${code}`)));
       }
-    } finally {
-      setRefActionPending(false);
     }
   }
 
   async function handleRemoveRefGroup(refGroupId: string, label: string) {
     if (refActionPending) return;
-    setRefActionPending(true);
     try {
-      await api.removeRefGroup(group.id, refGroupId);
+      await removeRefGroupMutation.mutateAsync(refGroupId);
       setSelectedRefByGroup((prev) => {
         const next = { ...prev };
         delete next[refGroupId];
@@ -558,7 +572,7 @@ export function TreeItemsPanel({
           onClick: () => {
             void (async () => {
               try {
-                await api.addRefGroup(group.id, refGroupId);
+                await addRefGroupMutation.mutateAsync(refGroupId);
                 await invalidateTreeAndItem();
                 notify.success(t("undoSuccess"));
               } catch (undoErr) {
@@ -581,8 +595,6 @@ export function TreeItemsPanel({
           notify.error(resolveCatalogErrorMessage(error, (c) => t(`errorCodes.${c}`)));
         }
       }
-    } finally {
-      setRefActionPending(false);
     }
   }
 
@@ -593,9 +605,8 @@ export function TreeItemsPanel({
     refLabel: string,
   ) {
     if (!refItemId || refActionPending) return;
-    setRefActionPending(true);
     try {
-      await api.addItemRef(nodeId, refItemId);
+      await addItemRefMutation.mutateAsync({ nodeId, refItemId });
       setAddItemRefByGroup((prev) => ({ ...prev, [refGroupId]: "" }));
       await invalidateTreeAndItem(nodeId);
       notify.success(t("tree.refAddedToast", { name: refLabel }));
@@ -604,16 +615,13 @@ export function TreeItemsPanel({
       if (status !== 401 && status !== 403) {
         notify.error(resolveCatalogErrorMessage(error, (code) => t(`errorCodes.${code}`)));
       }
-    } finally {
-      setRefActionPending(false);
     }
   }
 
   async function handleRemoveNodeRef(nodeId: string, refItemId: string, refLabel: string) {
     if (refActionPending) return;
-    setRefActionPending(true);
     try {
-      await api.removeItemRef(nodeId, refItemId);
+      await removeItemRefMutation.mutateAsync({ nodeId, refItemId });
       await invalidateTreeAndItem(nodeId);
       toast.success(t("tree.refRemovedToast", { name: refLabel }), {
         action: {
@@ -621,7 +629,7 @@ export function TreeItemsPanel({
           onClick: () => {
             void (async () => {
               try {
-                await api.addItemRef(nodeId, refItemId);
+                await addItemRefMutation.mutateAsync({ nodeId, refItemId });
                 await invalidateTreeAndItem(nodeId);
                 notify.success(t("undoSuccess"));
               } catch (undoErr) {
@@ -639,8 +647,6 @@ export function TreeItemsPanel({
       if (status !== 401 && status !== 403) {
         notify.error(resolveCatalogErrorMessage(error, (code) => t(`errorCodes.${code}`)));
       }
-    } finally {
-      setRefActionPending(false);
     }
   }
 

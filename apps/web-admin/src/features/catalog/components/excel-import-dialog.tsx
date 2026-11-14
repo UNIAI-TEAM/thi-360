@@ -1,5 +1,5 @@
 "use client";
-
+import { useMutation } from "@tanstack/react-query";
 import {
   Badge,
   Button,
@@ -106,8 +106,16 @@ function ExcelImportBody({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+
+  const previewMutation = useMutation({
+    mutationFn: (file: File) => api.previewImport(group.id, file),
+  });
+  const confirmMutation = useMutation({
+    mutationFn: ({ previewId, key }: { previewId: string; key: string }) =>
+      api.confirmImport(group.id, previewId, key),
+  });
+  const submitting = previewMutation.isPending || confirmMutation.isPending;
   const [preview, setPreview] = useState<CatalogImportPreviewResponse | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
   const [result, setResult] = useState<CatalogImportResultResponse | null>(null);
@@ -159,10 +167,9 @@ function ExcelImportBody({
     }
 
     setServerError(null);
-    setSubmitting(true);
     onBusyChange(true);
     try {
-      const nextPreview = await api.previewImport(group.id, selectedFile);
+      const nextPreview = await previewMutation.mutateAsync(selectedFile);
       setPreview(nextPreview);
       setIdempotencyKey(
         typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -179,7 +186,6 @@ function ExcelImportBody({
       }
       setServerError(resolveCatalogErrorMessage(error, (code) => t(`errorCodes.${code}`)));
     } finally {
-      setSubmitting(false);
       onBusyChange(false);
     }
   }
@@ -187,10 +193,12 @@ function ExcelImportBody({
   async function handleConfirm() {
     if (!preview || !preview.canConfirm || submitting) return;
     setServerError(null);
-    setSubmitting(true);
     onBusyChange(true);
     try {
-      const nextResult = await api.confirmImport(group.id, preview.previewId, idempotencyKey);
+      const nextResult = await confirmMutation.mutateAsync({
+        previewId: preview.previewId,
+        key: idempotencyKey,
+      });
       setResult(nextResult);
       setStep("result");
       await onImported(nextResult);
@@ -199,7 +207,6 @@ function ExcelImportBody({
       if (status === 401 || status === 403) return;
       setServerError(resolveCatalogErrorMessage(error, (code) => t(`errorCodes.${code}`)));
     } finally {
-      setSubmitting(false);
       onBusyChange(false);
     }
   }

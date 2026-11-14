@@ -1,3 +1,4 @@
+import { MutationCache, QueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
@@ -490,11 +491,13 @@ function renderCatalog({
   api = createMockApi(),
   locale = "vi",
   search = "",
+  client,
 }: {
   permissions?: readonly string[];
   api?: CatalogApi;
   locale?: "vi" | "en";
   search?: string;
+  client?: QueryClient;
 } = {}) {
   routerMock.search = search;
   const activeMessages = locale === "en" ? en : viMessages;
@@ -512,7 +515,7 @@ function renderCatalog({
           closeButtonAriaLabel={activeMessages.common.closeToast}
         />
       </>,
-      { locale, messages: activeMessages },
+      { locale, messages: activeMessages, client },
     ),
   };
 }
@@ -1744,6 +1747,47 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(
       screen.queryByRole("button", { name: /Kéo để đổi thứ tự/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("đẩy lỗi 401 từ exportItems, previewImport và moveItem tới MutationCache.onError", async () => {
+    const onMutationError = vi.fn();
+    const client = new QueryClient({
+      mutationCache: new MutationCache({ onError: onMutationError }),
+      defaultOptions: { queries: { retry: false } },
+    });
+    const err401 = new ApiStatusError(401, "Unauthorized");
+    const api = createTreeMockApi({
+      exportItems: vi.fn().mockRejectedValue(err401),
+      previewImport: vi.fn().mockRejectedValue(err401),
+      moveItem: vi.fn().mockRejectedValue(err401),
+    });
+
+    renderCatalog({ api, search: "group=KNOWLEDGE", client });
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+
+    // 1. exportItems 401 -> MutationCache.onError
+    await userEvent.click(screen.getByRole("button", { name: "Xuất Excel" }));
+    await waitFor(() => expect(onMutationError).toHaveBeenCalledTimes(1));
+
+    // 2. previewImport 401 -> MutationCache.onError
+    await userEvent.click(screen.getByRole("button", { name: "Nhập Excel" }));
+    const importDlg = await screen.findByRole("dialog");
+    const fileInput = within(importDlg).getByLabelText(/Tệp Excel/) as HTMLInputElement;
+    const validXlsx = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "tree.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    await userEvent.upload(fileInput, validXlsx);
+    await userEvent.click(within(importDlg).getByRole("button", { name: "Kiểm tra tệp" }));
+    await waitFor(() => expect(onMutationError).toHaveBeenCalledTimes(2));
+    await userEvent.click(within(importDlg).getByRole("button", { name: "Hủy" }));
+
+    // 3. moveItem 401 -> MutationCache.onError
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Chuyển nhánh Tính đơn điệu" }));
+    const moveDlg = await screen.findByRole("dialog");
+    await userEvent.click(await within(moveDlg).findByRole("radio", { name: /Tích phân/ }));
+    await userEvent.click(within(moveDlg).getByRole("button", { name: "Chuyển" }));
+    await waitFor(() => expect(onMutationError).toHaveBeenCalledTimes(3));
   });
 });
 

@@ -135,7 +135,6 @@ function CatalogWorkspace({
   const [pageSize, setPageSize] = useState(20);
   const [groupDialog, setGroupDialog] = useState<GroupDialogState>({ open: false });
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [itemDialog, setItemDialog] = useState<ItemDialogState>({ open: false });
   const [treeNodeDialog, setTreeNodeDialog] = useState<TreeNodeDialogState>({ open: false });
   const [moveBranchNode, setMoveBranchNode] = useState<CatalogTreeNodeResponse | null>(null);
@@ -287,6 +286,11 @@ function CatalogWorkspace({
     mutationFn: ({ groupId, itemIds }: { groupId: string; itemIds: string[] }) =>
       api.reorderItems(groupId, { itemIds }),
   });
+
+  const exportMutation = useMutation({
+    mutationFn: (groupId: string) => api.exportItems(groupId),
+  });
+  const exporting = exportMutation.isPending;
 
   async function handleSubmitGroup(
     payload:
@@ -508,17 +512,14 @@ function CatalogWorkspace({
 
   async function handleExportExcel(groupId: string) {
     if (exporting) return;
-    setExporting(true);
     try {
-      const exported = await api.exportItems(groupId);
+      const exported = await exportMutation.mutateAsync(groupId);
       triggerBlobDownload(exported.blob, exported.filename);
       notify.success(t("exportSuccess", { filename: exported.filename }));
     } catch (error) {
       const status = getErrorStatus(error);
       if (status === 401 || status === 403) return;
       notify.error(t("exportError"));
-    } finally {
-      setExporting(false);
     }
   }
 
