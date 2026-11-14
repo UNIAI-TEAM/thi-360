@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Profiler, type ProfilerOnRenderCallback } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
@@ -739,5 +740,39 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
         ],
       ).toBeFalsy();
     });
+  });
+
+  it("bước 2: render bị chặn sau khi dữ liệu tải xong (không vòng lặp vô hạn) và link điều hướng vẫn hoạt động", async () => {
+    let commits = 0;
+    const onRender: ProfilerOnRenderCallback = () => {
+      commits += 1;
+    };
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <Profiler id="bulk-import-batch" onRender={onRender}>
+          <BulkImportBatchView batchId={BATCH_ID} deps={makeDeps()} />
+        </Profiler>
+      </SessionProvider>,
+      { locale: "vi", messages: viMessages },
+    );
+
+    // Đợi dữ liệu đợt + dòng tải xong rồi để mọi commit còn dang dở kết thúc.
+    expect(await screen.findByText("Xem trước")).toBeInTheDocument();
+    await sleep(300);
+
+    commits = 0;
+    await sleep(500);
+    // Vòng lặp render cũ (state mới identity mỗi render -> TanStack resetPageIndex
+    // -> setState -> render lại) tạo hàng nghìn commit trong vài trăm ms; bản đúng
+    // chỉ có vài commit khi query/DOM ổn định.
+    expect(commits).toBeLessThan(20);
+
+    // Link "Tải lên lại" vẫn là link thật tới route upload (click không treo).
+    const reuploadLink = screen.getByRole("link", { name: "Tải lên lại" });
+    expect(reuploadLink).toHaveAttribute("href", "/tai-khoan/cap-hang-loat");
+    await userEvent.click(reuploadLink);
+    await sleep(100);
+    expect(commits).toBeLessThan(20);
   });
 });

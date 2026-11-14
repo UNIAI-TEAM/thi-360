@@ -48,6 +48,10 @@ import { BulkImportStepper, type BulkImportStepNumber } from "./bulk-import-step
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const POLL_INTERVAL_MS = 2_000;
+/** Mảng rỗng dùng chung: `?? []` tạo identity mới mỗi render làm TanStack Table tính lại row model. */
+const EMPTY_ROW_ITEMS: ImportRow[] = [];
+/** `getRowId` ổn định ở module scope: inline arrow tạo hàm mới mỗi render. */
+const getImportRowId = (row: ImportRow) => row.id;
 
 export interface BulkImportBatchViewProps {
   batchId: string;
@@ -59,6 +63,12 @@ export function BulkImportBatchView({ batchId, deps }: BulkImportBatchViewProps)
   const common = useTranslations("common");
   const sessionState = useSession();
   const { can } = usePermissions();
+  // Giữ identity `deps` ổn định: object literal mới mỗi render làm mọi prop/hook
+  // phía dưới (queryFn, Table inputs) đổi tham chiếu liên tục.
+  const apiDeps = useMemo<BulkImportApiDeps>(
+    () => ({ ...defaultBulkImportApiDeps, ...deps }),
+    [deps],
+  );
 
   if (sessionState.status === "loading") {
     return <BulkImportBatchSkeleton />;
@@ -67,7 +77,7 @@ export function BulkImportBatchView({ batchId, deps }: BulkImportBatchViewProps)
   if (sessionState.status === "error") {
     return (
       <div className="flex flex-col gap-4">
-        <BulkImportHeader deps={{ ...defaultBulkImportApiDeps, ...deps }} />
+        <BulkImportHeader deps={apiDeps} />
         <BulkImportStepper currentStep={2} />
         <Card>
           <EmptyState
@@ -85,12 +95,7 @@ export function BulkImportBatchView({ batchId, deps }: BulkImportBatchViewProps)
     return <ForbiddenView />;
   }
 
-  return (
-    <BulkImportBatchContent
-      batchId={batchId}
-      deps={{ ...defaultBulkImportApiDeps, ...deps }}
-    />
-  );
+  return <BulkImportBatchContent batchId={batchId} deps={apiDeps} />;
 }
 
 function BulkImportBatchSkeleton() {
@@ -571,6 +576,22 @@ function BulkImportBatchContent({
     [t, num, formatRowErrorText],
   );
 
+  // `labels` của Pagination là object literal: memoize để prop identity ổn định
+  // giữa các lần render (Pagination không memo nên chỉ là tránh cấp phát thừa,
+  // nhưng giữ convention "mọi object prop đều ổn định").
+  const paginationLabels = useMemo(
+    () => ({
+      nav: t("pagination.nav"),
+      previous: t("pagination.previous"),
+      next: t("pagination.next"),
+      rowsPerPage: t("pagination.rowsPerPage"),
+      page: (pageNum: number) => t("pagination.page", { page: pageNum }),
+      range: ({ from, to, total }: { from: number; to: number; total: number }) =>
+        t("pagination.range", { from, to, total }),
+    }),
+    [t],
+  );
+
   if (batchQuery.isLoading) {
     return <BulkImportBatchSkeleton />;
   }
@@ -612,7 +633,7 @@ function BulkImportBatchContent({
 
   if (!batch) return null;
 
-  const rowItems = rowsQuery.data?.items ?? [];
+  const rowItems = rowsQuery.data?.items ?? EMPTY_ROW_ITEMS;
   const totalRowItems = rowsQuery.data?.totalItems ?? 0;
 
   return (
@@ -716,7 +737,7 @@ function BulkImportBatchContent({
               aria-label={t("preview.tableAriaLabel")}
               columns={previewColumns}
               data={rowItems}
-              getRowId={(row) => row.id}
+              getRowId={getImportRowId}
               loading={rowsQuery.isLoading}
               error={
                 rowsQuery.isError ? (
@@ -753,15 +774,7 @@ function BulkImportBatchContent({
                     setPageSize(nextSize);
                     setPage(1);
                   }}
-                  labels={{
-                    nav: t("pagination.nav"),
-                    previous: t("pagination.previous"),
-                    next: t("pagination.next"),
-                    rowsPerPage: t("pagination.rowsPerPage"),
-                    page: (pageNum) => t("pagination.page", { page: pageNum }),
-                    range: ({ from, to, total }) =>
-                      t("pagination.range", { from, to, total }),
-                  }}
+                  labels={paginationLabels}
                 />
               </div>
             )}
@@ -1061,7 +1074,7 @@ function BulkImportBatchContent({
               aria-label={t("result.tableAriaLabel")}
               columns={resultColumns}
               data={rowItems}
-              getRowId={(row) => row.id}
+              getRowId={getImportRowId}
               loading={rowsQuery.isLoading}
               error={
                 rowsQuery.isError ? (
@@ -1098,15 +1111,7 @@ function BulkImportBatchContent({
                     setPageSize(nextSize);
                     setPage(1);
                   }}
-                  labels={{
-                    nav: t("pagination.nav"),
-                    previous: t("pagination.previous"),
-                    next: t("pagination.next"),
-                    rowsPerPage: t("pagination.rowsPerPage"),
-                    page: (pageNum) => t("pagination.page", { page: pageNum }),
-                    range: ({ from, to, total }) =>
-                      t("pagination.range", { from, to, total }),
-                  }}
+                  labels={paginationLabels}
                 />
               </div>
             )}
