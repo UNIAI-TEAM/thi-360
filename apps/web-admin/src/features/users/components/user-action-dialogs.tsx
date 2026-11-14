@@ -20,8 +20,20 @@ import {
   type UsersApiDeps,
   UsersApiError,
 } from "../api";
-import { resolveUsersErrorMessage } from "../utils";
+import { mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
 import { ResetPasswordDialog, type ResetPasswordTarget } from "./reset-password-dialog";
+
+const KNOWN_BLOCKER_SOURCES = {
+  COMMERCE: true,
+  EXAM: true,
+  IDENTITY: true,
+} as const;
+
+type KnownBlockerSource = keyof typeof KNOWN_BLOCKER_SOURCES;
+
+function isKnownBlockerSource(source?: string): source is KnownBlockerSource {
+  return Boolean(source && Object.hasOwn(KNOWN_BLOCKER_SOURCES, source));
+}
 
 export interface UserActionSubject {
   id: string;
@@ -329,15 +341,24 @@ export function UserActionDialogs({
 
           {dialog.kind === "blocked-delete" && (
             <ul className="flex flex-col gap-2">
-              {dialog.blockers.map((blocker, index) => (
-                <li
-                  key={`${blocker.source}-${blocker.code}-${index}`}
-                  className="rounded-lg border border-border bg-subtle px-3 py-2 text-caption text-text"
-                >
-                  <span className="font-semibold">{blocker.source}: </span>
-                  <span>{blocker.message}</span>
-                </li>
-              ))}
+              {dialog.blockers.map((blocker, index) => {
+                const sourceLabel = isKnownBlockerSource(blocker.source)
+                  ? t(`blockedDeleteDialog.sources.${blocker.source}`)
+                  : t("blockedDeleteDialog.fallbackSource");
+                const codeKey = mapUserErrorCodeToKey(blocker.code);
+                const messageText = codeKey
+                  ? t(`errorCodes.${codeKey}`)
+                  : t("errorCodes.USER_HAS_TRANSACTIONS");
+                return (
+                  <li
+                    key={`${blocker.source}-${blocker.code}-${index}`}
+                    className="rounded-lg border border-border bg-subtle px-3 py-2 text-caption text-text"
+                  >
+                    <span className="font-semibold">{sourceLabel}: </span>
+                    <span>{messageText}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
 

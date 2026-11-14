@@ -1,9 +1,10 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { defaultUsersApiDeps, type UsersApiDeps, type UserSummary } from "../api";
 import { UsersListView } from "../components/users-list-view";
@@ -385,5 +386,124 @@ describe("UsersListView (Slice 1)", () => {
       );
     });
     expect(await screen.findByText("Kết quả thao tác hàng loạt")).toBeInTheDocument();
+  });
+
+  it("hiển thị tên vai trò hệ thống theo khóa dịch khi locale là en và giữ nguyên tên vai trò tự tạo", async () => {
+    const deps = makeDeps({
+      listUsers: vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+        items: [
+          {
+            ...SAMPLE_USERS[0]!,
+            id: "u-en-1",
+            username: "ops.user",
+            fullName: "Ops User",
+            roles: [
+              { id: "r-ops", code: "OPERATIONS", name: "Vận hành / CSKH", access: "MANAGE" },
+              { id: "r-custom", code: "PROCTOR", name: "Exam Proctor", access: "MANAGE" },
+            ],
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      })),
+      listActiveRoles: vi.fn<UsersApiDeps["listActiveRoles"]>(async () => [
+        {
+          id: "r-sys",
+          code: "SYSTEM_ADMIN",
+          name: "Quản trị hệ thống",
+          access: "ADMIN",
+          status: "ACTIVE",
+          system: true,
+          permissionCount: 10,
+          userCount: 1,
+          version: 0,
+          createdAt: "2026-11-01T00:00:00Z",
+          updatedAt: "2026-11-01T00:00:00Z",
+        },
+        {
+          id: "r-content",
+          code: "CONTENT_ADMIN",
+          name: "Quản trị nội dung",
+          access: "MANAGE",
+          status: "ACTIVE",
+          system: true,
+          permissionCount: 5,
+          userCount: 1,
+          version: 0,
+          createdAt: "2026-11-01T00:00:00Z",
+          updatedAt: "2026-11-01T00:00:00Z",
+        },
+        {
+          id: "r-ops",
+          code: "OPERATIONS",
+          name: "Vận hành / CSKH",
+          access: "MANAGE",
+          status: "ACTIVE",
+          system: true,
+          permissionCount: 5,
+          userCount: 1,
+          version: 0,
+          createdAt: "2026-11-01T00:00:00Z",
+          updatedAt: "2026-11-01T00:00:00Z",
+        },
+        {
+          id: "r-student",
+          code: "STUDENT",
+          name: "Học viên",
+          access: "EXAM",
+          status: "ACTIVE",
+          system: true,
+          permissionCount: 0,
+          userCount: 1,
+          version: 0,
+          createdAt: "2026-11-01T00:00:00Z",
+          updatedAt: "2026-11-01T00:00:00Z",
+        },
+        {
+          id: "r-custom",
+          code: "PROCTOR",
+          name: "Exam Proctor",
+          access: "MANAGE",
+          status: "ACTIVE",
+          system: false,
+          permissionCount: 2,
+          userCount: 1,
+          version: 0,
+          createdAt: "2026-11-01T00:00:00Z",
+          updatedAt: "2026-11-01T00:00:00Z",
+        },
+      ]),
+    });
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UsersListView deps={deps} />
+      </SessionProvider>,
+      { locale: "en", messages: en },
+    );
+
+    expect(await screen.findByText("Operations / Support, Exam Proctor")).toBeInTheDocument();
+    expect(screen.queryByText(/Vận hành \/ CSKH/)).not.toBeInTheDocument();
+    const filterRoleTrigger = screen.getByRole("combobox", { name: "Role" });
+    await userEvent.click(filterRoleTrigger);
+    expect(await screen.findByRole("option", { name: "System administrator" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Content administrator" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Operations / Support" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Student" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Exam Proctor" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(screen.getByRole("button", { name: /Create account/ }));
+    const roleTrigger = within(screen.getByRole("dialog")).getByRole("combobox", { name: "Role" });
+    await userEvent.click(roleTrigger);
+
+    expect(await screen.findByRole("option", { name: "System administrator" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Content administrator" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Operations / Support" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Student" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Exam Proctor" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Quản trị hệ thống" })).not.toBeInTheDocument();
   });
 });

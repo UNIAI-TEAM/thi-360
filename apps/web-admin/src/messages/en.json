@@ -269,6 +269,14 @@
     "eyebrow": "ERROR 404",
     "title": "Page not found"
   },
+  "rbac": {
+    "systemRoles": {
+      "CONTENT_ADMIN": "Content administrator",
+      "OPERATIONS": "Operations / Support",
+      "STUDENT": "Student",
+      "SYSTEM_ADMIN": "System administrator"
+    }
+  },
   "shell": {
     "brand": "Thi 360 · Admin",
     "breadcrumbLabel": "Current location",
@@ -327,6 +335,11 @@
       "deactivateInstead": "Deactivate instead",
       "description": "Account {username} has transaction records that must be retained for reconciliation and cannot be deleted. You can deactivate it to block sign-in instead.",
       "fallbackSource": "System",
+      "sources": {
+        "COMMERCE": "Orders & transactions",
+        "EXAM": "Exams & attempts",
+        "IDENTITY": "Identity"
+      },
       "title": "Cannot delete account"
     },
     "bulk": {
@@ -475,6 +488,7 @@
       "USERNAME_REQUIRED": "Please enter a username.",
       "USERNAME_RESERVED": "This username is reserved by the system.",
       "USERNAME_TAKEN": "Username is already taken.",
+      "USER_HAS_ORDERS": "This account has order records and cannot be deleted.",
       "USER_HAS_TRANSACTIONS": "This account has transaction records and cannot be deleted.",
       "USER_NOT_AVAILABLE": "Account does not exist or has already been deleted.",
       "VALIDATION_FAILED": "Submitted data is invalid. Please review the form.",

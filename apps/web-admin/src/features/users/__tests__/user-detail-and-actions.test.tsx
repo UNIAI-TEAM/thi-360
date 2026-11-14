@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
+import en from "@/messages/en.json";
+import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
 import { defaultUsersApiDeps, type UserDetail, type UsersApiDeps, UsersApiError } from "../api";
 import { UserDetailView } from "../components/user-detail-view";
@@ -196,8 +198,10 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Xóa" }));
 
     expect(await screen.findByText("Không thể xóa tài khoản")).toBeInTheDocument();
-    expect(screen.getByText(/Tài khoản đã có đơn hàng thanh toán/)).toBeInTheDocument();
-
+    expect(screen.getByText(/Đơn hàng & giao dịch:/)).toBeInTheDocument();
+    expect(screen.getByText(viMessages.users.errorCodes.USER_HAS_TRANSACTIONS)).toBeInTheDocument();
+    expect(screen.queryByText(/Tài khoản đã có đơn hàng thanh toán/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/COMMERCE:/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động thay thế" }));
 
     expect(checkDeactivateMock).toHaveBeenCalledWith(BASE_USER.id);
@@ -221,5 +225,45 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
       await screen.findByText(/Tài khoản vừa được cập nhật ở nơi khác/),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tải lại" })).toBeInTheDocument();
+  });
+
+  it("tab Vai trò & quyền và hộp thoại chặn xóa hiển thị khóa dịch tiếng Anh khi locale là en", async () => {
+    const deps = makeDeps({
+      getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({
+        ...BASE_USER,
+        roles: [
+          { id: "r-sys", code: "SYSTEM_ADMIN", name: "Quản trị hệ thống", access: "ADMIN" },
+          { id: "r-custom", code: "GRADER", name: "Essay Grader", access: "MANAGE" },
+        ],
+      })),
+      checkUserDeletion: vi.fn<UsersApiDeps["checkUserDeletion"]>(async () => ({
+        deletable: false,
+        blockers: [
+          {
+            source: "COMMERCE",
+            code: "USER_HAS_ORDERS",
+            message: "Chuỗi tiếng Việt thô từ backend",
+          },
+        ],
+      })),
+    });
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UserDetailView userId={BASE_USER.id} deps={deps} />
+      </SessionProvider>,
+      { locale: "en", messages: en },
+    );
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Roles & permissions" }));
+    expect(await screen.findByText("System administrator")).toBeInTheDocument();
+    expect(screen.getByText("Essay Grader")).toBeInTheDocument();
+    expect(screen.queryByText("Quản trị hệ thống")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(await screen.findByText("Cannot delete account")).toBeInTheDocument();
+    expect(screen.getByText(/Orders & transactions:/)).toBeInTheDocument();
+    expect(screen.getByText(en.users.errorCodes.USER_HAS_ORDERS)).toBeInTheDocument();
+    expect(screen.queryByText(/Chuỗi tiếng Việt thô/)).not.toBeInTheDocument();
   });
 });

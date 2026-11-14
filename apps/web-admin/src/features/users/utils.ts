@@ -46,6 +46,33 @@ export function formatUserDateTime(iso?: string): string {
   return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
 }
 
+export const SYSTEM_ROLE_CODES = [
+  "CONTENT_ADMIN",
+  "OPERATIONS",
+  "STUDENT",
+  "SYSTEM_ADMIN",
+] as const;
+
+export type SystemRoleCode = (typeof SYSTEM_ROLE_CODES)[number];
+
+const SYSTEM_ROLE_CODE_MAP: Record<SystemRoleCode, true> = {
+  CONTENT_ADMIN: true,
+  OPERATIONS: true,
+  STUDENT: true,
+  SYSTEM_ADMIN: true,
+};
+
+export function isSystemRoleCode(code?: string): code is SystemRoleCode {
+  return Boolean(code && Object.hasOwn(SYSTEM_ROLE_CODE_MAP, code));
+}
+
+export function formatRoleLabel(
+  role: { code: string; name: string },
+  translateSystemRole: (code: SystemRoleCode) => string,
+): string {
+  return isSystemRoleCode(role.code) ? translateSystemRole(role.code) : role.name;
+}
+
 export const KNOWN_USER_ERROR_CODES = [
   "ALREADY_ACTIVE",
   "ALREADY_INACTIVE",
@@ -79,6 +106,7 @@ export const KNOWN_USER_ERROR_CODES = [
   "USERNAME_REQUIRED",
   "USERNAME_RESERVED",
   "USERNAME_TAKEN",
+  "USER_HAS_ORDERS",
   "USER_HAS_TRANSACTIONS",
   "USER_NOT_AVAILABLE",
   "VALIDATION_FAILED",
@@ -120,6 +148,7 @@ const KNOWN_CODE_MAP: Record<KnownUserErrorCode, true> = {
   USERNAME_REQUIRED: true,
   USERNAME_RESERVED: true,
   USERNAME_TAKEN: true,
+  USER_HAS_ORDERS: true,
   USER_HAS_TRANSACTIONS: true,
   USER_NOT_AVAILABLE: true,
   VALIDATION_FAILED: true,

@@ -37,7 +37,7 @@ import {
   type UserSummary,
   USERS_QUERY_KEYS,
 } from "../api";
-import { getUserDisplayStatus } from "../utils";
+import { formatRoleLabel, getUserDisplayStatus } from "../utils";
 import { CreateUserDialog } from "./create-user-dialog";
 import { UserActionDialogs, useUserActionController } from "./user-action-dialogs";
 import { UserBulkBar } from "./user-bulk-bar";
@@ -94,6 +94,7 @@ function UsersListContent({
   showClassFilter: boolean;
 }) {
   const t = useTranslations("users");
+  const rbacT = useTranslations("rbac");
   const common = useTranslations("common");
   const { can } = usePermissions();
   const queryClient = useQueryClient();
@@ -206,9 +207,12 @@ function UsersListContent({
   const roleOptions = useMemo(
     () => [
       { value: ALL_VALUE, label: t("filters.all") },
-      ...(rolesQuery.data ?? []).map((r) => ({ value: r.id, label: r.name })),
+      ...(rolesQuery.data ?? []).map((r) => ({
+        value: r.id,
+        label: formatRoleLabel(r, (code) => rbacT(`systemRoles.${code}`)),
+      })),
     ],
-    [rolesQuery.data, t],
+    [rolesQuery.data, t, rbacT],
   );
 
   const columns = useMemo<ColumnDef<UserSummary>[]>(
@@ -253,7 +257,9 @@ function UsersListContent({
         cell: ({ row }) => (
           <span className="text-text">
             {row.original.roles.length > 0
-              ? row.original.roles.map((r) => r.name).join(", ")
+              ? row.original.roles
+                  .map((r) => formatRoleLabel(r, (code) => rbacT(`systemRoles.${code}`)))
+                  .join(", ")
               : "—"}
           </span>
         ),
@@ -368,7 +374,7 @@ function UsersListContent({
           ]
         : []),
     ],
-    [t, can, actionController],
+    [t, rbacT, can, actionController],
   );
 
   const canBulkOperate = can("USER.MODIFY") || can("USER.ASSIGN");

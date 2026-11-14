@@ -269,6 +269,14 @@
     "eyebrow": "MÃ LỖI 404",
     "title": "Không tìm thấy trang"
   },
+  "rbac": {
+    "systemRoles": {
+      "CONTENT_ADMIN": "Quản trị nội dung",
+      "OPERATIONS": "Vận hành / CSKH",
+      "STUDENT": "Học viên",
+      "SYSTEM_ADMIN": "Quản trị hệ thống"
+    }
+  },
   "shell": {
     "brand": "Thi 360 · Quản trị",
     "breadcrumbLabel": "Vị trí hiện tại",
@@ -327,6 +335,11 @@
       "deactivateInstead": "Ngừng hoạt động thay thế",
       "description": "Tài khoản {username} đang có dữ liệu giao dịch cần đối soát nên không thể xóa. Bạn có thể chuyển sang ngừng hoạt động để chặn đăng nhập.",
       "fallbackSource": "Hệ thống",
+      "sources": {
+        "COMMERCE": "Đơn hàng & giao dịch",
+        "EXAM": "Kỳ thi & lượt thi",
+        "IDENTITY": "Tài khoản"
+      },
       "title": "Không thể xóa tài khoản"
     },
     "bulk": {
@@ -475,6 +488,7 @@
       "USERNAME_REQUIRED": "Vui lòng nhập tên đăng nhập.",
       "USERNAME_RESERVED": "Tên đăng nhập này thuộc danh sách tên dành riêng của hệ thống.",
       "USERNAME_TAKEN": "Tên đăng nhập đã được sử dụng.",
+      "USER_HAS_ORDERS": "Tài khoản đang có đơn hàng cần đối soát, không thể xóa.",
       "USER_HAS_TRANSACTIONS": "Tài khoản đang có dữ liệu giao dịch cần đối soát, không thể xóa.",
       "USER_NOT_AVAILABLE": "Tài khoản không tồn tại hoặc đã bị xóa.",
       "VALIDATION_FAILED": "Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.",

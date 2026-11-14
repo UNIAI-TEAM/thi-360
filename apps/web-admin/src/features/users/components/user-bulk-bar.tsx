@@ -263,7 +263,7 @@ export function UserBulkBar({
                         <li key={item.id} className="text-caption text-text">
                           <span className="font-semibold">{item.username ?? item.id}: </span>
                           <span>
-                            {mappedKey ? t(`errorCodes.${mappedKey}`) : item.reason}
+                            {mappedKey ? t(`errorCodes.${mappedKey}`) : t("errorCodes.INTERNAL_ERROR")}
                           </span>
                         </li>
                       );
@@ -359,9 +359,9 @@ export function UserBulkBar({
                         <span className="font-semibold text-text">
                           {item.username ?? item.id}
                         </span>
-                        {(mappedKey || item.reason) && (
+                        {(mappedKey || item.outcome !== "SUCCEEDED") && (
                           <p className="text-text-secondary">
-                            {mappedKey ? t(`errorCodes.${mappedKey}`) : item.reason}
+                            {mappedKey ? t(`errorCodes.${mappedKey}`) : t("errorCodes.INTERNAL_ERROR")}
                           </p>
                         )}
                       </div>

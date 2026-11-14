@@ -156,7 +156,7 @@ function ResetPasswordFormBody({
         if (reasonError) {
           const mappedKey = mapUserErrorCodeToKey(reasonError.code);
           setError("reason", {
-            message: mappedKey ? t(`errorCodes.${mappedKey}`) : reasonError.message,
+            message: mappedKey ? t(`errorCodes.${mappedKey}`) : t("errorCodes.VALIDATION_FAILED"),
           });
           return;
         }

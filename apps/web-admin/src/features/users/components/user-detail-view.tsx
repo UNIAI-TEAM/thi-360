@@ -376,7 +376,7 @@ function UserInfoTab({
         }
         for (const fe of error.fieldErrors) {
           const key = mapUserErrorCodeToKey(fe.code);
-          const msg = key ? t(`errorCodes.${key}`) : fe.message;
+          const msg = key ? t(`errorCodes.${key}`) : t("errorCodes.VALIDATION_FAILED");
           if (fe.field === "fullName" || fe.field === "email" || fe.field === "phone") {
             setError(fe.field, { message: msg });
             return;

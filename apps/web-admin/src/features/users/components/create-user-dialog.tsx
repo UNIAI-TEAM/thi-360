@@ -31,7 +31,7 @@ import {
   UsersApiError,
 } from "../api";
 import { createCreateUserSchema, type CreateUserFormValues } from "../schema";
-import { mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
+import { formatRoleLabel, mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
 
 const DEFAULT_STUDENT_ROLE_VALUE = "__DEFAULT_STUDENT__";
 
@@ -106,6 +106,7 @@ function CreateUserFormBody({
   checkUsernameAvailability: typeof defaultCheckUsernameAvailability;
 }) {
   const t = useTranslations("users");
+  const rbacT = useTranslations("rbac");
   const { can } = usePermissions();
   const canAssignRole = can("USER.ASSIGN") && can("ROLE.VIEW");
   const mustChangeId = useId();
@@ -204,7 +205,7 @@ function CreateUserFormBody({
 
         for (const fe of error.fieldErrors) {
           const mappedKey = mapUserErrorCodeToKey(fe.code);
-          const msg = mappedKey ? t(`errorCodes.${mappedKey}`) : fe.message;
+          const msg = mappedKey ? t(`errorCodes.${mappedKey}`) : t("errorCodes.VALIDATION_FAILED");
           if (
             fe.field === "username" ||
             fe.field === "password" ||
@@ -293,9 +294,9 @@ function CreateUserFormBody({
     }
     return roles.map((role) => ({
       value: role.id,
-      label: role.name,
+      label: formatRoleLabel(role, (code) => rbacT(`systemRoles.${code}`)),
     }));
-  }, [roles, t]);
+  }, [roles, t, rbacT]);
 
   const passwordLabels = useMemo(
     () => ({
