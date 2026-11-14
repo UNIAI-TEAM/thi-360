@@ -87,4 +87,27 @@ describe("DropdownMenu", () => {
     await userEvent.click(enItem);
     expect(onValueChange).toHaveBeenCalledWith("en");
   });
+
+  // C-13 / S-04: nền tô sáng mất ở chế độ tương phản cao; mục đang focus phải có viền ngoài thật ở chế độ đó.
+  it("mục menu không tắt hẳn viền ngoài: dùng focus:outline-hidden để còn viền ở chế độ tương phản cao", async () => {
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Ngôn ngữ</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
+          <DropdownMenuRadioGroup value="vi">
+            <DropdownMenuRadioItem value="vi">Tiếng Việt</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Ngôn ngữ" }));
+    for (const item of [
+      await screen.findByRole("menuitem", { name: "Hồ sơ" }),
+      screen.getByRole("menuitemradio", { name: "Tiếng Việt" }),
+    ]) {
+      expect(item).toHaveClass("focus:outline-hidden");
+      expect(item).not.toHaveClass("outline-none");
+    }
+  });
 });
