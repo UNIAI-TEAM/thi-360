@@ -37,6 +37,11 @@ spring:
       port: ${THI360_REDIS_PORT:63790}
       repositories:
         enabled: false
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+    default-locale: vi
 
 server:
   port: ${THI360_API_PORT:8080}

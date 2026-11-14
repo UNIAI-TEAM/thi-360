@@ -16,17 +16,17 @@ public record UpdateClassRequest(
                 pattern = ClassNormalizer.CODE_REGEX)
         String code,
         @Schema(description = "Tên lớp học mới")
-        @Size(max = 200, message = "Tên lớp tối đa 200 ký tự")
+        @Size(max = 200, message = "{validation.class.name.size}")
         String name,
         @Schema(description = "Mô tả lớp học mới (chuỗi rỗng để xóa mô tả)")
-        @Size(max = 1000, message = "Mô tả tối đa 1000 ký tự")
+        @Size(max = 1000, message = "{validation.class.description.size}")
         String description,
         @Schema(description = "ID người phụ trách mới")
         UUID ownerUserId,
         @Schema(description = "Xóa người phụ trách hiện tại khi đặt là true")
         Boolean clearOwner,
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "Phiên bản cập nhật là bắt buộc")
+        @NotNull(message = "{validation.version.notNull}")
         Long version
 ) {
 }

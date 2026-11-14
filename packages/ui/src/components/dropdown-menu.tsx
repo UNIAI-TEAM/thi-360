@@ -7,6 +7,8 @@ import { cn } from "../lib/cn";
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
+export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+export const DropdownMenuItemIndicator = DropdownMenuPrimitive.ItemIndicator;
 
 export function DropdownMenuContent({
   className,
@@ -44,6 +46,23 @@ export function DropdownMenuItem({
         "flex h-10 cursor-default items-center gap-2.5 rounded-sm px-3 text-label font-medium outline-none select-none [&_svg]:size-[18px] [&_svg]:shrink-0",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle",
         destructive ? "text-danger data-[highlighted]:bg-danger-bg" : "text-text-secondary",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function DropdownMenuRadioItem({
+  className,
+  ...props
+}: ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
+  return (
+    <DropdownMenuPrimitive.RadioItem
+      className={cn(
+        "flex h-10 cursor-default items-center gap-2.5 rounded-sm px-3 text-label font-medium text-text-secondary outline-none select-none [&_svg]:size-[18px] [&_svg]:shrink-0",
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle",
+        "data-[state=checked]:bg-primary-50 data-[state=checked]:font-semibold data-[state=checked]:text-primary-text",
         className,
       )}
       {...props}

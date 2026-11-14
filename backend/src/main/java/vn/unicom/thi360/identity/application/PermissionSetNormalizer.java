@@ -6,16 +6,28 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.identity.spi.Permission;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.ValidationException;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Component
 public class PermissionSetNormalizer {
 
     public static final String ERROR_PERMISSION_REQUIRES_VIEW = "PERMISSION_REQUIRES_VIEW";
 
+    private final AppMessages messages;
+
+    public PermissionSetNormalizer() {
+        this(AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public PermissionSetNormalizer(AppMessages messages) {
+        this.messages = messages != null ? messages : AppMessages.defaultInstance();
+    }
     public Set<Permission> normalize(Collection<Permission> permissions) {
         if (permissions == null || permissions.isEmpty()) {
             return Set.of();
@@ -66,7 +78,7 @@ public class PermissionSetNormalizer {
                             List.of(new FieldError(
                                     "permissions",
                                     ERROR_PERMISSION_REQUIRES_VIEW,
-                                    "Phải có quyền " + requiredView.code() + " khi còn quyền " + p.code())));
+                                    messages.get("validation.permission.requiresView", requiredView.code(), p.code()))));
                 }
             }
         }

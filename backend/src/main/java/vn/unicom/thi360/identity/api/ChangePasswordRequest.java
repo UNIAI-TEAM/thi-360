@@ -6,11 +6,11 @@ import jakarta.validation.constraints.NotBlank;
 @Schema(description = "Yêu cầu đổi mật khẩu")
 public record ChangePasswordRequest(
         @Schema(description = "Mật khẩu hiện tại", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Mật khẩu hiện tại là bắt buộc")
+        @NotBlank(message = "{validation.password.old.notBlank}")
         String oldPassword,
 
         @Schema(description = "Mật khẩu mới", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Mật khẩu mới là bắt buộc")
+        @NotBlank(message = "{validation.password.new.notBlank}")
         String newPassword
 ) {
 }

@@ -24,13 +24,13 @@ import org.springframework.web.servlet.ModelAndView;
 import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 
 @RestControllerAdvice(assignableTypes = {AdminImportBatchController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ImportBatchExceptionHandler implements HandlerExceptionResolver {
 
     private static final String ERR_IMPORT_FILE_TOO_LARGE = "IMPORT_FILE_TOO_LARGE";
-    private static final Locale DEFAULT_LOCALE = Locale.of("vi");
     private static final Pattern IMPORT_UPLOAD_PATH =
             Pattern.compile("^/api/v1/admin/import-batches/?$");
 
@@ -57,7 +57,7 @@ public class ImportBatchExceptionHandler implements HandlerExceptionResolver {
                 "IMPORT_EMPTY_FILE",
                 null,
                 "Tệp Excel trống hoặc thiếu tệp tải lên",
-                DEFAULT_LOCALE);
+                LocaleConfig.resolveLocale(request));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ApiError.of(
@@ -95,7 +95,7 @@ public class ImportBatchExceptionHandler implements HandlerExceptionResolver {
                 ERR_IMPORT_FILE_TOO_LARGE,
                 null,
                 "Dung lượng tệp Excel vượt quá giới hạn cho phép (tối đa 5 MB)",
-                DEFAULT_LOCALE);
+                LocaleConfig.resolveLocale(request));
         return ApiError.of(
                 ERR_IMPORT_FILE_TOO_LARGE,
                 message,

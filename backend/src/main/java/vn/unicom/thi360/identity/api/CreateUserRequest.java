@@ -22,14 +22,14 @@ public record CreateUserRequest(
                 description = "Họ và tên người dùng",
                 example = "Nguyễn Văn An",
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Họ và tên không được để trống")
-        @Size(max = 200, message = "Họ và tên tối đa 200 ký tự")
+        @NotBlank(message = "{validation.user.fullName.notBlank}")
+        @Size(max = 200, message = "{validation.user.fullName.size}")
         String fullName,
         @Schema(description = "Email liên hệ", example = "an@thi360.vn")
-        @Size(max = 255, message = "Email tối đa 255 ký tự")
+        @Size(max = 255, message = "{validation.user.email.size}")
         String email,
         @Schema(description = "Số điện thoại", example = "0901234567")
-        @Size(max = 30, message = "Số điện thoại tối đa 30 ký tự")
+        @Size(max = 30, message = "{validation.user.phone.size}")
         String phone,
         @Schema(description = "Danh sách ID vai trò (mặc định vai trò STUDENT; gán vai trò khác cần USER.ASSIGN)")
         List<UUID> roleIds,

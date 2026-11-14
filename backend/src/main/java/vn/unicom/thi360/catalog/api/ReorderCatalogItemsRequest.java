@@ -8,7 +8,7 @@ import java.util.UUID;
 @Schema(description = "Yêu cầu sắp xếp lại thứ tự giá trị trong nhóm hoặc cùng nút cha")
 public record ReorderCatalogItemsRequest(
         @Schema(description = "Danh sách ID giá trị theo thứ tự hiển thị mới", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotEmpty(message = "Danh sách giá trị sắp xếp không được để trống")
+        @NotEmpty(message = "{validation.catalog.reorder.itemIds.notEmpty}")
         List<UUID> itemIds
 ) {
 }

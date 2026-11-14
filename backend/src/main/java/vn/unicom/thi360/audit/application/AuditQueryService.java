@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.infrastructure.AuditProperties;
@@ -16,6 +17,7 @@ import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.api.ValidationException;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Service
 public class AuditQueryService implements AuditQuery {
@@ -23,16 +25,26 @@ public class AuditQueryService implements AuditQuery {
     private final AuditStoreRepository repository;
     private final AuditProperties properties;
     private final Clock clock;
+    private final AppMessages messages;
 
     public AuditQueryService(
             AuditStoreRepository repository,
             AuditProperties properties,
             Clock clock) {
+        this(repository, properties, clock, AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public AuditQueryService(
+            AuditStoreRepository repository,
+            AuditProperties properties,
+            Clock clock,
+            AppMessages messages) {
         this.repository = repository;
         this.properties = properties;
         this.clock = clock;
+        this.messages = messages;
     }
-
     @Override
     @Transactional(readOnly = true)
     public PageResponse<AuditEventView> findByTarget(
@@ -64,7 +76,7 @@ public class AuditQueryService implements AuditQuery {
                 && effectiveCriteria.to() != null
                 && effectiveCriteria.to().isBefore(effectiveCriteria.from())) {
             throw new ValidationException(List.of(
-                    new FieldError("to", "INVALID_TIME_RANGE", "Thời điểm kết thúc phải sau thời điểm bắt đầu")));
+                    new FieldError("to", "INVALID_TIME_RANGE", messages.get("validation.audit.timeRange.invalid"))));
         }
 
         boolean includeArchive = shouldIncludeArchive(effectiveCriteria.from(), effectiveCriteria.to());

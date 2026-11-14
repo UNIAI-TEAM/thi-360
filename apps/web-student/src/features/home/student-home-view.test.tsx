@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
@@ -39,7 +39,13 @@ describe("StudentHomeView", () => {
     expect(await screen.findByRole("heading", { name: "Chào Học viên 01" })).toBeInTheDocument();
     expect(screen.getByText("Chưa có bài thi nào")).toBeInTheDocument();
 
-    const menuButton = screen.getByRole("button", { name: "Menu tài khoản" });
+    const banner = screen.getByRole("banner");
+    const themeButton = within(banner).getByRole("button", { name: "Chuyển sang chế độ tối" });
+    const localeButton = within(banner).getByRole("button", { name: "Chọn ngôn ngữ" });
+    const menuButton = within(banner).getByRole("button", { name: "Menu tài khoản" });
+    expect(themeButton.compareDocumentPosition(localeButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(localeButton.compareDocumentPosition(menuButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(themeButton.compareDocumentPosition(menuButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(menuButton).toHaveTextContent("HV");
     await userEvent.click(menuButton);
     expect(screen.queryByRole("menuitem", { name: "Trang quản trị" })).toBeNull();

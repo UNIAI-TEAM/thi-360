@@ -23,6 +23,7 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -36,6 +37,7 @@ import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.security.KeycloakProperties;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Component
 public class KeycloakIdentityClient {
@@ -45,12 +47,22 @@ public class KeycloakIdentityClient {
     private final KeycloakProperties properties;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
+    private final AppMessages messages;
     private volatile Keycloak adminClient;
 
     public KeycloakIdentityClient(
             KeycloakProperties properties,
             ObjectMapper objectMapper,
             RestClient.Builder restClientBuilder) {
+        this(properties, objectMapper, restClientBuilder, AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public KeycloakIdentityClient(
+            KeycloakProperties properties,
+            ObjectMapper objectMapper,
+            RestClient.Builder restClientBuilder,
+            AppMessages messages) {
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
@@ -59,6 +71,7 @@ public class KeycloakIdentityClient {
         this.restClient = restClientBuilder
                 .requestFactory(requestFactory)
                 .build();
+        this.messages = messages != null ? messages : AppMessages.defaultInstance();
     }
 
     @PreDestroy
@@ -105,7 +118,7 @@ public class KeycloakIdentityClient {
                         throw new ValidationException(
                                 "PASSWORD_WEAK",
                                 null,
-                                List.of(new FieldError("password", "PASSWORD_WEAK", "Mật khẩu không đạt quy tắc bảo mật")));
+                                List.of(new FieldError("password", "PASSWORD_WEAK", messages.get("PASSWORD_WEAK"))));
                     }
                     throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
                 }
@@ -147,7 +160,7 @@ public class KeycloakIdentityClient {
                 throw new ValidationException(
                         "PASSWORD_WEAK",
                         null,
-                        List.of(new FieldError("password", "PASSWORD_WEAK", "Mật khẩu không đạt quy tắc bảo mật")));
+                        List.of(new FieldError("password", "PASSWORD_WEAK", messages.get("PASSWORD_WEAK"))));
             }
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (RuntimeException ex) {

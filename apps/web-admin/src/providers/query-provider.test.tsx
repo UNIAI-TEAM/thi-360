@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
+import en_messages from "@/messages/en.json";
 import vi_messages from "@/messages/vi.json";
 import { ApiStatusError } from "@/lib/api/query-client";
 import { FORBIDDEN_PATH, QueryProvider } from "./query-provider";
@@ -193,5 +195,39 @@ describe("QueryProvider: lỗi toàn cục", () => {
 
     await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("giữ nguyên cây con và dùng forbiddenToast tiếng Anh mới khi đổi locale vi -> en", async () => {
+    const user = userEvent.setup();
+    window.sessionStorage.setItem("thi360:403-refresh-url", window.location.href);
+    queryFn.mockResolvedValue("ok");
+
+    const { rerender } = render(
+      <NextIntlClientProvider locale="vi" messages={vi_messages}>
+        <QueryProvider navigate={mocks.navigate}>
+          <input aria-label="draft" />
+          <Probe keys={["init"]} />
+        </QueryProvider>
+      </NextIntlClientProvider>,
+    );
+
+    const input = screen.getByLabelText("draft");
+    await user.type(input, "ops.admin");
+    expect(input).toHaveValue("ops.admin");
+
+    queryFn.mockRejectedValue(new ApiStatusError(403));
+    rerender(
+      <NextIntlClientProvider locale="en-GB" messages={en_messages}>
+        <QueryProvider navigate={mocks.navigate}>
+          <input aria-label="draft" />
+          <Probe keys={["forbidden"]} />
+        </QueryProvider>
+      </NextIntlClientProvider>,
+    );
+
+    expect(screen.getByLabelText("draft")).toBe(input);
+    expect(input).toHaveValue("ops.admin");
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith(FORBIDDEN_PATH));
+    expect(mocks.toastError).toHaveBeenCalledWith(en_messages.errors.forbiddenToast);
   });
 });

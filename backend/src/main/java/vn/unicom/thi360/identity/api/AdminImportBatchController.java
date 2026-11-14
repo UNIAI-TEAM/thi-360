@@ -1,5 +1,6 @@
 package vn.unicom.thi360.identity.api;
 
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,12 +22,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import vn.unicom.thi360.identity.application.ImportBatchService;
-import vn.unicom.thi360.identity.application.ImportExcelSchemaHelper;
 import vn.unicom.thi360.identity.domain.ImportRowStatus;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.security.RequirePermission;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 
 @Tag(name = "Admin Import Batches", description = "Cấp tài khoản học viên hàng loạt từ tệp Excel")
 @RestController
@@ -45,8 +46,8 @@ public class AdminImportBatchController {
     @GetMapping("/template")
     @RequirePermission(Permissions.USER_MODIFY)
     @Operation(summary = "Tải tệp Excel mẫu cấp tài khoản hàng loạt")
-    public ResponseEntity<byte[]> downloadTemplate() {
-        byte[] bytes = importBatchService.buildTemplate(ImportExcelSchemaHelper.DEFAULT_LOCALE);
+    public ResponseEntity<byte[]> downloadTemplate(HttpServletRequest request) {
+        byte[] bytes = importBatchService.buildTemplate(LocaleConfig.resolveLocale(request));
         return xlsxAttachment("mau-cap-tai-khoan-hang-loat.xlsx", bytes);
     }
 
@@ -59,8 +60,9 @@ public class AdminImportBatchController {
             @RequestParam("file") MultipartFile file,
             @Parameter(description = "Bắt buộc đổi mật khẩu ở lần đăng nhập đầu (mặc định false)")
             @RequestParam(value = "mustChangePassword", required = false, defaultValue = "false")
-            boolean mustChangePassword) {
-        return importBatchService.uploadBatch(file, mustChangePassword, ImportExcelSchemaHelper.DEFAULT_LOCALE);
+            boolean mustChangePassword,
+            HttpServletRequest request) {
+        return importBatchService.uploadBatch(file, mustChangePassword, LocaleConfig.resolveLocale(request));
     }
 
     @GetMapping("/{id}")
@@ -92,8 +94,8 @@ public class AdminImportBatchController {
     @GetMapping("/{id}/errors")
     @RequirePermission(Permissions.USER_MODIFY)
     @Operation(summary = "Tải tệp Excel chỉ gồm các dòng lỗi kèm cột Lỗi")
-    public ResponseEntity<byte[]> downloadErrors(@PathVariable UUID id) {
-        byte[] bytes = importBatchService.downloadErrorsWorkbook(id, ImportExcelSchemaHelper.DEFAULT_LOCALE);
+    public ResponseEntity<byte[]> downloadErrors(@PathVariable UUID id, HttpServletRequest request) {
+        byte[] bytes = importBatchService.downloadErrorsWorkbook(id, LocaleConfig.resolveLocale(request));
         return xlsxAttachment("import-errors-" + id + ".xlsx", bytes);
     }
 
@@ -103,10 +105,10 @@ public class AdminImportBatchController {
     public ImportBatchResponse confirmBatch(
             @PathVariable UUID id,
             @Parameter(description = "Khóa chống trùng lặp xác nhận", required = true)
-            @RequestHeader("Idempotency-Key") String idempotencyKey) {
-        return importBatchService.confirmBatch(id, idempotencyKey, ImportExcelSchemaHelper.DEFAULT_LOCALE);
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            HttpServletRequest request) {
+        return importBatchService.confirmBatch(id, idempotencyKey, LocaleConfig.resolveLocale(request));
     }
-
     @GetMapping("/{id}/result")
     @RequirePermission(Permissions.USER_MODIFY)
     @Operation(summary = "Tải tệp Excel kết quả cấp tài khoản (chỉ chứa mật khẩu của dòng do hệ thống sinh)")

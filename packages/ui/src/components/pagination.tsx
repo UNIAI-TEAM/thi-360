@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { Select } from "./select";
+import { useUiLocale, useUiStrings } from "./ui-strings";
 
 export type PaginationLabels = {
   /** Tên vùng điều hướng, ví dụ "Phân trang". */
@@ -26,7 +27,7 @@ export type PaginationProps = {
   /** Có thì hiện ô chọn số dòng mỗi trang. */
   pageSizeOptions?: number[];
   onPageSizeChange?: (pageSize: number) => void;
-  labels: PaginationLabels;
+  labels?: Partial<PaginationLabels>;
   className?: string;
 };
 
@@ -62,6 +63,10 @@ export function Pagination({
   labels,
   className,
 }: PaginationProps) {
+  const { pagination: defaultLabels } = useUiStrings();
+  const locale = useUiLocale();
+  const numberFormat = new Intl.NumberFormat(locale === "en" ? "en-US" : "vi-VN");
+  const resolvedLabels: PaginationLabels = { ...defaultLabels, ...labels };
   // pageSize <= 0 hoặc total < 0 là dữ liệu hỏng: coi như một dòng mỗi trang, không có bản ghi.
   const size = Number.isFinite(pageSize) && pageSize >= 1 ? Math.floor(pageSize) : 1;
   const count = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
@@ -72,18 +77,18 @@ export function Pagination({
 
   return (
     <nav
-      aria-label={labels.nav}
+      aria-label={resolvedLabels.nav}
       className={cn("flex flex-wrap items-center justify-between gap-4", className)}
     >
       <div className="flex items-center gap-3 text-body text-text-muted">
-        <span className="tabular-nums">{labels.range({ from, to, total: count })}</span>
+        <span className="tabular-nums">{resolvedLabels.range({ from, to, total: count })}</span>
         {pageSizeOptions && onPageSizeChange && (
           <Select
-            aria-label={labels.rowsPerPage}
+            aria-label={resolvedLabels.rowsPerPage}
             className="h-9 w-24"
             value={String(size)}
             onValueChange={(value) => onPageSizeChange(Number(value))}
-            options={pageSizeOptions.map((size) => ({ value: String(size), label: String(size) }))}
+            options={pageSizeOptions.map((size) => ({ value: String(size), label: numberFormat.format(size) }))}
           />
         )}
       </div>
@@ -91,7 +96,7 @@ export function Pagination({
         <li>
           <button
             type="button"
-            aria-label={labels.previous}
+            aria-label={resolvedLabels.previous}
             className={pageButton}
             disabled={current <= 1}
             onClick={() => onPageChange(current - 1)}
@@ -108,12 +113,12 @@ export function Pagination({
             <li key={item}>
               <button
                 type="button"
-                aria-label={labels.page(item)}
+                aria-label={resolvedLabels.page(item)}
                 aria-current={item === current ? "page" : undefined}
                 className={pageButton}
                 onClick={() => onPageChange(item)}
               >
-                {item}
+                {numberFormat.format(item)}
               </button>
             </li>
           ),
@@ -121,7 +126,7 @@ export function Pagination({
         <li>
           <button
             type="button"
-            aria-label={labels.next}
+            aria-label={resolvedLabels.next}
             className={pageButton}
             disabled={current >= pageCount}
             onClick={() => onPageChange(current + 1)}

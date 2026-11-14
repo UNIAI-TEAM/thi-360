@@ -51,7 +51,7 @@ export function SessionProvider({
 
 function useSessionContext(): SessionContextValue {
   const context = useContext(SessionContext);
-  if (!context) throw new Error("useSession/usePermissions phải nằm trong <SessionProvider>.");
+  if (!context) throw new Error("useSession/usePermissions must be used within <SessionProvider>.");
   return context;
 }
 
