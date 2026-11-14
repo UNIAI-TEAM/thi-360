@@ -6,9 +6,11 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type Announcements,
   type CollisionDetection,
   type DragEndEvent,
   type DraggableAttributes,
+  type ScreenReaderInstructions,
 } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import {
@@ -705,6 +707,41 @@ export function TreeItemsPanel({
     [rowById],
   );
 
+  const dndAccessibility = useMemo<{
+    announcements: Announcements;
+    screenReaderInstructions: ScreenReaderInstructions;
+  }>(() => {
+    const resolveName = (id: unknown): string => {
+      const row = rowById.get(String(id));
+      return row ? pickName(row.node, locale) : String(id);
+    };
+    return {
+      announcements: {
+        onDragStart: ({ active }) =>
+          t("tree.dnd.pickedUp", { name: resolveName(active.id) }),
+        onDragOver: ({ active, over }) =>
+          over
+            ? t("tree.dnd.draggedOverTarget", {
+                name: resolveName(active.id),
+                target: resolveName(over.id),
+              })
+            : t("tree.dnd.draggedOverNoTarget", { name: resolveName(active.id) }),
+        onDragEnd: ({ active, over }) =>
+          over
+            ? t("tree.dnd.droppedOnTarget", {
+                name: resolveName(active.id),
+                target: resolveName(over.id),
+              })
+            : t("tree.dnd.dropped", { name: resolveName(active.id) }),
+        onDragCancel: ({ active }) =>
+          t("tree.dnd.dragCancelled", { name: resolveName(active.id) }),
+      },
+      screenReaderInstructions: {
+        draggable: t("tree.dnd.instructions"),
+      },
+    };
+  }, [rowById, t, locale]);
+
   function handleTreeDragEnd(event: DragEndEvent) {
     if (!canModify || isFiltered || reordering) return;
     const { active, over } = event;
@@ -1202,6 +1239,7 @@ export function TreeItemsPanel({
             <DndContext
               sensors={sensors}
               collisionDetection={sameParentCollision}
+              accessibility={dndAccessibility}
               onDragEnd={handleTreeDragEnd}
             >
               <SortableContext

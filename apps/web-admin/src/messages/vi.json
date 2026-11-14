@@ -436,6 +436,15 @@
       "detailTitle": "Chi tiết nút đang chọn",
       "deselectNode": "Bỏ chọn nút",
       "detailLoadError": "Không tải được chi tiết nút.",
+      "dnd": {
+        "draggedOverNoTarget": "Mục {name} không còn nằm trên vùng thả nào.",
+        "draggedOverTarget": "Mục {name} đang nằm trên {target}.",
+        "dropped": "Đã thả mục {name}.",
+        "droppedOnTarget": "Đã thả mục {name} lên {target}.",
+        "pickedUp": "Đã nhấc mục {name}.",
+        "dragCancelled": "Đã hủy kéo mục {name}.",
+        "instructions": "Để nhấc một mục, nhấn phím cách. Khi đang kéo, dùng phím mũi tên để di chuyển mục. Nhấn phím cách lần nữa để thả mục ở vị trí mới, hoặc nhấn Escape để hủy."
+      },
       "editAction": "Sửa",
       "emptyDescription": "Thêm nút cấp gốc đầu tiên để xây dựng cấu trúc cây.",
       "emptyFiltered": "Không có nút nào khớp bộ lọc. Nút chưa gắn liên kết tới danh mục đang lọc sẽ không hiện.",

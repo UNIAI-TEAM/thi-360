@@ -1828,6 +1828,89 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     ).not.toBeInTheDocument();
   });
 
+
+  it("thông báo kéo thả bằng tiếng Việt qua accessibility của DndContext (R2-01)", async () => {
+    const api = createTreeMockApi();
+    const viRender = renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+
+    // Screen-reader instructions on draggable rows are localized, not dnd-kit defaults
+    expect(
+      screen.getByText(viMessages.catalog.tree.dnd.instructions),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/To pick up a draggable item/)).not.toBeInTheDocument();
+
+    // Keyboard drag: lift CH1, move over CH2, drop -> localized live announcements.
+    // jsdom has no layout, so give each sortable row a distinct rect; KeyboardEvent.code
+    // is also unset for userEvent, so fire explicit codes.
+    const tree = screen.getByRole("tree");
+    const rowTops = new Map<Element, number>();
+    let rowIndex = 0;
+    for (const wrapper of tree.querySelectorAll('div[role="none"]')) {
+      rowTops.set(wrapper, rowIndex * 48);
+      rowIndex += 1;
+    }
+    const originalRect = Element.prototype.getBoundingClientRect;
+    const rectSpy = vi
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        const top = rowTops.get(this);
+        if (top === undefined) {
+          return originalRect.call(this);
+        }
+        return new DOMRect(0, top, 400, 40);
+      });
+
+    const handle = screen.getByRole("button", { name: "Kéo để đổi thứ tự Hàm số" });
+    handle.focus();
+    fireEvent.keyDown(handle, { code: "Space", key: " " });
+    // The pickup announcement is immediately superseded by onDragOver; wait for the
+    // sensor's async listener attach, then move over CH2 (two presses: the first only
+    // repositions the collision rect).
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          viMessages.catalog.tree.dnd.draggedOverTarget
+            .replace("{name}", "Hàm số")
+            .replace("{target}", "Hàm số"),
+        ),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(document, { code: "ArrowDown", key: "ArrowDown" });
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          viMessages.catalog.tree.dnd.draggedOverTarget
+            .replace("{name}", "Hàm số")
+            .replace("{target}", "Tích phân"),
+        ),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(document, { code: "Space", key: " " });
+    await waitFor(() =>
+      expect(api.reorderItems).toHaveBeenCalledWith("grp-knowledge", {
+        itemIds: [KNOWLEDGE_CH2.id, KNOWLEDGE_CH1.id],
+      }),
+    );
+    expect(
+      screen.getByText(
+        viMessages.catalog.tree.dnd.droppedOnTarget
+          .replace("{name}", "Hàm số")
+          .replace("{target}", "Tích phân"),
+      ),
+    ).toBeInTheDocument();
+    rectSpy.mockRestore();
+    viRender.unmount();
+
+    // English locale gets the same localized announcements (message parity)
+    const apiEn = createTreeMockApi();
+    const enRender = renderCatalog({ api: apiEn, locale: "en", search: "group=KNOWLEDGE" });
+    expect(await screen.findByText("Functions")).toBeInTheDocument();
+    expect(screen.getByText(en.catalog.tree.dnd.instructions)).toBeInTheDocument();
+    enRender.unmount();
+  });
+
   it("đẩy lỗi 401 từ exportItems, previewImport và moveItem tới MutationCache.onError", async () => {
     const onMutationError = vi.fn();
     const client = new QueryClient({

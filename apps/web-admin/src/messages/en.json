@@ -436,6 +436,15 @@
       "detailTitle": "Selected node details",
       "deselectNode": "Deselect node",
       "detailLoadError": "Could not load node details.",
+      "dnd": {
+        "draggedOverNoTarget": "Item {name} is no longer over a drop target.",
+        "draggedOverTarget": "Item {name} is over {target}.",
+        "dropped": "Dropped item {name}.",
+        "droppedOnTarget": "Dropped item {name} onto {target}.",
+        "pickedUp": "Picked up item {name}.",
+        "dragCancelled": "Dragging item {name} was cancelled.",
+        "instructions": "To pick up an item, press the space bar. While dragging, use the arrow keys to move the item. Press space again to drop the item in its new position, or press Escape to cancel."
+      },
       "editAction": "Edit",
       "emptyDescription": "Add the first root node to start building the tree.",
       "emptyFiltered": "No nodes match the current filters. Nodes without links to a filtered catalog are excluded.",
