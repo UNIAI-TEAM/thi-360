@@ -341,6 +341,22 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await expect(page).toHaveURL(/node=/);
   });
 
+  test("hộp thoại cao vẫn bấm được Lưu ở màn hình 1280x720 (VIS-2)", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await loginThroughSso(page, "content.admin", DEV_PASSWORD);
+
+    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=SUBJECT_COMBINATION`);
+    await page.getByRole("button", { name: "Thêm giá trị" }).click();
+    let dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("button", { name: "Lưu", exact: true })).toBeInViewport();
+    await page.keyboard.press("Escape");
+
+    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=KNOWLEDGE`);
+    await page.getByRole("button", { name: "Thêm Chương", exact: true }).first().click();
+    dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("button", { name: "Lưu", exact: true })).toBeInViewport();
+  });
+
   test("người dùng chỉ có CATALOG.VIEW không thấy nút ghi", async ({ browser }) => {
     const suffix = Date.now().toString(36).toUpperCase();
     const viewer = await provisionCatalogViewerUser(browser, suffix);
