@@ -61,7 +61,12 @@ describe("AppShell", () => {
     );
     expect(nav).toContainElement(dashboardLink);
     expect(dashboardLink).toHaveAttribute("aria-current", "page");
-    expect(dashboardLink).toHaveClass("before:w-0.5", "before:bg-primary-text");
+    // Dấu hiệu mục đang mở vẽ bằng viền để còn thấy ở chế độ tương phản cao; mục khác không có thanh này.
+    expect(dashboardLink).toHaveClass("before:border-l-2", "before:border-primary-text");
+    expect(dashboardLink.className).not.toContain("before:bg-");
+    const otherLink = screen.getByRole("link", { name: "Tài khoản" });
+    expect(otherLink).not.toHaveAttribute("aria-current");
+    expect(otherLink.className).not.toContain("before:border-l-2");
     // Vòng focus dùng chung của kit (màu đặc `primary-text`), không tự viết vòng mờ 30%.
     expect(dashboardLink).toHaveClass("focus-visible:ring-primary-text");
     expect(dashboardLink.className).not.toContain("ring-primary-600/30");

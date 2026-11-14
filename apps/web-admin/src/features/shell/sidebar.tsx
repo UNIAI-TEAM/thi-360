@@ -50,8 +50,10 @@ export function Sidebar() {
                   className={cn(
                     "relative flex h-10 items-center gap-2.5 rounded-sm px-3 text-label transition-colors duration-150 motion-reduce:transition-none",
                     focusRing,
+                    // Thanh dọc của mục đang mở vẽ bằng `border` (không phải nền): chế độ tương phản cao của hệ điều hành
+                    // bỏ nền và bóng nhưng tô lại viền, nên mục đang mở vẫn phân biệt được (DESIGN 5.13).
                     active
-                      ? "bg-primary-50 font-semibold text-primary-text before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary-text"
+                      ? "bg-primary-50 font-semibold text-primary-text before:absolute before:top-2 before:bottom-2 before:left-0 before:border-l-2 before:border-primary-text"
                       : "font-medium text-text-secondary hover:bg-subtle",
                   )}
                 >
