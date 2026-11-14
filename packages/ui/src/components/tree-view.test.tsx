@@ -293,4 +293,59 @@ describe("TreeView", () => {
     expect(screen.getByTestId("lead-n-1")).toHaveTextContent("0D1");
     expect(screen.getAllByRole("treeitem")).toHaveLength(2);
   });
+
+  // V2-1: jsdom không có layout; kiểm tra hợp đồng lớp quyết định ai được giữ chiều rộng khi dòng hẹp.
+  it("dòng hẹp: tên giữ >= 8rem, mã chip bị chặn max-w-24, chip trạng thái và cụm thao tác không co, liên kết thu về +N", () => {
+    render(
+      <TreeView
+        aria-label="Cây hẹp"
+        items={[
+          {
+            id: "a",
+            parentId: null,
+            depth: 1,
+            code: "CH_MWG2P0WN_DAI_QUA_MUC",
+            name: "Chương có tên khá dài để kiểm tra",
+            hasChildren: false,
+            leafCount: 3,
+            statusLabel: "Ngừng sử dụng",
+            statusTone: "neutral",
+            refsSummary: "Toán học, Lớp 10",
+            refsCount: 2,
+          },
+        ]}
+        expandedIds={new Set()}
+        onToggleExpand={vi.fn()}
+        onSelect={vi.fn()}
+        labels={{ expandNode: (n) => n, collapseNode: (n) => n }}
+        renderTrailing={() => <button type="button">Thao tác</button>}
+      />,
+    );
+
+    const row = screen.getByRole("treeitem");
+    const name = screen.getByText("Chương có tên khá dài để kiểm tra");
+    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "truncate");
+
+    const code = screen.getByText("CH_MWG2P0WN_DAI_QUA_MUC");
+    expect(code).toHaveClass("max-w-24", "truncate", "shrink-0");
+
+    // Chip trạng thái đứng ngay sau tên và không bị ép co.
+    const status = screen.getByText("Ngừng sử dụng");
+    expect(status).toHaveClass("shrink-0");
+    expect(name.nextElementSibling).toBe(status);
+
+    // Cụm thao tác không co: nút "⋯" không bao giờ tràn ra ngoài viền cây.
+    const actions = screen.getByRole("button", { name: "Thao tác" }).parentElement;
+    expect(actions).toHaveClass("shrink-0");
+
+    // Liên kết: chữ đầy đủ chỉ từ @3xl; dưới đó là chip +N có tên đầy đủ ở aria-label.
+    const refsFull = screen.getByText("Toán học, Lớp 10");
+    expect(refsFull).toHaveClass("hidden", "@3xl:inline", "truncate", "max-w-48");
+    const refsCollapsed = within(row).getByRole("img", { name: "Toán học, Lớp 10" });
+    expect(refsCollapsed).toHaveTextContent("+2");
+    expect(refsCollapsed).toHaveClass("@3xl:hidden", "shrink-0");
+
+    // Vùng chứa cho các biến thể @3xl là chính cây.
+    expect(screen.getByRole("tree")).toHaveClass("@container");
+  });
 });

@@ -757,6 +757,7 @@ export function TreeItemsPanel({
             node.ownRefs.length > 0
               ? node.ownRefs.map((ref) => pickName(ref, locale)).join(", ")
               : null,
+          refsCount: node.ownRefs.length,
           inactive: node.effectiveStatus === "INACTIVE",
         };
       }),
@@ -991,8 +992,8 @@ export function TreeItemsPanel({
         className="mt-3 flex flex-col gap-3"
         aria-label={t("filterFormLabel")}
       >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative w-full min-w-56 sm:max-w-xs sm:flex-1">
             <Search
               aria-hidden="true"
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"
@@ -1161,8 +1162,12 @@ export function TreeItemsPanel({
         )}
       </form>
 
-      {/* Main split: Tree (left) + 340px Node Detail Pane (right) */}
-      <div className="mt-4 flex flex-col gap-4 xl:flex-row xl:items-start">
+      {/*
+        Main split: Tree + 340px Node Detail Pane. Chỉ đặt cạnh nhau từ 1600px (>= 2xl); hẹp hơn thì
+        ô chi tiết xếp dưới cây để tên nút không bị ép về 0px (V2-1). Đo trên bản build: ở 1536px cây
+        còn 570px, nút ngừng (chip trạng thái dài) bị đẩy "⋯" ra ngoài viền 40px; từ 1600px thì vừa.
+      */}
+      <div className="mt-4 flex flex-col gap-4 min-[1600px]:flex-row min-[1600px]:items-start">
         {/* Tree pane */}
         <div className="min-w-0 flex-1 rounded-md border border-border bg-surface p-2">
           {rootTreeQuery.isPending ? (
@@ -1425,7 +1430,7 @@ export function TreeItemsPanel({
         {/* 340px Node detail pane (DESIGN.md §5.11) */}
         <aside
           aria-label={t("tree.detailTitle")}
-          className="w-full shrink-0 rounded-md border border-border bg-page p-4 xl:w-[340px]"
+          className="w-full shrink-0 rounded-md border border-border bg-page p-4 min-[1600px]:w-[340px]"
         >
           {!selectedNodeId ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">

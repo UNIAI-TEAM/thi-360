@@ -1813,6 +1813,25 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     });
   });
 
+  // V2-1: jsdom không có layout; hợp đồng lớp của trang cây. Ô chi tiết 340px chỉ đặt cạnh cây từ 1600px.
+  it("cây: ô chi tiết xếp dưới cây dưới 1600px, hàng cây giữ tên và thu liên kết thành +N (V2-1)", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+
+    const name = await screen.findByText("Hàm số");
+    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "truncate");
+
+    const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
+    expect(pane).toHaveClass("w-full", "min-[1600px]:w-[340px]");
+    expect(pane.className).not.toMatch(/(^|\s)(xl|lg|md):/);
+    expect(pane.parentElement).toHaveClass("flex-col", "min-[1600px]:flex-row");
+    expect(pane.parentElement?.className).not.toMatch(/(^|\s)(xl|lg|md):/);
+
+    const row = screen.getByRole("treeitem", { name: "Hàm số" });
+    expect(within(row).getByText("Toán học")).toHaveClass("@3xl:inline");
+    expect(within(row).getByRole("img", { name: "Toán học" })).toHaveTextContent("+1");
+    expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
+  });
+
   it("tải lười nút con khi mở rộng, mở tất cả / thu gọn, đồng bộ ?node= và thao tác liên kết ở pane 340px", async () => {
     const api = createTreeMockApi();
     renderCatalog({ api, search: "group=KNOWLEDGE" });

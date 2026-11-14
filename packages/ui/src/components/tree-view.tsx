@@ -20,6 +20,11 @@ export interface TreeViewItem {
   statusTone?: StatusTone;
   /** Tóm tắt liên kết riêng của chính nút (hiển thị gọn cuối dòng). */
   refsSummary?: string | null;
+  /**
+   * Số liên kết riêng. Khi cây hẹp (< 48rem), `refsSummary` thu thành chip `+N`
+   * (tên đầy đủ nằm ở `aria-label`/`title`) để tên nút giữ được chiều rộng.
+   */
+  refsCount?: number;
   /** Làm mờ chữ khi nút ngừng sử dụng hoặc ngừng theo cấp trên. */
   inactive?: boolean;
 }
@@ -207,7 +212,7 @@ export function TreeView({
   }
 
   return (
-    <div role="tree" aria-label={ariaLabel} className={cn("flex flex-col gap-0.5 p-2", className)}>
+    <div role="tree" aria-label={ariaLabel} className={cn("@container flex flex-col gap-0.5 p-2", className)}>
       {visibleRows.map(({ item, level, setSize, posInSet }, rowIndex) => {
         const isExpanded = expandedIds.has(item.id);
         const isSelected = selectedId === item.id;
@@ -307,13 +312,18 @@ export function TreeView({
                 </span>
               )}
 
-              <span className="shrink-0 rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text">
+              <span
+                title={item.code}
+                className="max-w-24 shrink-0 truncate rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text"
+              >
                 {item.code}
               </span>
 
+              {/* Tên có ưu tiên chiều rộng: không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. */}
               <span
                 id={`${nameIdPrefix}-name-${item.id}`}
-                className={cn("min-w-0 flex-1 truncate", nameStyle, nameColor)}
+                title={item.name}
+                className={cn("min-w-[8rem] flex-1 truncate", nameStyle, nameColor)}
               >
                 {item.name}
               </span>
@@ -325,9 +335,24 @@ export function TreeView({
               )}
 
               {item.refsSummary && (
-                <span className="hidden shrink-0 text-caption whitespace-nowrap text-text-muted sm:inline">
-                  {item.refsSummary}
-                </span>
+                <>
+                  <span
+                    title={item.refsSummary}
+                    className="hidden max-w-48 min-w-0 shrink truncate text-caption whitespace-nowrap text-text-muted @3xl:inline"
+                  >
+                    {item.refsSummary}
+                  </span>
+                  {item.refsCount !== undefined && (
+                    <span
+                      role="img"
+                      aria-label={item.refsSummary}
+                      title={item.refsSummary}
+                      className="shrink-0 rounded-full bg-subtle px-1.5 text-caption font-medium whitespace-nowrap text-text-muted tabular-nums @3xl:hidden"
+                    >
+                      +{item.refsCount}
+                    </span>
+                  )}
+                </>
               )}
 
               {item.leafCount !== undefined && item.leafCount !== null && (

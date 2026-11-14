@@ -389,6 +389,8 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     const knowCode = `KT_${suffix}`;
     const knowName = `Kiến thức ${suffix}`;
 
+    // V2-1 is only reproducible on a small desktop: pin the smallest supported viewport.
+    await page.setViewportSize({ width: 1280, height: 720 });
     await loginThroughSso(page, "content.admin", DEV_PASSWORD);
     await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=KNOWLEDGE`);
     await expect(page.getByRole("heading", { name: "Cấu trúc kiến thức" })).toBeVisible();
@@ -410,6 +412,9 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await dlg.getByLabel(/Tên tiếng Việt/).fill(chapName);
     await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
     await expect(page.getByText(chapName)).toBeVisible();
+    // V2-1: the name must keep a readable width (it was squeezed to 0px at 1280).
+    const chapNameBox = await page.getByText(chapName).boundingBox();
+    expect(chapNameBox?.width ?? 0).toBeGreaterThan(40);
 
     // 2. Add lesson under chapter
     await page.getByRole("button", { name: `Thêm Bài vào ${chapName}`, exact: true }).click();
