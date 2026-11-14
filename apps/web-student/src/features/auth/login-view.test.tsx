@@ -135,6 +135,27 @@ describe("LoginView", () => {
     expect(screen.getByRole("main").innerHTML).not.toContain("min-w-[300px]");
   });
 
+  it("ô tên đăng nhập và ô mật khẩu có thuộc tính cho bàn phím điện thoại, tự điền và chữ 16px ở màn hẹp", () => {
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    const identifierInput = screen.getByLabelText(/Tên đăng nhập hoặc email/);
+    expect(identifierInput).toBeRequired();
+    expect(identifierInput).toHaveAttribute("name", "identifier");
+    expect(identifierInput).toHaveAttribute("autocomplete", "username");
+    expect(identifierInput).toHaveAttribute("autocapitalize", "none");
+    expect(identifierInput).toHaveAttribute("autocorrect", "off");
+    expect(identifierInput).toHaveAttribute("spellcheck", "false");
+    expect(identifierInput).toHaveAttribute("enterkeyhint", "next");
+    expect(identifierInput).toHaveClass("max-sm:text-title", "pointer-coarse:text-title");
+
+    const passwordInput = screen.getByLabelText(/Mật khẩu/);
+    expect(passwordInput).toBeRequired();
+    expect(passwordInput).toHaveAttribute("name", "password");
+    expect(passwordInput).toHaveAttribute("autocomplete", "current-password");
+    expect(passwordInput).toHaveAttribute("enterkeyhint", "done");
+    expect(passwordInput).toHaveClass("max-sm:text-title", "pointer-coarse:text-title");
+  });
+
   it("dùng nhãn Show/Hide password theo ngôn ngữ tiếng Anh cho PasswordField", async () => {
     render(
       <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">

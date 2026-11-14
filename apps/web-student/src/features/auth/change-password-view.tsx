@@ -30,7 +30,7 @@ import {
 } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl, webUrl } from "@/lib/env";
-import { coarseTextHitArea } from "@/lib/styles";
+import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
 
 /**
  * Màn hẹp: thẻ bám mép trên (cao hơn màn hình nên căn giữa chỉ làm thẻ nhảy khi nội dung tải xong); từ `md` căn giữa.
@@ -313,7 +313,10 @@ export function ChangePasswordView({
                       onChange={controllerField.onChange}
                       onBlur={controllerField.onBlur}
                       size="lg"
+                      required
                       autoComplete="current-password"
+                      enterKeyHint="next"
+                      className={touchFieldText}
                       leadingIcon={<Lock />}
                       labels={{
                         showPassword: ruleLabels.showPassword,
@@ -339,9 +342,12 @@ export function ChangePasswordView({
                       onChange={controllerField.onChange}
                       onBlur={controllerField.onBlur}
                       size="lg"
+                      required
                       showRules
                       labels={ruleLabels}
                       autoComplete="new-password"
+                      enterKeyHint="next"
+                      className={touchFieldText}
                       leadingIcon={<Lock />}
                     />
                   )}
@@ -363,7 +369,10 @@ export function ChangePasswordView({
                       onChange={controllerField.onChange}
                       onBlur={controllerField.onBlur}
                       size="lg"
+                      required
                       autoComplete="new-password"
+                      enterKeyHint="done"
+                      className={touchFieldText}
                       leadingIcon={<Lock />}
                       labels={{
                         showPassword: ruleLabels.showPassword,

@@ -153,6 +153,25 @@ describe("ChangePasswordView", () => {
     await waitFor(() => expect(screen.getByLabelText(/^Mật khẩu mới/)).toHaveFocus());
   });
 
+  it("ba ô mật khẩu bắt buộc, đúng autocomplete, gợi ý phím Enter và chữ 16px ở màn hẹp", async () => {
+    renderWithProviders(
+      <ChangePasswordView loadCurrentSession={async () => STUDENT_SESSION} navigate={mocks.navigate} />,
+    );
+    expect(await screen.findByText("student03")).toBeInTheDocument();
+
+    const expected = [
+      [screen.getByLabelText(/Mật khẩu hiện tại/), "current-password", "next"],
+      [screen.getByLabelText(/^Mật khẩu mới/), "new-password", "next"],
+      [screen.getByLabelText(/Nhập lại mật khẩu mới/), "new-password", "done"],
+    ] as const;
+    for (const [input, autocomplete, enterKeyHint] of expected) {
+      expect(input).toBeRequired();
+      expect(input).toHaveAttribute("autocomplete", autocomplete);
+      expect(input).toHaveAttribute("enterkeyhint", enterKeyHint);
+      expect(input).toHaveClass("max-sm:text-title", "pointer-coarse:text-title");
+    }
+  });
+
   it("bỏ qua callbackUrl trỏ về /change-password hoặc /login để tránh vòng lặp", async () => {
     mocks.callbackUrl = "http://localhost:3000/change-password?callbackUrl=%2Fhome";
     mocks.changeAccountPassword.mockResolvedValue(undefined);

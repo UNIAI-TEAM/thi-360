@@ -11,7 +11,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { loginWithPassword } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
-import { coarseTextHitArea } from "@/lib/styles";
+import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
 
 type LoginFormValues = {
   identifier: string;
@@ -143,7 +143,14 @@ export function LoginView({
                   {...register("identifier")}
                   size="lg"
                   type="text"
+                  required
                   autoComplete="username"
+                  // Tên đăng nhập là mã định danh, không phải văn bản: tắt tự viết hoa, tự sửa và kiểm chính tả.
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="next"
+                  className={touchFieldText}
                   leadingIcon={<User />}
                   placeholder={t("identifierPlaceholder")}
                 />
@@ -164,7 +171,10 @@ export function LoginView({
                       onChange={controllerField.onChange}
                       onBlur={controllerField.onBlur}
                       size="lg"
+                      required
                       autoComplete="current-password"
+                      enterKeyHint="done"
+                      className={touchFieldText}
                       leadingIcon={<Lock />}
                       labels={{ showPassword: t("showPassword"), hidePassword: t("hidePassword") }}
                       placeholder={t("passwordPlaceholder")}
