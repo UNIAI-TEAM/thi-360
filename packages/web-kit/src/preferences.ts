@@ -52,6 +52,33 @@ export function resolveTheme(appearanceMode: AppTheme, cookieValue?: string | nu
   return parseThemeCookie(cookieValue) ?? appearanceMode;
 }
 
+/**
+ * Đọc ngôn ngữ và chế độ sáng/tối từ chuỗi cookie thô (`document.cookie` hoặc header `Cookie`). Dùng ở nơi không còn
+ * layout gốc cấp sẵn hai giá trị này, ví dụ trang lỗi toàn cục (`global-error.tsx`) thay thế cả layout gốc.
+ */
+export function readPreferenceCookies(cookieString: string | null | undefined): {
+  locale: AppLocale;
+  theme: AppTheme | null;
+} {
+  const values = new Map<string, string>();
+  for (const part of (cookieString ?? "").split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0) continue;
+    const name = part.slice(0, separator).trim();
+    if (!name || values.has(name)) continue;
+    const raw = part.slice(separator + 1).trim();
+    try {
+      values.set(name, decodeURIComponent(raw));
+    } catch {
+      values.set(name, raw);
+    }
+  }
+  return {
+    locale: parseLocaleCookie(values.get(LOCALE_COOKIE_NAME)),
+    theme: parseThemeCookie(values.get(THEME_COOKIE_NAME)),
+  };
+}
+
 export function normalizeCookieDomain(domain: string | null | undefined): string | undefined {
   const trimmed = domain?.trim();
   if (!trimmed) return undefined;

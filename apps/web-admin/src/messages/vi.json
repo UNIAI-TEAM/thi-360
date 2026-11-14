@@ -1206,6 +1206,12 @@
     "themeLight": "Sáng",
     "title": "Thành phần giao diện (/dev/ui)"
   },
+  "errorPage": {
+    "description": "Đã xảy ra lỗi không mong muốn khi xử lý yêu cầu. Vui lòng thử lại sau.",
+    "eyebrow": "MÃ LỖI 500",
+    "title": "Đã có lỗi máy chủ",
+    "traceLabel": "Mã yêu cầu: {traceId}"
+  },
   "errors": {
     "forbiddenToast": "Bạn không có quyền thực hiện thao tác này.",
     "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
