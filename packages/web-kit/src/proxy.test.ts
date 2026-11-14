@@ -85,23 +85,27 @@ describe("proxyApiRequest X-Forwarded-For", () => {
   });
 });
 
-describe("proxyApiRequest Idempotency-Key và multipart stream", () => {
-  it("chuyển tiếp header Idempotency-Key tới upstream", async () => {
+describe("proxyApiRequest header forwarding", () => {
+  it("chuyển tiếp Idempotency-Key tới upstream và không chuyển tiếp header ngoài danh sách", async () => {
     await handlers.POST(
-      new NextRequest("http://localhost:3000/api/v1/admin/catalog/groups/g1/items/import", {
+      new NextRequest("http://localhost:3000/api/v1/admin/users/bulk-actions", {
         method: "POST",
         body: "{}",
         headers: {
-          "content-type": "application/json",
-          "idempotency-key": "idem-12345",
+          "Idempotency-Key": "bulk-key-123",
+          "x-unlisted-header": "secret-value",
         },
       }),
-      context("v1", "admin", "catalog", "groups", "g1", "items", "import"),
+      context("v1", "admin", "users", "bulk-actions"),
     );
 
-    expect(lastHeaders().get("idempotency-key")).toBe("idem-12345");
+    const forwarded = lastHeaders();
+    expect(forwarded.get("idempotency-key")).toBe("bulk-key-123");
+    expect(forwarded.get("x-unlisted-header")).toBeNull();
   });
+});
 
+describe("proxyApiRequest multipart stream", () => {
   it("stream body multipart/form-data 4 MB (không parse JSON) kèm content-type và idempotency-key", async () => {
     const fourMb = 4 * 1024 * 1024;
     const payload = new Uint8Array(fourMb);
