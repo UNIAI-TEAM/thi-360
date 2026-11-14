@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Button } from "./button";
 import {
   Dialog,
@@ -18,7 +18,10 @@ type ReasonProps =
   | {
       /** Có nhãn thì hiện ô lý do (DESIGN.md mục 5.10). */
       reasonLabel: string;
-      /** Quy tắc yêu cầu lý do: nút xác nhận khóa tới khi ô lý do có chữ. */
+      /**
+       * Quy tắc yêu cầu lý do. Nút xác nhận KHÔNG bị khóa: bấm khi ô lý do trống thì ô được đánh dấu lỗi, nhận
+       * focus, hiện dòng lỗi gắn với nó, và `onConfirm` không được gọi (U-15).
+       */
       requireReason?: boolean;
     }
   | { reasonLabel?: undefined; requireReason?: never };
@@ -109,16 +112,38 @@ function ConfirmBody({
   onCancel,
   onConfirm,
 }: ConfirmBodyProps) {
+  const { confirmDialog } = useUiStrings();
   const [reason, setReason] = useState("");
+  const [confirmedEmpty, setConfirmedEmpty] = useState(false);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const trimmed = reason.trim();
+  const reasonMissing = requireReason && trimmed === "";
+
+  /*
+   * Không khóa nút để chặn việc kiểm tra: nút bị khóa không nói được vì sao và không nhận focus bàn phím.
+   * Cho bấm, rồi chỉ vào ô còn thiếu (U-15). Lỗi tự hết khi ô có chữ.
+   */
+  const handleConfirm = () => {
+    if (reasonMissing) {
+      setConfirmedEmpty(true);
+      reasonRef.current?.focus();
+      return;
+    }
+    onConfirm(trimmed);
+  };
 
   return (
     <>
       {reasonLabel && (
-        <FormField label={reasonLabel} required={requireReason}>
+        <FormField
+          label={reasonLabel}
+          required={requireReason}
+          error={confirmedEmpty && reasonMissing ? confirmDialog.reasonRequired : undefined}
+        >
           {(field) => (
             <Textarea
               {...field}
+              ref={reasonRef}
               value={reason}
               disabled={loading}
               onChange={(event) => setReason(event.target.value)}
@@ -138,12 +163,7 @@ function ConfirmBody({
         <Button variant="secondary" disabled={loading} onClick={onCancel}>
           {cancelLabel}
         </Button>
-        <Button
-          variant={tone}
-          loading={loading}
-          disabled={requireReason && trimmed === ""}
-          onClick={() => onConfirm(trimmed)}
-        >
+        <Button variant={tone} loading={loading} onClick={handleConfirm}>
           {confirmLabel}
         </Button>
       </DialogFooter>
