@@ -169,7 +169,11 @@ export function RbacLayoutView({ children }: { children: ReactNode }) {
         </NavTabs>
 
         {requestedTab === activeTab ? (
-          children
+          // `key` theo đường dẫn: đổi trang con thì vùng nội dung là phần tử mới nên hiệu ứng vào chạy lại;
+          // đổi `?permission=` trong cùng trang thì không. Tiêu đề và thanh tab nằm ngoài nên đứng yên.
+          <div key={pathname} className="animate-route-in motion-reduce:animate-none">
+            {children}
+          </div>
         ) : (
           // Đang chuyển sang trang con được phép: không dựng trang bị cấm để khỏi gọi API thiếu quyền.
           <div role="status" aria-label={commonT("loading")}>

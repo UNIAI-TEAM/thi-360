@@ -558,6 +558,29 @@ describe("RbacLayoutView & RolesTab", () => {
     ]);
   });
 
+  it("hiệu ứng vào chỉ ở vùng nội dung: chạy lại khi đổi trang con, không chạy lại khi chỉ đổi ?permission, tắt khi giảm chuyển động", async () => {
+    const user = userEvent.setup();
+    navMocks.setLocation("/rbac/users?permission=CLASS.VIEW");
+    renderRbacPage();
+
+    const usersContent = (await screen.findByText("class.watcher")).closest(".animate-route-in");
+    expect(usersContent).toHaveClass("animate-route-in", "motion-reduce:animate-none");
+    expect(usersContent).not.toContainElement(tabNav());
+    expect(usersContent).not.toContainElement(screen.getByRole("heading", { level: 1 }));
+
+    await user.click(screen.getByRole("button", { name: /AUDIT\.VIEW/ }));
+    expect(navMocks.currentUrl()).toBe("/rbac/users?permission=AUDIT.VIEW");
+    expect(screen.getByRole("button", { name: /AUDIT\.VIEW/ }).closest(".animate-route-in")).toBe(
+      usersContent,
+    );
+
+    await user.click(within(tabNav()).getByRole("link", { name: "Vai trò" }));
+    const rolesContent = (await screen.findByText("Theo dõi lớp")).closest(".animate-route-in");
+    expect(rolesContent).toHaveClass("animate-route-in", "motion-reduce:animate-none");
+    expect(rolesContent).not.toBe(usersContent);
+    expect(usersContent).not.toBeInTheDocument();
+  });
+
   it("Xem vai trò từ Người dùng theo quyền sang /rbac/roles và bỏ ?permission", async () => {
     const user = userEvent.setup();
     navMocks.setLocation("/rbac/users?permission=CLASS.VIEW");
