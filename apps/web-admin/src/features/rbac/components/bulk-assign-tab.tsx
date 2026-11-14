@@ -784,9 +784,7 @@ export function BulkAssignTab({
           </div>
 
           {effectiveTarget === "ROLE" ? (
-            !canViewRoles ? (
-              <p className="text-body text-text-muted">{t("bulk.missingRoleViewNote")}</p>
-            ) : (
+            !canViewRoles ? null : (
             <div className="flex flex-col gap-2">
               <div className="text-field-label font-medium text-text-secondary">
                 {t("bulk.rolesLabel", {
@@ -857,9 +855,7 @@ export function BulkAssignTab({
               )}
             </div>
             )
-          ) : !canViewPermissions ? (
-            <p className="text-body text-text-muted">{t("bulk.missingPermissionViewNote")}</p>
-          ) : (
+          ) : !canViewPermissions ? null : (
             <div className="flex flex-col gap-2">
               <div className="text-field-label font-medium text-text-secondary">
                 {t("bulk.selectedPermissionsLabel", {

@@ -774,6 +774,97 @@ describe("BulkAssignTab & UserRbacTab", () => {
     expect(onForbidden).not.toHaveBeenCalled();
   });
 
+  it("BulkAssignTab & UserRbacTab (R1-2 Advisor decision): tài khoản chỉ có USER.ASSIGN + USER.VIEW thấy ghi chú tiếng Việt, không gọi /roles hay /permissions và không kích hoạt onForbidden", async () => {
+    const onForbidden = vi.fn();
+    const listRoles = vi.fn(async () => {
+      throw new RbacApiError(403, "Forbidden", "FORBIDDEN");
+    });
+    const listPermissions = vi.fn(async () => {
+      throw new RbacApiError(403, "Forbidden", "FORBIDDEN");
+    });
+
+    const bulkClient = createQueryClient({ onForbidden, onUnauthenticated: vi.fn() });
+    const { unmount } = renderWithProviders(
+      <SessionProvider
+        loadSession={async () => ({
+          ...TEST_ADMIN_SESSION,
+          permissions: ["USER.ASSIGN", "USER.VIEW"],
+        })}
+      >
+        <BulkAssignTab
+          listUsers={async () => USERS_PAGE}
+          listRoles={listRoles}
+          listPermissions={listPermissions}
+        />
+      </SessionProvider>,
+      { client: bulkClient },
+    );
+
+    expect(await screen.findByText("ops.admin")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vai trò" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Quyền trực tiếp" })).toBeDisabled();
+    expect(screen.getByText(viMessages.rbac.bulk.missingRoleViewNote)).toBeInTheDocument();
+    expect(screen.getByText(viMessages.rbac.bulk.missingPermissionViewNote)).toBeInTheDocument();
+    expect(listRoles).not.toHaveBeenCalled();
+    expect(listPermissions).not.toHaveBeenCalled();
+    expect(onForbidden).not.toHaveBeenCalled();
+    unmount();
+
+    const userClient = createQueryClient({ onForbidden, onUnauthenticated: vi.fn() });
+    renderWithProviders(
+      <SessionProvider
+        loadSession={async () => ({
+          ...TEST_ADMIN_SESSION,
+          permissions: ["USER.ASSIGN", "USER.VIEW"],
+        })}
+      >
+        <UserRbacTab
+          userId="u-ops"
+          getUserRoles={async () => ({
+            userId: "u-ops",
+            access: "MANAGE",
+            roles: [
+              {
+                roleId: "role-content",
+                roleCode: "CONTENT_ADMIN",
+                roleName: "Quản trị nội dung",
+                access: "MANAGE",
+                status: "ACTIVE",
+                system: true,
+                assignedAt: "2026-11-14T00:00:00Z",
+              },
+            ],
+          })}
+          getUserPermissions={async () => ({
+            userId: "u-ops",
+            hasManageRole: true,
+            permissions: [],
+          })}
+          getEffectivePermissions={async () => ({
+            userId: "u-ops",
+            effectiveAccess: "MANAGE",
+            hasManageRole: true,
+            inactiveDirectPermissions: [],
+            permissions: [],
+          })}
+          listRoles={listRoles}
+          listPermissions={listPermissions}
+        />
+      </SessionProvider>,
+      { client: userClient },
+    );
+
+    expect(await screen.findByRole("button", { name: "Gán vai trò" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Thêm quyền" })).toBeDisabled();
+    expect(screen.getByText(viMessages.rbac.userRbac.missingRoleViewNote)).toBeInTheDocument();
+    expect(
+      screen.getByText(viMessages.rbac.userRbac.missingPermissionViewNote),
+    ).toBeInTheDocument();
+    expect(listRoles).not.toHaveBeenCalled();
+    expect(listPermissions).not.toHaveBeenCalled();
+    expect(onForbidden).not.toHaveBeenCalled();
+  });
+
   it("BulkAssignTab (R1-3): khóa các nút chỉnh sửa batch khi apply đang chạy, giữ nguyên payload đã bind và đồng bộ initialPermissionCode khi prop đổi", async () => {
     const user = userEvent.setup();
     const deferredApply = Promise.withResolvers<BulkAuthzResponse>();
