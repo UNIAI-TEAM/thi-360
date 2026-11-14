@@ -137,7 +137,7 @@
       "cancel": "Hủy",
       "close": "Đóng",
       "confirm": "Xóa lớp",
-      "description": "Lớp {code} ({name}) sẽ bị xóa mềm. Thao tác này không xóa tài khoản hay kết quả của học viên.",
+      "description": "Lớp {code} ({name}) sẽ không còn hiện trong danh sách lớp học. Thao tác này không xóa tài khoản hay kết quả của học viên.",
       "reasonLabel": "Lý do xóa lớp",
       "success": "Đã xóa lớp {code}.",
       "title": "Xóa lớp học"

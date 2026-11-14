@@ -137,7 +137,7 @@
       "cancel": "Cancel",
       "close": "Close",
       "confirm": "Delete class",
-      "description": "Class {code} ({name}) will be soft-deleted. Student accounts and exam results will remain untouched.",
+      "description": "Class {code} ({name}) will no longer appear in the class list. Student accounts and exam results will not be deleted.",
       "reasonLabel": "Deletion reason",
       "success": "Deleted class {code}.",
       "title": "Delete class"
