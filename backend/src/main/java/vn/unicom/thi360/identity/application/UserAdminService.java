@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
@@ -52,9 +53,14 @@ import vn.unicom.thi360.identity.api.DeactivateUserRequest;
 import vn.unicom.thi360.identity.api.DeactivationCheckResponse;
 import vn.unicom.thi360.identity.api.DeletionCheckResponse;
 import vn.unicom.thi360.identity.api.ResetPasswordRequest;
+import vn.unicom.thi360.identity.api.StudentLearningResponse;
 import vn.unicom.thi360.identity.api.UpdateUserRequest;
 import vn.unicom.thi360.identity.api.UserBulkAction;
 import vn.unicom.thi360.identity.api.UserDetailResponse;
+import vn.unicom.thi360.identity.api.UserLoginMethodResponse;
+import vn.unicom.thi360.identity.api.UserProfileClassHistoryResponse;
+import vn.unicom.thi360.identity.api.UserProfileCurrentClassResponse;
+import vn.unicom.thi360.identity.api.UserProfileResponse;
 import vn.unicom.thi360.identity.api.UserRoleSummary;
 import vn.unicom.thi360.identity.api.UserSummaryResponse;
 import vn.unicom.thi360.identity.api.UsernameAvailabilityResponse;
@@ -80,6 +86,7 @@ import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
 import vn.unicom.thi360.identity.spi.AccountDeletionGuard;
 import vn.unicom.thi360.identity.spi.ActiveAttemptChecker;
 import vn.unicom.thi360.identity.spi.ClassMembershipPort;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider;
 import vn.unicom.thi360.identity.spi.Permission;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.identity.spi.UserDeleted;
@@ -140,6 +147,7 @@ public class UserAdminService {
     private final List<AccountDeletionGuard> deletionGuards;
     private final List<ActiveAttemptChecker> activeAttemptCheckers;
     private final ClassMembershipPort classMembershipPort;
+    private final StudentLearningProvider studentLearningProvider;
     private final KeycloakIdentityClient keycloakClient;
     private final CurrentUserProvider currentUserProvider;
     private final AuditRecorder auditRecorder;
@@ -165,6 +173,7 @@ public class UserAdminService {
             List<AccountDeletionGuard> deletionGuards,
             List<ActiveAttemptChecker> activeAttemptCheckers,
             ClassMembershipPort classMembershipPort,
+            @Autowired(required = false) StudentLearningProvider studentLearningProvider,
             KeycloakIdentityClient keycloakClient,
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
@@ -187,6 +196,7 @@ public class UserAdminService {
         this.deletionGuards = deletionGuards == null ? List.of() : List.copyOf(deletionGuards);
         this.activeAttemptCheckers = activeAttemptCheckers == null ? List.of() : List.copyOf(activeAttemptCheckers);
         this.classMembershipPort = classMembershipPort;
+        this.studentLearningProvider = studentLearningProvider;
         this.keycloakClient = keycloakClient;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
@@ -319,6 +329,74 @@ public class UserAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
         return toDetailResponse(user, roles);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(UUID userId) {
+        UserAccount user = userAccountRepository.findById(userId)
+                .filter(u -> u.getStatus() != UserStatus.PROVISIONING)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        List<UserRoleSummary> roles = loadRolesForUsers(List.of(userId)).getOrDefault(userId, List.of());
+        UserDetailResponse account = toDetailResponse(user, roles);
+        List<UserLoginMethodResponse> loginMethods = userIdentityRepository
+                .findAllByUserIdOrderByLinkedAtAscIdAsc(userId)
+                .stream()
+                .map(identity -> new UserLoginMethodResponse(
+                        identity.getId(),
+                        identity.getProvider(),
+                        identity.getEmailAtLink(),
+                        identity.getLinkedAt()))
+                .toList();
+        ClassMembershipPort.UserClassesResult classes = classMembershipPort.getUserClasses(userId);
+        if (classes == null) {
+            classes = ClassMembershipPort.UserClassesResult.empty();
+        }
+        List<UserProfileCurrentClassResponse> currentClasses = classes.currentClasses().stream()
+                .map(c -> new UserProfileCurrentClassResponse(
+                        c.classId(),
+                        c.classCode(),
+                        c.className(),
+                        c.classStatus(),
+                        c.joinedAt(),
+                        c.addedBy(),
+                        c.addedByUsername()))
+                .toList();
+        List<UserProfileClassHistoryResponse> classHistory = classes.history().stream()
+                .map(h -> new UserProfileClassHistoryResponse(
+                        h.id(),
+                        h.classId(),
+                        h.classCode(),
+                        h.className(),
+                        h.action(),
+                        h.relatedClassId(),
+                        h.relatedClassCode(),
+                        h.relatedClassName(),
+                        h.actorId(),
+                        h.actorUsername(),
+                        h.reason(),
+                        h.occurredAt()))
+                .toList();
+        return new UserProfileResponse(account, loginMethods, currentClasses, classHistory);
+    }
+
+    @Transactional(readOnly = true)
+    public StudentLearningResponse getUserLearning(UUID userId) {
+        userAccountRepository.findById(userId)
+                .filter(u -> u.getStatus() != UserStatus.PROVISIONING)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        StudentLearningProvider.StudentLearningData data =
+                studentLearningProvider == null ? null : studentLearningProvider.loadForUser(userId);
+        if (data == null) {
+            data = StudentLearningProvider.StudentLearningData.empty();
+        }
+        return new StudentLearningResponse(
+                userId,
+                data.dataAvailable(),
+                data.entitlements(),
+                data.attempts(),
+                data.assessments(),
+                data.practice(),
+                data.supportRequests());
     }
 
     @Transactional(readOnly = true)
