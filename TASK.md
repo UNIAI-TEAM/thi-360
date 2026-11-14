@@ -17,17 +17,17 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T06 | UNI-2543 | Nền · Design system (`packages/ui`) và khung web admin | T01 | in_review (đã merge vào `integration/dot-1` qua PR #5 ngày 2026-11-13) |
 | T06b | UNI-2559 | Nền · Tương phản chữ/nền chế độ sáng >= 4,5:1 (con của UNI-2543, ngoài điểm plan) | T06 | in_review (đã merge vào `integration/dot-1` qua PR #7 ngày 2026-11-13) |
 | T07 | UNI-2544 | PBI-01 · API quản lý tài khoản | T03, T04, T05 | in_review (đã merge vào `integration/dot-1` qua PR #12 ngày 2026-11-14) |
-| T08 | UNI-2545 | PBI-01 · UI phân quyền: một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt) | T04, T06, T18 | todo |
-| T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07, T18 | todo |
-| T10 | UNI-2547 | PBI-01 · Lớp học: API + UI | T07, T09 | todo |
+| T08 | UNI-2545 | PBI-01 · UI phân quyền: một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt) | T04, T06, T18 | in_progress |
+| T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07, T18 | in_progress |
+| T10 | UNI-2547 | PBI-01 · Lớp học: API + UI | T07, T09 | in_progress |
 | T11 | UNI-2548 | PBI-01 · Cấp tài khoản hàng loạt | T07, T10 | todo |
 | T12 | UNI-2549 | PBI-01 · Hồ sơ học viên (khung) | T09, T10 | todo |
 | T13 | UNI-2550 | PBI-02 · Danh mục: schema, dữ liệu mặc định, API nhóm và giá trị, API lựa chọn | T04, T05 | in_review (đã merge vào `integration/dot-1` qua PR #10 ngày 2026-11-14) |
-| T14 | UNI-2551 | PBI-02 · Mã tổ hợp có phiên bản, nơi đang dùng, quy tắc ngừng và xóa | T13 | in_progress |
-| T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14, T18 | todo |
+| T14 | UNI-2551 | PBI-02 · Mã tổ hợp có phiên bản, nơi đang dùng, quy tắc ngừng và xóa | T13 | in_review (đã merge vào `integration/dot-1` qua PR #14 ngày 2026-11-14) |
+| T15 | UNI-2552 | PBI-02 · UI Cấu hình chung | T06, T13, T14, T18 | in_progress |
 | T17 | UNI-2555 | Nền · Tùy chỉnh giao diện toàn hệ thống (mục trong menu chính, port từ reap) | T04, T05, T06 | in_review (đã merge vào `integration/dot-1` qua PR #11 ngày 2026-11-14) |
-| T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | todo |
-| T19 | UNI-2561 | Nền · Đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh) và chế độ sáng/tối theo từng người; hai nút ở thanh trên cùng | T17, T18 | todo |
+| T18 | UNI-2556 | Nền · Đăng nhập một nơi (SSO) và điều hướng theo vai trò | T03, T04, T06 | in_review (đã merge vào `integration/dot-1` qua PR #13 ngày 2026-11-14) |
+| T19 | UNI-2561 | Nền · Đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh) và chế độ sáng/tối theo từng người; hai nút ở thanh trên cùng | T17, T18 | in_progress |
 | T16 | UNI-2553 | Kiểm thử nghiệm thu nền, PBI-01 và kiểm thử bảo mật gọi thẳng API | T02–T15, T17, T18, T19 | todo |
 
 ### Thứ tự làm

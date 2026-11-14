@@ -37,6 +37,20 @@ cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=api,worker,dev  
 pnpm dev                                                                         # web học viên :3000, web admin :3001
 ```
 
+### Đăng nhập dev (tài khoản mẫu)
+
+Khi chạy backend với profile `dev` (`api,worker,dev`), `DevDataInitializer` tự tạo sẵn các tài khoản sau (chỉ ở môi trường dev). Đăng nhập tại http://localhost:3000/dang-nhap (một nơi đăng nhập cho cả web học viên và web admin):
+
+| Tên đăng nhập | Mật khẩu | Vai trò / phạm vi |
+|---|---|---|
+| `sys.admin` | `Thi360@dev` | Quản trị hệ thống (`SYSTEM_ADMIN`, `MANAGE`) |
+| `content.admin` | `Thi360@dev` | Quản trị nội dung (`CONTENT_ADMIN`, `MANAGE`) |
+| `ops.admin` | `Thi360@dev` | Vận hành (`OPERATIONS`, `MANAGE`) |
+| `student01` … `student05` | `Thi360@dev` | Học viên (`STUDENT`, `EXAM`) |
+| `platform` | `platform-dev-only` (`THI360_DEV_PLATFORM_PASSWORD`) | Tài khoản khởi tạo ở realm `master` (`PLATFORM_ADMIN`) |
+
+Chạy kiểm thử E2E (Playwright + Compose + backend + hai web): `pnpm --filter @thi360/e2e test`.
+
 ## Dịch vụ dev (Docker Compose)
 
 | Dịch vụ | Địa chỉ | Ghi chú |
@@ -71,6 +85,7 @@ Trên máy chủ Keycloak thật (dùng chung với các dự án khác), ứng 
    - Thêm **Audience** protocol mapper (`oidc-audience-mapper`) cho client trên với **Included Client Audience** = `THI360_KC_PLATFORM_CLIENT_ID`, bật **Add to access token**, tắt **Add to ID token**.
    - Tạo tài khoản khởi tạo (ví dụ `platform`), đặt mật khẩu và gán **duy nhất** realm role `PLATFORM_ADMIN` (không gán role `admin` của Keycloak). Tên đăng nhập tài khoản nền tảng phải nằm trong danh sách tên dành riêng của ứng dụng.
 3. **Biến môi trường bắt buộc ở production/staging**: `THI360_KC_URL`, `THI360_KC_REALM`, `THI360_KC_CLIENT_ID`, `THI360_KC_CLIENT_SECRET`, `THI360_KC_PLATFORM_REALM`, `THI360_KC_PLATFORM_ROLE`, `THI360_KC_PLATFORM_CLIENT_ID`, `THI360_KC_PLATFORM_CLIENT_SECRET`, `THI360_CTX_SECRET` (khóa HMAC >= 32 bytes UTF-8; giá trị mặc định trong `.env.example` chỉ áp dụng khi chạy profile `dev` hoặc `test`, khởi động các profile khác sẽ bị từ chối nếu thiếu hoặc ngắn hơn 32 bytes), `THI360_TRUSTED_PROXIES`.
+4. **Proxy web & IP thực của người dùng (`THI360_TRUST_REAL_IP`)**: Next.js 16 không còn `request.ip`, và route proxy `/api/[...path]` của cả hai web luôn bỏ qua `X-Forwarded-For` do trình duyệt gửi. Khi triển khai sau nginx, cấu hình `proxy_set_header X-Real-IP $remote_addr;` trên nginx, đặt `THI360_TRUST_REAL_IP=1` cho hai web để proxy ghi đè `X-Forwarded-For` từ `X-Real-IP`, và đưa IP của máy chủ web vào `THI360_TRUSTED_PROXIES` ở backend. Không bật `THI360_TRUST_REAL_IP=1` nếu request đi thẳng tới Next.js mà không qua reverse proxy đáng tin cậy.
 
 ## Lệnh thường dùng
 

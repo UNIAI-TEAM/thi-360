@@ -24,6 +24,9 @@ public record MeResponse(
         Access access,
 
         @Schema(description = "Danh sách mã quyền hiệu lực", requiredMode = Schema.RequiredMode.REQUIRED)
-        List<String> permissions
+        List<String> permissions,
+
+        @Schema(description = "Trang chủ mặc định theo vai trò", example = "http://localhost:3000/home", requiredMode = Schema.RequiredMode.REQUIRED)
+        String homeUrl
 ) {
 }

@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PRESET_PALETTES, THEME_STYLE_ELEMENT_ID, Toaster } from "@thi360/ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FAKE_SESSION } from "@/features/session/fake-session";
+import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { SessionProvider } from "@/features/session/session-provider";
 import { ApiStatusError } from "@/lib/api/query-client";
 import en from "@/messages/en.json";
@@ -31,7 +31,7 @@ const DEFAULT_SERVER: AppearanceResponse = {
 };
 
 function renderAppearance({
-  permissions = FAKE_SESSION.permissions,
+  permissions = TEST_ADMIN_SESSION.permissions,
   loadAppearance = async () => DEFAULT_SERVER,
   saveAppearance = async (payload) => ({ ...payload, version: payload.version + 1 }),
   resetAppearance = async () => ({
@@ -50,7 +50,7 @@ function renderAppearance({
   const activeMessages = locale === "en" ? en : viMessages;
   return renderWithProviders(
     <>
-      <SessionProvider loadSession={async () => ({ ...FAKE_SESSION, permissions: [...permissions] })}>
+      <SessionProvider loadSession={async () => ({ ...TEST_ADMIN_SESSION, permissions: [...permissions] })}>
         <AppearanceView
           loadAppearance={loadAppearance}
           saveAppearance={saveAppearance}

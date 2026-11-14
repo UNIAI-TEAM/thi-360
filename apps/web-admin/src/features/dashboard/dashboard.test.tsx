@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { Home } from "lucide-react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionLoader } from "@/features/session/api";
-import { FAKE_SESSION } from "@/features/session/fake-session";
+import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import { ApiStatusError } from "@/lib/api/query-client";
@@ -57,7 +57,7 @@ describe("DashboardView: bốn trạng thái", () => {
 
   it("lỗi: hiện thông báo và nút Thử lại nạp lại phiên", async () => {
     loadMock.mockRejectedValueOnce(new ApiStatusError(500));
-    loadMock.mockResolvedValueOnce(FAKE_SESSION);
+    loadMock.mockResolvedValueOnce(TEST_ADMIN_SESSION);
     renderDashboard();
 
     const retry = await screen.findByRole("button", { name: "Thử lại" });
@@ -67,7 +67,7 @@ describe("DashboardView: bốn trạng thái", () => {
   });
 
   it("rỗng (không có mục lối tắt nào): chỉ hiện lời chào, không hiện khối Lối tắt", async () => {
-    loadMock.mockResolvedValue(FAKE_SESSION);
+    loadMock.mockResolvedValue(TEST_ADMIN_SESSION);
     renderDashboard();
 
     expect(await screen.findByRole("heading", { name: "Xin chào, Vận hành" })).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("DashboardView: bốn trạng thái", () => {
         ],
       },
     ];
-    loadMock.mockResolvedValue({ ...FAKE_SESSION, permissions: ["USER.VIEW"] });
+    loadMock.mockResolvedValue({ ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW"] });
     renderDashboard();
 
     expect(await screen.findByRole("heading", { name: "Lối tắt" })).toBeInTheDocument();

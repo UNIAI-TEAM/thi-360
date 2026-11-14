@@ -4,14 +4,24 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 import vn.unicom.thi360.catalog.domain.CatalogItem;
 
 public interface CatalogItemRepository extends JpaRepository<CatalogItem, UUID> {
 
     boolean existsByGroupId(UUID groupId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM CatalogItem i WHERE i.id = :id")
+    Optional<CatalogItem> findByIdForUpdate(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM CatalogItem i WHERE i.id IN :ids ORDER BY i.id ASC")
+    List<CatalogItem> findAllByIdInForUpdate(@Param("ids") Collection<UUID> ids);
+
 
     boolean existsByGroupIdAndCodeNormalized(UUID groupId, String codeNormalized);
 

@@ -74,6 +74,7 @@ public class AuthService {
     private final Clock clock;
     private final SessionAuthzResolver authzResolver;
     private final PermissionCatalog permissionCatalog;
+    private final RedirectResolver redirectResolver;
     public AuthService(
             UserAccountRepository userAccountRepository,
             PlatformAdminRepository platformAdminRepository,
@@ -106,6 +107,7 @@ public class AuthService {
                 transactionTemplate,
                 clock,
                 authzResolver,
+                null,
                 null);
     }
 
@@ -126,7 +128,8 @@ public class AuthService {
             TransactionTemplate transactionTemplate,
             Clock clock,
             @Autowired(required = false) SessionAuthzResolver authzResolver,
-            @Autowired(required = false) PermissionCatalog permissionCatalog) {
+            @Autowired(required = false) PermissionCatalog permissionCatalog,
+            @Autowired(required = false) RedirectResolver redirectResolver) {
         this.userAccountRepository = Objects.requireNonNull(userAccountRepository);
         this.platformAdminRepository = Objects.requireNonNull(platformAdminRepository);
         this.keycloakClient = Objects.requireNonNull(keycloakClient);
@@ -143,6 +146,9 @@ public class AuthService {
         this.clock = Objects.requireNonNull(clock);
         this.authzResolver = authzResolver;
         this.permissionCatalog = permissionCatalog;
+        this.redirectResolver = redirectResolver != null
+                ? redirectResolver
+                : new RedirectResolver("http://localhost:3000", "http://localhost:3001", List.of());
     }
     public LoginResult login(
             String identifier,
@@ -167,15 +173,16 @@ public class AuthService {
 
         Optional<UserAccount> accountOpt = resolveActiveAccount(normalized);
         if (accountOpt.isPresent()) {
-            return loginAppRealm(accountOpt.get(), normalized, password, response);
+            return loginAppRealm(accountOpt.get(), normalized, password, callbackUrl, response);
         }
-        return loginMasterRealm(identifier.trim(), normalized, password, response);
+        return loginMasterRealm(identifier.trim(), normalized, password, callbackUrl, response);
     }
 
     private LoginResult loginAppRealm(
             UserAccount account,
             String normalizedIdentifier,
             String password,
+            String callbackUrl,
             HttpServletResponse response) {
         long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
         TokenResult tokens;
@@ -254,13 +261,15 @@ public class AuthService {
                 tokens.refreshExpiresInSeconds(),
                 ctx);
 
-        return new LoginResult("/", account.isMustChangePassword());
+        String redirectTo = redirectResolver.resolve(authz.access(), account.isMustChangePassword(), callbackUrl);
+        return new LoginResult(redirectTo, account.isMustChangePassword());
     }
 
     private LoginResult loginMasterRealm(
             String rawUsername,
             String normalizedIdentifier,
             String password,
+            String callbackUrl,
             HttpServletResponse response) {
         // Master realm admins are not managed by UserAdminService; read generation for consistency.
         TokenResult tokens;
@@ -340,7 +349,8 @@ public class AuthService {
                 tokens.refreshExpiresInSeconds(),
                 ctx);
 
-        return new LoginResult("/", false);
+        String redirectTo = redirectResolver.resolve(authz.access(), false, callbackUrl);
+        return new LoginResult(redirectTo, false);
     }
 
     public LoginResult refresh(String refreshToken, HttpServletResponse response) {
@@ -436,7 +446,8 @@ public class AuthService {
                 tokens.refreshExpiresInSeconds(),
                 ctx);
 
-        return new LoginResult("/", mustChangePassword);
+        String redirectTo = redirectResolver.resolve(authz.access(), mustChangePassword, null);
+        return new LoginResult(redirectTo, mustChangePassword);
     }
 
     public void logout(String refreshToken, String accessToken, HttpServletResponse response) {
@@ -644,13 +655,15 @@ public class AuthService {
         } else {
             permissions = currentUser.permissions().codes().stream().sorted().toList();
         }
+        String homeUrl = redirectResolver.resolveHomeUrl(currentUser.access());
         return new MeResult(
                 currentUser.id(),
                 username,
                 fullName,
                 currentUser.realm(),
                 currentUser.access(),
-                permissions);
+                permissions,
+                homeUrl);
     }
 
     private Optional<UserAccount> resolveActiveAccount(String normalized) {
@@ -735,7 +748,8 @@ public class AuthService {
             String fullName,
             Realm realm,
             Access access,
-            List<String> permissions
+            List<String> permissions,
+            String homeUrl
     ) {
     }
 }

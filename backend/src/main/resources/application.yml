@@ -1,6 +1,10 @@
 spring:
   application:
     name: thi360-api
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: ${THI360_DB_URL:jdbc:postgresql://localhost:${THI360_DB_PORT:54360}/${THI360_DB_NAME:thi360}}
     username: ${THI360_DB_USER:thi360}
@@ -71,6 +75,7 @@ thi360:
     platform-client-secret: ${THI360_KC_PLATFORM_CLIENT_SECRET:thi360-platform-dev-only}
   web-url: ${THI360_WEB_URL:http://localhost:3000}
   admin-url: ${THI360_ADMIN_URL:http://localhost:3001}
+  redirect-allowed-origins: []
   cookie:
     domain: ${THI360_COOKIE_DOMAIN:}
     secure: ${THI360_COOKIE_SECURE:true}

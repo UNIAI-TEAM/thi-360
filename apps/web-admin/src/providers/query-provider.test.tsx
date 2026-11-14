@@ -2,15 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as SessionApi from "@/features/session/api";
 import vi_messages from "@/messages/vi.json";
 import { ApiStatusError } from "@/lib/api/query-client";
-import { QueryProvider } from "./query-provider";
+import { FORBIDDEN_PATH, QueryProvider } from "./query-provider";
 
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   pathname: { current: "/" },
   toastError: vi.fn(),
   redirectToLogin: vi.fn(),
+  refreshSession: vi.fn(),
+  clearSessionBestEffort: vi.fn(),
+  navigate: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -19,6 +23,14 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@thi360/ui", () => ({ notify: { error: mocks.toastError }, Toaster: () => null }));
 vi.mock("@/lib/auth-redirect", () => ({ redirectToLogin: mocks.redirectToLogin }));
+vi.mock("@/features/session/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof SessionApi>();
+  return {
+    ...actual,
+    refreshSession: mocks.refreshSession,
+    clearSessionBestEffort: mocks.clearSessionBestEffort,
+  };
+});
 
 const queryFn = vi.fn<() => Promise<unknown>>();
 
@@ -40,7 +52,7 @@ function Query({ name }: { name: string }) {
 function renderProbe(keys?: string[]) {
   return render(
     <NextIntlClientProvider locale="vi" messages={vi_messages}>
-      <QueryProvider>
+      <QueryProvider navigate={mocks.navigate}>
         <Probe keys={keys} />
       </QueryProvider>
     </NextIntlClientProvider>,
@@ -49,6 +61,9 @@ function renderProbe(keys?: string[]) {
 
 beforeEach(() => {
   mocks.pathname.current = "/";
+  mocks.refreshSession.mockResolvedValue(undefined);
+  mocks.clearSessionBestEffort.mockResolvedValue(undefined);
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -56,59 +71,102 @@ afterEach(() => {
   mocks.replace.mockReset();
   mocks.toastError.mockReset();
   mocks.redirectToLogin.mockReset();
+  mocks.refreshSession.mockReset();
+  mocks.clearSessionBestEffort.mockReset();
+  mocks.navigate.mockReset();
+  vi.unstubAllGlobals();
+  window.sessionStorage.clear();
 });
 
 describe("QueryProvider: lỗi toàn cục", () => {
-  it("401 chuyển về trang đăng nhập, không toast và không vào /forbidden", async () => {
+  it("401 đồng thời gọi /auth/refresh một lần (single-flight) rồi tải lại khi thành công", async () => {
+    queryFn.mockRejectedValue(new ApiStatusError(401));
+    renderProbe(["a", "b", "c"]);
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith(window.location.href));
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    expect(mocks.redirectToLogin).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("401 khi /auth/refresh trả 401 thì chuyển thẳng về trang đăng nhập, không toast", async () => {
+    mocks.refreshSession.mockRejectedValue(new ApiStatusError(401));
+    queryFn.mockRejectedValue(new ApiStatusError(401));
+    renderProbe(["a", "b"]);
+
+    await waitFor(() => expect(mocks.redirectToLogin).toHaveBeenCalledTimes(1));
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
+    expect(mocks.clearSessionBestEffort).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("401 khi /auth/refresh lỗi khác 401 thì gọi logout tối đa rồi mới về trang đăng nhập", async () => {
+    mocks.refreshSession.mockRejectedValue(new ApiStatusError(500));
     queryFn.mockRejectedValue(new ApiStatusError(401));
     renderProbe();
 
     await waitFor(() => expect(mocks.redirectToLogin).toHaveBeenCalledTimes(1));
-    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.clearSessionBestEffort).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 lặp lại ngay sau khi vừa refresh ở cùng URL thì không refresh lại mà đăng xuất rồi về đăng nhập", async () => {
+    window.sessionStorage.setItem(
+      "thi360:401-refresh-url",
+      JSON.stringify({ url: window.location.href, at: Date.now() }),
+    );
+    queryFn.mockRejectedValue(new ApiStatusError(401));
+    renderProbe();
+
+    await waitFor(() => expect(mocks.redirectToLogin).toHaveBeenCalledTimes(1));
+    expect(mocks.refreshSession).not.toHaveBeenCalled();
+    expect(mocks.clearSessionBestEffort).toHaveBeenCalledTimes(1);
+  });
+  it("403 lần đầu gọi /auth/refresh một lần rồi điều hướng lại; nhiều 403 đồng thời chỉ gọi một lần", async () => {
+    queryFn.mockRejectedValue(new ApiStatusError(403));
+    renderProbe(["a", "b", "c"]);
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith(window.location.href));
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 
-  it("nhiều request cùng 401 chỉ chuyển hướng một lần", async () => {
-    queryFn.mockRejectedValue(new ApiStatusError(401));
-    renderProbe(["a", "b", "c"]);
-
-    await waitFor(() => {
-      for (const key of ["a", "b", "c"]) expect(screen.getByTestId(key)).toHaveTextContent("error");
-    });
-    expect(mocks.redirectToLogin).toHaveBeenCalledTimes(1);
-  });
-
-  it("403 hiện toast lỗi rồi chuyển tới /forbidden, không chuyển về đăng nhập", async () => {
+  it("403 sau khi đã refresh và điều hướng lại thì hiện toast lỗi rồi chuyển tới /forbidden", async () => {
+    window.sessionStorage.setItem("thi360:403-refresh-url", window.location.href);
     queryFn.mockRejectedValue(new ApiStatusError(403));
     renderProbe();
 
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/forbidden"));
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith(FORBIDDEN_PATH));
+    expect(mocks.refreshSession).not.toHaveBeenCalled();
     expect(mocks.toastError).toHaveBeenCalledWith(vi_messages.errors.forbiddenToast);
     expect(mocks.redirectToLogin).not.toHaveBeenCalled();
   });
 
-  it("nhiều request cùng 403 chỉ hiện một toast và chuyển trang một lần", async () => {
+  it("403 khi /auth/refresh trả 401 thì chuyển về trang đăng nhập", async () => {
+    mocks.refreshSession.mockRejectedValue(new ApiStatusError(401));
     queryFn.mockRejectedValue(new ApiStatusError(403));
-    renderProbe(["a", "b", "c"]);
+    renderProbe();
 
-    await waitFor(() => {
-      for (const key of ["a", "b", "c"]) expect(screen.getByTestId(key)).toHaveTextContent("error");
-    });
-    expect(mocks.toastError).toHaveBeenCalledTimes(1);
-    expect(mocks.replace).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.redirectToLogin).toHaveBeenCalledTimes(1));
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
   });
 
-  it("đang ở /forbidden thì 403 không lặp toast và điều hướng", async () => {
-    mocks.pathname.current = "/forbidden";
+  it("đang ở /forbidden thì 403 không lặp refresh, toast và điều hướng", async () => {
+    mocks.pathname.current = FORBIDDEN_PATH;
     queryFn.mockRejectedValue(new ApiStatusError(403));
     renderProbe();
 
     await waitFor(() => expect(screen.getByTestId("a")).toHaveTextContent("error"));
+    expect(mocks.refreshSession).not.toHaveBeenCalled();
     expect(mocks.toastError).not.toHaveBeenCalled();
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 
-  it("lỗi 4xx không được thử lại; lỗi khác không kích hoạt xử lý chung", async () => {
+  it("lỗi 4xx khác không được thử lại; không kích hoạt xử lý chung", async () => {
     queryFn.mockRejectedValue(new ApiStatusError(400));
     renderProbe();
 
@@ -117,5 +175,23 @@ describe("QueryProvider: lỗi toàn cục", () => {
     expect(mocks.redirectToLogin).not.toHaveBeenCalled();
     expect(mocks.replace).not.toHaveBeenCalled();
     expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("403 khi URL có đoạn #hash (như #main) vẫn reload thật qua window.location.reload", async () => {
+    const reload = vi.fn();
+    const assign = vi.fn();
+    vi.stubGlobal("location", { href: "http://localhost:3001/#main", reload, assign });
+    queryFn.mockRejectedValue(new ApiStatusError(403));
+
+    render(
+      <NextIntlClientProvider locale="vi" messages={vi_messages}>
+        <QueryProvider>
+          <Probe keys={["a"]} />
+        </QueryProvider>
+      </NextIntlClientProvider>,
+    );
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(assign).not.toHaveBeenCalled();
   });
 });
