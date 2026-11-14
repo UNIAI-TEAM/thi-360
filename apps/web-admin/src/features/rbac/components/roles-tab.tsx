@@ -18,7 +18,7 @@ import {
 } from "@thi360/ui";
 import { Eye, Pencil, Search, Shield, Trash2, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
 import {
   deleteRole as defaultDeleteRole,
@@ -48,6 +48,7 @@ import { RoleDialog, type RoleDialogProps } from "./role-dialog";
 
 export interface RolesTabProps {
   createRequestNonce?: number;
+  onCreateRequestConsumed?: () => void;
   listRoles?: (params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse>;
   listPermissions?: () => Promise<PermissionResponse[]>;
   deleteRole?: (id: string) => Promise<void>;
@@ -79,6 +80,7 @@ function buildFallbackPermissions(t: RbacTranslator): PermissionResponse[] {
 
 export function RolesTab({
   createRequestNonce = 0,
+  onCreateRequestConsumed,
   listRoles = defaultListRoles,
   listPermissions = defaultListPermissions,
   deleteRole = defaultDeleteRole,
@@ -101,8 +103,8 @@ export function RolesTab({
     open: boolean;
     mode: "create" | "edit" | "view";
     roleId?: string;
-    nonce?: number;
   }>({ open: false, mode: "create" });
+  const lastConsumedNonceRef = useRef(0);
 
   const [deleteTarget, setDeleteTarget] = useState<RoleSummaryResponse | null>(null);
 
@@ -151,19 +153,21 @@ export function RolesTab({
     },
   });
 
-  const effectiveDialogOpen =
-    dialogState.open || (canModify && createRequestNonce > 0 && dialogState.nonce !== createRequestNonce);
-  const effectiveDialogMode =
-    !dialogState.open && canModify && createRequestNonce > 0 && dialogState.nonce !== createRequestNonce
-      ? "create"
-      : dialogState.mode;
-  const effectiveRoleId = effectiveDialogMode === "create" ? undefined : dialogState.roleId;
+  useEffect(() => {
+    if (!canModify || createRequestNonce <= 0) return;
+    if (lastConsumedNonceRef.current === createRequestNonce) return;
+    lastConsumedNonceRef.current = createRequestNonce;
+    setDialogState({
+      open: true,
+      mode: "create",
+    });
+    onCreateRequestConsumed?.();
+  }, [canModify, createRequestNonce, onCreateRequestConsumed]);
 
   function closeDialog() {
     setDialogState({
       open: false,
       mode: "create",
-      nonce: createRequestNonce,
     });
   }
 
@@ -252,7 +256,6 @@ export function RolesTab({
                       open: true,
                       mode: "view",
                       roleId: r.id,
-                      nonce: createRequestNonce,
                     })
                   }
                 />
@@ -278,7 +281,6 @@ export function RolesTab({
                     open: true,
                     mode: "edit",
                     roleId: r.id,
-                    nonce: createRequestNonce,
                   })
                 }
               />
@@ -297,7 +299,7 @@ export function RolesTab({
     ];
 
     return baseColumns;
-  }, [canModify, createRequestNonce, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canModify, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const items = rolesQuery.data?.items ?? [];
   const total = rolesQuery.data?.totalItems ?? 0;
@@ -394,7 +396,6 @@ export function RolesTab({
                       setDialogState({
                         open: true,
                         mode: "create",
-                        nonce: createRequestNonce,
                       })
                     }
                   >
@@ -437,18 +438,13 @@ export function RolesTab({
       </Card>
 
       <RoleDialog
-        open={effectiveDialogOpen}
+        open={dialogState.open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) closeDialog();
-          else
-            setDialogState((prev) => ({
-              ...prev,
-              open: true,
-              nonce: createRequestNonce,
-            }));
+          else setDialogState((prev) => ({ ...prev, open: true }));
         }}
-        mode={effectiveDialogMode}
-        roleId={effectiveRoleId}
+        mode={dialogState.mode}
+        roleId={dialogState.roleId}
         permissionGroups={permissionGroups}
         {...roleDialogApi}
       />

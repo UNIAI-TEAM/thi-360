@@ -14,7 +14,7 @@ import {
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { hasPermission } from "@/features/session/permissions";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -60,7 +60,7 @@ export function resolveActiveRbacTab(
 }
 
 export interface RbacPageViewProps {
-  rolesTabProps?: Omit<RolesTabProps, "createRequestNonce">;
+  rolesTabProps?: Omit<RolesTabProps, "createRequestNonce" | "onCreateRequestConsumed">;
   permissionsTabProps?: Omit<PermissionsTabProps, "onSelectPermissionUsers">;
   permissionUsersTabProps?: Omit<
     PermissionUsersTabProps,
@@ -89,7 +89,9 @@ export function RbacPageView({
   const searchParams = useSearchParams();
 
   const [createRoleNonce, setCreateRoleNonce] = useState(0);
-
+  const handleCreateRequestConsumed = useCallback(() => {
+    setCreateRoleNonce(0);
+  }, []);
   const allowedTabs = useMemo(
     () => getAllowedRbacTabs(permissions),
     [permissions],
@@ -192,7 +194,11 @@ export function RbacPageView({
 
         {allowedTabs.includes("vai-tro") && (
           <TabsContent value="vai-tro">
-            <RolesTab createRequestNonce={createRoleNonce} {...rolesTabProps} />
+            <RolesTab
+              createRequestNonce={createRoleNonce}
+              onCreateRequestConsumed={handleCreateRequestConsumed}
+              {...rolesTabProps}
+            />
           </TabsContent>
         )}
 

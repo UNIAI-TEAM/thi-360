@@ -410,4 +410,28 @@ describe("RbacPageView & RolesTab", () => {
       expect(deleteRole).toHaveBeenCalledWith("r-custom-unused");
     });
   });
+
+  it("đóng dialog Tạo vai trò rồi chuyển sang tab Quyền và quay lại Vai trò không tự mở lại dialog", async () => {
+    const user = userEvent.setup();
+    renderRbacPage();
+
+    await screen.findByText("Theo dõi lớp");
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Quyền" }));
+    expect(await screen.findByText(viMessages.rbac.permissionsTab.bannerNote)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Vai trò" }));
+    await screen.findByText("Theo dõi lớp");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Bấm "+ Tạo vai trò" lại vẫn mở được dialog mới bình thường
+    await user.click(screen.getByRole("button", { name: "+ Tạo vai trò" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
 });
