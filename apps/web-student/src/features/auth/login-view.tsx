@@ -83,48 +83,36 @@ export function LoginView({
   const highlights = [t("feature1"), t("feature2"), t("feature3")];
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-page p-6">
-      <div className="flex w-full max-w-[920px] items-center justify-end gap-2">
-        {headerActions ?? (
-          <>
-            <ThemeToggle />
-            <LocaleSwitcher />
-          </>
-        )}
+    <main className="flex min-h-screen flex-col items-center gap-4 bg-page p-4 sm:p-6 md:justify-center">
+      <div className="flex w-full max-w-[920px] items-center gap-2">
+        {/* Màn hẹp: khối giới thiệu nằm dưới biểu mẫu, nên logo hiện ở hàng trên cùng. */}
+        <div className="flex items-center gap-2.5 md:hidden">
+          <span
+            aria-hidden
+            className="flex size-10 items-center justify-center rounded-lg bg-primary-fill font-bold text-on-primary"
+          >
+            {common("logoMark")}
+          </span>
+          <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {headerActions ?? (
+            <>
+              <ThemeToggle />
+              <LocaleSwitcher />
+            </>
+          )}
+        </div>
       </div>
-      <div className="flex w-full max-w-[920px] flex-wrap overflow-hidden rounded-2xl border border-border bg-surface shadow-xl">
-        <section className="flex min-w-[300px] flex-1 basis-[360px] flex-col gap-6 bg-primary-50 p-10 md:p-12">
-          <div className="flex items-center gap-3">
-            <span
-              aria-hidden
-              className="flex size-11 items-center justify-center rounded-lg bg-primary-fill text-title font-bold text-on-primary"
-            >
-              {common("logoMark")}
-            </span>
-            <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
-          </div>
-
-          <h1 className="text-h2 font-bold text-primary-900">{t("headline")}</h1>
-          <p className="text-body text-text-secondary">{t("subtitle")}</p>
-
-          <ul className="flex flex-col gap-3.5">
-            {highlights.map((item) => (
-              <li key={item} className="flex items-center gap-3 text-body text-text">
-                <span
-                  aria-hidden
-                  className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface text-primary-text"
-                >
-                  <Check className="size-4" />
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="flex min-w-[300px] flex-1 basis-[360px] flex-col gap-5 p-10 md:p-12">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-page-title font-bold text-text">{t("title")}</h2>
+      {/*
+        Biểu mẫu đứng trước trong DOM: màn hẹp xếp một cột thì ô nhập và nút Đăng nhập nằm ngay đầu trang, phần giới
+        thiệu ở dưới. Từ `md` hai khối đứng cạnh nhau và đảo chiều để phần giới thiệu ở bên trái (DESIGN 5.12); khối
+        giới thiệu không có điều khiển nào nên thứ tự Tab không đổi. `min-w-0` để không khối nào rộng hơn thẻ ở 320px.
+      */}
+      <div className="flex w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-xl md:flex-row-reverse">
+        <section className="flex min-w-0 flex-1 flex-col gap-5 p-6 sm:p-10 md:p-12">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
             <Link
               href="/"
               className="text-label font-medium text-primary-text transition-colors duration-150 hover:underline"
@@ -188,6 +176,35 @@ export function LoginView({
           </form>
 
           <p className="text-field-label text-text-muted">{t("forgotNote")}</p>
+        </section>
+
+        <section className="flex min-w-0 flex-1 flex-col gap-6 bg-primary-50 p-6 sm:p-10 md:p-12">
+          <div className="hidden items-center gap-3 md:flex">
+            <span
+              aria-hidden
+              className="flex size-11 items-center justify-center rounded-lg bg-primary-fill text-title font-bold text-on-primary"
+            >
+              {common("logoMark")}
+            </span>
+            <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+          </div>
+
+          <h2 className="text-h2 font-bold text-primary-900">{t("headline")}</h2>
+          <p className="text-body text-text-secondary">{t("subtitle")}</p>
+
+          <ul className="flex flex-col gap-3.5">
+            {highlights.map((item) => (
+              <li key={item} className="flex items-center gap-3 text-body text-text">
+                <span
+                  aria-hidden
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface text-primary-text"
+                >
+                  <Check className="size-4" />
+                </span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </main>

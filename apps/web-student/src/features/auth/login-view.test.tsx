@@ -117,6 +117,24 @@ describe("LoginView", () => {
     await waitFor(() => expect(identifierInput).toHaveFocus());
   });
 
+  it("biểu mẫu đứng trước phần giới thiệu trong DOM, tiêu đề trang là Đăng nhập và không khối nào có bề rộng tối thiểu cứng", () => {
+    // jsdom không dàn trang: kiểm cấu trúc bảo đảm màn hẹp thấy ô nhập trước và không bị cắt ở 320px.
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    const title = screen.getByRole("heading", { level: 1, name: "Đăng nhập" });
+    const headline = screen.getByRole("heading", { level: 2, name: "Luyện thi đánh giá năng lực HSA và QDA" });
+    const submit = screen.getByRole("button", { name: "Đăng nhập" });
+    expect(title.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(submit.compareDocumentPosition(headline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const formSection = title.closest("section");
+    const introSection = headline.closest("section");
+    expect(formSection).toHaveClass("min-w-0", "p-6");
+    expect(introSection).toHaveClass("min-w-0", "p-6");
+    expect(formSection?.parentElement).toHaveClass("flex-col", "md:flex-row-reverse");
+    expect(screen.getByRole("main").innerHTML).not.toContain("min-w-[300px]");
+  });
+
   it("dùng nhãn Show/Hide password theo ngôn ngữ tiếng Anh cho PasswordField", async () => {
     render(
       <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
