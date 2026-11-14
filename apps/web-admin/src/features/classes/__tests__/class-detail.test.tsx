@@ -263,22 +263,30 @@ describe("ClassDetailView", () => {
   });
 
   it("dialog thêm học viên chỉ hiện học viên (STUDENT), báo skippedCount và hiện mã lỗi CLASS_INACTIVE", async () => {
+    // Học viên đã thuộc lớp nhưng không nằm trong trang thành viên đang tải: dialog không đánh dấu được, máy chủ báo bỏ qua.
+    const unlistedMember: UserSummary = {
+      ...STUDENT_CANDIDATES[1]!,
+      id: "00000000-0000-4000-8000-000000000104",
+      code: "U000104",
+      username: "student04",
+      fullName: "Học viên 04",
+    };
     const addMock = vi
       .fn<ClassesApiDeps["addClassMembers"]>()
       .mockResolvedValueOnce({
         classId: BASE_CLASS.id,
         addedUserIds: [STUDENT_CANDIDATES[1]!.id],
-        skippedUserIds: [STUDENT_CANDIDATES[0]!.id],
+        skippedUserIds: [unlistedMember.id],
         addedCount: 1,
         skippedCount: 1,
       })
       .mockRejectedValueOnce(new ClassesApiError(409, "inactive", "CLASS_INACTIVE"));
 
     const listUsersMock = vi.fn(async () => ({
-      items: STUDENT_CANDIDATES,
+      items: [...STUDENT_CANDIDATES, unlistedMember],
       page: 0,
       size: 20,
-      totalItems: STUDENT_CANDIDATES.length,
+      totalItems: STUDENT_CANDIDATES.length + 1,
       totalPages: 1,
     }));
 
@@ -298,13 +306,13 @@ describe("ClassDetailView", () => {
       );
     });
 
-    await userEvent.click(within(dialog).getByRole("checkbox", { name: /student01/ }));
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: /student04/ }));
     await userEvent.click(within(dialog).getByRole("checkbox", { name: /student03/ }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Thêm 2 học viên" }));
 
     await waitFor(() => {
       expect(addMock).toHaveBeenCalledWith(BASE_CLASS.id, {
-        userIds: [STUDENT_CANDIDATES[0]!.id, STUDENT_CANDIDATES[1]!.id],
+        userIds: [unlistedMember.id, STUDENT_CANDIDATES[1]!.id],
       });
     });
 
@@ -319,6 +327,28 @@ describe("ClassDetailView", () => {
         "Lớp học đang ngừng sử dụng, không thể thêm hoặc chuyển học viên vào.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("dialog thêm học viên đánh dấu 'Đã trong lớp' và khóa chọn học viên đã là thành viên đang hiển thị", async () => {
+    renderDetail(makeDeps());
+
+    await screen.findByRole("heading", { name: "Lớp A" });
+    await screen.findByRole("link", { name: "student01" });
+    await userEvent.click(screen.getByRole("button", { name: /Thêm học viên/ }));
+
+    const dialog = screen.getByRole("dialog");
+    const memberCheckbox = await within(dialog).findByRole("checkbox", { name: /student01/ });
+    const candidateCheckbox = within(dialog).getByRole("checkbox", { name: /student03/ });
+
+    expect(memberCheckbox).toBeDisabled();
+    expect(candidateCheckbox).toBeEnabled();
+    expect(within(dialog).getAllByText("Đã trong lớp")).toHaveLength(1);
+
+    await userEvent.click(memberCheckbox);
+    expect(within(dialog).getByText("Đã chọn 0 học viên")).toBeInTheDocument();
+
+    await userEvent.click(candidateCheckbox);
+    expect(within(dialog).getByRole("button", { name: "Thêm 1 học viên" })).toBeEnabled();
   });
 
   it("dialog chuyển lớp vô hiệu hóa lớp INACTIVE, gửi targetClassId + reason và hiển thị 409 CLASS_INACTIVE", async () => {

@@ -597,6 +597,7 @@ function ClassDetailContent({
         addClassMembers={deps.addClassMembers}
         listUsers={listUsersForAdd}
         listActiveRoles={listActiveRolesForAdd}
+        existingMemberUserIds={members.map((member) => member.userId)}
         onAdded={refreshClassAndMembers}
       />
 

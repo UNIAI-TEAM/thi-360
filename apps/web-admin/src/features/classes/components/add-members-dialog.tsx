@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Button,
   Checkbox,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,6 +17,7 @@ import {
   Pagination,
   notify,
   Skeleton,
+  StatusChip,
 } from "@thi360/ui";
 import { Search, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -36,6 +38,7 @@ import { resolveClassesErrorMessage } from "../utils";
 
 export const STUDENT_ROLE_ID = "00000000-0000-7000-8000-000000000004";
 const ADD_CANDIDATES_PAGE_SIZE = 20;
+const NO_MEMBER_IDS: readonly string[] = [];
 
 export interface AddMembersDialogProps {
   open: boolean;
@@ -46,6 +49,8 @@ export interface AddMembersDialogProps {
   addClassMembers?: typeof defaultAddClassMembers;
   listUsers?: (query: ListUsersQuery) => Promise<PageResponseUserSummary>;
   listActiveRoles?: () => Promise<RoleSummary[]>;
+  /** Học viên đã là thành viên lớp theo dữ liệu đang tải ở trang chi tiết (không gọi thêm API); máy chủ vẫn là nguồn quyết định khi thêm. */
+  existingMemberUserIds?: readonly string[];
 }
 
 export function AddMembersDialog({
@@ -57,6 +62,7 @@ export function AddMembersDialog({
   addClassMembers = defaultAddClassMembers,
   listUsers = defaultListUsers,
   listActiveRoles = defaultListActiveRoles,
+  existingMemberUserIds = NO_MEMBER_IDS,
 }: AddMembersDialogProps) {
   const t = useTranslations("classes");
   const [submitting, setSubmitting] = useState(false);
@@ -90,6 +96,7 @@ export function AddMembersDialog({
             addClassMembers={addClassMembers}
             listUsers={listUsers}
             listActiveRoles={listActiveRoles}
+            existingMemberUserIds={existingMemberUserIds}
           />
         )}
       </DialogContent>
@@ -105,6 +112,7 @@ function AddMembersBody({
   addClassMembers,
   listUsers,
   listActiveRoles,
+  existingMemberUserIds,
 }: {
   classId: string;
   onCancel: () => void;
@@ -113,6 +121,7 @@ function AddMembersBody({
   addClassMembers: typeof defaultAddClassMembers;
   listUsers: (query: ListUsersQuery) => Promise<PageResponseUserSummary>;
   listActiveRoles: () => Promise<RoleSummary[]>;
+  existingMemberUserIds: readonly string[];
 }) {
   const t = useTranslations("classes");
   const common = useTranslations("common");
@@ -178,6 +187,7 @@ function AddMembersBody({
   }, [usersQuery.data]);
   const totalCandidates = usersQuery.data?.totalItems ?? 0;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const memberIdSet = useMemo(() => new Set(existingMemberUserIds), [existingMemberUserIds]);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -300,6 +310,7 @@ function AddMembersBody({
               >
                 {students.map((student) => {
                   const checkboxId = `add-student-${student.id}`;
+                  const isMember = memberIdSet.has(student.id);
                   const checked = selectedSet.has(student.id);
                   return (
                     <li
@@ -310,11 +321,14 @@ function AddMembersBody({
                         id={checkboxId}
                         checked={checked}
                         onCheckedChange={(next) => toggleStudent(student.id, next === true)}
-                        disabled={mutation.isPending}
+                        disabled={mutation.isPending || isMember}
                       />
                       <Label
                         htmlFor={checkboxId}
-                        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 font-normal"
+                        className={cn(
+                          "flex min-w-0 flex-1 flex-col gap-0.5 font-normal",
+                          isMember ? "cursor-default" : "cursor-pointer",
+                        )}
                       >
                         <span className="truncate font-semibold text-text">{student.username}</span>
                         <span className="truncate text-caption text-text-muted">
@@ -322,6 +336,9 @@ function AddMembersBody({
                           {student.email ? ` · ${student.email}` : ""}
                         </span>
                       </Label>
+                      {isMember && (
+                        <StatusChip tone="neutral">{t("addMembersDialog.alreadyMember")}</StatusChip>
+                      )}
                     </li>
                   );
                 })}

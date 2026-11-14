@@ -104,6 +104,7 @@
     },
     "addMembersDialog": {
       "allSkipped": "Tất cả {skipped, number} học viên đã thuộc lớp, không có học viên nào được thêm mới.",
+      "alreadyMember": "Đã trong lớp",
       "cancel": "Hủy",
       "clearSelection": "Bỏ chọn",
       "close": "Đóng",

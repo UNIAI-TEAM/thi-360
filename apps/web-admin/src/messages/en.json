@@ -104,6 +104,7 @@
     },
     "addMembersDialog": {
       "allSkipped": "All {skipped, number} selected students are already in this class; no new members were added.",
+      "alreadyMember": "Already in class",
       "cancel": "Cancel",
       "clearSelection": "Clear selection",
       "close": "Close",
