@@ -3,6 +3,7 @@ package vn.unicom.thi360.identity.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -65,13 +66,14 @@ class StudentLearningProviderTests {
         UUID userId = UUID.randomUUID();
         when(userRepo.findById(userId)).thenReturn(Optional.of(activeAccount(userId)));
 
-        StudentLearningProvider provider = id -> new StudentLearningProvider.StudentLearningData(
+        StudentLearningProvider provider = mock(StudentLearningProvider.class);
+        when(provider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
                 true,
                 List.of(Map.of("code", "PKG-1")),
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of()));
         UserAdminService service = createService(userRepo, provider);
 
         StudentLearningResponse response = service.getUserLearning(userId);
@@ -80,6 +82,7 @@ class StudentLearningProviderTests {
         assertThat(response.dataAvailable()).isTrue();
         assertThat(response.entitlements()).hasSize(1);
         assertThat(response.attempts()).isEmpty();
+        verify(provider).loadForUser(userId);
     }
 
     @Test
