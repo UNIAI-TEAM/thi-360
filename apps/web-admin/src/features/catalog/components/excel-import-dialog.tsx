@@ -1,7 +1,6 @@
 "use client";
 import { useMutation } from "@tanstack/react-query";
 import {
-  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -27,6 +26,7 @@ import {
   buildImportErrorCsv,
   pickName,
   resolveCatalogErrorMessage,
+  resolveImportColumnLabel,
   triggerBlobDownload,
 } from "../utils";
 
@@ -101,6 +101,7 @@ function ExcelImportBody({
   onDownloadTemplate: () => Promise<void>;
 }) {
   const t = useTranslations("catalog");
+  const locale = useLocale();
   const [step, setStep] = useState<ImportStep>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -210,17 +211,30 @@ function ExcelImportBody({
     }
   }
 
+  function columnLabel(field: string): string {
+    return resolveImportColumnLabel(field, {
+      levels: group.levels ?? [],
+      refGroups: group.refGroups,
+      locale,
+      translate: (key, values) => t(`importDialog.columnLabels.${key}`, values),
+    });
+  }
+
+  function errorMessage(code: string): string {
+    return resolveCatalogErrorMessage({ code }, (resolved) => t(`errorCodes.${resolved}`));
+  }
+
   function handleDownloadErrorReport() {
     if (!preview || preview.errors.length === 0) return;
     const localizedErrors = preview.errors.map((err) => ({
-      ...err,
-      message: resolveCatalogErrorMessage({ code: err.code }, (code) => t(`errorCodes.${code}`)),
+      rowNo: err.rowNo,
+      column: columnLabel(err.column),
+      message: errorMessage(err.code),
     }));
     const blob = buildImportErrorCsv(
       {
         row: t("importDialog.errorRowCol"),
         column: t("importDialog.errorColumnCol"),
-        code: t("importDialog.errorCodeCol"),
         message: t("importDialog.errorMessageCol"),
       },
       localizedErrors,
@@ -412,9 +426,6 @@ function ExcelImportBody({
                       {t("importDialog.errorColumnCol")}
                     </th>
                     <th scope="col" className="px-3 py-2 font-semibold">
-                      {t("importDialog.errorCodeCol")}
-                    </th>
-                    <th scope="col" className="px-3 py-2 font-semibold">
                       {t("importDialog.errorMessageCol")}
                     </th>
                   </tr>
@@ -428,16 +439,10 @@ function ExcelImportBody({
                       <td className="px-3 py-2 font-mono tabular-nums text-text">
                         {err.rowNo}
                       </td>
-                      <td className="px-3 py-2 font-medium text-text">{err.column}</td>
-                      <td className="px-3 py-2">
-                        <Badge>{err.code}</Badge>
+                      <td className="px-3 py-2 font-medium text-text">
+                        {columnLabel(err.column)}
                       </td>
-                      <td className="px-3 py-2 text-danger">
-                        {resolveCatalogErrorMessage(
-                          { code: err.code },
-                          (code) => t(`errorCodes.${code}`),
-                        )}
-                      </td>
+                      <td className="px-3 py-2 text-danger">{errorMessage(err.code)}</td>
                     </tr>
                   ))}
                 </tbody>

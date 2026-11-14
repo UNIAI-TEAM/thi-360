@@ -295,11 +295,21 @@
     "groupsTitle": "Catalogs",
     "importDialog": {
       "chooseAnotherFile": "Choose another file",
+      "columnLabels": {
+        "code": "Code",
+        "description": "Description",
+        "levelCode": "{level} code",
+        "levelNameEn": "{level} (English)",
+        "levelNameVi": "{level} (Vietnamese)",
+        "nameEn": "English name",
+        "nameVi": "Vietnamese name",
+        "refItems": "Linked catalogs",
+        "status": "Status"
+      },
       "confirmButton": "Import {count, number} valid rows",
       "downloadErrorFile": "Download error report",
       "downloadTemplate": "Download template",
       "dropHint": "Choose an .xlsx file (max 5 MB, 5,000 rows).",
-      "errorCodeCol": "Error code",
       "errorColumnCol": "Column",
       "errorFileBanner": "The file has {count, number} invalid rows. Fix them in Excel or download the error report below and re-upload.",
       "errorMessageCol": "Details",

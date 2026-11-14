@@ -29,6 +29,7 @@ import {
   CATALOG_ERROR_CODES,
   pickName,
   resolveCatalogErrorMessage,
+  resolveImportColumnLabel,
   resolveSystemTreeLevelKey,
   resolveTreeLevelLabel,
 } from "./utils";
@@ -604,6 +605,47 @@ describe("resolveTreeLevelLabel", () => {
         fallback: "Root",
       }),
     ).toBe("Root");
+  });
+});
+
+describe("resolveImportColumnLabel", () => {
+  const translate = (key: string, values?: { level: string }) =>
+    ({
+      code: "Mã",
+      nameVi: "Tên tiếng Việt",
+      nameEn: "Tên tiếng Anh",
+      description: "Mô tả",
+      status: "Trạng thái",
+      levelCode: `Mã ${values?.level}`,
+      levelNameVi: `${values?.level} (Tiếng Việt)`,
+      levelNameEn: `${values?.level} (Tiếng Anh)`,
+      refItems: "Danh mục liên kết",
+    })[key] as string;
+  const base = {
+    levels: ["Chương", "Bài", "Kiến thức"],
+    refGroups: [{ code: "SUBJECT", nameVi: "Môn học", nameEn: "Subject" }],
+    locale: "vi",
+    translate,
+  };
+
+  it("ánh xạ trường nhóm danh sách sang tiêu đề cột Excel", () => {
+    expect(resolveImportColumnLabel("code", base)).toBe("Mã");
+    expect(resolveImportColumnLabel("nameVi", base)).toBe("Tên tiếng Việt");
+    expect(resolveImportColumnLabel("status", base)).toBe("Trạng thái");
+  });
+
+  it("ánh xạ cột cấp của cây theo tên cấp đã lưu", () => {
+    expect(resolveImportColumnLabel("level1Code", base)).toBe("Mã Chương");
+    expect(resolveImportColumnLabel("level2NameVi", base)).toBe("Bài (Tiếng Việt)");
+    expect(resolveImportColumnLabel("level3NameEn", base)).toBe("Kiến thức (Tiếng Anh)");
+    expect(resolveImportColumnLabel("level4Code", base)).toBe("level4Code");
+  });
+
+  it("cột danh mục liên kết lấy tên nhóm theo ngôn ngữ, dự phòng nguyên văn", () => {
+    expect(resolveImportColumnLabel("SUBJECT", base)).toBe("Môn học");
+    expect(resolveImportColumnLabel("SUBJECT", { ...base, locale: "en" })).toBe("Subject");
+    expect(resolveImportColumnLabel("refItemIds", base)).toBe("Danh mục liên kết");
+    expect(resolveImportColumnLabel("OTHER", base)).toBe("OTHER");
   });
 });
 
@@ -2453,6 +2495,8 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
               code: "CATALOG_CODE_TAKEN",
               message: "Mã đã tồn tại",
             },
+            { rowNo: 5, column: "level2NameVi", code: "REQUIRED", message: "Thiếu tên Bài" },
+            { rowNo: 6, column: "level1Code", code: "PARENT_REQUIRED", message: "Thiếu cấp cha" },
           ],
         })
         .mockResolvedValueOnce({
@@ -2489,10 +2533,27 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", () => {
     await userEvent.upload(fileInput, validXlsx);
     await userEvent.click(within(dialog).getByRole("button", { name: "Kiểm tra tệp" }));
 
-    expect(await within(dialog).findByText("CATALOG_CODE_TAKEN")).toBeInTheDocument();
+    // VIS-4: cột là tiêu đề trong tệp Excel, lỗi là câu theo mã; không lộ tên trường hay mã lỗi.
+    const errorTable = await within(dialog).findByRole("table");
+    const errorRows = within(errorTable).getAllByRole("row").slice(1);
+    expect(errorRows).toHaveLength(3);
+    expect(within(errorRows[0]!).getByText("Mã")).toBeInTheDocument();
+    expect(
+      within(errorRows[0]!).getByText(viMessages.catalog.errorCodes.CATALOG_CODE_TAKEN),
+    ).toBeInTheDocument();
+    expect(within(errorRows[1]!).getByText("Bài (Tiếng Việt)")).toBeInTheDocument();
+    expect(
+      within(errorRows[1]!).getByText(viMessages.catalog.errorCodes.REQUIRED),
+    ).toBeInTheDocument();
+    expect(within(errorRows[2]!).getByText("Mã Chương")).toBeInTheDocument();
+    expect(
+      within(errorTable).queryByText(
+        /level\d|CATALOG_CODE_TAKEN|PARENT_REQUIRED|REQUIRED$|nameVi/,
+      ),
+    ).not.toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /Nhập 2 dòng hợp lệ/ })).toBeDisabled();
 
-    await userEvent.click(within(dialog).getByRole("button", { name: "Tải file lỗi" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tải tệp lỗi" }));
     expect(URL.createObjectURL).toHaveBeenCalled();
 
     await userEvent.click(within(dialog).getByRole("button", { name: "Chọn tệp khác" }));

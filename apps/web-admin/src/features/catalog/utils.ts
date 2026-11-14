@@ -227,6 +227,59 @@ export function resolveCatalogErrorMessage(
   return translateCode("UNKNOWN_ERROR");
 }
 
+export type ImportColumnLabelKey =
+  | "code"
+  | "nameVi"
+  | "nameEn"
+  | "description"
+  | "status"
+  | "levelCode"
+  | "levelNameVi"
+  | "levelNameEn"
+  | "refItems";
+
+const SIMPLE_IMPORT_FIELDS = ["code", "nameVi", "nameEn", "description", "status"] as const;
+const TREE_IMPORT_FIELD_RE = /^level(\d+)(Code|NameVi|NameEn)$/;
+const TREE_IMPORT_FIELD_KEYS = {
+  Code: "levelCode",
+  NameVi: "levelNameVi",
+  NameEn: "levelNameEn",
+} as const;
+
+/**
+ * Tên cột trong tệp Excel ứng với trường lỗi mà API trả (`code`, `level2NameVi`, mã danh mục
+ * liên kết, ...). Cột cấp cây dùng đúng tên cấp đã lưu của nhóm, giống tiêu đề trong tệp mẫu.
+ * Trường không nhận ra thì trả nguyên văn.
+ */
+export function resolveImportColumnLabel(
+  field: string,
+  options: {
+    levels: readonly string[];
+    refGroups: ReadonlyArray<BilingualName & { code: string }>;
+    locale: string;
+    translate: (key: ImportColumnLabelKey, values?: { level: string }) => string;
+  },
+): string {
+  if ((SIMPLE_IMPORT_FIELDS as readonly string[]).includes(field)) {
+    return options.translate(field as (typeof SIMPLE_IMPORT_FIELDS)[number]);
+  }
+  const treeMatch = TREE_IMPORT_FIELD_RE.exec(field);
+  if (treeMatch) {
+    const level = options.levels[Number(treeMatch[1]) - 1];
+    if (level) {
+      return options.translate(TREE_IMPORT_FIELD_KEYS[treeMatch[2] as keyof typeof TREE_IMPORT_FIELD_KEYS], {
+        level,
+      });
+    }
+    return field;
+  }
+  if (field === "refItemIds") return options.translate("refItems");
+  const refGroup = options.refGroups.find(
+    (candidate) => candidate.code.toLowerCase() === field.toLowerCase(),
+  );
+  return refGroup ? pickName(refGroup, options.locale) : field;
+}
+
 export function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -247,13 +300,13 @@ function escapeCsvCell(value: string): string {
 }
 
 export function buildImportErrorCsv(
-  headers: { row: string; column: string; code: string; message: string },
-  errors: ReadonlyArray<{ rowNo: number; column: string; code: string; message: string }>,
+  headers: { row: string; column: string; message: string },
+  errors: ReadonlyArray<{ rowNo: number; column: string; message: string }>,
 ): Blob {
   const lines = [
-    [headers.row, headers.column, headers.code, headers.message].map(escapeCsvCell).join(","),
+    [headers.row, headers.column, headers.message].map(escapeCsvCell).join(","),
     ...errors.map((err) =>
-      [String(err.rowNo), err.column, err.code, err.message].map(escapeCsvCell).join(","),
+      [String(err.rowNo), err.column, err.message].map(escapeCsvCell).join(","),
     ),
   ];
   // UTF-8 BOM so Microsoft Excel preserves Vietnamese diacritics
