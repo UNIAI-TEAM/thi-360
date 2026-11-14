@@ -94,6 +94,7 @@ export type PasswordFieldProps = Omit<ComponentProps<"input">, "size" | "type"> 
   leadingIcon?: ReactNode;
   showRules?: boolean;
   allowGenerate?: boolean;
+  revealOnGenerate?: boolean;
   onValueChange?: (value: string) => void;
   labels?: Partial<PasswordFieldLabels>;
 };
@@ -104,6 +105,7 @@ export function PasswordField({
   leadingIcon,
   showRules = false,
   allowGenerate = false,
+  revealOnGenerate = false,
   value,
   defaultValue,
   onChange,
@@ -142,6 +144,9 @@ export function PasswordField({
 
   function handleGenerate() {
     const next = generateStrongPassword(12);
+    if (revealOnGenerate) {
+      setVisible(true);
+    }
     const input = inputRef.current;
     if (input) {
       const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
