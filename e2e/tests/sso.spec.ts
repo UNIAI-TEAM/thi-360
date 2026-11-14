@@ -40,6 +40,24 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
     await expect(page).toHaveURL(`${ADMIN_URL}/users`);
   });
 
+  test("callbackUrl trỏ ra ngoài hệ thống bị bỏ qua: ops.admin tới trang chủ web admin", async ({ page }) => {
+    const foreign = encodeURIComponent("https://trang-la.example");
+    await page.goto(`${WEB_URL}/dang-nhap?callbackUrl=${foreign}`);
+    await submitLoginForm(page, "ops.admin", DEV_PASSWORD);
+
+    await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+    await expect(page.getByRole("heading", { name: /Xin chào/ })).toBeVisible();
+  });
+
+  test("callbackUrl trỏ ra ngoài hệ thống bị bỏ qua: student01 tới /home", async ({ page }) => {
+    const foreign = encodeURIComponent("https://trang-la.example");
+    await page.goto(`${WEB_URL}/dang-nhap?callbackUrl=${foreign}`);
+    await submitLoginForm(page, "student01", DEV_PASSWORD);
+
+    await expect(page).toHaveURL(`${WEB_URL}/home`);
+    await expect(page.getByRole("heading", { name: /Chào/ })).toBeVisible();
+  });
+
   test("student01 mở web admin bị chặn ở /forbidden và API quản trị trả 403", async ({ page }) => {
     await page.goto(`${WEB_URL}/dang-nhap`);
     await submitLoginForm(page, "student01", DEV_PASSWORD);

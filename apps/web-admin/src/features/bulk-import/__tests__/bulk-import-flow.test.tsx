@@ -2,7 +2,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Profiler, type ProfilerOnRenderCallback } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import en from "@/messages/en.json";
@@ -917,5 +917,122 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
     window.history.back();
     await sleep(50);
     expect(window.location.pathname).toBe("/tai-khoan");
+  });
+});
+
+const VIETNAMESE_DIACRITICS =
+  /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+
+describe("BulkImportBatchView: hộp thoại xóa file kết quả và cảnh báo rời trang (UNI-2553)", () => {
+  beforeEach(() => {
+    // Test trước có thể để URL ở /tai-khoan; link "về danh sách" chỉ bị chặn khi đích khác
+    // trang hiện tại, nên đặt URL như route thật của đợt cấp để không phụ thuộc thứ tự chạy.
+    window.history.pushState({}, "", `/tai-khoan/cap-hang-loat/${BATCH_ID}`);
+  });
+
+  function completedWithGeneratedPasswords(overrides: Partial<BulkImportApiDeps> = {}) {
+    return makeDeps({
+      getImportBatch: vi.fn(async () =>
+        makeBatch({
+          status: "COMPLETED",
+          totalRows: 1,
+          validRows: 1,
+          createdRows: 1,
+          failedRows: 0,
+          hasGeneratedPasswords: true,
+          resultAvailable: true,
+        }),
+      ),
+      listImportBatchRows: vi.fn(async () => ({
+        items: [],
+        page: 0,
+        size: 20,
+        totalItems: 0,
+        totalPages: 0,
+      })),
+      ...overrides,
+    });
+  }
+
+  it("Hủy hộp thoại xóa không gọi API, giữ nút tải và xóa file kết quả và vẫn cảnh báo khi rời trang", async () => {
+    const deps = completedWithGeneratedPasswords();
+    renderBatch(deps);
+    expect(await screen.findByText("Kết quả từng dòng")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xóa file kết quả" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Xóa file kết quả?")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    expect(deps.deleteImportResult).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Tải file kết quả" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Xóa file kết quả" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(viMessages.bulkImport.result.deletedNotice),
+    ).not.toBeInTheDocument();
+    const beforeUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(beforeUnload);
+    expect(beforeUnload.defaultPrevented).toBe(true);
+  });
+
+  it("xóa file kết quả thất bại: báo lỗi theo mã, giữ file kết quả và vẫn cảnh báo khi rời trang", async () => {
+    const deleteImportResult = vi.fn<BulkImportApiDeps["deleteImportResult"]>(async () => {
+      throw new BulkImportApiError(500, "raw backend text", "INTERNAL_ERROR");
+    });
+    const deps = completedWithGeneratedPasswords({ deleteImportResult });
+    renderBatch(deps);
+    expect(await screen.findByText("Kết quả từng dòng")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xóa file kết quả" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Xóa file kết quả" }));
+
+    await waitFor(() => expect(deleteImportResult).toHaveBeenCalledTimes(1));
+    expect(
+      (await screen.findAllByText(viMessages.bulkImport.errorCodes.INTERNAL_ERROR)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/raw backend text/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(viMessages.bulkImport.result.deletedNotice),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tải file kết quả", hidden: true }),
+    ).toBeInTheDocument();
+
+    const beforeUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(beforeUnload);
+    expect(beforeUnload.defaultPrevented).toBe(true);
+  });
+
+  it("en: hộp thoại xóa file kết quả và hộp thoại cảnh báo rời trang hiển thị tiếng Anh, không có chữ tiếng Việt", async () => {
+    const deps = completedWithGeneratedPasswords();
+    renderBatch(deps, TEST_ADMIN_SESSION, "en");
+    expect(await screen.findByText(en.bulkImport.result.sectionTitle)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: en.bulkImport.result.deleteResult }));
+    const deleteDialog = await screen.findByRole("dialog");
+    expect(within(deleteDialog).getByText(en.bulkImport.result.deleteConfirm.title)).toBeInTheDocument();
+    expect(
+      within(deleteDialog).getByText(en.bulkImport.result.deleteConfirm.description),
+    ).toBeInTheDocument();
+    expect(deleteDialog.textContent ?? "").not.toMatch(VIETNAMESE_DIACRITICS);
+    await userEvent.click(
+      within(deleteDialog).getByRole("button", { name: en.bulkImport.result.deleteConfirm.cancel }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("link", { name: en.bulkImport.result.goToUsers }));
+    const leaveDialog = await screen.findByRole("dialog");
+    expect(within(leaveDialog).getByText(en.bulkImport.leaveWarning.title)).toBeInTheDocument();
+    expect(
+      within(leaveDialog).getByText(en.bulkImport.leaveWarning.description),
+    ).toBeInTheDocument();
+    expect(leaveDialog.textContent ?? "").not.toMatch(VIETNAMESE_DIACRITICS);
+    await userEvent.click(
+      within(leaveDialog).getByRole("button", { name: en.bulkImport.leaveWarning.cancel }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(routerMock.push).not.toHaveBeenCalled();
   });
 });

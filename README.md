@@ -13,31 +13,71 @@ Cổng luyện thi trực tuyến cho kỳ thi đánh giá năng lực HSA và Q
 ## Cần cài
 
 - JDK 21
-- Node.js 22 trở lên và pnpm 10 (`corepack enable`)
-- Docker (có Docker Compose)
+- Node.js 22 (CI ghim 22; máy có nhiều bản Node thì kiểm tra `node -v` trước khi chạy `pnpm`) và pnpm 10.34.5 (`corepack enable`)
+- Docker (có Docker Compose); backend test dùng Testcontainers nên Docker phải chạy
 - `uniai` CLI và `gh` (để làm việc theo issue, xem `RULES.md` mục 2)
 
-## Chạy lần đầu
+Trên Windows, wrapper Maven là `mvnw.cmd`. Chạy `./mvnw` từ Git Bash báo sai `JAVA_HOME`; dùng `./mvnw.cmd` (Git Bash) hoặc `.\mvnw.cmd` (PowerShell, đặt các tham số `-D...` trong dấu nháy kép). Ví dụ trong README ghi `./mvnw`; thay bằng `mvnw.cmd` khi ở Windows.
+
+## Chạy từ bản clone mới
+
+Làm lần lượt, mỗi bước một cửa sổ terminal khi nói "giữ chạy".
+
+**1. Lấy mã và dựng dịch vụ nền** (PostgreSQL, Redis, Keycloak, MinIO, Mailpit):
 
 ```sh
-cp .env.example .env                                   # không bắt buộc: mọi biến đều có mặc định cho máy dev
-docker compose --env-file .env -f infra/docker-compose.yml up -d
+git clone <địa chỉ kho> thi-360 && cd thi-360
 git config core.hooksPath .githooks                     # hook tự thêm "Refs: UNI-nnn" vào commit
-
-cd backend && ./mvnw verify && cd ..                    # build và test backend
-pnpm install && pnpm build                              # build hai web
+cp .env.example .env                                    # không bắt buộc: mọi biến đều có mặc định cho máy dev
+docker compose --env-file .env -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml ps           # chờ các dịch vụ healthy; keycloak-init thoát với mã 0
 ```
 
-Chưa có file `.env` thì bỏ `--env-file .env`.
+Chưa có file `.env` thì bỏ `--env-file .env`. Không bao giờ `docker compose down -v` trên máy có dữ liệu cần giữ (xóa volume là mất cơ sở dữ liệu).
 
-## Chạy khi phát triển
+**2. Backend** (giữ chạy). Profile `api,worker,dev`: `worker` chạy outbox relay và các job nền (nhật ký, cấp hàng loạt), `dev` nạp tài khoản và dữ liệu mẫu:
 
 ```sh
-cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=api,worker,dev   # API: http://localhost:8080/actuator/health, /api/v1/ping
-pnpm dev                                                                         # web học viên :3000, web admin :3001
+cd backend
+./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev      # Windows: ./mvnw.cmd -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev
+# kiểm tra: http://localhost:8080/actuator/health  và  http://localhost:8080/api/v1/ping
 ```
 
-### Đăng nhập dev (tài khoản mẫu)
+Backend không đọc file `.env`: biến nào khác mặc định phải `export` (hoặc đặt) trong chính shell chạy backend.
+
+**3. Hai web** (giữ chạy, từ thư mục gốc):
+
+```sh
+pnpm install
+pnpm dev                                                 # web học viên http://localhost:3000, web admin http://localhost:3001
+```
+
+**4. Đăng nhập thử** tại http://localhost:3000/dang-nhap bằng một tài khoản mẫu bên dưới. Quản trị viên được chuyển sang web admin, học viên tới `/home`.
+
+Lưu từ web admin cần backend biết địa chỉ web admin (`THI360_ADMIN_URL`, mặc định `http://localhost:3001`); nếu bạn chạy web ở cổng khác, đặt `THI360_WEB_URL` và `THI360_ADMIN_URL` cho backend và `THI360_API_URL` cho web cho khớp.
+
+### Máy Windows dùng chung cơ sở dữ liệu với nhánh khác
+
+- PostgreSQL của bộ Compose dùng chung trên máy Windows chuẩn của nhóm nghe ở cổng `54320`, vì `54360` rơi vào dải cổng Windows giữ chỗ (xem `netsh int ipv4 show excludedportrange protocol=tcp`). Dựng Compose với `THI360_DB_PORT=54320` (đặt trong `.env`), rồi đặt cùng biến đó cho backend và cho Playwright (backend không đọc `.env`).
+- Cơ sở dữ liệu dùng chung đã được nhánh khác migrate: một migration `V<yyyyMMddHHmm>` có thời điểm sớm hơn migration đã áp dụng thì Flyway báo "resolved migration not applied". Khi đó chạy backend với `SPRING_FLYWAY_OUT_OF_ORDER=true` (chỉ là biến môi trường, không sửa mã; cơ sở dữ liệu mới và CI không cần).
+
+```sh
+THI360_DB_PORT=54320 SPRING_FLYWAY_OUT_OF_ORDER=true ./mvnw.cmd -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev   # Git Bash, trong backend/
+```
+
+## Ba bộ kiểm thử
+
+Chạy từ thư mục gốc (Node 22 trên PATH). Ba bộ độc lập; CI chạy cả ba (`.github/workflows/`).
+
+| Bộ | Lệnh | Ghi chú |
+|---|---|---|
+| Backend | `cd backend && ./mvnw -B -ntp verify` | Unit + tích hợp (Testcontainers: PostgreSQL, Redis, Keycloak, MinIO; cần Docker, nặng). Chạy một lần trên một máy tại một thời điểm. Xuất `backend/target/openapi.json`. Test hẹp: `./mvnw -B -ntp test -Dtest=<Lớp>` |
+| Web | `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build` | `pnpm test` chạy Vitest của hai web và các gói, không gồm e2e |
+| E2E | `pnpm --filter @thi360/e2e exec playwright install chromium` (một lần), rồi `E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test` | Cần Compose đang chạy và `pnpm build` đã chạy. Playwright tự khởi động backend (`api,worker,dev`) và hai web ở 8080/3000/3001 rồi tắt khi xong; `reuseExistingServer` bật ở máy dev nên cổng đang có server sẽ bị dùng lại, hãy giải phóng 8080/3000/3001 trước |
+
+Kiểm tra không lệch OpenAPI sau `verify`: `diff -u packages/api-client/openapi.json backend/target/openapi.json` rồi `pnpm --filter @thi360/api-client generate && git diff --exit-code packages/api-client` đều phải sạch. Trên Windows có DB dùng chung xem mục trên: `THI360_DB_PORT=54320 SPRING_FLYWAY_OUT_OF_ORDER=true E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test`.
+
+## Đăng nhập dev (tài khoản mẫu)
 
 Khi chạy backend với profile `dev` (`api,worker,dev`), `DevDataInitializer` tự tạo sẵn các tài khoản sau (chỉ ở môi trường dev). Đăng nhập tại http://localhost:3000/dang-nhap (một nơi đăng nhập cho cả web học viên và web admin):
 
@@ -49,7 +89,7 @@ Khi chạy backend với profile `dev` (`api,worker,dev`), `DevDataInitializer` 
 | `student01` … `student05` | `Thi360@dev` | Học viên (`STUDENT`, `EXAM`) |
 | `platform` | `platform-dev-only` (`THI360_DEV_PLATFORM_PASSWORD`) | Tài khoản khởi tạo ở realm `master` (`PLATFORM_ADMIN`) |
 
-Chạy kiểm thử E2E (Playwright + Compose + backend + hai web): `pnpm --filter @thi360/e2e test`.
+Dữ liệu mẫu dev khác: lớp `LOP-A`, `LOP-B` (`DevClassSeeder`, chỉ profile `dev`) và nhóm danh mục mẫu (`db/devdata`, profile `dev` và `test`). Cách chạy ba bộ kiểm thử xem mục "Ba bộ kiểm thử".
 
 ## Dịch vụ dev (Docker Compose)
 

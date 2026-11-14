@@ -386,7 +386,7 @@
       "submit": "Move",
       "success": "Moved branch {code}.",
       "summaryLeaf": "Moving: {levelName} {code} — {name}.",
-      "summaryWithChildren": "Moving: {levelName} {code} — {name}, with {count, number} child items.",
+      "summaryWithChildren": "Moving: {levelName} {code} — {name}, with {count, plural, one {# child item} other {# child items}}.",
       "title": "Move branch"
     },
     "moveDownLabel": "Move {name} down",
@@ -573,9 +573,9 @@
         "mustChangePassword": "Require password change",
         "passwordMode": "Passwords",
         "willCreate": "Will create",
-        "willCreateValue": "{count, number} accounts"
+        "willCreateValue": "{count, plural, one {# account} other {# accounts}}"
       },
-      "confirmAction": "Confirm creating {count, number} accounts",
+      "confirmAction": "Confirm creating {count, plural, one {# account} other {# accounts}}",
       "errorsRemainWarning": "Data changed and new row errors were found. Returned to preview for review.",
       "fields": {
         "invalidRows": "Error rows",
@@ -652,7 +652,7 @@
         "total": "Total rows",
         "valid": "Valid"
       },
-      "continueConfirm": "Confirm creating {count, number} accounts",
+      "continueConfirm": "Confirm creating {count, plural, one {# account} other {# accounts}}",
       "downloadErrors": "Download error file ({count, number} rows)",
       "downloadErrorsError": "Could not download the error file. Please try again.",
       "emptyDescription": "No data rows match the current filter.",
