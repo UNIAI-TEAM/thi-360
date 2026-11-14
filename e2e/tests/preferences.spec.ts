@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 
 const WEB_URL = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 const ADMIN_URL = (process.env.THI360_ADMIN_URL ?? "http://localhost:3001").replace(/\/+$/, "");
@@ -14,6 +14,50 @@ async function loginOnWeb(page: Page, identifier: string, password: string) {
 
 function cookieValue(cookies: Array<{ name: string; value: string }>, name: string): string | undefined {
   return cookies.find((cookie) => cookie.name === name)?.value;
+}
+
+type AppearanceSnapshot = {
+  palette: unknown;
+  mode: "light" | "dark";
+  version: number;
+};
+
+async function restoreAppearance(
+  adminContext: BrowserContext,
+  originalAppearance: AppearanceSnapshot | null,
+  currentVersion: number | null,
+  xsrfToken: string,
+) {
+  if (!originalAppearance || !xsrfToken) {
+    return;
+  }
+  let restoreVersion = currentVersion;
+  if (restoreVersion === null) {
+    const latestRes = await adminContext.request.get(`${API_URL}/api/v1/appearance`, {
+      headers: { "cache-control": "no-cache" },
+    });
+    if (latestRes.ok()) {
+      const latest = (await latestRes.json()) as { version: number };
+      if (latest.version !== originalAppearance.version) {
+        restoreVersion = latest.version;
+      }
+    }
+  }
+  if (restoreVersion === null) {
+    return;
+  }
+  await adminContext.request.put(`${ADMIN_URL}/api/v1/admin/appearance`, {
+    headers: {
+      "content-type": "application/json",
+      "x-xsrf-token": xsrfToken,
+      origin: ADMIN_URL,
+    },
+    data: {
+      palette: originalAppearance.palette,
+      mode: originalAppearance.mode,
+      version: restoreVersion,
+    },
+  });
 }
 
 test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng người", () => {
@@ -150,7 +194,7 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
     const adminContext = await browser.newContext();
     const chosenContext = await browser.newContext();
     const freshContext = await browser.newContext();
-    let originalAppearance: { palette: unknown; mode: "light" | "dark"; version: number } | null = null;
+    let originalAppearance: AppearanceSnapshot | null = null;
     let currentVersion: number | null = null;
     let xsrfToken = "";
     const adminPage = await adminContext.newPage();
@@ -159,11 +203,7 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
       // Lấy cấu hình giao diện hiện tại
       const initialRes = await adminContext.request.get(`${API_URL}/api/v1/appearance`);
       expect(initialRes.ok()).toBe(true);
-      originalAppearance = (await initialRes.json()) as {
-        palette: unknown;
-        mode: "light" | "dark";
-        version: number;
-      };
+      originalAppearance = (await initialRes.json()) as AppearanceSnapshot;
       const targetDefaultMode = originalAppearance.mode === "light" ? "dark" : "light";
       const chosenMode = originalAppearance.mode;
 
@@ -222,23 +262,13 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
         )
         .toBe(targetDefaultMode);
     } finally {
-      if (originalAppearance && currentVersion !== null && xsrfToken) {
-        await adminPage.request.put(`${ADMIN_URL}/api/v1/admin/appearance`, {
-          headers: {
-            "content-type": "application/json",
-            "x-xsrf-token": xsrfToken,
-            origin: ADMIN_URL,
-          },
-          data: {
-            palette: originalAppearance.palette,
-            mode: originalAppearance.mode,
-            version: currentVersion,
-          },
-        });
+      try {
+        await restoreAppearance(adminContext, originalAppearance, currentVersion, xsrfToken);
+      } finally {
+        await adminContext.close();
+        await chosenContext.close();
+        await freshContext.close();
       }
-      await adminContext.close();
-      await chosenContext.close();
-      await freshContext.close();
     }
   });
 
@@ -248,18 +278,14 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
     test.setTimeout(120_000);
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    let originalAppearance: { palette: unknown; mode: "light" | "dark"; version: number } | null = null;
+    let originalAppearance: AppearanceSnapshot | null = null;
     let currentVersion: number | null = null;
     let xsrfToken = "";
 
     try {
       const initialRes = await adminContext.request.get(`${API_URL}/api/v1/appearance`);
       expect(initialRes.ok()).toBe(true);
-      originalAppearance = (await initialRes.json()) as {
-        palette: unknown;
-        mode: "light" | "dark";
-        version: number;
-      };
+      originalAppearance = (await initialRes.json()) as AppearanceSnapshot;
 
       await loginOnWeb(adminPage, "sys.admin", DEV_PASSWORD);
       await expect(adminPage).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
@@ -288,9 +314,9 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
         adminPage.getByText("Đã lưu và áp dụng giao diện mới cho toàn hệ thống."),
       ).toBeVisible();
       await expect(adminPage.locator("html")).toHaveAttribute("data-theme", chosenMode);
-      await expect(adminPage.locator("#thi360-theme-vars")).toContainText("#0f3c6e", {
-        useInnerText: false,
-      });
+      await expect
+        .poll(() => adminPage.locator("#thi360-theme-vars").textContent())
+        .toContain("#0f3c6e");
 
       const afterSaveCookies = await adminContext.cookies(ADMIN_URL);
       expect(cookieValue(afterSaveCookies, "thi360_theme")).toBe(chosenMode);
@@ -301,21 +327,11 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
         currentVersion = updated.version;
       }
     } finally {
-      if (originalAppearance && currentVersion !== null && xsrfToken) {
-        await adminPage.request.put(`${ADMIN_URL}/api/v1/admin/appearance`, {
-          headers: {
-            "content-type": "application/json",
-            "x-xsrf-token": xsrfToken,
-            origin: ADMIN_URL,
-          },
-          data: {
-            palette: originalAppearance.palette,
-            mode: originalAppearance.mode,
-            version: currentVersion,
-          },
-        });
+      try {
+        await restoreAppearance(adminContext, originalAppearance, currentVersion, xsrfToken);
+      } finally {
+        await adminContext.close();
       }
-      await adminContext.close();
     }
   });
 });
