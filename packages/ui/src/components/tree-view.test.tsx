@@ -332,8 +332,19 @@ describe("TreeView", () => {
     expect(screen.getAllByRole("treeitem")).toHaveLength(2);
   });
 
+  it("dòng đang chọn hiện đủ tên, không giới hạn hai dòng (C-14)", async () => {
+    render(<TreeHarness />);
+    const row = screen.getByRole("treeitem", { name: "0D1 Mệnh đề. Tập hợp" });
+    const name = within(row).getByText("Mệnh đề. Tập hợp");
+    expect(name).toHaveClass("line-clamp-2");
+
+    await userEvent.click(row);
+    expect(row).toHaveAttribute("aria-selected", "true");
+    expect(name).not.toHaveClass("line-clamp-2");
+  });
+
   // V2-1: jsdom không có layout; kiểm tra hợp đồng lớp quyết định ai được giữ chiều rộng khi dòng hẹp.
-  it("dòng hẹp: tên giữ >= 8rem, mã chip bị chặn max-w-24, chip trạng thái và cụm thao tác không co, liên kết thu về +N", () => {
+  it("dòng hẹp: tên giữ >= 8rem và xuống tối đa hai dòng, mã chip bị chặn max-w-24, chip trạng thái và cụm thao tác không co, liên kết thu về +N", () => {
     render(
       <TreeView
         aria-label="Cây hẹp"
@@ -362,7 +373,16 @@ describe("TreeView", () => {
 
     const row = screen.getByRole("treeitem");
     const name = screen.getByText("Chương có tên khá dài để kiểm tra");
-    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "truncate");
+    // C-14: hai dòng thay vì cắt một dòng; không dựa vào `title`; dòng được focus bằng bàn phím hiện đủ tên.
+    expect(name).toHaveClass(
+      "min-w-[8rem]",
+      "flex-1",
+      "line-clamp-2",
+      "group-focus-visible:line-clamp-none",
+    );
+    expect(name).not.toHaveClass("truncate");
+    expect(name).not.toHaveAttribute("title");
+    expect(row).toHaveClass("group");
 
     const code = screen.getByText("CH_MWG2P0WN_DAI_QUA_MUC");
     expect(code).toHaveClass("max-w-24", "truncate", "shrink-0");

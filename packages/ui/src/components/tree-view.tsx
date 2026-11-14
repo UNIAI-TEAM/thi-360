@@ -328,11 +328,19 @@ export function TreeView({
                 {item.code}
               </span>
 
-              {/* Tên có ưu tiên chiều rộng: không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. */}
+              {/*
+                Tên có ưu tiên chiều rộng: không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. Tên dài xuống tối
+                đa hai dòng (DESIGN.md mục 5.13) thay vì cắt một dòng; dòng đang chọn hoặc đang được focus bằng bàn
+                phím hiện đủ tên, nên không cần `title` (bàn phím và màn hình cảm ứng không tới được `title`).
+              */}
               <span
                 id={nameId}
-                title={item.name}
-                className={cn("min-w-[8rem] flex-1 truncate", nameStyle, nameColor)}
+                className={cn(
+                  "min-w-[8rem] flex-1 wrap-break-word",
+                  !isSelected && "line-clamp-2 group-focus-visible:line-clamp-none",
+                  nameStyle,
+                  nameColor,
+                )}
               >
                 {item.name}
               </span>

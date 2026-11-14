@@ -1996,7 +1996,8 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
     const name = await screen.findByText("Hàm số");
-    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "truncate");
+    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "line-clamp-2");
+    expect(name).not.toHaveAttribute("title");
 
     const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
     expect(pane).toHaveClass("w-full", "min-[1600px]:w-[340px]");
