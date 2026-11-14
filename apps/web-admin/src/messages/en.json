@@ -1735,6 +1735,12 @@
       "success": "Activated account {username}.",
       "title": "Activate account"
     },
+    "announce": {
+      "selectionCleared": "Selection cleared.",
+      "sortCleared": "Sorting cleared; the list is back in its default order.",
+      "sortedAsc": "Sorted by {column}, ascending.",
+      "sortedDesc": "Sorted by {column}, descending."
+    },
     "auditActions": {
       "AUTHZ_BULK_APPLIED": "Bulk authorization applied",
       "CLASS_MEMBER_ADDED": "Added to class",
@@ -1820,6 +1826,7 @@
       "success": "Created account {username}.",
       "title": "Create account",
       "usernameAvailable": "Available. 4–30 characters, ASCII, case-insensitive, cannot be changed after creation.",
+      "usernameAvailableStatus": "Username {username} is available.",
       "usernameChecking": "Checking username availability...",
       "usernameHint": "4–30 characters (a-z, 0-9, ., _, @, -), starts with a letter or digit, cannot be changed after creation.",
       "usernameLabel": "Username",

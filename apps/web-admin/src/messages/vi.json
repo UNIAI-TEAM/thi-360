@@ -1735,6 +1735,12 @@
       "success": "Đã kích hoạt lại tài khoản {username}.",
       "title": "Kích hoạt lại tài khoản"
     },
+    "announce": {
+      "selectionCleared": "Đã bỏ chọn tất cả tài khoản.",
+      "sortCleared": "Đã bỏ sắp xếp, danh sách về thứ tự mặc định.",
+      "sortedAsc": "Đã sắp xếp theo {column}, tăng dần.",
+      "sortedDesc": "Đã sắp xếp theo {column}, giảm dần."
+    },
     "auditActions": {
       "AUTHZ_BULK_APPLIED": "Cập nhật phân quyền hàng loạt",
       "CLASS_MEMBER_ADDED": "Thêm vào lớp học",
@@ -1820,6 +1826,7 @@
       "success": "Đã tạo tài khoản {username}.",
       "title": "Tạo tài khoản",
       "usernameAvailable": "Có thể dùng. 4–30 ký tự, không dấu, không phân biệt hoa/thường, không sửa được sau khi tạo.",
+      "usernameAvailableStatus": "Tên đăng nhập {username} có thể dùng.",
       "usernameChecking": "Đang kiểm tra tên đăng nhập...",
       "usernameHint": "4–30 ký tự (a-z, 0-9, ., _, @, -), bắt đầu bằng chữ cái hoặc chữ số, không sửa được sau khi tạo.",
       "usernameLabel": "Tên đăng nhập",

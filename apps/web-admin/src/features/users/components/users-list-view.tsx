@@ -1,6 +1,6 @@
 "use client";
 
-import type { ColumnDef, RowSelectionState, SortingState } from "@tanstack/react-table";
+import type { ColumnDef, RowSelectionState, SortingState, Updater } from "@tanstack/react-table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -15,6 +15,7 @@ import {
   FormField,
   Input,
   Label,
+  LiveStatus,
   PageHeader,
   Pagination,
   Select,
@@ -59,6 +60,12 @@ const DROP_LOW_PRIORITY_COLUMNS = [
   "@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden",
   "@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden",
 ].join(" ");
+
+/** Cột sắp xếp được và khóa nhãn của nó, dùng cho câu thông báo sau khi đổi sắp xếp. */
+const SORTABLE_COLUMN_LABEL_KEYS = {
+  username: "table.username",
+  fullName: "table.fullName",
+} as const;
 
 type SourceFilter = "ALL" | "ADMIN_CREATED" | "BULK_IMPORT" | "SELF_REGISTERED" | "GOOGLE";
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
@@ -129,6 +136,9 @@ function UsersListContent({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [createOpen, setCreateOpen] = useState(false);
+  // Câu đang nằm trong vùng thông báo của danh sách (số kết quả, sắp xếp, số dòng đang chọn): chỉ một vùng, đổi nội dung.
+  const [announcement, setAnnouncement] = useState("");
+  const [announcedFilterKey, setAnnouncedFilterKey] = useState<string | null>(null);
 
   const actionController = useUserActionController({
     deps,
@@ -427,6 +437,50 @@ function UsersListContent({
   const items = usersQuery.data?.items ?? [];
   const totalItems = usersQuery.data?.totalItems ?? 0;
 
+  // Số kết quả chỉ được đọc khi dữ liệu của MỘT BỘ LỌC KHÁC vừa về (không đọc lần tải đầu, đổi trang hay sắp xếp).
+  // Điều chỉnh state ngay trong render theo mẫu "adjusting state when props change" của React.
+  const filterKey = JSON.stringify([
+    debouncedSearch,
+    source,
+    status,
+    roleId,
+    canViewClasses ? classId : ALL_VALUE,
+    neverLoggedIn,
+    includeDeleted,
+  ]);
+  if (usersQuery.isSuccess && !usersQuery.isPlaceholderData && announcedFilterKey !== filterKey) {
+    setAnnouncedFilterKey(filterKey);
+    if (announcedFilterKey !== null) {
+      setAnnouncement(t("list.filteredCount", { count: format.number(totalItems) }));
+    }
+  }
+
+  function handleSelectionChange(updater: Updater<RowSelectionState>) {
+    const next = typeof updater === "function" ? updater(rowSelection) : updater;
+    setRowSelection(next);
+    const count = Object.values(next).filter(Boolean).length;
+    setAnnouncement(
+      count > 0
+        ? t("bulk.selectedCount", { count: format.number(count) })
+        : t("announce.selectionCleared"),
+    );
+  }
+
+  function handleSortingChange(updater: Updater<SortingState>) {
+    const next = typeof updater === "function" ? updater(sorting) : updater;
+    setSorting(next);
+    setPage(1);
+    const first = next[0];
+    const labelKey = first
+      ? SORTABLE_COLUMN_LABEL_KEYS[first.id as keyof typeof SORTABLE_COLUMN_LABEL_KEYS]
+      : undefined;
+    setAnnouncement(
+      first && labelKey
+        ? t(first.desc ? "announce.sortedDesc" : "announce.sortedAsc", { column: t(labelKey) })
+        : t("announce.sortCleared"),
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
@@ -564,6 +618,7 @@ function UsersListContent({
       </Card>
 
       <Card padding="none" className="overflow-hidden">
+        <LiveStatus message={announcement} />
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <p className="text-body font-medium text-text tabular-nums">
             {usersQuery.isLoading
@@ -578,7 +633,7 @@ function UsersListContent({
         {canBulkOperate && (
           <UserBulkBar
             selectedIds={selectedIds}
-            onClearSelection={() => setRowSelection({})}
+            onClearSelection={() => handleSelectionChange({})}
             onBulkApplied={() => {
               void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
             }}
@@ -600,7 +655,7 @@ function UsersListContent({
             canBulkOperate
               ? {
                   state: rowSelection,
-                  onChange: setRowSelection,
+                  onChange: handleSelectionChange,
                   selectAllLabel: t("table.selectAll"),
                   rowLabel: (_index, row) =>
                     t("table.selectRow", { username: row.username }),
@@ -610,10 +665,7 @@ function UsersListContent({
           sorting={{
             state: sorting,
             manual: true,
-            onChange: (updater) => {
-              setSorting(updater);
-              setPage(1);
-            },
+            onChange: handleSortingChange,
           }}
           error={
             usersQuery.isError ? (

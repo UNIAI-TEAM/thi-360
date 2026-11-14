@@ -785,3 +785,74 @@ describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => 
     expect(container!.className).toContain("@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden");
   });
 });
+
+describe("UsersListView: kết quả không đồng bộ được đọc lên qua một vùng role=status (U-04)", () => {
+  it("không đọc số kết quả ở lần tải đầu; đọc số kết quả mới sau khi đổi bộ lọc", async () => {
+    const first = SAMPLE_USERS[0]!;
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async (query) =>
+      query.neverLoggedIn
+        ? { items: [first], page: 0, size: 20, totalItems: 1, totalPages: 1 }
+        : { items: SAMPLE_USERS, page: 0, size: 20, totalItems: SAMPLE_USERS.length, totalPages: 1 },
+    );
+    renderUsersView(makeDeps({ listUsers: listUsersMock }));
+
+    await screen.findByText("student01");
+    // Vùng thông báo có sẵn từ đầu và đang rỗng: lần tải đầu không đọc gì.
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toBeEmptyDOMElement();
+
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+    await waitFor(() => expect(status).toHaveTextContent("1 tài khoản khớp bộ lọc"));
+    // Vẫn chỉ một vùng thông báo cho cả danh sách.
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("đọc cột và chiều sắp xếp sau mỗi lần đổi sắp xếp", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+    const status = screen.getByRole("status");
+
+    const sortButton = screen.getByRole("button", { name: "Họ và tên" });
+    await userEvent.click(sortButton);
+    expect(status).toHaveTextContent("Đã sắp xếp theo Họ và tên, tăng dần.");
+    await userEvent.click(sortButton);
+    expect(status).toHaveTextContent("Đã sắp xếp theo Họ và tên, giảm dần.");
+    await userEvent.click(sortButton);
+    expect(status).toHaveTextContent("Đã bỏ sắp xếp, danh sách về thứ tự mặc định.");
+  });
+
+  it("đọc số tài khoản đang chọn và đọc khi bỏ chọn hết", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+    const status = screen.getByRole("status");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    expect(status).toHaveTextContent("Đã chọn 1 tài khoản");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student02" }));
+    expect(status).toHaveTextContent("Đã chọn 2 tài khoản");
+
+    await userEvent.click(screen.getByRole("button", { name: "Bỏ chọn" }));
+    expect(status).toHaveTextContent("Đã bỏ chọn tất cả tài khoản.");
+  });
+
+  it("hộp thoại tạo tài khoản đọc kết quả tên đăng nhập dùng được và gắn dòng chữ vào ô nhập", async () => {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const status = within(dialog).getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    const usernameInput = within(dialog).getByLabelText(/Tên đăng nhập/);
+    await userEvent.type(usernameInput, "Student06");
+    await userEvent.tab();
+
+    await waitFor(() => expect(status).toHaveTextContent("Tên đăng nhập student06 có thể dùng."));
+    expect(usernameInput).toHaveAccessibleDescription(/Có thể dùng\. 4–30 ký tự/);
+
+    // Gõ lại thì kết quả cũ không còn đúng: vùng thông báo về rỗng.
+    await userEvent.type(usernameInput, "x");
+    expect(status).toBeEmptyDOMElement();
+  });
+});

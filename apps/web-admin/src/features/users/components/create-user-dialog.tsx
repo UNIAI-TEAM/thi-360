@@ -13,6 +13,7 @@ import {
   FormField,
   Input,
   Label,
+  LiveStatus,
   notify,
   PasswordField,
   Select,
@@ -123,6 +124,7 @@ function CreateUserFormBody({
   const canAssignRole = can("USER.ASSIGN") && can("ROLE.VIEW");
   const canAssignClasses = can("CLASS.MODIFY");
   const mustChangeId = useId();
+  const usernameAvailableId = useId();
 
   const classesQuery = useQuery({
     queryKey: [...CLASSES_QUERY_KEYS.options(), "ACTIVE"],
@@ -344,6 +346,14 @@ function CreateUserFormBody({
       className="flex min-h-0 flex-1 flex-col gap-4"
       noValidate
     >
+      {/* Kết quả kiểm tra tên đăng nhập "dùng được" chỉ hiện bằng chữ; vùng này đọc nó lên. Kết quả "đã dùng" là lỗi của ô nhập (role="alert"). */}
+      <LiveStatus
+        message={
+          usernameStatus.state === "available" && !errors.username
+            ? t("createDialog.usernameAvailableStatus", { username: usernameStatus.normalized })
+            : ""
+        }
+      />
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto pr-1">
       {submitError && (
         <div
@@ -380,6 +390,14 @@ function CreateUserFormBody({
               render={({ field }) => (
                 <Input
                   {...controlProps}
+                  aria-describedby={
+                    [
+                      controlProps["aria-describedby"],
+                      usernameStatus.state === "available" && !errors.username && usernameAvailableId,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                   ref={field.ref}
                   name={field.name}
                   value={field.value}
@@ -400,7 +418,7 @@ function CreateUserFormBody({
               )}
             />
             {usernameStatus.state === "available" && !errors.username && (
-              <p className="text-caption font-medium text-primary-text">
+              <p id={usernameAvailableId} className="text-caption font-medium text-primary-text">
                 {t("createDialog.usernameAvailable")}
               </p>
             )}
