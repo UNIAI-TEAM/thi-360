@@ -1868,6 +1868,89 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
   });
 
+  // V3-1: jsdom không có layout; matchMedia giả lập bề rộng (>= 1600px: ô cạnh cây) và giảm chuyển động.
+  describe("cây: đưa ô chi tiết xếp dưới cây vào vùng nhìn thấy khi chọn nút (V3-1)", () => {
+    let scrollSpy: MockInstance<Element["scrollIntoView"]>;
+
+    function mockMedia({ wide, reducedMotion }: { wide: boolean; reducedMotion: boolean }) {
+      vi.spyOn(window, "matchMedia").mockImplementation(
+        (query: string) =>
+          ({
+            matches: query.includes("min-width: 1600px")
+              ? wide
+              : query.includes("prefers-reduced-motion")
+                ? reducedMotion
+                : false,
+            media: query,
+            onchange: null,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            addListener: () => {},
+            removeListener: () => {},
+            dispatchEvent: () => false,
+          }) as MediaQueryList,
+      );
+    }
+
+    beforeEach(() => {
+      scrollSpy = vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function paneScrolls() {
+      const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
+      return scrollSpy.mock.contexts.filter((ctx) => ctx === pane).length;
+    }
+
+    it.each([
+      { reducedMotion: false, behavior: "smooth" },
+      { reducedMotion: true, behavior: "auto" },
+    ])(
+      "dưới 1600px: chọn nút cuộn ô vào view (behavior=$behavior) và chuyển tiêu điểm về tiêu đề ô",
+      async ({ reducedMotion, behavior }) => {
+        mockMedia({ wide: false, reducedMotion });
+        renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+
+        await userEvent.click(await screen.findByRole("treeitem", { name: "Hàm số" }));
+
+        const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
+        const heading = await within(pane).findByRole("heading", { level: 3, name: "Hàm số" });
+        await waitFor(() => expect(heading).toHaveFocus());
+        expect(heading).toHaveAttribute("tabindex", "-1");
+        expect(paneScrolls()).toBe(1);
+        const call = scrollSpy.mock.calls[scrollSpy.mock.contexts.indexOf(pane)];
+        expect(call?.[0]).toEqual({ block: "nearest", behavior });
+      },
+    );
+
+    it("từ 1600px (ô cạnh cây): không cuộn, không chuyển tiêu điểm", async () => {
+      mockMedia({ wide: true, reducedMotion: false });
+      renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+
+      await userEvent.click(await screen.findByRole("treeitem", { name: "Hàm số" }));
+
+      const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
+      const heading = await within(pane).findByRole("heading", { level: 3, name: "Hàm số" });
+      expect(paneScrolls()).toBe(0);
+      expect(heading).not.toHaveFocus();
+    });
+
+    it("mở liên kết sâu ?node= dưới 1600px: không cuộn, không cướp tiêu điểm", async () => {
+      mockMedia({ wide: false, reducedMotion: false });
+      renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE&node=node-ch1" });
+
+      const pane = await screen.findByRole("complementary", {
+        name: viMessages.catalog.tree.detailTitle,
+      });
+      const heading = await within(pane).findByRole("heading", { level: 3, name: "Hàm số" });
+      expect(paneScrolls()).toBe(0);
+      expect(heading).not.toHaveFocus();
+    });
+  });
+
   it("tải lười nút con khi mở rộng, mở tất cả / thu gọn, đồng bộ ?node= và thao tác liên kết ở pane 340px", async () => {
     const api = createTreeMockApi();
     renderCatalog({ api, search: "group=KNOWLEDGE" });

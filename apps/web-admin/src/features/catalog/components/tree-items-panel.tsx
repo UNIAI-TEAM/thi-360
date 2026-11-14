@@ -68,7 +68,17 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
-import { createContext, useCallback, useContext, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
   catalogQueryKeys,
@@ -791,6 +801,41 @@ export function TreeItemsPanel({
     return parts.slice(0, -1);
   }, [activeNodePath]);
 
+  // V3-1: dưới 1600px ô chi tiết xếp dưới cây (min-[1600px]:flex-row), chọn nút trên cây không làm
+  // ô này hiện ra. Chỉ khi người dùng chọn nút trên cây (không phải lúc mở liên kết sâu ?node=, để
+  // không cướp tiêu điểm khỏi cây): cuộn ô vào vùng nhìn thấy và chuyển tiêu điểm về tiêu đề ô.
+  // Từ 1600px ô nằm cạnh cây nên không cuộn, không chuyển tiêu điểm.
+  const activeNodeId = activeNode?.id ?? null;
+  const detailPaneRef = useRef<HTMLElement>(null);
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null);
+  const pendingFocusNodeIdRef = useRef<string | null>(null);
+
+  function handleTreeSelectNode(id: string) {
+    onSelectNode(id);
+    if (window.matchMedia("(min-width: 1600px)").matches) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    detailPaneRef.current?.scrollIntoView({
+      block: "nearest",
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+    if (id === activeNodeId) {
+      detailHeadingRef.current?.focus({ preventScroll: true });
+    } else {
+      pendingFocusNodeIdRef.current = id;
+    }
+  }
+
+  useEffect(() => {
+    if (pendingFocusNodeIdRef.current === null || pendingFocusNodeIdRef.current !== activeNodeId) {
+      return;
+    }
+    const heading = detailHeadingRef.current;
+    if (!heading) return;
+    pendingFocusNodeIdRef.current = null;
+    // preventScroll: scrollIntoView ở trên đã cuộn, tránh hai lần cuộn chồng nhau.
+    heading.focus({ preventScroll: true });
+  }, [activeNodeId]);
+
   const activeNodeUsagesQuery = useQuery({
     queryKey: activeNode
       ? catalogQueryKeys.itemUsages(activeNode.id)
@@ -1238,7 +1283,7 @@ export function TreeItemsPanel({
                   expandedIds={expandedIdSet}
                   selectedId={selectedNodeId}
                   loadingIds={loadingIds}
-                  onSelect={(item) => onSelectNode(item.id)}
+                  onSelect={(item) => handleTreeSelectNode(item.id)}
                   onToggleExpand={(item) => handleToggleExpand(item.id)}
                   labels={{
                     expandNode: (name) => t("tree.expandNode", { name }),
@@ -1429,6 +1474,7 @@ export function TreeItemsPanel({
 
         {/* 340px Node detail pane (DESIGN.md §5.11) */}
         <aside
+          ref={detailPaneRef}
           aria-label={t("tree.detailTitle")}
           className="w-full shrink-0 rounded-md border border-border bg-page p-4 min-[1600px]:w-[340px]"
         >
@@ -1550,7 +1596,11 @@ export function TreeItemsPanel({
                   />
                 </div>
 
-                <h3 className="mt-2 text-h3 font-bold text-text">
+                <h3
+                  ref={detailHeadingRef}
+                  tabIndex={-1}
+                  className="mt-2 text-h3 font-bold text-text"
+                >
                   {pickName(activeNode, locale)}
                 </h3>
                 {activeNode.nameEn && normalizeUiLocale(locale) !== "en" && (
