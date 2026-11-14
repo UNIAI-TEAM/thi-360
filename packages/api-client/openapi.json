@@ -1,6 +1,59 @@
 {
   "components" : {
     "schemas" : {
+      "AddClassMembersRequest" : {
+        "description" : "Yêu cầu thêm học viên vào lớp học",
+        "properties" : {
+          "userIds" : {
+            "description" : "Danh sách ID tài khoản học viên cần thêm vào lớp",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "userIds" ],
+        "type" : "object"
+      },
+      "AddClassMembersResponse" : {
+        "description" : "Kết quả thêm học viên vào lớp học",
+        "properties" : {
+          "addedCount" : {
+            "description" : "Số lượng học viên thêm mới thành công",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "addedUserIds" : {
+            "description" : "Danh sách ID học viên đã được thêm mới",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "classId" : {
+            "description" : "ID lớp học",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "skippedCount" : {
+            "description" : "Số lượng bị bỏ qua do trùng lặp",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "skippedUserIds" : {
+            "description" : "Danh sách ID học viên bị bỏ qua do đã thuộc lớp hoặc trùng lặp",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "addedCount", "addedUserIds", "classId", "skippedCount", "skippedUserIds" ],
+        "type" : "object"
+      },
       "ApiError" : {
         "description" : "Định dạng lỗi chuẩn của API",
         "properties" : {
@@ -1195,6 +1248,190 @@
         "required" : [ "newPassword", "oldPassword" ],
         "type" : "object"
       },
+      "ClassDetailResponse" : {
+        "description" : "Thông tin chi tiết lớp học",
+        "properties" : {
+          "code" : {
+            "description" : "Mã lớp học",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "description" : "Thời điểm tạo",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "description" : "ID người tạo",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả lớp học",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID lớp học",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "memberCount" : {
+            "description" : "Số lượng học viên hiện tại trong lớp",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "description" : "Tên lớp học",
+            "type" : "string"
+          },
+          "ownerFullName" : {
+            "description" : "Họ tên người phụ trách",
+            "type" : "string"
+          },
+          "ownerUserId" : {
+            "description" : "ID người phụ trách",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "ownerUsername" : {
+            "description" : "Tên đăng nhập người phụ trách",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái lớp học",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "description" : "Thời điểm cập nhật gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "updatedBy" : {
+            "description" : "ID người cập nhật gần nhất",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "createdAt", "id", "memberCount", "name", "status", "updatedAt", "version" ],
+        "type" : "object"
+      },
+      "ClassMemberResponse" : {
+        "description" : "Thông tin thành viên trong lớp học",
+        "properties" : {
+          "addedBy" : {
+            "description" : "ID người thêm vào lớp",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "addedByUsername" : {
+            "description" : "Tên đăng nhập người thêm vào lớp",
+            "type" : "string"
+          },
+          "email" : {
+            "description" : "Email",
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên",
+            "type" : "string"
+          },
+          "joinedAt" : {
+            "description" : "Thời điểm vào lớp",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "phone" : {
+            "description" : "Số điện thoại",
+            "type" : "string"
+          },
+          "userCode" : {
+            "description" : "Mã tài khoản",
+            "type" : "string"
+          },
+          "userId" : {
+            "description" : "ID tài khoản học viên",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "userStatus" : {
+            "description" : "Trạng thái tài khoản",
+            "type" : "string"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập",
+            "type" : "string"
+          }
+        },
+        "required" : [ "fullName", "joinedAt", "userId", "userStatus", "username" ],
+        "type" : "object"
+      },
+      "ClassSummaryResponse" : {
+        "description" : "Thông tin tóm tắt lớp học",
+        "properties" : {
+          "code" : {
+            "description" : "Mã lớp học",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "description" : "Thời điểm tạo",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả lớp học",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID lớp học",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "memberCount" : {
+            "description" : "Số lượng học viên hiện tại trong lớp",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "description" : "Tên lớp học",
+            "type" : "string"
+          },
+          "ownerFullName" : {
+            "description" : "Họ tên người phụ trách",
+            "type" : "string"
+          },
+          "ownerUserId" : {
+            "description" : "ID người phụ trách",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "ownerUsername" : {
+            "description" : "Tên đăng nhập người phụ trách",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái lớp học",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "description" : "Thời điểm cập nhật gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "createdAt", "id", "memberCount", "name", "status", "updatedAt", "version" ],
+        "type" : "object"
+      },
       "CombinationSubjectResponse" : {
         "description" : "Môn học trong một phiên bản mã tổ hợp",
         "properties" : {
@@ -1446,6 +1683,44 @@
         "required" : [ "code", "nameVi" ],
         "type" : "object"
       },
+      "CreateClassRequest" : {
+        "description" : "Yêu cầu tạo lớp học mới",
+        "properties" : {
+          "code" : {
+            "description" : "Mã lớp học (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)",
+            "example" : "LOP-A",
+            "maxLength" : 30,
+            "minLength" : 2,
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]{1,29}$",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả lớp học",
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên lớp học",
+            "example" : "Lớp A",
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "ownerUserId" : {
+            "description" : "ID người phụ trách lớp (không bắt buộc)",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái ban đầu (mặc định ACTIVE)",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "name" ],
+        "type" : "object"
+      },
       "CreateRoleRequest" : {
         "description" : "Yêu cầu tạo vai trò mới",
         "properties" : {
@@ -1495,7 +1770,7 @@
         "description" : "Yêu cầu tạo tài khoản mới",
         "properties" : {
           "classIds" : {
-            "description" : "Danh sách ID lớp học (tạm thời chưa hỗ trợ trước T10)",
+            "description" : "Danh sách ID lớp học",
             "items" : {
               "format" : "uuid",
               "type" : "string"
@@ -1861,6 +2136,82 @@
             "description" : "Danh sách phần tử của trang hiện tại",
             "items" : {
               "$ref" : "#/components/schemas/CatalogItemResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "PageResponseClassMemberResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/ClassMemberResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "PageResponseClassSummaryResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/ClassSummaryResponse"
             },
             "type" : "array"
           },
@@ -2346,6 +2697,51 @@
         "required" : [ "access", "code", "createdAt", "id", "name", "permissionCount", "status", "system", "updatedAt", "userCount", "version" ],
         "type" : "object"
       },
+      "TransferClassMemberRequest" : {
+        "description" : "Yêu cầu chuyển học viên sang lớp học khác",
+        "properties" : {
+          "reason" : {
+            "description" : "Lý do chuyển lớp",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "targetClassId" : {
+            "description" : "ID lớp học đích",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "targetClassId" ],
+        "type" : "object"
+      },
+      "TransferClassMemberResponse" : {
+        "description" : "Kết quả chuyển học viên sang lớp học khác",
+        "properties" : {
+          "sourceClassId" : {
+            "description" : "ID lớp nguồn",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "targetClassId" : {
+            "description" : "ID lớp đích",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "transferredAt" : {
+            "description" : "Thời điểm chuyển lớp",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "userId" : {
+            "description" : "ID học viên được chuyển",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "sourceClassId", "targetClassId", "transferredAt", "userId" ],
+        "type" : "object"
+      },
       "UpdateAppearanceRequest" : {
         "description" : "Yêu cầu cập nhật cấu hình giao diện toàn hệ thống",
         "properties" : {
@@ -2511,6 +2907,70 @@
         "required" : [ "version" ],
         "type" : "object"
       },
+      "UpdateClassRequest" : {
+        "description" : "Yêu cầu cập nhật thông tin lớp học",
+        "properties" : {
+          "clearOwner" : {
+            "description" : "Xóa người phụ trách hiện tại khi đặt là true",
+            "type" : "boolean"
+          },
+          "code" : {
+            "description" : "Mã lớp học mới (2-30 ký tự chữ không dấu, số, '.', '_', '-', bắt đầu bằng chữ hoặc số)",
+            "example" : "LOP-A",
+            "maxLength" : 30,
+            "minLength" : 2,
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]{1,29}$",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả lớp học mới (chuỗi rỗng để xóa mô tả)",
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên lớp học mới",
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "ownerUserId" : {
+            "description" : "ID người phụ trách mới",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version" ],
+        "type" : "object"
+      },
+      "UpdateClassStatusRequest" : {
+        "description" : "Yêu cầu thay đổi trạng thái lớp học",
+        "properties" : {
+          "reason" : {
+            "description" : "Lý do thay đổi trạng thái",
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái lớp học mới",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "status", "version" ],
+        "type" : "object"
+      },
       "UpdateRolePermissionsRequest" : {
         "description" : "Yêu cầu cập nhật toàn bộ danh sách quyền của vai trò",
         "properties" : {
@@ -2634,6 +3094,132 @@
           }
         },
         "required" : [ "roleIds" ],
+        "type" : "object"
+      },
+      "UserClassHistoryResponse" : {
+        "description" : "Bản ghi lịch sử tham gia, rời hoặc chuyển lớp của tài khoản",
+        "properties" : {
+          "action" : {
+            "description" : "Hành động (JOIN, LEAVE, TRANSFER_OUT, TRANSFER_IN)",
+            "enum" : [ "JOIN", "LEAVE", "TRANSFER_OUT", "TRANSFER_IN" ],
+            "type" : "string"
+          },
+          "actorId" : {
+            "description" : "ID người thực hiện",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "actorUsername" : {
+            "description" : "Tên đăng nhập người thực hiện",
+            "type" : "string"
+          },
+          "classCode" : {
+            "description" : "Mã lớp học",
+            "type" : "string"
+          },
+          "classId" : {
+            "description" : "ID lớp học",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "className" : {
+            "description" : "Tên lớp học",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID bản ghi lịch sử",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "occurredAt" : {
+            "description" : "Thời điểm phát sinh",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reason" : {
+            "description" : "Lý do",
+            "type" : "string"
+          },
+          "relatedClassCode" : {
+            "description" : "Mã lớp liên quan",
+            "type" : "string"
+          },
+          "relatedClassId" : {
+            "description" : "ID lớp liên quan (khi chuyển lớp)",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "relatedClassName" : {
+            "description" : "Tên lớp liên quan",
+            "type" : "string"
+          }
+        },
+        "required" : [ "action", "classCode", "classId", "className", "id", "occurredAt" ],
+        "type" : "object"
+      },
+      "UserClassesResponse" : {
+        "description" : "Danh sách lớp học hiện tại và lịch sử tham gia/chuyển lớp của tài khoản",
+        "properties" : {
+          "currentClasses" : {
+            "description" : "Danh sách lớp học hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/UserCurrentClassResponse"
+            },
+            "type" : "array"
+          },
+          "history" : {
+            "description" : "Lịch sử tham gia, rời và chuyển lớp (mới nhất trước)",
+            "items" : {
+              "$ref" : "#/components/schemas/UserClassHistoryResponse"
+            },
+            "type" : "array"
+          },
+          "userId" : {
+            "description" : "ID tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "currentClasses", "history", "userId" ],
+        "type" : "object"
+      },
+      "UserCurrentClassResponse" : {
+        "description" : "Lớp học hiện tại của tài khoản",
+        "properties" : {
+          "addedBy" : {
+            "description" : "ID người thêm vào lớp",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "addedByUsername" : {
+            "description" : "Tên đăng nhập người thêm vào lớp",
+            "type" : "string"
+          },
+          "classCode" : {
+            "description" : "Mã lớp học",
+            "type" : "string"
+          },
+          "classId" : {
+            "description" : "ID lớp học",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "className" : {
+            "description" : "Tên lớp học",
+            "type" : "string"
+          },
+          "classStatus" : {
+            "description" : "Trạng thái lớp học",
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          },
+          "joinedAt" : {
+            "description" : "Thời điểm tham gia lớp",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "classCode", "classId", "className", "classStatus", "joinedAt" ],
         "type" : "object"
       },
       "UserDetailResponse" : {
@@ -6884,6 +7470,1300 @@
         "tags" : [ "Admin Catalog" ]
       }
     },
+    "/api/v1/admin/classes" : {
+      "get" : {
+        "operationId" : "listClasses",
+        "parameters" : [ {
+          "description" : "Tìm kiếm theo mã, tên, mô tả lớp",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo trạng thái lớp",
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseClassSummaryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách lớp học",
+        "tags" : [ "Admin Classes" ]
+      },
+      "post" : {
+        "operationId" : "createClass",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateClassRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClassDetailResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tạo lớp học mới",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{id}" : {
+      "delete" : {
+        "operationId" : "deleteClass",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lý do xóa lớp (bắt buộc)",
+          "in" : "query",
+          "name" : "reason",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xóa mềm lớp học (không ảnh hưởng tài khoản học viên)",
+        "tags" : [ "Admin Classes" ]
+      },
+      "get" : {
+        "operationId" : "getClass",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClassDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chi tiết lớp học",
+        "tags" : [ "Admin Classes" ]
+      },
+      "patch" : {
+        "operationId" : "updateClass",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateClassRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClassDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật thông tin lớp học",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{id}/members" : {
+      "get" : {
+        "operationId" : "listMembers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Tìm kiếm theo mã, tên đăng nhập, họ tên, email, số điện thoại",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseClassMemberResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách học viên trong lớp",
+        "tags" : [ "Admin Classes" ]
+      },
+      "post" : {
+        "operationId" : "addMembers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AddClassMembersRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AddClassMembersResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Thêm học viên vào lớp (bỏ qua và báo các ID trùng lặp)",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{id}/members/{userId}" : {
+      "delete" : {
+        "operationId" : "removeMember",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lý do loại khỏi lớp (không bắt buộc)",
+          "in" : "query",
+          "name" : "reason",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Loại học viên khỏi lớp học",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{id}/members/{userId}/transfer" : {
+      "post" : {
+        "operationId" : "transferMember",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferClassMemberRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferClassMemberResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chuyển học viên sang lớp học khác trong một giao dịch",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{id}/status" : {
+      "patch" : {
+        "operationId" : "updateStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateClassStatusRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClassDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật trạng thái hoạt động của lớp học",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
     "/api/v1/admin/permissions" : {
       "get" : {
         "description" : "Chỉ đọc; lọc theo từ khóa, nhóm đối tượng và phạm vi",
@@ -8133,7 +10013,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Lọc theo lớp học (tạm thời chưa hỗ trợ trước T10)",
+          "description" : "Lọc theo lớp học",
           "in" : "query",
           "name" : "classId",
           "required" : false,
@@ -9246,6 +11126,124 @@
         },
         "summary" : "Kích hoạt lại tài khoản đang ngừng hoạt động",
         "tags" : [ "Admin Users" ]
+      }
+    },
+    "/api/v1/admin/users/{id}/classes" : {
+      "get" : {
+        "operationId" : "getUserClasses",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserClassesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách lớp hiện tại và lịch sử tham gia, rời, chuyển lớp của tài khoản",
+        "tags" : [ "Admin User Classes" ]
       }
     },
     "/api/v1/admin/users/{id}/deactivate" : {
@@ -11714,6 +13712,18 @@
     "description" : "Tra cứu nhật ký thao tác",
     "name" : "Audit"
   }, {
+    "description" : "Tra cứu lớp học hiện tại và lịch sử lớp của tài khoản",
+    "name" : "Admin User Classes"
+  }, {
+    "description" : "Kiểm tra trạng thái hệ thống",
+    "name" : "System"
+  }, {
+    "description" : "Quản lý tài khoản người dùng",
+    "name" : "Admin Users"
+  }, {
+    "description" : "Gán vai trò, quyền trực tiếp và xem quyền hiệu lực của tài khoản",
+    "name" : "Admin User Authz"
+  }, {
     "description" : "Gán hoặc gỡ vai trò, quyền trực tiếp hàng loạt",
     "name" : "Admin Bulk Authz"
   }, {
@@ -11723,26 +13733,20 @@
     "description" : "Quản trị danh mục dùng chung, danh mục cây và liên kết",
     "name" : "Admin Catalog"
   }, {
-    "description" : "Kiểm tra trạng thái hệ thống",
-    "name" : "System"
-  }, {
     "description" : "Quản lý vai trò và tập quyền của vai trò",
     "name" : "Admin Roles"
   }, {
-    "description" : "Quản lý tài khoản người dùng",
-    "name" : "Admin Users"
-  }, {
     "description" : "Tra cứu danh mục quyền cố định và người dùng theo quyền",
     "name" : "Admin Permissions"
+  }, {
+    "description" : "Quản lý lớp học và thành viên lớp",
+    "name" : "Admin Classes"
   }, {
     "description" : "Tra cứu danh mục đang hoạt động cho các module khác",
     "name" : "Catalog Options"
   }, {
     "description" : "Xác thực và phiên đăng nhập",
     "name" : "Auth"
-  }, {
-    "description" : "Gán vai trò, quyền trực tiếp và xem quyền hiệu lực của tài khoản",
-    "name" : "Admin User Authz"
   }, {
     "description" : "Quản trị cấu hình giao diện toàn hệ thống",
     "name" : "Admin Appearance"

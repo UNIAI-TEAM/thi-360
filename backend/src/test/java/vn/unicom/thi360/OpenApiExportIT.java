@@ -43,7 +43,23 @@ class OpenApiExportIT extends AbstractIntegrationTest {
                 .contains("\"PingResponse\"")
                 .contains("\"ApiError\"")
                 .doesNotContain("\r");
-        assertObjectKeysSorted(objectMapper.readTree(openApiJson), "$");
+        JsonNode root = objectMapper.readTree(openApiJson);
+        assertObjectKeysSorted(root, "$");
+
+        JsonNode schemas = root.path("components").path("schemas");
+        JsonNode createClassCode = schemas.path("CreateClassRequest").path("properties").path("code");
+        assertThat(createClassCode.path("minLength").asInt()).isEqualTo(2);
+        assertThat(createClassCode.path("maxLength").asInt()).isEqualTo(30);
+        assertThat(createClassCode.path("pattern").asText())
+                .isEqualTo("^[A-Za-z0-9][A-Za-z0-9._-]{1,29}$");
+
+        JsonNode updateClassProps = schemas.path("UpdateClassRequest").path("properties");
+        JsonNode updateClassCode = updateClassProps.path("code");
+        assertThat(updateClassCode.path("minLength").asInt()).isEqualTo(2);
+        assertThat(updateClassCode.path("maxLength").asInt()).isEqualTo(30);
+        assertThat(updateClassCode.path("pattern").asText())
+                .isEqualTo("^[A-Za-z0-9][A-Za-z0-9._-]{1,29}$");
+        assertThat(updateClassProps.has("status")).isFalse();
 
         Path targetOut = Path.of("target", "openapi.json");
         Files.createDirectories(targetOut.getParent());
