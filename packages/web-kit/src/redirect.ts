@@ -27,8 +27,10 @@ export function resolveHomeUrl(
   return access === "MANAGE" ? adminUrl : `${webUrl}/home`;
 }
 
+const LOGIN_PATH = "/dang-nhap";
+
 export function buildLoginUrl(webBaseUrl: string, callbackUrl?: string): string {
-  const base = `${stripTrailingSlashes(webBaseUrl)}/dang-nhap`;
+  const base = `${stripTrailingSlashes(webBaseUrl)}${LOGIN_PATH}`;
   return callbackUrl ? `${base}?callbackUrl=${encodeURIComponent(callbackUrl)}` : base;
 }
 
@@ -52,6 +54,9 @@ export function validateCallbackUrl(
     try {
       const decodedPath = decodeURIComponent(raw.split(/[?#]/, 1)[0] ?? raw);
       if (decodedPath.startsWith("//") || decodedPath.includes("\\")) return null;
+      // `/.//host` hay `/..//host` chuẩn hóa thành đường dẫn `//host`: khi trả về dạng tương đối trong
+      // header `Location` nó bị hiểu là một tên miền khác.
+      if (new URL(decodedPath, "http://localhost").pathname.startsWith("//")) return null;
     } catch {
       return null;
     }
@@ -82,4 +87,32 @@ export function validateCallbackUrl(
   }
 
   return allowed.has(origin) ? raw : null;
+}
+
+/**
+ * Đích cho người đã có phiên hợp lệ mà mở trang đăng nhập: `callbackUrl` hợp lệ (cùng quy tắc với
+ * backend `RedirectResolver`) thì quay lại đó, không thì về trang chủ theo quyền. Trả URL tuyệt đối.
+ */
+export function resolveAuthenticatedLanding(
+  access: CtxAccess,
+  rawCallbackUrl: string | null | undefined,
+  urls: { webUrl: string; adminUrl: string } = getEnvUrls(),
+): string {
+  const home = resolveHomeUrl(access, urls);
+  const callback = validateCallbackUrl(rawCallbackUrl, [urls.webUrl, urls.adminUrl]);
+  if (!callback) return home;
+
+  let target: URL;
+  try {
+    target = new URL(callback, `${stripTrailingSlashes(urls.webUrl)}/`);
+  } catch {
+    return home;
+  }
+  if (target.pathname.startsWith("//")) return home;
+  // Quay lại chính trang đăng nhập thì không có nghĩa: về trang chủ.
+  const webOrigin = new URL(`${stripTrailingSlashes(urls.webUrl)}/`).origin;
+  if (target.origin === webOrigin && stripTrailingSlashes(target.pathname) === LOGIN_PATH) {
+    return home;
+  }
+  return target.toString();
 }

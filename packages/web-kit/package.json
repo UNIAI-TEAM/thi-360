@@ -9,7 +9,8 @@
     "./ctx": "./src/ctx.ts",
     "./preferences": "./src/preferences.ts",
     "./proxy": "./src/proxy.ts",
-    "./redirect": "./src/redirect.ts"
+    "./redirect": "./src/redirect.ts",
+    "./session": "./src/navigation-session.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
