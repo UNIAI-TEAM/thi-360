@@ -33,7 +33,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -106,6 +106,7 @@ function ClassesListContent({
 }) {
   const t = useTranslations("classes");
   const common = useTranslations("common");
+  const format = useFormatter();
   const { can } = usePermissions();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -157,6 +158,17 @@ function ClassesListContent({
     queryKey: CLASSES_QUERY_KEYS.list(queryParams),
     queryFn: () => deps.listClasses(queryParams),
   });
+
+  useEffect(() => {
+    if (
+      page > 1 &&
+      classesQuery.data &&
+      classesQuery.data.items.length === 0 &&
+      classesQuery.data.totalItems > 0
+    ) {
+      setPage(Math.max(1, classesQuery.data.totalPages));
+    }
+  }, [page, classesQuery.data]);
 
   const hasActiveFilters = Boolean(debouncedSearch || status !== ALL_VALUE);
 
@@ -232,7 +244,7 @@ function ClassesListContent({
         header: t("table.memberCount"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="tabular-nums text-text">{row.original.memberCount}</span>
+          <span className="tabular-nums text-text">{format.number(row.original.memberCount)}</span>
         ),
       },
       {
@@ -335,7 +347,7 @@ function ClassesListContent({
         },
       },
     ],
-    [t, canModify, router, actionController],
+    [t, format, canModify, router, actionController],
   );
 
   const items = classesQuery.data?.items ?? [];
@@ -409,7 +421,7 @@ function ClassesListContent({
               ? t("list.loadingCount")
               : classesQuery.isError
                 ? t("list.errorTitle")
-                : t("list.filteredCount", { count: totalItems })}
+                : t("list.filteredCount", { count: format.number(totalItems) })}
           </p>
         </div>
 
@@ -493,8 +505,13 @@ function ClassesListContent({
                 previous: t("list.paginationPrevious"),
                 next: t("list.paginationNext"),
                 rowsPerPage: t("list.paginationRowsPerPage"),
-                page: (pageNum) => t("list.paginationPage", { page: pageNum }),
-                range: ({ from, to, total }) => t("list.paginationRange", { from, to, total }),
+                page: (pageNum) => t("list.paginationPage", { page: format.number(pageNum) }),
+                range: ({ from, to, total }) =>
+                  t("list.paginationRange", {
+                    from: format.number(from),
+                    to: format.number(to),
+                    total: format.number(total),
+                  }),
               }}
             />
           </div>

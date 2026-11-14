@@ -20,7 +20,12 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { usePermissions } from "@/features/session/session-provider";
-import { listUsers as defaultListUsers, type UserSummary } from "@/features/users/api";
+import {
+  listUsers as defaultListUsers,
+  type ListUsersQuery,
+  type PageResponseUserSummary,
+  type UserSummary,
+} from "@/features/users/api";
 import {
   ClassesApiError,
   type ClassDetail,
@@ -48,14 +53,29 @@ export interface ClassFormDialogProps {
   listActiveUsers?: () => Promise<UserSummary[]>;
 }
 
-async function fetchDefaultActiveUsers(): Promise<UserSummary[]> {
-  const result = await defaultListUsers({
+export async function fetchDefaultActiveUsers(
+  fetchPage: (query: ListUsersQuery) => Promise<PageResponseUserSummary> = defaultListUsers,
+): Promise<UserSummary[]> {
+  const first = await fetchPage({
     status: "ACTIVE",
     page: 0,
     size: 100,
     sort: "username,asc",
   });
-  return result.items;
+  if (first.totalPages <= 1) {
+    return first.items;
+  }
+  const items = [...first.items];
+  for (let page = 1; page < first.totalPages; page += 1) {
+    const next = await fetchPage({
+      status: "ACTIVE",
+      page,
+      size: 100,
+      sort: "username,asc",
+    });
+    items.push(...next.items);
+  }
+  return items;
 }
 
 export function ClassFormDialog({
@@ -130,6 +150,7 @@ function ClassFormBody({
   listActiveUsers: () => Promise<UserSummary[]>;
 }) {
   const t = useTranslations("classes");
+  const common = useTranslations("common");
   const { can } = usePermissions();
   const isEdit = Boolean(initialClass);
   const canListUsers = can("USER.VIEW");
@@ -346,22 +367,48 @@ function ClassFormBody({
         {canListUsers ? (
           <FormField
             label={t("formDialog.ownerLabel")}
-            hint={t("formDialog.ownerHint")}
+            hint={
+              usersQuery.isLoading
+                ? t("formDialog.ownerLoading")
+                : usersQuery.isError
+                  ? undefined
+                  : t("formDialog.ownerHint")
+            }
           >
             {(controlProps) => (
-              <Controller
-                control={control}
-                name="ownerUserId"
-                render={({ field }) => (
-                  <Select
-                    {...controlProps}
-                    value={field.value || NONE_OWNER_VALUE}
-                    onValueChange={field.onChange}
-                    options={ownerOptions}
-                    disabled={mutation.isPending}
-                  />
+              <div className="flex flex-col gap-2">
+                <Controller
+                  control={control}
+                  name="ownerUserId"
+                  render={({ field }) => (
+                    <Select
+                      {...controlProps}
+                      value={field.value || NONE_OWNER_VALUE}
+                      onValueChange={field.onChange}
+                      options={ownerOptions}
+                      disabled={
+                        mutation.isPending || usersQuery.isLoading || usersQuery.isError
+                      }
+                    />
+                  )}
+                />
+                {usersQuery.isError && (
+                  <div
+                    role="alert"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-caption text-danger"
+                  >
+                    <span>{t("formDialog.ownerError")}</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void usersQuery.refetch()}
+                    >
+                      {common("retry")}
+                    </Button>
+                  </div>
                 )}
-              />
+              </div>
             )}
           </FormField>
         ) : (

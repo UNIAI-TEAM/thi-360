@@ -118,6 +118,7 @@ function TransferMemberBody({
   transferClassMember: typeof defaultTransferClassMember;
 }) {
   const t = useTranslations("classes");
+  const common = useTranslations("common");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const classesQuery = useQuery({
@@ -218,31 +219,56 @@ function TransferMemberBody({
           hint={
             classesQuery.isLoading
               ? t("transferDialog.loadingClasses")
-              : !hasActiveOptions
-                ? t("transferDialog.noActiveTargetClasses")
-                : hasInactiveOptions
-                  ? t("transferDialog.inactiveDisabledHint")
-                  : undefined
+              : classesQuery.isError
+                ? undefined
+                : !hasActiveOptions
+                  ? t("transferDialog.noActiveTargetClasses")
+                  : hasInactiveOptions
+                    ? t("transferDialog.inactiveDisabledHint")
+                    : undefined
           }
         >
           {(controlProps) => (
-            <Controller
-              control={control}
-              name="targetClassId"
-              render={({ field }) => (
-                <Select
-                  {...controlProps}
-                  value={field.value}
-                  onValueChange={(value) => {
-                    setSubmitError(null);
-                    field.onChange(value);
-                  }}
-                  placeholder={t("transferDialog.targetClassPlaceholder")}
-                  options={targetOptions}
-                  disabled={mutation.isPending || classesQuery.isLoading || targetOptions.length === 0}
-                />
+            <div className="flex flex-col gap-2">
+              <Controller
+                control={control}
+                name="targetClassId"
+                render={({ field }) => (
+                  <Select
+                    {...controlProps}
+                    value={field.value}
+                    onValueChange={(value) => {
+                      setSubmitError(null);
+                      field.onChange(value);
+                    }}
+                    placeholder={t("transferDialog.targetClassPlaceholder")}
+                    options={targetOptions}
+                    disabled={
+                      mutation.isPending ||
+                      classesQuery.isLoading ||
+                      classesQuery.isError ||
+                      targetOptions.length === 0
+                    }
+                  />
+                )}
+              />
+              {classesQuery.isError && (
+                <div
+                  role="alert"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-caption text-danger"
+                >
+                  <span>{t("transferDialog.errorDescription")}</span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void classesQuery.refetch()}
+                  >
+                    {common("retry")}
+                  </Button>
+                </div>
               )}
-            />
+            </div>
           )}
         </FormField>
 
@@ -273,7 +299,7 @@ function TransferMemberBody({
         <Button
           type="submit"
           loading={mutation.isPending}
-          disabled={classesQuery.isLoading || !hasActiveOptions}
+          disabled={classesQuery.isLoading || classesQuery.isError || !hasActiveOptions}
         >
           {t("transferDialog.submit")}
         </Button>

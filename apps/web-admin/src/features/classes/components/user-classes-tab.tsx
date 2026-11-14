@@ -12,7 +12,7 @@ import {
   Table,
 } from "@thi360/ui";
 import { GraduationCap, History } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePermissions } from "@/features/session/session-provider";
@@ -35,6 +35,7 @@ export function UserClassesTab({
 }: UserClassesTabProps) {
   const t = useTranslations("classes");
   const common = useTranslations("common");
+  const format = useFormatter();
   const { can } = usePermissions();
   const canViewClasses = can("CLASS.VIEW");
 
@@ -223,7 +224,7 @@ export function UserClassesTab({
     <div className="flex flex-col gap-5" data-slot="user-classes-tab" data-user-id={userId}>
       <Card padding="none" className="overflow-hidden">
         <div className="border-b border-border px-4 py-3">
-          <SectionTitle title={t("userTab.currentTitle")} count={String(currentClasses.length)} />
+          <SectionTitle title={t("userTab.currentTitle")} count={format.number(currentClasses.length)} />
         </div>
 
         <Table
@@ -243,7 +244,7 @@ export function UserClassesTab({
 
       <Card padding="none" className="overflow-hidden">
         <div className="border-b border-border px-4 py-3">
-          <SectionTitle title={t("userTab.historyTitle")} count={String(history.length)} />
+          <SectionTitle title={t("userTab.historyTitle")} count={format.number(history.length)} />
         </div>
 
         <Table

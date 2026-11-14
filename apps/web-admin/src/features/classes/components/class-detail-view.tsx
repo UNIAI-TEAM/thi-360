@@ -28,7 +28,7 @@ import {
   UserMinus,
   Users,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -120,6 +120,7 @@ function ClassDetailContent({
 }) {
   const t = useTranslations("classes");
   const common = useTranslations("common");
+  const format = useFormatter();
   const { can } = usePermissions();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -171,6 +172,17 @@ function ClassDetailContent({
     queryFn: () => deps.listClassMembers(classId, membersQueryParams),
     enabled: Boolean(classQuery.data),
   });
+
+  useEffect(() => {
+    if (
+      page > 1 &&
+      membersQuery.data &&
+      membersQuery.data.items.length === 0 &&
+      membersQuery.data.totalItems > 0
+    ) {
+      setPage(Math.max(1, membersQuery.data.totalPages));
+    }
+  }, [page, membersQuery.data]);
 
   function refreshClassAndMembers() {
     void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.detail(classId) });
@@ -324,6 +336,11 @@ function ClassDetailContent({
   const isActive = classDetail.status === "ACTIVE";
   const members = membersQuery.data?.items ?? [];
   const totalMembers = membersQuery.data?.totalItems ?? 0;
+  const badgeCount = membersQuery.data
+    ? membersQuery.data.totalItems
+    : debouncedMemberSearch
+      ? null
+      : classDetail.memberCount;
 
   return (
     <div className="flex flex-col gap-5">
@@ -348,7 +365,7 @@ function ClassDetailContent({
               code: classDetail.code,
               descriptionPart: classDetail.description ? `${classDetail.description} · ` : "",
               owner: classDetail.ownerUsername ?? "—",
-              count: classDetail.memberCount,
+              count: format.number(classDetail.memberCount),
             })}
           </p>
         </div>
@@ -435,10 +452,14 @@ function ClassDetailContent({
       <Card padding="none" className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-card-title font-semibold text-text">{t("members.title")}</h2>
-            <span className="rounded-full border border-border px-2.5 py-0.5 text-caption font-medium text-text-muted tabular-nums">
-              {t("members.countBadge", { count: totalMembers })}
-            </span>
+            <h2 className="text-title font-semibold text-text">{t("members.title")}</h2>
+            {badgeCount !== null ? (
+              <span className="rounded-full border border-border px-2.5 py-0.5 text-caption font-medium text-text-muted tabular-nums">
+                {t("members.countBadge", { count: format.number(badgeCount) })}
+              </span>
+            ) : (
+              <Skeleton className="h-5 w-20 rounded-full" />
+            )}
           </div>
 
           <div className="w-full sm:w-72">
@@ -535,8 +556,13 @@ function ClassDetailContent({
                 previous: t("list.paginationPrevious"),
                 next: t("list.paginationNext"),
                 rowsPerPage: t("list.paginationRowsPerPage"),
-                page: (pageNum) => t("list.paginationPage", { page: pageNum }),
-                range: ({ from, to, total }) => t("list.paginationRange", { from, to, total }),
+                page: (pageNum) => t("list.paginationPage", { page: format.number(pageNum) }),
+                range: ({ from, to, total }) =>
+                  t("list.paginationRange", {
+                    from: format.number(from),
+                    to: format.number(to),
+                    total: format.number(total),
+                  }),
               }}
             />
           </div>

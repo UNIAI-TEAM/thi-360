@@ -68,14 +68,30 @@ export async function listClasses(query: ListClassesQuery): Promise<PageResponse
   return data;
 }
 
-export async function listAllClasses(status?: ClassStatus): Promise<ClassSummary[]> {
-  const result = await listClasses({
+export async function listAllClasses(
+  status?: ClassStatus,
+  fetchPage: (query: ListClassesQuery) => Promise<PageResponseClassSummary> = listClasses,
+): Promise<ClassSummary[]> {
+  const first = await fetchPage({
     ...(status ? { status } : {}),
     page: 0,
     size: 100,
     sort: "code,asc",
   });
-  return result.items;
+  if (first.totalPages <= 1) {
+    return first.items;
+  }
+  const items = [...first.items];
+  for (let page = 1; page < first.totalPages; page += 1) {
+    const next = await fetchPage({
+      ...(status ? { status } : {}),
+      page,
+      size: 100,
+      sort: "code,asc",
+    });
+    items.push(...next.items);
+  }
+  return items;
 }
 
 export async function getClass(id: string): Promise<ClassDetail> {

@@ -13,11 +13,12 @@ import {
   EmptyState,
   Input,
   Label,
+  Pagination,
   notify,
   Skeleton,
 } from "@thi360/ui";
 import { Search, Users } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
 import {
@@ -32,6 +33,9 @@ import {
   type AddClassMembersResponse,
 } from "../api";
 import { resolveClassesErrorMessage } from "../utils";
+
+export const STUDENT_ROLE_ID = "00000000-0000-7000-8000-000000000004";
+const ADD_CANDIDATES_PAGE_SIZE = 20;
 
 export interface AddMembersDialogProps {
   open: boolean;
@@ -112,45 +116,54 @@ function AddMembersBody({
 }) {
   const t = useTranslations("classes");
   const common = useTranslations("common");
+  const format = useFormatter();
   const { can } = usePermissions();
+  const canViewUsers = can("USER.VIEW");
   const canViewRoles = can("ROLE.VIEW");
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     const trimmed = searchInput.trim();
     if (trimmed === debouncedSearch) return;
-    const timer = setTimeout(() => setDebouncedSearch(trimmed), 300);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(trimmed);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchInput, debouncedSearch]);
 
   const rolesQuery = useQuery({
     queryKey: ["classes", "student-role"],
     queryFn: listActiveRoles,
-    enabled: canViewRoles,
+    enabled: canViewUsers && canViewRoles,
     staleTime: 60_000,
   });
 
-  const studentRoleId = useMemo(
-    () => rolesQuery.data?.find((role) => role.code.toUpperCase() === "STUDENT")?.id,
-    [rolesQuery.data],
-  );
+  const studentRoleId = useMemo(() => {
+    if (!canViewRoles) return STUDENT_ROLE_ID;
+    return (
+      rolesQuery.data?.find((role) => role.code.toUpperCase() === "STUDENT")?.id ??
+      STUDENT_ROLE_ID
+    );
+  }, [canViewRoles, rolesQuery.data]);
 
   const usersQuery = useQuery({
-    queryKey: ["classes", "add-member-candidates", debouncedSearch, studentRoleId ?? null],
+    queryKey: ["classes", "add-member-candidates", debouncedSearch, studentRoleId, page],
     queryFn: () =>
       listUsers({
         ...(debouncedSearch ? { q: debouncedSearch } : {}),
         status: "ACTIVE",
-        ...(studentRoleId ? { roleId: studentRoleId } : {}),
-        page: 0,
-        size: 20,
+        roleId: studentRoleId,
+        page: page - 1,
+        size: ADD_CANDIDATES_PAGE_SIZE,
         sort: "username,asc",
       }),
-    enabled: !canViewRoles || !rolesQuery.isLoading,
+    enabled: canViewUsers && (!canViewRoles || !rolesQuery.isLoading),
   });
 
   const students = useMemo(() => {
@@ -159,10 +172,11 @@ function AddMembersBody({
       (user) =>
         !user.deletedAt &&
         user.status === "ACTIVE" &&
-        user.roles.some((role) => role.code.toUpperCase() === "STUDENT"),
+        (user.roles.length === 0 ||
+          user.roles.some((role) => role.code.toUpperCase() === "STUDENT")),
     );
   }, [usersQuery.data]);
-
+  const totalCandidates = usersQuery.data?.totalItems ?? 0;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const mutation = useMutation({
@@ -221,86 +235,128 @@ function AddMembersBody({
         </div>
       )}
 
-      <Input
-        type="search"
-        leadingIcon={<Search />}
-        aria-label={t("addMembersDialog.searchLabel")}
-        placeholder={t("addMembersDialog.searchPlaceholder")}
-        value={searchInput}
-        onChange={(event) => setSearchInput(event.target.value)}
-        disabled={mutation.isPending}
-      />
-
-      <div className="flex items-center justify-between text-caption text-text-muted">
-        <span>{t("addMembersDialog.selectedCount", { count: selectedIds.length })}</span>
-        {selectedIds.length > 0 && (
-          <button
-            type="button"
-            className="font-medium text-primary-text hover:underline"
-            onClick={() => setSelectedIds([])}
+      {!canViewUsers ? (
+        <div className="min-h-48 flex-1 rounded-lg border border-border">
+          <EmptyState
+            icon={<Users />}
+            title={t("addMembersDialog.noPermissionTitle")}
+            description={t("addMembersDialog.noPermissionDescription")}
+          />
+        </div>
+      ) : (
+        <>
+          <Input
+            type="search"
+            leadingIcon={<Search />}
+            aria-label={t("addMembersDialog.searchLabel")}
+            placeholder={t("addMembersDialog.searchPlaceholder")}
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
             disabled={mutation.isPending}
-          >
-            {t("addMembersDialog.clearSelection")}
-          </button>
-        )}
-      </div>
+          />
 
-      <div className="min-h-48 flex-1 overflow-y-auto rounded-lg border border-border">
-        {usersQuery.isLoading ? (
-          <div role="status" aria-label={common("loading")} className="flex flex-col gap-2 p-3">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
+          <div className="flex items-center justify-between text-caption text-text-muted">
+            <span>
+              {t("addMembersDialog.selectedCount", {
+                count: format.number(selectedIds.length),
+              })}
+            </span>
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                className="font-medium text-primary-text hover:underline"
+                onClick={() => setSelectedIds([])}
+                disabled={mutation.isPending}
+              >
+                {t("addMembersDialog.clearSelection")}
+              </button>
+            )}
           </div>
-        ) : usersQuery.isError ? (
-          <EmptyState
-            icon={<Users />}
-            title={t("addMembersDialog.errorTitle")}
-            description={t("addMembersDialog.errorDescription")}
-            action={
-              <Button variant="secondary" size="sm" onClick={() => void usersQuery.refetch()}>
-                {common("retry")}
-              </Button>
-            }
-          />
-        ) : students.length === 0 ? (
-          <EmptyState
-            icon={<Users />}
-            title={t("addMembersDialog.emptyTitle")}
-            description={t("addMembersDialog.emptyDescription")}
-          />
-        ) : (
-          <ul className="divide-y divide-border" aria-label={t("addMembersDialog.listAriaLabel")}>
-            {students.map((student) => {
-              const checkboxId = `add-student-${student.id}`;
-              const checked = selectedSet.has(student.id);
-              return (
-                <li
-                  key={student.id}
-                  className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-subtle"
-                >
-                  <Checkbox
-                    id={checkboxId}
-                    checked={checked}
-                    onCheckedChange={(next) => toggleStudent(student.id, next === true)}
-                    disabled={mutation.isPending}
-                  />
-                  <Label
-                    htmlFor={checkboxId}
-                    className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 font-normal"
-                  >
-                    <span className="truncate font-semibold text-text">{student.username}</span>
-                    <span className="truncate text-caption text-text-muted">
-                      {student.fullName}
-                      {student.email ? ` · ${student.email}` : ""}
-                    </span>
-                  </Label>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+
+          <div className="min-h-48 flex-1 overflow-y-auto rounded-lg border border-border">
+            {usersQuery.isLoading ? (
+              <div role="status" aria-label={common("loading")} className="flex flex-col gap-2 p-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : usersQuery.isError ? (
+              <EmptyState
+                icon={<Users />}
+                title={t("addMembersDialog.errorTitle")}
+                description={t("addMembersDialog.errorDescription")}
+                action={
+                  <Button variant="secondary" size="sm" onClick={() => void usersQuery.refetch()}>
+                    {common("retry")}
+                  </Button>
+                }
+              />
+            ) : students.length === 0 ? (
+              <EmptyState
+                icon={<Users />}
+                title={t("addMembersDialog.emptyTitle")}
+                description={t("addMembersDialog.emptyDescription")}
+              />
+            ) : (
+              <ul
+                className="divide-y divide-border"
+                aria-label={t("addMembersDialog.listAriaLabel")}
+              >
+                {students.map((student) => {
+                  const checkboxId = `add-student-${student.id}`;
+                  const checked = selectedSet.has(student.id);
+                  return (
+                    <li
+                      key={student.id}
+                      className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-subtle"
+                    >
+                      <Checkbox
+                        id={checkboxId}
+                        checked={checked}
+                        onCheckedChange={(next) => toggleStudent(student.id, next === true)}
+                        disabled={mutation.isPending}
+                      />
+                      <Label
+                        htmlFor={checkboxId}
+                        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 font-normal"
+                      >
+                        <span className="truncate font-semibold text-text">{student.username}</span>
+                        <span className="truncate text-caption text-text-muted">
+                          {student.fullName}
+                          {student.email ? ` · ${student.email}` : ""}
+                        </span>
+                      </Label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {totalCandidates > ADD_CANDIDATES_PAGE_SIZE && (
+            <Pagination
+              page={page}
+              pageSize={ADD_CANDIDATES_PAGE_SIZE}
+              total={totalCandidates}
+              onPageChange={setPage}
+              labels={{
+                nav: t("addMembersDialog.paginationNav"),
+                previous: t("list.paginationPrevious"),
+                next: t("list.paginationNext"),
+                rowsPerPage: t("list.paginationRowsPerPage"),
+                page: (pageNum) =>
+                  t("list.paginationPage", { page: format.number(pageNum) }),
+                range: ({ from, to, total }) =>
+                  t("list.paginationRange", {
+                    from: format.number(from),
+                    to: format.number(to),
+                    total: format.number(total),
+                  }),
+              }}
+            />
+          )}
+        </>
+      )}
 
       <DialogFooter className="shrink-0 pt-2">
         <Button
@@ -311,17 +367,21 @@ function AddMembersBody({
         >
           {t("addMembersDialog.cancel")}
         </Button>
-        <Button
-          type="button"
-          loading={mutation.isPending}
-          disabled={selectedIds.length === 0}
-          onClick={() => {
-            setSubmitError(null);
-            mutation.mutate();
-          }}
-        >
-          {t("addMembersDialog.submit", { count: selectedIds.length })}
-        </Button>
+        {canViewUsers && (
+          <Button
+            type="button"
+            loading={mutation.isPending}
+            disabled={selectedIds.length === 0}
+            onClick={() => {
+              setSubmitError(null);
+              mutation.mutate();
+            }}
+          >
+            {t("addMembersDialog.submit", {
+              count: format.number(selectedIds.length),
+            })}
+          </Button>
+        )}
       </DialogFooter>
     </div>
   );

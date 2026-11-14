@@ -116,6 +116,7 @@ function CreateUserFormBody({
   checkUsernameAvailability: typeof defaultCheckUsernameAvailability;
   listActiveClasses: () => Promise<ClassSummary[]>;
 }) {
+  const common = useTranslations("common");
   const t = useTranslations("users");
   const rbacT = useTranslations("rbac");
   const { can } = usePermissions();
@@ -535,6 +536,24 @@ function CreateUserFormBody({
                     <p className="rounded-lg border border-border px-3 py-2 text-caption text-text-muted">
                       {t("createDialog.classesLoading")}
                     </p>
+                  );
+                }
+                if (classesQuery.isError) {
+                  return (
+                    <div
+                      role="alert"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-caption text-danger"
+                    >
+                      <span>{t("createDialog.classesError")}</span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => void classesQuery.refetch()}
+                      >
+                        {common("retry")}
+                      </Button>
+                    </div>
                   );
                 }
                 if (classes.length === 0) {
