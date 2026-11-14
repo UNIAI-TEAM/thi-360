@@ -8,10 +8,10 @@ import java.util.UUID;
 @Schema(description = "Yêu cầu chuyển học viên sang lớp học khác")
 public record TransferClassMemberRequest(
         @Schema(description = "ID lớp học đích", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "Lớp đích là bắt buộc")
+        @NotNull(message = "{validation.classMember.targetClassId.notNull}")
         UUID targetClassId,
         @Schema(description = "Lý do chuyển lớp")
-        @Size(max = 500, message = "Lý do tối đa 500 ký tự")
+        @Size(max = 500, message = "{validation.reason.size}")
         String reason
 ) {
 }

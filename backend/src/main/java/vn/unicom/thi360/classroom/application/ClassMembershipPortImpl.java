@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.web.AppMessages;
 @Service
 public class ClassMembershipPortImpl implements ClassMembershipPort {
 
@@ -43,6 +45,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
     private final UserDirectory userDirectory;
     private final ClassMemberLock classMemberLock;
     private final AuditRecorder auditRecorder;
+    private final AppMessages messages;
 
     public ClassMembershipPortImpl(
             ClassRoomRepository classRoomRepository,
@@ -51,12 +54,32 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             UserDirectory userDirectory,
             ClassMemberLock classMemberLock,
             AuditRecorder auditRecorder) {
+        this(
+                classRoomRepository,
+                classMemberRepository,
+                classMemberHistoryRepository,
+                userDirectory,
+                classMemberLock,
+                auditRecorder,
+                AppMessages.defaultInstance());
+    }
+
+    @Autowired
+    public ClassMembershipPortImpl(
+            ClassRoomRepository classRoomRepository,
+            ClassMemberRepository classMemberRepository,
+            ClassMemberHistoryRepository classMemberHistoryRepository,
+            UserDirectory userDirectory,
+            ClassMemberLock classMemberLock,
+            AuditRecorder auditRecorder,
+            AppMessages messages) {
         this.classRoomRepository = classRoomRepository;
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
         this.userDirectory = userDirectory;
         this.classMemberLock = classMemberLock;
         this.auditRecorder = auditRecorder;
+        this.messages = messages;
     }
 
     @Override
@@ -69,7 +92,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
         for (UUID classId : classIds) {
             if (classId == null) {
                 throw new ValidationException(List.of(
-                        new FieldError("classIds", "INVALID", "ID lớp học không được để trống")));
+                        new FieldError("classIds", "INVALID", messages.get("validation.classMember.classIds.invalidItem"))));
             }
             uniqueIds.add(classId);
         }
@@ -101,7 +124,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
         for (UUID classId : classIds) {
             if (classId == null) {
                 throw new ValidationException(List.of(
-                        new FieldError("classIds", "INVALID", "ID lớp học không được để trống")));
+                        new FieldError("classIds", "INVALID", messages.get("validation.classMember.classIds.invalidItem"))));
             }
             uniqueIds.add(classId);
         }

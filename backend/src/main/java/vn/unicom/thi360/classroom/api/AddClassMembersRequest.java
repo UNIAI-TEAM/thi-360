@@ -8,7 +8,7 @@ import java.util.UUID;
 @Schema(description = "Yêu cầu thêm học viên vào lớp học")
 public record AddClassMembersRequest(
         @Schema(description = "Danh sách ID tài khoản học viên cần thêm vào lớp", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotEmpty(message = "Danh sách học viên không được để trống")
+        @NotEmpty(message = "{validation.classMember.userIds.notEmpty}")
         List<UUID> userIds
 ) {
 }

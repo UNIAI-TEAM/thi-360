@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -14,9 +15,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.api.GlobalExceptionHandler;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @RestControllerAdvice(assignableTypes = {AdminClassController.class, AdminUserClassController.class})
@@ -25,15 +28,23 @@ public class ClassExceptionHandler {
 
     private static final String ERR_CODE_TAKEN = "CLASS_CODE_TAKEN";
     private static final String CONSTRAINT_NAME = "uq_class_room_code_active";
-    private static final Locale DEFAULT_LOCALE = Locale.of("vi");
-
     private final MessageSource messageSource;
     private final GlobalExceptionHandler globalExceptionHandler;
+    private final LocaleResolver localeResolver;
 
     public ClassExceptionHandler(
             MessageSource messageSource, GlobalExceptionHandler globalExceptionHandler) {
+        this(messageSource, globalExceptionHandler, LocaleConfig.createLocaleResolver());
+    }
+
+    @Autowired
+    public ClassExceptionHandler(
+            MessageSource messageSource,
+            GlobalExceptionHandler globalExceptionHandler,
+            LocaleResolver localeResolver) {
         this.messageSource = messageSource;
         this.globalExceptionHandler = globalExceptionHandler;
+        this.localeResolver = localeResolver;
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -42,8 +53,8 @@ public class ClassExceptionHandler {
         if (!isClassCodeUniqueViolation(ex)) {
             return globalExceptionHandler.handleUnexpected(ex, request);
         }
-        String message = messageSource.getMessage(
-                ERR_CODE_TAKEN, null, "Mã lớp học đã tồn tại", DEFAULT_LOCALE);
+        Locale locale = LocaleConfig.normalizeSupported(localeResolver.resolveLocale(request));
+        String message = messageSource.getMessage(ERR_CODE_TAKEN, null, ERR_CODE_TAKEN, locale);
         String traceId = resolveTraceId(request);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .contentType(MediaType.APPLICATION_JSON)
