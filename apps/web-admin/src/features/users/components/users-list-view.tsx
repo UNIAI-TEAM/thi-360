@@ -223,7 +223,7 @@ function UsersListContent({
         cell: ({ row }) => (
           <Link
             href={`/tai-khoan/${row.original.id}`}
-            className="font-semibold text-primary-text hover:underline"
+            className="whitespace-nowrap font-semibold text-primary-text hover:underline"
           >
             {row.original.username}
           </Link>
@@ -232,44 +232,51 @@ function UsersListContent({
       {
         accessorKey: "fullName",
         header: t("table.fullName"),
-        cell: ({ row }) => <span className="font-medium text-text">{row.original.fullName}</span>,
+        cell: ({ row }) => (
+          <span className="block max-w-44 truncate font-medium text-text" title={row.original.fullName}>
+            {row.original.fullName}
+          </span>
+        ),
       },
       {
         id: "email",
         header: t("table.email"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-secondary">{row.original.email ?? "—"}</span>
-        ),
-      },
-      {
-        id: "phone",
-        header: t("table.phone"),
-        enableSorting: false,
-        cell: ({ row }) => (
-          <span className="text-text-secondary">{row.original.phone ?? "—"}</span>
+          <span
+            className="block max-w-52 truncate text-text-secondary"
+            title={row.original.email ?? undefined}
+          >
+            {row.original.email ?? "—"}
+          </span>
         ),
       },
       {
         id: "roles",
         header: t("table.roles"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <span className="text-text">
-            {row.original.roles.length > 0
+        cell: ({ row }) => {
+          const roleText =
+            row.original.roles.length > 0
               ? row.original.roles
                   .map((r) => formatRoleLabel(r, (code) => rbacT(`systemRoles.${code}`)))
                   .join(", ")
-              : "—"}
-          </span>
-        ),
+              : "—";
+          return (
+            <span className="block max-w-44 truncate text-text" title={roleText !== "—" ? roleText : undefined}>
+              {roleText}
+            </span>
+          );
+        },
       },
       {
         id: "source",
         header: t("table.source"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-secondary">{t(`sources.${row.original.source}`)}</span>
+          <span className="whitespace-nowrap text-text-secondary">
+            {t(`sources.${row.original.source}`)}
+          </span>
         ),
       },
       {
@@ -516,7 +523,11 @@ function UsersListContent({
       <Card padding="none" className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <p className="text-body font-medium text-text tabular-nums">
-            {t("list.filteredCount", { count: totalItems })}
+            {usersQuery.isLoading
+              ? t("list.loadingCount")
+              : usersQuery.isError
+                ? t("list.errorTitle")
+                : t("list.filteredCount", { count: totalItems })}
           </p>
           <p className="text-caption text-text-muted">{t("list.hint")}</p>
         </div>

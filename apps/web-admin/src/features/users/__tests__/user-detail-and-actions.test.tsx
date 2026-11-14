@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
@@ -120,8 +120,9 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: "Vai trò & quyền" }));
     expect(
-      await screen.findByText("Chưa ghép thành phần Vai trò & quyền (T08)"),
+      await screen.findByText("Chưa kết nối dữ liệu vai trò & quyền"),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/\(T08\)|\(T10\)/)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Lịch sử thay đổi" }));
     expect(await screen.findByText("Tạo tài khoản")).toBeInTheDocument();
@@ -156,6 +157,7 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
       })),
       deactivateUser: deactivateMock,
     });
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     renderDetail(deps);
 
     await userEvent.click(await screen.findByRole("button", { name: "Ngừng hoạt động" }));
@@ -163,6 +165,11 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     expect(
       await screen.findByText(/Cảnh báo: Tài khoản đang có lượt thi chưa hoàn thành/),
     ).toBeInTheDocument();
+    const nestingWarnings = consoleErrorSpy.mock.calls.filter((args) =>
+      args.some((arg) => typeof arg === "string" && /cannot be a descendant of|validateDOMNesting|hydration/i.test(arg)),
+    );
+    expect(nestingWarnings).toEqual([]);
+    consoleErrorSpy.mockRestore();
 
     const reasonInput = screen.getByLabelText(/Lý do ngừng hoạt động/);
     const confirmBtn = screen.getByRole("dialog").querySelector("button:last-child") as HTMLButtonElement;
@@ -232,7 +239,7 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
       getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({
         ...BASE_USER,
         roles: [
-          { id: "r-sys", code: "SYSTEM_ADMIN", name: "Quản trị hệ thống", access: "ADMIN" },
+          { id: "r-sys", code: "SYSTEM_ADMIN", name: "Quản trị hệ thống", access: "MANAGE" },
           { id: "r-custom", code: "GRADER", name: "Essay Grader", access: "MANAGE" },
         ],
       })),
@@ -265,5 +272,57 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     expect(screen.getByText(/Orders & transactions:/)).toBeInTheDocument();
     expect(screen.getByText(en.users.errorCodes.USER_HAS_ORDERS)).toBeInTheDocument();
     expect(screen.queryByText(/Chuỗi tiếng Việt thô/)).not.toBeInTheDocument();
+  });
+
+  it("ResetPasswordDialog kiểm tra trùng username, giới hạn lý do 500 ký tự, sinh mật khẩu ngẫu nhiên, ánh xạ PASSWORD_WEAK và gửi đúng payload", async () => {
+    const targetUser: UserDetail = { ...BASE_USER, username: "Student@01" };
+    const resetMock = vi
+      .fn<UsersApiDeps["resetUserPassword"]>()
+      .mockRejectedValueOnce(
+        new UsersApiError(400, "raw", "PASSWORD_WEAK", [
+          { field: "password", code: "PASSWORD_DIGIT", message: "raw" },
+        ]),
+      )
+      .mockResolvedValueOnce(targetUser);
+
+    renderDetail(makeDeps({ getUser: async () => targetUser, resetUserPassword: resetMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reset mật khẩu" }));
+    const dialog = screen.getByRole("dialog");
+    const passwordInput = within(dialog).getByLabelText(/Mật khẩu mới/);
+    const reasonInput = within(dialog).getByLabelText(/Lý do đặt lại mật khẩu/);
+    const submitButton = within(dialog).getByRole("button", { name: "Đặt lại mật khẩu" });
+
+    await userEvent.type(passwordInput, targetUser.username);
+    await userEvent.click(submitButton);
+    expect(await within(dialog).findByText(viMessages.users.validation.passwordSameAsUsername)).toBeInTheDocument();
+    expect(resetMock).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo ngẫu nhiên" }));
+    expect(passwordInput).toHaveAttribute("type", "text");
+    const generated = (passwordInput as HTMLInputElement).value;
+    expect(generated.length).toBe(12);
+
+    await userEvent.click(reasonInput);
+    await userEvent.paste("a".repeat(501));
+    await userEvent.click(submitButton);
+    expect(await within(dialog).findByText(viMessages.users.validation.reasonMax)).toBeInTheDocument();
+    expect(resetMock).not.toHaveBeenCalled();
+
+    await userEvent.clear(reasonInput);
+    await userEvent.type(reasonInput, "  Cấp lại mật khẩu  ");
+    await userEvent.click(within(dialog).getByLabelText(/Bắt đổi mật khẩu ở lần đăng nhập kế tiếp/));
+    await userEvent.click(submitButton);
+
+    expect(await within(dialog).findByText(viMessages.users.errorCodes.PASSWORD_DIGIT)).toBeInTheDocument();
+    expect(resetMock).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(submitButton);
+    await waitFor(() => {
+      expect(resetMock).toHaveBeenNthCalledWith(2, BASE_USER.id, {
+        password: generated,
+        mustChangePassword: true,
+        reason: "Cấp lại mật khẩu",
+      });
+    });
   });
 });

@@ -354,6 +354,7 @@
       "deactivateTitle": "Deactivate selected accounts",
       "deleteConfirm": "Delete {count} accounts",
       "deleteTitle": "Delete selected accounts",
+      "helperNote": "\"Assign roles & permissions\" opens the Bulk assign tab in Authorization with these {count} accounts preselected. Deactivate, reactivate, and delete ask for confirmation first; ineligible accounts (such as accounts with transactions) are reported individually.",
       "noAffected": "No selected accounts are eligible for this action.",
       "previewLoading": "Checking selected accounts...",
       "reasonLabel": "Reason",
@@ -370,7 +371,7 @@
       "toolbarLabel": "Actions for selected accounts"
     },
     "classesPlaceholder": {
-      "description": "Enrolled classes for this account will appear here once the Classes module (T10) is integrated.",
+      "description": "Enrolled classes for this account will appear here once class management is connected.",
       "title": "Classes data not connected yet"
     },
     "createDialog": {
@@ -536,6 +537,7 @@
       "errorTitle": "Could not load list",
       "filteredCount": "{count} matching accounts",
       "hint": "Select multiple rows to deactivate, reactivate, delete, or assign roles and permissions in bulk",
+      "loadingCount": "Loading accounts...",
       "paginationNav": "Account list pagination",
       "paginationNext": "Next",
       "paginationPage": "Page {page}",
@@ -571,9 +573,9 @@
     },
     "rolesPlaceholder": {
       "currentRolesLabel": "Current roles",
-      "description": "Role and direct permission assignment controls will appear here once the Authorization module (T08) is integrated.",
+      "description": "Role and direct permission assignment controls will appear here once authorization management is connected.",
       "noRoles": "No roles assigned.",
-      "title": "Roles & permissions component (T08) not connected yet"
+      "title": "Roles & permissions not connected yet"
     },
     "sources": {
       "ADMIN_CREATED": "Admin created",
@@ -592,7 +594,6 @@
       "actions": "Actions",
       "email": "Email",
       "fullName": "Full name",
-      "phone": "Phone",
       "roles": "Roles",
       "selectAll": "Select all accounts",
       "selectRow": "Select account {username}",

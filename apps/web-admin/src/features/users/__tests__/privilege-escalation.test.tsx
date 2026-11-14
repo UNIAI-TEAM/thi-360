@@ -100,7 +100,21 @@ describe("UsersApiError 403 handling under real QueryProvider (R2-1 / R2-2)", ()
             <CreateUserDialog
               open
               onOpenChange={vi.fn()}
-              roles={[{ id: "r-sys", code: "SYSTEM_ADMIN", name: "Quản trị hệ thống", access: "ADMIN" }]}
+              roles={[
+                {
+                  id: "r-sys",
+                  code: "SYSTEM_ADMIN",
+                  name: "Quản trị hệ thống",
+                  access: "MANAGE",
+                  status: "ACTIVE",
+                  system: true,
+                  permissionCount: 10,
+                  userCount: 1,
+                  version: 0,
+                  createdAt: "2026-11-01T00:00:00Z",
+                  updatedAt: "2026-11-01T00:00:00Z",
+                },
+              ]}
               onCreated={vi.fn()}
               createUser={createUserMock}
               checkUsernameAvailability={async () => ({ available: true })}

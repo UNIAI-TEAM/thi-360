@@ -173,6 +173,7 @@ describe("UsersListView (Slice 1)", () => {
 
     expect(screen.queryByRole("columnheader", { name: "Mã" })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Đăng nhập cuối" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Số điện thoại" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Tạo tài khoản/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Thao tác với/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "Chọn tất cả tài khoản" })).not.toBeInTheDocument();
@@ -232,9 +233,19 @@ describe("UsersListView (Slice 1)", () => {
     renderUsersView(makeDeps({ listUsers: listUsersMock }));
 
     const retry = await screen.findByRole("button", { name: "Thử lại" });
+    expect(screen.queryByText("0 tài khoản khớp bộ lọc")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Không tải được danh sách").length).toBeGreaterThan(0);
     await userEvent.click(retry);
 
     expect(await screen.findByText("student01")).toBeInTheDocument();
+  });
+
+  it("khi đang tải danh sách không hiển thị 0 tài khoản khớp bộ lọc", async () => {
+    const pendingList = new Promise<never>(() => {});
+    renderUsersView(makeDeps({ listUsers: vi.fn(() => pendingList) }));
+
+    expect(await screen.findByText("Đang tải danh sách tài khoản...")).toBeInTheDocument();
+    expect(screen.queryByText("0 tài khoản khớp bộ lọc")).not.toBeInTheDocument();
   });
 
   it("CreateUserDialog kiểm tra tên đăng nhập khi blur, kiểm tra 5 điều kiện mật khẩu và sinh mật khẩu ngẫu nhiên", async () => {
@@ -356,6 +367,9 @@ describe("UsersListView (Slice 1)", () => {
     });
     expect(toolbar).toHaveTextContent("Đã chọn 2 tài khoản");
     expect(screen.queryByRole("button", { name: "Cấp hàng loạt" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/mở tab Gán hàng loạt của Phân quyền với 2 tài khoản này đã chọn sẵn/),
+    ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Gán vai trò, quyền" }));
     expect(window.sessionStorage.getItem("rbac.bulk.userIds")).toBe(
@@ -413,7 +427,7 @@ describe("UsersListView (Slice 1)", () => {
           id: "r-sys",
           code: "SYSTEM_ADMIN",
           name: "Quản trị hệ thống",
-          access: "ADMIN",
+          access: "MANAGE",
           status: "ACTIVE",
           system: true,
           permissionCount: 10,

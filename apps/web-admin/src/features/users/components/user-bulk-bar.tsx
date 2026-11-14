@@ -152,6 +152,7 @@ export function UserBulkBar({
   return (
     <>
       {selectedIds.length > 0 && (
+        <>
         <div
           role="toolbar"
           aria-label={t("bulk.toolbarLabel")}
@@ -207,6 +208,10 @@ export function UserBulkBar({
             </Can>
           </div>
         </div>
+          <div className="border-b border-border bg-surface px-4 py-2 text-caption text-text-secondary">
+            {t("bulk.helperNote", { count: selectedIds.length })}
+          </div>
+        </>
       )}
 
       <Dialog

@@ -243,18 +243,18 @@ export function UserActionDialogs({
         title={t("deactivateDialog.title")}
         description={
           dialog.kind === "deactivate" ? (
-            <div className="flex flex-col gap-3">
-              <p>{t("deactivateDialog.description", { username: dialog.user.username })}</p>
+            <span className="flex flex-col gap-3">
+              <span>{t("deactivateDialog.description", { username: dialog.user.username })}</span>
               {dialog.activeAttempt && (
-                <div
+                <span
                   role="alert"
                   className="flex items-start gap-2 rounded-lg border border-warning bg-warning-bg px-3 py-2 text-caption font-medium text-warning"
                 >
                   <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
                   <span>{t("deactivateDialog.activeAttemptWarning")}</span>
-                </div>
+                </span>
               )}
-            </div>
+            </span>
           ) : null
         }
         reasonLabel={t("deactivateDialog.reasonLabel")}

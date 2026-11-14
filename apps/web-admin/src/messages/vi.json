@@ -354,6 +354,7 @@
       "deactivateTitle": "Ngừng hoạt động nhiều tài khoản",
       "deleteConfirm": "Xóa {count} tài khoản",
       "deleteTitle": "Xóa nhiều tài khoản",
+      "helperNote": "\"Gán vai trò, quyền\" mở tab Gán hàng loạt của Phân quyền với {count} tài khoản này đã chọn sẵn. Ngừng hoạt động, kích hoạt lại và xóa hỏi xác nhận trước; tài khoản không hợp lệ cho thao tác (ví dụ đã có giao dịch thì không xóa được) được báo riêng từng dòng.",
       "noAffected": "Không có tài khoản nào đủ điều kiện thực hiện thao tác này.",
       "previewLoading": "Đang kiểm tra các tài khoản đã chọn...",
       "reasonLabel": "Lý do thực hiện",
@@ -370,7 +371,7 @@
       "toolbarLabel": "Thao tác với các tài khoản đã chọn"
     },
     "classesPlaceholder": {
-      "description": "Danh sách lớp học mà tài khoản tham gia sẽ hiển thị tại đây khi module Lớp học (T10) được tích hợp.",
+      "description": "Danh sách lớp học mà tài khoản tham gia sẽ hiển thị tại đây khi chức năng quản lý lớp học được kết nối.",
       "title": "Chưa kết nối dữ liệu lớp học"
     },
     "createDialog": {
@@ -536,6 +537,7 @@
       "errorTitle": "Không tải được danh sách",
       "filteredCount": "{count} tài khoản khớp bộ lọc",
       "hint": "Chọn nhiều dòng để ngừng hoạt động, kích hoạt lại, xóa hoặc gán vai trò và quyền hàng loạt",
+      "loadingCount": "Đang tải danh sách tài khoản...",
       "paginationNav": "Phân trang danh sách tài khoản",
       "paginationNext": "Sau",
       "paginationPage": "Trang {page}",
@@ -571,9 +573,9 @@
     },
     "rolesPlaceholder": {
       "currentRolesLabel": "Vai trò hiện tại",
-      "description": "Giao diện gán vai trò và quyền gán trực tiếp sẽ hiển thị tại đây khi module Phân quyền (T08) được ghép vào.",
+      "description": "Giao diện gán vai trò và quyền gán trực tiếp sẽ hiển thị tại đây khi chức năng phân quyền được kết nối.",
       "noRoles": "Chưa có vai trò nào.",
-      "title": "Chưa ghép thành phần Vai trò & quyền (T08)"
+      "title": "Chưa kết nối dữ liệu vai trò & quyền"
     },
     "sources": {
       "ADMIN_CREATED": "Admin tạo",
@@ -592,7 +594,6 @@
       "actions": "Thao tác",
       "email": "Email",
       "fullName": "Họ và tên",
-      "phone": "Số điện thoại",
       "roles": "Vai trò",
       "selectAll": "Chọn tất cả tài khoản",
       "selectRow": "Chọn tài khoản {username}",
