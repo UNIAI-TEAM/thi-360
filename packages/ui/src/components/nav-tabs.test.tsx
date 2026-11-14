@@ -54,7 +54,9 @@ describe("NavTabs", () => {
     for (const link of [current, other]) {
       expect(link).toHaveClass("font-medium");
       expect(link.className).not.toMatch(/font-semibold/);
-      expect(link).toHaveClass("aria-[current=page]:after:border-current");
+      expect(link).toHaveClass("aria-[current=page]:after:border-b-2", "aria-[current=page]:after:border-current");
+      // Không có viền (kể cả trong suốt) ở trạng thái thường: chế độ tương phản cao sẽ tô nó thành gạch chân.
+      expect(link.className).not.toMatch(/(^|\s)after:border-(b-2|transparent)(\s|$)/);
     }
   });
 });

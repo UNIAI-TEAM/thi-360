@@ -42,8 +42,9 @@ export function NavTab({ current = false, asChild = false, className, children, 
           "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-label font-medium whitespace-nowrap text-neutral transition-colors duration-150 motion-reduce:transition-none",
           "hover:bg-subtle aria-[current=page]:bg-primary-50 aria-[current=page]:text-primary-text",
           // Gạch chân vẽ bằng viền của phần tử giả: không chỉ dựa vào màu (WCAG 1.4.1) và còn thấy ở chế độ
-          // tương phản cao của hệ điều hành, nơi nền và bóng đổ bị bỏ.
-          "after:pointer-events-none after:absolute after:inset-x-3 after:bottom-1 after:border-b-2 after:border-transparent aria-[current=page]:after:border-current",
+          // tương phản cao của hệ điều hành, nơi nền và bóng đổ bị bỏ. Viền chỉ tồn tại ở mục đang mở: chế độ
+          // đó tô lại cả viền trong suốt, nên một viền trong suốt ở mục thường sẽ hiện thành gạch chân.
+          "after:pointer-events-none after:absolute after:inset-x-3 after:bottom-1 aria-[current=page]:after:border-b-2 aria-[current=page]:after:border-current",
           focusRing,
           className,
         )}
