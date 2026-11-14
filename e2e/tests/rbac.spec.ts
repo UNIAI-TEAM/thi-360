@@ -115,15 +115,18 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       const nav = page.getByRole("navigation", { name: "Menu chính" });
-      await expect(nav.getByRole("link", { name: "Lớp học" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Tổng quan" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Tài khoản" })).toBeHidden();
       await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeHidden();
+      await expect(nav.getByRole("link", { name: "Tùy chỉnh giao diện" })).toBeHidden();
 
-      // T10 chưa merge nên xác nhận quyền hiệu lực qua GET /api/v1/me
+      // T10 (Lớp học) chưa merge nên kiểm tra quyền CLASS.VIEW và không có quyền ghi qua GET /api/v1/me;
+      // kiểm tra cấp màn hình Lớp học sẽ thực hiện sau khi T10 merge.
       const meResponse = await page.request.get(`${ADMIN_URL}/api/v1/me`);
       expect(meResponse.ok()).toBe(true);
       const me = (await meResponse.json()) as { access: string; permissions: string[] };
       expect(me.access).toBe("MANAGE");
+      expect(me.permissions).toContain("CLASS.VIEW");
       expect(me.permissions).toEqual(["CLASS.VIEW"]);
     });
 
@@ -242,7 +245,16 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
     await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
     const nav = page.getByRole("navigation", { name: "Menu chính" });
-    await expect(nav.getByRole("link", { name: "Nhật ký" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Tổng quan" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Phân quyền" })).toBeHidden();
+
+    // Màn hình Nhật ký (audit screen) chưa merge; xác nhận ops.admin nhận AUDIT.VIEW qua GET /api/v1/me ở lần đăng nhập mới;
+    // kiểm tra cấp màn hình Nhật ký sẽ thực hiện sau khi màn hình audit merge.
+    const opsMeResponse = await page.request.get(`${ADMIN_URL}/api/v1/me`);
+    expect(opsMeResponse.ok()).toBe(true);
+    const opsMe = (await opsMeResponse.json()) as { access: string; permissions: string[] };
+    expect(opsMe.access).toBe("MANAGE");
+    expect(opsMe.permissions).toContain("AUDIT.VIEW");
   });
 
   test("người chỉ có ROLE.VIEW chỉ thấy tab Vai trò và không có nút ghi", async ({ page }) => {
