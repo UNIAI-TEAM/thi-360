@@ -8,6 +8,10 @@ public record ImportRowError(
         int rowNo,
         @Schema(description = "Tên cột bị lỗi", requiredMode = Schema.RequiredMode.REQUIRED)
         String column,
+        @Schema(description = "Khóa cột ổn định, không phụ thuộc ngôn ngữ; null với lỗi cấp dòng và với dòng lưu trước khi có trường này",
+                allowableValues = {"USERNAME", "PASSWORD", "FULL_NAME", "EMAIL", "PHONE", "CLASS_CODE"},
+                nullable = true)
+        String columnKey,
         @Schema(description = "Mã lỗi chuẩn", requiredMode = Schema.RequiredMode.REQUIRED)
         String code,
         @Schema(description = "Thông báo lỗi chi tiết", requiredMode = Schema.RequiredMode.REQUIRED)

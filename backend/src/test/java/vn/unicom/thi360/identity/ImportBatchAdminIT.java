@@ -350,20 +350,20 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
         assertThat(items).hasSize(5);
 
         // Row 3: USERNAME_DUPLICATE_IN_FILE + EMAIL_DUPLICATE_IN_FILE
-        assertRowHasError(items.get(0), 3, "Tên đăng nhập", "USERNAME_DUPLICATE_IN_FILE");
-        assertRowHasError(items.get(0), 3, "Email", "EMAIL_DUPLICATE_IN_FILE");
+        assertRowHasError(items.get(0), 3, "Tên đăng nhập", "USERNAME", "USERNAME_DUPLICATE_IN_FILE");
+        assertRowHasError(items.get(0), 3, "Email", "EMAIL", "EMAIL_DUPLICATE_IN_FILE");
         // Row 4: USERNAME_TAKEN + EMAIL_TAKEN
-        assertRowHasError(items.get(1), 4, "Tên đăng nhập", "USERNAME_TAKEN");
-        assertRowHasError(items.get(1), 4, "Email", "EMAIL_TAKEN");
+        assertRowHasError(items.get(1), 4, "Tên đăng nhập", "USERNAME", "USERNAME_TAKEN");
+        assertRowHasError(items.get(1), 4, "Email", "EMAIL", "EMAIL_TAKEN");
         // Row 5: REQUIRED (username, fullName) + EMAIL_INVALID
-        assertRowHasError(items.get(2), 5, "Tên đăng nhập", "REQUIRED");
-        assertRowHasError(items.get(2), 5, "Họ và tên", "REQUIRED");
-        assertRowHasError(items.get(2), 5, "Email", "EMAIL_INVALID");
+        assertRowHasError(items.get(2), 5, "Tên đăng nhập", "USERNAME", "REQUIRED");
+        assertRowHasError(items.get(2), 5, "Họ và tên", "FULL_NAME", "REQUIRED");
+        assertRowHasError(items.get(2), 5, "Email", "EMAIL", "EMAIL_INVALID");
         // Row 6: USERNAME_INVALID + CLASS_NOT_FOUND
-        assertRowHasError(items.get(3), 6, "Tên đăng nhập", "USERNAME_INVALID");
-        assertRowHasError(items.get(3), 6, "Mã lớp", "CLASS_NOT_FOUND");
+        assertRowHasError(items.get(3), 6, "Tên đăng nhập", "USERNAME", "USERNAME_INVALID");
+        assertRowHasError(items.get(3), 6, "Mã lớp", "CLASS_CODE", "CLASS_NOT_FOUND");
         // Row 7: CLASS_INACTIVE
-        assertRowHasError(items.get(4), 7, "Mã lớp", "CLASS_INACTIVE");
+        assertRowHasError(items.get(4), 7, "Mã lớp", "CLASS_CODE", "CLASS_INACTIVE");
 
         // Wrong class code must NOT create any class
         Integer wrongClassCount = jdbcTemplate.queryForObject(
@@ -398,7 +398,7 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 .andReturn();
         JsonNode items = objectMapper.readTree(rowsRes.getResponse().getContentAsString()).get("items");
         assertThat(items).hasSize(1);
-        assertRowHasError(items.get(0), 3, "Mật khẩu", "PASSWORD_WEAK");
+        assertRowHasError(items.get(0), 3, "Mật khẩu", "PASSWORD", "PASSWORD_WEAK");
 
         // R1-4: Revalidation at confirm MUST preserve PASSWORD_WEAK and reject repeated confirms with 409
         for (int attempt = 1; attempt <= 2; attempt++) {
@@ -424,7 +424,7 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
                 .andReturn();
         JsonNode itemsAfter = objectMapper.readTree(rowsAfter.getResponse().getContentAsString()).get("items");
         assertThat(itemsAfter).hasSize(1);
-        assertRowHasError(itemsAfter.get(0), 3, "Mật khẩu", "PASSWORD_WEAK");
+        assertRowHasError(itemsAfter.get(0), 3, "Mật khẩu", "PASSWORD", "PASSWORD_WEAK");
 
         mockMvc.perform(get("/api/v1/admin/import-batches/{id}/errors", batchId)
                         .with(asUser(Permissions.USER_MODIFY)))
@@ -1895,13 +1895,15 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
         return id;
     }
 
-    private static void assertRowHasError(JsonNode rowNode, int expectedRowNo, String expectedColumn, String expectedCode) {
+    private static void assertRowHasError(JsonNode rowNode, int expectedRowNo, String expectedColumn,
+            String expectedColumnKey, String expectedCode) {
         assertThat(rowNode.get("rowNo").asInt()).isEqualTo(expectedRowNo);
         JsonNode errors = rowNode.get("errors");
         boolean matched = false;
         for (JsonNode err : errors) {
             if (err.get("rowNo").asInt() == expectedRowNo
                     && expectedColumn.equals(err.get("column").asText())
+                    && expectedColumnKey.equals(err.path("columnKey").asText())
                     && expectedCode.equals(err.get("code").asText())
                     && !err.get("message").asText().isBlank()) {
                 matched = true;
@@ -1909,7 +1911,8 @@ class ImportBatchAdminIT extends AbstractKeycloakIntegrationTest {
             }
         }
         assertThat(matched)
-                .as("Expected row %d column '%s' error code '%s' in %s", expectedRowNo, expectedColumn, expectedCode, errors)
+                .as("Expected row %d column '%s' (%s) error code '%s' in %s",
+                        expectedRowNo, expectedColumn, expectedColumnKey, expectedCode, errors)
                 .isTrue();
     }
 
