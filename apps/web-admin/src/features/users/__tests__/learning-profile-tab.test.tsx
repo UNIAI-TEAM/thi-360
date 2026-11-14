@@ -1,7 +1,7 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SessionProvider } from "@/features/session/session-provider";
+import { SessionProvider, useSession } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import en from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
@@ -71,6 +71,11 @@ function renderDetail(
   );
 }
 
+function SessionStatusProbe() {
+  const session = useSession();
+  return session.status === "ready" ? <span data-testid="session-ready" /> : null;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -129,21 +134,22 @@ describe("LearningProfileTab (T12 / UNI-2549)", () => {
 
     renderWithProviders(
       <SessionProvider loadSession={async () => ({ ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW"] })}>
+        <SessionStatusProbe />
         <LearningProfileTab userId={BASE_USER.id} getUserLearning={getUserLearning} />
       </SessionProvider>,
     );
 
-    await waitFor(() => {
-      expect(getUserLearning).not.toHaveBeenCalled();
-    });
+    await screen.findByTestId("session-ready");
+    expect(getUserLearning).not.toHaveBeenCalled();
     expect(screen.queryByText(viMessages.users.learning.emptyTitle)).not.toBeInTheDocument();
   });
 
-  it("hiển thị trạng thái lỗi kèm nút Thử lại và tải lại thành công khi bấm Thử lại", async () => {
+  it("hiển thị trạng thái lỗi kèm nút Thử lại, hiện skeleton khi đang tải lại và thành công sau khi thử lại", async () => {
+    const retryDeferred = Promise.withResolvers<StudentLearning>();
     const getUserLearning = vi
       .fn<UsersApiDeps["getUserLearning"]>()
       .mockRejectedValueOnce(new UsersApiError(500, "Server error", "INTERNAL_ERROR"))
-      .mockResolvedValueOnce(EMPTY_LEARNING);
+      .mockImplementationOnce(() => retryDeferred.promise);
 
     renderDetail(makeDeps({ getUserLearning }));
 
@@ -154,8 +160,31 @@ describe("LearningProfileTab (T12 / UNI-2549)", () => {
 
     await userEvent.click(screen.getByRole("button", { name: viMessages.common.retry }));
 
-    expect(await screen.findByRole("heading", { name: viMessages.users.learning.blocks.entitlements.title })).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: viMessages.common.loading })).toBeInTheDocument();
+
+    retryDeferred.resolve(EMPTY_LEARNING);
+
+    expect(
+      await screen.findByRole("heading", { name: viMessages.users.learning.blocks.entitlements.title }),
+    ).toBeInTheDocument();
     expect(getUserLearning).toHaveBeenCalledTimes(2);
+  });
+
+  it("vẫn hiển thị đủ 5 khối khung chờ không bị trống ngay cả khi dataAvailable là true và mảng có phần tử", async () => {
+    const getUserLearning = vi.fn<UsersApiDeps["getUserLearning"]>(async () => ({
+      ...EMPTY_LEARNING,
+      dataAvailable: true,
+      attempts: [{}],
+    }));
+
+    renderDetail(makeDeps({ getUserLearning }));
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Hồ sơ học tập" }));
+
+    expect(
+      await screen.findByRole("heading", { name: viMessages.users.learning.blocks.attempts.title }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(viMessages.users.learning.emptyTitle)).toHaveLength(5);
   });
 
   it("hiển thị đầy đủ 5 khối bằng tiếng Anh khi locale là en", async () => {
