@@ -16,7 +16,9 @@ public record SecurityProperties(
 
     public record RateLimitProperties(
             @DefaultValue("20") int loginPerIpLimit,
-            @DefaultValue("PT1M") Duration loginPerIpWindow
+            @DefaultValue("PT1M") Duration loginPerIpWindow,
+            @DefaultValue("10") int uploadPerIpLimit,
+            @DefaultValue("PT1M") Duration uploadPerIpWindow
     ) {
     }
 
