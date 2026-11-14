@@ -48,6 +48,18 @@ const ALL_VALUE = "ALL";
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
+/**
+ * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, không theo bề rộng màn hình vì
+ * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước, rồi tới Vai trò, để cột Trạng thái còn nằm
+ * trong khung ở cửa sổ 1024–1366px. Thông tin của hai cột vẫn có ở trang chi tiết tài khoản. Ô tiêu đề và ô dữ
+ * liệu của cột được nhận ra qua `data-col` đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
+ */
+const DROP_LOW_PRIORITY_COLUMNS = [
+  "@container",
+  "@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden",
+  "@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden",
+].join(" ");
+
 type SourceFilter = "ALL" | "ADMIN_CREATED" | "BULK_IMPORT" | "SELF_REGISTERED" | "GOOGLE";
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 
@@ -260,9 +272,7 @@ function UsersListContent({
         accessorKey: "fullName",
         header: t("table.fullName"),
         cell: ({ row }) => (
-          <span className="block max-w-44 truncate font-medium text-text" title={row.original.fullName}>
-            {row.original.fullName}
-          </span>
+          <span className="line-clamp-2 min-w-24 font-medium text-text">{row.original.fullName}</span>
         ),
       },
       {
@@ -270,17 +280,14 @@ function UsersListContent({
         header: t("table.email"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span
-            className="block max-w-52 truncate text-text-secondary"
-            title={row.original.email ?? undefined}
-          >
+          <span className="line-clamp-2 min-w-28 wrap-anywhere text-text-secondary">
             {row.original.email ?? "—"}
           </span>
         ),
       },
       {
         id: "roles",
-        header: t("table.roles"),
+        header: () => <span data-col="roles">{t("table.roles")}</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const roleText =
@@ -290,7 +297,7 @@ function UsersListContent({
                   .join(", ")
               : "—";
           return (
-            <span className="block max-w-44 truncate text-text" title={roleText !== "—" ? roleText : undefined}>
+            <span data-col="roles" className="line-clamp-2 min-w-24 text-text">
               {roleText}
             </span>
           );
@@ -298,10 +305,10 @@ function UsersListContent({
       },
       {
         id: "source",
-        header: t("table.source"),
+        header: () => <span data-col="source">{t("table.source")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-text-secondary">
+          <span data-col="source" className="whitespace-nowrap text-text-secondary">
             {t(`sources.${row.original.source}`)}
           </span>
         ),
@@ -580,8 +587,10 @@ function UsersListContent({
           />
         )}
 
+        <div className={DROP_LOW_PRIORITY_COLUMNS}>
         <Table
           aria-label={t("list.tableAriaLabel")}
+          stickyColumns={{ start: true, end: true }}
           columns={columns}
           data={items}
           getRowId={(row) => row.id}
@@ -649,6 +658,7 @@ function UsersListContent({
             )
           }
         />
+        </div>
 
         {totalItems > 0 && (
           <div className="border-t border-border px-4 py-3">

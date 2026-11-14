@@ -737,3 +737,51 @@ describe("UsersListView (Slice 1)", () => {
     expect(screen.getByText("Showing 1–20 of 1,250")).toBeInTheDocument();
   });
 });
+
+describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => {
+  it("họ tên, email, vai trò xuống tối đa hai dòng, không cắt một dòng và không dựa vào title", async () => {
+    const longName = "Nguyễn Hoàng Phương Thảo Nguyên Khánh Linh Bảo Trâm";
+    const longEmail = "nguyen.hoang.phuong.thao.nguyen@truong-thpt-chuyen.example.edu.vn";
+    const deps = makeDeps({
+      listUsers: vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+        items: [{ ...SAMPLE_USERS[0]!, fullName: longName, email: longEmail }],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      })),
+    });
+    renderUsersView(deps);
+
+    const nameCell = await screen.findByText(longName);
+    const emailCell = screen.getByText(longEmail);
+    const roleCell = screen.getByText("Học viên", { selector: "[data-col='roles']" });
+    for (const cell of [nameCell, emailCell, roleCell]) {
+      expect(cell).toHaveClass("line-clamp-2");
+      expect(cell).not.toHaveClass("truncate");
+      expect(cell).not.toHaveAttribute("title");
+      expect(cell.className).not.toMatch(/\bmax-w-/);
+    }
+  });
+
+  it("cột Nguồn và Vai trò được đánh dấu để ẩn theo bề rộng khung chứa bảng; cột đầu và cột Thao tác được ghim", async () => {
+    renderUsersView(makeDeps());
+
+    const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });
+    await within(table).findByText("student01");
+
+    const sourceHeader = within(table).getByRole("columnheader", { name: "Nguồn" });
+    const rolesHeader = within(table).getByRole("columnheader", { name: "Vai trò" });
+    expect(sourceHeader.querySelector("[data-col='source']")).not.toBeNull();
+    expect(rolesHeader.querySelector("[data-col='roles']")).not.toBeNull();
+    // Mỗi dòng dữ liệu có đúng một ô mang dấu của từng cột.
+    expect(table.querySelectorAll("tbody [data-col='source']")).toHaveLength(SAMPLE_USERS.length);
+    expect(table.querySelectorAll("tbody [data-col='roles']")).toHaveLength(SAMPLE_USERS.length);
+
+    // Khung chứa là query container và mang quy tắc ẩn cột Nguồn trước (ngưỡng rộng hơn), rồi Vai trò.
+    const container = table.closest(".\\@container");
+    expect(container).not.toBeNull();
+    expect(container!.className).toContain("@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden");
+    expect(container!.className).toContain("@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden");
+  });
+});
