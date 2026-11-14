@@ -1959,6 +1959,201 @@
         "required" : [ "code", "field", "message" ],
         "type" : "object"
       },
+      "ImportBatchResponse" : {
+        "description" : "Thông tin đợt cấp tài khoản hàng loạt",
+        "properties" : {
+          "canConfirm" : {
+            "description" : "Có thể xác nhận chạy hay không",
+            "type" : "boolean"
+          },
+          "completedAt" : {
+            "description" : "Thời điểm hoàn tất xử lý",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "confirmedAt" : {
+            "description" : "Thời điểm xác nhận",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "description" : "Thời điểm tạo",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdRows" : {
+            "description" : "Số tài khoản đã tạo thành công",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "failedRows" : {
+            "description" : "Số dòng tạo tài khoản thất bại",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "hasErrors" : {
+            "description" : "Đợt còn dòng lỗi dữ liệu hay không",
+            "type" : "boolean"
+          },
+          "hasGeneratedPasswords" : {
+            "description" : "Đợt có dòng để trống mật khẩu (hệ thống tự sinh)",
+            "type" : "boolean"
+          },
+          "id" : {
+            "description" : "ID đợt cấp tài khoản",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "invalidRows" : {
+            "description" : "Số dòng lỗi dữ liệu",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "mustChangePassword" : {
+            "description" : "Bắt buộc đổi mật khẩu ở lần đăng nhập đầu",
+            "type" : "boolean"
+          },
+          "originalFilename" : {
+            "description" : "Tên tệp gốc đã tải lên",
+            "type" : "string"
+          },
+          "resultAvailable" : {
+            "description" : "Tệp kết quả còn khả dụng hay không",
+            "type" : "boolean"
+          },
+          "sourceAvailable" : {
+            "description" : "Tệp nguồn lỗi còn khả dụng hay không",
+            "type" : "boolean"
+          },
+          "startedAt" : {
+            "description" : "Thời điểm bắt đầu xử lý",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái xử lý của đợt",
+            "enum" : [ "UPLOADED", "VALIDATED", "CONFIRMED", "PROCESSING", "COMPLETED", "COMPLETED_WITH_ERRORS", "FAILED" ],
+            "type" : "string"
+          },
+          "totalRows" : {
+            "description" : "Tổng số dòng dữ liệu",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "updatedAt" : {
+            "description" : "Thời điểm cập nhật gần nhất",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "validRows" : {
+            "description" : "Số dòng hợp lệ",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "version" : {
+            "description" : "Phiên bản khóa lạc quan",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "canConfirm", "createdAt", "createdRows", "failedRows", "hasErrors", "hasGeneratedPasswords", "id", "invalidRows", "mustChangePassword", "resultAvailable", "sourceAvailable", "status", "totalRows", "updatedAt", "validRows", "version" ],
+        "type" : "object"
+      },
+      "ImportRowError" : {
+        "description" : "Lỗi kiểm tra dữ liệu theo từng dòng và cột",
+        "properties" : {
+          "code" : {
+            "description" : "Mã lỗi chuẩn",
+            "type" : "string"
+          },
+          "column" : {
+            "description" : "Tên cột bị lỗi",
+            "type" : "string"
+          },
+          "message" : {
+            "description" : "Thông báo lỗi chi tiết",
+            "type" : "string"
+          },
+          "rowNo" : {
+            "description" : "Số dòng trong tệp Excel (1-based)",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "column", "message", "rowNo" ],
+        "type" : "object"
+      },
+      "ImportRowResponse" : {
+        "description" : "Chi tiết một dòng trong đợt cấp tài khoản hàng loạt (không bao giờ trả mật khẩu)",
+        "properties" : {
+          "classCode" : {
+            "description" : "Mã lớp",
+            "type" : "string"
+          },
+          "createdUserId" : {
+            "description" : "ID tài khoản đã tạo nếu thành công",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "email" : {
+            "description" : "Email",
+            "type" : "string"
+          },
+          "errors" : {
+            "description" : "Danh sách lỗi dữ liệu của dòng",
+            "items" : {
+              "$ref" : "#/components/schemas/ImportRowError"
+            },
+            "type" : "array"
+          },
+          "failureCode" : {
+            "description" : "Mã lỗi kỹ thuật nếu tạo thất bại",
+            "type" : "string"
+          },
+          "failureReason" : {
+            "description" : "Nguyên nhân thất bại nếu tạo thất bại",
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID dòng",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "passwordGenerated" : {
+            "description" : "Có phải dòng để trống mật khẩu (hệ thống tự sinh)",
+            "type" : "boolean"
+          },
+          "phone" : {
+            "description" : "Số điện thoại",
+            "type" : "string"
+          },
+          "processedAt" : {
+            "description" : "Thời điểm xử lý dòng",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "rowNo" : {
+            "description" : "Số dòng trong tệp Excel (1-based)",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "status" : {
+            "description" : "Trạng thái dòng",
+            "enum" : [ "VALID", "INVALID", "CREATED", "FAILED" ],
+            "type" : "string"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập",
+            "type" : "string"
+          }
+        },
+        "required" : [ "errors", "id", "passwordGenerated", "rowNo", "status" ],
+        "type" : "object"
+      },
       "LoginRequest" : {
         "description" : "Yêu cầu đăng nhập",
         "properties" : {
@@ -2212,6 +2407,44 @@
             "description" : "Danh sách phần tử của trang hiện tại",
             "items" : {
               "$ref" : "#/components/schemas/ClassSummaryResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "PageResponseImportRowResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/ImportRowResponse"
             },
             "type" : "array"
           },
@@ -8971,6 +9204,993 @@
         "tags" : [ "Admin Classes" ]
       }
     },
+    "/api/v1/admin/import-batches" : {
+      "post" : {
+        "operationId" : "uploadBatch",
+        "parameters" : [ {
+          "description" : "Bắt buộc đổi mật khẩu ở lần đăng nhập đầu (mặc định false)",
+          "in" : "query",
+          "name" : "mustChangePassword",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "description" : "Tệp Excel (.xlsx, tối đa 5 MB, tối đa 2.000 dòng dữ liệu)",
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải lên tệp Excel để kiểm tra dữ liệu trước khi cấp tài khoản hàng loạt",
+        "tags" : [ "Admin Import Batches" ]
+      }
+    },
+    "/api/v1/admin/import-batches/template" : {
+      "get" : {
+        "operationId" : "downloadTemplate",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải tệp Excel mẫu cấp tài khoản hàng loạt",
+        "tags" : [ "Admin Import Batches" ]
+      }
+    },
+    "/api/v1/admin/import-batches/{id}" : {
+      "get" : {
+        "operationId" : "getBatch",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem trạng thái và thống kê của đợt cấp tài khoản hàng loạt",
+        "tags" : [ "Admin Import Batches" ]
+      }
+    },
+    "/api/v1/admin/import-batches/{id}/confirm" : {
+      "post" : {
+        "operationId" : "confirmBatch",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Khóa chống trùng lặp xác nhận",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xác nhận chạy cấp tài khoản hàng loạt (hỗ trợ Idempotency-Key)",
+        "tags" : [ "Admin Import Batches" ]
+      }
+    },
+    "/api/v1/admin/import-batches/{id}/errors" : {
+      "get" : {
+        "operationId" : "downloadErrors",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải tệp Excel chỉ gồm các dòng lỗi kèm cột Lỗi",
+        "tags" : [ "Admin Import Batches" ]
+      }
+    },
+    "/api/v1/admin/import-batches/{id}/result" : {
+      "delete" : {
+        "operationId" : "deleteResult",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xóa tệp kết quả của đợt cấp tài khoản",
+        "tags" : [ "Admin Import Batches" ]
+      },
+      "get" : {
+        "operationId" : "downloadResult",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải tệp Excel kết quả cấp tài khoản (chỉ chứa mật khẩu của dòng do hệ thống sinh)",
+        "tags" : [ "Admin Import Batches" ]
+      }
+    },
+    "/api/v1/admin/import-batches/{id}/rows" : {
+      "get" : {
+        "operationId" : "listBatchRows",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo trạng thái dòng",
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "VALID", "INVALID", "CREATED", "FAILED" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseImportRowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách dòng dữ liệu và lỗi của đợt cấp tài khoản",
+        "tags" : [ "Admin Import Batches" ]
+      }
+    },
     "/api/v1/admin/permissions" : {
       "get" : {
         "description" : "Chỉ đọc; lọc theo từ khóa, nhóm đối tượng và phạm vi",
@@ -14166,6 +15386,9 @@
   }, {
     "description" : "Gán vai trò, quyền trực tiếp và xem quyền hiệu lực của tài khoản",
     "name" : "Admin User Authz"
+  }, {
+    "description" : "Cấp tài khoản học viên hàng loạt từ tệp Excel",
+    "name" : "Admin Import Batches"
   }, {
     "description" : "Gán hoặc gỡ vai trò, quyền trực tiếp hàng loạt",
     "name" : "Admin Bulk Authz"

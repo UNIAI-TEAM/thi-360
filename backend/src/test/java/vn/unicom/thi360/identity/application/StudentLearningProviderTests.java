@@ -24,6 +24,8 @@ import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.domain.UsernamePolicy;
+import vn.unicom.thi360.identity.infrastructure.ImportBatchRepository;
+import vn.unicom.thi360.identity.infrastructure.ImportRowRepository;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
@@ -134,6 +136,8 @@ class StudentLearningProviderTests {
                 mock(UserIdentityRepository.class),
                 mock(RoleRepository.class),
                 mock(UserRoleRepository.class),
+                mock(ImportRowRepository.class),
+                mock(ImportBatchRepository.class),
                 mock(UsernamePolicy.class),
                 mock(PasswordPolicy.class),
                 mock(PrivilegeGuard.class),
