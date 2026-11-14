@@ -8,6 +8,8 @@ import java.util.UUID;
 public interface UserDirectory {
 
     Optional<UserSummary> findById(UUID userId);
+    Optional<UserSummary> findActiveByUsername(String username);
+
 
     Map<UUID, UserSummary> findByIds(Collection<UUID> userIds);
 

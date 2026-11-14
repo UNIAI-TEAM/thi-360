@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +16,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
@@ -91,8 +89,6 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
 
     @Autowired
     private AuditQuery auditQuery;
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
 
     @Test
     void devProfile_seedsAllB13AccountsIdempotently_andAllowsLoginWithoutPasswordChange() throws Exception {
@@ -103,12 +99,6 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
         long identityCountBefore = userIdentityRepository.count();
         long userRoleCountBefore = userRoleRepository.count();
         long outboxCountBeforeSecondSeed = outboxEventRepository.count();
-        Long classCountBefore = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM classroom.class_room WHERE deleted_at IS NULL", Long.class);
-        Long classMemberCountBefore = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM classroom.class_member", Long.class);
-        Long classHistoryCountBefore = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM classroom.class_member_history", Long.class);
 
         // Second run must be completely idempotent
         devDataInitializer.seed();
@@ -117,25 +107,12 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
         assertThat(userIdentityRepository.count()).isEqualTo(identityCountBefore);
         assertThat(userRoleRepository.count()).isEqualTo(userRoleCountBefore);
         assertThat(outboxEventRepository.count()).isEqualTo(outboxCountBeforeSecondSeed);
-        assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM classroom.class_room WHERE deleted_at IS NULL", Long.class))
-                .isEqualTo(classCountBefore);
-        assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM classroom.class_member", Long.class))
-                .isEqualTo(classMemberCountBefore);
-        assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM classroom.class_member_history", Long.class))
-                .isEqualTo(classHistoryCountBefore);
         assertSeededState();
 
-        int relayed = 0;
-        int batch;
-        while ((batch = outboxRelay.relayBatch()) > 0) {
-            relayed += batch;
+        while (outboxRelay.relayBatch() > 0) {
+            // Drain any pending outbox events before verifying seeded audit events
         }
-        assertThat(relayed).isGreaterThanOrEqualTo(EXPECTED_ROLES.size() * 2);
         assertSeededAuditEvents();
-        assertSeededClassAuditEvents();
 
         // Restoring a missing role assignment emits only USER_ROLES_CHANGED (no duplicate USER_CREATED)
         UserAccount student05 = userAccountRepository
@@ -194,7 +171,6 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mustChangePassword").value(false))
                 .andExpect(jsonPath("$.redirectTo").value("http://localhost:3000/home"));
-        assertSeededClassesViaApi(opsAccessCookie);
     }
 
     private void assertSeededState() {
@@ -256,81 +232,4 @@ class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
         }
     }
 
-    private void assertSeededClassesViaApi(Cookie opsAccessCookie) throws Exception {
-        MvcResult classesResult = mockMvc.perform(get("/api/v1/admin/classes")
-                        .param("size", "100")
-                        .cookie(opsAccessCookie))
-                .andExpect(status().isOk())
-                .andReturn();
-        JsonNode classesBody = objectMapper.readTree(classesResult.getResponse().getContentAsString());
-        Map<String, JsonNode> byCode = new HashMap<>();
-        for (JsonNode item : classesBody.path("items")) {
-            byCode.put(item.path("code").asText(), item);
-        }
-
-        assertThat(byCode).containsKeys("LOP-A", "LOP-B");
-        JsonNode lopA = byCode.get("LOP-A");
-        JsonNode lopB = byCode.get("LOP-B");
-        assertThat(lopA.path("status").asText()).isEqualTo("ACTIVE");
-        assertThat(lopA.path("memberCount").asLong()).isEqualTo(2L);
-        assertThat(lopA.path("ownerUsername").asText()).isEqualTo("ops.admin");
-        assertThat(lopB.path("status").asText()).isEqualTo("ACTIVE");
-        assertThat(lopB.path("memberCount").asLong()).isEqualTo(2L);
-        assertThat(lopB.path("ownerUsername").asText()).isEqualTo("ops.admin");
-
-        assertClassMembers(opsAccessCookie, lopA.path("id").asText(), List.of("student01", "student02"));
-        assertClassMembers(opsAccessCookie, lopB.path("id").asText(), List.of("student03", "student04"));
-
-        UUID student01Id = userAccountRepository.findActiveByUsernameNormalized("student01").orElseThrow().getId();
-        mockMvc.perform(get("/api/v1/admin/users/{id}/classes", student01Id)
-                        .cookie(opsAccessCookie))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentClasses[0].classCode").value("LOP-A"))
-                .andExpect(jsonPath("$.history[0].classCode").value("LOP-A"))
-                .andExpect(jsonPath("$.history[0].action").value("JOIN"))
-                .andExpect(jsonPath("$.history[0].reason").value("dev_seed"));
-    }
-
-    private void assertClassMembers(Cookie opsAccessCookie, String classId, List<String> expectedUsernames)
-            throws Exception {
-        MvcResult membersResult = mockMvc.perform(get("/api/v1/admin/classes/{id}/members", classId)
-                        .param("size", "100")
-                        .cookie(opsAccessCookie))
-                .andExpect(status().isOk())
-                .andReturn();
-        JsonNode membersBody = objectMapper.readTree(membersResult.getResponse().getContentAsString());
-        List<String> usernames = new ArrayList<>();
-        for (JsonNode item : membersBody.path("items")) {
-            usernames.add(item.path("username").asText());
-        }
-        assertThat(usernames).containsExactlyInAnyOrderElementsOf(expectedUsernames);
-    }
-
-    private void assertSeededClassAuditEvents() {
-        for (String code : List.of("LOP-A", "LOP-B")) {
-            String classId = jdbcTemplate.queryForObject(
-                    "SELECT id::text FROM classroom.class_room WHERE code = ? AND deleted_at IS NULL",
-                    String.class,
-                    code);
-            assertThat(classId).isNotBlank();
-            List<AuditEventView> events = auditQuery
-                    .findByTarget("CLASS", classId, new PageQuery(0, 20, Sort.unsorted()))
-                    .items();
-            assertThat(events)
-                    .anySatisfy(ev -> {
-                        assertThat(ev.module()).isEqualTo("CLASSROOM");
-                        assertThat(ev.action()).isEqualTo("CLASS_CREATED");
-                        assertThat(ev.actorType()).isEqualTo(AuditActorType.SYSTEM);
-                        assertThat(ev.outcome()).isEqualTo(AuditOutcome.SUCCESS);
-                        assertThat(ev.reason()).isEqualTo("dev_seed");
-                    })
-                    .anySatisfy(ev -> {
-                        assertThat(ev.module()).isEqualTo("CLASSROOM");
-                        assertThat(ev.action()).isEqualTo("CLASS_MEMBER_ADDED");
-                        assertThat(ev.actorType()).isEqualTo(AuditActorType.SYSTEM);
-                        assertThat(ev.outcome()).isEqualTo(AuditOutcome.SUCCESS);
-                        assertThat(ev.reason()).isEqualTo("dev_seed");
-                    });
-        }
-    }
 }

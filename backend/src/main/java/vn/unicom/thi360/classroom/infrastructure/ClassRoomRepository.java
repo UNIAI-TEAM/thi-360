@@ -26,4 +26,8 @@ public interface ClassRoomRepository extends JpaRepository<ClassRoom, UUID> {
     List<ClassRoom> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
 
     Optional<ClassRoom> findByCodeNormalizedAndDeletedAtIsNull(String codeNormalized);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM ClassRoom c WHERE c.codeNormalized = :codeNormalized AND c.deletedAt IS NULL")
+    Optional<ClassRoom> findByCodeNormalizedAndDeletedAtIsNullForUpdate(@Param("codeNormalized") String codeNormalized);
 }
