@@ -14,6 +14,10 @@ export interface UiStrings {
     cancel: string;
     confirm: string;
   };
+  confirmDialog: {
+    /** Lỗi của ô lý do khi quy tắc yêu cầu lý do mà người dùng xác nhận với ô trống. */
+    reasonRequired: string;
+  };
   pagination: PaginationLabels;
   passwordField: PasswordFieldLabels;
   emptyState: {
@@ -38,6 +42,9 @@ export const UI_STRINGS_VI: UiStrings = {
     close: "Đóng",
     cancel: "Hủy",
     confirm: "Xác nhận",
+  },
+  confirmDialog: {
+    reasonRequired: "Vui lòng nhập lý do.",
   },
   pagination: {
     nav: "Phân trang",
@@ -84,6 +91,9 @@ export const UI_STRINGS_EN: UiStrings = {
     close: "Close",
     cancel: "Cancel",
     confirm: "Confirm",
+  },
+  confirmDialog: {
+    reasonRequired: "Please enter a reason.",
   },
   pagination: {
     nav: "Pagination",

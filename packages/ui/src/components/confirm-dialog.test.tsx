@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "./confirm-dialog";
+import { UiStringsProvider } from "./ui-strings";
 
 type SetupProps = { loading?: boolean; error?: string } & (
   | { reasonLabel: string; requireReason?: boolean }
@@ -42,19 +43,72 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledWith("");
   });
 
-  it("requireReason: nút xác nhận khóa tới khi có lý do, và lý do được cắt khoảng trắng", async () => {
+  // U-15: không khóa nút để chặn việc kiểm tra; cho bấm rồi chỉ vào ô còn thiếu.
+  it("requireReason: nút xác nhận không bị khóa; bấm khi lý do trống thì báo lỗi ở ô lý do, focus vào ô và không gọi onConfirm", async () => {
     const { onConfirm } = setup({ reasonLabel: "Lý do", requireReason: true });
     const confirm = screen.getByRole("button", { name: "Khóa" });
-    expect(confirm).toBeDisabled();
-
     const reason = screen.getByRole("textbox", { name: /Lý do/ });
+    expect(confirm).toBeEnabled();
+    expect(reason).not.toHaveAttribute("aria-invalid");
+    expect(reason).toHaveAttribute("aria-required", "true");
+    expect(screen.queryByText("Vui lòng nhập lý do.")).toBeNull();
+
+    await userEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(reason).toHaveAttribute("aria-invalid", "true");
+    expect(reason).toHaveFocus();
+    // Dòng lỗi gắn với ô qua aria-describedby và được đọc lên (role="alert").
+    expect(reason).toHaveAccessibleDescription("Vui lòng nhập lý do.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Vui lòng nhập lý do.");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("requireReason: chỉ có khoảng trắng vẫn là trống; nhập lý do thì hết lỗi và xác nhận được với lý do đã cắt khoảng trắng", async () => {
+    const { onConfirm } = setup({ reasonLabel: "Lý do", requireReason: true });
+    const confirm = screen.getByRole("button", { name: "Khóa" });
+    const reason = screen.getByRole("textbox", { name: /Lý do/ });
+
     await userEvent.type(reason, "   ");
-    expect(confirm).toBeDisabled();
+    await userEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(reason).toHaveAttribute("aria-invalid", "true");
 
     await userEvent.type(reason, " nghỉ học ");
-    expect(confirm).toBeEnabled();
+    expect(reason).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText("Vui lòng nhập lý do.")).toBeNull();
+
     await userEvent.click(confirm);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onConfirm).toHaveBeenCalledWith("nghỉ học");
+  });
+
+  it("requireReason: lỗi của ô lý do và lỗi của lần xác nhận (prop error) cùng hiện, mỗi cái một vùng alert", async () => {
+    setup({ reasonLabel: "Lý do", requireReason: true, error: "Máy chủ từ chối." });
+    await userEvent.click(screen.getByRole("button", { name: "Khóa" }));
+    const alerts = screen.getAllByRole("alert").map((alert) => alert.textContent);
+    expect(alerts).toEqual(expect.arrayContaining(["Vui lòng nhập lý do.", "Máy chủ từ chối."]));
+    expect(screen.getByRole("textbox", { name: /Lý do/ })).toHaveAccessibleDescription("Vui lòng nhập lý do.");
+  });
+
+  it("requireReason: dòng lỗi theo ngôn ngữ của UiStringsProvider", async () => {
+    const onConfirm = vi.fn();
+    render(
+      <UiStringsProvider locale="en">
+        <ConfirmDialog
+          open
+          onOpenChange={() => {}}
+          title="Lock account"
+          description="Lock 1 account"
+          confirmLabel="Lock"
+          reasonLabel="Reason"
+          requireReason
+          onConfirm={onConfirm}
+        />
+      </UiStringsProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Lock" }));
+    expect(screen.getByRole("textbox", { name: /Reason/ })).toHaveAccessibleDescription("Please enter a reason.");
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it("mở lại sau khi đóng thì ô lý do trống", async () => {
