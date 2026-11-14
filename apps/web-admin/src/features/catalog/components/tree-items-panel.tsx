@@ -5,8 +5,14 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   Chip,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   EmptyState,
   IconButton,
   Input,
@@ -23,6 +29,7 @@ import {
   ArrowDown,
   ArrowUp,
   Ban,
+  ChevronDown,
   ChevronsDownUp,
   ChevronsUpDown,
   Download,
@@ -49,6 +56,7 @@ import {
   type CatalogItemResponse,
   type CatalogStatus,
   type CatalogTreeNodeResponse,
+  type ListCatalogTreeQuery,
 } from "../api";
 import {
   getCatalogErrorCode,
@@ -118,7 +126,7 @@ export function TreeItemsPanel({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
-  const [selectedRefByGroup, setSelectedRefByGroup] = useState<Record<string, string>>({});
+  const [selectedRefByGroup, setSelectedRefByGroup] = useState<Record<string, string[]>>({});
   const [expandedOverrides, setExpandedOverrides] = useState<Record<string, boolean>>({});
   const [expandingAll, setExpandingAll] = useState(false);
   const [reordering, setReordering] = useState(false);
@@ -127,7 +135,7 @@ export function TreeItemsPanel({
   const [addItemRefByGroup, setAddItemRefByGroup] = useState<Record<string, string>>({});
 
   const selectedRefItemIds = useMemo(
-    () => Object.values(selectedRefByGroup).filter(Boolean),
+    () => Object.values(selectedRefByGroup).flat().filter(Boolean),
     [selectedRefByGroup],
   );
   const trimmedSearch = searchQuery.trim();
@@ -158,13 +166,13 @@ export function TreeItemsPanel({
   }, [selectedNodeDetailQuery.data?.path]);
 
   // Root / filtered tree query
-  const rootQueryParams = useMemo(
+  const rootQueryParams = useMemo<ListCatalogTreeQuery>(
     () =>
       isFiltered
         ? {
             ...(trimmedSearch ? { q: trimmedSearch } : {}),
             ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
-            ...(selectedRefItemIds.length > 0 ? { refItemIds: selectedRefItemIds } : {}),
+            ...(selectedRefItemIds.length > 0 ? { ref: selectedRefItemIds } : {}),
           }
         : {},
     [isFiltered, selectedRefItemIds, statusFilter, trimmedSearch],
@@ -865,35 +873,90 @@ export function TreeItemsPanel({
                 locale,
               );
               const opts = refGroupOptionQueries[index]?.data ?? [];
-              const selectedVal = selectedRefByGroup[rg.refGroupId] ?? "__ALL__";
+              const selectedVals = selectedRefByGroup[rg.refGroupId] ?? [];
+              const selectedSet = new Set(selectedVals);
+              const selectedOptionNames = opts
+                .filter((opt) => selectedSet.has(opt.id))
+                .map((opt) => pickName(opt, locale));
+              const triggerLabel =
+                selectedVals.length === 0
+                  ? t("tree.allFilterLabel", { name: rgLabel })
+                  : selectedVals.length === 1 && selectedOptionNames[0]
+                    ? `${rgLabel}: ${selectedOptionNames[0]}`
+                    : t("tree.filterSelectedCount", {
+                        name: rgLabel,
+                        count: selectedVals.length,
+                      });
+
               return (
-                <div key={rg.refGroupId} className="w-52">
-                  <Select
-                    aria-label={t("tree.filterByRefLabel", { name: rgLabel })}
-                    size="md"
-                    value={selectedVal}
-                    onValueChange={(val) =>
-                      setSelectedRefByGroup((prev) => {
-                        if (val === "__ALL__") {
-                          const next = { ...prev };
-                          delete next[rg.refGroupId];
-                          return next;
-                        }
-                        return { ...prev, [rg.refGroupId]: val };
-                      })
-                    }
-                    options={[
-                      {
-                        value: "__ALL__",
-                        label: t("tree.allFilterLabel", { name: rgLabel }),
-                      },
-                      ...opts.map((opt) => ({
-                        value: opt.id,
-                        label: pickName(opt, locale),
-                      })),
-                    ]}
-                  />
-                </div>
+                <DropdownMenu key={rg.refGroupId}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      aria-label={t("tree.filterByRefLabel", { name: rgLabel })}
+                      className={cn(
+                        "min-w-44 justify-between gap-2 font-normal",
+                        selectedVals.length > 0 && "border-primary-600 bg-primary-50 text-primary-text",
+                      )}
+                    >
+                      <span className="truncate">{triggerLabel}</span>
+                      <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-text-muted" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-72 min-w-52 overflow-y-auto">
+                    {opts.map((opt) => {
+                      const checked = selectedSet.has(opt.id);
+                      return (
+                        <DropdownMenuItem
+                          key={opt.id}
+                          role="menuitemcheckbox"
+                          aria-checked={checked}
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            setSelectedRefByGroup((prev) => {
+                              const current = prev[rg.refGroupId] ?? [];
+                              const nextList = current.includes(opt.id)
+                                ? current.filter((id) => id !== opt.id)
+                                : [...current, opt.id];
+                              if (nextList.length === 0) {
+                                const next = { ...prev };
+                                delete next[rg.refGroupId];
+                                return next;
+                              }
+                              return { ...prev, [rg.refGroupId]: nextList };
+                            });
+                          }}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            className="pointer-events-none"
+                          />
+                          <span className="truncate">{pickName(opt, locale)}</span>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    {selectedVals.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setSelectedRefByGroup((prev) => {
+                              const next = { ...prev };
+                              delete next[rg.refGroupId];
+                              return next;
+                            });
+                          }}
+                        >
+                          {t("tree.filterClearGroup")}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               );
             })}
 

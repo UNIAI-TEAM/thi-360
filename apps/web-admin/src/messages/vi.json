@@ -435,6 +435,8 @@
       "filterBanner": "Đang lọc cây (kéo thả tạm khóa; kết quả hiển thị kèm nút tổ tiên).",
       "filterByRefLabel": "Lọc theo {name}",
       "filterFormLabel": "Lọc nút cây",
+      "filterClearGroup": "Bỏ chọn nhóm này",
+      "filterSelectedCount": "{name} ({count, number})",
       "inheritedFromHint": "Kế thừa từ {code} — {name}",
       "inheritedLockedHint": "Kế thừa từ cấp trên, không bỏ được ở đây",
       "jumpToAncestor": "Đi tới {code} — {name}",

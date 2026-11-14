@@ -1376,11 +1376,11 @@ function createTreeMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
         CUSTOM_SOURCE_GROUP,
       ]),
     ),
-    listTree: vi.fn(async (_groupId, query) => {
+    listTree: vi.fn<CatalogApi["listTree"]>(async (_groupId, query) => {
       if (query?.q) {
         return [KNOWLEDGE_CH1, { ...KNOWLEDGE_BAI1, matched: true }];
       }
-      if (query?.refItemIds && query.refItemIds.length > 0) {
+      if (query?.ref && query.ref.length > 0) {
         return [{ ...KNOWLEDGE_CH1, matched: true }];
       }
       if (query?.depth === 1) {
@@ -1546,15 +1546,16 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       });
     });
 
-    // Filter by linked ref SUBJECT=TOAN
-    const filterCombo = screen.getByRole("combobox", { name: "Lọc theo Môn học" });
-    await userEvent.click(filterCombo);
-    await userEvent.click(await screen.findByRole("option", { name: "Toán học" }));
+    // Filter by linked ref SUBJECT=TOAN (passes OpenAPI `ref` param)
+    const filterTrigger = screen.getByRole("button", { name: "Lọc theo Môn học" });
+    await userEvent.click(filterTrigger);
+    await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Toán học" }));
     await waitFor(() => {
       expect(api.listTree).toHaveBeenCalledWith("grp-knowledge", {
-        refItemIds: ["item-toan"],
+        ref: ["item-toan"],
       });
     });
+    await userEvent.keyboard("{Escape}");
     unmount();
 
     // CATALOG.VIEW only: sees tree + detail action, no write controls
@@ -1618,6 +1619,46 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
         /2 nút bên dưới sẽ chuyển sang Ngừng theo cấp trên/,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("cho phép chọn nhiều giá trị OR trong cùng một danh mục liên kết và gửi qua tham số ref", async () => {
+    const gradeGroup: CatalogGroupResponse = {
+      ...SYSTEM_KNOWLEDGE_GROUP,
+      refGroups: [
+        {
+          refGroupId: "grp-grade",
+          code: "GRADE",
+          nameVi: "Khối lớp",
+          nameEn: "Grade",
+          status: "ACTIVE",
+          isDefault: true,
+          position: 0,
+          linkedItemCount: 0,
+        },
+      ],
+    };
+    const gradeOptions: CatalogOptionResponse[] = [
+      { id: "item-g10", code: "G10", nameVi: "Lớp 10", nameEn: "Grade 10", value: 1, displayOrder: 0 },
+      { id: "item-g11", code: "G11", nameVi: "Lớp 11", nameEn: "Grade 11", value: 2, displayOrder: 1 },
+    ];
+    const api = createTreeMockApi({
+      listGroups: vi.fn(async () => pageOfGroups([SYSTEM_SUBJECT_GROUP, gradeGroup])),
+      getOptions: vi.fn(async (code) => (code === "GRADE" ? gradeOptions : [])),
+    });
+
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+
+    const gradeFilterBtn = screen.getByRole("button", { name: "Lọc theo Khối lớp" });
+    await userEvent.click(gradeFilterBtn);
+    await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Lớp 10" }));
+    await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Lớp 11" }));
+
+    await waitFor(() => {
+      expect(api.listTree).toHaveBeenCalledWith("grp-knowledge", {
+        ref: ["item-g10", "item-g11"],
+      });
+    });
   });
 });
 

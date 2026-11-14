@@ -435,6 +435,8 @@
       "filterBanner": "Tree filters active (reordering disabled; ancestors shown for context).",
       "filterByRefLabel": "Filter by {name}",
       "filterFormLabel": "Filter tree nodes",
+      "filterClearGroup": "Clear selection",
+      "filterSelectedCount": "{name} ({count, number})",
       "inheritedFromHint": "Inherited from {code} — {name}",
       "inheritedLockedHint": "Inherited from an ancestor, cannot be removed here",
       "jumpToAncestor": "Go to {code} — {name}",
