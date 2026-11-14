@@ -124,31 +124,6 @@ export const IMPORT_COLUMN_KEYS = [
 
 export type ImportColumnKey = (typeof IMPORT_COLUMN_KEYS)[number];
 
-const COLUMN_SYNONYMS: Record<string, ImportColumnKey> = {
-  username: "USERNAME",
-  "tên đăng nhập": "USERNAME",
-  "ten dang nhap": "USERNAME",
-  password: "PASSWORD",
-  "mật khẩu": "PASSWORD",
-  "mat khau": "PASSWORD",
-  fullname: "FULL_NAME",
-  "full name": "FULL_NAME",
-  full_name: "FULL_NAME",
-  "họ và tên": "FULL_NAME",
-  "ho va ten": "FULL_NAME",
-  "họ tên": "FULL_NAME",
-  "ho ten": "FULL_NAME",
-  email: "EMAIL",
-  phone: "PHONE",
-  "số điện thoại": "PHONE",
-  "so dien thoai": "PHONE",
-  classcode: "CLASS_CODE",
-  "class code": "CLASS_CODE",
-  class_code: "CLASS_CODE",
-  "mã lớp": "CLASS_CODE",
-  "ma lop": "CLASS_CODE",
-};
-
 export function mapImportApiErrorCode(code?: string): KnownImportApiErrorCode | null {
   if (!code) return null;
   return Object.hasOwn(API_ERROR_CODE_MAP, code) ? (code as KnownImportApiErrorCode) : null;
@@ -190,13 +165,11 @@ export function mapImportFailureCode(code?: string): KnownImportFailureCode {
   return "INTERNAL_ERROR";
 }
 
-export function mapImportColumnKey(rawColumn?: string): ImportColumnKey | null {
-  if (!rawColumn) return null;
-  const normalized = rawColumn.replace(/\*/g, "").trim().toLowerCase();
-  if (Object.hasOwn(COLUMN_SYNONYMS, normalized)) {
-    return COLUMN_SYNONYMS[normalized]!;
-  }
-  return null;
+export function mapImportColumnKey(columnKey?: string | null): ImportColumnKey | null {
+  if (!columnKey) return null;
+  return (IMPORT_COLUMN_KEYS as readonly string[]).includes(columnKey)
+    ? (columnKey as ImportColumnKey)
+    : null;
 }
 
 export function isBatchInProgressStatus(status?: ImportBatchStatus): boolean {

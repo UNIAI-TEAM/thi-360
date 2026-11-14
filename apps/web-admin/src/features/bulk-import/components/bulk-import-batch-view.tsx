@@ -340,7 +340,7 @@ function BulkImportBatchContent({
       if (row.errors.length === 0) return "";
       return row.errors
         .map((err) => {
-          const colKey = mapImportColumnKey(err.column);
+          const colKey = mapImportColumnKey(err.columnKey);
           const colLabel = colKey ? t(`columns.${colKey}`) : err.column;
           const codeKey = mapImportRowErrorCode(err.code);
           const msg = codeKey

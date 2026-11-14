@@ -55,16 +55,15 @@ describe("T11 bulk-import error & row code mappings", () => {
     }
   });
 
-  it("ánh xạ tên cột từ backend tiếng Việt hoặc tiếng Anh sang khóa cột chuẩn", () => {
-    expect(mapImportColumnKey("Tên đăng nhập*")).toBe("USERNAME");
-    expect(mapImportColumnKey("Mật khẩu")).toBe("PASSWORD");
-    expect(mapImportColumnKey("Họ và tên*")).toBe("FULL_NAME");
-    expect(mapImportColumnKey("Email")).toBe("EMAIL");
-    expect(mapImportColumnKey("Số điện thoại")).toBe("PHONE");
-    expect(mapImportColumnKey("Mã lớp")).toBe("CLASS_CODE");
-    expect(mapImportColumnKey("Username")).toBe("USERNAME");
-    expect(mapImportColumnKey("Class Code")).toBe("CLASS_CODE");
-    expect(mapImportColumnKey("Unknown")).toBeNull();
+  it("khóa cột ổn định từ backend ánh xạ trực tiếp, khóa thiếu hoặc lạ trả null để hiển thị nguyên văn cột đã lưu", () => {
+    for (const key of IMPORT_COLUMN_KEYS) {
+      expect(mapImportColumnKey(key)).toBe(key);
+    }
+    expect(mapImportColumnKey(undefined)).toBeNull();
+    expect(mapImportColumnKey(null)).toBeNull();
+    expect(mapImportColumnKey("")).toBeNull();
+    expect(mapImportColumnKey("UNKNOWN_COLUMN")).toBeNull();
+    expect(mapImportColumnKey("username")).toBeNull();
   });
 
   it("resolveImportApiErrorMessage dịch theo mã lỗi và HTTP status, không dùng message thô từ backend", () => {

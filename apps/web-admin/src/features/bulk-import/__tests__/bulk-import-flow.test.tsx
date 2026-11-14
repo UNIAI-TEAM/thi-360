@@ -247,18 +247,21 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
         {
           rowNo: 3,
           column: "Tên đăng nhập",
+          columnKey: "USERNAME",
           code: "USERNAME_INVALID",
           message: "Backend raw error message",
         },
         {
           rowNo: 3,
           column: "Họ và tên",
+          columnKey: "FULL_NAME",
           code: "REQUIRED",
           message: "Backend raw required",
         },
         {
           rowNo: 3,
           column: "Mã lớp",
+          columnKey: "CLASS_CODE",
           code: "CLASS_INACTIVE",
           message: "Backend raw class inactive",
         },
@@ -334,6 +337,61 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       en.bulkImport.errorCodes.IMPORT_SOURCE_GONE,
     );
+  });
+
+  it("bước 2: tên cột lấy từ columnKey theo locale; dòng lưu trước khi có khóa hiển thị nguyên văn cột đã lưu", async () => {
+    const row: ImportRow = {
+      id: "row-legacy",
+      rowNo: 4,
+      username: "legacy01",
+      fullName: "",
+      classCode: "",
+      passwordGenerated: false,
+      status: "INVALID",
+      errors: [
+        {
+          rowNo: 4,
+          column: "Stored header",
+          columnKey: "FULL_NAME",
+          code: "REQUIRED",
+          message: "Backend raw required",
+        },
+        {
+          rowNo: 4,
+          column: "Stored legacy header",
+          code: "REQUIRED",
+          message: "Backend raw legacy",
+        },
+      ],
+    };
+    const makeRowDeps = () =>
+      makeDeps({
+        getImportBatch: vi.fn(async () =>
+          makeBatch({ totalRows: 1, validRows: 0, invalidRows: 1, hasErrors: true, canConfirm: false }),
+        ),
+        listImportBatchRows: vi.fn<BulkImportApiDeps["listImportBatchRows"]>(async () => ({
+          items: [row],
+          page: 0,
+          size: 20,
+          totalItems: 1,
+          totalPages: 1,
+        })),
+      });
+
+    const viRender = renderBatch(makeRowDeps());
+    const viFullName = viMessages.bulkImport.columns.FULL_NAME;
+    const viRequired = viMessages.bulkImport.rowErrorCodes.REQUIRED.replace("{column}", viFullName);
+    expect(await screen.findByText("legacy01")).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`${viFullName}: ${viRequired}`))).toBeInTheDocument();
+    expect(screen.getByText(/Stored legacy header: /)).toBeInTheDocument();
+    expect(screen.queryByText(/Stored header/)).not.toBeInTheDocument();
+    viRender.unmount();
+
+    renderBatch(makeRowDeps(), TEST_ADMIN_SESSION, "en");
+    expect(await screen.findByText("legacy01")).toBeInTheDocument();
+    expect(screen.getByText(/Full name: Full name is required/)).toBeInTheDocument();
+    expect(screen.getByText(/Stored legacy header: /)).toBeInTheDocument();
+    expect(screen.queryByText(/Backend raw/)).not.toBeInTheDocument();
   });
 
   it("bước 3: giữ nguyên Idempotency-Key khi thử lại cùng lần xác nhận và quay về bước 2 nếu gặp IMPORT_HAS_ERRORS", async () => {
@@ -598,6 +656,7 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
         {
           rowNo: 2,
           column: "Tên đăng nhập",
+          columnKey: "USERNAME",
           code: "USERNAME_TAKEN",
           message: "Backend raw taken",
         },
