@@ -3,3 +3,7 @@ spring:
     hikari:
       maximum-pool-size: 4
       minimum-idle: 0
+
+thi360:
+  s3:
+    mode: memory
