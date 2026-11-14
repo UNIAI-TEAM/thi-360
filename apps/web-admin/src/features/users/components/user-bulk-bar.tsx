@@ -3,6 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   Button,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,9 +15,10 @@ import {
   StatusChip,
   Textarea,
 } from "@thi360/ui";
+import { CircleHelp } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Can } from "@/features/session/can";
 import type {
   BulkUserActionPreviewResponse,
@@ -26,6 +28,14 @@ import type {
 import { mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
 
 export const RBAC_BULK_USER_IDS_STORAGE_KEY = "rbac.bulk.userIds";
+
+/** Số tên đăng nhập nêu đích danh trong hộp thoại xác nhận; phần còn lại gộp thành "và N tài khoản khác". */
+const AFFECTED_NAME_PREVIEW_LIMIT = 5;
+
+export interface SelectedAccount {
+  id: string;
+  username: string;
+}
 
 type BulkActionKind = "DEACTIVATE" | "ACTIVATE" | "DELETE";
 
@@ -43,19 +53,27 @@ type BulkDialogState =
     };
 
 export interface UserBulkBarProps {
-  selectedIds: string[];
+  /** Tài khoản đang chọn (có thể gồm dòng ở trang khác). Rỗng thì thanh vẫn giữ chỗ nhưng ẩn và không nhận thao tác. */
+  selected: SelectedAccount[];
   onClearSelection: () => void;
   onBulkApplied: () => void;
   previewBulkUserActions: UsersApiDeps["previewBulkUserActions"];
   applyBulkUserActions: UsersApiDeps["applyBulkUserActions"];
+  className?: string;
 }
 
+/**
+ * Thanh thao tác hàng loạt. Thanh LUÔN có trong DOM và nằm chồng lên dải "N tài khoản / gợi ý" trong cùng một ô
+ * lưới (bên gọi đặt `className`), nên khi tích dòng đầu tiên chỉ đổi phần đang hiện, chiều cao không đổi và các
+ * dòng của bảng không dịch chuyển dưới con trỏ. Lúc chưa chọn dòng nào thanh ẩn (`invisible`) và `inert`.
+ */
 export function UserBulkBar({
-  selectedIds,
+  selected,
   onClearSelection,
   onBulkApplied,
   previewBulkUserActions,
   applyBulkUserActions,
+  className,
 }: UserBulkBarProps) {
   const t = useTranslations("users");
   const format = useFormatter();
@@ -63,6 +81,10 @@ export function UserBulkBar({
   const [dialog, setDialog] = useState<BulkDialogState>({ kind: "none" });
   const [previewLoadingAction, setPreviewLoadingAction] = useState<BulkActionKind | null>(null);
   const [reason, setReason] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpId = useId();
+  const active = selected.length > 0;
+  const selectedIds = selected.map((account) => account.id);
 
   const applyMutation = useMutation({
     mutationFn: ({
@@ -143,6 +165,24 @@ export function UserBulkBar({
     }
   }
 
+  function handleClearSelection() {
+    setHelpOpen(false);
+    onClearSelection();
+  }
+
+  // Tài khoản thật sự bị tác động = đang chọn trừ các tài khoản bản xem trước báo bỏ qua.
+  const affectedAccounts =
+    dialog.kind === "confirm"
+      ? selected.filter(
+          (account) => !dialog.preview.skipped.some((skipped) => skipped.id === account.id),
+        )
+      : [];
+  const affectedNames = affectedAccounts
+    .slice(0, AFFECTED_NAME_PREVIEW_LIMIT)
+    .map((account) => account.username)
+    .join(", ");
+  const affectedRest = Math.max(0, affectedAccounts.length - AFFECTED_NAME_PREVIEW_LIMIT);
+
   const requiresReason = dialog.kind === "confirm" && dialog.action !== "ACTIVATE";
   const trimmedReason = reason.trim();
   const canSubmitConfirm =
@@ -152,19 +192,41 @@ export function UserBulkBar({
 
   return (
     <>
-      {selectedIds.length > 0 && (
-        <>
+        {/* Năm nút là năm điểm dừng Tab bình thường nên đây là một nhóm có tên, không phải role="toolbar". */}
         <div
-          role="toolbar"
+          role="group"
           aria-label={t("bulk.toolbarLabel")}
-          className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-200 bg-primary-50 px-4 py-2.5"
+          aria-hidden={!active || undefined}
+          inert={!active}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && helpOpen) {
+              event.stopPropagation();
+              setHelpOpen(false);
+            }
+          }}
+          className={cn(
+            "relative flex flex-wrap items-center justify-between gap-x-3 gap-y-2 bg-primary-50 px-4 py-2.5",
+            !active && "invisible",
+            className,
+          )}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-label font-semibold text-primary-text tabular-nums">
-              {t("bulk.selectedCount", { count: format.number(selectedIds.length) })}
+              {t("bulk.selectedCount", { count: format.number(selected.length) })}
             </span>
-            <Button type="button" variant="link" size="sm" onClick={onClearSelection}>
+            <Button type="button" variant="link" size="sm" onClick={handleClearSelection}>
               {t("bulk.clearSelection")}
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              aria-expanded={helpOpen}
+              aria-controls={helpOpen ? helpId : undefined}
+              onClick={() => setHelpOpen((open) => !open)}
+            >
+              <CircleHelp />
+              <span>{t("bulk.helpToggle")}</span>
             </Button>
           </div>
 
@@ -208,12 +270,17 @@ export function UserBulkBar({
               </Button>
             </Can>
           </div>
+
+          {/* Ghi chú dài mở theo yêu cầu và nổi đè lên đầu bảng, không chiếm chỗ trong luồng nên không đẩy dòng. */}
+          {helpOpen && active && (
+            <p
+              id={helpId}
+              className="absolute inset-x-4 top-full z-20 mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-caption text-text-secondary shadow-md"
+            >
+              {t("bulk.helperNote", { count: format.number(selected.length) })}
+            </p>
+          )}
         </div>
-          <div className="border-b border-border bg-surface px-4 py-2 text-caption text-text-secondary">
-            {t("bulk.helperNote", { count: format.number(selectedIds.length) })}
-          </div>
-        </>
-      )}
 
       <Dialog
         open={dialog.kind === "confirm"}
@@ -250,6 +317,17 @@ export function UserBulkBar({
                   })}
                 </DialogDescription>
               </DialogHeader>
+
+              {affectedAccounts.length > 0 && (
+                <p className="text-body text-text">
+                  {affectedRest > 0
+                    ? t("bulk.affectedAccountsMore", {
+                        names: affectedNames,
+                        count: format.number(affectedRest),
+                      })
+                    : t("bulk.affectedAccounts", { names: affectedNames })}
+                </p>
+              )}
 
               {dialog.preview.affected === 0 && (
                 <div className="rounded-lg border border-warning bg-warning-bg px-3 py-2 text-caption text-warning">

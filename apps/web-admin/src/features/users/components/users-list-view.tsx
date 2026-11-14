@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Checkbox,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -135,6 +136,8 @@ function UsersListContent({
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  // Tên đăng nhập của các dòng đang chọn, ghi lại lúc tích: dòng đã chọn có thể không còn ở trang đang hiện.
+  const [selectedUsernames, setSelectedUsernames] = useState<Record<string, string>>({});
   const [createOpen, setCreateOpen] = useState(false);
   // Câu đang nằm trong vùng thông báo của danh sách (số kết quả, sắp xếp, số dòng đang chọn): chỉ một vùng, đổi nội dung.
   const [announcement, setAnnouncement] = useState("");
@@ -429,10 +432,14 @@ function UsersListContent({
   );
 
   const canBulkOperate = can("USER.MODIFY") || can("USER.ASSIGN");
-  const selectedIds = useMemo(
-    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
-    [rowSelection],
+  const selectedAccounts = useMemo(
+    () =>
+      Object.keys(rowSelection)
+        .filter((id) => rowSelection[id])
+        .map((id) => ({ id, username: selectedUsernames[id] ?? id })),
+    [rowSelection, selectedUsernames],
   );
+  const hasSelection = canBulkOperate && selectedAccounts.length > 0;
 
   const items = usersQuery.data?.items ?? [];
   const totalItems = usersQuery.data?.totalItems ?? 0;
@@ -458,6 +465,14 @@ function UsersListContent({
   function handleSelectionChange(updater: Updater<RowSelectionState>) {
     const next = typeof updater === "function" ? updater(rowSelection) : updater;
     setRowSelection(next);
+    setSelectedUsernames((previous) => {
+      const usernames: Record<string, string> = {};
+      for (const id of Object.keys(next)) {
+        if (!next[id]) continue;
+        usernames[id] = previous[id] ?? items.find((item) => item.id === id)?.username ?? id;
+      }
+      return usernames;
+    });
     const count = Object.values(next).filter(Boolean).length;
     setAnnouncement(
       count > 0
@@ -619,7 +634,19 @@ function UsersListContent({
 
       <Card padding="none" className="overflow-hidden">
         <LiveStatus message={announcement} />
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        {/*
+          Một ô lưới cho hai lớp chồng nhau: dải "N tài khoản / gợi ý" và thanh thao tác hàng loạt. Ô luôn cao bằng
+          lớp cao hơn, nên tích hay bỏ tích dòng chỉ đổi lớp đang hiện, bảng bên dưới không nhảy.
+        */}
+        <div className={cn("grid border-b", hasSelection ? "border-primary-200" : "border-border")}>
+        <div
+          aria-hidden={hasSelection || undefined}
+          inert={hasSelection}
+          className={cn(
+            "col-start-1 row-start-1 flex flex-wrap items-center justify-between gap-2 px-4 py-3",
+            hasSelection && "invisible",
+          )}
+        >
           <p className="text-body font-medium text-text tabular-nums">
             {usersQuery.isLoading
               ? t("list.loadingCount")
@@ -632,7 +659,8 @@ function UsersListContent({
 
         {canBulkOperate && (
           <UserBulkBar
-            selectedIds={selectedIds}
+            className="col-start-1 row-start-1"
+            selected={selectedAccounts}
             onClearSelection={() => handleSelectionChange({})}
             onBulkApplied={() => {
               void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
@@ -641,6 +669,7 @@ function UsersListContent({
             applyBulkUserActions={deps.applyBulkUserActions}
           />
         )}
+        </div>
 
         <div className={DROP_LOW_PRIORITY_COLUMNS}>
         <Table

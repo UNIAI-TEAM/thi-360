@@ -431,14 +431,21 @@ describe("UsersListView (Slice 1)", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student04" }));
 
-    const toolbar = await screen.findByRole("toolbar", {
+    const toolbar = await screen.findByRole("group", {
       name: "Thao tác với các tài khoản đã chọn",
     });
     expect(toolbar).toHaveTextContent("Đã chọn 2 tài khoản");
     expect(screen.queryByRole("button", { name: "Cấp hàng loạt" })).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/mở tab Gán hàng loạt của Phân quyền với 2 tài khoản này đã chọn sẵn/),
-    ).toBeInTheDocument();
+    // Ghi chú dài nằm sau nút mở/đóng, không chiếm chỗ khi chưa mở.
+    expect(screen.queryByText(/mở tab Gán hàng loạt của Phân quyền/)).not.toBeInTheDocument();
+    const helpToggle = within(toolbar).getByRole("button", { name: "Cách hoạt động" });
+    expect(helpToggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(helpToggle);
+    expect(helpToggle).toHaveAttribute("aria-expanded", "true");
+    const note = screen.getByText(/mở tab Gán hàng loạt của Phân quyền với 2 tài khoản này đã chọn sẵn/);
+    expect(note).toHaveAttribute("id", helpToggle.getAttribute("aria-controls"));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByText(/mở tab Gán hàng loạt của Phân quyền/)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Gán vai trò, quyền" }));
     expect(window.sessionStorage.getItem("rbac.bulk.userIds")).toBe(
@@ -454,6 +461,8 @@ describe("UsersListView (Slice 1)", () => {
 
     expect(await screen.findByText("1 / 2 tài khoản đủ điều kiện thực hiện thao tác.")).toBeInTheDocument();
     expect(screen.getByText(/Tài khoản không tồn tại hoặc đã bị xóa/)).toBeInTheDocument();
+    // Hộp thoại nêu đích danh tài khoản sẽ bị tác động (student04 bị bỏ qua nên không nằm trong câu này).
+    expect(screen.getByText("Áp dụng cho: student01.")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText(/Lý do thực hiện/), "Ngừng hàng loạt");
     await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động 1 tài khoản" }));
@@ -854,5 +863,74 @@ describe("UsersListView: kết quả không đồng bộ được đọc lên qu
     // Gõ lại thì kết quả cũ không còn đúng: vùng thông báo về rỗng.
     await userEvent.type(usernameInput, "x");
     expect(status).toBeEmptyDOMElement();
+  });
+});
+
+describe("UsersListView: thanh thao tác hàng loạt có chỗ giữ sẵn (U-05, U-14)", () => {
+  it("tích dòng chỉ đổi lớp đang hiện trong cùng một ô lưới, không chèn thêm khối phía trên bảng", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+
+    const countStrip = screen.getByText("4 tài khoản khớp bộ lọc").parentElement as HTMLElement;
+    const slot = countStrip.parentElement as HTMLElement;
+    const table = screen.getByRole("table", { name: "Danh sách tài khoản" });
+    const childrenBefore = slot.parentElement!.children.length;
+
+    // Chưa chọn: thanh thao tác đã nằm sẵn trong ô nhưng ẩn và không nhận thao tác.
+    expect(screen.queryByRole("group", { name: "Thao tác với các tài khoản đã chọn" })).not.toBeInTheDocument();
+    const bar = slot.querySelector<HTMLElement>("[role='group']")!;
+    expect(bar).toHaveClass("invisible", "col-start-1", "row-start-1");
+    expect(bar).toHaveAttribute("inert");
+    expect(countStrip).toHaveClass("col-start-1", "row-start-1");
+    expect(countStrip).not.toHaveClass("invisible");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+
+    // Đã chọn: hai lớp đổi vai, vẫn cùng ô lưới; không có phần tử nào được chèn vào giữa ô và bảng.
+    expect(screen.getByRole("group", { name: "Thao tác với các tài khoản đã chọn" })).toBe(bar);
+    expect(bar).not.toHaveClass("invisible");
+    expect(bar).not.toHaveAttribute("inert");
+    expect(countStrip).toHaveClass("invisible");
+    expect(countStrip).toHaveAttribute("inert");
+    expect(countStrip).toHaveAttribute("aria-hidden", "true");
+    expect(slot.parentElement!.children.length).toBe(childrenBefore);
+    expect(slot.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Không còn role="toolbar" (không có mô hình phím mũi tên).
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+  });
+
+  it("hộp thoại xác nhận nêu vài tài khoản đầu và gộp phần còn lại thành số đếm", async () => {
+    const manyUsers: UserSummary[] = Array.from({ length: 7 }, (_, index) => ({
+      ...SAMPLE_USERS[0]!,
+      id: `00000000-0000-4000-8000-0000000002${String(index).padStart(2, "0")}`,
+      username: `bulk${index + 1}`,
+    }));
+    const previewMock = vi.fn<UsersApiDeps["previewBulkUserActions"]>(async () => ({
+      total: 7,
+      affected: 7,
+      skipped: [],
+    }));
+    renderUsersView(
+      makeDeps({
+        listUsers: vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+          items: manyUsers,
+          page: 0,
+          size: 20,
+          totalItems: 7,
+          totalPages: 1,
+        })),
+        previewBulkUserActions: previewMock,
+      }),
+    );
+
+    await screen.findByText("bulk1");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tất cả tài khoản" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Áp dụng cho: bulk1, bulk2, bulk3, bulk4, bulk5 và 2 tài khoản khác."),
+    ).toBeInTheDocument();
   });
 });
