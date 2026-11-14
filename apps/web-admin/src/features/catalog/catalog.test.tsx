@@ -2055,6 +2055,19 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(name).toHaveClass("min-w-[8rem]", "flex-1", "line-clamp-2");
     expect(name).not.toHaveAttribute("title");
 
+    // C-07: tiêu đề nhóm chia cột theo bề rộng thẻ; cụm nút không còn `shrink-0` ép cột tiêu đề về 0px.
+    const groupHeading = screen.getByRole("heading", { level: 2, name: "Cấu trúc kiến thức" });
+    const titleColumn = groupHeading.parentElement!.parentElement!;
+    const header = titleColumn.parentElement!;
+    expect(header).toHaveClass("flex-col", "@3xl:flex-row");
+    expect(header.className).not.toMatch(/(^|\s)(sm|md|lg|xl):/);
+    expect(header.parentElement).toHaveClass("@container");
+    expect(titleColumn).toHaveClass("min-w-0", "@3xl:flex-1");
+    const actionGroup = screen.getByRole("button", { name: "Xuất Excel" }).parentElement!;
+    expect(actionGroup.parentElement).toBe(header);
+    expect(actionGroup).toHaveClass("flex-wrap", "@3xl:max-w-[55%]", "@3xl:shrink-0");
+    expect(actionGroup).not.toHaveClass("shrink-0");
+
     const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
     expect(pane).toHaveClass("w-full", "min-[1600px]:w-[340px]");
     expect(pane.className).not.toMatch(/(^|\s)(xl|lg|md):/);

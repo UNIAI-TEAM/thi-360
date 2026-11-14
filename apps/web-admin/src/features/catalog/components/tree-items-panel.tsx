@@ -871,10 +871,15 @@ export function TreeItemsPanel({
     : 0;
 
   return (
-    <Card className="min-w-0 flex-1" padding="md">
-      {/* Group header */}
-      <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
+    <Card className="@container min-w-0 flex-1" padding="md">
+      {/*
+        Tiêu đề nhóm. Chia hai cột theo bề rộng của chính thẻ (truy vấn vùng chứa), không theo màn hình: thẻ hẹp
+        hơn màn hình khoảng 593px, nên ngưỡng `sm:` cũ đặt cụm nút cạnh tiêu đề khi thẻ mới rộng 400px và ép cột
+        tiêu đề về 0px (C-07). Dưới 48rem: tiêu đề ở trên, cụm nút xuống dòng bên dưới. Từ 48rem: cụm nút chiếm
+        tối đa 55% và tự xuống dòng, cột tiêu đề luôn còn ít nhất 45%.
+      */}
+      <div className="flex flex-col gap-3 border-b border-border pb-4 @3xl:flex-row @3xl:items-start @3xl:justify-between">
+        <div className="min-w-0 @3xl:flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-h3 font-bold text-text">{pickName(group, locale)}</h2>
             <StatusChip tone={group.status === "ACTIVE" ? "success" : "neutral"}>
@@ -894,7 +899,7 @@ export function TreeItemsPanel({
           )}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 @3xl:max-w-[55%] @3xl:shrink-0 @3xl:justify-end">
           {canModify && !isSystemGroup && (
             <>
               <Button variant="secondary" size="sm" onClick={onEditGroup}>
