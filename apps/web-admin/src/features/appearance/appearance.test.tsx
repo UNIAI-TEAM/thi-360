@@ -210,11 +210,29 @@ describe("AppearanceView", () => {
     const primaryInput = screen.getByLabelText("Màu chính") as HTMLInputElement;
     const primaryPicker = screen.getByLabelText("Chọn màu chính") as HTMLInputElement;
 
-    // Mã màu sai -> chặn Lưu
+    // Mã màu sai -> chặn Lưu ngay, nhưng chưa báo lỗi khi còn đang gõ (không role=alert theo từng phím)
     await userEvent.clear(primaryInput);
     await userEvent.type(primaryInput, "#12G");
     expect(screen.getByRole("button", { name: "Lưu và áp dụng" })).toBeDisabled();
-    expect(screen.getByText(/Mã màu phải có dạng #RRGGBB, ví dụ #059669/)).toBeInTheDocument();
+    expect(screen.queryByText(/Mã màu phải có dạng #RRGGBB, ví dụ #059669/)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(primaryInput).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByText("Dùng cho nút chính, liên kết, mục đang chọn.")).toBeInTheDocument();
+
+    // Rời ô -> lỗi hiện, gắn với ô qua aria-describedby
+    await userEvent.tab();
+    const hexError = screen.getByRole("alert");
+    expect(hexError).toHaveTextContent(/Mã màu phải có dạng #RRGGBB, ví dụ #059669/);
+    expect(primaryInput).toHaveAttribute("aria-invalid", "true");
+    expect(primaryInput.getAttribute("aria-describedby")).toContain(hexError.id);
+
+    // Gõ lại thành mã hợp lệ -> lỗi gỡ ngay; gõ sai tiếp thì chờ tới lần rời ô sau mới báo
+    await userEvent.clear(primaryInput);
+    await userEvent.type(primaryInput, "#123456");
+    expect(screen.queryByRole("alert")).toBeNull();
+    await userEvent.type(primaryInput, "{Backspace}");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: "Lưu và áp dụng" })).toBeDisabled();
 
     // Đổi qua color picker -> đồng bộ sang ô hex và cảnh báo chữ tối kèm tỉ lệ tương phản
     fireEvent.change(primaryPicker, { target: { value: "#fde047" } });

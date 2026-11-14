@@ -175,6 +175,8 @@ function AppearanceEditor({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [staleConflict, setStaleConflict] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  // Ô mã màu chỉ báo lỗi sau khi người dùng rời ô (blur), không báo theo từng phím đang gõ; gõ lại thành mã hợp lệ thì gỡ.
+  const [hexTouched, setHexTouched] = useState({ primary: false, accent: false });
   const alertBannerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -370,6 +372,25 @@ function AppearanceEditor({
     previewTokens.onPrimary.toLowerCase() === WHITE_COLOR ? t("whiteText") : t("darkText");
   const onAccentTone =
     previewTokens.onAccent.toLowerCase() === WHITE_COLOR ? t("whiteText") : t("darkText");
+  function updateCustomColor(field: "primary" | "accent", rawValue: string) {
+    const next = rawValue.toUpperCase();
+    if (isValidHexColor(next)) {
+      setHexTouched((current) => ({ ...current, [field]: false }));
+    }
+    updateDraft((current) => ({
+      ...current,
+      ...(field === "primary" ? { customPrimary: next } : { customAccent: next }),
+      hasCustomColors: true,
+    }));
+  }
+
+  function markHexTouched(field: "primary" | "accent") {
+    setHexTouched((current) => ({ ...current, [field]: true }));
+  }
+
+  const showPrimaryError = !primaryValid && hexTouched.primary;
+  const showAccentError = !accentValid && hexTouched.accent;
+
   function handleSelectPreset(presetId: PresetId) {
     updateDraft((current) => ({
       ...current,
@@ -616,8 +637,8 @@ function AppearanceEditor({
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FormField
                     label={t("primaryLabel")}
-                    error={primaryValid ? undefined : t("primaryInvalid")}
-                    hint={primaryValid ? t("primaryHelper") : undefined}
+                    error={showPrimaryError ? t("primaryInvalid") : undefined}
+                    hint={t("primaryHelper")}
                   >
                     {(controlProps) => (
                       <div className="flex gap-2">
@@ -625,14 +646,7 @@ function AppearanceEditor({
                           type="color"
                           aria-label={t("primaryPickerAria")}
                           value={pickerPrimary}
-                          onChange={(event) => {
-                            const next = event.target.value.toUpperCase();
-                            updateDraft((current) => ({
-                              ...current,
-                              customPrimary: next,
-                              hasCustomColors: true,
-                            }));
-                          }}
+                          onChange={(event) => updateCustomColor("primary", event.target.value)}
                           className={cn(
                             "h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1",
                             focusRing,
@@ -641,14 +655,8 @@ function AppearanceEditor({
                         <Input
                           {...controlProps}
                           value={activeDraft.customPrimary}
-                          onChange={(event) => {
-                            const next = event.target.value.toUpperCase();
-                            updateDraft((current) => ({
-                              ...current,
-                              customPrimary: next,
-                              hasCustomColors: true,
-                            }));
-                          }}
+                          onChange={(event) => updateCustomColor("primary", event.target.value)}
+                          onBlur={() => markHexTouched("primary")}
                           maxLength={7}
                           spellCheck={false}
                           className="uppercase"
@@ -659,8 +667,8 @@ function AppearanceEditor({
 
                   <FormField
                     label={t("accentLabel")}
-                    error={accentValid ? undefined : t("accentInvalid")}
-                    hint={accentValid ? t("accentHelper") : undefined}
+                    error={showAccentError ? t("accentInvalid") : undefined}
+                    hint={t("accentHelper")}
                   >
                     {(controlProps) => (
                       <div className="flex gap-2">
@@ -668,14 +676,7 @@ function AppearanceEditor({
                           type="color"
                           aria-label={t("accentPickerAria")}
                           value={pickerAccent}
-                          onChange={(event) => {
-                            const next = event.target.value.toUpperCase();
-                            updateDraft((current) => ({
-                              ...current,
-                              customAccent: next,
-                              hasCustomColors: true,
-                            }));
-                          }}
+                          onChange={(event) => updateCustomColor("accent", event.target.value)}
                           className={cn(
                             "h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-1",
                             focusRing,
@@ -684,14 +685,8 @@ function AppearanceEditor({
                         <Input
                           {...controlProps}
                           value={activeDraft.customAccent}
-                          onChange={(event) => {
-                            const next = event.target.value.toUpperCase();
-                            updateDraft((current) => ({
-                              ...current,
-                              customAccent: next,
-                              hasCustomColors: true,
-                            }));
-                          }}
+                          onChange={(event) => updateCustomColor("accent", event.target.value)}
+                          onBlur={() => markHexTouched("accent")}
                           maxLength={7}
                           spellCheck={false}
                           className="uppercase"
