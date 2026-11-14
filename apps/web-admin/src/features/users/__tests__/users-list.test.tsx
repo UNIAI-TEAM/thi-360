@@ -971,3 +971,21 @@ describe("UsersListView: áp dụng hàng loạt thất bại báo lỗi trong h
     expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+describe("CreateUserDialog: gửi biểu mẫu sai thì focus về ô sai đầu tiên (U-08)", () => {
+  it("mật khẩu là ô sai duy nhất: focus chuyển vào ô mật khẩu, không ở lại nút gửi", async () => {
+    const createMock = vi.fn<UsersApiDeps["createUser"]>();
+    renderUsersView(makeDeps({ createUser: createMock }));
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    await userEvent.type(within(dialog).getByLabelText(/Tên đăng nhập/), "student77");
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 77");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo tài khoản" }));
+
+    const passwordInput = dialog.querySelector<HTMLInputElement>("input[autocomplete='new-password']")!;
+    await waitFor(() => expect(passwordInput).toHaveFocus());
+    expect(passwordInput).toHaveAttribute("aria-invalid", "true");
+    expect(createMock).not.toHaveBeenCalled();
+  });
+});

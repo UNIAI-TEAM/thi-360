@@ -224,6 +224,8 @@ function ResetPasswordFormBody({
             render={({ field }) => (
               <PasswordField
                 {...controlProps}
+                ref={field.ref}
+                name={field.name}
                 value={field.value}
                 onChange={(event) => {
                   setSubmitError(null);

@@ -626,3 +626,20 @@ describe("Hộp thoại xác nhận báo lỗi ngay bên trong, không dùng toa
     expect(toastError).not.toHaveBeenCalled();
   });
 });
+
+describe("ResetPasswordDialog: gửi biểu mẫu sai thì focus về ô sai đầu tiên (U-08)", () => {
+  it("mật khẩu yếu: focus chuyển vào ô mật khẩu mới", async () => {
+    const resetMock = vi.fn<UsersApiDeps["resetUserPassword"]>();
+    renderDetail(makeDeps({ resetUserPassword: resetMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Đặt lại mật khẩu" }));
+    const dialog = await screen.findByRole("dialog");
+    const passwordInput = dialog.querySelector<HTMLInputElement>("input[autocomplete='new-password']")!;
+    await userEvent.type(passwordInput, "abc");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Đặt lại mật khẩu" }));
+
+    await waitFor(() => expect(passwordInput).toHaveAttribute("aria-invalid", "true"));
+    expect(passwordInput).toHaveFocus();
+    expect(resetMock).not.toHaveBeenCalled();
+  });
+});
