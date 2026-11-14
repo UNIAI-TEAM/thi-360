@@ -13,6 +13,7 @@ import type {
   PermissionSourceType,
   RoleDetailResponse,
   RoleStatus,
+  RoleSummaryResponse,
   UpdateRolePermissionsRequest,
   UpdateRoleRequest,
   UpdateUserPermissionsRequest,
@@ -72,6 +73,7 @@ export const rbacKeys = {
   permissions: (params?: ListPermissionsParams) =>
     ["rbac", "permissions", params ?? {}] as const,
   roles: (params?: ListRolesParams) => ["rbac", "roles", params ?? {}] as const,
+  allRoles: () => ["rbac", "roles", "all"] as const,
   roleDetail: (id: string) => ["rbac", "role", id] as const,
   permissionUsers: (id: string, params?: ListPermissionUsersParams) =>
     ["rbac", "permission-users", id, params ?? {}] as const,
@@ -136,6 +138,20 @@ export async function listRoles(
   });
   if (!response.ok || !data) throw toRbacApiError(response.status, error);
   return data;
+}
+
+export async function listAllRoles(
+  fetchPage: (params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse> = listRoles,
+  params?: Omit<ListRolesParams, "page" | "size">,
+): Promise<RoleSummaryResponse[]> {
+  const firstPage = await fetchPage({ ...params, page: 0, size: 100 });
+  const items = [...firstPage.items];
+  const totalPages = Math.max(firstPage.totalPages ?? 1, 1);
+  for (let page = 1; page < totalPages; page += 1) {
+    const nextPage = await fetchPage({ ...params, page, size: 100 });
+    items.push(...nextPage.items);
+  }
+  return items;
 }
 
 export async function getRole(id: string): Promise<RoleDetailResponse> {

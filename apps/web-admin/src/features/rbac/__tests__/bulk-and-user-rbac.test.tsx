@@ -867,6 +867,116 @@ describe("BulkAssignTab & UserRbacTab", () => {
     });
   });
 
+  it("BulkAssignTab & UserRbacTab (R1-5): tải đủ mọi trang vai trò (>100) và tìm kiếm được vai trò thứ 101", async () => {
+    const user = userEvent.setup();
+    const page0Roles = Array.from({ length: 100 }, (_, i) => ({
+      id: `r-${i + 1}`,
+      code: `ROLE_${i + 1}`,
+      name: `Vai trò ${i + 1}`,
+      access: "MANAGE" as const,
+      status: "ACTIVE" as const,
+      system: false,
+      permissionCount: 1,
+      userCount: 0,
+      createdAt: "2026-11-14T00:00:00Z",
+      version: 1,
+      updatedAt: "2026-11-14T00:00:00Z",
+    }));
+    const role101 = {
+      id: "r-101",
+      code: "ROLE_101",
+      name: "Vai trò đặc biệt 101",
+      access: "MANAGE" as const,
+      status: "ACTIVE" as const,
+      system: false,
+      permissionCount: 1,
+      userCount: 0,
+      createdAt: "2026-11-14T00:00:00Z",
+      version: 1,
+      updatedAt: "2026-11-14T00:00:00Z",
+    };
+    const listRolesPaged = vi.fn(async (params?: { page?: number }) => {
+      const page = params?.page ?? 0;
+      if (page === 0) {
+        return { items: page0Roles, page: 0, size: 100, totalItems: 101, totalPages: 2 };
+      }
+      return { items: [role101], page: 1, size: 100, totalItems: 101, totalPages: 2 };
+    });
+
+    const { unmount } = renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <BulkAssignTab
+          listUsers={async () => USERS_PAGE}
+          listRoles={listRolesPaged}
+          listPermissions={async () => PERMISSIONS_LIST}
+        />
+      </SessionProvider>,
+    );
+
+    expect(await screen.findByText("Vai trò đặc biệt 101")).toBeInTheDocument();
+    expect(listRolesPaged).toHaveBeenCalledWith(expect.objectContaining({ page: 0, size: 100 }));
+    expect(listRolesPaged).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 100 }));
+
+    const bulkSearch = screen.getByPlaceholderText(viMessages.rbac.bulk.roleSearchPlaceholder);
+    fireEvent.change(bulkSearch, { target: { value: "101" } });
+    expect(screen.getByText("Vai trò đặc biệt 101")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Vai trò 1 \(/ })).not.toBeInTheDocument();
+    unmount();
+
+    const listRolesUserPaged = vi.fn(async (params?: { page?: number }) => {
+      const page = params?.page ?? 0;
+      if (page === 0) {
+        return { items: page0Roles, page: 0, size: 100, totalItems: 101, totalPages: 2 };
+      }
+      return { items: [role101], page: 1, size: 100, totalItems: 101, totalPages: 2 };
+    });
+    const updateUserRoles = vi.fn(async () => ({
+      userId: "u-ops",
+      access: "MANAGE" as const,
+      roles: [],
+    }));
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <Toaster />
+        <UserRbacTab
+          userId="u-ops"
+          getUserRoles={async () => ({ userId: "u-ops", access: "MANAGE", roles: [] })}
+          getUserPermissions={async () => ({
+            userId: "u-ops",
+            hasManageRole: true,
+            permissions: [],
+          })}
+          getEffectivePermissions={async () => ({
+            userId: "u-ops",
+            effectiveAccess: "MANAGE",
+            hasManageRole: true,
+            inactiveDirectPermissions: [],
+            permissions: [],
+          })}
+          listRoles={listRolesUserPaged}
+          listPermissions={async () => PERMISSIONS_LIST}
+          updateUserRoles={updateUserRoles}
+        />
+      </SessionProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Gán vai trò" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("Vai trò đặc biệt 101")).toBeInTheDocument();
+
+    const dialogSearch = within(dialog).getByPlaceholderText(
+      viMessages.rbac.userRbac.roleSearchPlaceholder,
+    );
+    fireEvent.change(dialogSearch, { target: { value: "ROLE_101" } });
+    await user.click(within(dialog).getByRole("checkbox", { name: /Vai trò đặc biệt 101/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Lưu vai trò" }));
+
+    await waitFor(() => {
+      expect(updateUserRoles).toHaveBeenCalledWith("u-ops", { roleIds: ["r-101"] });
+    });
+  }, 15_000);
+
   it("ánh xạ toàn bộ reasonCode và mã lỗi RBAC sang câu hiển thị tiếng Việt và tiếng Anh", () => {
     const viT = makeTranslator(viMessages.rbac);
     const enT = makeTranslator(enMessages.rbac);

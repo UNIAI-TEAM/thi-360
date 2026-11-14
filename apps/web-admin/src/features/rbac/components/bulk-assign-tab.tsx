@@ -28,6 +28,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
 import {
   applyBulkAuthz as defaultApplyBulkAuthz,
+  listAllRoles,
   listPermissions as defaultListPermissions,
   listRoles as defaultListRoles,
   listUsers as defaultListUsers,
@@ -144,6 +145,7 @@ export function BulkAssignTab({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
+  const [roleSearch, setRoleSearch] = useState("");
   const [action, setAction] = useState<BulkAuthzAction>("GRANT");
   const [target, setTarget] = useState<BulkAuthzTarget>(() =>
     initialPermissionCode ? "PERMISSION" : "ROLE",
@@ -217,8 +219,8 @@ export function BulkAssignTab({
   });
 
   const rolesQuery = useQuery({
-    queryKey: rbacKeys.roles({ page: 0, size: 100 }),
-    queryFn: () => listRoles({ page: 0, size: 100 }),
+    queryKey: rbacKeys.allRoles(),
+    queryFn: () => listAllRoles(listRoles),
     enabled: canViewRoles,
   });
 
@@ -249,7 +251,20 @@ export function BulkAssignTab({
     [permissionByCode, selectedPermissionCodes],
   );
 
-  const roles = useMemo(() => rolesQuery.data?.items ?? [], [rolesQuery.data]);
+  const roles = useMemo(() => rolesQuery.data ?? [], [rolesQuery.data]);
+
+  const filteredRoles = useMemo(() => {
+    const q = roleSearch.trim().toLowerCase();
+    if (!q) return roles;
+    return roles.filter((role) => {
+      const localized = resolveRoleName(rbacT, role.code, role.name, role.system).toLowerCase();
+      return (
+        localized.includes(q) ||
+        role.name.toLowerCase().includes(q) ||
+        role.code.toLowerCase().includes(q)
+      );
+    });
+  }, [roleSearch, roles, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const roleFilterOptions = useMemo(
     () => [
@@ -777,33 +792,48 @@ export function BulkAssignTab({
               ) : roles.length === 0 ? (
                 <p className="text-caption text-text-muted">{t("bulk.rolesEmpty")}</p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {roles.map((role) => {
-                    const selected = selectedRoleIds.includes(role.id);
-                    const label = resolveRoleName(rbacT, role.code, role.name, role.system);
-                    return (
-                      <Chip
-                        key={role.id}
-                        variant="filter"
-                        selected={selected}
-                        disabled={isApplying}
-                        onClick={() => {
-                          if (isApplying) return;
-                          setAppliedBatch(null);
-                          setSelectedRoleIds((prev) =>
-                            prev.includes(role.id)
-                              ? prev.filter((id) => id !== role.id)
-                              : [...prev, role.id],
-                          );
-                        }}
-                      >
-                        <span>{label}</span>
-                        <span className="text-caption opacity-80">
-                          ({t(`access.${role.access}`)})
-                        </span>
-                      </Chip>
-                    );
-                  })}
+                <div className="flex flex-col gap-2">
+                  <Input
+                    type="search"
+                    value={roleSearch}
+                    disabled={isApplying}
+                    leadingIcon={<Search />}
+                    placeholder={t("bulk.roleSearchPlaceholder")}
+                    aria-label={t("bulk.roleSearchPlaceholder")}
+                    onChange={(event) => setRoleSearch(event.target.value)}
+                  />
+                  {filteredRoles.length === 0 ? (
+                    <p className="text-caption text-text-muted">{t("bulk.rolesEmpty")}</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {filteredRoles.map((role) => {
+                        const selected = selectedRoleIds.includes(role.id);
+                        const label = resolveRoleName(rbacT, role.code, role.name, role.system);
+                        return (
+                          <Chip
+                            key={role.id}
+                            variant="filter"
+                            selected={selected}
+                            disabled={isApplying}
+                            onClick={() => {
+                              if (isApplying) return;
+                              setAppliedBatch(null);
+                              setSelectedRoleIds((prev) =>
+                                prev.includes(role.id)
+                                  ? prev.filter((id) => id !== role.id)
+                                  : [...prev, role.id],
+                              );
+                            }}
+                          >
+                            <span>{label}</span>
+                            <span className="text-caption opacity-80">
+                              ({t(`access.${role.access}`)})
+                            </span>
+                          </Chip>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

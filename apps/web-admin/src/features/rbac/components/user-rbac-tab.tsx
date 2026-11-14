@@ -16,6 +16,7 @@ import {
   DialogTitle,
   EmptyState,
   IconButton,
+  Input,
   notify,
   Skeleton,
   StatusChip,
@@ -23,7 +24,7 @@ import {
   Textarea,
   Tooltip,
 } from "@thi360/ui";
-import { Lock, Shield, TriangleAlert, X } from "lucide-react";
+import { Lock, Search, Shield, TriangleAlert, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
@@ -31,6 +32,7 @@ import {
   getEffectivePermissions as defaultGetEffectivePermissions,
   getUserPermissions as defaultGetUserPermissions,
   getUserRoles as defaultGetUserRoles,
+  listAllRoles,
   listPermissions as defaultListPermissions,
   listRoles as defaultListRoles,
   rbacKeys,
@@ -107,6 +109,7 @@ export function UserRbacTab({
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [draftRoleIds, setDraftRoleIds] = useState<string[]>([]);
   const [rolesDialogError, setRolesDialogError] = useState<string | null>(null);
+  const [roleSearch, setRoleSearch] = useState("");
 
   const [directDialogOpen, setDirectDialogOpen] = useState(false);
   const [draftDirectCodes, setDraftDirectCodes] = useState<string[]>([]);
@@ -136,8 +139,8 @@ export function UserRbacTab({
   });
 
   const allRolesQuery = useQuery({
-    queryKey: rbacKeys.roles({ page: 0, size: 100 }),
-    queryFn: () => listRoles({ page: 0, size: 100 }),
+    queryKey: rbacKeys.allRoles(),
+    queryFn: () => listAllRoles(listRoles),
     enabled: canFetchRoles && rolesDialogOpen,
   });
 
@@ -146,6 +149,20 @@ export function UserRbacTab({
     queryFn: () => listPermissions(),
     enabled: canFetchPermissions && directDialogOpen,
   });
+
+  const filteredAllRoles = useMemo(() => {
+    const items = allRolesQuery.data ?? [];
+    const q = roleSearch.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((role) => {
+      const localized = resolveRoleName(rbacT, role.code, role.name, role.system).toLowerCase();
+      return (
+        localized.includes(q) ||
+        role.name.toLowerCase().includes(q) ||
+        role.code.toLowerCase().includes(q)
+      );
+    });
+  }, [allRolesQuery.data, roleSearch, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const permissionGroups = useMemo(
     () => groupPermissionsByObject(allPermissionsQuery.data ?? [], rbacT),
@@ -353,6 +370,7 @@ export function UserRbacTab({
   function openAssignRolesDialog() {
     if (!canFetchRoles) return;
     setDraftRoleIds(assignedRoles.map((r) => r.roleId));
+    setRoleSearch("");
     setRolesDialogError(null);
     setRolesDialogOpen(true);
   }
@@ -616,44 +634,58 @@ export function UserRbacTab({
               <Skeleton className="h-12 w-full" />
             </div>
           ) : (
-            <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto pr-1">
-              {(allRolesQuery.data?.items ?? []).map((role) => {
-                const checked = draftRoleIds.includes(role.id);
-                const displayName = resolveRoleName(rbacT, role.code, role.name, role.system);
-                return (
-                  <label
-                    key={role.id}
-                    className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2.5 hover:bg-subtle"
-                  >
-                    <span className="flex min-w-0 items-center gap-3">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(next) => {
-                          setDraftRoleIds((prev) =>
-                            next
-                              ? prev.includes(role.id)
-                                ? prev
-                                : [...prev, role.id]
-                              : prev.filter((id) => id !== role.id),
-                          );
-                        }}
-                      />
-                      <span className="min-w-0">
-                        <span className="block font-semibold text-text">{displayName}</span>
-                        <span className="block text-caption text-text-muted">{role.code}</span>
-                      </span>
-                    </span>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {role.status === "INACTIVE" && (
-                        <StatusChip tone="neutral">{t("rolesTab.statusInactive")}</StatusChip>
-                      )}
-                      <StatusChip tone={role.access === "MANAGE" ? "info" : "warning"}>
-                        {t(`access.${role.access}`)}
-                      </StatusChip>
-                    </div>
-                  </label>
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              <Input
+                type="search"
+                value={roleSearch}
+                leadingIcon={<Search />}
+                placeholder={t("userRbac.roleSearchPlaceholder")}
+                aria-label={t("userRbac.roleSearchPlaceholder")}
+                onChange={(event) => setRoleSearch(event.target.value)}
+              />
+              {filteredAllRoles.length === 0 ? (
+                <p className="text-caption text-text-muted">{t("bulk.rolesEmpty")}</p>
+              ) : (
+                <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto pr-1">
+                  {filteredAllRoles.map((role) => {
+                    const checked = draftRoleIds.includes(role.id);
+                    const displayName = resolveRoleName(rbacT, role.code, role.name, role.system);
+                    return (
+                      <label
+                        key={role.id}
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2.5 hover:bg-subtle"
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(next) => {
+                              setDraftRoleIds((prev) =>
+                                next
+                                  ? prev.includes(role.id)
+                                    ? prev
+                                    : [...prev, role.id]
+                                  : prev.filter((id) => id !== role.id),
+                              );
+                            }}
+                          />
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-text">{displayName}</span>
+                            <span className="block text-caption text-text-muted">{role.code}</span>
+                          </span>
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {role.status === "INACTIVE" && (
+                            <StatusChip tone="neutral">{t("rolesTab.statusInactive")}</StatusChip>
+                          )}
+                          <StatusChip tone={role.access === "MANAGE" ? "info" : "warning"}>
+                            {t(`access.${role.access}`)}
+                          </StatusChip>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
