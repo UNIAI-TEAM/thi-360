@@ -48,7 +48,7 @@ import {
   type CreateCatalogItemRequest,
   type UpdateCatalogItemRequest,
 } from "../api";
-import { useCatalogDndAccessibility } from "../dnd-accessibility";
+import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { createCombinationFormSchema, type CombinationFormValues } from "../schemas";
 import {
   getCatalogErrorCode,
@@ -896,9 +896,11 @@ function SortableSubjectRow({
   onRemove: () => void;
 }) {
   const t = useTranslations("catalog");
+  const sortableAttributes = useCatalogSortableAttributes();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
+    attributes: sortableAttributes,
   });
 
   const style: CSSProperties = {

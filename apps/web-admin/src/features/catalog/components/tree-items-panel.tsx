@@ -88,7 +88,7 @@ import {
   resolveCatalogUsageTypeKey,
   resolveTreeLevelLabel,
 } from "../utils";
-import { useCatalogDndAccessibility } from "../dnd-accessibility";
+import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import type { StatusFilter } from "./simple-items-panel";
 
 export interface TreeItemsPanelProps {
@@ -1927,9 +1927,11 @@ function SortableTreeRow({
   disabled: boolean;
   children: ReactNode;
 }) {
+  const sortableAttributes = useCatalogSortableAttributes();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
+    attributes: sortableAttributes,
   });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),

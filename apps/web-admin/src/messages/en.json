@@ -199,13 +199,15 @@
     },
     "detailItem": "Details for {name}",
     "dnd": {
+      "backAtStart": "Item {name} is back at its starting position.",
       "draggedOverNoTarget": "Item {name} is no longer over a drop target.",
       "draggedOverTarget": "Item {name} is over {target}.",
       "dropped": "Dropped item {name}.",
       "droppedOnTarget": "Dropped item {name} onto {target}.",
       "pickedUp": "Picked up item {name}.",
       "dragCancelled": "Dragging item {name} was cancelled.",
-      "instructions": "To pick up an item, press the space bar. While dragging, use the arrow keys to move the item. Press space again to drop the item in its new position, or press Escape to cancel."
+      "instructions": "To pick up an item, press the space bar. While dragging, use the arrow keys to move the item. Press space again to drop the item in its new position, or press Escape to cancel.",
+      "roleDescription": "sortable item"
     },
     "dragColumnLabel": "Reorder",
     "dragDisabledFiltered": "Clear filters to reorder items.",

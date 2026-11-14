@@ -792,6 +792,22 @@ describe("buildCatalogDndAccessibility (VIS-5)", () => {
     expect(a11y.screenReaderInstructions.draggable).toBe(viMessages.catalog.dnd.instructions);
   });
 
+  it("không đọc \"đang nằm trên chính nó\" ngay sau khi nhấc; chỉ đọc khi đã qua mục khác và khi quay về chỗ cũ (V2-6)", () => {
+    const fresh = buildCatalogDndAccessibility(translate, (id) => names.get(id) ?? id);
+    const { onDragStart, onDragOver, onDragEnd } = fresh.announcements;
+    expect(onDragStart?.({ active })).toBe("Đã nhấc mục Toán học.");
+    // dnd-kit bắn onDragOver ngay sau onDragStart với over = chính mục đang kéo.
+    expect(onDragOver?.({ active, over: active as never })).toBeUndefined();
+    expect(onDragOver?.({ active, over })).toBe("Mục Toán học đang nằm trên Vật lí.");
+    expect(onDragOver?.({ active, over: active as never })).toBe(
+      "Mục Toán học đã về vị trí ban đầu.",
+    );
+    expect(onDragEnd?.({ active, over: active as never })).toBe("Đã thả mục Toán học.");
+    // Lượt kéo kế tiếp lại bắt đầu im lặng.
+    expect(onDragStart?.({ active })).toBe("Đã nhấc mục Toán học.");
+    expect(onDragOver?.({ active, over: active as never })).toBeUndefined();
+  });
+
   it("dự phòng id khi không tìm thấy tên", () => {
     expect(a11y.announcements.onDragCancel?.({ active: { id: "x" } as never, over: null })).toBe(
       "Đã hủy kéo mục x.",
@@ -813,6 +829,25 @@ describe("CatalogView: hướng dẫn kéo thả được dịch trên mọi Dnd
     expect(await screen.findByText("Mathematics")).toBeInTheDocument();
     expect(screen.getByText(en.catalog.dnd.instructions)).toBeInTheDocument();
     expect(screen.queryByText(ENGLISH_DEFAULT)).not.toBeInTheDocument();
+  });
+
+  it("tay nắm sắp xếp có aria-roledescription theo ngôn ngữ, không còn \"sortable\" của dnd-kit (V2-6)", async () => {
+    const viRender = renderCatalog({ search: "group=SUBJECT" });
+    expect(await screen.findByText("Toán học")).toBeInTheDocument();
+    const viHandles = document.querySelectorAll("[aria-roledescription]");
+    expect(viHandles.length).toBeGreaterThan(0);
+    for (const el of viHandles) {
+      expect(el).toHaveAttribute("aria-roledescription", viMessages.catalog.dnd.roleDescription);
+    }
+    viRender.unmount();
+
+    renderCatalog({ locale: "en", search: "group=SUBJECT" });
+    expect(await screen.findByText("Mathematics")).toBeInTheDocument();
+    const enHandles = document.querySelectorAll("[aria-roledescription]");
+    expect(enHandles.length).toBeGreaterThan(0);
+    for (const el of enHandles) {
+      expect(el).toHaveAttribute("aria-roledescription", en.catalog.dnd.roleDescription);
+    }
   });
 
   it("danh sách môn trong hộp thoại tổ hợp", async () => {
@@ -2142,18 +2177,21 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     const handle = screen.getByRole("button", { name: "Kéo để đổi thứ tự Hàm số" });
     handle.focus();
     fireEvent.keyDown(handle, { code: "Space", key: " " });
-    // The pickup announcement is immediately superseded by onDragOver; wait for the
-    // sensor's async listener attach, then move over CH2 (two presses: the first only
-    // repositions the collision rect).
+    // V2-6: the pickup announcement stays (dnd-kit's first onDragOver has over = the item itself and
+    // is no longer read as "over itself"). Wait for the sensor's async listener attach, then move
+    // over CH2 (two presses: the first only repositions the collision rect).
     await waitFor(() =>
       expect(
-        screen.getByText(
-          viMessages.catalog.dnd.draggedOverTarget
-            .replace("{name}", "Hàm số")
-            .replace("{target}", "Hàm số"),
-        ),
+        screen.getByText(viMessages.catalog.dnd.pickedUp.replace("{name}", "Hàm số")),
       ).toBeInTheDocument(),
     );
+    expect(
+      screen.queryByText(
+        viMessages.catalog.dnd.draggedOverTarget
+          .replace("{name}", "Hàm số")
+          .replace("{target}", "Hàm số"),
+      ),
+    ).not.toBeInTheDocument();
     fireEvent.keyDown(document, { code: "ArrowDown", key: "ArrowDown" });
     await waitFor(() =>
       expect(

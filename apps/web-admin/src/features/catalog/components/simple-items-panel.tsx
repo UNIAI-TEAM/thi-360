@@ -55,7 +55,7 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
-import { useCatalogDndAccessibility } from "../dnd-accessibility";
+import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { pickName } from "../utils";
 
 /** Cột phụ (Tên tiếng Anh, Giá trị) chỉ hiện từ 1360px; dưới đó bảng vừa thẻ, chi tiết nằm trong ngăn chi tiết. */
@@ -522,9 +522,11 @@ function SortableItemRow({
   onDelete: () => void;
 }) {
   const t = useTranslations("catalog");
+  const sortableAttributes = useCatalogSortableAttributes();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     disabled: !reorderEnabled,
+    attributes: sortableAttributes,
   });
 
   const style: CSSProperties = {
