@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import {
   Button,
+  cn,
   EmptyState,
   FormField,
   isPasswordStrong,
@@ -29,6 +30,7 @@ import {
 } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl, webUrl } from "@/lib/env";
+import { coarseTextHitArea } from "@/lib/styles";
 
 /**
  * Màn hẹp: thẻ bám mép trên (cao hơn màn hình nên căn giữa chỉ làm thẻ nhảy khi nội dung tải xong); từ `md` căn giữa.
@@ -385,7 +387,7 @@ export function ChangePasswordView({
             type="button"
             disabled={leaving}
             onClick={() => void switchAccount()}
-            className="font-medium text-primary-text hover:underline disabled:opacity-50"
+            className={cn("font-medium text-primary-text hover:underline disabled:opacity-50", coarseTextHitArea)}
           >
             {t("otherAccount")}
           </button>

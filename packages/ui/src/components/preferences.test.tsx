@@ -31,6 +31,8 @@ describe("ThemeToggle", () => {
 
     const button = screen.getByRole("button", { name: "Chuyển sang chế độ tối" });
     expect(button).toHaveAttribute("aria-pressed", "false");
+    // Nhìn 36px, vùng bấm 44px trên màn cảm ứng nhờ phần tử giả mở rộng.
+    expect(button).toHaveClass("size-9", "relative", "pointer-coarse:after:absolute", "pointer-coarse:after:-inset-1.25");
 
     await user.click(button);
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -75,6 +77,7 @@ describe("LocaleSwitcher", () => {
     );
 
     const button = screen.getByRole("button", { name: "Chọn ngôn ngữ" });
+    expect(button).toHaveClass("size-9", "relative", "pointer-coarse:after:absolute", "pointer-coarse:after:-inset-1.25");
     await user.tab();
     expect(button).toHaveFocus();
     await waitFor(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, FormField, Input, LocaleSwitcher, PasswordField, ThemeToggle } from "@thi360/ui";
+import { Button, cn, FormField, Input, LocaleSwitcher, PasswordField, ThemeToggle } from "@thi360/ui";
 import { AlertCircle, Check, Lock, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { loginWithPassword } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
+import { coarseTextHitArea } from "@/lib/styles";
 
 type LoginFormValues = {
   identifier: string;
@@ -115,7 +116,10 @@ export function LoginView({
             <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
             <Link
               href="/"
-              className="text-label font-medium text-primary-text transition-colors duration-150 hover:underline"
+              className={cn(
+                "text-label font-medium text-primary-text transition-colors duration-150 hover:underline",
+                coarseTextHitArea,
+              )}
             >
               ← {t("backHome")}
             </Link>

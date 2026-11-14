@@ -212,7 +212,10 @@ describe("ChangePasswordView", () => {
     );
     expect(await screen.findByText("student03")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập bằng tài khoản khác" }));
+    const otherAccount = screen.getByRole("button", { name: "Đăng nhập bằng tài khoản khác" });
+    // Nút dạng chữ cao 20px: vùng bấm mở rộng thành 44px trên màn cảm ứng.
+    expect(otherAccount).toHaveClass("relative", "pointer-coarse:after:absolute", "pointer-coarse:after:-inset-y-3");
+    await userEvent.click(otherAccount);
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(vi_messages.errors.logoutFailed));
     toastError.mockRestore();
   });
