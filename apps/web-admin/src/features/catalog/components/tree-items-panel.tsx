@@ -1,5 +1,23 @@
 "use client";
-
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DraggableAttributes,
+} from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Badge,
@@ -36,6 +54,7 @@ import {
   Eye,
   FolderInput,
   FolderTree,
+  GripVertical,
   Lock,
   Pencil,
   Plus,
@@ -45,7 +64,7 @@ import {
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
   catalogQueryKeys,
@@ -96,6 +115,39 @@ type VisibleTreeRow = {
   siblingCount: number;
   siblings: CatalogTreeNodeResponse[];
 };
+type SortableRowHandleValue = {
+  attributes: DraggableAttributes;
+  listeners: SyntheticListenerMap | undefined;
+  disabled: boolean;
+};
+
+const SortableTreeRowContext = createContext<SortableRowHandleValue | null>(null);
+
+export function resolveTreeDragReorder(
+  rowById: ReadonlyMap<string, VisibleTreeRow>,
+  activeId: string,
+  overId: string,
+): {
+  parentId: string | null;
+  siblings: CatalogTreeNodeResponse[];
+  fromIndex: number;
+  toIndex: number;
+} | null {
+  if (activeId === overId) return null;
+  const activeRow = rowById.get(activeId);
+  const overRow = rowById.get(overId);
+  if (!activeRow || !overRow) return null;
+  const activeParent = activeRow.node.parentId ?? null;
+  const overParent = overRow.node.parentId ?? null;
+  if (activeParent !== overParent) return null;
+  if (activeRow.siblingIndex === overRow.siblingIndex) return null;
+  return {
+    parentId: activeParent,
+    siblings: activeRow.siblings,
+    fromIndex: activeRow.siblingIndex,
+    toIndex: overRow.siblingIndex,
+  };
+}
 
 const MAX_TREE_DEPTH = 6;
 
@@ -596,6 +648,33 @@ export function TreeItemsPanel({
     () => new Map(visibleRows.map((row) => [row.node.id, row])),
     [visibleRows],
   );
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const sameParentCollision = useCallback<CollisionDetection>(
+    (args) => {
+      const activeRow = rowById.get(String(args.active.id));
+      if (!activeRow) return [];
+      const activeParent = activeRow.node.parentId ?? null;
+      const filteredContainers = args.droppableContainers.filter((container) => {
+        const candidate = rowById.get(String(container.id));
+        return candidate && (candidate.node.parentId ?? null) === activeParent;
+      });
+      return closestCenter({ ...args, droppableContainers: filteredContainers });
+    },
+    [rowById],
+  );
+
+  function handleTreeDragEnd(event: DragEndEvent) {
+    if (!canModify || isFiltered || reordering) return;
+    const { active, over } = event;
+    if (!over) return;
+    const plan = resolveTreeDragReorder(rowById, String(active.id), String(over.id));
+    if (!plan) return;
+    void handleReorderSiblings(plan.parentId, plan.siblings, plan.fromIndex, plan.toIndex);
+  }
 
   const expandedIdSet = useMemo(
     () => new Set(visibleRows.filter((row) => row.isExpanded).map((row) => row.node.id)),
@@ -1015,20 +1094,53 @@ export function TreeItemsPanel({
               }
             />
           ) : (
-            <TreeView
-              aria-label={t("tree.treeAriaLabel", { name: pickName(group, locale) })}
-              items={treeViewItems}
-              expandedIds={expandedIdSet}
-              selectedId={selectedNodeId}
-              loadingIds={loadingIds}
-              onSelect={(item) => onSelectNode(item.id)}
-              onToggleExpand={(item) => handleToggleExpand(item.id)}
-              labels={{
-                expandNode: (name) => t("tree.expandNode", { name }),
-                collapseNode: (name) => t("tree.collapseNode", { name }),
-                loadingChildren: commonT("loading"),
-              }}
-              renderTrailing={(treeItem) => {
+            <DndContext
+              sensors={sensors}
+              collisionDetection={sameParentCollision}
+              onDragEnd={handleTreeDragEnd}
+            >
+              <SortableContext
+                items={visibleRows.map((r) => r.node.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <TreeView
+                  aria-label={t("tree.treeAriaLabel", { name: pickName(group, locale) })}
+                  items={treeViewItems}
+                  expandedIds={expandedIdSet}
+                  selectedId={selectedNodeId}
+                  loadingIds={loadingIds}
+                  onSelect={(item) => onSelectNode(item.id)}
+                  onToggleExpand={(item) => handleToggleExpand(item.id)}
+                  labels={{
+                    expandNode: (name) => t("tree.expandNode", { name }),
+                    collapseNode: (name) => t("tree.collapseNode", { name }),
+                    loadingChildren: commonT("loading"),
+                  }}
+                  renderRowWrapper={(treeItem, row) => {
+                    const rowMeta = rowById.get(treeItem.id);
+                    const dragDisabled =
+                      !canModify || isFiltered || reordering || (rowMeta?.siblingCount ?? 0) < 2;
+                    return (
+                      <SortableTreeRow id={treeItem.id} disabled={dragDisabled}>
+                        {row}
+                      </SortableTreeRow>
+                    );
+                  }}
+                  renderLeading={(treeItem) => {
+                    const rowMeta = rowById.get(treeItem.id);
+                    if (!rowMeta || !canModify || isFiltered || rowMeta.siblingCount < 2) {
+                      return null;
+                    }
+                    const displayName = pickName(rowMeta.node, locale);
+                    return (
+                      <TreeDragHandle
+                        ariaLabel={t("dragHandleLabel", { name: displayName })}
+                        tooltip={t("dragHandleTitle")}
+                        disabled={reordering}
+                      />
+                    );
+                  }}
+                  renderTrailing={(treeItem) => {
                 const row = rowById.get(treeItem.id);
                 if (!row) return null;
                 const node = row.node;
@@ -1147,7 +1259,9 @@ export function TreeItemsPanel({
                   </div>
                 );
               }}
-            />
+                />
+              </SortableContext>
+            </DndContext>
           )}
         </div>
 
@@ -1447,5 +1561,78 @@ export function TreeItemsPanel({
         </aside>
       </div>
     </Card>
+  );
+}
+
+function SortableTreeRow({
+  id,
+  disabled,
+  children,
+}: {
+  id: string;
+  disabled: boolean;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled,
+  });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  const value = useMemo<SortableRowHandleValue>(
+    () => ({ attributes, listeners, disabled }),
+    [attributes, disabled, listeners],
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      role="none"
+      className={cn(isDragging && "relative z-10 rounded-md bg-primary-50/70 opacity-80 shadow-sm")}
+    >
+      <SortableTreeRowContext.Provider value={value}>{children}</SortableTreeRowContext.Provider>
+    </div>
+  );
+}
+
+function TreeDragHandle({
+  ariaLabel,
+  tooltip,
+  disabled,
+}: {
+  ariaLabel: string;
+  tooltip: string;
+  disabled: boolean;
+}) {
+  const ctx = useContext(SortableTreeRowContext);
+  const effectiveDisabled = disabled || (ctx?.disabled ?? true);
+
+  return (
+    <Tooltip content={tooltip}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        {...(effectiveDisabled
+          ? { "aria-disabled": true }
+          : ctx
+            ? { ...ctx.attributes, ...ctx.listeners }
+            : {})}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (effectiveDisabled) event.preventDefault();
+        }}
+        className={cn(
+          "inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-text-placeholder transition-colors",
+          effectiveDisabled
+            ? "cursor-not-allowed opacity-40"
+            : "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing",
+        )}
+      >
+        <GripVertical aria-hidden="true" className="size-4" />
+      </button>
+    </Tooltip>
   );
 }

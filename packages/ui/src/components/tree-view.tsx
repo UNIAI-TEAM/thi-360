@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight, Loader2 } from "lucide-react";
-import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { StatusChip, type StatusTone } from "./status-chip";
@@ -40,7 +40,9 @@ export interface TreeViewProps {
   labels: TreeViewLabels;
   "aria-label": string;
   className?: string;
+  renderLeading?: (item: TreeViewItem) => ReactNode;
   renderTrailing?: (item: TreeViewItem) => ReactNode;
+  renderRowWrapper?: (item: TreeViewItem, row: ReactNode) => ReactNode;
 }
 
 interface VisibleTreeRow {
@@ -66,7 +68,9 @@ export function TreeView({
   labels,
   "aria-label": ariaLabel,
   className,
+  renderLeading,
   renderTrailing,
+  renderRowWrapper,
 }: TreeViewProps) {
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -223,7 +227,7 @@ export function TreeView({
             : level >= 3
               ? "text-text-secondary"
               : "text-text";
-        return (
+        const rowElement = (
           <div
             key={item.id}
             ref={(el) => {
@@ -262,6 +266,7 @@ export function TreeView({
             ))}
 
             <div className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-1">
+              {renderLeading && renderLeading(item)}
               {item.hasChildren ? (
                 <button
                   type="button"
@@ -334,8 +339,14 @@ export function TreeView({
                   {renderTrailing(item)}
                 </div>
               )}
-            </div>
           </div>
+          </div>
+        );
+
+        return renderRowWrapper ? (
+          <Fragment key={item.id}>{renderRowWrapper(item, rowElement)}</Fragment>
+        ) : (
+          rowElement
         );
       })}
     </div>

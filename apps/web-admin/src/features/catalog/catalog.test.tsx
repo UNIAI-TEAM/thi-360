@@ -21,6 +21,7 @@ import {
   type PageResponseCatalogItemResponse,
 } from "./api";
 import { CatalogView } from "./components/catalog-view";
+import { resolveTreeDragReorder } from "./components/tree-items-panel";
 import {
   CATALOG_ERROR_CODES,
   pickName,
@@ -1659,6 +1660,90 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
         ref: ["item-g10", "item-g11"],
       });
     });
+  });
+
+  it("hiển thị tay cầm kéo thả cho các nút cùng cha khi có quyền và không lọc, ẩn khi lọc hoặc chỉ có CATALOG.VIEW", async () => {
+    const api = createTreeMockApi();
+    const { unmount } = renderCatalog({ api, search: "group=KNOWLEDGE" });
+
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+    // CH1 & CH2 are siblings -> both have drag handles
+    expect(screen.getByRole("button", { name: "Kéo để đổi thứ tự Hàm số" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kéo để đổi thứ tự Tích phân" })).toBeInTheDocument();
+
+    // Expand CH1: B1 is an only child (siblingCount=1) -> no drag handle
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    expect(await screen.findByText("Tính đơn điệu")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Kéo để đổi thứ tự Tính đơn điệu" }),
+    ).not.toBeInTheDocument();
+
+    // Verify resolveTreeDragReorder allows same-parent siblings and rejects cross-parent drops
+    const siblingRows = new Map([
+      [
+        KNOWLEDGE_CH1.id,
+        {
+          node: KNOWLEDGE_CH1,
+          level: 1,
+          hasChildren: true,
+          isExpanded: true,
+          siblingIndex: 0,
+          siblingCount: 2,
+          siblings: [KNOWLEDGE_CH1, KNOWLEDGE_CH2],
+        },
+      ],
+      [
+        KNOWLEDGE_CH2.id,
+        {
+          node: KNOWLEDGE_CH2,
+          level: 1,
+          hasChildren: false,
+          isExpanded: false,
+          siblingIndex: 1,
+          siblingCount: 2,
+          siblings: [KNOWLEDGE_CH1, KNOWLEDGE_CH2],
+        },
+      ],
+      [
+        KNOWLEDGE_BAI1.id,
+        {
+          node: KNOWLEDGE_BAI1,
+          level: 2,
+          hasChildren: true,
+          isExpanded: false,
+          siblingIndex: 0,
+          siblingCount: 1,
+          siblings: [KNOWLEDGE_BAI1],
+        },
+      ],
+    ]);
+    expect(resolveTreeDragReorder(siblingRows, KNOWLEDGE_CH1.id, KNOWLEDGE_CH2.id)).toEqual({
+      parentId: null,
+      siblings: [KNOWLEDGE_CH1, KNOWLEDGE_CH2],
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    expect(resolveTreeDragReorder(siblingRows, KNOWLEDGE_CH1.id, KNOWLEDGE_BAI1.id)).toBeNull();
+
+    // Filtering hides drag handles
+    await userEvent.type(screen.getByLabelText("Tìm nút theo mã hoặc tên"), "Hàm");
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: "Kéo để đổi thứ tự Hàm số" }),
+      ).not.toBeInTheDocument();
+    });
+    unmount();
+
+    // CATALOG.VIEW only hides drag handles
+    renderCatalog({
+      api: createTreeMockApi(),
+      search: "group=KNOWLEDGE",
+      permissions: ["CATALOG.VIEW"],
+    });
+    expect(await screen.findByText("Hàm số")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Kéo để đổi thứ tự/ }),
+    ).not.toBeInTheDocument();
   });
 });
 

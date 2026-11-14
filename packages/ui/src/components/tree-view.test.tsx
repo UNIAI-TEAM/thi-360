@@ -256,4 +256,31 @@ describe("TreeView", () => {
     expect(label).toHaveClass("text-body", "font-normal", "text-text-secondary");
     expect(label).not.toHaveClass("text-text");
   });
+
+  it("hỗ trợ renderLeading và renderRowWrapper mà không ảnh hưởng role=tree", () => {
+    render(
+      <TreeView
+        aria-label="Cây mở rộng"
+        items={SAMPLE_ITEMS}
+        expandedIds={new Set()}
+        selectedId={null}
+        onToggleExpand={vi.fn()}
+        onSelect={vi.fn()}
+        labels={{
+          expandNode: (name) => `Mở ${name}`,
+          collapseNode: (name) => `Thu gọn ${name}`,
+        }}
+        renderLeading={(item) => <span data-testid={`lead-${item.id}`}>{item.code}</span>}
+        renderRowWrapper={(item, row) => (
+          <div data-testid={`wrap-${item.id}`} role="none">
+            {row}
+          </div>
+        )}
+      />,
+    );
+
+    expect(screen.getByTestId("wrap-n-1")).toBeInTheDocument();
+    expect(screen.getByTestId("lead-n-1")).toHaveTextContent("0D1");
+    expect(screen.getAllByRole("treeitem")).toHaveLength(2);
+  });
 });
