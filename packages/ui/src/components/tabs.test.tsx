@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NavTab } from "./nav-tabs";
 import { Tabs, TabsContent, TabsList, TabsTrigger, type TabsVariant } from "./tabs";
 
@@ -92,6 +92,122 @@ describe("Tabs", () => {
     screen.getByRole("tab", { name: "Vai trò" }).focus();
     await userEvent.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Lịch sử" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  describe("thanh tab nội dung không đủ chỗ", () => {
+    /** Đặt hình chữ nhật cho thanh tab (rộng 300px từ x=100) và từng tab (rộng 120px, xếp liền nhau, trừ phần đã cuộn). */
+    function layout(list: HTMLElement) {
+      list.getBoundingClientRect = () => ({ left: 100, right: 400, top: 0, bottom: 40, width: 300, height: 40 }) as DOMRect;
+      within(list)
+        .getAllByRole("tab")
+        .forEach((tab, index) => {
+          Object.defineProperty(tab, "offsetHeight", { configurable: true, value: 40 });
+          tab.getBoundingClientRect = () => {
+            const left = 100 + index * 120 - list.scrollLeft;
+            return { left, right: left + 120, top: 0, bottom: 40, width: 120, height: 40 } as DOMRect;
+          };
+        });
+    }
+
+    function Many({ value, onValueChange }: { value?: string; onValueChange?: (value: string) => void }) {
+      return (
+        <Tabs variant="content" defaultValue={value === undefined ? "t1" : undefined} value={value} onValueChange={onValueChange}>
+          <TabsList aria-label="Chi tiết">
+            {["t1", "t2", "t3", "t4", "t5"].map((id) => (
+              <TabsTrigger key={id} value={id}>
+                {`Tab ${id}`}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      );
+    }
+
+    it("luôn một hàng và tự cuộn ngang trong chính nó; tab không co lại, không xuống dòng", () => {
+      render(<Many />);
+      const list = screen.getByRole("tablist");
+      expect(list).toHaveClass("flex", "overflow-x-auto");
+      expect(list.className).not.toMatch(/(^|\s)flex-wrap(\s|$)/);
+      // Đệm bù bằng lề âm để vùng cuộn không cắt vòng focus của tab.
+      expect(list).toHaveClass("p-1", "-m-1");
+      for (const tab of screen.getAllByRole("tab")) {
+        expect(tab).toHaveClass("shrink-0", "whitespace-nowrap");
+      }
+    });
+
+    it("kiểu phân đoạn giữ nguyên: các tab chia đều bề rộng, không thành vùng cuộn", () => {
+      render(<Example variant="segmented" />);
+      expect(screen.getByRole("tablist")).not.toHaveClass("overflow-x-auto");
+      expect(screen.getByRole("tab", { name: "Vai trò" })).toHaveClass("flex-1");
+      expect(screen.getByRole("tab", { name: "Vai trò" })).not.toHaveClass("shrink-0");
+    });
+
+    it("chọn tab bị khuất ở cuối: chỉ thanh tab cuộn tới, lộ thêm một phần tab kế bên", async () => {
+      const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+      render(<Many />);
+      const list = screen.getByRole("tablist");
+      layout(list);
+
+      // Tab t3 chiếm x=340..460 trong khi thanh tab chỉ tới x=400.
+      await userEvent.click(screen.getByRole("tab", { name: "Tab t3" }));
+      await waitFor(() => expect(list.scrollLeft).toBe(100));
+      // Không dùng scrollIntoView (trình duyệt cũ sẽ cuộn cả trang).
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it("chọn tab bị khuất ở đầu: cuộn ngược lại", async () => {
+      render(<Many />);
+      const list = screen.getByRole("tablist");
+      layout(list);
+      list.scrollLeft = 300;
+
+      // Với scrollLeft=300, tab t2 chiếm x=-80..40, nằm trước mép đầu x=100.
+      await userEvent.click(screen.getByRole("tab", { name: "Tab t2" }));
+      await waitFor(() => expect(list.scrollLeft).toBe(80));
+    });
+
+    it("tab đang chọn đã hiện trọn kèm phần lộ của tab kế bên thì không cuộn", async () => {
+      render(<Many />);
+      const list = screen.getByRole("tablist");
+      layout(list);
+      list.scrollLeft = 60;
+
+      // Với scrollLeft=60, tab t2 chiếm x=160..280: còn cách hai mép (x=100 và x=400) hơn 40px.
+      await userEvent.click(screen.getByRole("tab", { name: "Tab t2" }));
+      await waitFor(() => expect(screen.getByRole("tab", { name: "Tab t2" })).toHaveAttribute("data-state", "active"));
+      expect(list.scrollLeft).toBe(60);
+    });
+
+    it("đổi tab từ bên ngoài (có kiểm soát) cũng cuộn tab đó vào tầm nhìn", async () => {
+      const { rerender } = render(<Many value="t1" />);
+      const list = screen.getByRole("tablist");
+      layout(list);
+      rerender(<Many value="t5" />);
+      // Tab t5 chiếm x=580..700: cần cuộn 700 + 40 - 400 = 340.
+      await waitFor(() => expect(list.scrollLeft).toBe(340));
+    });
+
+    it("phím mũi tên vẫn chuyển tab trong thanh cuộn", async () => {
+      render(<Many />);
+      screen.getByRole("tab", { name: "Tab t1" }).focus();
+      await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+      expect(screen.getByRole("tab", { name: "Tab t3" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tab", { name: "Tab t3" })).toHaveFocus();
+      await userEvent.keyboard("{End}");
+      expect(screen.getByRole("tab", { name: "Tab t5" })).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("ref truyền vào TabsList vẫn nhận được phần tử", () => {
+      const ref = { current: null as HTMLDivElement | null };
+      render(
+        <Tabs defaultValue="a">
+          <TabsList ref={ref}>
+            <TabsTrigger value="a">A</TabsTrigger>
+          </TabsList>
+        </Tabs>,
+      );
+      expect(ref.current).toBe(screen.getByRole("tablist"));
+    });
   });
 
   it("gạch chân cùng hình với NavTabs: cách mép 12px, sát đáy 4px, dày 2px, màu chữ hiện tại", () => {

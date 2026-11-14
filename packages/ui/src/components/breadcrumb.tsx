@@ -20,7 +20,13 @@ export type BreadcrumbProps = {
   className?: string;
 };
 
-/** Mục cuối là trang hiện tại, không là liên kết. Không có mục nào thì không hiện gì (tránh vùng điều hướng rỗng). */
+/**
+ * Mục cuối là trang hiện tại, không là liên kết. Không có mục nào thì không hiện gì (tránh vùng điều hướng rỗng).
+ *
+ * Luôn một dòng: thanh trên cùng cao cố định, xuống dòng sẽ tràn ra ngoài. Thiếu chỗ thì các mục co lại và cắt bằng
+ * dấu ba chấm theo thứ tự: mục giữa trước, rồi mục đầu, mục cuối (trang hiện tại) sau cùng. Chữ đầy đủ vẫn nằm
+ * trong DOM (tên của liên kết không đổi) và tên trang hiện tại có ở tiêu đề trang ngay bên dưới (DESIGN.md mục 5.13).
+ */
 export function Breadcrumb({
   items,
   linkComponent: LinkComponent = DefaultLink,
@@ -30,21 +36,28 @@ export function Breadcrumb({
   if (items.length === 0) return null;
   const lastIndex = items.length - 1;
   return (
-    <nav aria-label={ariaLabel} className={className}>
-      <ol className="flex flex-wrap items-center gap-1.5 text-body">
+    // `min-w-0`: trong một hàng flex (thanh trên cùng), vùng điều hướng phải co được thì các mục mới cắt chữ.
+    <nav aria-label={ariaLabel} className={cn("min-w-0", className)}>
+      <ol className="flex min-w-0 items-center gap-1.5 text-body">
         {items.map((item, index) => (
           <Fragment key={`${index}-${item.label}`}>
             {index > 0 && (
-              <li aria-hidden className="text-text-placeholder">
+              <li aria-hidden className="shrink-0 text-text-placeholder">
                 <ChevronRight className="size-4" />
               </li>
             )}
-            <li>
+            <li
+              className={cn(
+                // Hệ số co chênh nhau rất xa để tạo thứ tự ưu tiên: mục nào hệ số lớn thì nhường chỗ trước.
+                index === lastIndex ? "min-w-0 shrink" : "min-w-6",
+                index !== lastIndex && (index === 0 ? "shrink-[100]" : "shrink-[10000]"),
+              )}
+            >
               {item.href && index < lastIndex ? (
                 <LinkComponent
                   href={item.href}
                   className={cn(
-                    "rounded-sm text-text-muted transition-colors duration-150 hover:text-primary-text motion-reduce:transition-none",
+                    "block truncate rounded-sm text-text-muted transition-colors duration-150 hover:text-primary-text motion-reduce:transition-none",
                     focusRing,
                   )}
                 >
@@ -53,7 +66,7 @@ export function Breadcrumb({
               ) : (
                 <span
                   aria-current={index === lastIndex ? "page" : undefined}
-                  className={index === lastIndex ? "font-medium text-text" : "text-text-muted"}
+                  className={cn("block truncate", index === lastIndex ? "font-medium text-text" : "text-text-muted")}
                 >
                   {item.label}
                 </span>

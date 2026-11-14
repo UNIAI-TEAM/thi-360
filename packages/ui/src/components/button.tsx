@@ -8,6 +8,9 @@ import { focusRing } from "../lib/styles";
 export const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 items-center justify-center rounded-lg text-label font-semibold whitespace-nowrap",
+    // Cỡ icon và khoảng cách icon–nhãn đặt ở gốc: nhánh `asChild` không có phần tử bọc nhãn bên trong, nên con
+    // trực tiếp của phần tử nhận kiểu (ví dụ `<a><Icon /> Nhãn</a>`) cũng phải được canh như nút thường.
+    "gap-2 [&_svg]:size-4 [&_svg]:shrink-0",
     "transition-colors duration-150 motion-reduce:transition-none",
     "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none [&[aria-disabled='true']:not([aria-busy='true'])]:opacity-50",
     focusRing,
@@ -108,17 +111,22 @@ export function Button({
       }}
       {...props}
     >
+      {/*
+       * Giảm chuyển động: spinner quay chậm lại (6 giây một vòng) chứ không đứng yên. Đây là chuyển động duy nhất
+       * báo việc đang chạy; một cung tròn bất động trông như nút bị treo.
+       */}
       {loading && (
         <LoaderCircle
           aria-hidden
-          className="absolute size-4 animate-spin motion-reduce:animate-none"
+          className="absolute size-4 animate-spin motion-reduce:animate-[spin_6s_linear_infinite]"
         />
       )}
+      {/*
+       * Nhãn ẩn bằng `opacity-0`, không bằng `invisible`: `visibility: hidden` bỏ nhãn khỏi cây truy cập, nút đang
+       * xử lý thành nút không tên. Nhãn vẫn chiếm chỗ nên nút giữ nguyên chiều rộng.
+       */}
       <span
-        className={cn(
-          "inline-flex items-center gap-2 [&_svg]:size-4 [&_svg]:shrink-0",
-          loading && "invisible",
-        )}
+        className={cn("inline-flex items-center gap-2", loading && "opacity-0")}
       >
         {children}
       </span>
