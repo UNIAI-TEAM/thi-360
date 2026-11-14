@@ -1,6 +1,6 @@
 "use client";
 
-import { Breadcrumb } from "@thi360/ui";
+import { Breadcrumb, LocaleSwitcher, ThemeToggle } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -36,6 +36,10 @@ export function Topbar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
       />
       <div className="flex items-center gap-3">
         {rightSlot}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <LocaleSwitcher />
+        </div>
         <UserMenu />
       </div>
     </header>

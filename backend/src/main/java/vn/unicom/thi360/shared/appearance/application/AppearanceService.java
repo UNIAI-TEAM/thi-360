@@ -33,13 +33,12 @@ import vn.unicom.thi360.shared.appearance.domain.AppearanceSettingPayload.Custom
 import vn.unicom.thi360.shared.appearance.domain.AppearanceSettingPayload.Palette;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.web.LocaleConfig;
 
 @Service
 public class AppearanceService {
 
-    private static final Locale DEFAULT_LOCALE = Locale.of("vi");
     private static final Logger log = LoggerFactory.getLogger(AppearanceService.class);
-
     private static final String SELECT_SETTING_SQL =
             "SELECT value::text, version FROM shared.system_setting WHERE key = ?";
     private static final String INSERT_SETTING_SQL =
@@ -119,13 +118,13 @@ public class AppearanceService {
             throw new ValidationException(List.of(new FieldError(
                     "version",
                     "APPEARANCE_VERSION_REQUIRED",
-                    resolveMessage("APPEARANCE_VERSION_REQUIRED", "Phiên bản cấu hình là bắt buộc"))));
+                    resolveMessage("APPEARANCE_VERSION_REQUIRED"))));
         }
         if (request.version() < 0L) {
             throw new ValidationException(List.of(new FieldError(
                     "version",
                     "APPEARANCE_VERSION_INVALID",
-                    resolveMessage("APPEARANCE_VERSION_INVALID", "Phiên bản cấu hình không hợp lệ"))));
+                    resolveMessage("APPEARANCE_VERSION_INVALID"))));
         }
 
         AppearanceResponse updated = applyChange(
@@ -213,7 +212,7 @@ public class AppearanceService {
             errors.add(new FieldError(
                     "body",
                     "VALIDATION_FAILED",
-                    resolveMessage("VALIDATION_FAILED", "Dữ liệu không hợp lệ")));
+                    resolveMessage("VALIDATION_FAILED")));
             throw new ValidationException(errors);
         }
 
@@ -221,7 +220,7 @@ public class AppearanceService {
             errors.add(new FieldError(
                     "mode",
                     "APPEARANCE_MODE_INVALID",
-                    resolveMessage("APPEARANCE_MODE_INVALID", "Chế độ giao diện phải là light hoặc dark")));
+                    resolveMessage("APPEARANCE_MODE_INVALID")));
         }
 
         AppearancePaletteDto palette = request.palette();
@@ -229,35 +228,33 @@ public class AppearanceService {
             errors.add(new FieldError(
                     "palette",
                     "APPEARANCE_PALETTE_REQUIRED",
-                    resolveMessage("APPEARANCE_PALETTE_REQUIRED", "Thông tin bảng màu là bắt buộc")));
+                    resolveMessage("APPEARANCE_PALETTE_REQUIRED")));
         } else {
             if (!AppearancePolicy.isValidPresetOrCustom(palette.presetId())) {
                 errors.add(new FieldError(
                         "palette.presetId",
                         "APPEARANCE_PRESET_UNKNOWN",
-                        resolveMessage("APPEARANCE_PRESET_UNKNOWN", "Bộ phối màu không hợp lệ")));
+                        resolveMessage("APPEARANCE_PRESET_UNKNOWN")));
             }
             AppearanceCustomColorsDto custom = palette.custom();
             if (AppearancePolicy.isCustomPreset(palette.presetId()) && custom == null) {
                 errors.add(new FieldError(
                         "palette.custom",
                         "APPEARANCE_CUSTOM_REQUIRED",
-                        resolveMessage(
-                                "APPEARANCE_CUSTOM_REQUIRED",
-                                "Vui lòng nhập cặp màu tùy chỉnh khi chọn chế độ tự tùy chỉnh")));
+                        resolveMessage("APPEARANCE_CUSTOM_REQUIRED")));
             }
             if (custom != null) {
                 if (!AppearancePolicy.isValidHexColor(custom.primary())) {
                     errors.add(new FieldError(
                             "palette.custom.primary",
                             "APPEARANCE_HEX_INVALID",
-                            resolveMessage("APPEARANCE_HEX_INVALID", "Mã màu phải đúng định dạng #RRGGBB")));
+                            resolveMessage("APPEARANCE_HEX_INVALID")));
                 }
                 if (!AppearancePolicy.isValidHexColor(custom.accent())) {
                     errors.add(new FieldError(
                             "palette.custom.accent",
                             "APPEARANCE_HEX_INVALID",
-                            resolveMessage("APPEARANCE_HEX_INVALID", "Mã màu phải đúng định dạng #RRGGBB")));
+                            resolveMessage("APPEARANCE_HEX_INVALID")));
                 }
             }
         }
@@ -266,14 +263,13 @@ public class AppearanceService {
             errors.add(new FieldError(
                     "version",
                     "APPEARANCE_VERSION_REQUIRED",
-                    resolveMessage("APPEARANCE_VERSION_REQUIRED", "Phiên bản cấu hình là bắt buộc")));
+                    resolveMessage("APPEARANCE_VERSION_REQUIRED")));
         } else if (request.version() < 0L) {
             errors.add(new FieldError(
                     "version",
                     "APPEARANCE_VERSION_INVALID",
-                    resolveMessage("APPEARANCE_VERSION_INVALID", "Phiên bản cấu hình không hợp lệ")));
+                    resolveMessage("APPEARANCE_VERSION_INVALID")));
         }
-
         if (!errors.isEmpty()) {
             throw new ValidationException(errors);
         }
@@ -303,9 +299,10 @@ public class AppearanceService {
         }
     }
 
-    private String resolveMessage(String code, String fallback) {
-        String resolved = messageSource.getMessage(code, null, null, DEFAULT_LOCALE);
-        return (resolved != null && !resolved.isBlank()) ? resolved : fallback;
+    private String resolveMessage(String code) {
+        Locale locale = LocaleConfig.currentLocale();
+        String resolved = messageSource.getMessage(code, null, null, locale);
+        return (resolved != null && !resolved.isBlank()) ? resolved : code;
     }
 
     private static AppearanceResponse toResponse(AppearanceSettingPayload payload, long version) {

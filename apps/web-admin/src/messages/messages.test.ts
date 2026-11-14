@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import en from "./en.json";
 import vi from "./vi.json";
+const VIETNAMESE_DIACRITIC_RE =
+  /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
 
 function collectLeaves(obj: unknown, prefix = ""): Array<{ path: string; value: unknown }> {
   if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
@@ -36,6 +38,7 @@ describe("i18n messages", () => {
         extractPlaceholders(enLeaf.value as string),
         `placeholders for ${viLeaf.path}`,
       ).toEqual(extractPlaceholders(viLeaf.value as string));
+      expect(VIETNAMESE_DIACRITIC_RE.test(enLeaf.value as string), `en.${enLeaf.path} has Vietnamese`).toBe(false);
     }
   });
 });

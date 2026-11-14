@@ -13,7 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import { clearSessionBestEffort, refreshSession } from "@/features/session/api";
 import { redirectToLogin } from "@/lib/auth-redirect";
-import { createQueryClient, getErrorStatus } from "@/lib/api/query-client";
+import { createQueryClient, getErrorStatus, subscribeApiErrors } from "@/lib/api/query-client";
 
 export const FORBIDDEN_PATH = "/forbidden";
 const REFRESH_RETRY_KEY = "thi360:403-refresh-url";
@@ -66,18 +66,20 @@ export function QueryProvider({
       clearStaleUnauthorizedMarker(window.location.href);
     }
   }, [guard, pathname]);
-
-  const [client] = useState(() => {
-    const forbiddenMessage = t("forbiddenToast");
-    const recovery = createUnauthorizedRecovery({
+  const forbiddenMessage = t("forbiddenToast");
+  const [recovery] = useState(() =>
+    createUnauthorizedRecovery({
       refreshSession,
       clearSessionBestEffort,
       getErrorStatus,
       onReload: (url) => navigate(url),
       onRedirectLogin: () => redirectToLogin(),
-    });
+    }),
+  );
+  const [client] = useState(() => createQueryClient());
 
-    return createQueryClient({
+  useEffect(() => {
+    return subscribeApiErrors(client, {
       onUnauthenticated: () => {
         void recovery.handleUnauthorized();
       },
@@ -109,7 +111,7 @@ export function QueryProvider({
           });
       },
     });
-  });
+  }, [client, forbiddenMessage, guard, navigate, pathname, recovery, router]);
 
   return (
     <QueryClientProvider client={client}>

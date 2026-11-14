@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.ValidationException;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Component
 public class UsernamePolicy {
@@ -25,15 +26,26 @@ public class UsernamePolicy {
             "admin", "administrator", "root", "system", "support", "platform", "thi360", "null", "undefined");
 
     private final Set<String> reservedUsernames;
+    private final AppMessages messages;
+
+    public UsernamePolicy(IdentityProperties properties) {
+        this(properties, AppMessages.defaultInstance());
+    }
 
     @Autowired
-    public UsernamePolicy(IdentityProperties properties) {
-        this(properties == null || properties.reservedUsernames() == null
-                ? DEFAULT_RESERVED
-                : properties.reservedUsernames());
+    public UsernamePolicy(IdentityProperties properties, AppMessages messages) {
+        this(
+                properties == null || properties.reservedUsernames() == null
+                        ? DEFAULT_RESERVED
+                        : properties.reservedUsernames(),
+                messages);
     }
 
     public UsernamePolicy(Collection<String> reservedUsernames) {
+        this(reservedUsernames, AppMessages.defaultInstance());
+    }
+
+    public UsernamePolicy(Collection<String> reservedUsernames, AppMessages messages) {
         Set<String> normalizedReserved = new HashSet<>();
         if (reservedUsernames != null) {
             for (String candidate : reservedUsernames) {
@@ -44,23 +56,24 @@ public class UsernamePolicy {
             }
         }
         this.reservedUsernames = Set.copyOf(normalizedReserved);
+        this.messages = messages != null ? messages : AppMessages.defaultInstance();
     }
 
     public CheckResult check(String rawUsername) {
         if (rawUsername == null || rawUsername.isBlank()) {
             return CheckResult.invalid(
-                    null, null, CODE_REQUIRED, "Tên đăng nhập không được để trống");
+                    null, null, CODE_REQUIRED, messages.get("validation.username.required"));
         }
         String trimmed = rawUsername.trim();
         for (int i = 0; i < trimmed.length(); i++) {
             if (Character.isWhitespace(trimmed.charAt(i))) {
                 return CheckResult.invalid(
-                        trimmed, null, CODE_INVALID, "Tên đăng nhập không được chứa khoảng trắng");
+                        trimmed, null, CODE_INVALID, messages.get("validation.username.whitespace"));
             }
         }
         if (trimmed.length() < MIN_LENGTH || trimmed.length() > MAX_LENGTH) {
             return CheckResult.invalid(
-                    trimmed, null, CODE_INVALID, "Tên đăng nhập phải từ 4 đến 30 ký tự");
+                    trimmed, null, CODE_INVALID, messages.get("validation.username.length"));
         }
         String normalized = Normalizer.normalize(trimmed);
         if (normalized == null || !NORMALIZED_PATTERN.matcher(normalized).matches()) {
@@ -68,14 +81,14 @@ public class UsernamePolicy {
                     trimmed,
                     normalized,
                     CODE_INVALID,
-                    "Tên đăng nhập chỉ gồm chữ cái không dấu, chữ số và . @ _ -, bắt đầu bằng chữ cái hoặc chữ số");
+                    messages.get("validation.username.pattern"));
         }
         if (reservedUsernames.contains(normalized)) {
             return CheckResult.invalid(
                     trimmed,
                     normalized,
                     CODE_RESERVED,
-                    "Tên đăng nhập này thuộc danh sách dành riêng của hệ thống");
+                    messages.get("validation.username.reserved"));
         }
         return CheckResult.valid(trimmed, normalized);
     }

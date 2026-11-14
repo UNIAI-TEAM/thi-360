@@ -1,3 +1,5 @@
+import { readCookieValue } from "@thi360/web-kit/client";
+import { resolveTheme, THEME_COOKIE_NAME } from "@thi360/web-kit/preferences";
 import { createApiClient, type components } from "@thi360/api-client";
 import { THEME_STYLE_ELEMENT_ID, themeStyleTag, type AppearanceConfig } from "@thi360/ui";
 import { ApiStatusError } from "@/lib/api/query-client";
@@ -85,7 +87,8 @@ export async function resetAppearance(
 export function applyAppearanceToDocument(config: AppearanceConfig): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.dataset.theme = config.mode;
+  const themeCookie = readCookieValue(document.cookie, THEME_COOKIE_NAME);
+  root.dataset.theme = resolveTheme(config.mode, themeCookie);
   let styleEl = document.getElementById(THEME_STYLE_ELEMENT_ID);
   if (!(styleEl instanceof HTMLStyleElement)) {
     styleEl = document.createElement("style");

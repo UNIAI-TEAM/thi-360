@@ -1,3 +1,4 @@
+import { APP_TIME_ZONE } from "@thi360/web-kit/preferences";
 import type { StatusTone } from "@thi360/ui";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { UsersApiError } from "./api";
@@ -34,16 +35,24 @@ export function getUserDisplayStatus(user: {
   return { status: "PROVISIONING", tone: "neutral" };
 }
 
+const USER_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: APP_TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
 export function formatUserDateTime(iso?: string): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  const hh = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  const parts = USER_DATE_TIME_FORMATTER.formatToParts(date);
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const hour = byType.hour === "24" ? "00" : byType.hour;
+  return `${byType.day}/${byType.month}/${byType.year} ${hour}:${byType.minute}`;
 }
 
 export const SYSTEM_ROLE_CODES = [

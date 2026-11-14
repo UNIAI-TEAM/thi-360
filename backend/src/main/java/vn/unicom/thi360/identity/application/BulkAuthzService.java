@@ -48,7 +48,7 @@ import vn.unicom.thi360.shared.security.Access;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.Realm;
-
+import vn.unicom.thi360.shared.web.AppMessages;
 @Service
 public class BulkAuthzService {
 
@@ -106,6 +106,7 @@ public class BulkAuthzService {
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final AppMessages messages;
 
     public BulkAuthzService(
             UserAccountRepository userAccountRepository,
@@ -118,7 +119,8 @@ public class BulkAuthzService {
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
-            Clock clock) {
+            Clock clock,
+            AppMessages messages) {
         this.userAccountRepository = userAccountRepository;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
@@ -130,6 +132,7 @@ public class BulkAuthzService {
         this.auditRecorder = auditRecorder;
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
@@ -144,7 +147,7 @@ public class BulkAuthzService {
     public BulkAuthzResponse apply(BulkAuthzRequest request, String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new ValidationException(List.of(
-                    new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", "Thiếu header Idempotency-Key")));
+                    new FieldError("Idempotency-Key", "IDEMPOTENCY_KEY_REQUIRED", messages.get("validation.idempotencyKey.required"))));
         }
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         List<UUID> distinctUserIds = validateRequestShape(request);
@@ -169,29 +172,29 @@ public class BulkAuthzService {
     private List<UUID> validateRequestShape(BulkAuthzRequest request) {
         if (request.userIds() == null || request.userIds().isEmpty()) {
             throw new ValidationException(List.of(
-                    new FieldError("userIds", "NOT_EMPTY", "Danh sách tài khoản không được để trống")));
+                    new FieldError("userIds", "NOT_EMPTY", messages.get("validation.userIds.notEmpty"))));
         }
         if (request.userIds().size() > MAX_BATCH_USERS) {
             throw new ValidationException(
                     "BULK_LIMIT_EXCEEDED",
                     null,
                     List.of(new FieldError(
-                            "userIds", "BULK_LIMIT_EXCEEDED", "Số lượng tài khoản thao tác hàng loạt tối đa là 500")));
+                            "userIds", "BULK_LIMIT_EXCEEDED", messages.get("BULK_LIMIT_EXCEEDED"))));
         }
         if (request.target() == BulkAuthzTarget.ROLE) {
             if (request.roleIds() == null || request.roleIds().isEmpty()) {
                 throw new ValidationException(List.of(
-                        new FieldError("roleIds", "NOT_EMPTY", "Danh sách vai trò không được để trống")));
+                        new FieldError("roleIds", "NOT_EMPTY", messages.get("validation.bulkAuthz.roleIds.notEmpty"))));
             }
         } else {
             if (request.permissionIds() == null || request.permissionIds().isEmpty()) {
                 throw new ValidationException(List.of(
-                        new FieldError("permissionIds", "NOT_EMPTY", "Danh sách quyền không được để trống")));
+                        new FieldError("permissionIds", "NOT_EMPTY", messages.get("validation.bulkAuthz.permissionIds.notEmpty"))));
             }
             if (request.action() == BulkAuthzAction.GRANT
                     && (request.reason() == null || request.reason().isBlank())) {
                 throw new ValidationException(List.of(
-                        new FieldError("reason", "REASON_REQUIRED", "Vui lòng nhập lý do khi gán quyền trực tiếp")));
+                        new FieldError("reason", "REASON_REQUIRED", messages.get("REASON_REQUIRED"))));
             }
         }
         return List.copyOf(new LinkedHashSet<>(request.userIds()));

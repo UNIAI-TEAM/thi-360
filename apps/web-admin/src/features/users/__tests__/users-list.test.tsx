@@ -661,4 +661,37 @@ describe("UsersListView (Slice 1)", () => {
     expect(within(classGroup).getByRole("checkbox", { name: /LOP-A/ })).toBeInTheDocument();
     expect(listAllClassesMock).toHaveBeenCalledTimes(2);
   });
+
+  it("định dạng số >= 1000 qua next-intl formatter theo locale vi và en", async () => {
+    const deps = makeDeps({
+      listUsers: vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+        items: SAMPLE_USERS.slice(0, 1),
+        page: 0,
+        size: 20,
+        totalItems: 1250,
+        totalPages: 63,
+      })),
+    });
+
+    const { unmount } = renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UsersListView deps={deps} />
+      </SessionProvider>,
+      { locale: "vi" },
+    );
+
+    expect(await screen.findByText("1.250 tài khoản khớp bộ lọc")).toBeInTheDocument();
+    expect(screen.getByText("Hiển thị 1–20 trên 1.250")).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UsersListView deps={deps} />
+      </SessionProvider>,
+      { locale: "en", messages: en },
+    );
+
+    expect(await screen.findByText("1,250 matching accounts")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–20 of 1,250")).toBeInTheDocument();
+  });
 });

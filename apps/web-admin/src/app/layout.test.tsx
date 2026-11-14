@@ -2,6 +2,19 @@ import { THEME_STYLE_ELEMENT_ID } from "@thi360/ui";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RootLayout from "./layout";
+const ssrState = vi.hoisted(() => ({
+  locale: "vi",
+  themeCookie: undefined as string | undefined,
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) =>
+      name === "thi360_theme" && ssrState.themeCookie !== undefined
+        ? { value: ssrState.themeCookie }
+        : undefined,
+  }),
+}));
 vi.mock("next/font/google", () => ({
   Be_Vietnam_Pro: () => ({ variable: "--font-be-vietnam-pro" }),
 }));
@@ -11,7 +24,7 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("next-intl/server", () => ({
-  getLocale: async () => "vi",
+  getLocale: async () => ssrState.locale,
 }));
 
 vi.mock("@/providers/query-provider", () => ({
@@ -23,6 +36,8 @@ vi.mock("@/features/session/session-provider", () => ({
 }));
 
 afterEach(() => {
+  ssrState.locale = "vi";
+  ssrState.themeCookie = undefined;
   vi.unstubAllGlobals();
 });
 
@@ -80,5 +95,37 @@ describe("RootLayout appearance SSR", () => {
     }>;
     const css = headEl.props.children.props.dangerouslySetInnerHTML.__html;
     expect(css).toContain("--color-primary-600: #059669;");
+  });
+
+  it("ưu tiên cookie thi360_theme hợp lệ trên chế độ mặc định và bỏ qua cookie sai giá trị", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          palette: { presetId: "thi360-green" },
+          mode: "light",
+          version: 1,
+        }),
+      ),
+    );
+
+    ssrState.themeCookie = "dark";
+    const darkTree = await RootLayout({ children: "ok" });
+    expect(darkTree.props["data-theme"]).toBe("dark");
+
+    ssrState.themeCookie = "invalid";
+    const fallbackTree = await RootLayout({ children: "ok" });
+    expect(fallbackTree.props["data-theme"]).toBe("light");
+  });
+
+  it("đặt <html lang> theo uiLocale đã chuẩn hóa (kể cả khi getLocale trả en-GB)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ palette: { presetId: "thi360-green" }, mode: "light", version: 1 })));
+    ssrState.locale = "en";
+    const enTree = await RootLayout({ children: "ok" });
+    expect(enTree.props.lang).toBe("en");
+
+    ssrState.locale = "en-GB";
+    const enGbTree = await RootLayout({ children: "ok" });
+    expect(enGbTree.props.lang).toBe("en");
   });
 });

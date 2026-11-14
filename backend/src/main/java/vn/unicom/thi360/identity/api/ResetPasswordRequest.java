@@ -10,7 +10,7 @@ public record ResetPasswordRequest(
         @Schema(description = "Bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp (mặc định false)")
         Boolean mustChangePassword,
         @Schema(description = "Lý do đặt lại mật khẩu")
-        @Size(max = 500, message = "Lý do tối đa 500 ký tự")
+        @Size(max = 500, message = "{validation.reason.size}")
         String reason
 ) {
     @Override

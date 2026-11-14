@@ -32,6 +32,7 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.security.Access;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Service
 public class PermissionQueryService {
@@ -90,22 +91,26 @@ public class PermissionQueryService {
     private final JdbcTemplate jdbcTemplate;
     private final PermissionRepository permissionRepository;
     private final PermissionUsersExportWriter exportWriter;
+    private final AppMessages messages;
 
     public PermissionQueryService(
             JdbcTemplate jdbcTemplate,
             PermissionRepository permissionRepository,
-            PermissionUsersExportWriter exportWriter) {
+            PermissionUsersExportWriter exportWriter,
+            AppMessages messages) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionRepository = permissionRepository;
         this.exportWriter = exportWriter;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
     public List<PermissionResponse> listPermissions(String q, String group, Access scope) {
         String keyword = q == null || q.isBlank() ? null : q.trim().toLowerCase(Locale.ROOT);
         String groupFilter = group == null || group.isBlank() ? null : group.trim().toUpperCase(Locale.ROOT);
+        Locale locale = messages.currentLocale();
 
-        List<PermissionResponse> all = jdbcTemplate.query(LIST_PERMISSIONS_SQL, (rs, rowNum) -> mapPermission(rs));
+        List<PermissionResponse> all = jdbcTemplate.query(LIST_PERMISSIONS_SQL, (rs, rowNum) -> mapPermission(rs, locale));
         return all.stream()
                 .filter(p -> groupFilter == null || groupFilter.equalsIgnoreCase(p.groupCode()))
                 .filter(p -> scope == null || scope == p.scope())
@@ -389,24 +394,32 @@ public class PermissionQueryService {
         return "ORDER BY " + String.join(", ", clauses);
     }
 
-    private static PermissionResponse mapPermission(ResultSet rs) throws SQLException {
+    private PermissionResponse mapPermission(ResultSet rs, Locale locale) throws SQLException {
         String code = rs.getString("code");
         String groupCode = rs.getString("group_code");
-        String groupName = resolveGroupName(code, groupCode);
+        String groupName = resolveGroupName(code, groupCode, locale);
+        String dbName = rs.getString("name");
+        String dbDescription = rs.getString("description");
+        String localizedName = messages.getOrNull(locale, "permission." + code + ".name");
+        String localizedDescription = messages.getOrNull(locale, "permission." + code + ".description");
         return new PermissionResponse(
                 rs.getObject("id", UUID.class),
                 code,
                 rs.getInt("bit_index"),
                 Access.fromCode(rs.getShort("scope")),
-                rs.getString("name"),
+                localizedName != null ? localizedName : dbName,
                 groupCode,
                 groupName,
-                rs.getString("description"),
+                localizedDescription != null ? localizedDescription : dbDescription,
                 rs.getLong("role_count"),
                 rs.getLong("user_count"));
     }
 
-    private static String resolveGroupName(String permissionCode, String groupCode) {
+    private String resolveGroupName(String permissionCode, String groupCode, Locale locale) {
+        String localizedGroup = messages.getOrNull(locale, "permission.object." + groupCode);
+        if (localizedGroup != null) {
+            return localizedGroup;
+        }
         return Permission.findByCode(permissionCode)
                 .map(p -> p.object().displayName())
                 .orElseGet(() -> {

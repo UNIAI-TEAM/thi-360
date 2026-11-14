@@ -3,6 +3,7 @@ import en from "@/messages/en.json";
 import vi from "@/messages/vi.json";
 import { UsersApiError } from "../api";
 import {
+  formatUserDateTime,
   KNOWN_USER_ERROR_CODES,
   mapUserErrorCodeToKey,
   resolveUsersErrorMessage,
@@ -92,5 +93,12 @@ describe("D/T07 error code mapping", () => {
     ).toBe(vi.users.errorCodes.NOT_FOUND);
 
     expect(resolveUsersErrorMessage(new Error("boom"), translate, "fallback")).toBe("fallback");
+  });
+
+  it("formatUserDateTime định dạng dd/MM/yyyy HH:mm theo múi giờ Asia/Ho_Chi_Minh", () => {
+    expect(formatUserDateTime("2026-11-12T08:30:00Z")).toBe("12/11/2026 15:30");
+    expect(formatUserDateTime("2026-11-12T17:05:00Z")).toBe("13/11/2026 00:05");
+    expect(formatUserDateTime(undefined)).toBe("—");
+    expect(formatUserDateTime("not-a-date")).toBe("—");
   });
 });
