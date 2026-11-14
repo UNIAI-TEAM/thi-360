@@ -56,6 +56,8 @@ export function ThemeToggle({
   }, [controlledTheme, prefs]);
 
   const currentTheme: ThemeMode = controlledTheme ?? prefs?.theme ?? uncontrolledTheme;
+  // Một mô hình duy nhất: nhãn nêu hành động sẽ xảy ra ("Chuyển sang chế độ tối") và đổi theo trạng thái. Không kèm
+  // `aria-pressed`, vì khi đó trình đọc màn hình đọc "Chuyển sang chế độ sáng, đã nhấn" (trạng thái bị nói hai lần).
   const label =
     currentTheme === "dark" ? strings.themeToggle.switchToLight : strings.themeToggle.switchToDark;
 
@@ -84,7 +86,6 @@ export function ThemeToggle({
       <button
         type="button"
         aria-label={label}
-        aria-pressed={currentTheme === "dark"}
         onClick={handleToggle}
         className={cn(
           "relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors duration-150 hover:border-border-strong hover:bg-subtle hover:text-text motion-reduce:transition-none",

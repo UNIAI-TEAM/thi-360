@@ -30,17 +30,17 @@ describe("ThemeToggle", () => {
     );
 
     const button = screen.getByRole("button", { name: "Chuyển sang chế độ tối" });
-    expect(button).toHaveAttribute("aria-pressed", "false");
+    // Nhãn nêu hành động và đổi theo trạng thái; không kèm aria-pressed (tránh nói trạng thái hai lần).
+    expect(button).not.toHaveAttribute("aria-pressed");
     // Nhìn 36px, vùng bấm 44px trên màn cảm ứng nhờ phần tử giả mở rộng.
     expect(button).toHaveClass("size-9", "relative", "pointer-coarse:after:absolute", "pointer-coarse:after:-inset-1.25");
 
     await user.click(button);
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.cookie).toContain("thi360_theme=dark");
-    expect(screen.getByRole("button", { name: "Chuyển sang chế độ sáng" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    const darkButton = screen.getByRole("button", { name: "Chuyển sang chế độ sáng" });
+    expect(darkButton).toBe(button);
+    expect(darkButton).not.toHaveAttribute("aria-pressed");
 
     await user.keyboard("{Enter}");
     expect(document.documentElement.dataset.theme).toBe("light");
