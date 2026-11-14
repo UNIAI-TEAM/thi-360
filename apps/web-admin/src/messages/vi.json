@@ -160,15 +160,15 @@
       "menuDelete": "Xóa vai trò",
       "menuEdit": "Đổi tên",
       "menuHeading": "Thao tác khác",
-      "openConfirm": "Dialog xác nhận",
-      "openDialog": "Mở dialog",
-      "openDrawer": "Mở drawer",
+      "openConfirm": "Hộp thoại xác nhận",
+      "openDialog": "Mở hộp thoại",
+      "openDrawer": "Mở ngăn kéo bên",
       "openMenu": "Menu thả",
       "reasonLabel": "Lý do khóa",
       "save": "Lưu",
       "toastSaved": "Đã lưu thay đổi.",
       "tooltipContent": "Chú thích hiện khi rê chuột hoặc focus bàn phím",
-      "tooltipTrigger": "Rê chuột để xem tooltip",
+      "tooltipTrigger": "Rê chuột để xem chú thích",
       "triggerToast": "Hiện thông báo"
     },
     "pagination": {
@@ -184,7 +184,7 @@
       "chips": "Chip trạng thái, chip lọc và huy hiệu",
       "fields": "Ô nhập, chọn, đánh dấu (Input, Select, Textarea, Checkbox, Switch, FormField)",
       "navigation": "Breadcrumb và Tab",
-      "overlays": "Dialog, ConfirmDialog, Drawer, DropdownMenu, Tooltip, Toast",
+      "overlays": "Hộp thoại, hộp thoại xác nhận, ngăn kéo bên, menu thả xuống, chú thích, thông báo",
       "skeleton": "Khung xương (Skeleton)",
       "table": "Bảng, nút thao tác và phân trang (Table, IconButton, EmptyState, Pagination)"
     },
@@ -310,7 +310,7 @@
       "create": "+ Tạo tài khoản",
       "deactivate": "Ngừng hoạt động",
       "delete": "Xóa",
-      "resetPassword": "Reset mật khẩu",
+      "resetPassword": "Đặt lại mật khẩu",
       "rowMenu": "Thao tác với {username}",
       "viewDetail": "Xem chi tiết"
     },
@@ -336,7 +336,7 @@
       "USER_CREATED": "Tạo tài khoản",
       "USER_DEACTIVATED": "Ngừng hoạt động tài khoản",
       "USER_DELETED": "Xóa tài khoản",
-      "USER_PASSWORD_RESET": "Reset mật khẩu",
+      "USER_PASSWORD_RESET": "Đặt lại mật khẩu",
       "USER_PERMISSIONS_CHANGED": "Cập nhật quyền trực tiếp",
       "USER_ROLES_CHANGED": "Cập nhật vai trò",
       "USER_UPDATED": "Cập nhật thông tin tài khoản"
@@ -580,7 +580,7 @@
       "reasonPlaceholder": "Không bắt buộc (tối đa 500 ký tự)",
       "submit": "Đặt lại mật khẩu",
       "success": "Đã đặt lại mật khẩu cho {username}.",
-      "title": "Reset mật khẩu"
+      "title": "Đặt lại mật khẩu"
     },
     "rolesPlaceholder": {
       "currentRolesLabel": "Vai trò hiện tại",
@@ -589,7 +589,7 @@
       "title": "Chưa kết nối dữ liệu vai trò & quyền"
     },
     "sources": {
-      "ADMIN_CREATED": "Admin tạo",
+      "ADMIN_CREATED": "Do quản trị tạo",
       "BULK_IMPORT": "Cấp hàng loạt",
       "GOOGLE": "Google",
       "SELF_REGISTERED": "Tự đăng ký"

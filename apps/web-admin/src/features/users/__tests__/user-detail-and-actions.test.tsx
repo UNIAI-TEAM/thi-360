@@ -138,7 +138,7 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     expect(await screen.findByRole("heading", { name: "Học viên 01" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ngừng hoạt động" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Reset mật khẩu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Đặt lại mật khẩu" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Xóa" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Lưu thay đổi" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Lịch sử thay đổi" })).not.toBeInTheDocument();
@@ -287,7 +287,7 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     renderDetail(makeDeps({ getUser: async () => targetUser, resetUserPassword: resetMock }));
 
-    await userEvent.click(await screen.findByRole("button", { name: "Reset mật khẩu" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Đặt lại mật khẩu" }));
     const dialog = screen.getByRole("dialog");
     const passwordInput = within(dialog).getByLabelText(/Mật khẩu mới/);
     const reasonInput = within(dialog).getByLabelText(/Lý do đặt lại mật khẩu/);
