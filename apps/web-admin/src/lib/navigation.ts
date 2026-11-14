@@ -1,4 +1,4 @@
-import { GraduationCap, LayoutDashboard, SlidersVertical, Users, type LucideIcon } from "lucide-react";
+import { GraduationCap, LayoutDashboard, Shield, SlidersVertical, Users, type LucideIcon } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
 
 /**
@@ -60,6 +60,12 @@ export const NAVIGATION: readonly NavGroup[] = [
   {
     id: "system",
     items: [
+      {
+        id: "rbac",
+        href: "/phan-quyen",
+        icon: Shield,
+        permission: ["ROLE.VIEW", "PERMISSION.VIEW"],
+      },
       {
         id: "appearance",
         href: "/tuy-chinh-giao-dien",

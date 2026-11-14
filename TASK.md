@@ -17,7 +17,7 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T06 | UNI-2543 | Nền · Design system (`packages/ui`) và khung web admin | T01 | in_review (đã merge vào `integration/dot-1` qua PR #5 ngày 2026-11-13) |
 | T06b | UNI-2559 | Nền · Tương phản chữ/nền chế độ sáng >= 4,5:1 (con của UNI-2543, ngoài điểm plan) | T06 | in_review (đã merge vào `integration/dot-1` qua PR #7 ngày 2026-11-13) |
 | T07 | UNI-2544 | PBI-01 · API quản lý tài khoản | T03, T04, T05 | in_review (đã merge vào `integration/dot-1` qua PR #12 ngày 2026-11-14) |
-| T08 | UNI-2545 | PBI-01 · UI phân quyền: một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt) | T04, T06, T18 | in_progress |
+| T08 | UNI-2545 | PBI-01 · UI phân quyền: một menu bốn tab (Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt) | T04, T06, T18 | in_review (đã merge vào integration/dot-1, PR #19) |
 | T09 | UNI-2546 | PBI-01 · UI quản lý tài khoản | T06, T07, T18 | in_review (đã merge vào integration/dot-1, PR #16) |
 | T10 | UNI-2547 | PBI-01 · Lớp học: API + UI | T07, T09 | in_progress (API đã merge, PR #15; UI đang làm) |
 | T11 | UNI-2548 | PBI-01 · Cấp tài khoản hàng loạt | T07, T10 | in_progress (backend đã merge, PR #17; UI đang làm) |

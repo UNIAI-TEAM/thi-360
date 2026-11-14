@@ -118,6 +118,19 @@ describe("NAVIGATION của đợt 1", () => {
     );
   });
 
+  it("có mục Phân quyền trong nhóm Hệ thống với quyền ROLE.VIEW hoặc PERMISSION.VIEW", () => {
+    const systemGroup = NAVIGATION.find((g) => g.id === "system");
+    expect(systemGroup?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "rbac",
+          href: "/phan-quyen",
+          permission: ["ROLE.VIEW", "PERMISSION.VIEW"],
+        }),
+      ]),
+    );
+  });
+
   it("có mục Tài khoản trong nhóm Người dùng với quyền USER.VIEW", () => {
     const usersGroup = NAVIGATION.find((g) => g.id === "users");
     expect(usersGroup?.items).toEqual(
