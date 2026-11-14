@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
+import type * as UsersApi from "@/features/users/api";
 import type { ListUsersQuery, PageResponseUserSummary, UserSummary } from "@/features/users/api";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
@@ -10,6 +11,13 @@ import {
   ClassFormDialog,
   fetchDefaultActiveUsers,
 } from "../components/class-form-dialog";
+
+const listUsersMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/features/users/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof UsersApi>()),
+  listUsers: listUsersMock,
+}));
 
 function makeUser(index: number): UserSummary {
   return {
@@ -89,6 +97,43 @@ describe("ClassFormDialog owner selector", () => {
     await waitFor(() => {
       expect(within(dialog).getByRole("combobox", { name: /Người phụ trách/ })).not.toBeDisabled();
     });
+  });
+
+  it("tải danh sách mặc định qua listUsers với tham số đã định, không truyền context của react-query", async () => {
+    listUsersMock.mockResolvedValue({
+      items: [makeUser(1), makeUser(2)],
+      page: 0,
+      size: 100,
+      totalItems: 2,
+      totalPages: 1,
+    });
+
+    renderDialog({ listActiveUsers: undefined });
+
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => {
+      expect(within(dialog).getByRole("combobox", { name: /Người phụ trách/ })).not.toBeDisabled();
+    });
+    expect(within(dialog).queryByText("Không tải được danh sách người phụ trách.")).toBeNull();
+    expect(listUsersMock).toHaveBeenCalledTimes(1);
+    expect(listUsersMock).toHaveBeenCalledWith({
+      status: "ACTIVE",
+      page: 0,
+      size: 100,
+      sort: "username,asc",
+    });
+  });
+
+  it("gọi hàm tải người phụ trách không có đối số", async () => {
+    const listActiveUsersMock = vi.fn<() => Promise<UserSummary[]>>(async () => [makeUser(1)]);
+
+    renderDialog({ listActiveUsers: listActiveUsersMock });
+
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => {
+      expect(within(dialog).getByRole("combobox", { name: /Người phụ trách/ })).not.toBeDisabled();
+    });
+    expect(listActiveUsersMock.mock.calls[0]).toEqual([]);
   });
 });
 

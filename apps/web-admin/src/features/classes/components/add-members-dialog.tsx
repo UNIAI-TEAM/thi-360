@@ -139,7 +139,7 @@ function AddMembersBody({
 
   const rolesQuery = useQuery({
     queryKey: ["classes", "student-role"],
-    queryFn: listActiveRoles,
+    queryFn: () => listActiveRoles(),
     enabled: canViewUsers && canViewRoles,
     staleTime: 60_000,
   });

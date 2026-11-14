@@ -158,7 +158,7 @@ function ClassFormBody({
 
   const usersQuery = useQuery({
     queryKey: ["classes", "owner-candidates"],
-    queryFn: listActiveUsers,
+    queryFn: () => listActiveUsers(),
     enabled: canListUsers,
     staleTime: 60_000,
   });
