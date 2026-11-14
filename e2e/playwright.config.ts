@@ -6,13 +6,17 @@ const defaultBackendCmd = isWindows
   : "./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev";
 
 const webMode = process.env.E2E_USE_BUILT === "1" ? "start" : "dev";
+const apiUrl = process.env.THI360_API_URL ?? "http://localhost:8080";
+const webUrl = process.env.THI360_WEB_URL ?? "http://localhost:3000";
+const adminUrl = process.env.THI360_ADMIN_URL ?? "http://localhost:3001";
+const webPort = new URL(webUrl).port || "3000";
+const adminPort = new URL(adminUrl).port || "3001";
 const webEnv: Record<string, string> = {
-  THI360_API_URL: process.env.THI360_API_URL ?? "http://localhost:8080",
+  THI360_API_URL: apiUrl,
   THI360_CTX_SECRET: process.env.THI360_CTX_SECRET ?? "ctx-dev-only-change-me-32-bytes!!",
-  THI360_WEB_URL: process.env.THI360_WEB_URL ?? "http://localhost:3000",
-  THI360_ADMIN_URL: process.env.THI360_ADMIN_URL ?? "http://localhost:3001",
+  THI360_WEB_URL: webUrl,
+  THI360_ADMIN_URL: adminUrl,
 };
-
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -40,22 +44,22 @@ export default defineConfig({
     {
       command: process.env.E2E_BACKEND_CMD ?? defaultBackendCmd,
       cwd: "../backend",
-      url: "http://localhost:8080/actuator/health",
+      url: `${apiUrl}/actuator/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
     },
     {
-      command: `pnpm ${webMode}`,
+      command: `pnpm exec next ${webMode} -p ${webPort}`,
       cwd: "../apps/web-student",
-      url: "http://localhost:3000",
+      url: webUrl,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: webEnv,
     },
     {
-      command: `pnpm ${webMode}`,
+      command: `pnpm exec next ${webMode} -p ${adminPort}`,
       cwd: "../apps/web-admin",
-      url: "http://localhost:3001",
+      url: adminUrl,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: webEnv,

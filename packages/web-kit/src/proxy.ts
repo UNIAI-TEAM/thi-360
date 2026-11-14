@@ -10,6 +10,7 @@ const FORWARDED_REQUEST_HEADERS = [
   "accept-language",
   "content-type",
   "cookie",
+  "idempotency-key",
   "origin",
   "x-xsrf-token",
 ] as const;

@@ -117,4 +117,17 @@ describe("NAVIGATION của đợt 1", () => {
       ]),
     );
   });
+
+  it("có mục Tài khoản trong nhóm Người dùng với quyền USER.VIEW", () => {
+    const usersGroup = NAVIGATION.find((g) => g.id === "users");
+    expect(usersGroup?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "accounts",
+          href: "/tai-khoan",
+          permission: "USER.VIEW",
+        }),
+      ]),
+    );
+  });
 });
