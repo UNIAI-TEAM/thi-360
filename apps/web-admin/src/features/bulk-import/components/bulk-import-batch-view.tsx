@@ -176,6 +176,13 @@ function BulkImportBatchContent({
     return undefined;
   }, [batch, onlyErrors, onlyFailed]);
 
+  // Khi không còn dòng lỗi (kiểm tra lại / đổi đợt) thì bỏ lọc "chỉ hiện dòng lỗi"
+  // để bảng không rơi vào trạng thái lọc rỗng không thể bỏ tích. Điều chỉnh state
+  // ngay trong render theo pattern "adjusting state when props change" của React.
+  if (batch !== undefined && batch.invalidRows === 0 && onlyErrors) {
+    setOnlyErrors(false);
+  }
+
   const shouldLoadRows = Boolean(
     batch && (batch.status === "VALIDATED" || isBatchTerminalStatus(batch.status)),
   );
@@ -728,19 +735,24 @@ function BulkImportBatchContent({
                 {t("preview.sectionTitle")}
               </strong>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={onlyErrorsId}
-                    checked={onlyErrors}
-                    onCheckedChange={(checked) => {
-                      setOnlyErrors(checked === true);
-                      setPage(1);
-                    }}
-                  />
-                  <Label htmlFor={onlyErrorsId} className="cursor-pointer font-normal text-text">
-                    {t("preview.onlyErrors")}
-                  </Label>
-                </div>
+                {batch.invalidRows > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={onlyErrorsId}
+                      checked={onlyErrors}
+                      onCheckedChange={(checked) => {
+                        setOnlyErrors(checked === true);
+                        setPage(1);
+                      }}
+                    />
+                    <Label
+                      htmlFor={onlyErrorsId}
+                      className="cursor-pointer font-normal text-text"
+                    >
+                      {t("preview.onlyErrors")}
+                    </Label>
+                  </div>
+                )}
 
                 {batch.invalidRows > 0 && batch.sourceAvailable && (
                   <Button
@@ -1033,19 +1045,21 @@ function BulkImportBatchContent({
             <div
               className={cn(
                 "flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3.5",
-                batch.hasGeneratedPasswords
-                  ? "border-warning/30 bg-warning-bg text-warning"
-                  : "border-border bg-surface text-text",
+                hasDownloadedResult || !batch.hasGeneratedPasswords
+                  ? "border-border bg-surface text-text"
+                  : "border-warning/30 bg-warning-bg text-warning",
               )}
             >
               <div className="flex min-w-0 flex-1 items-start gap-2.5 text-body">
-                {batch.hasGeneratedPasswords && (
+                {batch.hasGeneratedPasswords && !hasDownloadedResult && (
                   <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
                 )}
                 <span>
-                  {batch.hasGeneratedPasswords
-                    ? t("result.bannerGeneratedWarning")
-                    : t("result.bannerReadyInfo")}
+                  {hasDownloadedResult
+                    ? t("result.downloadedNotice")
+                    : batch.hasGeneratedPasswords
+                      ? t("result.bannerGeneratedWarning")
+                      : t("result.bannerReadyInfo")}
                 </span>
               </div>
 

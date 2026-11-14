@@ -246,6 +246,7 @@
       "deleteResultError": "Không xóa được file kết quả. Hãy thử lại.",
       "deleteResultSuccess": "Đã xóa file kết quả khỏi hệ thống.",
       "deletedNotice": "File kết quả đã được xóa khỏi hệ thống.",
+      "downloadedNotice": "Đã tải file kết quả. Bạn có thể tải lại hoặc xóa file khi không còn cần.",
       "downloadResult": "Tải file kết quả",
       "downloadResultError": "Không tải được file kết quả. Hãy thử lại.",
       "downloadResultSuccess": "Đã tải xuống file kết quả.",

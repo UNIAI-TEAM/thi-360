@@ -5,7 +5,7 @@ import { Button, Card, Checkbox, cn, EmptyState, Label, Skeleton } from "@thi360
 import { FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { type ChangeEvent, type DragEvent, useId, useRef, useState } from "react";
+import { type ChangeEvent, type DragEvent, useId, useMemo, useRef, useState } from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { type BulkImportApiDeps, defaultBulkImportApiDeps } from "../api";
@@ -22,6 +22,11 @@ export function BulkImportUploadView({ deps }: BulkImportUploadViewProps) {
   const common = useTranslations("common");
   const sessionState = useSession();
   const { can } = usePermissions();
+  // Giữ identity `deps` ổn định giữa các render (xem ghi chú tương tự ở batch view).
+  const apiDeps = useMemo<BulkImportApiDeps>(
+    () => ({ ...defaultBulkImportApiDeps, ...deps }),
+    [deps],
+  );
 
   if (sessionState.status === "loading") {
     return <BulkImportUploadSkeleton />;
@@ -42,7 +47,7 @@ export function BulkImportUploadView({ deps }: BulkImportUploadViewProps) {
     return <ForbiddenView />;
   }
 
-  return <BulkImportUploadContent deps={{ ...defaultBulkImportApiDeps, ...deps }} />;
+  return <BulkImportUploadContent deps={apiDeps} />;
 }
 
 function SessionErrorView({
@@ -191,8 +196,8 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
             className={cn(
               "flex flex-col items-center gap-2.5 rounded-xl border-2 border-dashed px-5 py-9 text-center transition-colors duration-150 motion-reduce:transition-none",
               isDragging
-                ? "border-primary-600 bg-primary-50"
-                : "border-primary-200 bg-surface",
+                ? "border-primary-text bg-primary-50"
+                : "border-primary-text/40 bg-surface",
             )}
           >
             <span

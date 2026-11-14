@@ -775,4 +775,88 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
     await sleep(100);
     expect(commits).toBeLessThan(20);
   });
+
+  it("bước 2: ẩn checkbox 'Chỉ hiện dòng lỗi' khi đợt không có dòng lỗi", async () => {
+    const deps = makeDeps({
+      getImportBatch: vi.fn(async () =>
+        makeBatch({ totalRows: 2, validRows: 2, invalidRows: 0, hasErrors: false }),
+      ),
+    });
+    renderBatch(deps);
+
+    expect(await screen.findByText("Xem trước")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Chỉ hiện dòng lỗi")).not.toBeInTheDocument();
+  });
+
+  it("bước 2: hiện checkbox 'Chỉ hiện dòng lỗi' khi đợt có dòng lỗi", async () => {
+    const deps = makeDeps({
+      getImportBatch: vi.fn(async () =>
+        makeBatch({ totalRows: 2, validRows: 1, invalidRows: 1, hasErrors: true, canConfirm: false }),
+      ),
+    });
+    renderBatch(deps);
+
+    expect(await screen.findByLabelText("Chỉ hiện dòng lỗi")).toBeInTheDocument();
+  });
+
+  it("bước 4: sau khi tải file kết quả banner đổi sang trạng thái đã tải và Back chỉ cần một lần", async () => {
+    // Hai mục history sạch liên tiếp + đặt URL giống route thật để guard nhận diện
+    // đúng entry sentinel khi dọn (xem isGuardedSameUrlEntry trong component).
+    window.history.pushState({}, "", "/tai-khoan");
+    window.history.pushState({}, "", `/tai-khoan/cap-hang-loat/${BATCH_ID}`);
+
+    const deps = makeDeps({
+      getImportBatch: vi.fn(async () =>
+        makeBatch({
+          status: "COMPLETED",
+          totalRows: 1,
+          validRows: 1,
+          createdRows: 1,
+          failedRows: 0,
+          hasGeneratedPasswords: true,
+          resultAvailable: true,
+        }),
+      ),
+    });
+
+    renderBatch(deps);
+    expect(await screen.findByText("Kết quả từng dòng")).toBeInTheDocument();
+
+    // Sentinel đã đặt và cảnh báo rời trang còn hiệu lực.
+    expect(
+      (window.history.state as Record<string, unknown> | null)?.[
+        "__thi360BulkImportLeaveGuard"
+      ],
+    ).toBeTruthy();
+    expect(
+      screen.getByText(viMessages.bulkImport.result.bannerGeneratedWarning),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Tải file kết quả" }));
+    await waitFor(() => {
+      expect(deps.downloadImportResult).toHaveBeenCalledWith(BATCH_ID);
+    });
+
+    // Banner đổi sang "đã tải" (không còn cảnh báo màu hổ phách).
+    expect(
+      await screen.findByText(viMessages.bulkImport.result.downloadedNotice),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(viMessages.bulkImport.result.bannerGeneratedWarning),
+    ).not.toBeInTheDocument();
+
+    // N2-1: sau khi cảnh báo tắt, sentinel bị dọn -> Back một lần rời trang luôn,
+    // không còn "đứng hình" trên entry trùng URL.
+    await waitFor(() => {
+      expect(
+        (window.history.state as Record<string, unknown> | null)?.[
+          "__thi360BulkImportLeaveGuard"
+        ],
+      ).toBeFalsy();
+    });
+
+    window.history.back();
+    await sleep(50);
+    expect(window.location.pathname).toBe("/tai-khoan");
+  });
 });

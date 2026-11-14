@@ -246,6 +246,7 @@
       "deleteResultError": "Could not delete the result file. Please try again.",
       "deleteResultSuccess": "Deleted result file from the system.",
       "deletedNotice": "The result file has been deleted from the system.",
+      "downloadedNotice": "Result file downloaded. You can download it again or delete it when no longer needed.",
       "downloadResult": "Download result file",
       "downloadResultError": "Could not download the result file. Please try again.",
       "downloadResultSuccess": "Downloaded result file.",
