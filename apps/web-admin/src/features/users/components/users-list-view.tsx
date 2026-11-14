@@ -23,7 +23,7 @@ import {
   Table,
   Tooltip,
 } from "@thi360/ui";
-import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, Users } from "lucide-react";
+import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, Upload, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -425,6 +425,12 @@ function UsersListContent({
         description={t("list.description")}
         actions={
           <Can permission="USER.MODIFY">
+            <Button asChild variant="secondary">
+              <Link href="/tai-khoan/cap-hang-loat">
+                <Upload />
+                <span>{t("actions.bulkImport")}</span>
+              </Link>
+            </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus />
               <span>{t("actions.create").replace(/^\+\s*/, "")}</span>

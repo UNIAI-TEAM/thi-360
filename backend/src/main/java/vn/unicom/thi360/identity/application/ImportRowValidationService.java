@@ -280,7 +280,7 @@ public class ImportRowValidationService {
     private ImportRowError error(int rowNo, ImportColumn column, String code, Locale locale) {
         String colLabel = schemaHelper.columnLabel(column, locale);
         String msg = schemaHelper.rowErrorMessage(code, colLabel, locale);
-        return new ImportRowError(rowNo, colLabel, code, msg);
+        return new ImportRowError(rowNo, colLabel, column.name(), code, msg);
     }
 
     public record ValidatedRow(

@@ -82,6 +82,257 @@
     "warningsOk": "Colors look good. Button text achieves at least 4.5:1 contrast.",
     "whiteText": "White text"
   },
+  "bulkImport": {
+    "batchError": {
+      "description": "Could not load this bulk import batch. Please try again.",
+      "notFoundDescription": "This bulk import batch does not exist or the link is invalid.",
+      "notFoundTitle": "Import batch not found",
+      "startOver": "Back to file upload",
+      "title": "Could not load import batch"
+    },
+    "breadcrumb": "Bulk import",
+    "columns": {
+      "CLASS_CODE": "Class code",
+      "EMAIL": "Email",
+      "FULL_NAME": "Full name",
+      "PASSWORD": "Password",
+      "PHONE": "Phone",
+      "USERNAME": "Username"
+    },
+    "confirm": {
+      "backToPreview": "Back to preview",
+      "cards": {
+        "file": "Uploaded file",
+        "mustChangePassword": "Require password change",
+        "passwordMode": "Passwords",
+        "willCreate": "Will create",
+        "willCreateValue": "{count, number} accounts"
+      },
+      "confirmAction": "Confirm creating {count, number} accounts",
+      "errorsRemainWarning": "Data changed and new row errors were found. Returned to preview for review.",
+      "fields": {
+        "invalidRows": "Error rows",
+        "invalidRowsValue": "None",
+        "mustChangePassword": "Require password change on first sign-in",
+        "passwordMode": "Passwords",
+        "role": "Role",
+        "roleValue": "Student (Exam access)"
+      },
+      "no": "No",
+      "passwordAllFromFile": "Use passwords from file",
+      "passwordHasGenerated": "Some rows blank — system-generated",
+      "sectionTitle": "Final review",
+      "warning": "Once confirmed, accounts are created immediately and the batch cannot be rolled back. System-generated passwords are only available in the result file in step 4.",
+      "yes": "Yes"
+    },
+    "description": "Maximum 2,000 rows, file size up to 5 MB. Existing accounts are never overwritten.",
+    "downloadTemplate": "Download template",
+    "downloadTemplateError": "Could not download the template file. Please try again.",
+    "errorCodes": {
+      "FORBIDDEN": "You do not have permission to bulk import accounts.",
+      "IDEMPOTENCY_KEY_REUSED": "This confirmation idempotency key was already used for another request. Please try again.",
+      "IMPORT_ALREADY_CONFIRMED": "This import batch has already been confirmed.",
+      "IMPORT_CLASS_PERMISSION_REQUIRED": "You need CLASS.MODIFY permission to assign classes during bulk import.",
+      "IMPORT_EMPTY_FILE": "The Excel file is empty or contains no valid data rows.",
+      "IMPORT_FILE_TOO_LARGE": "The Excel file exceeds the maximum allowed size (5 MB).",
+      "IMPORT_FORMULA_NOT_ALLOWED": "The Excel file must not contain formulas.",
+      "IMPORT_HAS_ERRORS": "The import file still has row errors. Fix them before confirming.",
+      "IMPORT_INVALID_FILE": "Invalid Excel file (.xlsx) or unsafe archive contents.",
+      "IMPORT_INVALID_HEADER": "Column headers in the Excel file do not match the template.",
+      "IMPORT_MACRO_NOT_ALLOWED": "The Excel file must not contain macros.",
+      "IMPORT_RESULT_NOT_READY": "The result file is not ready for download yet.",
+      "IMPORT_ROW_LIMIT_EXCEEDED": "Row count exceeds the maximum limit of 2,000 rows.",
+      "IMPORT_SOURCE_GONE": "The source file was deleted after batch completion, so the error file is unavailable.",
+      "INTERNAL_ERROR": "A system error occurred. Please try again.",
+      "NOT_FOUND": "Import batch not found.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "REQUIRED": "A required value is missing from the request.",
+      "VALIDATION_FAILED": "The request data is invalid. Please review and try again."
+    },
+    "failureCodes": {
+      "CLASS_INACTIVE": "The class is inactive.",
+      "CLASS_NOT_FOUND": "Class not found.",
+      "CONFLICT": "Data conflict while creating account.",
+      "EMAIL_TAKEN": "Email was just claimed by another account.",
+      "FORBIDDEN": "Missing permission to create account or assign class.",
+      "IDENTITY_PROVIDER_ERROR": "Authentication service connection error; retry may succeed.",
+      "INTERNAL_ERROR": "Technical error while creating account.",
+      "PASSWORD_WEAK": "Password does not meet security requirements.",
+      "USERNAME_INVALID": "Username does not meet format rules.",
+      "USERNAME_RESERVED": "Username is reserved by the system.",
+      "USERNAME_TAKEN": "Username was just claimed by another account.",
+      "VALIDATION_FAILED": "Account data is invalid."
+    },
+    "leaveWarning": {
+      "cancel": "Stay on page",
+      "close": "Close",
+      "confirm": "Leave anyway",
+      "description": "This batch has system-generated passwords and you have not downloaded the result file yet. If you leave now, keep this URL to return and download it.",
+      "title": "Leave without downloading result file?"
+    },
+    "pagination": {
+      "nav": "Import rows pagination",
+      "next": "Next",
+      "page": "Page {page, number}",
+      "previous": "Previous",
+      "range": "Showing {from, number}–{to, number} of {total, number}",
+      "rowsPerPage": "Rows per page"
+    },
+    "preview": {
+      "cards": {
+        "file": "Uploaded file",
+        "invalid": "With errors",
+        "total": "Total rows",
+        "valid": "Valid"
+      },
+      "continueConfirm": "Confirm creating {count, number} accounts",
+      "downloadErrors": "Download error file ({count, number} rows)",
+      "downloadErrorsError": "Could not download the error file. Please try again.",
+      "emptyDescription": "No data rows match the current filter.",
+      "emptyTitle": "No rows found",
+      "errorDescription": "Could not load preview rows. Please try again.",
+      "errorTitle": "Could not load preview data",
+      "errorsRemainHint": "{count, number} error rows remain. Fix the file and re-upload; confirmation is enabled only when no errors remain.",
+      "footnote": "Download the result file in step 4 after processing finishes. It only contains system-generated passwords; download it before leaving this page.",
+      "mustChangePasswordLabel": "Require password change on first sign-in:",
+      "no": "No",
+      "onlyErrors": "Show error rows only",
+      "passwordGenerated": "Blank, system-generated",
+      "passwordProvided": "Provided, meets rules",
+      "readyHint": "All {count, number} rows are valid. Ready to proceed to confirmation.",
+      "reupload": "Re-upload file",
+      "rowErrorItem": "{column}: {message}",
+      "sectionTitle": "Preview",
+      "statusInvalid": "Error",
+      "statusValid": "Valid",
+      "table": {
+        "classCode": "Class code",
+        "email": "Email",
+        "fullName": "Full name",
+        "password": "Password",
+        "result": "Validation result",
+        "rowNo": "Row",
+        "username": "Username"
+      },
+      "tableAriaLabel": "Bulk import preview table",
+      "yes": "Yes"
+    },
+    "processing": {
+      "awayNotice": "The batch continues running if you leave this page. However, the result file (with system-generated passwords) can only be downloaded here, so stay until completion.",
+      "counts": "Succeeded {created, number} · Failed {failed, number} · Remaining {remaining, number}. Progress updates automatically without refreshing.",
+      "progressAriaLabel": "Batch processing progress",
+      "progressValue": "{processed, number} / {total, number} rows",
+      "title": "Creating accounts"
+    },
+    "result": {
+      "allSucceededHint": "All accounts in this batch were created successfully.",
+      "bannerGeneratedWarning": "Download the result file before leaving this page. It contains system-generated passwords; save it and delete it when no longer needed.",
+      "bannerReadyInfo": "Batch processing is complete. You can download the result file or delete it from the system.",
+      "cards": {
+        "created": "Created",
+        "failed": "Failed",
+        "file": "File",
+        "processed": "Processed",
+        "processedValue": "{processed, number} / {total, number}"
+      },
+      "deleteConfirm": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "confirm": "Delete result file",
+        "description": "The result file (including any system-generated passwords) will be permanently deleted and cannot be downloaded again.",
+        "title": "Delete result file?"
+      },
+      "deleteResult": "Delete result file",
+      "deleteResultError": "Could not delete the result file. Please try again.",
+      "deleteResultSuccess": "Deleted result file from the system.",
+      "deletedNotice": "The result file has been deleted from the system.",
+      "downloadedNotice": "Result file downloaded. You can download it again or delete it when no longer needed.",
+      "downloadResult": "Download result file",
+      "downloadResultError": "Could not download the result file. Please try again.",
+      "downloadResultSuccess": "Downloaded result file.",
+      "emptyDescription": "No rows match the current filter.",
+      "emptyTitle": "No result rows",
+      "errorDescription": "Could not load row results. Please try again.",
+      "errorTitle": "Could not load results",
+      "failedBanner": "The import batch failed due to a technical error.",
+      "failedHint": "Failed rows did not create accounts. Fix them and import again using a file with only those rows.",
+      "goToUsers": "Back to accounts",
+      "onlyFailed": "Show failed rows only",
+      "passwordGenerated": "System-generated, see file",
+      "passwordProvided": "From file",
+      "rowStatus": {
+        "CREATED": "Created",
+        "FAILED": "Failed",
+        "INVALID": "Error",
+        "VALID": "Pending"
+      },
+      "sectionTitle": "Row results",
+      "startAnother": "Start another batch",
+      "table": {
+        "classCode": "Class",
+        "fullName": "Full name",
+        "password": "Password",
+        "result": "Result",
+        "rowNo": "Row",
+        "username": "Username"
+      },
+      "tableAriaLabel": "Row results table"
+    },
+    "rowErrorCodes": {
+      "CLASS_INACTIVE": "Class is inactive",
+      "CLASS_NOT_FOUND": "Class does not exist",
+      "EMAIL_DUPLICATE_IN_FILE": "Duplicate email in file",
+      "EMAIL_INVALID": "Invalid email format or exceeds 255 characters",
+      "EMAIL_TAKEN": "Email is already used in the system",
+      "FULL_NAME_TOO_LONG": "Full name must be at most 200 characters",
+      "PASSWORD_WEAK": "Password does not meet security rules (8–64 chars with upper, lower, digit, special char, and not matching username)",
+      "PHONE_TOO_LONG": "Phone number must be at most 30 characters",
+      "REQUIRED": "{column} is required",
+      "USERNAME_DUPLICATE_IN_FILE": "Duplicate username in file",
+      "USERNAME_INVALID": "Invalid username (4–30 chars, no spaces, not a reserved name)",
+      "USERNAME_TAKEN": "Username already exists in the system"
+    },
+    "sessionError": {
+      "description": "An error occurred while loading account details. Please try again.",
+      "title": "Could not load page"
+    },
+    "steps": {
+      "ariaLabel": "Bulk account provisioning steps",
+      "step1": "Download template & upload file",
+      "step2": "Preview & fix errors",
+      "step3": "Confirm",
+      "step4": "Results"
+    },
+    "title": "Bulk account provisioning",
+    "upload": {
+      "changeFile": "Choose another file",
+      "chooseFile": "Choose file",
+      "columnsHeader": "Template columns",
+      "columnsHint": "First row is the header row; keep column order unchanged",
+      "columnsTable": {
+        "colName": "Column",
+        "colRequired": "Required",
+        "colRules": "Rules",
+        "no": "No",
+        "yes": "Yes"
+      },
+      "dropzoneHint": "Only .xlsx files accepted, up to 2,000 rows and 5 MB",
+      "dropzoneTitle": "Drag a file here or click to browse",
+      "fileSizeKb": "{size, number} KB",
+      "footerNote": "Imported accounts receive the Student role. Existing accounts are not overwritten.",
+      "mustChangePassword": "Require password change on first sign-in",
+      "ruleClassCode": "Code of an active class. Leave blank if the account belongs to no class",
+      "ruleEmail": "Valid format, not used by another account",
+      "ruleFullName": "Maximum 200 characters",
+      "rulePassword": "At least 8 characters with upper, lower, digit, and special character. Leave blank to auto-generate",
+      "rulePhone": "Maximum 30 characters",
+      "ruleUsername": "Unique, 4–30 characters, no spaces, case-insensitive",
+      "sectionTitle": "Choose file",
+      "selectedFileLabel": "Selected file:",
+      "submit": "Upload and validate",
+      "uploadErrorFallback": "Could not upload the file. Please try again."
+    }
+  },
   "classes": {
     "actions": {
       "activate": "Activate",
@@ -996,6 +1247,7 @@
   "users": {
     "actions": {
       "activate": "Activate",
+      "bulkImport": "Bulk import",
       "create": "+ Create account",
       "deactivate": "Deactivate",
       "delete": "Delete",

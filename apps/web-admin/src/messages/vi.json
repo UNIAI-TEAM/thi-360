@@ -82,6 +82,257 @@
     "warningsOk": "Hai màu dùng được. Chữ trên nút đều đạt mức tương phản 4,5:1 trở lên.",
     "whiteText": "Chữ trắng"
   },
+  "bulkImport": {
+    "batchError": {
+      "description": "Không tải được thông tin đợt cấp tài khoản. Hãy thử lại.",
+      "notFoundDescription": "Đợt cấp tài khoản không tồn tại hoặc đường dẫn không hợp lệ.",
+      "notFoundTitle": "Không tìm thấy đợt cấp tài khoản",
+      "startOver": "Quay lại tải tệp",
+      "title": "Không tải được đợt cấp tài khoản"
+    },
+    "breadcrumb": "Cấp hàng loạt",
+    "columns": {
+      "CLASS_CODE": "Mã lớp",
+      "EMAIL": "Email",
+      "FULL_NAME": "Họ và tên",
+      "PASSWORD": "Mật khẩu",
+      "PHONE": "Số điện thoại",
+      "USERNAME": "Tên đăng nhập"
+    },
+    "confirm": {
+      "backToPreview": "Quay lại xem trước",
+      "cards": {
+        "file": "Tệp đã tải lên",
+        "mustChangePassword": "Bắt đổi mật khẩu lần đầu",
+        "passwordMode": "Mật khẩu",
+        "willCreate": "Sẽ tạo",
+        "willCreateValue": "{count, number} tài khoản"
+      },
+      "confirmAction": "Xác nhận cấp {count, number} tài khoản",
+      "errorsRemainWarning": "Dữ liệu đã thay đổi và phát sinh dòng lỗi mới. Đã quay lại bước xem trước để kiểm tra.",
+      "fields": {
+        "invalidRows": "Dòng lỗi",
+        "invalidRowsValue": "Không còn",
+        "mustChangePassword": "Bắt đổi mật khẩu lần đầu",
+        "passwordMode": "Mật khẩu",
+        "role": "Vai trò",
+        "roleValue": "Học viên (phạm vi Thi)"
+      },
+      "no": "Không",
+      "passwordAllFromFile": "Dùng mật khẩu trong tệp",
+      "passwordHasGenerated": "Có dòng để trống — hệ thống tự sinh",
+      "sectionTitle": "Kiểm tra lần cuối",
+      "warning": "Sau khi xác nhận, tài khoản được tạo ngay và không hoàn tác cả đợt được. Mật khẩu do hệ thống sinh chỉ có trong file kết quả ở bước 4.",
+      "yes": "Có"
+    },
+    "description": "Tối đa 2.000 dòng, tệp không quá 5 MB. Tài khoản đã có không bị ghi đè.",
+    "downloadTemplate": "Tải file mẫu",
+    "downloadTemplateError": "Không tải được file mẫu. Hãy thử lại.",
+    "errorCodes": {
+      "FORBIDDEN": "Bạn không có quyền cấp tài khoản hàng loạt.",
+      "IDEMPOTENCY_KEY_REUSED": "Khóa chống trùng lặp xác nhận đã được dùng cho yêu cầu khác. Vui lòng thử lại.",
+      "IMPORT_ALREADY_CONFIRMED": "Đợt cấp tài khoản đã được xác nhận trước đó.",
+      "IMPORT_CLASS_PERMISSION_REQUIRED": "Bạn cần có quyền CLASS.MODIFY để gán lớp khi cấp tài khoản hàng loạt.",
+      "IMPORT_EMPTY_FILE": "Tệp Excel trống hoặc không có dòng dữ liệu hợp lệ.",
+      "IMPORT_FILE_TOO_LARGE": "Dung lượng tệp Excel vượt quá giới hạn cho phép (tối đa 5 MB).",
+      "IMPORT_FORMULA_NOT_ALLOWED": "Tệp Excel không được chứa công thức.",
+      "IMPORT_HAS_ERRORS": "Tệp nhập còn dòng lỗi, vui lòng kiểm tra lại trước khi xác nhận.",
+      "IMPORT_INVALID_FILE": "Tệp Excel không hợp lệ (.xlsx) hoặc vượt quá giới hạn đọc an toàn.",
+      "IMPORT_INVALID_HEADER": "Cấu trúc cột trong tệp Excel không đúng mẫu.",
+      "IMPORT_MACRO_NOT_ALLOWED": "Tệp Excel không được chứa macro.",
+      "IMPORT_RESULT_NOT_READY": "File kết quả chưa sẵn sàng để tải xuống.",
+      "IMPORT_ROW_LIMIT_EXCEEDED": "Số dòng dữ liệu vượt quá giới hạn tối đa 2.000 dòng.",
+      "IMPORT_SOURCE_GONE": "Tệp nguồn của đợt cấp đã bị xóa sau khi hoàn tất nên không thể tải file lỗi.",
+      "INTERNAL_ERROR": "Đã xảy ra lỗi hệ thống. Vui lòng thử lại.",
+      "NOT_FOUND": "Không tìm thấy đợt cấp tài khoản.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+      "REQUIRED": "Thiếu thông tin bắt buộc trong yêu cầu.",
+      "VALIDATION_FAILED": "Dữ liệu yêu cầu chưa hợp lệ. Vui lòng kiểm tra lại."
+    },
+    "failureCodes": {
+      "CLASS_INACTIVE": "Lớp học đã ngừng sử dụng.",
+      "CLASS_NOT_FOUND": "Không tìm thấy lớp học.",
+      "CONFLICT": "Xung đột dữ liệu khi tạo tài khoản.",
+      "EMAIL_TAKEN": "Email vừa được tài khoản khác sử dụng.",
+      "FORBIDDEN": "Không có quyền thực hiện thao tác tạo tài khoản hoặc gán lớp.",
+      "IDENTITY_PROVIDER_ERROR": "Lỗi kết nối dịch vụ xác thực, có thể thử chạy lại.",
+      "INTERNAL_ERROR": "Lỗi kỹ thuật khi tạo tài khoản.",
+      "PASSWORD_WEAK": "Mật khẩu không đạt yêu cầu bảo mật.",
+      "USERNAME_INVALID": "Tên đăng nhập không đúng quy tắc.",
+      "USERNAME_RESERVED": "Tên đăng nhập thuộc danh sách dành riêng.",
+      "USERNAME_TAKEN": "Tên đăng nhập vừa được tài khoản khác sử dụng.",
+      "VALIDATION_FAILED": "Dữ liệu tài khoản không hợp lệ."
+    },
+    "leaveWarning": {
+      "cancel": "Ở lại trang",
+      "close": "Đóng",
+      "confirm": "Vẫn rời trang",
+      "description": "Đợt cấp có tài khoản do hệ thống sinh mật khẩu nhưng bạn chưa tải file kết quả. Nếu rời trang bây giờ, bạn sẽ cần giữ lại đường dẫn này để mở lại file.",
+      "title": "Rời trang khi chưa tải file kết quả?"
+    },
+    "pagination": {
+      "nav": "Phân trang danh sách dòng",
+      "next": "Sau",
+      "page": "Trang {page, number}",
+      "previous": "Trước",
+      "range": "Hiển thị {from, number}–{to, number} trên {total, number}",
+      "rowsPerPage": "Số dòng mỗi trang"
+    },
+    "preview": {
+      "cards": {
+        "file": "Tệp đã tải lên",
+        "invalid": "Có lỗi",
+        "total": "Tổng số dòng",
+        "valid": "Hợp lệ"
+      },
+      "continueConfirm": "Xác nhận cấp {count, number} tài khoản",
+      "downloadErrors": "Tải file lỗi ({count, number} dòng)",
+      "downloadErrorsError": "Không tải được file lỗi. Hãy thử lại.",
+      "emptyDescription": "Không có dòng dữ liệu nào khớp với bộ lọc hiện tại.",
+      "emptyTitle": "Không có dòng dữ liệu",
+      "errorDescription": "Không tải được danh sách dòng dữ liệu. Hãy thử lại.",
+      "errorTitle": "Không tải được dữ liệu xem trước",
+      "errorsRemainHint": "Còn {count, number} dòng lỗi. Sửa tệp và tải lên lại; chỉ xác nhận được khi không còn lỗi dữ liệu.",
+      "footnote": "File kết quả tải ở bước 4 sau khi đợt cấp chạy xong. File chỉ chứa mật khẩu của những dòng do hệ thống sinh; hãy tải trước khi rời trang.",
+      "mustChangePasswordLabel": "Bắt đổi mật khẩu ở lần đăng nhập đầu:",
+      "no": "Không",
+      "onlyErrors": "Chỉ hiện dòng lỗi",
+      "passwordGenerated": "Để trống, hệ thống sinh",
+      "passwordProvided": "Đã nhập, đạt quy tắc",
+      "readyHint": "Tất cả {count, number} dòng đều hợp lệ. Sẵn sàng chuyển sang bước xác nhận.",
+      "reupload": "Tải lên lại",
+      "rowErrorItem": "{column}: {message}",
+      "sectionTitle": "Xem trước",
+      "statusInvalid": "Lỗi",
+      "statusValid": "Hợp lệ",
+      "table": {
+        "classCode": "Mã lớp",
+        "email": "Email",
+        "fullName": "Họ và tên",
+        "password": "Mật khẩu",
+        "result": "Kết quả kiểm tra",
+        "rowNo": "Dòng",
+        "username": "Tên đăng nhập"
+      },
+      "tableAriaLabel": "Bảng xem trước dữ liệu cấp hàng loạt",
+      "yes": "Có"
+    },
+    "processing": {
+      "awayNotice": "Đợt cấp vẫn chạy nếu rời trang này. Nhưng file kết quả (có mật khẩu do hệ thống sinh) chỉ tải được ở đây, nên hãy ở lại đến khi xong.",
+      "counts": "Thành công {created, number} · Thất bại {failed, number} · Còn lại {remaining, number}. Tiến độ tự cập nhật, không cần tải lại trang.",
+      "progressAriaLabel": "Tiến độ đợt cấp",
+      "progressValue": "{processed, number} / {total, number} dòng",
+      "title": "Đang tạo tài khoản"
+    },
+    "result": {
+      "allSucceededHint": "Tất cả tài khoản trong đợt đã được tạo thành công.",
+      "bannerGeneratedWarning": "Tải file kết quả trước khi rời trang. File có mật khẩu của các tài khoản do hệ thống sinh; hãy tải về và xóa khi không còn cần.",
+      "bannerReadyInfo": "Đợt cấp đã hoàn tất. Bạn có thể tải file kết quả hoặc xóa file khỏi hệ thống.",
+      "cards": {
+        "created": "Đã tạo",
+        "failed": "Thất bại",
+        "file": "Tệp",
+        "processed": "Đã xử lý",
+        "processedValue": "{processed, number} / {total, number}"
+      },
+      "deleteConfirm": {
+        "cancel": "Hủy",
+        "close": "Đóng",
+        "confirm": "Xóa file kết quả",
+        "description": "File kết quả (bao gồm mật khẩu do hệ thống sinh nếu có) sẽ bị xóa khỏi hệ thống và không thể tải lại.",
+        "title": "Xóa file kết quả?"
+      },
+      "deleteResult": "Xóa file kết quả",
+      "deleteResultError": "Không xóa được file kết quả. Hãy thử lại.",
+      "deleteResultSuccess": "Đã xóa file kết quả khỏi hệ thống.",
+      "deletedNotice": "File kết quả đã được xóa khỏi hệ thống.",
+      "downloadedNotice": "Đã tải file kết quả. Bạn có thể tải lại hoặc xóa file khi không còn cần.",
+      "downloadResult": "Tải file kết quả",
+      "downloadResultError": "Không tải được file kết quả. Hãy thử lại.",
+      "downloadResultSuccess": "Đã tải xuống file kết quả.",
+      "emptyDescription": "Không có dòng dữ liệu nào khớp với bộ lọc hiện tại.",
+      "emptyTitle": "Không có dòng kết quả",
+      "errorDescription": "Không tải được danh sách kết quả từng dòng. Hãy thử lại.",
+      "errorTitle": "Không tải được kết quả",
+      "failedBanner": "Đợt cấp tài khoản không hoàn tất do lỗi kỹ thuật.",
+      "failedHint": "Dòng thất bại không tạo tài khoản. Sửa rồi cấp lại bằng một tệp chỉ gồm các dòng đó.",
+      "goToUsers": "Về danh sách tài khoản",
+      "onlyFailed": "Chỉ hiện dòng thất bại",
+      "passwordGenerated": "Hệ thống sinh, xem trong file",
+      "passwordProvided": "Theo tệp",
+      "rowStatus": {
+        "CREATED": "Đã tạo",
+        "FAILED": "Thất bại",
+        "INVALID": "Lỗi",
+        "VALID": "Chờ xử lý"
+      },
+      "sectionTitle": "Kết quả từng dòng",
+      "startAnother": "Cấp đợt khác",
+      "table": {
+        "classCode": "Lớp",
+        "fullName": "Họ và tên",
+        "password": "Mật khẩu",
+        "result": "Kết quả",
+        "rowNo": "Dòng",
+        "username": "Tên đăng nhập"
+      },
+      "tableAriaLabel": "Bảng kết quả từng dòng"
+    },
+    "rowErrorCodes": {
+      "CLASS_INACTIVE": "Lớp học đang ngừng sử dụng",
+      "CLASS_NOT_FOUND": "Lớp học không tồn tại",
+      "EMAIL_DUPLICATE_IN_FILE": "Email bị trùng lặp trong tệp",
+      "EMAIL_INVALID": "Email không đúng định dạng hoặc vượt quá 255 ký tự",
+      "EMAIL_TAKEN": "Email đã được sử dụng trong hệ thống",
+      "FULL_NAME_TOO_LONG": "Họ và tên tối đa 200 ký tự",
+      "PASSWORD_WEAK": "Mật khẩu không đạt quy tắc (8–64 ký tự, đủ chữ hoa, thường, số, ký tự đặc biệt và không trùng tên đăng nhập)",
+      "PHONE_TOO_LONG": "Số điện thoại tối đa 30 ký tự",
+      "REQUIRED": "{column} không được để trống",
+      "USERNAME_DUPLICATE_IN_FILE": "Tên đăng nhập bị trùng lặp trong tệp",
+      "USERNAME_INVALID": "Tên đăng nhập không đúng quy tắc (4–30 ký tự, không khoảng trắng, không thuộc tên dành riêng)",
+      "USERNAME_TAKEN": "Tên đăng nhập đã tồn tại trong hệ thống"
+    },
+    "sessionError": {
+      "description": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
+      "title": "Không tải được trang"
+    },
+    "steps": {
+      "ariaLabel": "Các bước cấp tài khoản hàng loạt",
+      "step1": "Tải mẫu và chọn tệp",
+      "step2": "Xem trước và sửa lỗi",
+      "step3": "Xác nhận",
+      "step4": "Kết quả"
+    },
+    "title": "Cấp tài khoản hàng loạt",
+    "upload": {
+      "changeFile": "Chọn tệp khác",
+      "chooseFile": "Chọn tệp",
+      "columnsHeader": "Các cột của tệp mẫu",
+      "columnsHint": "Dòng đầu là tên cột, giữ nguyên thứ tự",
+      "columnsTable": {
+        "colName": "Cột",
+        "colRequired": "Bắt buộc",
+        "colRules": "Quy tắc",
+        "no": "Không",
+        "yes": "Có"
+      },
+      "dropzoneHint": "Chỉ nhận tệp .xlsx, tối đa 2.000 dòng, không quá 5 MB",
+      "dropzoneTitle": "Kéo tệp vào đây hoặc bấm để chọn",
+      "fileSizeKb": "{size, number} KB",
+      "footerNote": "Tài khoản tạo từ tệp nhận vai trò Học viên. Tài khoản đã có không bị ghi đè.",
+      "mustChangePassword": "Bắt đổi mật khẩu ở lần đăng nhập đầu",
+      "ruleClassCode": "Mã của lớp đang hoạt động. Để trống thì tài khoản không thuộc lớp nào",
+      "ruleEmail": "Đúng định dạng, không trùng tài khoản khác",
+      "ruleFullName": "Tối đa 200 ký tự",
+      "rulePassword": "Tối thiểu 8 ký tự, đủ chữ hoa, chữ thường, chữ số, ký tự đặc biệt. Để trống thì hệ thống sinh",
+      "rulePhone": "Tối đa 30 ký tự",
+      "ruleUsername": "Duy nhất, 4–30 ký tự, không khoảng trắng, không phân biệt hoa thường",
+      "sectionTitle": "Chọn tệp danh sách",
+      "selectedFileLabel": "Tệp đã chọn:",
+      "submit": "Tải lên và kiểm tra",
+      "uploadErrorFallback": "Không tải lên được tệp. Hãy thử lại."
+    }
+  },
   "classes": {
     "actions": {
       "activate": "Kích hoạt lại",
@@ -996,6 +1247,7 @@
   "users": {
     "actions": {
       "activate": "Kích hoạt lại",
+      "bulkImport": "Cấp hàng loạt",
       "create": "+ Tạo tài khoản",
       "deactivate": "Ngừng hoạt động",
       "delete": "Xóa",

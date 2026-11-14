@@ -61,6 +61,10 @@ class OpenApiExportIT extends AbstractIntegrationTest {
                 .isEqualTo("^[A-Za-z0-9][A-Za-z0-9._-]{1,29}$");
         assertThat(updateClassProps.has("status")).isFalse();
 
+        JsonNode columnKey = schemas.path("ImportRowError").path("properties").path("columnKey");
+        assertThat(columnKey.path("type")).extracting(JsonNode::asText).containsExactly("string", "null");
+        assertThat(columnKey.path("enum").get(columnKey.path("enum").size() - 1).isNull()).isTrue();
+
         Path targetOut = Path.of("target", "openapi.json");
         Files.createDirectories(targetOut.getParent());
         Files.writeString(targetOut, openApiJson, StandardCharsets.UTF_8);
