@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.classroom.api.UserClassesResponse;
 import vn.unicom.thi360.classroom.domain.ClassMember;
 import vn.unicom.thi360.classroom.domain.ClassMemberHistory;
 import vn.unicom.thi360.classroom.domain.ClassMemberHistoryAction;
@@ -46,6 +47,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
     private final ClassMemberLock classMemberLock;
     private final AuditRecorder auditRecorder;
     private final AppMessages messages;
+    private final ClassService classService;
 
     public ClassMembershipPortImpl(
             ClassRoomRepository classRoomRepository,
@@ -53,6 +55,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             ClassMemberHistoryRepository classMemberHistoryRepository,
             UserDirectory userDirectory,
             ClassMemberLock classMemberLock,
+            ClassService classService,
             AuditRecorder auditRecorder) {
         this(
                 classRoomRepository,
@@ -60,6 +63,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
                 classMemberHistoryRepository,
                 userDirectory,
                 classMemberLock,
+                classService,
                 auditRecorder,
                 AppMessages.defaultInstance());
     }
@@ -71,6 +75,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             ClassMemberHistoryRepository classMemberHistoryRepository,
             UserDirectory userDirectory,
             ClassMemberLock classMemberLock,
+            ClassService classService,
             AuditRecorder auditRecorder,
             AppMessages messages) {
         this.classRoomRepository = classRoomRepository;
@@ -79,6 +84,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
         this.userDirectory = userDirectory;
         this.classMemberLock = classMemberLock;
         this.auditRecorder = auditRecorder;
+        this.classService = classService;
         this.messages = messages;
     }
 
@@ -193,6 +199,38 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             return Set.of();
         }
         return Set.copyOf(classMemberRepository.findActiveUserIdsByClassId(classId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserClassesResult getUserClasses(UUID userId) {
+        UserClassesResponse response = classService.getUserClasses(userId);
+        List<CurrentClass> currentClasses = response.currentClasses().stream()
+                .map(c -> new CurrentClass(
+                        c.classId(),
+                        c.classCode(),
+                        c.className(),
+                        c.classStatus().name(),
+                        c.joinedAt(),
+                        c.addedBy(),
+                        c.addedByUsername()))
+                .toList();
+        List<ClassHistoryEntry> history = response.history().stream()
+                .map(h -> new ClassHistoryEntry(
+                        h.id(),
+                        h.classId(),
+                        h.classCode(),
+                        h.className(),
+                        h.action().name(),
+                        h.relatedClassId(),
+                        h.relatedClassCode(),
+                        h.relatedClassName(),
+                        h.actorId(),
+                        h.actorUsername(),
+                        h.reason(),
+                        h.occurredAt()))
+                .toList();
+        return new UserClassesResult(currentClasses, history);
     }
 
     @Override
