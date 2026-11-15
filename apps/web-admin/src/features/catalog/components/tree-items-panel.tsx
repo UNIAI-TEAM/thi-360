@@ -1118,10 +1118,13 @@ export function TreeItemsPanel({
         <span className="text-caption text-text-muted">{t("tree.addRefGroupHint")}</span>
 
         {canModify && availableRefGroupsToAdd.length > 0 && (
-          <div className="ml-auto w-56">
+          // C-22: rộng theo chữ (tối thiểu 224px) và giữ một dòng, chữ gợi ý tiếng Việt không còn xuống dòng rồi bị
+          // cắt; hàng chật thì ô xuống dòng riêng, không rộng quá hàng.
+          <div className="ml-auto min-w-56 max-w-full">
             <Select
               aria-label={t("tree.addRefGroupPlaceholder")}
               size="md"
+              className="whitespace-nowrap"
               placeholder={t("tree.addRefGroupPlaceholder")}
               value={addRefGroupValue}
               onValueChange={(val) => {

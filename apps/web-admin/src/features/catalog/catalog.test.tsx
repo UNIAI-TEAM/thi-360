@@ -2313,6 +2313,16 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     });
   });
 
+  it("ô thêm danh mục liên kết rộng theo chữ, giữ một dòng (C-22)", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    const trigger = await screen.findByRole("combobox", {
+      name: viMessages.catalog.tree.addRefGroupPlaceholder,
+    });
+    expect(trigger).toHaveClass("whitespace-nowrap");
+    expect(trigger.parentElement).toHaveClass("min-w-56", "max-w-full");
+    expect(trigger.parentElement).not.toHaveClass("w-56");
+  });
+
   it("nút tự viết trên trang cây dùng vòng focus của kit (C-21)", async () => {
     // jsdom không vẽ: kiểm tra lớp vòng focus của kit (`focus-visible:ring-3 ring-primary-text`).
     const KIT_RING = ["focus-visible:ring-3", "focus-visible:ring-primary-text"];
