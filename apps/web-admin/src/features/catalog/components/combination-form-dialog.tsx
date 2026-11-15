@@ -51,6 +51,7 @@ import {
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { createCombinationFormSchema, type CombinationFormValues } from "../schemas";
 import { DRAG_HANDLE } from "../styles";
+import { usePrefersReducedMotion } from "../use-reduced-motion";
 import {
   getCatalogErrorCode,
   getCatalogFieldErrors,
@@ -898,10 +899,13 @@ function SortableSubjectRow({
 }) {
   const t = useTranslations("catalog");
   const sortableAttributes = useCatalogSortableAttributes();
+  const reduceMotion = usePrefersReducedMotion();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
     attributes: sortableAttributes,
+    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
+    transition: reduceMotion ? null : undefined,
   });
 
   const style: CSSProperties = {

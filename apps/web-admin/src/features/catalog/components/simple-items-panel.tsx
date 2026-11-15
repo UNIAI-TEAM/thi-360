@@ -59,6 +59,7 @@ import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from ".
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { useInlineOverflow } from "../scroll-region";
 import { DRAG_HANDLE, focusRingInset, STATIC_CHIP } from "../styles";
+import { usePrefersReducedMotion } from "../use-reduced-motion";
 import { pickName } from "../utils";
 
 /**
@@ -660,10 +661,13 @@ function SortableItemRow({
 }) {
   const t = useTranslations("catalog");
   const sortableAttributes = useCatalogSortableAttributes();
+  const reduceMotion = usePrefersReducedMotion();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     disabled: !reorderEnabled,
     attributes: sortableAttributes,
+    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
+    transition: reduceMotion ? null : undefined,
   });
 
   const style: CSSProperties = {

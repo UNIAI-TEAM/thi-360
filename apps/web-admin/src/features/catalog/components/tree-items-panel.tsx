@@ -109,6 +109,7 @@ import {
 } from "../utils";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { DRAG_HANDLE } from "../styles";
+import { usePrefersReducedMotion } from "../use-reduced-motion";
 import { useDebouncedSearch } from "../use-debounced-value";
 import type { StatusFilter } from "./simple-items-panel";
 
@@ -2132,10 +2133,13 @@ function SortableTreeRow({
   children: ReactNode;
 }) {
   const sortableAttributes = useCatalogSortableAttributes();
+  const reduceMotion = usePrefersReducedMotion();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
     attributes: sortableAttributes,
+    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
+    transition: reduceMotion ? null : undefined,
   });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
