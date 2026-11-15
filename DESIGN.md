@@ -230,7 +230,8 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 - Nằm trong thẻ trắng bo góc 12px. Hàng tiêu đề nền `#FAFAFB`, chữ 13px đậm 600 màu `text-muted`.
 - Dòng cao 48px, viền dưới `border`, hover nền `bg-subtle`. Dòng đang chọn nền `primary-50`.
-- **Cột Thao tác ưu tiên nút icon, không dùng nút chữ** (chốt 2026-11-13). Mỗi nút là một icon lucide 18px trong vùng bấm 40–44px, căn phải, có **tooltip** hiện tên thao tác khi rê chuột hoặc focus bàn phím, và có `aria-label` nêu rõ thao tác kèm đối tượng ("Sửa vai trò Vận hành").
+- **Cột Thao tác ưu tiên nút icon, không dùng nút chữ** (chốt 2026-11-13). Mỗi nút là một icon lucide 18px trong vùng bấm 40–44px, căn phải, có **tooltip** hiện tên thao tác khi rê chuột hoặc khi người dùng đưa focus tới bằng phím điều hướng (Tab, mũi tên, Home/End), và có `aria-label` nêu rõ thao tác kèm đối tượng ("Sửa vai trò Vận hành").
+- **Tooltip không tự mở khi focus bị trả về** (UNI-2588): đóng hộp thoại, ngăn hay menu thì focus về nút đã mở nó, nhưng tooltip của nút không hiện; sau khi bấm hoặc chạm cũng vậy. `Tooltip` của kit tự lo việc này (ghi nhớ thao tác gần nhất là phím điều hướng hay không), màn không phải làm gì thêm.
 - Icon dùng thống nhất: bút chì = Sửa, thùng rác = Xóa, mắt = Xem/Chi tiết, hai mũi tên ngược chiều = Chuyển, người có dấu trừ = Loại khỏi lớp, vòng tròn có dấu trừ = Gỡ quyền. Thao tác nguy hiểm dùng màu `danger` (`#B91C1C`); thao tác bị khóa hiện mờ và tooltip nêu lý do.
 - Tối đa ba icon trên một dòng; nhiều hơn thì gom phần còn lại vào menu "⋯".
 - Phía trên bảng: tổng số bản ghi theo bộ lọc. Phía dưới: phân trang và chọn số dòng mỗi trang.

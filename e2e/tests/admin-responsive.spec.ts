@@ -56,6 +56,15 @@ async function expectNoHorizontalOverflow(page: Page, label: string) {
   ).toBeLessThanOrEqual(result.clientWidth);
 }
 
+/**
+ * Focus trả về nút menu khi ngăn đóng, nhưng tooltip của nút không được tự mở: người dùng không tìm tới nút này,
+ * tooltip chỉ treo che thanh trên (UNI-2588). Chờ quá độ trễ 200ms của tooltip rồi mới kiểm.
+ */
+async function expectNoTooltipAfterFocusReturn(page: Page) {
+  await page.waitForTimeout(400);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+}
+
 test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
   test.use({ viewport: PHONE });
 
@@ -171,6 +180,7 @@ test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
     await expect(drawer).toBeHidden();
     await expect(menuButton).toHaveAttribute("aria-expanded", "false");
     await expect(menuButton).toBeFocused();
+    await expectNoTooltipAfterFocusReturn(page);
     await expect(page.locator("main h1")).toBeVisible();
     await expectNoHorizontalOverflow(page, "/users sau khi đi qua ngăn menu");
 
@@ -181,6 +191,7 @@ test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();
     await expect(menuButton).toBeFocused();
+    await expectNoTooltipAfterFocusReturn(page);
 
     // Bấm nền mờ (phần bên phải ngăn).
     await menuButton.click();
@@ -188,12 +199,14 @@ test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
     await page.mouse.click(PHONE.width - 20, PHONE.height / 2);
     await expect(drawer).toBeHidden();
     await expect(menuButton).toBeFocused();
+    await expectNoTooltipAfterFocusReturn(page);
 
     // Nút ×.
     await menuButton.click();
     await drawer.getByRole("button", { name: "Đóng menu điều hướng" }).click();
     await expect(drawer).toBeHidden();
     await expect(menuButton).toBeFocused();
+    await expectNoTooltipAfterFocusReturn(page);
 
     // Nới cửa sổ tới 1024px khi ngăn đang mở: ngăn tự đóng vì sidebar đã hiện.
     await menuButton.click();
