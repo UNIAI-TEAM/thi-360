@@ -515,10 +515,9 @@ export function TreeItemsPanel({
       // trong bộ đệm thì dùng lại; cha còn thiếu được điền bộ đệm `{ parentId }` từ kết quả theo tầng, nên các
       // truy vấn con lười ở dưới không gọi lại.
       const rootKey = catalogQueryKeys.tree(group.id, {});
-      const cachedRoots = freshCachedTree(rootKey);
       const roots =
-        cachedRoots ??
-        (await queryClient.fetchQuery({
+        freshCachedTree(rootKey) ??
+        (await queryClient.fetchQuery<CatalogTreeNodeResponse[]>({
           queryKey: rootKey,
           queryFn: () => api.listTree(group.id, {}),
         }));
