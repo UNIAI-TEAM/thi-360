@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
@@ -118,7 +119,7 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     expect(within(codeLine).getByText(/2 vai trò/)).toHaveClass("@lg:hidden");
   });
 
-  it("Người dùng theo quyền: dưới 36rem cột Nguồn, Chi tiết, Trạng thái nhập vào ô tài khoản", async () => {
+  it("Người dùng theo quyền: thanh lọc xếp lưới khi hẹp; cột Chi tiết giữ bề rộng tối thiểu", async () => {
     renderWithProviders(
       withSession(
         <PermissionUsersTab
@@ -130,29 +131,15 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
       ),
     );
     const table = await screen.findByRole("table");
-    const accountCell = (await within(table).findByText("content.admin")).closest("td, th")!;
-
-    const wrapper = table.closest(".\\@container")!;
-    for (const col of ["source", "detail", "status"]) {
-      expect(wrapper.className).toContain(`@max-[36rem]:[&_:is(th,td):has([data-col=${col}])]:hidden`);
-      expect(table.querySelectorAll(`thead [data-col=${col}]`)).toHaveLength(1);
-      expect(table.querySelectorAll(`tbody [data-col=${col}]`)).toHaveLength(1);
-    }
+    await within(table).findByText("content.admin");
     // Cột Chi tiết giữ bề rộng tối thiểu, không bị ép xuống mỗi từ một dòng.
     expect(table.querySelector("tbody [data-col=detail]")).toHaveClass("min-w-48");
-
-    const summary = accountCell.querySelector("[data-col-summary]")!;
-    expect(summary).toHaveClass("@min-[36rem]:hidden");
-    expect(within(summary as HTMLElement).getByText("Từ vai trò")).toBeInTheDocument();
-    expect(within(summary as HTMLElement).getByText("Vai trò: Quản trị nội dung")).toBeInTheDocument();
-    expect(within(summary as HTMLElement).getByText("Ngừng hoạt động")).toBeInTheDocument();
 
     // Thanh lọc: ô tìm kiếm hết chiều ngang, hai ô chọn hai cột; từ @xl về hàng flex.
     const searchLabel = screen.getByLabelText("Tìm tài khoản").closest("label")!;
     expect(searchLabel).toHaveClass("col-span-full", "@xl:flex-[2_1_220px]");
     expect(searchLabel.parentElement).toHaveClass("grid", "@min-[300px]:grid-cols-2", "@xl:flex");
   });
-
 
   it("Quyền hiệu lực của tài khoản: dưới 36rem cột Đối tượng và Mã nhập vào dòng phụ dưới tên quyền", async () => {
     const effective: EffectivePermissionsResponse = {
@@ -285,5 +272,75 @@ describe("Phân quyền: bảng thành danh sách thẻ ở khung hẹp (UNI-258
     expect(within(table).getAllByRole("columnheader")).toHaveLength(7);
     expect(table.querySelector("[data-col-summary]")).toBeNull();
     expect(screen.queryByRole("list", { name: "Vai trò" })).toBeNull();
+  });
+
+  const DIRECT_USER: PageResponsePermissionUserResponse["items"][number] = {
+    userId: "u-2",
+    code: "U000002",
+    username: "ops.admin",
+    fullName: "Vận hành viên",
+    status: "ACTIVE",
+    sources: [
+      {
+        type: "DIRECT",
+        grantedByUsername: "platform",
+        grantedAt: "2026-11-01T05:00:00Z",
+        reason: "Hỗ trợ rà soát",
+      },
+    ],
+  };
+
+  function renderPermissionUsers() {
+    renderWithProviders(
+      withSession(
+        <PermissionUsersTab
+          selectedPermissionCode="USER.RESET_PASSWORD"
+          listPermissions={async () => PERMISSIONS}
+          listUsersByPermission={async () => ({
+            ...PERMISSION_USERS,
+            items: [...PERMISSION_USERS.items, DIRECT_USER],
+            totalItems: 2,
+          })}
+        />,
+        ["PERMISSION.VIEW", "USER.VIEW", "USER.ASSIGN"],
+      ),
+    );
+  }
+
+  it("Người dùng theo quyền: khung phải hẹp hơn 36rem, mỗi tài khoản một thẻ: tên, họ tên và mã, chip trạng thái và nguồn, chi tiết", async () => {
+    installContainerWidth(560);
+    const user = userEvent.setup();
+    renderPermissionUsers();
+    const list = await screen.findByRole("list", { name: "Người dùng theo quyền" });
+    expect(screen.queryByRole("table")).toBeNull();
+    await within(list).findByText("content.admin");
+    const [fromRole, direct] = within(list).getAllByRole("listitem");
+
+    expect(within(fromRole!).getByText("content.admin")).toHaveClass("font-semibold", "wrap-anywhere");
+    expect(within(fromRole!).getByText("Quản trị nội dung · U000001")).toHaveClass("text-caption");
+    const chips = within(fromRole!).getByText("Ngừng hoạt động").parentElement!;
+    expect(Array.from(chips.children, (chip) => chip.textContent)).toEqual(["Ngừng hoạt động", "Từ vai trò"]);
+    expect(within(fromRole!).getByText("Vai trò: Quản trị nội dung")).toBeInTheDocument();
+    // Không có thao tác nào cho dòng chỉ có quyền từ vai trò khi không có cách mở vai trò.
+    expect(within(fromRole!).queryByRole("button")).toBeNull();
+
+    // Chip Hoạt động vẫn hiện; nút gỡ quyền nằm trên vùng bấm của thẻ và mở hộp thoại xác nhận như ở bảng.
+    expect(within(direct!).getByText("Hoạt động")).toBeInTheDocument();
+    expect(within(direct!).getByText("Gán trực tiếp")).toBeInTheDocument();
+    expect(within(direct!).getByText("platform gán ngày 01/11/2026 · Lý do: Hỗ trợ rà soát")).toBeInTheDocument();
+    const revoke = within(direct!).getByRole("button", { name: "Gỡ quyền trực tiếp của ops.admin" });
+    expect(revoke.closest(".z-1")).toHaveClass("relative");
+    await user.click(revoke);
+    expect(await screen.findByRole("dialog", { name: "Gỡ quyền gán trực tiếp?" })).toBeInTheDocument();
+  });
+
+  it("Người dùng theo quyền: khung phải 600px (cửa sổ máy tính khoảng 1210px) vẫn là bảng năm cột", async () => {
+    installContainerWidth(600);
+    renderPermissionUsers();
+    const table = await screen.findByRole("table", { name: "Người dùng theo quyền" });
+    await within(table).findByText("content.admin");
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
+    expect(table.querySelector("[data-col-summary]")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Người dùng theo quyền" })).toBeNull();
   });
 });
