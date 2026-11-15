@@ -16,6 +16,8 @@ import {
   FormField,
   IconButton,
   Input,
+  ListCard,
+  ListCardTitleLink,
   LiveStatus,
   PageHeader,
   Pagination,
@@ -23,6 +25,7 @@ import {
   Skeleton,
   StatusChip,
   Table,
+  type TableCards,
 } from "@thi360/ui";
 import {
   Eye,
@@ -39,7 +42,7 @@ import {
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
@@ -73,17 +76,14 @@ type StatusFilter = "ALL" | ClassStatus;
 
 /**
  * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, cùng cách với danh sách tài khoản):
- * Mô tả ẩn trước, rồi Người phụ trách, Số học viên. Khung hẹp như điện thoại (dưới 40rem) chỉ còn cột Mã lớp và
- * cột Thao tác: tên lớp, số học viên và trạng thái chuyển thành dòng tóm tắt dưới mã (`data-col-summary`). Đầy đủ
- * thông tin có ở trang chi tiết lớp.
+ * Mô tả ẩn trước, rồi Người phụ trách, Số học viên. Khung hẹp hơn 40rem thì bảng thành danh sách thẻ (`cards` của
+ * `Table`). Đầy đủ thông tin có ở trang chi tiết lớp.
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
   "@max-[64rem]:[&_:is(th,td):has([data-col=description])]:hidden",
   "@max-[56rem]:[&_:is(th,td):has([data-col=owner])]:hidden",
   "@max-3xl:[&_:is(th,td):has([data-col=memberCount])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=name])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
 ].join(" ");
 
 export interface ClassesListViewProps {
@@ -219,6 +219,10 @@ function ClassesListContent({
   );
 
   const canModify = can("CLASS.MODIFY");
+  const openEdit = useCallback((item: ClassSummary) => {
+    setEditingClass(item);
+    setFormOpen(true);
+  }, []);
 
   const columns = useMemo<ColumnDef<ClassSummary>[]>(
     () => [
@@ -226,41 +230,22 @@ function ClassesListContent({
         accessorKey: "code",
         header: t("table.code"),
         cell: ({ row }) => (
-          // Vùng bấm của liên kết phủ cả khối mã + dòng tóm tắt (phần tử giả); tên liên kết vẫn chỉ là mã lớp.
-          <div className="relative flex min-w-0 flex-col">
-            <Link
-              href={`/classes/${row.original.id}`}
-              className={cn(
-                "self-start rounded-sm font-semibold whitespace-nowrap text-primary-text after:absolute after:inset-0 hover:underline @max-[40rem]:whitespace-normal @max-[40rem]:wrap-anywhere",
-                focusRing,
-              )}
-            >
-              {row.original.code}
-            </Link>
-            {/*
-              Dòng tóm tắt thay cho các cột Tên lớp, Số học viên, Trạng thái khi khung hẹp. Tên lớp và dấu ngăn là
-              chữ trực tiếp của cùng một phần tử, nên khối này không trùng chữ với ô Tên lớp.
-            */}
-            <span
-              data-col-summary
-              className="hidden text-caption text-text-secondary @max-[40rem]:line-clamp-2"
-            >
-              {row.original.name}
-              {" · "}
-              {t("members.countBadge", { count: row.original.memberCount })}
-              {" · "}
-              <span className={row.original.status === "ACTIVE" ? "text-success" : "text-neutral"}>
-                {t(`statuses.${row.original.status}`)}
-              </span>
-            </span>
-          </div>
+          <Link
+            href={`/classes/${row.original.id}`}
+            className={cn(
+              "rounded-sm font-semibold whitespace-nowrap text-primary-text hover:underline",
+              focusRing,
+            )}
+          >
+            {row.original.code}
+          </Link>
         ),
       },
       {
         accessorKey: "name",
-        header: () => <span data-col="name">{t("table.name")}</span>,
+        header: t("table.name"),
         cell: ({ row }) => (
-          <span data-col="name" className="line-clamp-2 min-w-36 font-medium text-text">
+          <span className="line-clamp-2 min-w-36 font-medium text-text">
             {row.original.name}
           </span>
         ),
@@ -297,104 +282,57 @@ function ClassesListContent({
       },
       {
         accessorKey: "status",
-        header: () => <span data-col="status">{t("table.status")}</span>,
-        cell: ({ row }) => (
-          <StatusChip
-            data-col="status"
-            tone={row.original.status === "ACTIVE" ? "success" : "neutral"}
-          >
-            {t(`statuses.${row.original.status}`)}
-          </StatusChip>
-        ),
+        header: t("table.status"),
+        cell: ({ row }) => <ClassStatusChip status={row.original.status} />,
       },
       {
         id: "actions",
         header: () => <span className="block text-right">{t("table.actions")}</span>,
         enableSorting: false,
-        cell: ({ row }) => {
-          const item = row.original;
-          return (
-            <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
-              <IconButton
-                icon={<Eye />}
-                aria-label={t("actions.openAria", { code: item.code })}
-                tooltip={t("actions.openTooltip")}
-                onClick={() => router.push(`/classes/${item.id}`)}
-              />
-              {canModify && (
-                <>
-                  <IconButton
-                    icon={<Pencil />}
-                    aria-label={t("actions.editAria", { code: item.code })}
-                    tooltip={t("actions.editTooltip")}
-                    onClick={() => {
-                      setEditingClass(item);
-                      setFormOpen(true);
-                    }}
-                  />
-                  <DropdownMenu>
-                    {/* C-21: IconButton của kit (vòng focus, cỡ, tooltip chung) thay cho nút tự viết. */}
-                    <DropdownMenuTrigger asChild>
-                      <IconButton
-                        icon={<MoreHorizontal />}
-                        aria-label={t("actions.moreAria", { code: item.code })}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {item.status === "ACTIVE" ? (
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            actionController.openDeactivate({
-                              id: item.id,
-                              code: item.code,
-                              name: item.name,
-                              version: item.version,
-                            })
-                          }
-                        >
-                          <PowerOff />
-                          <span>{t("actions.deactivate")}</span>
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            actionController.openActivate({
-                              id: item.id,
-                              code: item.code,
-                              name: item.name,
-                              version: item.version,
-                            })
-                          }
-                        >
-                          <Power />
-                          <span>{t("actions.activate")}</span>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        destructive
-                        onSelect={() =>
-                          actionController.openDelete({
-                            id: item.id,
-                            code: item.code,
-                            name: item.name,
-                            version: item.version,
-                          })
-                        }
-                      >
-                        <Trash2 />
-                        <span>{t("actions.delete")}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              )}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
+            <IconButton
+              icon={<Eye />}
+              aria-label={t("actions.openAria", { code: row.original.code })}
+              tooltip={t("actions.openTooltip")}
+              onClick={() => router.push(`/classes/${row.original.id}`)}
+            />
+            {canModify && <ClassModifyActions item={row.original} onEdit={openEdit} controller={actionController} />}
+          </div>
+        ),
       },
     ],
-    [t, canModify, router, actionController],
+    [t, canModify, router, actionController, openEdit],
+  );
+
+  /**
+   * Khung hẹp (dưới 640px): mỗi lớp một thẻ. Mã lớp là tiêu đề dẫn tới chi tiết (cả thẻ bấm được, nên không cần nút
+   * Xem), tên lớp ở dòng phụ, chip trạng thái, số học viên và người phụ trách ở dòng thông tin thêm; Sửa và "⋯" như
+   * cột Thao tác.
+   */
+  const cards = useMemo<TableCards<ClassSummary>>(
+    () => ({
+      render: (item) => (
+        <ListCard
+          title={<ListCardTitleLink linkComponent={Link} href={`/classes/${item.id}`}>{item.code}</ListCardTitleLink>}
+          actions={
+            canModify ? <ClassModifyActions item={item} onEdit={openEdit} controller={actionController} /> : undefined
+          }
+          caption={item.name}
+          status={<ClassStatusChip status={item.status} />}
+          meta={[
+            { label: t("table.memberCount"), value: format.number(item.memberCount) },
+            { label: t("table.owner"), value: item.ownerUsername ?? "—" },
+          ]}
+        />
+      ),
+      sortLabels: {
+        label: common("table.sortBy"),
+        ascending: common("table.ascending"),
+        descending: common("table.descending"),
+      },
+    }),
+    [t, common, format, canModify, actionController, openEdit],
   );
 
   const items = classesQuery.data?.items ?? [];
@@ -497,6 +435,7 @@ function ClassesListContent({
               setPage(1);
             },
           }}
+          cards={cards}
           error={
             classesQuery.isError ? (
               <EmptyState
@@ -595,5 +534,58 @@ function ClassesListContent({
 
       <ClassActionDialogs controller={actionController} />
     </div>
+  );
+}
+
+function ClassStatusChip({ status }: { status: ClassStatus }) {
+  const t = useTranslations("classes");
+  return <StatusChip tone={status === "ACTIVE" ? "success" : "neutral"}>{t(`statuses.${status}`)}</StatusChip>;
+}
+
+/** Nút Sửa và menu "⋯" (ngừng/kích hoạt lại, xóa) của một lớp, dùng chung cho cột Thao tác và thẻ ở khung hẹp. */
+function ClassModifyActions({
+  item,
+  onEdit,
+  controller,
+}: {
+  item: ClassSummary;
+  onEdit: (item: ClassSummary) => void;
+  controller: ReturnType<typeof useClassActionController>;
+}) {
+  const t = useTranslations("classes");
+  const target = { id: item.id, code: item.code, name: item.name, version: item.version };
+  return (
+    <>
+      <IconButton
+        icon={<Pencil />}
+        aria-label={t("actions.editAria", { code: item.code })}
+        tooltip={t("actions.editTooltip")}
+        onClick={() => onEdit(item)}
+      />
+      <DropdownMenu>
+        {/* C-21: IconButton của kit (vòng focus, cỡ, tooltip chung) thay cho nút tự viết. */}
+        <DropdownMenuTrigger asChild>
+          <IconButton icon={<MoreHorizontal />} aria-label={t("actions.moreAria", { code: item.code })} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {item.status === "ACTIVE" ? (
+            <DropdownMenuItem onSelect={() => controller.openDeactivate(target)}>
+              <PowerOff />
+              <span>{t("actions.deactivate")}</span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={() => controller.openActivate(target)}>
+              <Power />
+              <span>{t("actions.activate")}</span>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem destructive onSelect={() => controller.openDelete(target)}>
+            <Trash2 />
+            <span>{t("actions.delete")}</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

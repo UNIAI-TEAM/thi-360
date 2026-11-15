@@ -7,6 +7,7 @@ import type { ListUsersQuery, RoleSummary, UserSummary } from "@/features/users/
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import {
   ClassesApiError,
   type ClassesApiDeps,
@@ -218,6 +219,7 @@ function renderDetail(
 
 afterEach(() => {
   routerMock.push.mockReset();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -875,26 +877,87 @@ describe("ClassDetailView", () => {
   });
 });
 
-describe("ClassDetailView: dùng được từ 360px (UNI-2586)", () => {
-  it("thẻ thành viên ẩn cột Vào lớp, Trạng thái ở khung hẹp và đưa chúng xuống dòng tóm tắt dưới tên", async () => {
+describe("ClassDetailView: dùng được từ 360px (UNI-2586, UNI-2587)", () => {
+  it("khung rộng: bảng thành viên đủ bốn cột, không ẩn cột, không còn dòng tóm tắt; ô tìm kiếm co theo thẻ", async () => {
     renderDetail(makeDeps());
     const link = await screen.findByRole("link", { name: "student01" });
     const table = screen.getByRole("table", { name: "Học viên trong lớp" });
 
     const card = table.closest(".\\@container")!;
     expect(card).not.toBeNull();
-    expect(card.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=joinedAt])]:hidden");
-    expect(card.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=userStatus])]:hidden");
-    for (const col of ["joinedAt", "userStatus"]) {
-      expect(table.querySelector(`thead [data-col='${col}']`)).not.toBeNull();
-      expect(table.querySelectorAll(`tbody [data-col='${col}']`)).toHaveLength(SAMPLE_MEMBERS.length);
-    }
-
-    const summary = link.parentElement!.querySelector<HTMLElement>("[data-col-summary]")!;
-    expect(summary).toHaveClass("hidden", "@max-[40rem]:block");
-    expect(summary).toHaveTextContent(/^Vào lớp \d{2}\/\d{2}\/\d{4} · Hoạt động$/);
-    expect(link).toHaveClass("after:absolute", "after:inset-0");
+    expect(card.className).not.toContain("@max-[40rem]");
+    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "Học viên",
+      "Vào lớp",
+      "Trạng thái",
+      "Thao tác",
+    ]);
+    expect(table.querySelector("[data-col-summary]")).toBeNull();
+    expect(link).toHaveAttribute("href", "/users/00000000-0000-4000-8000-000000000101");
+    expect(link).not.toHaveClass("after:absolute");
     // Ô tìm học viên rộng hết hàng ở thẻ hẹp, 18rem từ @lg.
     expect(screen.getByLabelText("Tìm học viên trong lớp").closest(".\\@lg\\:w-72")).not.toBeNull();
+  });
+
+  it("khung 358px: mỗi học viên một thẻ: tên đăng nhập dẫn tới tài khoản, họ tên, chip trạng thái, ngày vào lớp", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderDetail(makeDeps());
+
+    const list = await screen.findByRole("list", { name: "Học viên trong lớp" });
+    await within(list).findByText("student01");
+    expect(screen.queryByRole("table", { name: "Học viên trong lớp" })).toBeNull();
+    const [first] = within(list).getAllByRole("listitem");
+
+    const link = within(first!).getByRole("link", { name: "student01" });
+    expect(link).toHaveAttribute("href", "/users/00000000-0000-4000-8000-000000000101");
+    expect(link).toHaveClass("after:absolute", "after:inset-0");
+    expect(within(first!).getByText("Học viên 01")).toHaveClass("text-caption");
+    expect(within(first!).getByText("Hoạt động").closest("[data-tone]")).toHaveAttribute("data-tone", "success");
+    expect(first).toHaveTextContent(/Vào lớp: \d{2}\/\d{2}\/\d{4}/);
+  });
+
+  it("thẻ có nút Chuyển lớp và Loại khỏi lớp nằm trên vùng bấm; bấm Loại khỏi lớp mở hộp thoại xác nhận", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderDetail(makeDeps());
+    const list = await screen.findByRole("list", { name: "Học viên trong lớp" });
+    await within(list).findByText("student01");
+    const [first] = within(list).getAllByRole("listitem");
+
+    const transfer = within(first!).getByRole("button", { name: "Chuyển student01 sang lớp khác" });
+    expect(transfer.closest(".z-1")).toHaveClass("relative");
+    await userEvent.click(within(first!).getByRole("button", { name: "Loại student01 khỏi lớp" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("student01");
+  });
+
+  it("chỉ có CLASS.VIEW: thẻ không có nút thao tác", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderDetail(makeDeps(), { ...TEST_ADMIN_SESSION, permissions: ["CLASS.VIEW"] });
+    const list = await screen.findByRole("list", { name: "Học viên trong lớp" });
+    await within(list).findByText("student01");
+    expect(within(list).queryByRole("button")).toBeNull();
+  });
+
+  it("ô Sắp xếp theo: Học viên và Vào lớp; chọn thì gửi sắp xếp lên máy chủ", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    const deps = makeDeps();
+    renderDetail(deps);
+    const list = await screen.findByRole("list", { name: "Học viên trong lớp" });
+    await within(list).findByText("student01");
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Sắp xếp theo" }));
+    const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
+    expect(options).toEqual([
+      "Học viên · tăng dần",
+      "Học viên · giảm dần",
+      "Vào lớp · tăng dần",
+      "Vào lớp · giảm dần",
+    ]);
+    await userEvent.click(screen.getByRole("option", { name: "Học viên · tăng dần" }));
+    await waitFor(() =>
+      expect(deps.listClassMembers).toHaveBeenLastCalledWith(
+        BASE_CLASS.id,
+        expect.objectContaining({ sort: "username,asc", page: 0 }),
+      ),
+    );
   });
 });

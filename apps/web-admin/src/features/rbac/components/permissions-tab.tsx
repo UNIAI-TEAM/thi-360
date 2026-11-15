@@ -1,10 +1,24 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, EmptyState, Input, Select, Skeleton, StatusChip, cn, focusRing } from "@thi360/ui";
+import {
+  Button,
+  Card,
+  CardList,
+  CardListItem,
+  cn,
+  EmptyState,
+  focusRing,
+  Input,
+  ListCard,
+  Select,
+  Skeleton,
+  StatusChip,
+  useCardMode,
+} from "@thi360/ui";
 import { Info, KeyRound, Search, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
 import { listPermissions as defaultListPermissions, rbacKeys } from "../api";
 import {
@@ -21,6 +35,14 @@ export interface PermissionsTabProps {
   listPermissions?: () => Promise<PermissionResponse[]>;
   onSelectPermissionUsers?: (permissionCode: string) => void;
 }
+
+/**
+ * Bề rộng vùng nội dung (px) dưới đó bảng quyền thành danh sách thẻ (DESIGN.md mục 5.9, UNI-2587). Bảng năm cột cần
+ * 780px và đã cuộn ngang trong khung; dưới 672px (cùng ngưỡng `@2xl` của thanh lọc) cột Mã và Vai trò không còn chỗ,
+ * nên mỗi quyền là một thẻ. Từ cửa sổ 1024px vùng nội dung rộng ít nhất 728px (1024 − 248 sidebar − 48 lề) nên vẫn
+ * là bảng như trước; dưới 1024px là thẻ khi cửa sổ hẹp hơn khoảng 720px.
+ */
+const CARD_BREAKPOINT = 672;
 
 interface PermissionGroupRows {
   objectCode: string;
@@ -128,10 +150,12 @@ export function PermissionsTab({
   }, [objectFilter, permissionsQuery.data, scopeFilter, search, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPermissions = groupedRows.reduce((sum, group) => sum + group.items.length, 0);
+  // Đo vùng chứa của cả tab: luôn có mặt ở cả hai dạng (bảng, danh sách thẻ).
+  const [containerRef, cardMode] = useCardMode<HTMLDivElement>(true, CARD_BREAKPOINT);
 
   return (
     // Vùng chứa cho thanh lọc và bảng: chia bố cục theo bề rộng vùng nội dung, không theo cửa sổ (DESIGN.md 5.13).
-    <div className="@container flex flex-col gap-4">
+    <div ref={containerRef} className="@container flex flex-col gap-4">
       <div
         role="note"
         className="flex items-start gap-2.5 rounded-lg border border-info/30 bg-info-bg px-3.5 py-3 text-body text-info"
@@ -209,46 +233,55 @@ export function PermissionsTab({
         </Card>
       ) : (
         <Card padding="none" className="overflow-hidden">
-          {/*
-            Từ @2xl bảng giữ năm cột, rộng tối thiểu 780px và cuộn ngang trong khung như cũ. Hẹp hơn (điện thoại,
-            tablet dọc): cột Mã ẩn, mã hiện dưới tên quyền và được ngắt ở bất kỳ chỗ nào để đọc đủ; dưới @lg cột Vai
-            trò cũng ẩn, số vai trò nhập vào dòng mã.
-          */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse @2xl:min-w-[780px]">
-              <thead>
-                <tr className="bg-table-head text-left text-field-label text-text-muted">
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    {t("permissionsTab.columns.name")}
-                  </th>
-                  <th scope="col" className="hidden px-3 py-3 font-semibold @2xl:table-cell">
-                    {t("permissionsTab.columns.code")}
-                  </th>
-                  <th scope="col" className="px-3 py-3 font-semibold">
-                    {t("permissionsTab.columns.scope")}
-                  </th>
-                  <th scope="col" className="hidden px-3 py-3 font-semibold @lg:table-cell">
-                    {t("permissionsTab.columns.roles")}
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    {t("permissionsTab.columns.users")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupedRows.map((group) => (
-                  <PermissionGroupSection
-                    key={group.objectCode}
-                    group={group}
-                    rbacT={rbacT}
-                    t={t}
-                    canOpenUsersTab={canOpenUsersTab}
-                    onSelectPermissionUsers={onSelectPermissionUsers}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {cardMode ? (
+            groupedRows.map((group) => (
+              <PermissionGroupCards
+                key={group.objectCode}
+                group={group}
+                rbacT={rbacT}
+                t={t}
+                canOpenUsersTab={canOpenUsersTab}
+                onSelectPermissionUsers={onSelectPermissionUsers}
+              />
+            ))
+          ) : (
+            // Bảng năm cột, rộng tối thiểu 780px và cuộn ngang trong khung khi vùng nội dung hẹp hơn.
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[780px] border-collapse">
+                <thead>
+                  <tr className="bg-table-head text-left text-field-label text-text-muted">
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      {t("permissionsTab.columns.name")}
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-semibold">
+                      {t("permissionsTab.columns.code")}
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-semibold">
+                      {t("permissionsTab.columns.scope")}
+                    </th>
+                    <th scope="col" className="px-3 py-3 font-semibold">
+                      {t("permissionsTab.columns.roles")}
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      {t("permissionsTab.columns.users")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedRows.map((group) => (
+                    <PermissionGroupSection
+                      key={group.objectCode}
+                      group={group}
+                      rbacT={rbacT}
+                      t={t}
+                      canOpenUsersTab={canOpenUsersTab}
+                      onSelectPermissionUsers={onSelectPermissionUsers}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <div className="border-t border-border px-4 py-3 text-caption text-text-muted">
             {t("permissionsTab.footerSummary", {
               permissionCount: totalPermissions,
@@ -261,19 +294,97 @@ export function PermissionsTab({
   );
 }
 
-function PermissionGroupSection({
-  group,
-  rbacT,
-  t,
-  canOpenUsersTab,
-  onSelectPermissionUsers,
-}: {
+type PermissionGroupProps = {
   group: PermissionGroupRows;
   rbacT: RbacTranslator;
   t: ReturnType<typeof useTranslations<"rbac">>;
   canOpenUsersTab: boolean;
   onSelectPermissionUsers?: (permissionCode: string) => void;
-}) {
+};
+
+/** Tên hiện của một quyền: mức (Xem, Sửa) giữ nguyên, quyền riêng có tiền tố "Quyền riêng:". */
+function permissionDisplayName(
+  item: PermissionResponse,
+  rbacT: RbacTranslator,
+  t: PermissionGroupProps["t"],
+): string {
+  const isLevel = item.code.endsWith(".VIEW") || item.code.endsWith(".MODIFY");
+  const baseName = resolvePermissionName(rbacT, item.code, item.name);
+  return isLevel ? baseName : t("permissionsTab.extraPrefix", { name: baseName });
+}
+
+/** Số tài khoản đang có quyền: nút mở tab Người dùng theo quyền khi được xem, không thì chỉ là chữ. */
+function UserCount({
+  item,
+  rbacT,
+  t,
+  canOpenUsersTab,
+  onSelectPermissionUsers,
+}: Omit<PermissionGroupProps, "group"> & { item: PermissionResponse }) {
+  const shortName = resolvePermissionShortName(rbacT, item.code, item.name);
+  return canOpenUsersTab && onSelectPermissionUsers ? (
+    <button
+      type="button"
+      aria-label={t("permissionsTab.userCountAria", { name: shortName })}
+      onClick={() => onSelectPermissionUsers(item.code)}
+      className={cn(
+        "inline-flex min-h-11 cursor-pointer items-center font-semibold text-primary-text tabular-nums hover:underline focus-visible:rounded-sm",
+        focusRing,
+      )}
+    >
+      {t("permissionsTab.userCountValue", { count: item.userCount })}
+    </button>
+  ) : (
+    <span className="font-medium text-text-secondary tabular-nums">
+      {t("permissionsTab.userCountValue", { count: item.userCount })}
+    </span>
+  );
+}
+
+/**
+ * Một nhóm quyền ở dạng thẻ (DESIGN.md mục 5.9): tiêu đề nhóm là `<h2>` đặt tên cho danh sách của nhóm; mỗi quyền
+ * một thẻ gồm tên mức, mã (xuống dòng ở bất kỳ ký tự nào), chip phạm vi, rồi số vai trò và số tài khoản.
+ */
+function PermissionGroupCards({ group, ...props }: PermissionGroupProps) {
+  const { rbacT, t } = props;
+  const headingId = useId();
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <h2
+        id={headingId}
+        className="bg-page px-4 py-2 text-field-label font-semibold text-text-secondary"
+      >
+        {group.objectName}
+      </h2>
+      <CardList aria-labelledby={headingId} className="border-t border-border">
+        {group.items.map((item) => (
+          <CardListItem key={item.id}>
+            <ListCard
+              title={permissionDisplayName(item, rbacT, t)}
+              caption={<code>{item.code}</code>}
+              tags={
+                <StatusChip tone={item.scope === "MANAGE" ? "info" : "warning"}>
+                  {t(`access.${item.scope}`)}
+                </StatusChip>
+              }
+            >
+              <div className="flex flex-wrap items-center gap-x-1.5 text-caption text-text-muted">
+                <span className="tabular-nums">
+                  {t("permissionsTab.roleCountValue", { count: item.roleCount })}
+                </span>
+                <span aria-hidden="true">·</span>
+                <UserCount item={item} {...props} />
+              </div>
+            </ListCard>
+          </CardListItem>
+        ))}
+      </CardList>
+    </div>
+  );
+}
+
+function PermissionGroupSection({ group, ...props }: PermissionGroupProps) {
+  const { rbacT, t } = props;
   return (
     <>
       <tr className="border-t border-border bg-page">
@@ -286,29 +397,14 @@ function PermissionGroupSection({
         </th>
       </tr>
       {group.items.map((item) => {
-        const isLevel = item.code.endsWith(".VIEW") || item.code.endsWith(".MODIFY");
-        const baseName = resolvePermissionName(rbacT, item.code, item.name);
-        const displayName = isLevel
-          ? baseName
-          : t("permissionsTab.extraPrefix", { name: baseName });
-        const shortName = resolvePermissionShortName(rbacT, item.code, item.name);
+        const displayName = permissionDisplayName(item, rbacT, t);
 
         return (
           <tr key={item.id} className="h-12 border-t border-border bg-surface">
             <td className="px-4 py-2 font-medium text-text">
               <span className="wrap-break-word">{displayName}</span>
-              <span
-                data-testid="permission-code-line"
-                className="mt-0.5 block text-caption font-normal text-text-muted @2xl:hidden"
-              >
-                <code className="wrap-anywhere">{item.code}</code>
-                <span className="@lg:hidden">
-                  {" · "}
-                  {t("permissionsTab.roleCountValue", { count: item.roleCount })}
-                </span>
-              </span>
             </td>
-            <td className="hidden px-3 py-2 @2xl:table-cell">
+            <td className="px-3 py-2">
               <code className="text-field-label text-text-muted">{item.code}</code>
             </td>
             <td className="px-3 py-2">
@@ -316,29 +412,13 @@ function PermissionGroupSection({
                 {t(`access.${item.scope}`)}
               </StatusChip>
             </td>
-            <td className="hidden px-3 py-2 text-text-secondary tabular-nums @lg:table-cell">
+            <td className="px-3 py-2 text-text-secondary tabular-nums">
               {item.roleCount > 0
                 ? t("permissionsTab.roleCountValue", { count: item.roleCount })
                 : "—"}
             </td>
             <td className="px-4 py-2">
-              {canOpenUsersTab && onSelectPermissionUsers ? (
-                <button
-                  type="button"
-                  aria-label={t("permissionsTab.userCountAria", { name: shortName })}
-                  onClick={() => onSelectPermissionUsers(item.code)}
-                  className={cn(
-                    "inline-flex min-h-11 cursor-pointer items-center font-semibold text-primary-text tabular-nums hover:underline focus-visible:rounded-sm",
-                    focusRing,
-                  )}
-                >
-                  {t("permissionsTab.userCountValue", { count: item.userCount })}
-                </button>
-              ) : (
-                <span className="font-medium text-text-secondary tabular-nums">
-                  {t("permissionsTab.userCountValue", { count: item.userCount })}
-                </span>
-              )}
+              <UserCount item={item} {...props} />
             </td>
           </tr>
         );

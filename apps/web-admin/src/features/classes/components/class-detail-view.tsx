@@ -11,12 +11,15 @@ import {
   focusRing,
   IconButton,
   Input,
+  ListCard,
+  ListCardTitleLink,
   LiveStatus,
   notify,
   Pagination,
   Skeleton,
   StatusChip,
   Table,
+  type TableCards,
 } from "@thi360/ui";
 import {
   ArrowLeft,
@@ -62,13 +65,6 @@ import { TransferMemberDialog } from "./transfer-member-dialog";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-/** Cột của bảng thành viên ẩn theo bề rộng thẻ chứa (container query), cùng ngưỡng với danh sách tài khoản. */
-const MEMBER_COLUMNS = [
-  "@container",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=joinedAt])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=userStatus])]:hidden",
-].join(" ");
 
 export interface ClassDetailViewProps {
   classId: string;
@@ -252,62 +248,33 @@ function ClassDetailContent({
       {
         accessorKey: "username",
         header: t("members.tableStudent"),
-        cell: ({ row }) => {
-          const isActiveUser = row.original.userStatus === "ACTIVE";
-          return (
-            // Vùng bấm của liên kết phủ cả khối (phần tử giả); tên liên kết vẫn chỉ là tên đăng nhập.
-            <div className="relative flex min-w-0 flex-col">
-              <Link
-                href={`/users/${row.original.userId}`}
-                className={cn(
-                  "self-start rounded-sm font-semibold whitespace-nowrap text-primary-text after:absolute after:inset-0 hover:underline @max-[40rem]:whitespace-normal @max-[40rem]:wrap-anywhere",
-                  focusRing,
-                )}
-              >
-                {row.original.username}
-              </Link>
-              <span className="line-clamp-2 text-caption text-text-muted">{row.original.fullName}</span>
-              {/*
-                Dòng tóm tắt thay cho cột Vào lớp, Trạng thái khi khung hẹp (dưới 40rem). Nhãn, ngày và dấu ngăn là
-                chữ trực tiếp của cùng một phần tử, nên khối này không trùng chữ với hai ô kia.
-              */}
-              <span
-                data-col-summary
-                className="hidden text-caption text-text-secondary tabular-nums @max-[40rem]:block"
-              >
-                {t("members.tableJoinedAt")} {formatClassDate(row.original.joinedAt)}
-                {" · "}
-                <span className={isActiveUser ? "text-success" : "text-danger"}>
-                  {isActiveUser ? t("members.userStatusActive") : t("members.userStatusInactive")}
-                </span>
-              </span>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="flex min-w-0 flex-col">
+            <Link
+              href={`/users/${row.original.userId}`}
+              className={cn(
+                "self-start rounded-sm font-semibold whitespace-nowrap text-primary-text hover:underline",
+                focusRing,
+              )}
+            >
+              {row.original.username}
+            </Link>
+            <span className="line-clamp-2 text-caption text-text-muted">{row.original.fullName}</span>
+          </div>
+        ),
       },
       {
         accessorKey: "joinedAt",
-        header: () => <span data-col="joinedAt">{t("members.tableJoinedAt")}</span>,
+        header: t("members.tableJoinedAt"),
         cell: ({ row }) => (
-          <span data-col="joinedAt" className="whitespace-nowrap text-text-secondary">
-            {formatClassDate(row.original.joinedAt)}
-          </span>
+          <span className="whitespace-nowrap text-text-secondary">{formatClassDate(row.original.joinedAt)}</span>
         ),
       },
       {
         id: "userStatus",
-        header: () => <span data-col="userStatus">{t("members.tableStatus")}</span>,
+        header: t("members.tableStatus"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <StatusChip
-            data-col="userStatus"
-            tone={row.original.userStatus === "ACTIVE" ? "success" : "danger"}
-          >
-            {row.original.userStatus === "ACTIVE"
-              ? t("members.userStatusActive")
-              : t("members.userStatusInactive")}
-          </StatusChip>
-        ),
+        cell: ({ row }) => <MemberStatusChip status={row.original.userStatus} />,
       },
       ...(canModify
         ? [
@@ -315,31 +282,48 @@ function ClassDetailContent({
               id: "actions",
               header: () => <span className="block text-right">{t("members.tableActions")}</span>,
               enableSorting: false,
-              cell: ({ row }: { row: { original: ClassMember } }) => {
-                const member = row.original;
-                return (
-                  <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
-                    <IconButton
-                      icon={<ArrowLeftRight />}
-                      aria-label={t("members.transferAria", { username: member.username })}
-                      tooltip={t("members.transferTooltip")}
-                      onClick={() => setTransferTarget(member)}
-                    />
-                    <IconButton
-                      icon={<UserMinus />}
-                      tone="danger"
-                      aria-label={t("members.removeAria", { username: member.username })}
-                      tooltip={t("members.removeTooltip")}
-                      onClick={() => setRemoveTarget(member)}
-                    />
-                  </div>
-                );
-              },
+              cell: ({ row }: { row: { original: ClassMember } }) => (
+                <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
+                  <MemberActions member={row.original} onTransfer={setTransferTarget} onRemove={setRemoveTarget} />
+                </div>
+              ),
             },
           ]
         : []),
     ],
     [t, canModify],
+  );
+
+  /**
+   * Khung hẹp (dưới 640px): mỗi học viên một thẻ. Tên đăng nhập dẫn tới chi tiết tài khoản, họ tên ở dòng phụ, chip
+   * trạng thái tài khoản, ngày vào lớp ở dòng thông tin thêm; Chuyển lớp và Loại khỏi lớp như cột Thao tác.
+   */
+  const cards = useMemo<TableCards<ClassMember>>(
+    () => ({
+      render: (member) => (
+        <ListCard
+          title={
+            <ListCardTitleLink linkComponent={Link} href={`/users/${member.userId}`}>
+              {member.username}
+            </ListCardTitleLink>
+          }
+          actions={
+            canModify ? (
+              <MemberActions member={member} onTransfer={setTransferTarget} onRemove={setRemoveTarget} />
+            ) : undefined
+          }
+          caption={member.fullName}
+          status={<MemberStatusChip status={member.userStatus} />}
+          meta={[{ label: t("members.tableJoinedAt"), value: formatClassDate(member.joinedAt) }]}
+        />
+      ),
+      sortLabels: {
+        label: common("table.sortBy"),
+        ascending: common("table.ascending"),
+        descending: common("table.descending"),
+      },
+    }),
+    [t, common, canModify],
   );
 
   if (classQuery.isLoading) {
@@ -506,10 +490,10 @@ function ClassDetailContent({
       )}
 
       {/*
-        Thẻ thành viên là vùng truy vấn bề rộng: ô tìm kiếm rộng hết hàng ở khung hẹp, cột Vào lớp và Trạng thái
-        ẩn dưới 40rem (dữ liệu của chúng xuống dòng tóm tắt dưới tên).
+        Thẻ thành viên là vùng truy vấn bề rộng: ô tìm kiếm rộng hết hàng ở khung hẹp. Bảng thành danh sách thẻ khi
+        khung hẹp hơn 640px (bốn cột vừa khung từ ngưỡng đó, không cần ẩn cột).
       */}
-      <Card padding="none" className={cn("overflow-hidden", MEMBER_COLUMNS)}>
+      <Card padding="none" className="@container overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <h2 className="text-title font-semibold text-text">{t("members.title")}</h2>
@@ -550,6 +534,7 @@ function ClassDetailContent({
               setPage(1);
             },
           }}
+          cards={cards}
           error={
             membersQuery.isError ? (
               <EmptyState
@@ -703,5 +688,44 @@ function ClassDetailContent({
 
       <ClassActionDialogs controller={actionController} />
     </div>
+  );
+}
+
+function MemberStatusChip({ status }: { status: ClassMember["userStatus"] }) {
+  const t = useTranslations("classes");
+  return (
+    <StatusChip tone={status === "ACTIVE" ? "success" : "danger"}>
+      {status === "ACTIVE" ? t("members.userStatusActive") : t("members.userStatusInactive")}
+    </StatusChip>
+  );
+}
+
+/** Nút Chuyển lớp và Loại khỏi lớp của một học viên, dùng chung cho cột Thao tác và thẻ ở khung hẹp. */
+function MemberActions({
+  member,
+  onTransfer,
+  onRemove,
+}: {
+  member: ClassMember;
+  onTransfer: (member: ClassMember) => void;
+  onRemove: (member: ClassMember) => void;
+}) {
+  const t = useTranslations("classes");
+  return (
+    <>
+      <IconButton
+        icon={<ArrowLeftRight />}
+        aria-label={t("members.transferAria", { username: member.username })}
+        tooltip={t("members.transferTooltip")}
+        onClick={() => onTransfer(member)}
+      />
+      <IconButton
+        icon={<UserMinus />}
+        tone="danger"
+        aria-label={t("members.removeAria", { username: member.username })}
+        tooltip={t("members.removeTooltip")}
+        onClick={() => onRemove(member)}
+      />
+    </>
   );
 }

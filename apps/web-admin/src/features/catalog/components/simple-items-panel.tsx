@@ -20,6 +20,9 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Badge,
   Button,
+  CardList,
+  CardListItem,
+  CardListSkeletonItem,
   Chip,
   cn,
   DropdownMenu,
@@ -29,12 +32,15 @@ import {
   EmptyState,
   IconButton,
   Input,
+  ListCard,
+  ListCardTitleButton,
   LiveStatus,
   Pagination,
   Select,
   Skeleton,
   StatusChip,
   Tooltip,
+  useCardMode,
 } from "@thi360/ui";
 import {
   ArrowDown,
@@ -54,7 +60,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, type CSSProperties, useCallback, useMemo } from "react";
+import { Fragment, type CSSProperties, type ReactNode, useCallback, useMemo } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { useInlineOverflow } from "../scroll-region";
@@ -76,11 +82,7 @@ import { pickName } from "../utils";
  * Dưới ngưỡng `stickyActions` bộ cột tối thiểu không vừa: bảng cuộn ngang trong vùng có tên, nhận focus bàn phím,
  * và cột Thao tác thôi dính mép phải để không che dữ liệu ở vị trí cuộn đầu.
  *
- * Thẻ hẹp hơn 416px (điện thoại, UNI-2586) thì bảng chuyển sang dạng gọn: cột Mã và Trạng thái nhập vào ô tên thành
- * dòng phụ (mã, và chip trạng thái khi khác Hoạt động), các nút Sửa/Ngừng/Xóa gom vào menu "⋯" cạnh nút xem. Bộ cột
- * gọn là sắp xếp 104 · tên 112 · thao tác 102 (người quản lý) hoặc tên 112 · thao tác 96 (người chỉ xem), vừa thẻ
- * 328px ở cửa sổ 360px. Ngưỡng 416px nằm dưới bề rộng thẻ ở cửa sổ 1024px (khoảng 431px), nên từ 1024px trở lên
- * bảng giữ nguyên như trước.
+ * Thẻ hẹp hơn `CARD_BREAKPOINT` thì không còn là bảng mà là danh sách thẻ (xem dưới).
  */
 type ColumnLayout = {
   stickyActions: string;
@@ -96,30 +98,17 @@ type ColumnLayout = {
   summary: string;
   /** Phần các môn của dòng phụ: ẩn khi cột Các môn đã hiện. */
   summarySubjects: string;
-  /** Cột Mã và Trạng thái: ẩn khi thẻ hẹp hơn 416px (dạng gọn). */
-  full: string;
-  /** Dòng mã + trạng thái dưới tên ở dạng gọn: ẩn khi hai cột kia đã hiện. */
-  compactMeta: string;
-  /** Các nút Sửa/Ngừng/Xóa đứng riêng: chỉ hiện khi không ở dạng gọn. */
-  inlineActions: string;
-  /** Menu "⋯" gom các nút trên ở dạng gọn. */
-  menuActions: string;
 };
 
-const MANAGE_COMPACT = {
-  full: "hidden @min-[416px]:table-cell",
-  compactMeta: "@min-[416px]:hidden",
-  inlineActions: "hidden @min-[416px]:inline-flex",
-  menuActions: "@min-[416px]:hidden",
-};
-
-const VIEW_COMPACT = {
-  full: "hidden @min-[416px]:table-cell",
-  compactMeta: "@min-[416px]:hidden",
-  // Người chỉ xem chỉ có nút xem nên không có nút đứng riêng hay menu "⋯" nào để đổi.
-  inlineActions: "inline-flex",
-  menuActions: "hidden",
-};
+/**
+ * Bề rộng thẻ giá trị (px) dưới đó bảng thành danh sách thẻ (DESIGN.md mục 5.9, UNI-2587). Bộ cột tối thiểu của
+ * bảng (sắp xếp 104 · mã 112 · tên 112 · trạng thái 152 · thao tác 186) đã rộng hơn mọi thẻ ở điện thoại, nên dưới
+ * ngưỡng mỗi giá trị là một thẻ: mã và tên, tên tiếng Anh hoặc kỳ thi và các môn, chip trạng thái, nút xem và menu
+ * "⋯". Ngưỡng 416px nằm dưới bề rộng thẻ ở cửa sổ 1024px (1024 − khoảng 17 thanh cuộn − 248 sidebar − 48 lề − 264
+ * cột danh mục − 16 khe ≈ 431px), nên từ 1024px trở lên vẫn là bảng như trước. Ở điện thoại (thẻ ở cửa sổ 360px rộng
+ * 328px, 390px rộng 358px) là danh sách thẻ.
+ */
+const CARD_BREAKPOINT = 416;
 
 /** Mã của giá trị: ô nền `subtle`, một dòng ở cột Mã. */
 const CODE_CHIP =
@@ -143,13 +132,11 @@ const COLUMN_LAYOUTS: Record<"manage" | "view", Record<"simple" | "combination",
   manage: {
     simple: {
       ...SIMPLE_ONLY,
-      ...MANAGE_COMPACT,
       stickyActions: "@min-[672px]:sticky @min-[672px]:right-0",
       value: "hidden @min-[752px]:table-cell",
       nameEn: "hidden @min-[864px]:table-cell",
     },
     combination: {
-      ...MANAGE_COMPACT,
       stickyActions: "@min-[672px]:sticky @min-[672px]:right-0",
       subjects: "hidden @min-[840px]:table-cell",
       summarySubjects: "@min-[840px]:hidden",
@@ -166,13 +153,11 @@ const COLUMN_LAYOUTS: Record<"manage" | "view", Record<"simple" | "combination",
   view: {
     simple: {
       ...SIMPLE_ONLY,
-      ...VIEW_COMPACT,
       stickyActions: "@min-[480px]:sticky @min-[480px]:right-0",
       value: "hidden @min-[560px]:table-cell",
       nameEn: "hidden @min-[672px]:table-cell",
     },
     combination: {
-      ...VIEW_COMPACT,
       stickyActions: "@min-[480px]:sticky @min-[480px]:right-0",
       subjects: "hidden @min-[648px]:table-cell",
       summarySubjects: "@min-[648px]:hidden",
@@ -301,6 +286,13 @@ export function SimpleItemsPanel({
     onReorder(arrayMove(items, index, targetIndex));
   }
 
+  const dndProps = {
+    accessibility: dndAccessibility,
+    sensors,
+    collisionDetection: closestCenter,
+    onDragEnd: handleDragEnd,
+  };
+
   const statusOptions = [
     { value: "ALL", label: t("allStatuses") },
     { value: "ACTIVE", label: t("statuses.ACTIVE") },
@@ -313,12 +305,12 @@ export function SimpleItemsPanel({
   // Lớp ẩn/hiện của từng cột theo đúng thứ tự cột, để hàng khung xương ẩn cùng lúc với tiêu đề.
   const columnVisibility = [
     ...(showReorder ? [""] : []),
-    layout.full,
+    "",
     "",
     layout.nameEn,
     ...(isCombinationGroup ? [layout.exam, layout.subjects, layout.version] : []),
     layout.value,
-    layout.full,
+    "",
     "",
   ];
   const colCount = columnVisibility.length;
@@ -327,8 +319,50 @@ export function SimpleItemsPanel({
   const resultStatus =
     loading || refreshing || error ? "" : t("itemsCountStatus", { count: totalItems });
   const [scrollerRef, tableOverflows] = useInlineOverflow<HTMLDivElement>();
+  // Đo chính thẻ giá trị: luôn có mặt ở cả hai dạng (bảng, danh sách thẻ).
+  const [sectionRef, cardMode] = useCardMode<HTMLElement>(true, CARD_BREAKPOINT);
+
+  const emptyState = (
+    <EmptyState
+      icon={<List />}
+      title={t("emptyItemsTitle")}
+      description={isFiltered ? t("emptyItemsFilteredDescription") : t("emptyItemsDescription")}
+      action={
+        isFiltered ? (
+          <Button variant="secondary" onClick={onResetFilters}>
+            {t("resetFilters")}
+          </Button>
+        ) : canModify && group.status === "ACTIVE" ? (
+          <Button variant="primary" onClick={onAddItem}>
+            <Plus aria-hidden className="mr-1.5 size-4" />
+            {t("addValue")}
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+  /** Thuộc tính chung của một dòng (bảng) hoặc một thẻ. */
+  const itemProps = (item: CatalogItemResponse, index: number): ItemViewProps => ({
+    item,
+    index,
+    total: items.length,
+    locale,
+    isCombinationGroup,
+    canModify,
+    showReorder,
+    reorderEnabled,
+    isFiltered,
+    onMoveUp: () => handleMoveByIndex(index, -1),
+    onMoveDown: () => handleMoveByIndex(index, 1),
+    onView: () => onViewItem(item),
+    onEdit: () => onEditItem(item),
+    onStop: () => onStopItem(item),
+    onDelete: () => onDeleteItem(item),
+  });
+
   return (
     <section
+      ref={sectionRef}
       aria-labelledby="catalog-items-heading"
       className="@container min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface shadow-xs"
     >
@@ -483,6 +517,32 @@ export function SimpleItemsPanel({
             </Button>
           }
         />
+      ) : cardMode ? (
+        <DndContext {...dndProps}>
+          <CardList
+            aria-label={t("itemsTableLabel")}
+            aria-busy={loading || refreshing || undefined}
+            className={cn(
+              "border-t border-border transition-opacity duration-150 motion-reduce:transition-none",
+              refreshing && !loading && "opacity-60",
+            )}
+          >
+            {loading ? (
+              Array.from({ length: 5 }, (_, index) => <CardListSkeletonItem key={index} />)
+            ) : items.length === 0 ? (
+              <li>{emptyState}</li>
+            ) : (
+              <SortableContext
+                items={items.map((item) => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {items.map((item, index) => (
+                  <SortableItemCard key={item.id} {...itemProps(item, index)} />
+                ))}
+              </SortableContext>
+            )}
+          </CardList>
+        </DndContext>
       ) : (
         <div
           ref={scrollerRef}
@@ -491,12 +551,7 @@ export function SimpleItemsPanel({
             : null)}
           className={cn("overflow-x-auto", focusRingInset)}
         >
-          <DndContext
-            accessibility={dndAccessibility}
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
+          <DndContext {...dndProps}>
             <table
               aria-label={t("itemsTableLabel")}
               aria-busy={loading || refreshing || undefined}
@@ -509,7 +564,7 @@ export function SimpleItemsPanel({
                       <span className="sr-only">{t("dragColumnLabel")}</span>
                     </th>
                   )}
-                  <th scope="col" className={cn("w-28 min-w-28 px-3 py-2.5", layout.full)}>
+                  <th scope="col" className="w-28 min-w-28 px-3 py-2.5">
                     {t("columns.code")}
                   </th>
                   <th scope="col" className="min-w-28 px-3 py-2.5">
@@ -543,10 +598,7 @@ export function SimpleItemsPanel({
                   >
                     {t("columns.value")}
                   </th>
-                  <th
-                    scope="col"
-                    className={cn("w-38 min-w-38 px-3 py-2.5 whitespace-nowrap", layout.full)}
-                  >
+                  <th scope="col" className="w-38 min-w-38 px-3 py-2.5 whitespace-nowrap">
                     {t("columns.status")}
                   </th>
                   <th
@@ -579,29 +631,7 @@ export function SimpleItemsPanel({
                   ))
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={colCount}>
-                      <EmptyState
-                        icon={<List />}
-                        title={t("emptyItemsTitle")}
-                        description={
-                          isFiltered
-                            ? t("emptyItemsFilteredDescription")
-                            : t("emptyItemsDescription")
-                        }
-                        action={
-                          isFiltered ? (
-                            <Button variant="secondary" onClick={onResetFilters}>
-                              {t("resetFilters")}
-                            </Button>
-                          ) : canModify && group.status === "ACTIVE" ? (
-                            <Button variant="primary" onClick={onAddItem}>
-                              <Plus aria-hidden className="mr-1.5 size-4" />
-                              {t("addValue")}
-                            </Button>
-                          ) : undefined
-                        }
-                      />
-                    </td>
+                    <td colSpan={colCount}>{emptyState}</td>
                   </tr>
                 ) : (
                   <SortableContext
@@ -609,25 +639,7 @@ export function SimpleItemsPanel({
                     strategy={verticalListSortingStrategy}
                   >
                     {items.map((item, index) => (
-                      <SortableItemRow
-                        key={item.id}
-                        item={item}
-                        index={index}
-                        total={items.length}
-                        locale={locale}
-                        isCombinationGroup={isCombinationGroup}
-                        layout={layout}
-                        canModify={canModify}
-                        showReorder={showReorder}
-                        reorderEnabled={reorderEnabled}
-                        isFiltered={isFiltered}
-                        onMoveUp={() => handleMoveByIndex(index, -1)}
-                        onMoveDown={() => handleMoveByIndex(index, 1)}
-                        onView={() => onViewItem(item)}
-                        onEdit={() => onEditItem(item)}
-                        onStop={() => onStopItem(item)}
-                        onDelete={() => onDeleteItem(item)}
-                      />
+                      <SortableItemRow key={item.id} {...itemProps(item, index)} layout={layout} />
                     ))}
                   </SortableContext>
                 )}
@@ -667,6 +679,183 @@ export function SimpleItemsPanel({
   );
 }
 
+type ItemViewProps = {
+  item: CatalogItemResponse;
+  index: number;
+  total: number;
+  locale: string;
+  isCombinationGroup: boolean;
+  canModify: boolean;
+  showReorder: boolean;
+  reorderEnabled: boolean;
+  isFiltered: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onView: () => void;
+  onEdit: () => void;
+  onStop: () => void;
+  onDelete: () => void;
+};
+
+/** Phần kéo thả dùng chung cho dòng bảng và thẻ: cùng id, cùng tay nắm, cùng cách bỏ hiệu ứng trượt. */
+function useSortableItem(id: string, reorderEnabled: boolean) {
+  const sortableAttributes = useCatalogSortableAttributes();
+  const reduceMotion = usePrefersReducedMotion();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !reorderEnabled,
+    attributes: sortableAttributes,
+    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
+    transition: reduceMotion ? null : undefined,
+  });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  return { attributes, listeners, setNodeRef, style, isDragging };
+}
+
+function useOrderedSubjects(item: CatalogItemResponse) {
+  return useMemo(
+    () =>
+      item.combination
+        ? [...item.combination.subjects].sort((a, b) => a.position - b.position)
+        : [],
+    [item.combination],
+  );
+}
+
+/**
+ * Tay nắm kéo thả và hai nút lên/xuống, cùng tên truy cập ở bảng và ở thẻ. Bảng: một hàng trong cột sắp xếp. Thẻ: một
+ * cột dọc ở đầu thẻ (lên, tay nắm, xuống), mỗi nút 32px.
+ */
+function ReorderControls({
+  item,
+  locale,
+  index,
+  total,
+  reorderEnabled,
+  isFiltered,
+  sortable,
+  variant,
+  onMoveUp,
+  onMoveDown,
+}: Pick<
+  ItemViewProps,
+  "item" | "locale" | "index" | "total" | "reorderEnabled" | "isFiltered" | "onMoveUp" | "onMoveDown"
+> & {
+  sortable: Pick<ReturnType<typeof useSortableItem>, "attributes" | "listeners">;
+  variant: "row" | "card";
+}) {
+  const t = useTranslations("catalog");
+  const displayName = pickName(item, locale);
+  const dragTooltip = isFiltered ? t("dragDisabledFiltered") : t("dragHandleTitle");
+  const arrowSize = variant === "card" ? "size-8 [&_svg]:size-3.5" : "size-7 [&_svg]:size-3.5";
+
+  const handle = (
+    <Tooltip content={dragTooltip}>
+      <button
+        type="button"
+        aria-label={t("dragHandleLabel", { name: displayName })}
+        className={cn(
+          "inline-flex size-8 items-center justify-center rounded-sm text-text-placeholder transition-colors",
+          DRAG_HANDLE,
+          focusRing,
+          reorderEnabled
+            ? "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing"
+            : "cursor-not-allowed opacity-40",
+        )}
+        {...(reorderEnabled ? sortable.attributes : {})}
+        {...(reorderEnabled ? sortable.listeners : {})}
+        aria-disabled={!reorderEnabled || undefined}
+        onClick={(event) => {
+          if (!reorderEnabled) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <GripVertical aria-hidden className="size-4" />
+      </button>
+    </Tooltip>
+  );
+  const up = (
+    <IconButton
+      icon={<ArrowUp className="size-3.5" />}
+      aria-label={t("moveUpLabel", { name: displayName })}
+      tooltip={isFiltered ? t("dragDisabledFiltered") : t("moveUpLabel", { name: displayName })}
+      disabled={!reorderEnabled || index === 0}
+      onClick={onMoveUp}
+      className={arrowSize}
+    />
+  );
+  const down = (
+    <IconButton
+      icon={<ArrowDown className="size-3.5" />}
+      aria-label={t("moveDownLabel", { name: displayName })}
+      tooltip={isFiltered ? t("dragDisabledFiltered") : t("moveDownLabel", { name: displayName })}
+      disabled={!reorderEnabled || index >= total - 1}
+      onClick={onMoveDown}
+      className={arrowSize}
+    />
+  );
+
+  if (variant === "card") {
+    return (
+      // `relative z-1`: nằm trên vùng bấm phủ cả thẻ của tiêu đề.
+      <div className="relative z-1 -my-1 -ms-2 flex shrink-0 flex-col items-center">
+        {up}
+        {handle}
+        {down}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-0.5">
+      {handle}
+      {up}
+      {down}
+    </div>
+  );
+}
+
+/** Các nút Sửa/Ngừng/Xóa gom vào menu "⋯" của thẻ. */
+function ItemActionsMenu({
+  item,
+  displayName,
+  onEdit,
+  onStop,
+  onDelete,
+}: Pick<ItemViewProps, "item" | "onEdit" | "onStop" | "onDelete"> & { displayName: string }) {
+  const t = useTranslations("catalog");
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton
+          icon={<MoreHorizontal />}
+          aria-label={t("itemActionsLabel", { name: displayName })}
+          tooltip={t("itemActionsLabel", { name: displayName })}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={onEdit}>
+          <Pencil aria-hidden />
+          <span>{t("editItem", { name: displayName })}</span>
+        </DropdownMenuItem>
+        {item.status === "ACTIVE" && (
+          <DropdownMenuItem onSelect={onStop}>
+            <Ban aria-hidden />
+            <span>{t("stopItem", { name: displayName })}</span>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem destructive disabled={item.system} onSelect={onDelete}>
+          <Trash2 aria-hidden />
+          <span>{item.system ? t("systemItemLocked") : t("deleteItem", { name: displayName })}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function SortableItemRow({
   item,
   index,
@@ -684,49 +873,12 @@ function SortableItemRow({
   onEdit,
   onStop,
   onDelete,
-}: {
-  item: CatalogItemResponse;
-  index: number;
-  total: number;
-  locale: string;
-  isCombinationGroup: boolean;
-  layout: ColumnLayout;
-  canModify: boolean;
-  showReorder: boolean;
-  reorderEnabled: boolean;
-  isFiltered: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onView: () => void;
-  onEdit: () => void;
-  onStop: () => void;
-  onDelete: () => void;
-}) {
+}: ItemViewProps & { layout: ColumnLayout }) {
   const t = useTranslations("catalog");
-  const sortableAttributes = useCatalogSortableAttributes();
-  const reduceMotion = usePrefersReducedMotion();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: item.id,
-    disabled: !reorderEnabled,
-    attributes: sortableAttributes,
-    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
-    transition: reduceMotion ? null : undefined,
-  });
-
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
+  const sortable = useSortableItem(item.id, reorderEnabled);
+  const { setNodeRef, style, isDragging } = sortable;
   const displayName = pickName(item, locale);
-  const dragTooltip = isFiltered ? t("dragDisabledFiltered") : t("dragHandleTitle");
-  const orderedSubjects = useMemo(
-    () =>
-      item.combination
-        ? [...item.combination.subjects].sort((a, b) => a.position - b.position)
-        : [],
-    [item.combination],
-  );
+  const orderedSubjects = useOrderedSubjects(item);
 
   return (
     <tr
@@ -739,70 +891,26 @@ function SortableItemRow({
     >
       {showReorder && (
         <td className="py-1 pr-1 pl-2">
-          <div className="flex items-center gap-0.5">
-            <Tooltip content={dragTooltip}>
-              <button
-                type="button"
-                aria-label={t("dragHandleLabel", { name: displayName })}
-                className={cn(
-                  "inline-flex size-8 items-center justify-center rounded-sm text-text-placeholder transition-colors",
-                  DRAG_HANDLE,
-                  focusRing,
-                  reorderEnabled
-                    ? "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing"
-                    : "cursor-not-allowed opacity-40",
-                )}
-                {...(reorderEnabled ? attributes : {})}
-                {...(reorderEnabled ? listeners : {})}
-                aria-disabled={!reorderEnabled || undefined}
-                onClick={(event) => {
-                  if (!reorderEnabled) {
-                    event.preventDefault();
-                  }
-                }}
-              >
-                <GripVertical aria-hidden className="size-4" />
-              </button>
-            </Tooltip>
-            <IconButton
-              icon={<ArrowUp className="size-3.5" />}
-              aria-label={t("moveUpLabel", { name: displayName })}
-              tooltip={isFiltered ? t("dragDisabledFiltered") : t("moveUpLabel", { name: displayName })}
-              disabled={!reorderEnabled || index === 0}
-              onClick={onMoveUp}
-              className="size-7 [&_svg]:size-3.5"
-            />
-            <IconButton
-              icon={<ArrowDown className="size-3.5" />}
-              aria-label={t("moveDownLabel", { name: displayName })}
-              tooltip={
-                isFiltered ? t("dragDisabledFiltered") : t("moveDownLabel", { name: displayName })
-              }
-              disabled={!reorderEnabled || index >= total - 1}
-              onClick={onMoveDown}
-              className="size-7 [&_svg]:size-3.5"
-            />
-          </div>
+          <ReorderControls
+            variant="row"
+            item={item}
+            locale={locale}
+            index={index}
+            total={total}
+            reorderEnabled={reorderEnabled}
+            isFiltered={isFiltered}
+            sortable={sortable}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+          />
         </td>
       )}
-      <td className={cn("px-3 py-2", layout.full)}>
+      <td className="px-3 py-2">
         <span className={CODE_CHIP}>{item.code}</span>
       </td>
       <td className="px-3 py-2 font-medium text-text">
         {/* Tối đa hai dòng (DESIGN.md mục 5.13); tên đầy đủ có trong ngăn chi tiết. */}
         <span className="line-clamp-2 wrap-break-word">{item.nameVi}</span>
-        {/* Dạng gọn: cột Mã và Trạng thái nhập vào đây (chip trạng thái chỉ hiện khi khác Hoạt động). */}
-        <span
-          data-testid="catalog-item-compact-meta"
-          className={cn("mt-1 flex flex-wrap items-center gap-1.5 font-normal", layout.compactMeta)}
-        >
-          <span className={cn(CODE_CHIP, "max-w-full whitespace-normal wrap-break-word")}>
-            <CodeWithBreaks code={item.code} />
-          </span>
-          {item.status !== "ACTIVE" && (
-            <StatusChip tone="neutral">{t(`statuses.${item.status}`)}</StatusChip>
-          )}
-        </span>
         {item.combination && (
           <span
             className={cn(
@@ -878,7 +986,7 @@ function SortableItemRow({
       >
         {item.value}
       </td>
-      <td className={cn("px-3 py-2", layout.full)}>
+      <td className="px-3 py-2">
         <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
           {t(`statuses.${item.status}`)}
         </StatusChip>
@@ -901,7 +1009,7 @@ function SortableItemRow({
             className="text-primary-text"
           />
           {canModify && (
-            <span className={cn("items-center gap-0.5", layout.inlineActions)}>
+            <>
               <IconButton
                 icon={<Pencil />}
                 aria-label={t("editItem", { name: displayName })}
@@ -928,42 +1036,115 @@ function SortableItemRow({
                 disabled={item.system}
                 onClick={onDelete}
               />
-            </span>
-          )}
-          {canModify && (
-            <span className={layout.menuActions}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    icon={<MoreHorizontal />}
-                    aria-label={t("itemActionsLabel", { name: displayName })}
-                    tooltip={t("itemActionsLabel", { name: displayName })}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={onEdit}>
-                    <Pencil aria-hidden />
-                    <span>{t("editItem", { name: displayName })}</span>
-                  </DropdownMenuItem>
-                  {item.status === "ACTIVE" && (
-                    <DropdownMenuItem onSelect={onStop}>
-                      <Ban aria-hidden />
-                      <span>{t("stopItem", { name: displayName })}</span>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem destructive disabled={item.system} onSelect={onDelete}>
-                    <Trash2 aria-hidden />
-                    <span>
-                      {item.system ? t("systemItemLocked") : t("deleteItem", { name: displayName })}
-                    </span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </span>
+            </>
           )}
         </div>
       </td>
     </tr>
+  );
+}
+
+
+/**
+ * Một giá trị ở dạng thẻ (DESIGN.md mục 5.9). Đầu thẻ là cột đổi thứ tự (người được sửa). Hàng đầu: mã và tên (tên
+ * là nút mở ngăn chi tiết, vùng bấm phủ cả thẻ), bên phải nút xem và menu "⋯". Dòng phụ: tên tiếng Anh, hoặc mã kỳ
+ * thi và các môn với tổ hợp. Hàng chip: trạng thái (luôn hiện), phiên bản của tổ hợp. Cuối thẻ: Giá trị.
+ *
+ * Vùng bấm phủ cả thẻ không vướng kéo thả: chỉ tay nắm mang trình nghe của dnd-kit, và tay nắm nằm trên vùng bấm
+ * (`relative z-1`), nên bấm tay nắm không mở chi tiết, vuốt trên phần còn lại của thẻ vẫn cuộn trang.
+ */
+function SortableItemCard({
+  item,
+  index,
+  total,
+  locale,
+  isCombinationGroup,
+  canModify,
+  showReorder,
+  reorderEnabled,
+  isFiltered,
+  onMoveUp,
+  onMoveDown,
+  onView,
+  onEdit,
+  onStop,
+  onDelete,
+}: ItemViewProps) {
+  const t = useTranslations("catalog");
+  const sortable = useSortableItem(item.id, reorderEnabled);
+  const { setNodeRef, style, isDragging } = sortable;
+  const displayName = pickName(item, locale);
+  const orderedSubjects = useOrderedSubjects(item);
+
+  let secondary: ReactNode = null;
+  if (isCombinationGroup) {
+    if (item.combination) {
+      secondary = (
+        <>
+          <span className="font-medium text-text-secondary">{item.combination.examCode}</span>
+          {orderedSubjects.length > 0 &&
+            ` · ${orderedSubjects.map((subject) => pickName(subject, locale)).join(", ")}`}
+        </>
+      );
+    }
+  } else if (item.nameEn) {
+    secondary = item.nameEn;
+  }
+
+  return (
+    <CardListItem
+      ref={setNodeRef}
+      style={style}
+      className={cn("hover:bg-subtle", isDragging && "z-10 bg-primary-50 shadow-sm")}
+    >
+      {showReorder && (
+        <ReorderControls
+          variant="card"
+          item={item}
+          locale={locale}
+          index={index}
+          total={total}
+          reorderEnabled={reorderEnabled}
+          isFiltered={isFiltered}
+          sortable={sortable}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <ListCard
+          title={
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className={cn(CODE_CHIP, "max-w-full whitespace-normal wrap-break-word")}>
+                <CodeWithBreaks code={item.code} />
+              </span>
+              {/* Mở ngăn chi tiết, nơi có tên đầy đủ (tiêu đề tối đa hai dòng, DESIGN.md mục 5.13). */}
+              <ListCardTitleButton onClick={onView}>{item.nameVi}</ListCardTitleButton>
+            </span>
+          }
+          actions={
+            canModify ? (
+              <ItemActionsMenu
+                item={item}
+                displayName={displayName}
+                onEdit={onEdit}
+                onStop={onStop}
+                onDelete={onDelete}
+              />
+            ) : undefined
+          }
+          caption={secondary}
+          status={
+            <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
+              {t(`statuses.${item.status}`)}
+            </StatusChip>
+          }
+          tags={item.combination && <Badge>{t("versionBadge", { version: item.combination.versionNo })}</Badge>}
+        >
+          <p className="text-caption text-text-muted tabular-nums">{t("cardValueMeta", { value: item.value })}</p>
+        </ListCard>
+      </div>
+    </CardListItem>
   );
 }
 

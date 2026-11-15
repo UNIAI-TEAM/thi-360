@@ -6,6 +6,7 @@ import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import {
   ClassesApiError,
   type ClassesApiDeps,
@@ -487,7 +488,7 @@ describe("ClassesListView", () => {
 });
 
 describe("ClassesListView: dùng được từ 360px (UNI-2586)", () => {
-  it("cột ưu tiên thấp được đánh dấu để ẩn theo khung chứa bảng; cột đầu có dòng tóm tắt tên, số học viên, trạng thái", async () => {
+  it("cột ưu tiên thấp được đánh dấu để ẩn theo khung chứa bảng; Tên lớp và Trạng thái luôn là cột, không còn dòng tóm tắt", async () => {
     renderListView(makeDeps());
     const table = await screen.findByRole("table", { name: "Danh sách lớp học" });
     await within(table).findByText("LOP-A");
@@ -498,24 +499,22 @@ describe("ClassesListView: dùng được từ 360px (UNI-2586)", () => {
       "@max-[64rem]:[&_:is(th,td):has([data-col=description])]:hidden",
       "@max-[56rem]:[&_:is(th,td):has([data-col=owner])]:hidden",
       "@max-3xl:[&_:is(th,td):has([data-col=memberCount])]:hidden",
-      "@max-[40rem]:[&_:is(th,td):has([data-col=name])]:hidden",
-      "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
     ]) {
       expect(container.className).toContain(rule);
     }
-    for (const col of ["name", "description", "owner", "memberCount", "status"]) {
+    expect(container.className).not.toContain("@max-[40rem]");
+    for (const col of ["description", "owner", "memberCount"]) {
       expect(table.querySelector(`thead [data-col='${col}']`)).not.toBeNull();
       expect(table.querySelectorAll(`tbody [data-col='${col}']`)).toHaveLength(SAMPLE_CLASSES.length);
     }
+    expect(table.querySelector("[data-col-summary]")).toBeNull();
 
     const link = within(table).getByRole("link", { name: "LOP-A" });
-    const summary = link.parentElement!.querySelector<HTMLElement>("[data-col-summary]")!;
-    expect(summary).toHaveTextContent("Lớp A · 2 học viên · Hoạt động");
-    expect(summary).toHaveClass("hidden", "@max-[40rem]:line-clamp-2");
-    expect(link).toHaveClass("after:absolute", "after:inset-0");
+    expect(link).toHaveAttribute("href", "/classes/00000000-0000-4000-8000-000000000301");
+    expect(link).not.toHaveClass("after:absolute");
 
     // Tên lớp xuống tối đa hai dòng, không cắt một dòng và không dựa vào title (DESIGN.md 5.13).
-    const nameCell = table.querySelector<HTMLElement>("tbody [data-col='name']")!;
+    const nameCell = within(table).getByText("Lớp A");
     expect(nameCell).toHaveClass("line-clamp-2");
     expect(nameCell).not.toHaveClass("truncate");
     expect(nameCell).not.toHaveAttribute("title");
@@ -529,5 +528,98 @@ describe("ClassesListView: dùng được từ 360px (UNI-2586)", () => {
     expect(form.parentElement).toHaveClass("@container");
     expect(form).toHaveClass("grid", "@3xl:flex");
     expect(screen.getByLabelText("Tìm kiếm").closest(".col-span-full")).not.toBeNull();
+  });
+});
+
+describe("ClassesListView: khung hẹp thành danh sách thẻ (UNI-2587)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("khung 358px: mỗi lớp một thẻ: mã lớp dẫn tới chi tiết, tên lớp, chip trạng thái, số học viên, người phụ trách", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderListView(makeDeps());
+
+    const list = await screen.findByRole("list", { name: "Danh sách lớp học" });
+    await within(list).findByText("LOP-A");
+    expect(screen.queryByRole("table")).toBeNull();
+    const [first, second] = within(list).getAllByRole("listitem");
+
+    const link = within(first!).getByRole("link", { name: "LOP-A" });
+    expect(link).toHaveAttribute("href", "/classes/00000000-0000-4000-8000-000000000301");
+    expect(link).toHaveClass("after:absolute", "after:inset-0");
+    expect(within(first!).getByText("Lớp A")).toHaveClass("text-caption");
+    expect(within(first!).getByText("Hoạt động").closest("[data-tone]")).toHaveAttribute("data-tone", "success");
+    expect(first).toHaveTextContent("Học viên: 2 · Người phụ trách: ops.admin");
+
+    expect(within(second!).getByText("Ngừng sử dụng").closest("[data-tone]")).toHaveAttribute("data-tone", "neutral");
+    expect(second).toHaveTextContent("Học viên: 0 · Người phụ trách: —");
+  });
+
+  it("thẻ có nút Sửa và menu ⋯ như cột Thao tác (không có nút Xem vì cả thẻ là liên kết), nằm trên vùng bấm", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderListView(makeDeps());
+    const list = await screen.findByRole("list", { name: "Danh sách lớp học" });
+    await within(list).findByText("LOP-A");
+    const [first] = within(list).getAllByRole("listitem");
+
+    expect(within(first!).queryByRole("button", { name: "Mở lớp LOP-A" })).toBeNull();
+    const edit = within(first!).getByRole("button", { name: "Sửa lớp LOP-A" });
+    expect(edit.closest(".z-1")).toHaveClass("relative");
+    await userEvent.click(edit);
+    expect(await screen.findByRole("dialog", { name: "Sửa thông tin lớp" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(within(first!).getByRole("button", { name: "Thao tác khác với lớp LOP-A" }));
+    expect(await screen.findByRole("menuitem", { name: "Ngừng sử dụng" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Xóa lớp" })).toBeInTheDocument();
+  });
+
+  it("chỉ có CLASS.VIEW: thẻ không có nút thao tác", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderListView(makeDeps(), { ...TEST_ADMIN_SESSION, permissions: ["CLASS.VIEW"] });
+    const list = await screen.findByRole("list", { name: "Danh sách lớp học" });
+    await within(list).findByText("LOP-A");
+    expect(within(list).queryByRole("button")).toBeNull();
+    expect(within(list).getByRole("link", { name: "LOP-A" })).toBeInTheDocument();
+  });
+
+  it("ô Sắp xếp theo: Mã lớp, Tên lớp, Trạng thái; chọn thì gửi sắp xếp lên máy chủ và về trang 1", async () => {
+    const listClassesMock = vi.fn<ClassesApiDeps["listClasses"]>(async () => ({
+      items: SAMPLE_CLASSES,
+      page: 0,
+      size: 20,
+      totalItems: SAMPLE_CLASSES.length,
+      totalPages: 1,
+    }));
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderListView(makeDeps({ listClasses: listClassesMock }));
+    await screen.findByText("LOP-A");
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Sắp xếp theo" }));
+    const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
+    expect(options).toEqual([
+      "Mã lớp · tăng dần",
+      "Mã lớp · giảm dần",
+      "Tên lớp · tăng dần",
+      "Tên lớp · giảm dần",
+      "Trạng thái · tăng dần",
+      "Trạng thái · giảm dần",
+    ]);
+    await userEvent.click(screen.getByRole("option", { name: "Tên lớp · tăng dần" }));
+    await waitFor(() =>
+      expect(listClassesMock).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "name,asc", page: 0 })),
+    );
+  });
+
+  it("khung rộng: vẫn là bảng với nút Xem, Sửa và menu ⋯ ở cột Thao tác", async () => {
+    installContainerWidth(1100);
+    renderListView(makeDeps());
+    const table = await screen.findByRole("table", { name: "Danh sách lớp học" });
+    await within(table).findByText("LOP-A");
+    expect(screen.queryByRole("list", { name: "Danh sách lớp học" })).toBeNull();
+    expect(within(table).getByRole("button", { name: "Mở lớp LOP-A" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Sửa lớp LOP-A" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Thao tác khác với lớp LOP-A" })).toBeInTheDocument();
   });
 });

@@ -1189,33 +1189,6 @@ describe("Cấp hàng loạt dùng được từ 360px (UNI-2586)", () => {
     expect(items[2]).toHaveTextContent("Xác nhận");
   });
 
-  it("bảng cột mẫu ở thẻ hẹp: cột Bắt buộc, Quy tắc ẩn, quy tắc xuống dưới tên cột", async () => {
-    renderUpload(makeDeps());
-    const table = await screen.findByRole("table", { name: "Các cột của tệp mẫu" });
-    expect(table.closest(".\\@container")).not.toBeNull();
-
-    const requiredHeader = within(table).getByRole("columnheader", { name: "Bắt buộc" });
-    const rulesHeader = within(table).getByRole("columnheader", { name: "Quy tắc" });
-    expect(requiredHeader).toHaveClass("@max-lg:hidden");
-    expect(rulesHeader).toHaveClass("@max-lg:hidden");
-    expect(table.querySelectorAll("tbody td[data-col='rules']")).toHaveLength(6);
-    for (const cell of table.querySelectorAll("tbody td[data-col]")) {
-      expect(cell).toHaveClass("@max-lg:hidden");
-    }
-
-    const usernameCell = within(table).getByRole("cell", { name: /^Tên đăng nhập/ });
-    const summary = usernameCell.querySelector("[data-col-summary]")!;
-    expect(summary).toHaveClass("hidden", "@max-lg:block");
-    expect(summary).toHaveTextContent(
-      "Bắt buộc · Duy nhất, 4–30 ký tự, không khoảng trắng, không phân biệt hoa thường",
-    );
-    // Cột không bắt buộc chỉ có quy tắc.
-    const emailSummary = within(table)
-      .getByRole("cell", { name: /^Email/ })
-      .querySelector("[data-col-summary]")!;
-    expect(emailSummary).toHaveTextContent(/^Đúng định dạng/);
-  });
-
   it("thẻ số liệu xếp hai cột ở khung hẹp, bốn cột từ @4xl; tên tệp xuống dòng thay vì cắt", async () => {
     renderBatch(makeDeps({ getImportBatch: vi.fn(async () => makeBatch()) }));
     const fileName = await screen.findByText("students.xlsx");
@@ -1224,6 +1197,184 @@ describe("Cấp hàng loạt dùng được từ 360px (UNI-2586)", () => {
     const cardsGrid = fileName.parentElement!.parentElement!;
     expect(cardsGrid).toHaveClass("grid-cols-2", "@4xl:grid-cols-4");
     expect(cardsGrid.closest(".\\@container")).not.toBeNull();
+  });
+});
+
+/**
+ * jsdom không có layout: cho mọi phần tử cùng một bề rộng (khung đo của bảng) và thay `ResizeObserver` bằng bản
+ * rỗng, như test danh sách thẻ của kit (`packages/ui/src/components/table-cards.test.tsx`).
+ */
+function installContainerWidth(width: number) {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    () =>
+      ({ width, height: 0, top: 0, left: 0, right: width, bottom: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect,
+  );
+}
+
+describe("Cấp hàng loạt: bảng thành danh sách thẻ ở khung hẹp (UNI-2587)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const validRow: ImportRow = {
+    id: "row-ok",
+    rowNo: 2,
+    username: "hv01",
+    fullName: "Học viên 01",
+    email: "hv01@example.com",
+    classCode: "LOP-A",
+    passwordGenerated: true,
+    status: "VALID",
+    errors: [],
+  };
+  const invalidRow: ImportRow = {
+    id: "row-bad",
+    rowNo: 3,
+    username: "bad user",
+    fullName: "Học viên 02",
+    passwordGenerated: false,
+    status: "INVALID",
+    errors: [
+      {
+        rowNo: 3,
+        column: "Tên đăng nhập",
+        columnKey: "USERNAME",
+        code: "USERNAME_INVALID",
+        message: "Backend raw error message",
+      },
+    ],
+  };
+
+  function previewDeps() {
+    return makeDeps({
+      getImportBatch: vi.fn(async () => makeBatch({ totalRows: 2, validRows: 1, invalidRows: 1 })),
+      listImportBatchRows: vi.fn(async () => ({
+        items: [validRow, invalidRow],
+        page: 0,
+        size: 20,
+        totalItems: 2,
+        totalPages: 1,
+      })),
+    });
+  }
+
+  it("bảng cột mẫu: thẻ hẹp hơn 32rem là danh sách thẻ tên cột, chip Bắt buộc/Không bắt buộc, quy tắc", async () => {
+    installContainerWidth(358);
+    renderUpload(makeDeps());
+    const list = await screen.findByRole("list", { name: "Các cột của tệp mẫu" });
+    expect(screen.queryByRole("table", { name: "Các cột của tệp mẫu" })).toBeNull();
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(6);
+
+    expect(within(items[0]!).getByText("Tên đăng nhập")).toHaveClass("line-clamp-2");
+    expect(within(items[0]!).getByText("Bắt buộc")).toBeInTheDocument();
+    expect(items[0]).toHaveTextContent(
+      "Quy tắc: Duy nhất, 4–30 ký tự, không khoảng trắng, không phân biệt hoa thường",
+    );
+    // Cột không bắt buộc vẫn có chip, nói rõ là không bắt buộc.
+    const email = items.find((item) => within(item).queryByText("Email"))!;
+    expect(within(email).getByText("Không bắt buộc")).toBeInTheDocument();
+    expect(email).toHaveTextContent("Quy tắc: Đúng định dạng");
+  });
+
+  it("bảng cột mẫu: từ 32rem trở lên vẫn là bảng ba cột", async () => {
+    installContainerWidth(560);
+    renderUpload(makeDeps());
+    const table = await screen.findByRole("table", { name: "Các cột của tệp mẫu" });
+    expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
+      "Cột",
+      "Bắt buộc",
+      "Quy tắc",
+    ]);
+    expect(screen.queryByRole("list", { name: "Các cột của tệp mẫu" })).toBeNull();
+  });
+
+  it("bước 2: mỗi dòng của tệp là một thẻ: tên đăng nhập, họ tên và email, chip kết quả, lỗi, số dòng", async () => {
+    installContainerWidth(358);
+    renderBatch(previewDeps());
+    const list = await screen.findByRole("list", { name: "Bảng xem trước dữ liệu cấp hàng loạt" });
+    expect(screen.queryByRole("table")).toBeNull();
+    await within(list).findByText("hv01");
+    const [ok, bad] = within(list).getAllByRole("listitem");
+
+    expect(within(ok!).getByText("hv01")).toHaveClass("line-clamp-2");
+    expect(within(ok!).getByText("Học viên 01 · hv01@example.com")).toHaveClass("text-caption");
+    expect(within(ok!).getByText("Hợp lệ")).toBeInTheDocument();
+    expect(ok).toHaveTextContent("Dòng: 2 · Mã lớp: LOP-A · Mật khẩu: Để trống, hệ thống sinh");
+
+    expect(within(bad!).getByText("Học viên 02")).toBeInTheDocument();
+    expect(within(bad!).getByText("Lỗi")).toBeInTheDocument();
+    expect(
+      within(bad!).getByText(`Tên đăng nhập: ${viMessages.bulkImport.rowErrorCodes.USERNAME_INVALID}`),
+    ).toHaveClass("text-danger");
+    // Dòng không có lớp thì không có mục Mã lớp.
+    expect(bad).toHaveTextContent("Dòng: 3 · Mật khẩu: Đã nhập, đạt quy tắc");
+  });
+
+  it("bước 2: khung rộng vẫn là bảng", async () => {
+    installContainerWidth(1100);
+    renderBatch(previewDeps());
+    const table = await screen.findByRole("table", { name: "Bảng xem trước dữ liệu cấp hàng loạt" });
+    expect(await within(table).findByText("hv01")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Bảng xem trước dữ liệu cấp hàng loạt" })).toBeNull();
+  });
+
+  it("bước 4 kết quả: thẻ có chip kết quả của dòng và lý do khi không tạo được", async () => {
+    installContainerWidth(358);
+    const createdRow: ImportRow = { ...validRow, status: "CREATED" };
+    const failedRow: ImportRow = {
+      ...validRow,
+      id: "row-fail",
+      rowNo: 4,
+      username: "hv03",
+      fullName: "Học viên 03",
+      classCode: undefined,
+      status: "FAILED",
+      failureCode: "IDENTITY_PROVIDER_ERROR",
+      failureReason: "Raw backend reason",
+    };
+    renderBatch(
+      makeDeps({
+        getImportBatch: vi.fn(async () =>
+          makeBatch({
+            status: "COMPLETED_WITH_ERRORS",
+            totalRows: 2,
+            createdRows: 1,
+            failedRows: 1,
+            hasGeneratedPasswords: false,
+            resultAvailable: true,
+          }),
+        ),
+        listImportBatchRows: vi.fn(async () => ({
+          items: [createdRow, failedRow],
+          page: 0,
+          size: 20,
+          totalItems: 2,
+          totalPages: 1,
+        })),
+      }),
+    );
+    const list = await screen.findByRole("list", { name: "Bảng kết quả từng dòng" });
+    await within(list).findByText("hv01");
+    const [created, failed] = within(list).getAllByRole("listitem");
+
+    expect(within(created!).getByText("Đã tạo")).toBeInTheDocument();
+    expect(within(created!).getByText("Học viên 01")).toBeInTheDocument();
+    expect(created).toHaveTextContent("Dòng: 2 · Lớp: LOP-A · Mật khẩu: Hệ thống sinh, xem trong file");
+
+    expect(within(failed!).getByText("Thất bại")).toBeInTheDocument();
+    expect(
+      within(failed!).getByText(viMessages.bulkImport.failureCodes.IDENTITY_PROVIDER_ERROR),
+    ).toHaveClass("text-danger");
+    expect(failed).not.toHaveTextContent("Raw backend reason");
   });
 });
 

@@ -76,6 +76,70 @@ test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
     }
   });
 
+  test(`${PHONE.width}x${PHONE.height} /users: danh sách thẻ thay cho bảng, chọn thẻ hiện thanh thao tác hàng loạt, ô Sắp xếp theo đổi thứ tự (UNI-2587)`, async ({
+    page,
+  }) => {
+    await login(page);
+    await openScreen(page, "/users");
+
+    // Khung hẹp: chỉ dựng danh sách, không có bảng song song trong DOM.
+    const list = page.getByRole("list", { name: "Danh sách tài khoản" });
+    await expect(list).toBeVisible();
+    await expect(page.getByRole("table", { name: "Danh sách tài khoản" })).toHaveCount(0);
+    const cards = list.getByRole("listitem");
+    await expect(cards.first().getByRole("link")).toBeVisible();
+    expect(await cards.count(), "cần ít nhất hai tài khoản mẫu để kiểm sắp xếp").toBeGreaterThan(1);
+
+    // Mỗi thẻ: tiêu đề là liên kết tới chi tiết, chip trạng thái luôn có, menu ⋯ nằm trọn trong cửa sổ.
+    const first = cards.first();
+    await expect(first.getByRole("link")).toHaveAttribute("href", /^\/users\/[^/]+$/);
+    await expect(first.locator("[data-tone]").first()).toBeVisible();
+    const menuButton = first.getByRole("button", { name: /^Thao tác với / });
+    const menuBox = await menuButton.boundingBox();
+    expect(menuBox).not.toBeNull();
+    expect(menuBox!.x + menuBox!.width, "nút ⋯ của thẻ tràn mép phải").toBeLessThanOrEqual(PHONE.width);
+    await expectNoHorizontalOverflow(page, "/users (danh sách thẻ)");
+
+    // Chọn một thẻ: thanh thao tác hàng loạt hiện ngay trên danh sách, không để lại khoảng trống lớn.
+    const bar = page.getByRole("group", { name: "Thao tác với các tài khoản đã chọn" });
+    await expect(bar).toBeHidden();
+    await expect(page.getByText("Chọn tất cả tài khoản", { exact: true })).toBeVisible();
+    await first.getByRole("checkbox").click();
+    await expect(bar).toBeVisible();
+    await expect(bar).toContainText("Đã chọn 1 tài khoản");
+    await expect(first).toHaveAttribute("data-state", "selected");
+    // Hàng đầu dưới thanh là ô "Chọn tất cả"; ở 358px ô "Sắp xếp theo" xuống hàng thứ hai.
+    const selectAll = page.getByRole("checkbox", { name: "Chọn tất cả tài khoản" });
+    const barBox = await bar.boundingBox();
+    const selectAllBox = await selectAll.boundingBox();
+    expect(barBox).not.toBeNull();
+    expect(selectAllBox).not.toBeNull();
+    expect(barBox!.x + barBox!.width, "thanh thao tác hàng loạt tràn mép phải").toBeLessThanOrEqual(PHONE.width);
+    expect(
+      selectAllBox!.y - (barBox!.y + barBox!.height),
+      "khoảng trống giữa thanh thao tác và danh sách",
+    ).toBeLessThan(48);
+    await bar.getByRole("button", { name: "Bỏ chọn" }).click();
+    await expect(bar).toBeHidden();
+    await expect(selectAll).toBeFocused();
+    const sort = page.getByRole("combobox", { name: "Sắp xếp theo" });
+
+    // Ô Sắp xếp theo thay cho tiêu đề cột: sắp xếp ở máy chủ, đổi chiều thì đổi thứ tự thẻ.
+    async function sortBy(option: string, sortParam: string) {
+      const response = page.waitForResponse((r) => decodeURIComponent(r.url()).includes(`sort=${sortParam}`));
+      await sort.click();
+      await page.getByRole("option", { name: option }).click();
+      await response;
+      await expect(sort).toContainText(option);
+      await expect(list).not.toHaveAttribute("aria-busy", "true");
+      return list.getByRole("listitem").getByRole("link").allTextContents();
+    }
+    const ascending = await sortBy("Tên đăng nhập · tăng dần", "username,asc");
+    const descending = await sortBy("Tên đăng nhập · giảm dần", "username,desc");
+    expect(ascending.length).toBeGreaterThan(1);
+    expect(descending[0], "đổi chiều sắp xếp phải đổi tài khoản đứng đầu").not.toBe(ascending[0]);
+  });
+
   test("ngăn menu: mở từ trái, điều hướng được, đóng bằng mục menu / Esc / nền mờ, focus về nút menu", async ({
     page,
   }) => {

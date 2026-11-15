@@ -17,14 +17,17 @@ import {
   FormField,
   Input,
   Label,
+  ListCard,
+  ListCardTag,
+  ListCardTitleLink,
   LiveStatus,
   PageHeader,
   Pagination,
   Select,
   Skeleton,
   StatusChip,
-  type StatusTone,
   Table,
+  type TableCards,
   Tooltip,
 } from "@thi360/ui";
 import {
@@ -58,7 +61,11 @@ import {
 import { formatRoleLabel, getUserDisplayStatus } from "../utils";
 import { CreateUserDialog } from "./create-user-dialog";
 import { FILTER_FORM, FILTER_SEARCH, FILTER_SELECT, FILTER_TOGGLES } from "./list-filters";
-import { UserActionDialogs, useUserActionController } from "./user-action-dialogs";
+import {
+  type UserActionController,
+  UserActionDialogs,
+  useUserActionController,
+} from "./user-action-dialogs";
 import { UserBulkBar } from "./user-bulk-bar";
 
 const ALL_VALUE = "ALL";
@@ -68,28 +75,16 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 /**
  * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, không theo bề rộng màn hình vì
  * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước, rồi tới Vai trò, để cột Trạng thái còn nằm
- * trong khung ở cửa sổ 1024–1366px; tiếp theo là Email. Khung hẹp như điện thoại (dưới 40rem) chỉ còn cột tên
- * đăng nhập và cột Thao tác: họ tên và trạng thái chuyển thành dòng tóm tắt dưới tên đăng nhập
- * (`data-col-summary`, chỉ hiện ở ngưỡng đó). Thông tin của các cột ẩn vẫn có ở trang chi tiết tài khoản. Ô tiêu
- * đề và ô dữ liệu của cột được nhận ra qua `data-col` đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
+ * trong khung ở cửa sổ 1024–1366px; tiếp theo là Email. Khung hẹp hơn 40rem thì bảng thành danh sách thẻ
+ * (`cards` của `Table`), thẻ có đủ các thông tin này. Ô tiêu đề và ô dữ liệu của cột được nhận ra qua `data-col`
+ * đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
   "@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden",
   "@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden",
   "@max-3xl:[&_:is(th,td):has([data-col=email])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=fullName])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
 ].join(" ");
-
-/** Màu chữ của trạng thái trong dòng tóm tắt, cùng tông với chip trạng thái ở cột Trạng thái. */
-const STATUS_TEXT_TONE: Record<StatusTone, string> = {
-  success: "text-success",
-  warning: "text-warning",
-  danger: "text-danger",
-  info: "text-info",
-  neutral: "text-neutral",
-};
 
 /** Cột sắp xếp được và khóa nhãn của nó, dùng cho câu thông báo sau khi đổi sắp xếp. */
 const SORTABLE_COLUMN_LABEL_KEYS = {
@@ -259,13 +254,13 @@ function UsersListContent({
   }
 
   /**
-   * Sau "Bỏ chọn" thanh thao tác hàng loạt không còn nhận focus: đưa focus về ô chọn tất cả của bảng (điểm bắt đầu
-   * để chọn lại). Ô đó bị khóa khi trang đang hiện không có dòng nào thì về ô tìm kiếm.
+   * Sau "Bỏ chọn" thanh thao tác hàng loạt không còn nhận focus: đưa focus về ô chọn tất cả (điểm bắt đầu để chọn
+   * lại): ở tiêu đề bảng, hoặc ở hàng trên danh sách thẻ khi khung hẹp, tức là ô chọn đầu tiên không nằm trong một
+   * dòng hay một thẻ. Ô đó bị khóa hoặc không có khi trang đang hiện không có dòng nào thì về ô tìm kiếm.
    */
   function focusAfterClearSelection() {
-    const selectAll = tableAreaRef.current?.querySelector<HTMLElement>(
-      "thead [role='checkbox']:not([disabled])",
-    );
+    const checkboxes = tableAreaRef.current?.querySelectorAll<HTMLElement>("[role='checkbox']:not([disabled])");
+    const selectAll = Array.from(checkboxes ?? []).find((checkbox) => !checkbox.closest("tbody, li"));
     (selectAll ?? searchInputRef.current)?.focus();
   }
 
@@ -316,44 +311,23 @@ function UsersListContent({
       {
         accessorKey: "username",
         header: t("table.username"),
-        cell: ({ row }) => {
-          const display = getUserDisplayStatus(row.original);
-          return (
-            // Vùng bấm của liên kết phủ cả khối tên + dòng tóm tắt (phần tử giả), để chạm vào dòng tóm tắt trên
-            // điện thoại cũng mở chi tiết; tên của liên kết vẫn chỉ là tên đăng nhập.
-            <div className="relative flex min-w-0 flex-col">
-              <Link
-                href={`/users/${row.original.id}`}
-                className={cn(
-                  "self-start rounded-sm font-semibold whitespace-nowrap text-primary-text after:absolute after:inset-0 hover:underline @max-[40rem]:whitespace-normal @max-[40rem]:wrap-anywhere",
-                  focusRing,
-                )}
-              >
-                {row.original.username}
-              </Link>
-              {/*
-                Dòng tóm tắt thay cho cột Họ và tên, Trạng thái khi khung hẹp (hai cột đó ẩn cùng ngưỡng). Họ tên và
-                dấu ngăn là chữ trực tiếp của cùng một phần tử, nên khối này không trùng chữ với ô Họ và tên.
-              */}
-              <span
-                data-col-summary
-                className="hidden text-caption text-text-secondary @max-[40rem]:line-clamp-2"
-              >
-                {row.original.fullName}
-                {" · "}
-                <span className={STATUS_TEXT_TONE[display.tone]}>
-                  {t(`statuses.${display.status}`)}
-                </span>
-              </span>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <Link
+            href={`/users/${row.original.id}`}
+            className={cn(
+              "rounded-sm font-semibold whitespace-nowrap text-primary-text hover:underline",
+              focusRing,
+            )}
+          >
+            {row.original.username}
+          </Link>
+        ),
       },
       {
         accessorKey: "fullName",
-        header: () => <span data-col="fullName">{t("table.fullName")}</span>,
+        header: t("table.fullName"),
         cell: ({ row }) => (
-          <span data-col="fullName" className="line-clamp-2 min-w-32 font-medium text-text">
+          <span className="line-clamp-2 min-w-32 font-medium text-text">
             {row.original.fullName}
           </span>
         ),
@@ -398,12 +372,12 @@ function UsersListContent({
       },
       {
         id: "status",
-        header: () => <span data-col="status">{t("table.status")}</span>,
+        header: t("table.status"),
         enableSorting: false,
         cell: ({ row }) => {
           const display = getUserDisplayStatus(row.original);
           return (
-            <StatusChip data-col="status" tone={display.tone}>
+            <StatusChip tone={display.tone}>
               {t(`statuses.${display.status}`)}
             </StatusChip>
           );
@@ -415,97 +389,54 @@ function UsersListContent({
               id: "actions",
               header: () => <span className="block text-right">{t("table.actions")}</span>,
               enableSorting: false,
-              cell: ({ row }: { row: { original: UserSummary } }) => {
-                const item = row.original;
-                const isDeleted = Boolean(item.deletedAt);
-                return (
-                  <div className="flex justify-end">
-                    <DropdownMenu>
-                      <Tooltip content={t("actions.rowMenu", { username: item.username })}>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label={t("actions.rowMenu", { username: item.username })}
-                            className={cn(
-                              "inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-subtle motion-reduce:transition-none",
-                              focusRing,
-                            )}
-                          >
-                            <MoreHorizontal aria-hidden className="size-[18px]" />
-                          </button>
-                        </DropdownMenuTrigger>
-                      </Tooltip>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/users/${item.id}`}>
-                            <Eye />
-                            <span>{t("actions.viewDetail")}</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        {!isDeleted && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                actionController.openResetPassword({
-                                  id: item.id,
-                                  username: item.username,
-                                })
-                              }
-                            >
-                              <KeyRound />
-                              <span>{t("actions.resetPassword")}</span>
-                            </DropdownMenuItem>
-                            {item.status === "ACTIVE" ? (
-                              <DropdownMenuItem
-                                onSelect={() =>
-                                  void actionController.openDeactivate({
-                                    id: item.id,
-                                    username: item.username,
-                                  })
-                                }
-                              >
-                                <PowerOff />
-                                <span>{t("actions.deactivate")}</span>
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                onSelect={() =>
-                                  actionController.openActivate({
-                                    id: item.id,
-                                    username: item.username,
-                                  })
-                                }
-                              >
-                                <Power />
-                                <span>{t("actions.activate")}</span>
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              destructive
-                              onSelect={() =>
-                                void actionController.openDelete({
-                                  id: item.id,
-                                  username: item.username,
-                                })
-                              }
-                            >
-                              <Trash2 />
-                              <span>{t("actions.delete")}</span>
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                );
-              },
+              cell: ({ row }: { row: { original: UserSummary } }) => (
+                <div className="flex justify-end">
+                  <UserRowActions item={row.original} controller={actionController} />
+                </div>
+              ),
             },
           ]
         : []),
     ],
     [t, rbacT, can, actionController],
+  );
+
+  /** Khung hẹp (dưới 640px): mỗi tài khoản là một thẻ, bố cục theo DESIGN.md mục 5.9. */
+  const cards = useMemo<TableCards<UserSummary>>(
+    () => ({
+      render: (item) => {
+        const display = getUserDisplayStatus(item);
+        return (
+          <ListCard
+            title={
+              <ListCardTitleLink linkComponent={Link} href={`/users/${item.id}`}>
+                {item.username}
+              </ListCardTitleLink>
+            }
+            actions={can("USER.MODIFY") ? <UserRowActions item={item} controller={actionController} /> : undefined}
+            caption={item.fullName}
+            status={<StatusChip tone={display.tone}>{t(`statuses.${display.status}`)}</StatusChip>}
+            tags={
+              <>
+                {item.roles.map((role) => (
+                  <ListCardTag key={role.id}>
+                    {formatRoleLabel(role, (code) => rbacT(`systemRoles.${code}`))}
+                  </ListCardTag>
+                ))}
+                <ListCardTag>{t(`sources.${item.source}`)}</ListCardTag>
+              </>
+            }
+            meta={[Boolean(item.email) && { label: t("table.email"), value: item.email }]}
+          />
+        );
+      },
+      sortLabels: {
+        label: common("table.sortBy"),
+        ascending: common("table.ascending"),
+        descending: common("table.descending"),
+      },
+    }),
+    [t, rbacT, common, can, actionController],
   );
 
   const canBulkOperate = can("USER.MODIFY") || can("USER.ASSIGN");
@@ -730,7 +661,9 @@ function UsersListContent({
         */}
         <div
           className={cn(
-            "@container grid border-b",
+            // `grid-cols-1` (= minmax(0, 1fr)): cột lưới không nở theo hàng nút không xuống dòng của thanh thao tác hàng
+            // loạt ở khung hẹp, nên câu gợi ý xuống dòng trong thẻ thay vì bị thẻ cắt mất.
+            "@container grid grid-cols-1 border-b",
             hasSelection ? "border-primary-200" : "border-border",
           )}
         >
@@ -738,7 +671,7 @@ function UsersListContent({
           aria-hidden={hasSelection || undefined}
           inert={hasSelection}
           className={cn(
-            "col-start-1 row-start-1 flex flex-wrap items-center justify-between gap-2 px-4 py-3",
+            "col-start-1 row-start-1 flex min-w-0 flex-wrap items-center justify-between gap-2 px-4 py-3",
             hasSelection && "invisible",
           )}
         >
@@ -756,7 +689,7 @@ function UsersListContent({
 
         {canBulkOperate && (
           <UserBulkBar
-            className="col-start-1 row-start-1"
+            className="col-start-1 row-start-1 min-w-0"
             selected={selectedAccounts}
             onClearSelection={() => {
               handleSelectionChange({});
@@ -796,6 +729,7 @@ function UsersListContent({
             manual: true,
             onChange: handleSortingChange,
           }}
+          cards={cards}
           error={
             usersQuery.isError ? (
               <EmptyState
@@ -897,5 +831,63 @@ function UsersListContent({
 
       <UserActionDialogs controller={actionController} />
     </div>
+  );
+}
+
+/** Nút "⋯" và menu thao tác của một tài khoản, dùng chung cho cột Thao tác của bảng và thẻ ở khung hẹp. */
+function UserRowActions({ item, controller }: { item: UserSummary; controller: UserActionController }) {
+  const t = useTranslations("users");
+  const isDeleted = Boolean(item.deletedAt);
+  const target = { id: item.id, username: item.username };
+  return (
+    <DropdownMenu>
+      <Tooltip content={t("actions.rowMenu", { username: item.username })}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={t("actions.rowMenu", { username: item.username })}
+            className={cn(
+              "inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-subtle motion-reduce:transition-none",
+              focusRing,
+            )}
+          >
+            <MoreHorizontal aria-hidden className="size-[18px]" />
+          </button>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent>
+        <DropdownMenuItem asChild>
+          <Link href={`/users/${item.id}`}>
+            <Eye />
+            <span>{t("actions.viewDetail")}</span>
+          </Link>
+        </DropdownMenuItem>
+        {!isDeleted && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => controller.openResetPassword(target)}>
+              <KeyRound />
+              <span>{t("actions.resetPassword")}</span>
+            </DropdownMenuItem>
+            {item.status === "ACTIVE" ? (
+              <DropdownMenuItem onSelect={() => void controller.openDeactivate(target)}>
+                <PowerOff />
+                <span>{t("actions.deactivate")}</span>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => controller.openActivate(target)}>
+                <Power />
+                <span>{t("actions.activate")}</span>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem destructive onSelect={() => void controller.openDelete(target)}>
+              <Trash2 />
+              <span>{t("actions.delete")}</span>
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
