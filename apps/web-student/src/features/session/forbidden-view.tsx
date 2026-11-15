@@ -30,7 +30,7 @@ export function StudentForbiddenView({
     setLeaving(true);
     try {
       await logoutSession();
-      navigate("/dang-nhap");
+      navigate("/login");
     } catch {
       notify.error(errors("logoutFailed"));
     } finally {

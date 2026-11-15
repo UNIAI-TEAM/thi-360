@@ -10,7 +10,7 @@ interface BreadcrumbLeafContextValue {
 const BreadcrumbLeafContext = createContext<BreadcrumbLeafContextValue | null>(null);
 
 /**
- * Mục cuối breadcrumb do trang con cung cấp (ví dụ mã lớp ở `/lop-hoc/[id]`), vì menu chỉ biết
+ * Mục cuối breadcrumb do trang con cung cấp (ví dụ mã lớp ở `/classes/[id]`), vì menu chỉ biết
  * mục cha. Topbar đọc giá trị này để thêm mục hiện tại sau mục menu.
  */
 export function BreadcrumbLeafProvider({ children }: { children: ReactNode }) {

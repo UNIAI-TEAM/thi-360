@@ -4,7 +4,7 @@ import { Breadcrumb } from "./breadcrumb";
 
 const items = [
   { label: "Người dùng", href: "/nguoi-dung" },
-  { label: "Tài khoản", href: "/tai-khoan" },
+  { label: "Tài khoản", href: "/users" },
   { label: "Nguyễn Văn An" },
 ];
 
@@ -13,7 +13,7 @@ describe("Breadcrumb", () => {
     render(<Breadcrumb aria-label="Đường dẫn" items={items} />);
     expect(screen.getByRole("navigation", { name: "Đường dẫn" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Người dùng" })).toHaveAttribute("href", "/nguoi-dung");
-    expect(screen.getByRole("link", { name: "Tài khoản" })).toHaveAttribute("href", "/tai-khoan");
+    expect(screen.getByRole("link", { name: "Tài khoản" })).toHaveAttribute("href", "/users");
     expect(screen.queryByRole("link", { name: "Nguyễn Văn An" })).toBeNull();
     expect(screen.getByText("Nguyễn Văn An")).toHaveAttribute("aria-current", "page");
   });

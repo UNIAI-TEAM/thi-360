@@ -187,15 +187,15 @@ test.describe("Cấp tài khoản hàng loạt (UNI-2548)", () => {
     const { api, xsrf } = await createPlatformApiContext();
 
     try {
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, "platform", PLATFORM_PASSWORD);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users`);
 
       await page.getByRole("link", { name: "Cấp hàng loạt" }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan/cap-hang-loat`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users/bulk-import`);
       await expect(page.getByRole("heading", { name: "Cấp tài khoản hàng loạt" })).toBeVisible();
 
       const breadcrumb = page.getByRole("navigation", { name: "Vị trí hiện tại" });
@@ -203,7 +203,7 @@ test.describe("Cấp tài khoản hàng loạt (UNI-2548)", () => {
       await expect(breadcrumb).toContainText("Cấp hàng loạt");
       await expect(breadcrumb.getByRole("link", { name: "Tài khoản" })).toHaveAttribute(
         "href",
-        "/tai-khoan",
+        "/users",
       );
 
       const mainNav = page.getByRole("navigation", { name: "Menu chính" });
@@ -225,7 +225,7 @@ test.describe("Cấp tài khoản hàng loạt (UNI-2548)", () => {
         buffer: invalidXlsx,
       });
       await page.getByRole("button", { name: "Tải lên và kiểm tra" }).click();
-      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/cap-hang-loat/[^/]+$`));
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/users/bulk-import/[^/]+$`));
       await expect(page.locator("tbody tr", { hasText: "bad user" })).toContainText("Lỗi");
 
       const errDownload = page.waitForEvent("download");
@@ -235,7 +235,7 @@ test.describe("Cấp tài khoản hàng loạt (UNI-2548)", () => {
 
       // 3. Tải lên lại file hợp lệ -> xem trước -> sang bước xác nhận -> xác nhận với Idempotency-Key
       await page.getByRole("link", { name: "Tải lên lại" }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan/cap-hang-loat`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users/bulk-import`);
 
       await page.locator('input[type="file"]').setInputFiles({
         name: `valid-${suffix}.xlsx`,
@@ -243,7 +243,7 @@ test.describe("Cấp tài khoản hàng loạt (UNI-2548)", () => {
         buffer: validXlsx,
       });
       await page.getByRole("button", { name: "Tải lên và kiểm tra" }).click();
-      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/cap-hang-loat/[^/]+$`));
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/users/bulk-import/[^/]+$`));
       await page.getByRole("button", { name: "Xác nhận cấp 2 tài khoản" }).click();
       await expect(page.getByRole("heading", { name: "Kiểm tra lần cuối" })).toBeVisible();
 
@@ -337,15 +337,15 @@ test.describe("Cấp tài khoản hàng loạt (UNI-2548)", () => {
       const userBody = (await userRes.json()) as { id: string };
       viewerId = userBody.id;
 
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, viewerUsername, viewerPassword);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users`);
       await expect(page.getByRole("link", { name: "Cấp hàng loạt" })).toHaveCount(0);
 
-      await page.goto(`${ADMIN_URL}/tai-khoan/cap-hang-loat`);
+      await page.goto(`${ADMIN_URL}/users/bulk-import`);
       await expect(page.getByText("Bạn không có quyền vào trang này")).toBeVisible();
     } finally {
       if (viewerId) {

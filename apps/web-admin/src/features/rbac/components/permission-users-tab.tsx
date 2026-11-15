@@ -484,7 +484,7 @@ export function PermissionUsersTab({
                   <span className="font-normal text-text-muted">{activePermission.code}</span>
                 </>
               ) : (
-                t("tabs.nguoi-dung")
+                t("tabs.users")
               )}
             </h2>
             {activePermission && (
@@ -568,7 +568,7 @@ export function PermissionUsersTab({
           getRowId={(row) => row.userId}
           loading={permissionsQuery.isPending || usersQuery.isPending}
           refreshing={usersQuery.isPlaceholderData}
-          aria-label={t("tabs.nguoi-dung")}
+          aria-label={t("tabs.users")}
           error={
             usersQuery.isError ? (
               <EmptyState

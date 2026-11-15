@@ -51,16 +51,16 @@ test.describe("Hồ sơ học tập của học viên (UNI-2549)", () => {
       const userBody = (await userRes.json()) as { id: string };
       userId = userBody.id;
 
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, username, password);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users`);
 
       await page.getByLabel("Tìm kiếm").fill("student01");
       await page.getByRole("link", { name: "student01", exact: true }).click();
-      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/[^/]+$`));
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/users/[^/]+$`));
       await expect(page.getByRole("heading", { name: /Học viên 01/ })).toBeVisible();
 
       const learningTab = page.getByRole("tab", { name: "Hồ sơ học tập" });
@@ -161,16 +161,16 @@ test.describe("Hồ sơ học tập của học viên (UNI-2549)", () => {
         }
       });
 
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await submitLoginForm(page, username, password);
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
       await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
-      await expect(page).toHaveURL(`${ADMIN_URL}/tai-khoan`);
+      await expect(page).toHaveURL(`${ADMIN_URL}/users`);
 
       await page.getByLabel("Tìm kiếm").fill("student01");
       await page.getByRole("link", { name: "student01", exact: true }).click();
-      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/tai-khoan/[^/]+$`));
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/users/[^/]+$`));
       await expect(page.getByRole("heading", { name: /Học viên 01/ })).toBeVisible();
 
       await expect(page.getByRole("tab", { name: "Thông tin" })).toBeVisible();

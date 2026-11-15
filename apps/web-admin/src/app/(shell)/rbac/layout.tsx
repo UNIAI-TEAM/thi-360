@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Skeleton } from "@thi360/ui";
-import { RbacPageView } from "@/features/rbac";
+import { RbacLayoutView } from "@/features/rbac";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("rbac");
   return { title: `${t("title")} · Thi 360` };
 }
 
-export default function RbacPage() {
+/** Tiêu đề và thanh tab dùng chung cho `/rbac/roles`, `/permissions`, `/users`, `/bulk-assign`. */
+export default function RbacLayout({ children }: { children: ReactNode }) {
   return (
     <Suspense
       fallback={
@@ -19,7 +20,7 @@ export default function RbacPage() {
         </div>
       }
     >
-      <RbacPageView />
+      <RbacLayoutView>{children}</RbacLayoutView>
     </Suspense>
   );
 }

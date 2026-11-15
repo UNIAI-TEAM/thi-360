@@ -31,7 +31,7 @@ export function StudentUserMenu({
   async function onLogout() {
     try {
       await logoutSession();
-      navigate("/dang-nhap");
+      navigate("/login");
     } catch {
       notify.error(t("logoutFailed"));
     }
@@ -74,7 +74,7 @@ export function StudentUserMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/doi-mat-khau">
+          <Link href="/change-password">
             <KeyRound aria-hidden />
             {t("changePassword")}
           </Link>

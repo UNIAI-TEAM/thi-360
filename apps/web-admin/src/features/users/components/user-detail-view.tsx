@@ -112,7 +112,7 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
       <div className="flex flex-col gap-4">
         <div>
           <Button asChild variant="link" size="sm">
-            <Link href="/tai-khoan">
+            <Link href="/users">
               <ArrowLeft />
               <span>{t("detail.backToList")}</span>
             </Link>
@@ -128,7 +128,7 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
             action={
               isNotFound ? (
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan">{t("detail.backToList")}</Link>
+                  <Link href="/users">{t("detail.backToList")}</Link>
                 </Button>
               ) : (
                 <Button variant="secondary" onClick={() => void detailQuery.refetch()}>
@@ -155,7 +155,7 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
     <div className="flex flex-col gap-5">
       <div>
         <Button asChild variant="link" size="sm">
-          <Link href="/tai-khoan">
+          <Link href="/users">
             <ArrowLeft />
             <span>{t("detail.backToList")}</span>
           </Link>

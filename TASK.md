@@ -30,6 +30,17 @@ Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân q
 | T19 | UNI-2561 | Nền · Đa ngôn ngữ (tiếng Việt mặc định, thêm tiếng Anh) và chế độ sáng/tối theo từng người; hai nút ở thanh trên cùng | T17, T18 | in_review (đã merge vào integration/dot-1, PR #20) |
 | T16 | UNI-2553 | Kiểm thử nghiệm thu nền, PBI-01 và kiểm thử bảo mật gọi thẳng API | T02–T15, T17, T18, T19 | in_review (đã merge vào integration/dot-1: PR #24) |
 
+### Việc phát sinh sau đợt 1 (2026-11-14)
+
+Không thuộc điểm của plan đợt 1; mỗi việc một issue con của UNI-2537 và một PR vào `develop`.
+
+| Issue | Việc | PR | Trạng thái |
+|---|---|---|---|
+| UNI-2574 | Lỗi · Hết hạn access token: trang bị tải lại hoặc về trang đăng nhập thay vì tự làm mới phiên | #26 | in_review |
+| UNI-2577 | Lỗi · Danh sách bị nhảy khi đổi bộ lọc | #28 | in_review |
+| UNI-2578 | Hộp thoại Tạo tài khoản: bố cục hai cột, hiện đủ trong một khung | #27 | in_review |
+| UNI-2576 | Đổi đường dẫn trang của hai web sang tiếng Anh (chồng lên ba PR trên) | #29 | in_review |
+
 ### Thứ tự làm
 
 ```

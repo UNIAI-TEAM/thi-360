@@ -22,7 +22,7 @@ import vn.unicom.thi360.shared.security.CurrentUser;
 public class RedirectResolver {
 
     private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
-    private static final String CHANGE_PASSWORD_PATH = "/doi-mat-khau";
+    private static final String CHANGE_PASSWORD_PATH = "/change-password";
     private static final String STUDENT_HOME_PATH = "/home";
     private static final Pattern DOUBLE_ENCODED_HEX = Pattern.compile("%25[0-9a-fA-F]{2}");
     private static final Pattern PERCENT_ENCODED_HEX = Pattern.compile("%[0-9a-fA-F]{2}");

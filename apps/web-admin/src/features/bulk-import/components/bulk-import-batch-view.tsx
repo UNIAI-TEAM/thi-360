@@ -253,7 +253,7 @@ function BulkImportBatchContent({
       [GUARD_STATE_KEY]: token,
     });
     const isGuardedSameUrlEntry = () =>
-      window.location.pathname.endsWith(`/tai-khoan/cap-hang-loat/${batchId}`) &&
+      window.location.pathname.endsWith(`/users/bulk-import/${batchId}`) &&
       Boolean(
         (window.history.state as Record<string, unknown> | null)?.[GUARD_STATE_KEY],
       );
@@ -651,7 +651,7 @@ function BulkImportBatchContent({
             action={
               isNotFound ? (
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan/cap-hang-loat">{t("batchError.startOver")}</Link>
+                  <Link href="/users/bulk-import">{t("batchError.startOver")}</Link>
                 </Button>
               ) : (
                 <Button variant="secondary" onClick={() => void batchQuery.refetch()}>
@@ -833,7 +833,7 @@ function BulkImportBatchContent({
 
               <div className="flex flex-wrap items-center gap-2">
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan/cap-hang-loat">
+                  <Link href="/users/bulk-import">
                     <Upload />
                     <span>{t("preview.reupload")}</span>
                   </Link>
@@ -1165,10 +1165,10 @@ function BulkImportBatchContent({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan/cap-hang-loat">{t("result.startAnother")}</Link>
+                  <Link href="/users/bulk-import">{t("result.startAnother")}</Link>
                 </Button>
                 <Button asChild variant="secondary">
-                  <Link href="/tai-khoan">{t("result.goToUsers")}</Link>
+                  <Link href="/users">{t("result.goToUsers")}</Link>
                 </Button>
               </div>
             </div>

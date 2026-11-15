@@ -6,7 +6,7 @@ const API_URL = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
 
 async function loginOnWeb(page: Page, identifier: string, password: string) {
-  await page.goto(`${WEB_URL}/dang-nhap`);
+  await page.goto(`${WEB_URL}/login`);
   await page.getByLabel(/Tên đăng nhập hoặc email|Username or email/).fill(identifier);
   await page.getByLabel(/Mật khẩu|Password/).fill(password);
   await page.getByRole("button", { name: /^(Đăng nhập|Sign in)$/ }).click();
@@ -61,14 +61,14 @@ async function restoreAppearance(
 }
 
 test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng người", () => {
-  test("đổi ngôn ngữ ở /dang-nhap -> đăng nhập ops.admin giữ nguyên tiếng Anh sang web-admin -> đổi lại tiếng Việt -> cookie sai rơi về tiếng Việt", async ({
+  test("đổi ngôn ngữ ở /login -> đăng nhập ops.admin giữ nguyên tiếng Anh sang web-admin -> đổi lại tiếng Việt -> cookie sai rơi về tiếng Việt", async ({
     browser,
   }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
     try {
-      await page.goto(`${WEB_URL}/dang-nhap`);
+      await page.goto(`${WEB_URL}/login`);
       await expect(page.locator("html")).toHaveAttribute("lang", "vi");
       await expect(page.getByRole("heading", { name: "Đăng nhập" })).toBeVisible();
 
@@ -112,19 +112,19 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
       await expect(page.locator("html")).toHaveAttribute("lang", "vi");
       await expect(page.getByRole("heading", { name: /Xin chào, / })).toBeVisible();
       await expect(page.getByRole("link", { name: "Bảng điều khiển" })).toBeVisible();
-      // Cookie sai giá trị -> rơi về tiếng Việt (dùng trình duyệt mới chưa đăng nhập để không bị chuyển hướng khỏi /dang-nhap)
+      // Cookie sai giá trị -> rơi về tiếng Việt (dùng trình duyệt mới chưa đăng nhập để không bị chuyển hướng khỏi /login)
       const invalidLocaleContext = await browser.newContext();
       try {
         await invalidLocaleContext.addCookies([
           { name: "thi360_locale", value: "fr", url: WEB_URL },
         ]);
         const guestPage = await invalidLocaleContext.newPage();
-        await guestPage.goto(`${WEB_URL}/dang-nhap`);
+        await guestPage.goto(`${WEB_URL}/login`);
         await expect(guestPage.locator("html")).toHaveAttribute("lang", "vi");
         await expect(guestPage.getByRole("heading", { name: "Đăng nhập" })).toBeVisible();
 
         // HTML máy chủ đã có sẵn lang="en" khi có cookie thi360_locale=en
-        const rawHtmlRes = await guestPage.request.get(`${WEB_URL}/dang-nhap`, {
+        const rawHtmlRes = await guestPage.request.get(`${WEB_URL}/login`, {
           headers: { cookie: "thi360_locale=en" },
         });
         expect(rawHtmlRes.ok()).toBe(true);
@@ -209,7 +209,7 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
 
       // Người dùng đã tự chọn giữ nguyên mode ban đầu bằng cookie
       const chosenPage = await chosenContext.newPage();
-      await chosenPage.goto(`${WEB_URL}/dang-nhap`);
+      await chosenPage.goto(`${WEB_URL}/login`);
       await expect(chosenPage.locator("html")).toHaveAttribute("data-theme", originalAppearance.mode);
       if (chosenMode === "light") {
         await chosenPage.getByRole("button", { name: "Chuyển sang chế độ tối" }).click();
@@ -272,7 +272,7 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
     }
   });
 
-  test("admin đã tự chọn chế độ qua cookie khi Lưu và áp dụng trên /tuy-chinh-giao-dien vẫn giữ data-theme cá nhân và cập nhật bảng màu", async ({
+  test("admin đã tự chọn chế độ qua cookie khi Lưu và áp dụng trên /appearance vẫn giữ data-theme cá nhân và cập nhật bảng màu", async ({
     browser,
   }) => {
     test.setTimeout(120_000);
@@ -294,7 +294,7 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
       xsrfToken = cookieValue(adminCookies, "thi360_xsrf") ?? "";
       expect(xsrfToken).not.toBe("");
 
-      await adminPage.goto(`${ADMIN_URL}/tuy-chinh-giao-dien`);
+      await adminPage.goto(`${ADMIN_URL}/appearance`);
       await expect(adminPage.getByRole("heading", { name: "Tùy chỉnh giao diện" })).toBeVisible();
 
       const chosenMode = originalAppearance.mode === "light" ? "dark" : "light";

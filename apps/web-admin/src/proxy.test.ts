@@ -14,11 +14,11 @@ beforeEach(() => {
 });
 
 describe("web-admin proxy.ts", () => {
-  it("chưa có thi360_ctx hợp lệ: chuyển về web-student /dang-nhap kèm callbackUrl", async () => {
+  it("chưa có thi360_ctx hợp lệ: chuyển về web-student /login kèm callbackUrl", async () => {
     const response = await proxy(new NextRequest("http://localhost:3001/users?page=1"));
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3000/dang-nhap?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fusers%3Fpage%3D1",
+      "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fusers%3Fpage%3D1",
     );
   });
 
@@ -77,7 +77,7 @@ describe("web-admin proxy.ts", () => {
     const unauth = await proxy(new NextRequest("http://127.0.0.1:3001/users?page=1"));
     expect(unauth.status).toBe(307);
     expect(unauth.headers.get("location")).toBe(
-      "https://thi360.vn/dang-nhap?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Fpage%3D1",
+      "https://thi360.vn/login?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Fpage%3D1",
     );
 
     const examToken = await signCtxCookie(
@@ -143,7 +143,7 @@ describe("web-admin proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (
     );
 
     const response = await proxy(
-      new NextRequest("http://localhost:3001/lop-hoc?page=2", {
+      new NextRequest("http://localhost:3001/classes?page=2", {
         headers: { cookie: `${CTX_COOKIE_NAME}=${expired}; thi360_rt=${rt}; thi360_xsrf=x1` },
       }),
     );
@@ -163,7 +163,7 @@ describe("web-admin proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (
     fetchMock.mockResolvedValueOnce(refreshed);
 
     const response = await proxy(
-      new NextRequest("http://localhost:3001/tai-khoan", {
+      new NextRequest("http://localhost:3001/users", {
         headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
       }),
     );
@@ -177,7 +177,7 @@ describe("web-admin proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (
     fetchMock.mockResolvedValueOnce(refreshed);
 
     const response = await proxy(
-      new NextRequest("http://localhost:3001/tai-khoan", {
+      new NextRequest("http://localhost:3001/users", {
         headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
       }),
     );
@@ -193,14 +193,14 @@ describe("web-admin proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (
     fetchMock.mockResolvedValueOnce(new Response("{}", { status: 401, headers }));
 
     const response = await proxy(
-      new NextRequest("http://localhost:3001/tai-khoan", {
+      new NextRequest("http://localhost:3001/users", {
         headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
       }),
     );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3000/dang-nhap?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Ftai-khoan",
+      "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fusers",
     );
     expect(response.headers.getSetCookie()).toEqual(["thi360_rt=; Path=/; Max-Age=0; HttpOnly"]);
   });
@@ -212,7 +212,7 @@ describe("web-admin proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (
     );
 
     const response = await proxy(
-      new NextRequest("http://localhost:3001/tai-khoan", {
+      new NextRequest("http://localhost:3001/users", {
         headers: { cookie: `${CTX_COOKIE_NAME}=${valid}; thi360_rt=${rt}` },
       }),
     );
@@ -225,14 +225,14 @@ describe("web-admin proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (
     fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
     const response = await proxy(
-      new NextRequest("http://localhost:3001/tai-khoan", {
+      new NextRequest("http://localhost:3001/users", {
         headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
       }),
     );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3000/dang-nhap?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Ftai-khoan",
+      "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fusers",
     );
     expect(response.headers.getSetCookie()).toEqual([]);
   });
@@ -244,12 +244,12 @@ describe("web-admin proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (
     fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200, headers }));
 
     const response = await proxy(
-      new NextRequest("http://localhost:3001/tai-khoan", {
+      new NextRequest("http://localhost:3001/users", {
         headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
       }),
     );
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/dang-nhap?callbackUrl=");
+    expect(response.headers.get("location")).toContain("/login?callbackUrl=");
   });
 });

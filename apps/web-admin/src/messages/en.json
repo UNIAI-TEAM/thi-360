@@ -1621,16 +1621,16 @@
     },
     "tabs": {
       "ariaLabel": "Permission management tabs",
-      "gan-hang-loat": "Bulk assignment",
-      "nguoi-dung": "Users by permission",
-      "quyen": "Permissions",
-      "vai-tro": "Roles"
+      "bulk-assign": "Bulk assignment",
+      "permissions": "Permissions",
+      "roles": "Roles",
+      "users": "Users by permission"
     },
     "tabsDescription": {
-      "gan-hang-loat": "Bulk assignment tab: grant or revoke roles and permissions for multiple accounts at once. Preview per-account outcomes before applying.",
-      "nguoi-dung": "Users by permission tab: pick a permission to inspect which accounts hold it and how it was granted.",
-      "quyen": "Permissions tab: read-only system permission catalog. Permissions are assigned to roles and accounts in the other tabs.",
-      "vai-tro": "Roles tab: each role has an access scope and a set of permissions. Scope determines which portal holders enter after sign-in."
+      "bulk-assign": "Bulk assignment tab: grant or revoke roles and permissions for multiple accounts at once. Preview per-account outcomes before applying.",
+      "permissions": "Permissions tab: read-only system permission catalog. Permissions are assigned to roles and accounts in the other tabs.",
+      "roles": "Roles tab: each role has an access scope and a set of permissions. Scope determines which portal holders enter after sign-in.",
+      "users": "Users by permission tab: pick a permission to inspect which accounts hold it and how it was granted."
     },
     "title": "Permissions & roles",
     "userRbac": {

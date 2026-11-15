@@ -204,7 +204,7 @@ function ClassesListContent({
         header: t("table.code"),
         cell: ({ row }) => (
           <Link
-            href={`/lop-hoc/${row.original.id}`}
+            href={`/classes/${row.original.id}`}
             className="whitespace-nowrap font-semibold text-primary-text hover:underline"
           >
             {row.original.code}
@@ -275,7 +275,7 @@ function ClassesListContent({
                 icon={<Eye />}
                 aria-label={t("actions.openAria", { code: item.code })}
                 tooltip={t("actions.openTooltip")}
-                onClick={() => router.push(`/lop-hoc/${item.id}`)}
+                onClick={() => router.push(`/classes/${item.id}`)}
               />
               {canModify && (
                 <>

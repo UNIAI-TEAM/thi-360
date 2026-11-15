@@ -6,7 +6,7 @@ const ADMIN_URL = process.env.THI360_ADMIN_URL ?? "http://localhost:3001";
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
 
 async function loginThroughSso(page: Page, identifier: string, password: string) {
-  await page.goto(`${WEB_URL}/dang-nhap`);
+  await page.goto(`${WEB_URL}/login`);
   await page.getByLabel(/Tên đăng nhập hoặc email/).fill(identifier);
   await page.getByLabel(/Mật khẩu/).fill(password);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
@@ -235,7 +235,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     const comboName = `Tổ hợp E2E ${suffix}`;
 
     await loginThroughSso(page, "content.admin", DEV_PASSWORD);
-    await page.goto(`${ADMIN_URL}/cau-hinh-chung`);
+    await page.goto(`${ADMIN_URL}/catalog`);
     await expect(page.getByRole("heading", { name: "Cấu hình chung" })).toBeVisible();
 
     // 1. Add custom SIMPLE group
@@ -312,7 +312,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
 
   test("tải lại với ?group= rồi vẫn đổi được nhóm và chọn nút cây (VIS-1)", async ({ page }) => {
     await loginThroughSso(page, "content.admin", DEV_PASSWORD);
-    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=SUBJECT`);
+    await page.goto(`${ADMIN_URL}/catalog?group=SUBJECT`);
     await expect(page.getByRole("heading", { name: "Môn học" })).toBeVisible();
 
     await page.reload();
@@ -327,7 +327,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await expect(page.getByRole("heading", { name: "Môn học" })).toBeVisible();
     await expect(page).toHaveURL(/group=SUBJECT(&|$)/);
 
-    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=KNOWLEDGE`);
+    await page.goto(`${ADMIN_URL}/catalog?group=KNOWLEDGE`);
     await page.reload();
     const treeItems = page.getByRole("treeitem");
     await expect(treeItems.first()).toBeVisible();
@@ -346,13 +346,13 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await page.setViewportSize({ width: 1280, height: 720 });
     await loginThroughSso(page, "content.admin", DEV_PASSWORD);
 
-    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=SUBJECT_COMBINATION`);
+    await page.goto(`${ADMIN_URL}/catalog?group=SUBJECT_COMBINATION`);
     await page.getByRole("button", { name: "Thêm giá trị" }).click();
     let dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("button", { name: "Lưu", exact: true })).toBeInViewport();
     await page.keyboard.press("Escape");
 
-    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=KNOWLEDGE`);
+    await page.goto(`${ADMIN_URL}/catalog?group=KNOWLEDGE`);
     await page.getByRole("button", { name: "Thêm Chương", exact: true }).first().click();
     dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("button", { name: "Lưu", exact: true })).toBeInViewport();
@@ -366,7 +366,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     const viewerPage = await viewerContext.newPage();
     await loginThroughSso(viewerPage, viewer.username, viewer.password);
 
-    await viewerPage.goto(`${ADMIN_URL}/cau-hinh-chung?group=SUBJECT`);
+    await viewerPage.goto(`${ADMIN_URL}/catalog?group=SUBJECT`);
     await expect(viewerPage.getByRole("heading", { name: "Môn học" })).toBeVisible();
     await expect(viewerPage.getByRole("button", { name: "Xuất Excel" })).toBeVisible();
 
@@ -393,7 +393,7 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     // V2-1 is only reproducible on a small desktop: pin the smallest supported viewport.
     await page.setViewportSize({ width: 1280, height: 720 });
     await loginThroughSso(page, "content.admin", DEV_PASSWORD);
-    await page.goto(`${ADMIN_URL}/cau-hinh-chung?group=KNOWLEDGE`);
+    await page.goto(`${ADMIN_URL}/catalog?group=KNOWLEDGE`);
     await expect(page.getByRole("heading", { name: "Cấu trúc kiến thức" })).toBeVisible();
 
     // 0. V2-2: the dialog's close X must be the top element at its centre, so a real click closes it

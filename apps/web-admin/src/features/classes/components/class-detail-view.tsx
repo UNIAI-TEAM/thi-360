@@ -203,7 +203,7 @@ function ClassDetailContent({
     deps,
     onMutated: refreshClassAndMembers,
     onDeleted: () => {
-      router.push("/lop-hoc");
+      router.push("/classes");
     },
   });
 
@@ -236,7 +236,7 @@ function ClassDetailContent({
         cell: ({ row }) => (
           <div className="flex flex-col">
             <Link
-              href={`/tai-khoan/${row.original.userId}`}
+              href={`/users/${row.original.userId}`}
               className="whitespace-nowrap font-semibold text-primary-text hover:underline"
             >
               {row.original.username}
@@ -308,7 +308,7 @@ function ClassDetailContent({
     return (
       <div className="flex flex-col gap-4">
         <Link
-          href="/lop-hoc"
+          href="/classes"
           className="inline-flex items-center gap-1.5 self-start text-body font-medium text-primary-text hover:underline"
         >
           <ArrowLeft className="size-4" />
@@ -322,7 +322,7 @@ function ClassDetailContent({
             action={
               isNotFound ? (
                 <Button asChild variant="secondary">
-                  <Link href="/lop-hoc">{t("detail.backToList")}</Link>
+                  <Link href="/classes">{t("detail.backToList")}</Link>
                 </Button>
               ) : (
                 <Button variant="secondary" onClick={() => void classQuery.refetch()}>
@@ -353,7 +353,7 @@ function ClassDetailContent({
   return (
     <div className="flex flex-col gap-5">
       <Link
-        href="/lop-hoc"
+        href="/classes"
         className="inline-flex items-center gap-1.5 self-start text-body font-medium text-primary-text hover:underline"
       >
         <ArrowLeft className="size-4" />

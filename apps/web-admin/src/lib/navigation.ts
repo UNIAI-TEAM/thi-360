@@ -53,13 +53,13 @@ export const NAVIGATION: readonly NavGroup[] = [
     items: [
       {
         id: "accounts",
-        href: "/tai-khoan",
+        href: "/users",
         icon: Users,
         permission: "USER.VIEW",
       },
       {
         id: "classes",
-        href: "/lop-hoc",
+        href: "/classes",
         icon: GraduationCap,
         permission: "CLASS.VIEW",
       },
@@ -70,7 +70,7 @@ export const NAVIGATION: readonly NavGroup[] = [
     items: [
       {
         id: "catalog",
-        href: "/cau-hinh-chung",
+        href: "/catalog",
         icon: List,
         permission: "CATALOG.VIEW",
       },
@@ -81,13 +81,13 @@ export const NAVIGATION: readonly NavGroup[] = [
     items: [
       {
         id: "rbac",
-        href: "/phan-quyen",
+        href: "/rbac",
         icon: Shield,
         permission: ["ROLE.VIEW", "PERMISSION.VIEW"],
       },
       {
         id: "appearance",
-        href: "/tuy-chinh-giao-dien",
+        href: "/appearance",
         icon: SlidersVertical,
         permission: "APPEARANCE.MODIFY",
       },

@@ -8,7 +8,7 @@ import { defaultBulkImportApiDeps } from "../api";
 import { BulkImportHeader } from "../components/bulk-import-header";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/tai-khoan/cap-hang-loat",
+  usePathname: () => "/users/bulk-import",
 }));
 
 describe("breadcrumb của trang Cấp hàng loạt", () => {
@@ -26,7 +26,7 @@ describe("breadcrumb của trang Cấp hàng loạt", () => {
     expect(breadcrumb).toHaveTextContent("Người dùng");
     expect(within(breadcrumb).getByRole("link", { name: "Tài khoản" })).toHaveAttribute(
       "href",
-      "/tai-khoan",
+      "/users",
     );
     expect(within(breadcrumb).getByText("Cấp hàng loạt")).toHaveAttribute("aria-current", "page");
     const nav = screen.getByRole("navigation", { name: "Menu chính" });

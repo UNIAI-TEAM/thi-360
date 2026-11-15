@@ -129,7 +129,7 @@ class AuthRedirectAndLogoutCookieIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.redirectTo").value("http://localhost:3001"));
 
-        // mustChangePassword=true -> /doi-mat-khau preserving only valid callbackUrl
+        // mustChangePassword=true -> /change-password preserving only valid callbackUrl
         String changePwdUser = "chgpwd.redirect." + suffix;
         createUser(changePwdUser, "Change Pwd", true);
 
@@ -141,7 +141,7 @@ class AuthRedirectAndLogoutCookieIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mustChangePassword").value(true))
                 .andExpect(jsonPath("$.redirectTo")
-                        .value("http://localhost:3000/doi-mat-khau?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Froles"));
+                        .value("http://localhost:3000/change-password?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Froles"));
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .header(ClientIpResolver.X_FORWARDED_FOR, TEST_IP)
@@ -150,7 +150,7 @@ class AuthRedirectAndLogoutCookieIT extends AbstractKeycloakIntegrationTest {
                                 + "\",\"password\":\"Valid@1234\",\"callbackUrl\":\"//evil.example\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mustChangePassword").value(true))
-                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3000/doi-mat-khau"));
+                .andExpect(jsonPath("$.redirectTo").value("http://localhost:3000/change-password"));
     }
 
     private static void assertCookieAttributes(List<String> setCookieHeaders, String cookieName, boolean cleared) {

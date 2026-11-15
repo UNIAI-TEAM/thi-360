@@ -89,46 +89,46 @@ class RedirectResolverTest {
     @Test
     void mustChangePassword_takesPrecedence_andPreservesOnlyValidCallbackUrl() {
         assertThat(prodResolver.resolve(new RedirectUser(Access.MANAGE, true), null))
-                .isEqualTo(WEB_URL + "/doi-mat-khau");
+                .isEqualTo(WEB_URL + "/change-password");
 
         assertThat(prodResolver.resolve(new RedirectUser(Access.MANAGE, true), "https://admin.thi360.vn/users"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers");
+                .isEqualTo(WEB_URL + "/change-password?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers");
 
         assertThat(prodResolver.resolve(new RedirectUser(Access.EXAM, true), "/home"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau?callbackUrl=%2Fhome");
+                .isEqualTo(WEB_URL + "/change-password?callbackUrl=%2Fhome");
 
         assertThat(prodResolver.resolve(new RedirectUser(Access.MANAGE, true), "https://evil.example"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau");
+                .isEqualTo(WEB_URL + "/change-password");
 
-        assertThat(prodResolver.resolve(new RedirectUser(Access.EXAM, true), "/doi-mat-khau"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau");
+        assertThat(prodResolver.resolve(new RedirectUser(Access.EXAM, true), "/change-password"))
+                .isEqualTo(WEB_URL + "/change-password");
 
-        assertThat(prodResolver.resolve(new RedirectUser(Access.EXAM, true), "https://thi360.vn/doi-mat-khau"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau");
-
-        assertThat(prodResolver.resolve(
-                        new RedirectUser(Access.MANAGE, true),
-                        "https://thi360.vn/doi-mat-khau?callbackUrl=https://admin.thi360.vn/users"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers");
+        assertThat(prodResolver.resolve(new RedirectUser(Access.EXAM, true), "https://thi360.vn/change-password"))
+                .isEqualTo(WEB_URL + "/change-password");
 
         assertThat(prodResolver.resolve(
                         new RedirectUser(Access.MANAGE, true),
-                        "/doi-mat-khau?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Ftab%3Droles"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Ftab%3Droles");
+                        "https://thi360.vn/change-password?callbackUrl=https://admin.thi360.vn/users"))
+                .isEqualTo(WEB_URL + "/change-password?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers");
 
         assertThat(prodResolver.resolve(
                         new RedirectUser(Access.MANAGE, true),
-                        "/doi-mat-khau?callbackUrl=https%3A%2F%2Fevil.example%2Fphish"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau");
+                        "/change-password?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Ftab%3Droles"))
+                .isEqualTo(WEB_URL + "/change-password?callbackUrl=https%3A%2F%2Fadmin.thi360.vn%2Fusers%3Ftab%3Droles");
+
+        assertThat(prodResolver.resolve(
+                        new RedirectUser(Access.MANAGE, true),
+                        "/change-password?callbackUrl=https%3A%2F%2Fevil.example%2Fphish"))
+                .isEqualTo(WEB_URL + "/change-password");
 
         assertThat(prodResolver.resolve(
                         new RedirectUser(Access.EXAM, true),
-                        "/doi-mat-khau?callbackUrl=%2Fdoi-mat-khau"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau");
+                        "/change-password?callbackUrl=%2Fchange-password"))
+                .isEqualTo(WEB_URL + "/change-password");
 
         assertThat(prodResolver.resolve(
                         new RedirectUser(Access.EXAM, true),
-                        "/doi-mat-khau?callbackUrl=%2Fdoi-mat-khau%3FcallbackUrl%3D%2Fhome"))
-                .isEqualTo(WEB_URL + "/doi-mat-khau");
+                        "/change-password?callbackUrl=%2Fchange-password%3FcallbackUrl%3D%2Fhome"))
+                .isEqualTo(WEB_URL + "/change-password");
     }
 }

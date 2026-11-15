@@ -187,10 +187,10 @@ describe("BulkImportUploadView (Step 1)", () => {
     );
     expect(screen.queryByText(/Backend raw Vietnamese/)).not.toBeInTheDocument();
 
-    // Upload lại thành công -> chuyển hướng tới /tai-khoan/cap-hang-loat/[id]
+    // Upload lại thành công -> chuyển hướng tới /users/bulk-import/[id]
     await userEvent.click(screen.getByRole("button", { name: "Tải lên và kiểm tra" }));
     await waitFor(() => {
-      expect(routerMock.push).toHaveBeenCalledWith(`/tai-khoan/cap-hang-loat/${BATCH_ID}`);
+      expect(routerMock.push).toHaveBeenCalledWith(`/users/bulk-import/${BATCH_ID}`);
     });
   });
 
@@ -545,7 +545,7 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
     await userEvent.click(screen.getByRole("link", { name: "Về danh sách tài khoản" }));
     const leaveDialog2 = await screen.findByRole("dialog");
     await userEvent.click(within(leaveDialog2).getByRole("button", { name: "Vẫn rời trang" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/tai-khoan"));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/users"));
 
     // 3. Tải file kết quả -> gỡ cảnh báo rời trang
     await userEvent.click(screen.getByRole("button", { name: "Tải file kết quả" }));
@@ -829,7 +829,7 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
 
     // Link "Tải lên lại" vẫn là link thật tới route upload (click không treo).
     const reuploadLink = screen.getByRole("link", { name: "Tải lên lại" });
-    expect(reuploadLink).toHaveAttribute("href", "/tai-khoan/cap-hang-loat");
+    expect(reuploadLink).toHaveAttribute("href", "/users/bulk-import");
     await userEvent.click(reuploadLink);
     await sleep(100);
     expect(commits).toBeLessThan(20);
@@ -861,8 +861,8 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
   it("bước 4: sau khi tải file kết quả banner đổi sang trạng thái đã tải và Back chỉ cần một lần", async () => {
     // Hai mục history sạch liên tiếp + đặt URL giống route thật để guard nhận diện
     // đúng entry sentinel khi dọn (xem isGuardedSameUrlEntry trong component).
-    window.history.pushState({}, "", "/tai-khoan");
-    window.history.pushState({}, "", `/tai-khoan/cap-hang-loat/${BATCH_ID}`);
+    window.history.pushState({}, "", "/users");
+    window.history.pushState({}, "", `/users/bulk-import/${BATCH_ID}`);
 
     const deps = makeDeps({
       getImportBatch: vi.fn(async () =>
@@ -916,7 +916,7 @@ describe("BulkImportBatchView (Steps 2, 3, 4)", () => {
 
     window.history.back();
     await sleep(50);
-    expect(window.location.pathname).toBe("/tai-khoan");
+    expect(window.location.pathname).toBe("/users");
   });
 });
 
@@ -925,9 +925,9 @@ const VIETNAMESE_DIACRITICS =
 
 describe("BulkImportBatchView: hộp thoại xóa file kết quả và cảnh báo rời trang (UNI-2553)", () => {
   beforeEach(() => {
-    // Test trước có thể để URL ở /tai-khoan; link "về danh sách" chỉ bị chặn khi đích khác
+    // Test trước có thể để URL ở /users; link "về danh sách" chỉ bị chặn khi đích khác
     // trang hiện tại, nên đặt URL như route thật của đợt cấp để không phụ thuộc thứ tự chạy.
-    window.history.pushState({}, "", `/tai-khoan/cap-hang-loat/${BATCH_ID}`);
+    window.history.pushState({}, "", `/users/bulk-import/${BATCH_ID}`);
   });
 
   function completedWithGeneratedPasswords(overrides: Partial<BulkImportApiDeps> = {}) {
