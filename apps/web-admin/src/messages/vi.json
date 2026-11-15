@@ -1078,7 +1078,12 @@
     "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
     "notificationsLabel": "Thông báo",
-    "retry": "Thử lại"
+    "retry": "Thử lại",
+    "table": {
+      "ascending": "tăng dần",
+      "descending": "giảm dần",
+      "sortBy": "Sắp xếp theo"
+    }
   },
   "dashboard": {
     "errorDescription": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
