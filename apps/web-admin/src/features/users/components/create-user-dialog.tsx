@@ -636,7 +636,7 @@ function CreateUserFormBody({
           hint={t("createDialog.classesHint")}
           error={errors.classIds?.message}
         >
-          {() => (
+          {(controlProps) => (
             <Controller
               control={control}
               name="classIds"
@@ -676,9 +676,13 @@ function CreateUserFormBody({
                   );
                 }
                 return (
+                  // Nhóm ô đánh dấu nhận id của FormField (nhãn "Lớp học" trỏ tới một phần tử có thật) và mô tả
+                  // bằng gợi ý cùng lỗi của trường, để lỗi classIds được đọc cùng nhóm (U-24).
                   <div
                     role="group"
+                    id={controlProps.id}
                     aria-label={t("createDialog.classesLabel")}
+                    aria-describedby={controlProps["aria-describedby"]}
                     className="max-h-36 overflow-y-auto rounded-lg border border-border bg-surface p-2"
                   >
                     <div className="flex flex-col gap-1.5">

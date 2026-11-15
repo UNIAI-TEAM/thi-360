@@ -1199,3 +1199,31 @@ describe("UsersListView: mất mạng khi đổi bộ lọc (U-23)", () => {
     expect(screen.queryByText("Chưa có tài khoản")).not.toBeInTheDocument();
   });
 });
+
+describe("CreateUserDialog: nhóm Lớp học gắn với nhãn, gợi ý và lỗi (U-24)", () => {
+  it("nhãn trỏ tới nhóm có thật; nhóm được mô tả bằng gợi ý và lỗi CLASS_INACTIVE", async () => {
+    const createMock = vi.fn<UsersApiDeps["createUser"]>(async () => {
+      throw new UsersApiError(400, "raw", "CLASS_INACTIVE");
+    });
+    renderUsersView(makeDeps({ createUser: createMock }), TEST_ADMIN_SESSION, true);
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const group = await within(dialog).findByRole("group", { name: "Lớp học" });
+    const label = within(dialog).getByText("Lớp học", { selector: "label" });
+    expect(label).toHaveAttribute("for", group.id);
+    expect(group).toHaveAccessibleDescription(
+      "Tùy chọn gán tài khoản vào các lớp đang hoạt động ngay khi tạo.",
+    );
+
+    await userEvent.click(within(group).getByRole("checkbox", { name: /LOP-A/ }));
+    await userEvent.type(within(dialog).getByLabelText(/Tên đăng nhập/), "student55");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo ngẫu nhiên" }));
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 55");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo tài khoản" }));
+
+    await waitFor(() =>
+      expect(group).toHaveAccessibleDescription(/Lớp học được chọn đang ngừng sử dụng\./),
+    );
+  });
+});
