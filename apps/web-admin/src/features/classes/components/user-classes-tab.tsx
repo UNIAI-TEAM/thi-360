@@ -5,17 +5,21 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Button,
   Card,
+  cn,
   EmptyState,
+  focusRing,
   SectionTitle,
   Skeleton,
   StatusChip,
   Table,
+  type TableCards,
 } from "@thi360/ui";
 import { GraduationCap, History } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePermissions } from "@/features/session/session-provider";
+import { ListCard, ListCardTitleLink } from "@/features/users/components/list-cards";
 import {
   CLASSES_QUERY_KEYS,
   getUserClasses as defaultGetUserClasses,
@@ -71,11 +75,7 @@ export function UserClassesTab({
         id: "classStatus",
         header: t("userTab.currentTableStatus"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <StatusChip tone={row.original.classStatus === "ACTIVE" ? "success" : "neutral"}>
-            {t(`statuses.${row.original.classStatus}`)}
-          </StatusChip>
-        ),
+        cell: ({ row }) => <ClassStatusChip status={row.original.classStatus} />,
       },
       {
         id: "joinedAt",
@@ -117,16 +117,7 @@ export function UserClassesTab({
         id: "action",
         header: t("userTab.historyTableAction"),
         enableSorting: false,
-        cell: ({ row }) => {
-          const action = row.original.action;
-          const tone =
-            action === "JOIN" || action === "TRANSFER_IN"
-              ? "success"
-              : action === "TRANSFER_OUT"
-                ? "info"
-                : "neutral";
-          return <StatusChip tone={tone}>{t(`userTab.historyActions.${action}`)}</StatusChip>;
-        },
+        cell: ({ row }) => <HistoryActionChip action={row.original.action} />,
       },
       {
         id: "class",
@@ -177,6 +168,65 @@ export function UserClassesTab({
         ),
       },
     ],
+    [t],
+  );
+
+  /**
+   * Khung hẹp (dưới 640px, tab rộng bằng vùng nội dung): mỗi lớp một thẻ. Mã lớp là tiêu đề dẫn tới chi tiết lớp,
+   * tên lớp ở dòng phụ, chip trạng thái lớp, ngày vào lớp và người thêm ở dòng thông tin thêm.
+   */
+  const currentCards = useMemo<TableCards<UserCurrentClass>>(
+    () => ({
+      render: (item) => (
+        <ListCard
+          title={<ListCardTitleLink href={`/classes/${item.classId}`}>{item.classCode}</ListCardTitleLink>}
+          caption={item.className}
+          status={<ClassStatusChip status={item.classStatus} />}
+          meta={[
+            { label: t("userTab.currentTableJoinedAt"), value: formatClassDate(item.joinedAt) },
+            { label: t("userTab.currentTableAddedBy"), value: item.addedByUsername ?? t("userTab.systemActor") },
+          ]}
+        />
+      ),
+    }),
+    [t],
+  );
+
+  /**
+   * Mỗi lần vào, rời, chuyển lớp một thẻ: lớp là tiêu đề dẫn tới chi tiết lớp, thời gian ở dòng phụ, hành động là
+   * chip trạng thái; lớp liên quan (liên kết riêng, nằm trên vùng bấm của tiêu đề), người thực hiện, lý do ở dòng
+   * thông tin thêm.
+   */
+  const historyCards = useMemo<TableCards<UserClassHistory>>(
+    () => ({
+      render: (item) => (
+        <ListCard
+          title={
+            <ListCardTitleLink href={`/classes/${item.classId}`}>
+              {item.classCode} — {item.className}
+            </ListCardTitleLink>
+          }
+          caption={formatClassDateTime(item.occurredAt)}
+          status={<HistoryActionChip action={item.action} />}
+          meta={[
+            Boolean(item.relatedClassId && item.relatedClassCode) && {
+              label: t("userTab.historyTableRelatedClass"),
+              value: (
+                <Link
+                  href={`/classes/${item.relatedClassId}`}
+                  className={cn("relative z-1 rounded-sm text-primary-text hover:underline", focusRing)}
+                >
+                  {item.relatedClassCode}
+                  {item.relatedClassName ? ` — ${item.relatedClassName}` : ""}
+                </Link>
+              ),
+            },
+            { label: t("userTab.historyTableActor"), value: item.actorUsername ?? t("userTab.systemActor") },
+            Boolean(item.reason) && { label: t("userTab.historyTableReason"), value: item.reason },
+          ]}
+        />
+      ),
+    }),
     [t],
   );
 
@@ -233,6 +283,7 @@ export function UserClassesTab({
           columns={currentColumns}
           data={currentClasses}
           getRowId={(row) => row.classId}
+          cards={currentCards}
           empty={
             <EmptyState
               icon={<GraduationCap />}
@@ -253,6 +304,7 @@ export function UserClassesTab({
           columns={historyColumns}
           data={history}
           getRowId={(row) => row.id}
+          cards={historyCards}
           empty={
             <EmptyState
               icon={<History />}
@@ -264,4 +316,17 @@ export function UserClassesTab({
       </Card>
     </div>
   );
+}
+
+function ClassStatusChip({ status }: { status: UserCurrentClass["classStatus"] }) {
+  const t = useTranslations("classes");
+  return <StatusChip tone={status === "ACTIVE" ? "success" : "neutral"}>{t(`statuses.${status}`)}</StatusChip>;
+}
+
+/** Chip hành động của lịch sử lớp: vào lớp, chuyển đến là xanh; chuyển đi là thông tin; rời lớp là trung tính. */
+function HistoryActionChip({ action }: { action: UserClassHistory["action"] }) {
+  const t = useTranslations("classes");
+  const tone =
+    action === "JOIN" || action === "TRANSFER_IN" ? "success" : action === "TRANSFER_OUT" ? "info" : "neutral";
+  return <StatusChip tone={tone}>{t(`userTab.historyActions.${action}`)}</StatusChip>;
 }
