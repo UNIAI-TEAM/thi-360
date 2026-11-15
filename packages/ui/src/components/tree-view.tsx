@@ -44,11 +44,25 @@ export interface TreeViewProps {
   onSelect: (item: TreeViewItem) => void;
   labels: TreeViewLabels;
   "aria-label": string;
+  /** Id của dòng hướng dẫn phím (nhìn thấy được) đặt cạnh cây. */
+  "aria-describedby"?: string;
   className?: string;
+  /**
+   * Cây là MỘT điểm dừng Tab (mẫu tree của WAI-ARIA): điều khiển trong `renderLeading`/`renderTrailing` phải đặt
+   * `tabIndex={-1}` và chỉ dành cho chuột. Người dùng bàn phím tới các thao tác đó qua `onRowMenu`.
+   */
   renderLeading?: (item: TreeViewItem) => ReactNode;
   renderTrailing?: (item: TreeViewItem) => ReactNode;
   renderRowWrapper?: (item: TreeViewItem, row: ReactNode) => ReactNode;
+  /**
+   * Phím menu ngữ cảnh hoặc Shift+F10 trên dòng đang focus: mở thao tác của dòng (thường là menu "⋯" sẵn có).
+   * Truyền thì dòng khai báo `aria-keyshortcuts` và menu chuột phải của trình duyệt không bật lên khi dùng phím.
+   */
+  onRowMenu?: (item: TreeViewItem) => void;
 }
+
+/** Phím mở thao tác của dòng, theo cú pháp `aria-keyshortcuts`. */
+const TREE_ROW_MENU_KEYSHORTCUTS = "Shift+F10 ContextMenu";
 
 interface VisibleTreeRow {
   item: TreeViewItem;
@@ -72,12 +86,17 @@ export function TreeView({
   onSelect,
   labels,
   "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   className,
   renderLeading,
   renderTrailing,
   renderRowWrapper,
+  onRowMenu,
 }: TreeViewProps) {
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  // Phím menu/Shift+F10 còn sinh sự kiện `contextmenu` (trên Windows là lúc nhả phím): cờ này chặn menu của trình
+  // duyệt đúng lần đó. Cờ tự bỏ sau 1 giây hoặc khi bấm chuột, nên chuột phải vẫn giữ hành vi mặc định.
+  const menuKeyPressedRef = useRef(false);
   const nameIdPrefix = useId();
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
@@ -206,13 +225,29 @@ export function TreeView({
         onSelect(item);
         break;
       }
+      case "ContextMenu":
+      case "F10": {
+        if (!onRowMenu || (event.key === "F10" && !event.shiftKey)) return;
+        event.preventDefault();
+        menuKeyPressedRef.current = true;
+        setTimeout(() => {
+          menuKeyPressedRef.current = false;
+        }, 1_000);
+        onRowMenu(item);
+        break;
+      }
       default:
         break;
     }
   }
 
   return (
-    <div role="tree" aria-label={ariaLabel} className={cn("@container flex flex-col gap-0.5 p-2", className)}>
+    <div
+      role="tree"
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
+      className={cn("@container flex flex-col gap-0.5 p-2", className)}
+    >
       {visibleRows.map(({ item, level, setSize, posInSet }, rowIndex) => {
         const isExpanded = expandedIds.has(item.id);
         const isSelected = selectedId === item.id;
@@ -233,6 +268,13 @@ export function TreeView({
             : level >= 3
               ? "text-text-secondary"
               : "text-text";
+        // Tên truy cập của dòng gồm mã rồi tên, đúng như chữ đang hiện (WCAG 2.5.3). Trạng thái khác Hoạt động và
+        // liên kết riêng là mô tả của dòng: trình đọc màn hình đọc sau tên khi đi mũi tên qua cây (WCAG 1.3.1).
+        const codeId = `${nameIdPrefix}-code-${item.id}`;
+        const nameId = `${nameIdPrefix}-name-${item.id}`;
+        const statusId = item.statusLabel ? `${nameIdPrefix}-status-${item.id}` : null;
+        const refsId = item.refsSummary ? `${nameIdPrefix}-refs-${item.id}` : null;
+        const describedBy = [statusId, refsId].filter(Boolean).join(" ") || undefined;
         const rowElement = (
           <div
             key={item.id}
@@ -244,14 +286,30 @@ export function TreeView({
               }
             }}
             role="treeitem"
-            aria-labelledby={`${nameIdPrefix}-name-${item.id}`}
+            data-tree-item-id={item.id}
+            aria-labelledby={`${codeId} ${nameId}`}
+            aria-describedby={describedBy}
             aria-level={level}
             aria-setsize={setSize}
             aria-posinset={posInSet}
             aria-selected={isSelected}
             aria-expanded={item.hasChildren ? isExpanded : undefined}
+            aria-keyshortcuts={onRowMenu ? TREE_ROW_MENU_KEYSHORTCUTS : undefined}
             tabIndex={activeFocusId === item.id ? 0 : -1}
             onKeyDown={(event) => handleKeyDown(event, rowIndex)}
+            onFocus={(event) => {
+              // Focus trả về dòng bằng mã (sau khi đóng menu) cũng cập nhật điểm dừng Tab của cây.
+              if (event.target === event.currentTarget) setFocusedId(item.id);
+            }}
+            onPointerDown={() => {
+              menuKeyPressedRef.current = false;
+            }}
+            onContextMenu={(event) => {
+              if (menuKeyPressedRef.current) {
+                menuKeyPressedRef.current = false;
+                event.preventDefault();
+              }
+            }}
             onClick={() => {
               setFocusedId(item.id);
               onSelect(item);
@@ -313,30 +371,45 @@ export function TreeView({
               )}
 
               <span
+                id={codeId}
                 title={item.code}
                 className="max-w-24 shrink-0 truncate rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text"
               >
                 {item.code}
               </span>
 
-              {/* Tên có ưu tiên chiều rộng: không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. */}
+              {/*
+                Tên có ưu tiên chiều rộng: không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. Tên dài xuống tối
+                đa hai dòng (DESIGN.md mục 5.13) thay vì cắt một dòng; dòng đang chọn hoặc đang được focus bằng bàn
+                phím hiện đủ tên, nên không cần `title` (bàn phím và màn hình cảm ứng không tới được `title`).
+              */}
               <span
-                id={`${nameIdPrefix}-name-${item.id}`}
-                title={item.name}
-                className={cn("min-w-[8rem] flex-1 truncate", nameStyle, nameColor)}
+                id={nameId}
+                className={cn(
+                  "min-w-[8rem] flex-1 wrap-break-word",
+                  !isSelected && "line-clamp-2 group-focus-visible:line-clamp-none",
+                  nameStyle,
+                  nameColor,
+                )}
               >
                 {item.name}
               </span>
 
               {item.statusLabel && (
-                <StatusChip tone={item.statusTone ?? "neutral"} className="shrink-0">
+                <StatusChip
+                  id={statusId ?? undefined}
+                  tone={item.statusTone ?? "neutral"}
+                  className="shrink-0"
+                >
                   {item.statusLabel}
                 </StatusChip>
               )}
 
               {item.refsSummary && (
                 <>
+                  {/* Dù bị ẩn khi cây hẹp, phần tử này vẫn là mô tả của dòng qua `aria-describedby`. */}
                   <span
+                    id={refsId ?? undefined}
                     title={item.refsSummary}
                     className="hidden max-w-48 min-w-0 shrink truncate text-caption whitespace-nowrap text-text-muted @3xl:inline"
                   >

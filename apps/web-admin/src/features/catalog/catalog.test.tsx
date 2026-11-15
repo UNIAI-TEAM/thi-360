@@ -1,5 +1,5 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@thi360/ui";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
@@ -686,26 +686,146 @@ describe("resolveImportColumnLabel", () => {
   });
 });
 
-describe("CatalogView: cột thao tác của bảng giá trị (VIS-8)", { timeout: 20_000 }, () => {
-  it("cột thao tác dính mép phải nên vẫn bấm được khi bảng rộng hơn thẻ", async () => {
+describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VIS-8, C-01)", { timeout: 20_000 }, () => {
+  /** Thay `ResizeObserver` của jsdom (không bao giờ báo) bằng bản gọi tay được. */
+  function installResizeObserver() {
+    const callbacks: ResizeObserverCallback[] = [];
+    class FakeResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        callbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    return callbacks;
+  }
+
+  function resize(
+    scroller: HTMLElement,
+    callbacks: ResizeObserverCallback[],
+    size: { scrollWidth: number; clientWidth: number },
+  ) {
+    Object.defineProperty(scroller, "scrollWidth", { configurable: true, value: size.scrollWidth });
+    Object.defineProperty(scroller, "clientWidth", { configurable: true, value: size.clientWidth });
+    act(() => {
+      for (const callback of callbacks) callback([], {} as ResizeObserver);
+    });
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("nhóm danh sách: thẻ là vùng chứa, cột phụ bỏ dần theo bề rộng thẻ, cột thao tác chỉ dính khi bảng vừa thẻ", async () => {
     renderCatalog({ search: "group=SUBJECT" });
     const table = await screen.findByRole("table");
+    expect(table.closest("section")).toHaveClass("@container");
+
     const header = within(table).getByRole("columnheader", { name: "Thao tác" });
-    expect(header).toHaveClass("sticky", "right-0", "bg-table-head");
+    expect(header).toHaveClass("@min-[672px]:sticky", "@min-[672px]:right-0", "bg-table-head");
+    expect(header).not.toHaveClass("sticky");
 
     const row = (await within(table).findByText("Toán học")).closest("tr")!;
     const actionsCell = within(row).getByRole("button", { name: "Sửa Toán học" }).closest("td")!;
-    expect(actionsCell).toHaveClass("sticky", "right-0", "bg-surface");
+    expect(actionsCell).toHaveClass("@min-[672px]:sticky", "@min-[672px]:right-0", "bg-surface");
+    expect(actionsCell).not.toHaveClass("sticky");
     expect(within(actionsCell).getByRole("button", { name: "Xóa Toán học" })).toBeInTheDocument();
 
-    // Tên tiếng Anh và Giá trị chỉ hiện từ 1360px để bảng vừa thẻ ở ~1280px (cả khung xương và dòng dữ liệu).
-    for (const name of ["Tên tiếng Anh", "Giá trị"]) {
-      expect(within(table).getByRole("columnheader", { name })).toHaveClass(
-        "hidden",
-        "min-[1360px]:table-cell",
-      );
+    // Bỏ Tên tiếng Anh trước, rồi tới Giá trị; cột luôn hiện có bề rộng tối thiểu thay vì bị bóp.
+    expect(within(table).getByRole("columnheader", { name: "Tên tiếng Anh" })).toHaveClass(
+      "hidden",
+      "@min-[864px]:table-cell",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Giá trị" })).toHaveClass(
+      "hidden",
+      "@min-[752px]:table-cell",
+    );
+    expect(within(row).getByText("Mathematics").closest("td")).toHaveClass(
+      "hidden",
+      "@min-[864px]:table-cell",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Mã" })).toHaveClass("min-w-28");
+    expect(within(table).getByRole("columnheader", { name: "Tên tiếng Việt" })).toHaveClass("min-w-28");
+    expect(within(table).getByRole("columnheader", { name: "Trạng thái" })).toHaveClass("min-w-38");
+    // Không còn ngưỡng theo bề rộng màn hình.
+    expect(table.innerHTML).not.toContain("min-[1360px]");
+  });
+
+  it("nhóm tổ hợp: thứ tự bỏ cột là Tên tiếng Anh, Giá trị, Phiên bản, tên kỳ thi, Kỳ thi, Các môn", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    const expected: [string, string][] = [
+      ["Tên tiếng Anh", "@min-[1304px]:table-cell"],
+      ["Giá trị", "@min-[1192px]:table-cell"],
+      ["Phiên bản", "@min-[1112px]:table-cell"],
+      ["Kỳ thi", "@min-[920px]:table-cell"],
+      ["Các môn", "@min-[840px]:table-cell"],
+    ];
+    for (const [name, visibleFrom] of expected) {
+      expect(within(table).getByRole("columnheader", { name })).toHaveClass("hidden", visibleFrom);
     }
-    expect(within(row).getByText("Mathematics")).toHaveClass("hidden", "min-[1360px]:table-cell");
+    expect(within(table).getByRole("columnheader", { name: "Kỳ thi" })).toHaveClass(
+      "min-w-20",
+      "@min-[1016px]:min-w-44",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Các môn" })).toHaveClass("min-w-42");
+
+    // Ô kỳ thi: mã và tên là một dòng chữ liền, tối đa hai dòng; thẻ hẹp chỉ còn mã.
+    const examName = await within(table).findByText("Đánh giá năng lực Bộ Quốc phòng");
+    expect(examName).toHaveClass("hidden", "@min-[1016px]:inline");
+    const examText = examName.parentElement!;
+    expect(examText).toHaveClass("line-clamp-2");
+    expect(examText).toHaveTextContent("QDA Đánh giá năng lực Bộ Quốc phòng");
+    expect(examText.closest("td")).toHaveClass("hidden", "@min-[920px]:table-cell");
+
+    // Khi cột Kỳ thi và Các môn bị bỏ, nội dung của chúng hiện thành dòng phụ dưới tên.
+    const nameCell = within(table).getByText("QĐ01").closest("td")!;
+    const summary = within(nameCell).getByText("QDA").parentElement!;
+    expect(summary).toHaveClass("@min-[920px]:hidden", "line-clamp-2");
+    expect(summary).toHaveTextContent("QDA · Toán học, Ngữ văn");
+    expect(within(summary).getByText(/Toán học, Ngữ văn/)).toHaveClass("@min-[840px]:hidden");
+  });
+
+  it("người chỉ xem: không có cột sắp xếp nên các ngưỡng thấp hơn", async () => {
+    renderCatalog({ permissions: ["CATALOG.VIEW"], search: "group=SUBJECT_COMBINATION" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    expect(within(table).getByRole("columnheader", { name: "Thao tác" })).toHaveClass(
+      "@min-[480px]:sticky",
+      "min-w-24",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Các môn" })).toHaveClass(
+      "hidden",
+      "@min-[648px]:table-cell",
+    );
+    expect(within(table).getByRole("columnheader", { name: "Tên tiếng Anh" })).toHaveClass(
+      "hidden",
+      "@min-[1112px]:table-cell",
+    );
+  });
+
+  it("bảng tràn ngang: khung cuộn thành vùng có tên, nhận focus bàn phím; hết tràn thì bỏ", async () => {
+    const callbacks = installResizeObserver();
+    renderCatalog({ search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    await within(table).findByText("Toán học");
+    const scroller = table.parentElement as HTMLElement;
+    expect(scroller).toHaveClass("overflow-x-auto", "focus-visible:outline-3");
+
+    resize(scroller, callbacks, { scrollWidth: 666, clientWidth: 666 });
+    expect(scroller).not.toHaveAttribute("tabindex");
+    expect(screen.queryByRole("region", { name: "Danh sách giá trị danh mục" })).toBeNull();
+
+    resize(scroller, callbacks, { scrollWidth: 666, clientWidth: 455 });
+    expect(screen.getByRole("region", { name: "Danh sách giá trị danh mục" })).toBe(scroller);
+    expect(scroller).toHaveAttribute("tabindex", "0");
+    scroller.focus();
+    expect(scroller).toHaveFocus();
+
+    resize(scroller, callbacks, { scrollWidth: 666, clientWidth: 666 });
+    expect(scroller).not.toHaveAttribute("tabindex");
+    expect(scroller).not.toHaveAttribute("role");
   });
 });
 
@@ -859,6 +979,31 @@ describe("CatalogView: hướng dẫn kéo thả được dịch trên mọi Dnd
     // Bảng + danh sách môn: mỗi DndContext một bản hướng dẫn, không bản nào là mặc định tiếng Anh.
     expect(screen.getAllByText(viMessages.catalog.dnd.instructions).length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText(ENGLISH_DEFAULT)).not.toBeInTheDocument();
+  });
+});
+
+describe("CatalogView: kéo thả bằng cảm ứng (C-11)", { timeout: 20_000 }, () => {
+  // jsdom không có cảm ứng: kiểm tra hợp đồng lớp `touch-action: none` + `user-select: none` trên đúng tay nắm,
+  // còn dòng chứa tay nắm thì không (để vuốt ngoài tay nắm vẫn cuộn trang).
+  function expectTouchHandle(handle: HTMLElement) {
+    expect(handle).toHaveClass("touch-none", "select-none");
+    expect(handle.closest("tr, li, [role='treeitem']")).not.toHaveClass("touch-none");
+  }
+
+  it("tay nắm ở bảng giá trị và trong hộp thoại tổ hợp", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+    expectTouchHandle(await screen.findByRole("button", { name: "Kéo để đổi thứ tự QĐ01" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Sửa QĐ01" }));
+    const dialog = await screen.findByRole("dialog");
+    const dialogHandles = await within(dialog).findAllByRole("button", { name: /^Kéo/ });
+    expect(dialogHandles.length).toBeGreaterThan(1);
+    for (const handle of dialogHandles) expectTouchHandle(handle);
+  });
+
+  it("tay nắm trên cây", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    expectTouchHandle(await screen.findByRole("button", { name: "Kéo để đổi thứ tự Hàm số" }));
   });
 });
 
@@ -1021,6 +1166,120 @@ describe("CatalogView: bảng giá trị, tìm kiếm, lọc và sắp xếp th�
     });
     expect(await screen.findByText("Đã cập nhật thứ tự hiển thị.")).toBeInTheDocument();
   }, 15_000);
+});
+
+describe("CatalogView: kết quả tìm và lọc được đọc qua vùng status (C-05)", { timeout: 20_000 }, () => {
+  /** Vùng `LiveStatus` của một khu vực; phân biệt với vùng đọc của dnd-kit (cũng `role="status"`) bằng lớp `sr-only`. */
+  function liveStatusIn(area: HTMLElement): HTMLElement {
+    const regions = within(area)
+      .getAllByRole("status")
+      .filter((region) => region.classList.contains("sr-only"));
+    expect(regions).toHaveLength(1);
+    return regions[0]!;
+  }
+
+  it("bảng giá trị: đọc số giá trị sau khi tìm, kể cả khi không còn giá trị nào", async () => {
+    renderCatalog({ search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    await within(table).findByText("Toán học");
+    const status = liveStatusIn(table.closest("section")!);
+    expect(status).toHaveTextContent("Có 3 giá trị");
+
+    const searchInput = screen.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" });
+    await userEvent.type(searchInput, "Toán");
+    await waitFor(() => expect(status).toHaveTextContent("Có 1 giá trị"));
+
+    await userEvent.type(searchInput, "zzz");
+    await waitFor(() => expect(status).toHaveTextContent("Không có giá trị nào"));
+  });
+
+  it("danh sách danh mục: đọc số danh mục khớp sau khi ngừng gõ, im lặng khi ô tìm trống", async () => {
+    renderCatalog();
+    const searchInput = await screen.findByRole("searchbox", { name: "Tìm danh mục" });
+    const sidebar = searchInput.closest("section")!;
+    await within(sidebar).findByRole("button", { name: /Môn học/ });
+    const status = liveStatusIn(sidebar);
+    expect(status).toHaveTextContent("");
+
+    await userEvent.type(searchInput, "SUBJECT");
+    await waitFor(() => expect(status).toHaveTextContent("Có 2 danh mục khớp từ khóa"));
+
+    await userEvent.type(searchInput, "zzz");
+    await waitFor(() => expect(status).toHaveTextContent("Không có danh mục nào khớp từ khóa"));
+
+    await userEvent.clear(searchInput);
+    await waitFor(() => expect(status).toHaveTextContent(""));
+  });
+
+  it("cây: đọc số nút trong kết quả lọc; không lọc thì không đọc gì", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    const form = screen.getByRole("form", { name: "Lọc giá trị" });
+    const status = liveStatusIn(form);
+    expect(status).toHaveTextContent("");
+    expect(tree).toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Tìm nút theo mã hoặc tên" }), "Tính");
+    await waitFor(() => expect(status).toHaveTextContent("Có 2 nút trong kết quả lọc"));
+  });
+});
+
+describe("CatalogView: tìm kiếm chờ ngừng gõ và giữ nội dung đang hiện (C-10)", { timeout: 20_000 }, () => {
+  it("bảng giá trị: gõ một từ chỉ gửi một yêu cầu với từ khóa đầy đủ; xóa trống có hiệu lực ngay", async () => {
+    const api = createMockApi();
+    renderCatalog({ api, search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    await within(table).findByText("Toán học");
+    expect(api.listItems).toHaveBeenCalledTimes(1);
+
+    const searchInput = screen.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" });
+    await userEvent.type(searchInput, "Toán");
+    // Ô tìm hiện chữ ngay, còn yêu cầu thì chưa gửi.
+    expect(searchInput).toHaveValue("Toán");
+    expect(api.listItems).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => expect(api.listItems).toHaveBeenCalledTimes(2));
+    expect(api.listItems).toHaveBeenLastCalledWith("grp-subject", { q: "Toán", page: 0, size: 20 });
+    const queries = vi.mocked(api.listItems).mock.calls.map(([, query]) => query?.q);
+    expect(queries).toEqual([undefined, "Toán"]);
+
+    await waitFor(() => expect(within(table).queryByText("Ngữ văn")).not.toBeInTheDocument());
+    await userEvent.clear(searchInput);
+    // Không chờ 300ms: danh sách đầy đủ có sẵn trong bộ nhớ đệm nên hiện lại ngay.
+    expect(within(table).getByText("Ngữ văn")).toBeInTheDocument();
+  });
+
+  it("cây: gõ một từ chỉ gửi một yêu cầu, cây đang hiện được giữ và báo aria-busy trong lúc tải", async () => {
+    const filtered = Promise.withResolvers<CatalogTreeNodeResponse[]>();
+    const base = createTreeMockApi();
+    const listTree = vi.fn<CatalogApi["listTree"]>((groupId, query) =>
+      query?.q ? filtered.promise : base.listTree(groupId, query),
+    );
+    renderCatalog({ api: { ...base, listTree }, search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    const pane = tree.parentElement as HTMLElement;
+    expect(within(tree).getByText("Hàm số")).toBeInTheDocument();
+    const callsBefore = listTree.mock.calls.length;
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Tìm nút theo mã hoặc tên" }), "Tính");
+    expect(listTree).toHaveBeenCalledTimes(callsBefore);
+
+    await waitFor(() => expect(listTree).toHaveBeenCalledTimes(callsBefore + 1));
+    expect(listTree).toHaveBeenLastCalledWith("grp-knowledge", { q: "Tính" });
+
+    // Đang tải kết quả lọc: cây cũ vẫn còn (cùng một phần tử, không bị thay bằng khung xương), mờ đi và báo bận.
+    expect(screen.getByRole("tree")).toBe(tree);
+    expect(within(tree).getByText("Hàm số")).toBeInTheDocument();
+    expect(tree).toHaveClass("opacity-60");
+    expect(pane).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("status", { name: "Đang tải" })).not.toBeInTheDocument();
+
+    filtered.resolve([KNOWLEDGE_CH1, { ...KNOWLEDGE_BAI1, matched: true }]);
+    await waitFor(() => expect(pane).not.toHaveAttribute("aria-busy"));
+    expect(screen.getByRole("tree")).toBe(tree);
+    expect(tree).not.toHaveClass("opacity-60");
+    expect(listTree).toHaveBeenCalledTimes(callsBefore + 1);
+  });
 });
 
 describe("CatalogView: dialog nhóm và dialog giá trị", { timeout: 20_000 }, () => {
@@ -1190,6 +1449,28 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(within(table).getByText("v1")).toBeInTheDocument();
   });
 
+  it("chip môn học chỉ để đọc: không phải nút bật/tắt, không vào thứ tự Tab (C-04)", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+
+    const chip = await within(table).findByText("Toán học");
+    expect(chip.tagName).toBe("SPAN");
+    expect(chip).toHaveAttribute("data-variant", "tag");
+    expect(chip).not.toHaveAttribute("aria-pressed");
+    expect(chip).not.toHaveAttribute("tabindex");
+    expect(table.querySelector("[aria-pressed]")).toBeNull();
+    expect(within(table).queryByRole("button", { name: "Toán học" })).not.toBeInTheDocument();
+
+    await userEvent.click(within(table).getByRole("button", { name: "Chi tiết QĐ01" }));
+    const drawer = await screen.findByRole("dialog");
+    const drawerChip = await within(drawer).findByText(/1\. Toán học \(TOAN\)/);
+    expect(drawerChip.tagName).toBe("SPAN");
+    expect(drawer.querySelector("[aria-pressed]")).toBeNull();
+    await userEvent.click(within(drawer).getByRole("tab", { name: "Phiên bản" }));
+    await within(drawer).findByText(/^1\. Toán học$/);
+    expect(drawer.querySelector("[aria-pressed]")).toBeNull();
+  });
+
   it("dialog tổ hợp: tạo mới chọn kỳ thi, thêm & đổi thứ tự môn, nguồn quy ước; khi sửa tổ hợp đang dùng hiện cảnh báo phiên bản mới", async () => {
     const api = createMockApi({
       getItemUsages: vi.fn(async (itemId) => ({
@@ -1348,6 +1629,14 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     // VIS-12: không lộ mã quyền (AUDIT.VIEW) trong chữ người dùng thấy
     expect(within(simpleDrawer).queryByText(/[A-Z]{2,}\.[A-Z_]{2,}/)).not.toBeInTheDocument();
     expect(listAuditMock).not.toHaveBeenCalled();
+  });
+
+  it("mở ngăn chi tiết thì focus vào thẻ đang chọn, không vào nút Ngừng sử dụng (C-19)", async () => {
+    renderCatalog({ search: "group=SUBJECT" });
+    await userEvent.click(await screen.findByRole("button", { name: "Chi tiết Toán học" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByRole("button", { name: /Ngừng sử dụng/ })).toBeInTheDocument();
+    await waitFor(() => expect(within(drawer).getByRole("tab", { selected: true })).toHaveFocus());
   });
 
   it("luồng ngừng sử dụng gọi usages trước, khóa khi blocking và gửi lý do khi hợp lệ", async () => {
@@ -1750,6 +2039,9 @@ function createTreeMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
       if (query?.depth === 1) {
         return [KNOWLEDGE_CH1, KNOWLEDGE_CH2];
       }
+      if (query?.depth === 2) return [KNOWLEDGE_BAI1];
+      if (query?.depth === 3) return [KNOWLEDGE_KT1];
+      if (query?.depth) return [];
       if (query?.parentId === "node-ch1") return [KNOWLEDGE_BAI1];
       if (query?.parentId === "node-b1") return [KNOWLEDGE_KT1];
       if (query?.parentId) return [];
@@ -1854,7 +2146,21 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
     const name = await screen.findByText("Hàm số");
-    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "truncate");
+    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "line-clamp-2");
+    expect(name).not.toHaveAttribute("title");
+
+    // C-07: tiêu đề nhóm chia cột theo bề rộng thẻ; cụm nút không còn `shrink-0` ép cột tiêu đề về 0px.
+    const groupHeading = screen.getByRole("heading", { level: 2, name: "Cấu trúc kiến thức" });
+    const titleColumn = groupHeading.parentElement!.parentElement!;
+    const header = titleColumn.parentElement!;
+    expect(header).toHaveClass("flex-col", "@3xl:flex-row");
+    expect(header.className).not.toMatch(/(^|\s)(sm|md|lg|xl):/);
+    expect(header.parentElement).toHaveClass("@container");
+    expect(titleColumn).toHaveClass("min-w-0", "@3xl:flex-1");
+    const actionGroup = screen.getByRole("button", { name: "Xuất Excel" }).parentElement!;
+    expect(actionGroup.parentElement).toBe(header);
+    expect(actionGroup).toHaveClass("flex-wrap", "@3xl:max-w-[55%]", "@3xl:shrink-0");
+    expect(actionGroup).not.toHaveClass("shrink-0");
 
     const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
     expect(pane).toHaveClass("w-full", "min-[1600px]:w-[340px]");
@@ -1862,10 +2168,66 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(pane.parentElement).toHaveClass("flex-col", "min-[1600px]:flex-row");
     expect(pane.parentElement?.className).not.toMatch(/(^|\s)(xl|lg|md):/);
 
-    const row = screen.getByRole("treeitem", { name: "Hàm số" });
+    const row = screen.getByRole("treeitem", { name: "CH1 Hàm số" });
     expect(within(row).getByText("Toán học")).toHaveClass("@3xl:inline");
     expect(within(row).getByRole("img", { name: "Toán học" })).toHaveTextContent("+1");
     expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
+  });
+
+  it("cây là một điểm dừng Tab; Shift+F10 mở menu của dòng (có Thêm nút con), Escape trả focus về dòng (C-08)", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    await within(tree).findByText("Hàm số");
+
+    const focusable = tree.querySelectorAll<HTMLElement>("button, [tabindex]");
+    const tabStops = [...focusable].filter((el) => el.tabIndex >= 0);
+    expect(tabStops).toHaveLength(1);
+    expect(tabStops[0]).toHaveAttribute("role", "treeitem");
+    expect(tree).toHaveAccessibleDescription(viMessages.catalog.tree.keyboardHint);
+    expect(screen.getByText(viMessages.catalog.tree.keyboardHint)).toBeVisible();
+
+    const row = screen.getByRole("treeitem", { name: "CH1 Hàm số" });
+    expect(row).toHaveAttribute("aria-keyshortcuts", "Shift+F10 ContextMenu");
+    row.focus();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Thêm Bài vào Hàm số" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Sửa" })).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    await waitFor(() => expect(row).toHaveFocus());
+  });
+
+  it("Mở tất cả gọi một lần cho mỗi tầng còn thiếu, không gọi lại cha đã tải (C-16)", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    await within(tree).findByText("Hàm số");
+
+    // Mở tay CH1 trước: danh sách con của CH1 đã có trong bộ đệm.
+    await userEvent.click(within(tree).getByRole("button", { name: "Mở Hàm số" }));
+    await within(tree).findByText("Tính đơn điệu");
+    const listTree = vi.mocked(api.listTree);
+    listTree.mockClear();
+
+    await userEvent.click(screen.getByRole("button", { name: "Mở tất cả" }));
+    expect(await within(tree).findByText("Cực trị")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mở tất cả" })).toBeEnabled());
+
+    // Gốc và con của CH1 lấy từ bộ đệm; chỉ tầng 3 (con của Tính đơn điệu) phải tải, bằng một lần gọi theo tầng.
+    expect(listTree.mock.calls.map(([, query]) => query)).toEqual([{ depth: 3 }]);
+  });
+
+  it("người chỉ xem: Shift+F10 trên dòng mở ngăn chi tiết (C-08)", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=KNOWLEDGE", permissions: ["CATALOG.VIEW"] });
+    const row = await screen.findByRole("treeitem", { name: "CH1 Hàm số" });
+    expect(screen.getByText(viMessages.catalog.tree.keyboardHintView)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chi tiết Hàm số" })).toHaveAttribute("tabindex", "-1");
+    row.focus();
+    await userEvent.keyboard("{ContextMenu}");
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
   // V3-1: jsdom không có layout; matchMedia giả lập bề rộng (>= 1600px: ô cạnh cây) và giảm chuyển động.
@@ -1914,7 +2276,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
         mockMedia({ wide: false, reducedMotion });
         renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
-        await userEvent.click(await screen.findByRole("treeitem", { name: "Hàm số" }));
+        await userEvent.click(await screen.findByRole("treeitem", { name: "CH1 Hàm số" }));
 
         const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
         const heading = await within(pane).findByRole("heading", { level: 3, name: "Hàm số" });
@@ -1930,7 +2292,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       mockMedia({ wide: true, reducedMotion: false });
       renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
-      await userEvent.click(await screen.findByRole("treeitem", { name: "Hàm số" }));
+      await userEvent.click(await screen.findByRole("treeitem", { name: "CH1 Hàm số" }));
 
       const pane = screen.getByRole("complementary", { name: viMessages.catalog.tree.detailTitle });
       const heading = await within(pane).findByRole("heading", { level: 3, name: "Hàm số" });
@@ -1949,6 +2311,41 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       expect(paneScrolls()).toBe(0);
       expect(heading).not.toHaveFocus();
     });
+  });
+
+  it("ô thêm danh mục liên kết rộng theo chữ, giữ một dòng (C-22)", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    const trigger = await screen.findByRole("combobox", {
+      name: viMessages.catalog.tree.addRefGroupPlaceholder,
+    });
+    expect(trigger).toHaveClass("whitespace-nowrap");
+    expect(trigger.parentElement).toHaveClass("min-w-56", "max-w-full");
+    expect(trigger.parentElement).not.toHaveClass("w-56");
+  });
+
+  it("nút tự viết trên trang cây dùng vòng focus của kit (C-21)", async () => {
+    // jsdom không vẽ: kiểm tra lớp vòng focus của kit (`focus-visible:ring-3 ring-primary-text`).
+    const KIT_RING = ["focus-visible:ring-3", "focus-visible:ring-primary-text"];
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    await screen.findByText("Hàm số");
+
+    const handle = screen.getByRole("button", { name: "Kéo để đổi thứ tự Hàm số" });
+    expect(handle).toHaveClass(...KIT_RING);
+    for (const segment of screen.getAllByRole("button", { pressed: true })) {
+      expect(segment).toHaveClass(...KIT_RING);
+    }
+    // Nút × trên chip nhóm liên kết (chỉ có ở nhóm không phải hệ thống) dùng chung lớp với nút × giá trị bên dưới.
+    for (const remove of screen.queryAllByRole("button", { name: /^Bỏ danh mục liên kết/ })) {
+      if (!remove.hasAttribute("disabled")) expect(remove).toHaveClass(...KIT_RING);
+    }
+
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    await userEvent.click(await screen.findByRole("treeitem", { name: /Tính đơn điệu/ }));
+    const detailPane = screen.getByRole("complementary", { name: "Chi tiết nút đang chọn" });
+    expect(await within(detailPane).findByRole("button", { name: "Gốc" })).toHaveClass(...KIT_RING);
+    expect(within(detailPane).getByRole("button", { name: "Hàm số" })).toHaveClass(...KIT_RING);
+    expect(within(detailPane).getByRole("button", { name: /^Đi tới / })).toHaveClass(...KIT_RING);
+    expect(await within(detailPane).findByRole("button", { name: "Gỡ Ngữ văn" })).toHaveClass(...KIT_RING);
   });
 
   it("tải lười nút con khi mở rộng, mở tất cả / thu gọn, đồng bộ ?node= và thao tác liên kết ở pane 340px", async () => {
@@ -2024,7 +2421,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       });
     });
     // Filter by linked ref SUBJECT=TOAN (passes OpenAPI `ref` param)
-    const filterTrigger = screen.getByRole("button", { name: "Lọc theo Môn học" });
+    const filterTrigger = screen.getByRole("button", { name: "Tất cả Môn học" });
     await userEvent.click(filterTrigger);
     await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Toán học" }));
     await waitFor(() => {
@@ -2033,6 +2430,9 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
       });
     });
     await userEvent.keyboard("{Escape}");
+    // C-03: tên truy cập của nút lọc là dòng chữ đang hiện, gồm cả giá trị đang lọc.
+    expect(filterTrigger).not.toHaveAttribute("aria-label");
+    expect(filterTrigger).toHaveAccessibleName("Môn học: Toán học");
     unmount();
 
     // CATALOG.VIEW only: sees tree + detail action, no write controls
@@ -2127,7 +2527,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api, search: "group=KNOWLEDGE" });
     expect(await screen.findByText("Hàm số")).toBeInTheDocument();
 
-    const gradeFilterBtn = screen.getByRole("button", { name: "Lọc theo Khối lớp" });
+    const gradeFilterBtn = screen.getByRole("button", { name: "Tất cả Khối lớp" });
     await userEvent.click(gradeFilterBtn);
     await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Lớp 10" }));
     await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Lớp 11" }));
@@ -2137,6 +2537,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
         ref: ["item-g10", "item-g11"],
       });
     });
+    expect(gradeFilterBtn).toHaveAccessibleName("Khối lớp (2)");
   });
 
   it("hiển thị tay cầm kéo thả cho các nút cùng cha khi có quyền và không lọc, ẩn khi lọc hoặc chỉ có CATALOG.VIEW", async () => {
@@ -2845,6 +3246,11 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
     const dialog = await screen.findByRole("dialog");
 
     expect(within(dialog).getByText(viMessages.catalog.importDialog.treeRuleHint)).toBeInTheDocument();
+    // C-18: bước đang làm có aria-current="step", bước đã xong có chữ ẩn "(đã xong)".
+    const stepItem = (label: string) =>
+      within(dialog).getByText(label, { exact: false, selector: "li span" }).closest("li")!;
+    expect(stepItem("Tải tệp")).toHaveAttribute("aria-current", "step");
+    expect(stepItem("Xem trước")).not.toHaveAttribute("aria-current");
     const fileInput = within(dialog).getByLabelText(/Tệp Excel/) as HTMLInputElement;
 
     const validXlsx = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "tree.xlsx", {
@@ -2885,6 +3291,9 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
       name: /Nhập 3 dòng hợp lệ/,
     });
     expect(confirmBtn).not.toBeDisabled();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Tất cả 3 dòng đều hợp lệ và sẵn sàng nhập.");
+    expect(stepItem("Xem trước")).toHaveAttribute("aria-current", "step");
+    expect(stepItem("Tải tệp")).toHaveTextContent("Tải tệp (đã xong)");
     await userEvent.click(confirmBtn);
 
     await waitFor(() => {
@@ -2897,6 +3306,8 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
     expect(
       await within(dialog).findByText(/Đã nhập xong: tạo mới 2 giá trị, dùng lại 1 nút có sẵn/),
     ).toBeInTheDocument();
+    expect(within(dialog).getByRole("status")).toHaveTextContent(/Đã nhập xong/);
+    expect(stepItem("Kết quả")).toHaveAttribute("aria-current", "step");
   });
 
   it("R3-01: xem trước nhập cây hệ thống KNOWLEDGE ở locale en dùng Chapter/Lesson/Knowledge, không lộ tên cấp tiếng Việt", async () => {

@@ -29,6 +29,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  LiveStatus,
   Pagination,
   Select,
   Skeleton,
@@ -56,10 +57,98 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
+import { useInlineOverflow } from "../scroll-region";
+import { DRAG_HANDLE, focusRing, focusRingInset, STATIC_CHIP } from "../styles";
+import { usePrefersReducedMotion } from "../use-reduced-motion";
 import { pickName } from "../utils";
 
-/** Cột phụ (Tên tiếng Anh, Giá trị) chỉ hiện từ 1360px; dưới đó bảng vừa thẻ, chi tiết nằm trong ngăn chi tiết. */
-const WIDE_ONLY_COLUMN = "hidden min-[1360px]:table-cell";
+/**
+ * Bảng giá trị chọn cột theo bề rộng của chính thẻ (truy vấn vùng chứa trên `<section>`), không theo bề rộng màn
+ * hình: thẻ hẹp hơn màn hình khoảng 593px vì có sidebar và cột danh mục. Mỗi cột có bề rộng tối thiểu đủ đọc
+ * (px): sắp xếp 104 · mã 112 · tên 112 · kỳ thi 80 (chỉ mã) hoặc 176 (mã + tên, tối đa hai dòng) · các môn 168 ·
+ * phiên bản 96 · giá trị 80 · trạng thái 152 · thao tác 186 (bốn nút) hoặc 96 (chỉ nút xem).
+ *
+ * Thẻ không đủ chỗ thì bỏ dần cột ít quan trọng thay vì bóp cột: Tên tiếng Anh, Giá trị, Phiên bản, tên kỳ thi,
+ * Kỳ thi, Các môn. Các cột đó vẫn có trong ngăn chi tiết; riêng kỳ thi và các môn còn hiện thành dòng phụ dưới
+ * tên khi cột của chúng bị bỏ. Mỗi ngưỡng bên dưới là tổng bề rộng tối thiểu của bộ cột đang hiện cộng 6px dự
+ * phòng, nên từ ngưỡng `stickyActions` trở lên bảng luôn vừa thẻ và không ô nào nằm dưới cột Thao tác.
+ *
+ * Dưới ngưỡng `stickyActions` (tablet) bộ cột tối thiểu không vừa: bảng cuộn ngang trong vùng có tên, nhận focus
+ * bàn phím, và cột Thao tác thôi dính mép phải để không che dữ liệu ở vị trí cuộn đầu.
+ */
+type ColumnLayout = {
+  stickyActions: string;
+  nameEn: string;
+  value: string;
+  version: string;
+  subjects: string;
+  exam: string;
+  /** Bề rộng tối thiểu của cột Kỳ thi: hẹp khi chỉ hiện mã, rộng khi hiện cả tên. */
+  examWidth: string;
+  examName: string;
+  /** Dòng phụ dưới tên (mã kỳ thi · các môn): ẩn khi cột Kỳ thi đã hiện. */
+  summary: string;
+  /** Phần các môn của dòng phụ: ẩn khi cột Các môn đã hiện. */
+  summarySubjects: string;
+};
+
+/** Chip môn học trong ô bảng: bản gọn cao 24px của chip tĩnh. */
+const STATIC_CHIP_COMPACT = `${STATIC_CHIP} h-6 px-2`;
+
+const SIMPLE_ONLY = {
+  version: "",
+  subjects: "",
+  exam: "",
+  examWidth: "",
+  examName: "",
+  summary: "",
+  summarySubjects: "",
+};
+
+const COLUMN_LAYOUTS: Record<"manage" | "view", Record<"simple" | "combination", ColumnLayout>> = {
+  // Có cột sắp xếp (104) và bốn nút thao tác (186).
+  manage: {
+    simple: {
+      ...SIMPLE_ONLY,
+      stickyActions: "@min-[672px]:sticky @min-[672px]:right-0",
+      value: "hidden @min-[752px]:table-cell",
+      nameEn: "hidden @min-[864px]:table-cell",
+    },
+    combination: {
+      stickyActions: "@min-[672px]:sticky @min-[672px]:right-0",
+      subjects: "hidden @min-[840px]:table-cell",
+      summarySubjects: "@min-[840px]:hidden",
+      exam: "hidden @min-[920px]:table-cell",
+      summary: "@min-[920px]:hidden",
+      examWidth: "min-w-20 @min-[1016px]:min-w-44",
+      examName: "hidden @min-[1016px]:inline",
+      version: "hidden @min-[1112px]:table-cell",
+      value: "hidden @min-[1192px]:table-cell",
+      nameEn: "hidden @min-[1304px]:table-cell",
+    },
+  },
+  // Chỉ xem: không có cột sắp xếp, cột thao tác chỉ còn nút xem (96).
+  view: {
+    simple: {
+      ...SIMPLE_ONLY,
+      stickyActions: "@min-[480px]:sticky @min-[480px]:right-0",
+      value: "hidden @min-[560px]:table-cell",
+      nameEn: "hidden @min-[672px]:table-cell",
+    },
+    combination: {
+      stickyActions: "@min-[480px]:sticky @min-[480px]:right-0",
+      subjects: "hidden @min-[648px]:table-cell",
+      summarySubjects: "@min-[648px]:hidden",
+      exam: "hidden @min-[728px]:table-cell",
+      summary: "@min-[728px]:hidden",
+      examWidth: "min-w-20 @min-[824px]:min-w-44",
+      examName: "hidden @min-[824px]:inline",
+      version: "hidden @min-[920px]:table-cell",
+      value: "hidden @min-[1000px]:table-cell",
+      nameEn: "hidden @min-[1112px]:table-cell",
+    },
+  },
+};
 
 export type StatusFilter = "ALL" | CatalogStatus;
 
@@ -181,15 +270,30 @@ export function SimpleItemsPanel({
     { value: "INACTIVE", label: t("statuses.INACTIVE") },
   ];
 
-  const dragCols = canModify && supportsReorder ? 1 : 0;
-  const colCount = dragCols + 5 + (isCombinationGroup ? 3 : 0) + 1;
-  // Chỉ số cột (0-based) của Tên tiếng Anh và Giá trị, để ẩn cùng lúc ở hàng khung xương.
-  const nameEnColIndex = dragCols + 2;
-  const valueColIndex = dragCols + 3 + (isCombinationGroup ? 3 : 0);
+  const showReorder = canModify && supportsReorder;
+  const layout =
+    COLUMN_LAYOUTS[showReorder ? "manage" : "view"][isCombinationGroup ? "combination" : "simple"];
+  // Lớp ẩn/hiện của từng cột theo đúng thứ tự cột, để hàng khung xương ẩn cùng lúc với tiêu đề.
+  const columnVisibility = [
+    ...(showReorder ? [""] : []),
+    "",
+    "",
+    layout.nameEn,
+    ...(isCombinationGroup ? [layout.exam, layout.subjects, layout.version] : []),
+    layout.value,
+    "",
+    "",
+  ];
+  const colCount = columnVisibility.length;
+  // Câu đọc cho trình đọc màn hình sau khi tìm/lọc xong (WCAG 4.1.3). Để rỗng trong lúc đang tải lại: khi kết
+  // quả về, vùng status đổi từ rỗng sang có chữ nên được đọc, kể cả khi số lượng trùng với lần trước.
+  const resultStatus =
+    loading || refreshing || error ? "" : t("itemsCountStatus", { count: totalItems });
+  const [scrollerRef, tableOverflows] = useInlineOverflow<HTMLDivElement>();
   return (
     <section
       aria-labelledby="catalog-items-heading"
-      className="min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface shadow-xs"
+      className="@container min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface shadow-xs"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <div className="min-w-0">
@@ -319,6 +423,8 @@ export function SimpleItemsPanel({
         </div>
       </div>
 
+      <LiveStatus message={resultStatus} />
+
       {isFiltered && canModify && supportsReorder && (
         <div className="border-t border-border bg-page px-5 py-2 text-caption text-text-muted">
           {t("dragDisabledFiltered")}
@@ -338,7 +444,13 @@ export function SimpleItemsPanel({
           }
         />
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          ref={scrollerRef}
+          {...(tableOverflows
+            ? { role: "region", "aria-label": t("itemsTableLabel"), tabIndex: 0 }
+            : null)}
+          className={cn("overflow-x-auto", focusRingInset)}
+        >
           <DndContext
             accessibility={dndAccessibility}
             sensors={sensors}
@@ -352,40 +464,55 @@ export function SimpleItemsPanel({
             >
               <thead>
                 <tr className="border-t border-b border-border bg-table-head text-left text-field-label font-semibold text-text-muted">
-                  {canModify && supportsReorder && (
-                    <th scope="col" className="w-24 py-2.5 pr-1 pl-3">
+                  {showReorder && (
+                    <th scope="col" className="w-26 min-w-26 py-2.5 pr-1 pl-3">
                       <span className="sr-only">{t("dragColumnLabel")}</span>
                     </th>
                   )}
-                  <th scope="col" className="w-32 px-3 py-2.5">
+                  <th scope="col" className="w-28 min-w-28 px-3 py-2.5">
                     {t("columns.code")}
                   </th>
-                  <th scope="col" className="px-3 py-2.5">
+                  <th scope="col" className="min-w-28 px-3 py-2.5">
                     {t("columns.nameVi")}
                   </th>
-                  <th scope="col" className={cn("px-3 py-2.5", WIDE_ONLY_COLUMN)}>
+                  <th scope="col" className={cn("min-w-28 px-3 py-2.5", layout.nameEn)}>
                     {t("columns.nameEn")}
                   </th>
                   {isCombinationGroup && (
                     <>
-                      <th scope="col" className="px-3 py-2.5">
+                      <th scope="col" className={cn("px-3 py-2.5", layout.examWidth, layout.exam)}>
                         {t("columns.exam")}
                       </th>
-                      <th scope="col" className="px-3 py-2.5">
+                      <th scope="col" className={cn("min-w-42 px-3 py-2.5", layout.subjects)}>
                         {t("columns.subjects")}
                       </th>
-                      <th scope="col" className="w-24 px-3 py-2.5">
+                      <th
+                        scope="col"
+                        className={cn(
+                          "w-24 min-w-24 px-3 py-2.5 whitespace-nowrap",
+                          layout.version,
+                        )}
+                      >
                         {t("columns.version")}
                       </th>
                     </>
                   )}
-                  <th scope="col" className={cn("w-20 px-3 py-2.5", WIDE_ONLY_COLUMN)}>
+                  <th
+                    scope="col"
+                    className={cn("w-20 min-w-20 px-3 py-2.5 whitespace-nowrap", layout.value)}
+                  >
                     {t("columns.value")}
                   </th>
-                  <th scope="col" className="w-36 px-3 py-2.5">
+                  <th scope="col" className="w-38 min-w-38 px-3 py-2.5 whitespace-nowrap">
                     {t("columns.status")}
                   </th>
-                  <th scope="col" className="sticky right-0 w-36 bg-table-head py-2.5 pr-5 pl-3 text-right">
+                  <th
+                    scope="col"
+                    className={cn(
+                      "w-24 min-w-24 bg-table-head py-2.5 pr-5 pl-3 text-right whitespace-nowrap",
+                      layout.stickyActions,
+                    )}
+                  >
                     {t("columns.actions")}
                   </th>
                 </tr>
@@ -400,15 +527,8 @@ export function SimpleItemsPanel({
                 {loading ? (
                   Array.from({ length: 5 }, (_, rowIndex) => (
                     <tr key={rowIndex} className="border-b border-border last:border-b-0">
-                      {Array.from({ length: colCount }, (__, colIndex) => (
-                        <td
-                          key={colIndex}
-                          className={cn(
-                            "h-13 px-3",
-                            (colIndex === nameEnColIndex || colIndex === valueColIndex) &&
-                              WIDE_ONLY_COLUMN,
-                          )}
-                        >
+                      {columnVisibility.map((visibility, colIndex) => (
+                        <td key={colIndex} className={cn("h-13 px-3", visibility)}>
                           <Skeleton className="h-4 w-full max-w-28" />
                         </td>
                       ))}
@@ -453,8 +573,9 @@ export function SimpleItemsPanel({
                         total={items.length}
                         locale={locale}
                         isCombinationGroup={isCombinationGroup}
+                        layout={layout}
                         canModify={canModify}
-                        showReorder={canModify && supportsReorder}
+                        showReorder={showReorder}
                         reorderEnabled={reorderEnabled}
                         isFiltered={isFiltered}
                         onMoveUp={() => handleMoveByIndex(index, -1)}
@@ -509,6 +630,7 @@ function SortableItemRow({
   total,
   locale,
   isCombinationGroup,
+  layout,
   canModify,
   showReorder,
   reorderEnabled,
@@ -525,6 +647,7 @@ function SortableItemRow({
   total: number;
   locale: string;
   isCombinationGroup: boolean;
+  layout: ColumnLayout;
   canModify: boolean;
   showReorder: boolean;
   reorderEnabled: boolean;
@@ -538,10 +661,13 @@ function SortableItemRow({
 }) {
   const t = useTranslations("catalog");
   const sortableAttributes = useCatalogSortableAttributes();
+  const reduceMotion = usePrefersReducedMotion();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     disabled: !reorderEnabled,
     attributes: sortableAttributes,
+    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
+    transition: reduceMotion ? null : undefined,
   });
 
   const style: CSSProperties = {
@@ -577,6 +703,8 @@ function SortableItemRow({
                 aria-label={t("dragHandleLabel", { name: displayName })}
                 className={cn(
                   "inline-flex size-8 items-center justify-center rounded-sm text-text-placeholder transition-colors",
+                  DRAG_HANDLE,
+                  focusRing,
                   reorderEnabled
                     ? "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing"
                     : "cursor-not-allowed opacity-40",
@@ -614,27 +742,52 @@ function SortableItemRow({
           </div>
         </td>
       )}
-      <td className="px-3">
-        <span className="inline-block rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold text-text">
+      <td className="px-3 py-2">
+        <span className="inline-block rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text">
           {item.code}
         </span>
       </td>
-      <td className="px-3 font-medium text-text">{item.nameVi}</td>
-      <td className={cn("px-3 text-text-secondary", WIDE_ONLY_COLUMN)}>{item.nameEn || "—"}</td>
+      <td className="px-3 py-2 font-medium text-text">
+        {/* Tối đa hai dòng (DESIGN.md mục 5.13); tên đầy đủ có trong ngăn chi tiết. */}
+        <span className="line-clamp-2 wrap-break-word">{item.nameVi}</span>
+        {item.combination && (
+          <span
+            className={cn(
+              "mt-0.5 line-clamp-2 text-caption font-normal wrap-break-word text-text-muted",
+              layout.summary,
+            )}
+          >
+            <span className="font-medium text-text-secondary">{item.combination.examCode}</span>
+            {orderedSubjects.length > 0 && (
+              <span className={layout.summarySubjects}>
+                {` · ${orderedSubjects.map((subject) => pickName(subject, locale)).join(", ")}`}
+              </span>
+            )}
+          </span>
+        )}
+      </td>
+      <td className={cn("px-3 py-2 text-text-secondary", layout.nameEn)}>
+        <span className="line-clamp-2 wrap-break-word">{item.nameEn || "—"}</span>
+      </td>
       {isCombinationGroup && (
         <>
-          <td className="px-3 text-text-secondary">
+          <td className={cn("px-3 py-2 text-text-secondary", layout.exam)}>
             {item.combination ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="font-medium text-text">{item.combination.examCode}</span>
-                <span>
-                  {pickName(
-                    {
-                      nameVi: item.combination.examNameVi,
-                      nameEn: item.combination.examNameEn,
-                    },
-                    locale,
-                  )}
+              <div className="flex flex-col items-start gap-1">
+                {/* Mã và tên kỳ thi là một dòng chữ liền, tối đa hai dòng; thẻ hẹp thì chỉ còn mã. */}
+                <span className="line-clamp-2 wrap-break-word">
+                  <span className="font-medium whitespace-nowrap text-text">
+                    {item.combination.examCode}
+                  </span>
+                  <span className={layout.examName}>
+                    {` ${pickName(
+                      {
+                        nameVi: item.combination.examNameVi,
+                        nameEn: item.combination.examNameEn,
+                      },
+                      locale,
+                    )}`}
+                  </span>
                 </span>
                 {item.combination.examStatus === "INACTIVE" && (
                   <Badge>{t("statuses.INACTIVE")}</Badge>
@@ -644,11 +797,11 @@ function SortableItemRow({
               "—"
             )}
           </td>
-          <td className="px-3">
+          <td className={cn("px-3 py-2", layout.subjects)}>
             {orderedSubjects.length > 0 ? (
               <div className="flex flex-wrap items-center gap-1">
                 {orderedSubjects.map((subject) => (
-                  <Chip key={subject.subjectItemId} size="sm">
+                  <Chip key={subject.subjectItemId} variant="tag" className={STATIC_CHIP_COMPACT}>
                     {pickName(subject, locale)}
                     {subject.status === "INACTIVE" ? ` (${t("statuses.INACTIVE")})` : ""}
                   </Chip>
@@ -658,7 +811,7 @@ function SortableItemRow({
               "—"
             )}
           </td>
-          <td className="px-3">
+          <td className={cn("px-3 py-2", layout.version)}>
             {item.combination ? (
               <Badge>{t("versionBadge", { version: item.combination.versionNo })}</Badge>
             ) : (
@@ -667,18 +820,22 @@ function SortableItemRow({
           </td>
         </>
       )}
-      <td className={cn("px-3 text-text-secondary tabular-nums", WIDE_ONLY_COLUMN)}>
+      <td
+        className={cn("px-3 py-2 whitespace-nowrap text-text-secondary tabular-nums", layout.value)}
+      >
         {item.value}
       </td>
-      <td className="px-3">
+      <td className="px-3 py-2">
         <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
           {t(`statuses.${item.status}`)}
         </StatusChip>
       </td>
       <td
         className={cn(
-          // Cột thao tác dính mép phải để luôn bấm được khi bảng rộng hơn thẻ (màn hình ~1280px).
-          "sticky right-0 bg-surface py-1 pr-3 pl-2 text-right whitespace-nowrap transition-colors duration-150 group-hover/row:bg-subtle motion-reduce:transition-none",
+          // Cột thao tác dính mép phải để vẫn bấm được khi một mã dài làm bảng rộng hơn thẻ. Chỉ dính khi thẻ đủ
+          // rộng cho bộ cột tối thiểu; hẹp hơn thì cuộn cùng bảng để không che dữ liệu (xem COLUMN_LAYOUTS).
+          "bg-surface py-1 pr-3 pl-2 text-right whitespace-nowrap transition-colors duration-150 group-hover/row:bg-subtle motion-reduce:transition-none",
+          layout.stickyActions,
           isDragging && "bg-primary-50",
         )}
       >

@@ -254,13 +254,18 @@ function ExcelImportBody({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 3-step stepper */}
+      {/* 3-step stepper. C-18: bước đang làm có aria-current="step"; bước đã xong có chữ ẩn "(đã xong)" vì dấu
+          tích chỉ là hình. */}
       <ol className="flex flex-wrap items-center gap-5">
         {steps.map((s, idx) => {
           const completed = idx < currentStepIndex;
           const active = idx === currentStepIndex;
           return (
-            <li key={s.id} className="flex items-center gap-2">
+            <li
+              key={s.id}
+              aria-current={active ? "step" : undefined}
+              className="flex items-center gap-2"
+            >
               <span
                 aria-hidden="true"
                 className={cn(
@@ -285,6 +290,7 @@ function ExcelImportBody({
                 )}
               >
                 {s.label}
+                {completed && <span className="sr-only"> {t("importDialog.stepDone")}</span>}
               </span>
             </li>
           );
@@ -412,7 +418,10 @@ function ExcelImportBody({
               <span>{t("importDialog.errorFileBanner", { count: preview.errorRows })}</span>
             </div>
           ) : (
-            <div className="rounded-md border border-primary-200 bg-primary-50 px-3.5 py-2.5 text-field-label font-medium text-primary-text">
+            <div
+              role="status"
+              className="rounded-md border border-primary-200 bg-primary-50 px-3.5 py-2.5 text-field-label font-medium text-primary-text"
+            >
               {t("importDialog.validBanner", { count: preview.validRows })}
             </div>
           )}
@@ -496,7 +505,10 @@ function ExcelImportBody({
 
       {step === "result" && result && (
         <div className="flex flex-col gap-4">
-          <div className="rounded-md border border-primary-200 bg-primary-50 px-3.5 py-3 text-field-label font-medium text-primary-text">
+          <div
+            role="status"
+            className="rounded-md border border-primary-200 bg-primary-50 px-3.5 py-3 text-field-label font-medium text-primary-text"
+          >
             {t("importDialog.resultBanner", {
               created: result.createdCount,
               reused: result.reusedCount,

@@ -23,6 +23,7 @@ import { Search, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import {
   listActiveRoles as defaultListActiveRoles,
   listUsers as defaultListUsers,
@@ -161,8 +162,17 @@ function AddMembersBody({
     );
   }, [canViewRoles, rolesQuery.data]);
 
+  // C-15: khóa kết thúc bằng đối tượng tham số (từ khóa, trang) để giữ trang ứng viên đang hiện khi tìm hoặc
+  // chuyển trang; đổi vai trò học viên là phạm vi khác nên không giữ.
+  const candidatesQueryKey = [
+    "classes",
+    "add-member-candidates",
+    studentRoleId,
+    { q: debouncedSearch, page },
+  ] as const;
   const usersQuery = useQuery({
-    queryKey: ["classes", "add-member-candidates", debouncedSearch, studentRoleId, page],
+    queryKey: candidatesQueryKey,
+    placeholderData: keepPreviousWhileSameScope(candidatesQueryKey),
     queryFn: () =>
       listUsers({
         ...(debouncedSearch ? { q: debouncedSearch } : {}),
@@ -186,6 +196,7 @@ function AddMembersBody({
     );
   }, [usersQuery.data]);
   const totalCandidates = usersQuery.data?.totalItems ?? 0;
+  const candidatesRefreshing = usersQuery.isPlaceholderData;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const memberIdSet = useMemo(() => new Set(existingMemberUserIds), [existingMemberUserIds]);
 
@@ -279,8 +290,16 @@ function AddMembersBody({
             )}
           </div>
 
-          <div className="min-h-48 flex-1 overflow-y-auto rounded-lg border border-border">
-            {usersQuery.isLoading ? (
+          {/* C-15: hộp danh sách cao cố định (co lại tới min-h-48 khi màn hình thấp) để hộp thoại không nhảy khi
+              số ứng viên đổi; trong lúc tải trang mới vẫn hiện trang cũ, mờ đi và đánh dấu aria-busy. */}
+          <div
+            aria-busy={candidatesRefreshing || undefined}
+            className={cn(
+              "h-96 min-h-48 overflow-y-auto rounded-lg border border-border transition-opacity motion-reduce:transition-none",
+              candidatesRefreshing && "opacity-60",
+            )}
+          >
+            {usersQuery.isPending ? (
               <div role="status" aria-label={common("loading")} className="flex flex-col gap-2 p-3">
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
