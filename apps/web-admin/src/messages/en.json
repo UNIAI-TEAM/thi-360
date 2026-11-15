@@ -1076,7 +1076,12 @@
     "closeToast": "Close toast",
     "loading": "Loading",
     "notificationsLabel": "Notifications",
-    "retry": "Retry"
+    "retry": "Retry",
+    "table": {
+      "ascending": "ascending",
+      "descending": "descending",
+      "sortBy": "Sort by"
+    }
   },
   "dashboard": {
     "errorDescription": "An error occurred while loading account details. Please try again.",
