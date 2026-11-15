@@ -1274,7 +1274,7 @@ describe("Cấp hàng loạt: bảng thành danh sách thẻ ở khung hẹp (UN
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(6);
 
-    expect(within(items[0]!).getByText("Tên đăng nhập")).toHaveClass("font-semibold", "line-clamp-2");
+    expect(within(items[0]!).getByText("Tên đăng nhập")).toHaveClass("line-clamp-2");
     expect(within(items[0]!).getByText("Bắt buộc")).toBeInTheDocument();
     expect(items[0]).toHaveTextContent(
       "Quy tắc: Duy nhất, 4–30 ký tự, không khoảng trắng, không phân biệt hoa thường",
@@ -1305,12 +1305,10 @@ describe("Cấp hàng loạt: bảng thành danh sách thẻ ở khung hẹp (UN
     await within(list).findByText("hv01");
     const [ok, bad] = within(list).getAllByRole("listitem");
 
-    expect(within(ok!).getByText("hv01")).toHaveClass("font-semibold", "line-clamp-2", "wrap-anywhere");
+    expect(within(ok!).getByText("hv01")).toHaveClass("line-clamp-2");
     expect(within(ok!).getByText("Học viên 01 · hv01@example.com")).toHaveClass("text-caption");
     expect(within(ok!).getByText("Hợp lệ")).toBeInTheDocument();
-    expect(
-      within(ok!).getByText("Dòng: 2 · Mã lớp: LOP-A · Mật khẩu: Để trống, hệ thống sinh"),
-    ).toBeInTheDocument();
+    expect(ok).toHaveTextContent("Dòng: 2 · Mã lớp: LOP-A · Mật khẩu: Để trống, hệ thống sinh");
 
     expect(within(bad!).getByText("Học viên 02")).toBeInTheDocument();
     expect(within(bad!).getByText("Lỗi")).toBeInTheDocument();
@@ -1318,7 +1316,7 @@ describe("Cấp hàng loạt: bảng thành danh sách thẻ ở khung hẹp (UN
       within(bad!).getByText(`Tên đăng nhập: ${viMessages.bulkImport.rowErrorCodes.USERNAME_INVALID}`),
     ).toHaveClass("text-danger");
     // Dòng không có lớp thì không có mục Mã lớp.
-    expect(within(bad!).getByText("Dòng: 3 · Mật khẩu: Đã nhập, đạt quy tắc")).toBeInTheDocument();
+    expect(bad).toHaveTextContent("Dòng: 3 · Mật khẩu: Đã nhập, đạt quy tắc");
   });
 
   it("bước 2: khung rộng vẫn là bảng", async () => {
@@ -1370,9 +1368,7 @@ describe("Cấp hàng loạt: bảng thành danh sách thẻ ở khung hẹp (UN
 
     expect(within(created!).getByText("Đã tạo")).toBeInTheDocument();
     expect(within(created!).getByText("Học viên 01")).toBeInTheDocument();
-    expect(
-      within(created!).getByText("Dòng: 2 · Lớp: LOP-A · Mật khẩu: Hệ thống sinh, xem trong file"),
-    ).toBeInTheDocument();
+    expect(created).toHaveTextContent("Dòng: 2 · Lớp: LOP-A · Mật khẩu: Hệ thống sinh, xem trong file");
 
     expect(within(failed!).getByText("Thất bại")).toBeInTheDocument();
     expect(

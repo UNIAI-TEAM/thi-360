@@ -17,6 +17,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  ListCard,
   notify,
   Skeleton,
   StatusChip,
@@ -332,17 +333,17 @@ export function UserRbacTab({
      */
     const cards: TableCards<EffectivePermissionItemResponse> = {
       render: (item) => (
-        <div className="flex flex-col gap-1.5">
-          <p className="line-clamp-2 font-semibold wrap-break-word text-text">
-            {resolvePermissionName(rbacT, item.code, item.name)}
-          </p>
-          <p className="text-caption text-text-muted">
-            {resolveObjectName(rbacT, item.groupCode, item.groupName)}
-            {" · "}
-            <code className="wrap-anywhere">{item.code}</code>
-          </p>
-          <div className="flex flex-wrap gap-1.5">{sourceChips(item)}</div>
-        </div>
+        <ListCard
+          title={resolvePermissionName(rbacT, item.code, item.name)}
+          caption={
+            <>
+              {resolveObjectName(rbacT, item.groupCode, item.groupName)}
+              {" · "}
+              <code>{item.code}</code>
+            </>
+          }
+          tags={sourceChips(item)}
+        />
       ),
     };
 

@@ -17,6 +17,9 @@ import {
   FormField,
   Input,
   Label,
+  ListCard,
+  ListCardTag,
+  ListCardTitleLink,
   LiveStatus,
   PageHeader,
   Pagination,
@@ -58,7 +61,6 @@ import {
 import { formatRoleLabel, getUserDisplayStatus } from "../utils";
 import { CreateUserDialog } from "./create-user-dialog";
 import { FILTER_FORM, FILTER_SEARCH, FILTER_SELECT, FILTER_TOGGLES } from "./list-filters";
-import { ListCard, ListCardTag, ListCardTitleLink } from "./list-cards";
 import {
   type UserActionController,
   UserActionDialogs,
@@ -406,7 +408,11 @@ function UsersListContent({
         const display = getUserDisplayStatus(item);
         return (
           <ListCard
-            title={<ListCardTitleLink href={`/users/${item.id}`}>{item.username}</ListCardTitleLink>}
+            title={
+              <ListCardTitleLink linkComponent={Link} href={`/users/${item.id}`}>
+                {item.username}
+              </ListCardTitleLink>
+            }
             actions={can("USER.MODIFY") ? <UserRowActions item={item} controller={actionController} /> : undefined}
             caption={item.fullName}
             status={<StatusChip tone={display.tone}>{t(`statuses.${display.status}`)}</StatusChip>}

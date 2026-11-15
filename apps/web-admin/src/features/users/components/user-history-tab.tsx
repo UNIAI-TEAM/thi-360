@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ListCard,
   Pagination,
   StatusChip,
   Table,
@@ -16,7 +17,6 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { type AuditEvent, type UsersApiDeps, USERS_QUERY_KEYS } from "../api";
 import { formatUserDateTime } from "../utils";
-import { ListCard } from "./list-cards";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 
 const KNOWN_AUDIT_ACTIONS: Record<string, true> = {

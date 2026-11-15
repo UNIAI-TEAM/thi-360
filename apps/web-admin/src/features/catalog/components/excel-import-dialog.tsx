@@ -2,6 +2,9 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   Button,
+  CardList,
+  CardListItem,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -9,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   FormField,
-  cn,
+  ListCard,
   useCardMode,
 } from "@thi360/ui";
 import { Check, Download, FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
@@ -520,24 +523,18 @@ function ImportErrorList({ errors }: { errors: ImportErrorRow[] }) {
   return (
     <div ref={frameRef} className="max-h-64 overflow-auto rounded-md border border-border">
       {cardMode ? (
-        <ul role="list" aria-label={label} className="divide-y divide-border">
+        <CardList aria-label={label}>
           {errors.map((err, idx) => (
-            <li
-              key={`${err.rowNo}-${err.column}-${idx}`}
-              className="relative flex items-start gap-3 bg-danger-bg/40 px-4 py-3"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-field-label font-semibold text-text tabular-nums">
-                  {t("importDialog.errorRowTitle", { row: err.rowNo })}
-                </p>
-                <p className="text-caption wrap-break-word text-text-muted">
-                  {t("importDialog.errorColumnMeta", { column: err.column })}
-                </p>
-                <p className="mt-1 text-caption wrap-break-word text-danger">{err.message}</p>
-              </div>
-            </li>
+            <CardListItem key={`${err.rowNo}-${err.column}-${idx}`} className="bg-danger-bg/40">
+              <ListCard
+                title={t("importDialog.errorRowTitle", { row: err.rowNo })}
+                caption={t("importDialog.errorColumnMeta", { column: err.column })}
+              >
+                <p className="text-caption wrap-break-word text-danger">{err.message}</p>
+              </ListCard>
+            </CardListItem>
           ))}
-        </ul>
+        </CardList>
       ) : (
         <table aria-label={label} className="w-full border-collapse text-left text-caption">
           <thead className="sticky top-0 bg-page text-text-secondary">

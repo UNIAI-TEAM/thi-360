@@ -843,8 +843,8 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
       // Tên là nút mở ngăn chi tiết, vùng bấm phủ cả thẻ; nút và cột đổi thứ tự nằm trên vùng bấm đó.
       const title = within(toan).getByRole("button", { name: "Toán học" });
       expect(title).toHaveClass("after:absolute", "after:inset-0");
-      const viewButton = within(toan).getByRole("button", { name: "Chi tiết Toán học" });
-      expect(viewButton.parentElement).toHaveClass("relative", "z-1");
+      // Không có nút "Chi tiết" riêng trên thẻ: tiêu đề đã mở chi tiết.
+      expect(within(toan).queryByRole("button", { name: "Chi tiết Toán học" })).toBeNull();
       expect(within(toan).getByRole("button", { name: "Kéo để đổi thứ tự Toán học" }).parentElement).toHaveClass(
         "relative",
         "z-1",
@@ -915,13 +915,14 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
     }
   });
 
-  it("thẻ hẹp, người chỉ xem: không có cột đổi thứ tự và menu ⋯, vẫn có nút xem", async () => {
+  it("thẻ hẹp, người chỉ xem: không có cột đổi thứ tự và menu ⋯, bấm tiêu đề để xem", async () => {
     const width = mockCardWidth(328);
     try {
       renderCatalog({ permissions: ["CATALOG.VIEW"], search: "group=SUBJECT" });
       const list = await screen.findByRole("list", { name: "Danh sách giá trị danh mục" });
       const card = (await within(list).findByRole("button", { name: "Toán học" })).closest("li")!;
-      expect(within(card).getByRole("button", { name: "Chi tiết Toán học" })).toBeInTheDocument();
+      // Tiêu đề là nút mở chi tiết, phủ cả thẻ: thẻ không có thêm nút "Chi tiết" riêng (hai điểm dừng cho một việc).
+      expect(within(card).queryByRole("button", { name: "Chi tiết Toán học" })).toBeNull();
       expect(within(card).queryByRole("button", { name: "Thao tác khác với Toán học" })).toBeNull();
       expect(within(card).queryByRole("button", { name: /Kéo để đổi thứ tự/ })).toBeNull();
     } finally {
@@ -3600,7 +3601,7 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
       const cards = within(list).getAllByRole("listitem");
       expect(cards).toHaveLength(2);
       expect(cards[0]).toHaveClass("relative", "flex", "items-start", "gap-3", "px-4", "py-3");
-      expect(within(cards[0]!).getByText("Dòng 4")).toHaveClass("font-semibold");
+      expect(within(cards[0]!).getByText("Dòng 4")).toHaveClass("line-clamp-2");
       expect(within(cards[0]!).getByText("Cột: Mã")).toHaveClass("text-caption", "text-text-muted");
       expect(within(cards[0]!).getByText(viMessages.catalog.errorCodes.CATALOG_CODE_TAKEN)).toHaveClass(
         "text-danger",

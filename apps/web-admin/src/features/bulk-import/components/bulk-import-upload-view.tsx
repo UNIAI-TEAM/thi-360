@@ -5,13 +5,17 @@ import {
   Button,
   buttonVariants,
   Card,
+  CardList,
+  CardListItem,
   Checkbox,
   cn,
   EmptyState,
   IconButton,
   Label,
+  ListCard,
   Skeleton,
   StatusChip,
+  useCardMode,
 } from "@thi360/ui";
 import { FileSpreadsheet, TriangleAlert, Upload, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -19,9 +23,7 @@ import { useRouter } from "next/navigation";
 import {
   type ChangeEvent,
   type DragEvent,
-  useEffect,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,34 +41,6 @@ import { BulkImportStepper } from "./bulk-import-stepper";
  * khoảng 1210px, hai thẻ vừa đứng cạnh nhau ở `@4xl`), nên từ 1024px trở lên vẫn là bảng.
  */
 const TEMPLATE_COLUMNS_CARD_BREAKPOINT = 512;
-
-const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-/**
- * Khung có hẹp hơn `breakpoint` không, đo bằng `ResizeObserver` như `Table` của kit làm với `cards` (bảng này tự viết
- * bằng `<table>` nên không dùng được `Table`). Chỉ dựng một trong hai dạng, không dựng cả hai rồi ẩn bằng CSS, để
- * nội dung không lặp trong DOM và cây truy cập. Chưa đo được (máy chủ, jsdom, bề rộng 0) thì là bảng.
- */
-function useNarrowContainer(breakpoint: number) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [narrow, setNarrow] = useState(false);
-
-  useIsomorphicLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const measure = () => {
-      const width = element.getBoundingClientRect().width;
-      if (width > 0) setNarrow(width < breakpoint);
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [breakpoint]);
-
-  return [ref, narrow] as const;
-}
 
 export interface BulkImportUploadViewProps {
   deps?: Partial<BulkImportApiDeps>;
@@ -151,7 +125,7 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
   const chooseFileLabelId = useId();
   const dropzoneHintId = useId();
   const columnsHeadingId = useId();
-  const [columnsFrameRef, columnsAsCards] = useNarrowContainer(TEMPLATE_COLUMNS_CARD_BREAKPOINT);
+  const [columnsFrameRef, columnsAsCards] = useCardMode(true, TEMPLATE_COLUMNS_CARD_BREAKPOINT);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -388,24 +362,23 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
           */}
           <div ref={columnsFrameRef} className="min-w-0">
             {columnsAsCards ? (
-              // Tailwind bỏ dấu đầu dòng làm Safari/VoiceOver không coi là danh sách: ghi rõ vai trò.
-              <ul role="list" aria-labelledby={columnsHeadingId} className="divide-y divide-border">
+              <CardList aria-labelledby={columnsHeadingId}>
                 {templateColumns.map((col) => (
-                  <li key={col.name} className="flex flex-col gap-1.5 px-4 py-3">
-                    <p className="line-clamp-2 font-semibold wrap-break-word text-text">{col.name}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {col.required ? (
-                        <StatusChip tone="info">{t("upload.columnsTable.colRequired")}</StatusChip>
-                      ) : (
-                        <StatusChip tone="neutral">{t("upload.columnsTable.optional")}</StatusChip>
-                      )}
-                    </div>
-                    <p className="text-caption text-text-secondary">
-                      {t("metaItem", { label: t("upload.columnsTable.colRules"), value: col.rules })}
-                    </p>
-                  </li>
+                  <CardListItem key={col.name}>
+                    <ListCard
+                      title={col.name}
+                      status={
+                        col.required ? (
+                          <StatusChip tone="info">{t("upload.columnsTable.colRequired")}</StatusChip>
+                        ) : (
+                          <StatusChip tone="neutral">{t("upload.columnsTable.optional")}</StatusChip>
+                        )
+                      }
+                      meta={[{ label: t("upload.columnsTable.colRules"), value: col.rules }]}
+                    />
+                  </CardListItem>
                 ))}
-              </ul>
+              </CardList>
             ) : (
               <div className="overflow-x-auto">
                 <table aria-labelledby={columnsHeadingId} className="w-full border-collapse text-body">

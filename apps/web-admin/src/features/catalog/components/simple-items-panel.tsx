@@ -20,6 +20,9 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Badge,
   Button,
+  CardList,
+  CardListItem,
+  CardListSkeletonItem,
   Chip,
   cn,
   DropdownMenu,
@@ -29,6 +32,8 @@ import {
   EmptyState,
   IconButton,
   Input,
+  ListCard,
+  ListCardTitleButton,
   LiveStatus,
   Pagination,
   Select,
@@ -514,23 +519,16 @@ export function SimpleItemsPanel({
         />
       ) : cardMode ? (
         <DndContext {...dndProps}>
-          <ul
-            // Tailwind bỏ dấu đầu dòng làm Safari/VoiceOver không coi là danh sách: ghi rõ vai trò (như `Table`).
-            role="list"
+          <CardList
             aria-label={t("itemsTableLabel")}
             aria-busy={loading || refreshing || undefined}
             className={cn(
-              "divide-y divide-border border-t border-border transition-opacity duration-150 motion-reduce:transition-none",
+              "border-t border-border transition-opacity duration-150 motion-reduce:transition-none",
               refreshing && !loading && "opacity-60",
             )}
           >
             {loading ? (
-              Array.from({ length: 5 }, (_, index) => (
-                <li key={index} className="flex flex-col gap-2 px-4 py-3.5">
-                  <Skeleton className="h-4 w-2/5" />
-                  <Skeleton className="h-3.5 w-3/5" />
-                </li>
-              ))
+              Array.from({ length: 5 }, (_, index) => <CardListSkeletonItem key={index} />)
             ) : items.length === 0 ? (
               <li>{emptyState}</li>
             ) : (
@@ -543,7 +541,7 @@ export function SimpleItemsPanel({
                 ))}
               </SortableContext>
             )}
-          </ul>
+          </CardList>
         </DndContext>
       ) : (
         <div
@@ -1094,13 +1092,10 @@ function SortableItemCard({
   }
 
   return (
-    <li
+    <CardListItem
       ref={setNodeRef}
       style={style}
-      className={cn(
-        "relative flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-subtle motion-reduce:transition-none",
-        isDragging && "z-10 bg-primary-50 shadow-sm",
-      )}
+      className={cn("hover:bg-subtle", isDragging && "z-10 bg-primary-50 shadow-sm")}
     >
       {showReorder && (
         <ReorderControls
@@ -1117,32 +1112,18 @@ function SortableItemCard({
         />
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 pt-2">
-            <span className={cn(CODE_CHIP, "max-w-full whitespace-normal wrap-break-word")}>
-              <CodeWithBreaks code={item.code} />
+        <ListCard
+          title={
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className={cn(CODE_CHIP, "max-w-full whitespace-normal wrap-break-word")}>
+                <CodeWithBreaks code={item.code} />
+              </span>
+              {/* Mở ngăn chi tiết, nơi có tên đầy đủ (tiêu đề tối đa hai dòng, DESIGN.md mục 5.13). */}
+              <ListCardTitleButton onClick={onView}>{item.nameVi}</ListCardTitleButton>
             </span>
-            <button
-              type="button"
-              onClick={onView}
-              className={cn(
-                "min-w-0 rounded-sm text-left font-semibold text-text after:absolute after:inset-0",
-                focusRing,
-              )}
-            >
-              {/* Tối đa hai dòng (DESIGN.md mục 5.13); tên đầy đủ có trong ngăn chi tiết. */}
-              <span className="line-clamp-2 wrap-break-word">{item.nameVi}</span>
-            </button>
-          </div>
-          <div className="relative z-1 -me-2 flex shrink-0 items-center gap-0.5">
-            <IconButton
-              icon={<Eye />}
-              aria-label={t("detailItem", { name: displayName })}
-              tooltip={t("detailItem", { name: displayName })}
-              onClick={onView}
-              className="text-primary-text"
-            />
-            {canModify && (
+          }
+          actions={
+            canModify ? (
               <ItemActionsMenu
                 item={item}
                 displayName={displayName}
@@ -1150,27 +1131,20 @@ function SortableItemCard({
                 onStop={onStop}
                 onDelete={onDelete}
               />
-            )}
-          </div>
-        </div>
-        {secondary && (
-          <p className="mt-1 line-clamp-2 text-caption wrap-break-word text-text-muted">
-            {secondary}
-          </p>
-        )}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
-            {t(`statuses.${item.status}`)}
-          </StatusChip>
-          {item.combination && (
-            <Badge>{t("versionBadge", { version: item.combination.versionNo })}</Badge>
-          )}
-        </div>
-        <p className="mt-1.5 text-caption text-text-muted tabular-nums">
-          {t("cardValueMeta", { value: item.value })}
-        </p>
+            ) : undefined
+          }
+          caption={secondary}
+          status={
+            <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
+              {t(`statuses.${item.status}`)}
+            </StatusChip>
+          }
+          tags={item.combination && <Badge>{t("versionBadge", { version: item.combination.versionNo })}</Badge>}
+        >
+          <p className="text-caption text-text-muted tabular-nums">{t("cardValueMeta", { value: item.value })}</p>
+        </ListCard>
       </div>
-    </li>
+    </CardListItem>
   );
 }
 

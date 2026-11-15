@@ -11,6 +11,8 @@ import {
   focusRing,
   IconButton,
   Input,
+  ListCard,
+  ListCardTitleLink,
   LiveStatus,
   notify,
   Pagination,
@@ -43,7 +45,6 @@ import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import type { UserSummary } from "@/features/users/api";
-import { ListCard, ListCardTitleLink } from "@/features/users/components/list-cards";
 import type { ListUsersQuery, PageResponseUserSummary, RoleSummary } from "@/features/users/api";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
@@ -301,7 +302,11 @@ function ClassDetailContent({
     () => ({
       render: (member) => (
         <ListCard
-          title={<ListCardTitleLink href={`/users/${member.userId}`}>{member.username}</ListCardTitleLink>}
+          title={
+            <ListCardTitleLink linkComponent={Link} href={`/users/${member.userId}`}>
+              {member.username}
+            </ListCardTitleLink>
+          }
           actions={
             canModify ? (
               <MemberActions member={member} onTransfer={setTransferTarget} onRemove={setRemoveTarget} />

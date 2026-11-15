@@ -16,6 +16,8 @@ import {
   FormField,
   IconButton,
   Input,
+  ListCard,
+  ListCardTitleLink,
   LiveStatus,
   PageHeader,
   Pagination,
@@ -64,7 +66,6 @@ import {
   FILTER_SELECT,
   FILTER_TOGGLES,
 } from "@/features/users/components/list-filters";
-import { ListCard, ListCardTitleLink } from "@/features/users/components/list-cards";
 import { type ClassEditableFields, ClassFormDialog } from "./class-form-dialog";
 
 const ALL_VALUE = "ALL";
@@ -313,7 +314,7 @@ function ClassesListContent({
     () => ({
       render: (item) => (
         <ListCard
-          title={<ListCardTitleLink href={`/classes/${item.id}`}>{item.code}</ListCardTitleLink>}
+          title={<ListCardTitleLink linkComponent={Link} href={`/classes/${item.id}`}>{item.code}</ListCardTitleLink>}
           actions={
             canModify ? <ClassModifyActions item={item} onEdit={openEdit} controller={actionController} /> : undefined
           }

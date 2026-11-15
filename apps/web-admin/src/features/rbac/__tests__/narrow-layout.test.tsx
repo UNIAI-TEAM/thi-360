@@ -170,7 +170,7 @@ describe("Phân quyền: bảng thành danh sách thẻ ở khung hẹp (UNI-258
     const title = await within(list).findByText("Vận hành");
     const [card] = within(list).getAllByRole("listitem");
 
-    expect(title).toHaveClass("font-semibold", "line-clamp-2");
+    expect(title).toHaveClass("line-clamp-2");
     expect(within(card!).getByText("OPERATIONS")).toHaveClass("text-caption", "wrap-anywhere");
     const chips = within(card!).getByText("Ngừng hoạt động").parentElement!;
     expect(Array.from(chips.children, (chip) => chip.textContent)).toEqual([
@@ -260,7 +260,7 @@ describe("Phân quyền: bảng thành danh sách thẻ ở khung hẹp (UNI-258
     await within(list).findByText("content.admin");
     const [fromRole, direct] = within(list).getAllByRole("listitem");
 
-    expect(within(fromRole!).getByText("content.admin")).toHaveClass("font-semibold", "wrap-anywhere");
+    expect(within(fromRole!).getByText("content.admin")).toHaveClass("line-clamp-2");
     expect(within(fromRole!).getByText("Quản trị nội dung · U000001")).toHaveClass("text-caption");
     const chips = within(fromRole!).getByText("Ngừng hoạt động").parentElement!;
     expect(Array.from(chips.children, (chip) => chip.textContent)).toEqual(["Ngừng hoạt động", "Từ vai trò"]);
@@ -331,12 +331,12 @@ describe("Phân quyền: bảng thành danh sách thẻ ở khung hẹp (UNI-258
     expect(screen.queryByRole("table")).toBeNull();
     const [card] = within(list).getAllByRole("listitem");
 
-    expect(within(card!).getByText("Đặt lại mật khẩu")).toHaveClass("font-semibold", "line-clamp-2");
+    expect(within(card!).getByText("Đặt lại mật khẩu")).toHaveClass("line-clamp-2");
     const caption = within(card!).getByText("USER.RESET_PASSWORD").parentElement!;
     expect(caption).toHaveTextContent("Tài khoản · USER.RESET_PASSWORD");
     expect(caption).toHaveClass("text-caption");
-    // Mã quyền dài xuống dòng ở bất kỳ ký tự nào, không bị cắt.
-    expect(within(card!).getByText("USER.RESET_PASSWORD")).toHaveClass("wrap-anywhere");
+    // Mã quyền dài xuống dòng ở bất kỳ ký tự nào.
+    expect(caption).toHaveClass("wrap-anywhere");
     expect(within(card!).getByText("Vai trò: Rà soát nội dung")).toBeInTheDocument();
     expect(within(card!).getByText("Gán trực tiếp")).toBeInTheDocument();
   });

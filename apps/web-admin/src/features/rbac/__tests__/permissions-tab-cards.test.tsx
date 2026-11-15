@@ -84,8 +84,8 @@ describe("Tab Quyền: danh sách thẻ khi vùng nội dung hẹp (UNI-2587)", 
     expect(cards).toHaveLength(2);
     const view = cards[0]!;
     expect(view).toHaveClass("relative", "flex", "items-start", "gap-3", "px-4", "py-3");
-    expect(within(view).getByText("Xem")).toHaveClass("font-semibold");
-    expect(within(view).getByText("USER.VIEW")).toHaveClass("wrap-anywhere", "text-caption");
+    expect(within(view).getByText("Xem")).toHaveClass("line-clamp-2");
+    expect(within(view).getByText("USER.VIEW").parentElement).toHaveClass("wrap-anywhere", "text-caption");
     expect(within(view).getByText("Quản trị")).toBeInTheDocument();
     expect(within(view).getByText("2 vai trò")).toBeInTheDocument();
 

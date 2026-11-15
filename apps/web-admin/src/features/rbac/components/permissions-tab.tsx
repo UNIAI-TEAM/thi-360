@@ -4,13 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Button,
   Card,
+  CardList,
+  CardListItem,
+  cn,
   EmptyState,
+  focusRing,
   Input,
+  ListCard,
   Select,
   Skeleton,
   StatusChip,
-  cn,
-  focusRing,
   useCardMode,
 } from "@thi360/ui";
 import { Info, KeyRound, Search, TriangleAlert } from "lucide-react";
@@ -353,35 +356,29 @@ function PermissionGroupCards({ group, ...props }: PermissionGroupProps) {
       >
         {group.objectName}
       </h2>
-      <ul
-        // Tailwind bỏ dấu đầu dòng làm Safari/VoiceOver không coi là danh sách: ghi rõ vai trò (như `Table`).
-        role="list"
-        aria-labelledby={headingId}
-        className="divide-y divide-border border-t border-border"
-      >
+      <CardList aria-labelledby={headingId} className="border-t border-border">
         {group.items.map((item) => (
-          <li key={item.id} className="relative flex items-start gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold wrap-break-word text-text">
-                {permissionDisplayName(item, rbacT, t)}
-              </p>
-              <code className="block text-caption wrap-anywhere text-text-muted">{item.code}</code>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <CardListItem key={item.id}>
+            <ListCard
+              title={permissionDisplayName(item, rbacT, t)}
+              caption={<code>{item.code}</code>}
+              tags={
                 <StatusChip tone={item.scope === "MANAGE" ? "info" : "warning"}>
                   {t(`access.${item.scope}`)}
                 </StatusChip>
-              </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-caption text-text-muted">
+              }
+            >
+              <div className="flex flex-wrap items-center gap-x-1.5 text-caption text-text-muted">
                 <span className="tabular-nums">
                   {t("permissionsTab.roleCountValue", { count: item.roleCount })}
                 </span>
                 <span aria-hidden="true">·</span>
                 <UserCount item={item} {...props} />
               </div>
-            </div>
-          </li>
+            </ListCard>
+          </CardListItem>
         ))}
-      </ul>
+      </CardList>
     </div>
   );
 }

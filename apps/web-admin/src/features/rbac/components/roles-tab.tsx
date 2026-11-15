@@ -9,14 +9,15 @@ import {
   cn,
   ConfirmDialog,
   EmptyState,
+  focusRing,
   IconButton,
   Input,
+  ListCard,
   notify,
   Pagination,
   StatusChip,
   Table,
   type TableCards,
-  focusRing,
 } from "@thi360/ui";
 import { Eye, Pencil, Search, Shield, Trash2, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -306,23 +307,22 @@ export function RolesTab({
    */
   const cards: TableCards<RoleSummaryResponse> = {
     render: (r) => (
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-start justify-between gap-3">
-          <p className="line-clamp-2 min-w-0 font-semibold wrap-break-word text-text">
-            {resolveRoleName(rbacT, r.code, r.name, r.system)}
-          </p>
-          <div className="relative z-1 -my-2 flex shrink-0 items-center gap-1">{renderActions(r)}</div>
-        </div>
-        <p className="text-caption wrap-anywhere text-text-muted">{r.code}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {statusChip(r)}
-          {accessChip(r)}
-          {kindChip(r)}
-        </div>
-        <p className="text-caption text-text-secondary tabular-nums">
+      <ListCard
+        title={resolveRoleName(rbacT, r.code, r.name, r.system)}
+        actions={renderActions(r)}
+        caption={r.code}
+        status={statusChip(r)}
+        tags={
+          <>
+            {accessChip(r)}
+            {kindChip(r)}
+          </>
+        }
+      >
+        <p className="text-caption text-text-muted tabular-nums">
           {t("rolesTab.cardCounts", { permissions: r.permissionCount, users: r.userCount })}
         </p>
-      </div>
+      </ListCard>
     ),
   };
 

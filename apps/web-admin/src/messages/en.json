@@ -650,7 +650,6 @@
       "description": "This batch has system-generated passwords and you have not downloaded the result file yet. If you leave now, keep this URL to return and download it.",
       "title": "Leave without downloading result file?"
     },
-    "metaItem": "{label}: {value}",
     "pagination": {
       "nav": "Import rows pagination",
       "next": "Next",

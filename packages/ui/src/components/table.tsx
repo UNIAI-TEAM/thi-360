@@ -15,6 +15,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { cn } from "../lib/cn";
 import { focusRing, focusRingInset } from "../lib/styles";
 import { Checkbox } from "./checkbox";
+import { CardList, CardListItem, CardListSkeletonItem } from "./list-card";
 import { Select } from "./select";
 import { Skeleton } from "./skeleton";
 
@@ -41,11 +42,9 @@ export type TableSorting = {
  */
 export type TableCards<TData> = {
   /**
-   * Nội dung một thẻ: dòng tiêu đề (thường là liên kết tới chi tiết), các dòng phụ, chip trạng thái, nút thao tác.
-   * Ô chọn dòng (khi bảng có `selection`) do `Table` vẽ ở đầu thẻ, không vẽ lại ở đây.
-   *
-   * Cả thẻ bấm được để mở chi tiết: cho liên kết tiêu đề lớp `after:absolute after:inset-0` (thẻ đã là `relative`);
-   * nút và menu trong thẻ thêm `relative z-1` để nằm trên vùng bấm đó.
+   * Nội dung một thẻ: trả về `ListCard` (tiêu đề, thao tác, dòng phụ, chip, thông tin thêm), tiêu đề là
+   * `ListCardTitleLink`/`ListCardTitleButton` khi mở được chi tiết, để cả thẻ bấm được. Ô chọn dòng (khi bảng có
+   * `selection`) do `Table` vẽ ở đầu thẻ, không vẽ lại ở đây.
    */
   render: (row: TData, index: number) => ReactNode;
   /** Bề rộng khung (px) dưới đó hiện thẻ. Mặc định 640 (40rem). */
@@ -490,23 +489,16 @@ export function Table<TData>({
           )}
         </div>
       )}
-      <ul
-        // Tailwind bỏ dấu đầu dòng (`list-style: none`) làm Safari/VoiceOver không coi là danh sách: ghi rõ vai trò.
-        role="list"
+      <CardList
         aria-label={ariaLabel}
         aria-busy={loading || refreshing || undefined}
         className={cn(
-          "divide-y divide-border transition-opacity duration-150 motion-reduce:transition-none",
+          "transition-opacity duration-150 motion-reduce:transition-none",
           refreshing && !loading && "opacity-60",
         )}
       >
         {loading ? (
-          Array.from({ length: loadingRows }, (_, index) => (
-            <li key={index} className="flex flex-col gap-2 px-4 py-3.5">
-              <Skeleton className="h-4 w-2/5" />
-              <Skeleton className="h-3.5 w-3/5" />
-            </li>
-          ))
+          Array.from({ length: loadingRows }, (_, index) => <CardListSkeletonItem key={index} />)
         ) : error ? (
           <li>
             <div role="alert">{error}</div>
@@ -515,10 +507,10 @@ export function Table<TData>({
           <li>{empty}</li>
         ) : (
           rows.map((row) => (
-            <li
+            <CardListItem
               key={row.id}
               data-state={row.getIsSelected() ? "selected" : undefined}
-              className="relative flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-subtle data-[state=selected]:bg-primary-50 motion-reduce:transition-none"
+              className="hover:bg-subtle data-[state=selected]:bg-primary-50"
             >
               {selection && (
                 <div className="relative z-1 flex min-h-6 items-center">
@@ -530,10 +522,10 @@ export function Table<TData>({
                 </div>
               )}
               <div className="min-w-0 flex-1">{cards.render(row.original, row.index)}</div>
-            </li>
+            </CardListItem>
           ))
         )}
-      </ul>
+      </CardList>
     </div>
   );
 

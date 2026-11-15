@@ -8,6 +8,8 @@ import {
   cn,
   EmptyState,
   focusRing,
+  ListCard,
+  ListCardTitleLink,
   SectionTitle,
   Skeleton,
   StatusChip,
@@ -19,7 +21,6 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePermissions } from "@/features/session/session-provider";
-import { ListCard, ListCardTitleLink } from "@/features/users/components/list-cards";
 import {
   CLASSES_QUERY_KEYS,
   getUserClasses as defaultGetUserClasses,
@@ -179,7 +180,11 @@ export function UserClassesTab({
     () => ({
       render: (item) => (
         <ListCard
-          title={<ListCardTitleLink href={`/classes/${item.classId}`}>{item.classCode}</ListCardTitleLink>}
+          title={
+            <ListCardTitleLink linkComponent={Link} href={`/classes/${item.classId}`}>
+              {item.classCode}
+            </ListCardTitleLink>
+          }
           caption={item.className}
           status={<ClassStatusChip status={item.classStatus} />}
           meta={[
@@ -202,7 +207,7 @@ export function UserClassesTab({
       render: (item) => (
         <ListCard
           title={
-            <ListCardTitleLink href={`/classes/${item.classId}`}>
+            <ListCardTitleLink linkComponent={Link} href={`/classes/${item.classId}`}>
               {item.classCode} — {item.className}
             </ListCardTitleLink>
           }

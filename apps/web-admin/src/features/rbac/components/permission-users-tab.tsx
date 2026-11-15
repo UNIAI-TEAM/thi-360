@@ -9,8 +9,10 @@ import {
   cn,
   ConfirmDialog,
   EmptyState,
+  focusRingInset,
   IconButton,
   Input,
+  ListCard,
   notify,
   Pagination,
   Select,
@@ -18,7 +20,6 @@ import {
   StatusChip,
   Table,
   type TableCards,
-  focusRingInset,
 } from "@thi360/ui";
 import { Download, MinusCircle, Search, Shield, TriangleAlert, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -401,24 +402,17 @@ export function PermissionUsersTab({
       const actions = renderActions(user);
       const details = sourceDetails(user);
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-start justify-between gap-3">
-            <p className="line-clamp-2 min-w-0 font-semibold wrap-anywhere text-text">{user.username}</p>
-            {actions && (
-              <div className="relative z-1 -my-2 flex shrink-0 items-center gap-1">{actions}</div>
-            )}
-          </div>
-          <p className="text-caption wrap-break-word text-text-muted">
-            {user.fullName} · {user.code}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {statusChip(user)}
-            {renderSourceChips(user)}
-          </div>
+        <ListCard
+          title={user.username}
+          actions={actions}
+          caption={`${user.fullName} · ${user.code}`}
+          status={statusChip(user)}
+          tags={renderSourceChips(user)}
+        >
           {details.length > 0 && (
-            <p className="text-caption wrap-break-word text-text-secondary">{details.join(" · ")}</p>
+            <p className="text-caption wrap-break-word text-text-muted">{details.join(" · ")}</p>
           )}
-        </div>
+        </ListCard>
       );
     },
   };

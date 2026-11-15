@@ -9,7 +9,10 @@ import {
   cn,
   ConfirmDialog,
   EmptyState,
+  focusRing,
   Label,
+  ListCard,
+  type ListCardMetaItem,
   LiveStatus,
   notify,
   Pagination,
@@ -17,7 +20,6 @@ import {
   StatusChip,
   Table,
   type TableCards,
-  focusRing,
 } from "@thi360/ui";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Trash2, TriangleAlert, Upload } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -153,17 +155,12 @@ function ImportRowCard({
   caption: (string | undefined)[];
   status: ReactNode;
   problem?: string;
-  meta: (string | undefined)[];
+  meta: ListCardMetaItem[];
 }) {
-  const captionText = caption.filter(Boolean).join(" · ");
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="line-clamp-2 font-semibold wrap-anywhere text-text">{title}</p>
-      {captionText && <p className="text-caption wrap-anywhere text-text-muted">{captionText}</p>}
-      <div className="flex flex-wrap items-center gap-1.5">{status}</div>
+    <ListCard title={title} caption={caption.filter(Boolean).join(" · ")} status={status} meta={meta}>
       {problem && <p className="text-caption text-danger">{problem}</p>}
-      <p className="text-caption text-text-secondary tabular-nums">{meta.filter(Boolean).join(" · ")}</p>
-    </div>
+    </ListCard>
   );
 }
 
@@ -638,11 +635,11 @@ function BulkImportBatchContent({
           status={statusChip(item)}
           problem={isValid(item) ? undefined : formatRowErrorText(item)}
           meta={[
-            t("metaItem", { label: t("preview.table.rowNo"), value: num(item.rowNo) }),
+            { label: t("preview.table.rowNo"), value: num(item.rowNo) },
             item.classCode
-              ? t("metaItem", { label: t("preview.table.classCode"), value: item.classCode })
+              ? { label: t("preview.table.classCode"), value: item.classCode }
               : undefined,
-            t("metaItem", { label: t("preview.table.password"), value: passwordText(item) }),
+            { label: t("preview.table.password"), value: passwordText(item) },
           ]}
         />
       ),
@@ -740,11 +737,11 @@ function BulkImportBatchContent({
             status={chip}
             problem={problem}
             meta={[
-              t("metaItem", { label: t("result.table.rowNo"), value: num(item.rowNo) }),
+              { label: t("result.table.rowNo"), value: num(item.rowNo) },
               item.classCode
-                ? t("metaItem", { label: t("result.table.classCode"), value: item.classCode })
+                ? { label: t("result.table.classCode"), value: item.classCode }
                 : undefined,
-              t("metaItem", { label: t("result.table.password"), value: passwordText(item) }),
+              { label: t("result.table.password"), value: passwordText(item) },
             ]}
           />
         );
