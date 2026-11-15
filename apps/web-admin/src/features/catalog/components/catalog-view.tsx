@@ -104,9 +104,11 @@ export function CatalogPageSkeleton() {
   return (
     <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-4">
       <Skeleton className="h-8 w-56" />
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <Skeleton className="h-112 w-full shrink-0 lg:w-66" />
-        <Skeleton className="h-112 min-w-0 flex-1" />
+      <div className="@container">
+        <div className="flex flex-col gap-4 @2xl:flex-row @2xl:items-start">
+          <Skeleton className="h-24 w-full shrink-0 @2xl:h-112 @2xl:w-66" />
+          <Skeleton className="h-112 min-w-0 flex-1" />
+        </div>
       </div>
     </div>
   );
@@ -589,94 +591,101 @@ function CatalogWorkspace({
     <>
       <PageHeader title={t("title")} />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <GroupSidebar
-          groups={groups}
-          selectedGroupId={selectedGroup?.id ?? null}
-          loading={groupsQuery.isPending}
-          error={groupsQuery.isError}
-          canModify={canModify}
-          onRetry={() => void groupsQuery.refetch()}
-          onSelectGroup={handleSelectGroup}
-          onAddGroup={() => setGroupDialog({ open: true, mode: "create", group: null })}
-        />
+      {/*
+        Hai khu vực chia theo bề rộng vùng nội dung (container query, DESIGN.md mục 5.13): từ `@2xl` (672px, tức cửa
+        sổ từ 1024px khi có sidebar) danh sách nhóm 264px đứng bên trái như cũ. Hẹp hơn thì xếp chồng và danh sách
+        nhóm thu thành một ô chọn (GroupSidebar), để thẻ giá trị hiện ngay dưới, không phải cuộn qua cả danh sách.
+      */}
+      <div className="@container">
+        <div className="flex flex-col gap-4 @2xl:flex-row @2xl:items-start">
+          <GroupSidebar
+            groups={groups}
+            selectedGroupId={selectedGroup?.id ?? null}
+            loading={groupsQuery.isPending}
+            error={groupsQuery.isError}
+            canModify={canModify}
+            onRetry={() => void groupsQuery.refetch()}
+            onSelectGroup={handleSelectGroup}
+            onAddGroup={() => setGroupDialog({ open: true, mode: "create", group: null })}
+          />
 
-        {!selectedGroup ? (
-          <Card className="min-w-0 flex-1" padding="lg">
-            <EmptyState
-              icon={<FolderOpen />}
-              title={t("noSelectionTitle")}
-              description={t("noSelectionDescription")}
+          {!selectedGroup ? (
+            <Card className="min-w-0 flex-1" padding="lg">
+              <EmptyState
+                icon={<FolderOpen />}
+                title={t("noSelectionTitle")}
+                description={t("noSelectionDescription")}
+              />
+            </Card>
+          ) : selectedGroup.kind === "TREE" ? (
+            <TreeItemsPanel
+              group={selectedGroup}
+              availableSimpleGroups={groups}
+              api={api}
+              selectedNodeId={selectedNodeParam}
+              canModify={canModify}
+              exporting={exporting}
+              onSelectNode={updateNodeParam}
+              onEditGroup={() =>
+                setGroupDialog({ open: true, mode: "edit", group: selectedGroup })
+              }
+              onDeleteGroup={() => setDeleteTarget({ type: "group", group: selectedGroup })}
+              onAddRootNode={() =>
+                setTreeNodeDialog({ open: true, mode: "create", parentNode: null, node: null })
+              }
+              onAddChildNode={(parentNode) =>
+                setTreeNodeDialog({ open: true, mode: "create", parentNode, node: null })
+              }
+              onEditNode={(node) =>
+                setTreeNodeDialog({ open: true, mode: "edit", parentNode: null, node })
+              }
+              onMoveNode={(node) => setMoveBranchNode(node)}
+              onStopNode={(node) => setStopItem(node)}
+              onDeleteNode={(node) => setDeleteTarget({ type: "item", item: node })}
+              onViewNodeDetail={(node) => setDetailItem(node)}
+              onExportExcel={() => void handleExportExcel(selectedGroup.id)}
+              onImportExcel={() => setImportDialogOpen(true)}
             />
-          </Card>
-        ) : selectedGroup.kind === "TREE" ? (
-          <TreeItemsPanel
-            group={selectedGroup}
-            availableSimpleGroups={groups}
-            api={api}
-            selectedNodeId={selectedNodeParam}
-            canModify={canModify}
-            exporting={exporting}
-            onSelectNode={updateNodeParam}
-            onEditGroup={() =>
-              setGroupDialog({ open: true, mode: "edit", group: selectedGroup })
-            }
-            onDeleteGroup={() => setDeleteTarget({ type: "group", group: selectedGroup })}
-            onAddRootNode={() =>
-              setTreeNodeDialog({ open: true, mode: "create", parentNode: null, node: null })
-            }
-            onAddChildNode={(parentNode) =>
-              setTreeNodeDialog({ open: true, mode: "create", parentNode, node: null })
-            }
-            onEditNode={(node) =>
-              setTreeNodeDialog({ open: true, mode: "edit", parentNode: null, node })
-            }
-            onMoveNode={(node) => setMoveBranchNode(node)}
-            onStopNode={(node) => setStopItem(node)}
-            onDeleteNode={(node) => setDeleteTarget({ type: "item", item: node })}
-            onViewNodeDetail={(node) => setDetailItem(node)}
-            onExportExcel={() => void handleExportExcel(selectedGroup.id)}
-            onImportExcel={() => setImportDialogOpen(true)}
-          />
-        ) : (
-          <SimpleItemsPanel
-            group={selectedGroup}
-            items={itemsQuery.data?.items ?? []}
-            totalItems={itemsQuery.data?.totalItems ?? selectedGroup.itemCount}
-            page={page}
-            pageSize={pageSize}
-            totalPages={itemsQuery.data?.totalPages ?? 1}
-            searchQuery={searchQuery}
-            statusFilter={statusFilter}
-            loading={itemsQuery.isPending}
-            refreshing={itemsQuery.isPlaceholderData}
-            error={itemsQuery.isError}
-            reordering={reorderMutation.isPending}
-            exporting={exporting}
-            canModify={canModify}
-            onSearchChange={handleSearchChange}
-            onStatusFilterChange={handleStatusFilterChange}
-            onResetFilters={handleResetFilters}
-            onPageChange={setPage}
-            onPageSizeChange={(nextSize) => {
-              setPageSize(nextSize);
-              setPage(0);
-            }}
-            onRetry={() => void itemsQuery.refetch()}
-            onEditGroup={() =>
-              setGroupDialog({ open: true, mode: "edit", group: selectedGroup })
-            }
-            onDeleteGroup={() => setDeleteTarget({ type: "group", group: selectedGroup })}
-            onAddItem={() => setItemDialog({ open: true, mode: "create", item: null })}
-            onViewItem={(item) => setDetailItem(item)}
-            onEditItem={(item) => setItemDialog({ open: true, mode: "edit", item })}
-            onStopItem={(item) => setStopItem(item)}
-            onDeleteItem={(item) => setDeleteTarget({ type: "item", item })}
-            onReorder={(nextItems) => void handleReorder(nextItems)}
-            onExportExcel={() => void handleExportExcel(selectedGroup.id)}
-            onImportExcel={() => setImportDialogOpen(true)}
-          />
-        )}
+          ) : (
+            <SimpleItemsPanel
+              group={selectedGroup}
+              items={itemsQuery.data?.items ?? []}
+              totalItems={itemsQuery.data?.totalItems ?? selectedGroup.itemCount}
+              page={page}
+              pageSize={pageSize}
+              totalPages={itemsQuery.data?.totalPages ?? 1}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              loading={itemsQuery.isPending}
+              refreshing={itemsQuery.isPlaceholderData}
+              error={itemsQuery.isError}
+              reordering={reorderMutation.isPending}
+              exporting={exporting}
+              canModify={canModify}
+              onSearchChange={handleSearchChange}
+              onStatusFilterChange={handleStatusFilterChange}
+              onResetFilters={handleResetFilters}
+              onPageChange={setPage}
+              onPageSizeChange={(nextSize) => {
+                setPageSize(nextSize);
+                setPage(0);
+              }}
+              onRetry={() => void itemsQuery.refetch()}
+              onEditGroup={() =>
+                setGroupDialog({ open: true, mode: "edit", group: selectedGroup })
+              }
+              onDeleteGroup={() => setDeleteTarget({ type: "group", group: selectedGroup })}
+              onAddItem={() => setItemDialog({ open: true, mode: "create", item: null })}
+              onViewItem={(item) => setDetailItem(item)}
+              onEditItem={(item) => setItemDialog({ open: true, mode: "edit", item })}
+              onStopItem={(item) => setStopItem(item)}
+              onDeleteItem={(item) => setDeleteTarget({ type: "item", item })}
+              onReorder={(nextItems) => void handleReorder(nextItems)}
+              onExportExcel={() => void handleExportExcel(selectedGroup.id)}
+              onImportExcel={() => setImportDialogOpen(true)}
+            />
+          )}
+        </div>
       </div>
 
       {canModify && (

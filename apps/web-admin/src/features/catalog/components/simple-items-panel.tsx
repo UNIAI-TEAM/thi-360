@@ -73,8 +73,14 @@ import { pickName } from "../utils";
  * tên khi cột của chúng bị bỏ. Mỗi ngưỡng bên dưới là tổng bề rộng tối thiểu của bộ cột đang hiện cộng 6px dự
  * phòng, nên từ ngưỡng `stickyActions` trở lên bảng luôn vừa thẻ và không ô nào nằm dưới cột Thao tác.
  *
- * Dưới ngưỡng `stickyActions` (tablet) bộ cột tối thiểu không vừa: bảng cuộn ngang trong vùng có tên, nhận focus
- * bàn phím, và cột Thao tác thôi dính mép phải để không che dữ liệu ở vị trí cuộn đầu.
+ * Dưới ngưỡng `stickyActions` bộ cột tối thiểu không vừa: bảng cuộn ngang trong vùng có tên, nhận focus bàn phím,
+ * và cột Thao tác thôi dính mép phải để không che dữ liệu ở vị trí cuộn đầu.
+ *
+ * Thẻ hẹp hơn 416px (điện thoại, UNI-2586) thì bảng chuyển sang dạng gọn: cột Mã và Trạng thái nhập vào ô tên thành
+ * dòng phụ (mã, và chip trạng thái khi khác Hoạt động), các nút Sửa/Ngừng/Xóa gom vào menu "⋯" cạnh nút xem. Bộ cột
+ * gọn là sắp xếp 104 · tên 112 · thao tác 102 (người quản lý) hoặc tên 112 · thao tác 96 (người chỉ xem), vừa thẻ
+ * 328px ở cửa sổ 360px. Ngưỡng 416px nằm dưới bề rộng thẻ ở cửa sổ 1024px (khoảng 431px), nên từ 1024px trở lên
+ * bảng giữ nguyên như trước.
  */
 type ColumnLayout = {
   stickyActions: string;
@@ -90,7 +96,34 @@ type ColumnLayout = {
   summary: string;
   /** Phần các môn của dòng phụ: ẩn khi cột Các môn đã hiện. */
   summarySubjects: string;
+  /** Cột Mã và Trạng thái: ẩn khi thẻ hẹp hơn 416px (dạng gọn). */
+  full: string;
+  /** Dòng mã + trạng thái dưới tên ở dạng gọn: ẩn khi hai cột kia đã hiện. */
+  compactMeta: string;
+  /** Các nút Sửa/Ngừng/Xóa đứng riêng: chỉ hiện khi không ở dạng gọn. */
+  inlineActions: string;
+  /** Menu "⋯" gom các nút trên ở dạng gọn. */
+  menuActions: string;
 };
+
+const MANAGE_COMPACT = {
+  full: "hidden @min-[416px]:table-cell",
+  compactMeta: "@min-[416px]:hidden",
+  inlineActions: "hidden @min-[416px]:inline-flex",
+  menuActions: "@min-[416px]:hidden",
+};
+
+const VIEW_COMPACT = {
+  full: "hidden @min-[416px]:table-cell",
+  compactMeta: "@min-[416px]:hidden",
+  // Người chỉ xem chỉ có nút xem nên không có nút đứng riêng hay menu "⋯" nào để đổi.
+  inlineActions: "inline-flex",
+  menuActions: "hidden",
+};
+
+/** Mã của giá trị: ô nền `subtle`, một dòng ở cột Mã. */
+const CODE_CHIP =
+  "inline-block rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text";
 
 /** Chip môn học trong ô bảng: bản gọn cao 24px của chip tĩnh. */
 const STATIC_CHIP_COMPACT = `${STATIC_CHIP} h-6 px-2`;
@@ -110,11 +143,13 @@ const COLUMN_LAYOUTS: Record<"manage" | "view", Record<"simple" | "combination",
   manage: {
     simple: {
       ...SIMPLE_ONLY,
+      ...MANAGE_COMPACT,
       stickyActions: "@min-[672px]:sticky @min-[672px]:right-0",
       value: "hidden @min-[752px]:table-cell",
       nameEn: "hidden @min-[864px]:table-cell",
     },
     combination: {
+      ...MANAGE_COMPACT,
       stickyActions: "@min-[672px]:sticky @min-[672px]:right-0",
       subjects: "hidden @min-[840px]:table-cell",
       summarySubjects: "@min-[840px]:hidden",
@@ -131,11 +166,13 @@ const COLUMN_LAYOUTS: Record<"manage" | "view", Record<"simple" | "combination",
   view: {
     simple: {
       ...SIMPLE_ONLY,
+      ...VIEW_COMPACT,
       stickyActions: "@min-[480px]:sticky @min-[480px]:right-0",
       value: "hidden @min-[560px]:table-cell",
       nameEn: "hidden @min-[672px]:table-cell",
     },
     combination: {
+      ...VIEW_COMPACT,
       stickyActions: "@min-[480px]:sticky @min-[480px]:right-0",
       subjects: "hidden @min-[648px]:table-cell",
       summarySubjects: "@min-[648px]:hidden",
@@ -276,12 +313,12 @@ export function SimpleItemsPanel({
   // Lớp ẩn/hiện của từng cột theo đúng thứ tự cột, để hàng khung xương ẩn cùng lúc với tiêu đề.
   const columnVisibility = [
     ...(showReorder ? [""] : []),
-    "",
+    layout.full,
     "",
     layout.nameEn,
     ...(isCombinationGroup ? [layout.exam, layout.subjects, layout.version] : []),
     layout.value,
-    "",
+    layout.full,
     "",
   ];
   const colCount = columnVisibility.length;
@@ -401,9 +438,11 @@ export function SimpleItemsPanel({
       <div
         role="search"
         aria-label={t("filterFormLabel")}
-        className="flex flex-wrap items-center gap-2.5 px-5 pb-3.5"
+        // Thẻ hẹp hơn 416px (điện thoại): ô tìm kiếm hết chiều ngang, ô chọn trong lưới hai cột (một cột dưới
+        // 300px). Rộng hơn thì giữ hàng flex như cũ (thẻ ở cửa sổ 1024px rộng khoảng 431px).
+        className="grid grid-cols-1 gap-2.5 px-5 pb-3.5 @min-[300px]:grid-cols-2 @min-[416px]:flex @min-[416px]:flex-wrap @min-[416px]:items-center"
       >
-        <div className="min-w-56 flex-1">
+        <div className="col-span-full @min-[416px]:min-w-56 @min-[416px]:flex-1">
           <Input
             type="search"
             aria-label={t("searchItemsPlaceholder")}
@@ -413,7 +452,7 @@ export function SimpleItemsPanel({
             onChange={(event) => onSearchChange(event.target.value)}
           />
         </div>
-        <div className="w-45 shrink-0">
+        <div className="min-w-0 @min-[416px]:w-45 @min-[416px]:shrink-0">
           <Select
             aria-label={t("statusFilterLabel")}
             options={statusOptions}
@@ -469,7 +508,7 @@ export function SimpleItemsPanel({
                       <span className="sr-only">{t("dragColumnLabel")}</span>
                     </th>
                   )}
-                  <th scope="col" className="w-28 min-w-28 px-3 py-2.5">
+                  <th scope="col" className={cn("w-28 min-w-28 px-3 py-2.5", layout.full)}>
                     {t("columns.code")}
                   </th>
                   <th scope="col" className="min-w-28 px-3 py-2.5">
@@ -503,7 +542,10 @@ export function SimpleItemsPanel({
                   >
                     {t("columns.value")}
                   </th>
-                  <th scope="col" className="w-38 min-w-38 px-3 py-2.5 whitespace-nowrap">
+                  <th
+                    scope="col"
+                    className={cn("w-38 min-w-38 px-3 py-2.5 whitespace-nowrap", layout.full)}
+                  >
                     {t("columns.status")}
                   </th>
                   <th
@@ -742,14 +784,24 @@ function SortableItemRow({
           </div>
         </td>
       )}
-      <td className="px-3 py-2">
-        <span className="inline-block rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text">
-          {item.code}
-        </span>
+      <td className={cn("px-3 py-2", layout.full)}>
+        <span className={CODE_CHIP}>{item.code}</span>
       </td>
       <td className="px-3 py-2 font-medium text-text">
         {/* Tối đa hai dòng (DESIGN.md mục 5.13); tên đầy đủ có trong ngăn chi tiết. */}
         <span className="line-clamp-2 wrap-break-word">{item.nameVi}</span>
+        {/* Dạng gọn: cột Mã và Trạng thái nhập vào đây (chip trạng thái chỉ hiện khi khác Hoạt động). */}
+        <span
+          data-testid="catalog-item-compact-meta"
+          className={cn("mt-1 flex flex-wrap items-center gap-1.5 font-normal", layout.compactMeta)}
+        >
+          <span className={cn(CODE_CHIP, "max-w-full whitespace-normal wrap-anywhere")}>
+            {item.code}
+          </span>
+          {item.status !== "ACTIVE" && (
+            <StatusChip tone="neutral">{t(`statuses.${item.status}`)}</StatusChip>
+          )}
+        </span>
         {item.combination && (
           <span
             className={cn(
@@ -825,7 +877,7 @@ function SortableItemRow({
       >
         {item.value}
       </td>
-      <td className="px-3 py-2">
+      <td className={cn("px-3 py-2", layout.full)}>
         <StatusChip tone={item.status === "ACTIVE" ? "success" : "neutral"}>
           {t(`statuses.${item.status}`)}
         </StatusChip>
@@ -848,7 +900,7 @@ function SortableItemRow({
             className="text-primary-text"
           />
           {canModify && (
-            <>
+            <span className={cn("items-center gap-0.5", layout.inlineActions)}>
               <IconButton
                 icon={<Pencil />}
                 aria-label={t("editItem", { name: displayName })}
@@ -875,7 +927,38 @@ function SortableItemRow({
                 disabled={item.system}
                 onClick={onDelete}
               />
-            </>
+            </span>
+          )}
+          {canModify && (
+            <span className={layout.menuActions}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    icon={<MoreHorizontal />}
+                    aria-label={t("itemActionsLabel", { name: displayName })}
+                    tooltip={t("itemActionsLabel", { name: displayName })}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={onEdit}>
+                    <Pencil aria-hidden />
+                    <span>{t("editItem", { name: displayName })}</span>
+                  </DropdownMenuItem>
+                  {item.status === "ACTIVE" && (
+                    <DropdownMenuItem onSelect={onStop}>
+                      <Ban aria-hidden />
+                      <span>{t("stopItem", { name: displayName })}</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem destructive disabled={item.system} onSelect={onDelete}>
+                    <Trash2 aria-hidden />
+                    <span>
+                      {item.system ? t("systemItemLocked") : t("deleteItem", { name: displayName })}
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </span>
           )}
         </div>
       </td>

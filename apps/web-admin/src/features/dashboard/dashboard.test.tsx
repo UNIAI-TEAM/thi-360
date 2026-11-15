@@ -94,5 +94,10 @@ describe("DashboardView: bốn trạng thái", () => {
     expect(shortcut).toHaveClass("focus-visible:ring-primary-text");
     expect(shortcut.className).not.toContain("ring-primary-600/30");
     expect(screen.queryByRole("link", { name: /forbiddenItem/ })).not.toBeInTheDocument();
+
+    // UNI-2586: thẻ lối tắt co theo vùng nội dung; dưới 260px (cửa sổ 360px) một thẻ chiếm hết chiều ngang.
+    const list = shortcut.closest("ul")!;
+    expect(list).toHaveClass("grid-cols-[repeat(auto-fit,minmax(min(16.25rem,100%),1fr))]");
+    expect(list.className).not.toContain("minmax(16.25rem,1fr)");
   });
 });

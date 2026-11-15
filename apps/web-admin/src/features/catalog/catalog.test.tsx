@@ -805,6 +805,106 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
     );
   });
 
+  // UNI-2586: vùng nội dung 328px ở cửa sổ 360px. jsdom không có layout nên kiểm hợp đồng lớp.
+  it("thẻ hẹp: bảng ở dạng gọn, mã và trạng thái nhập vào ô tên, các thao tác gom vào menu ⋯", async () => {
+    const { api } = renderCatalog({ search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    await within(table).findByText("Toán học");
+
+    // Cột Mã và Trạng thái ẩn khi thẻ hẹp hơn 416px (dưới bề rộng thẻ ở cửa sổ 1024px, khoảng 431px).
+    for (const name of ["Mã", "Trạng thái"]) {
+      expect(within(table).getByRole("columnheader", { name })).toHaveClass(
+        "hidden",
+        "@min-[416px]:table-cell",
+      );
+    }
+
+    // Dòng phụ dưới tên: mã, và chip trạng thái chỉ khi khác Hoạt động.
+    const activeRow = within(table).getByText("Toán học").closest("tr")!;
+    const activeMeta = within(activeRow).getByTestId("catalog-item-compact-meta");
+    expect(activeMeta).toHaveClass("@min-[416px]:hidden");
+    expect(activeMeta.closest("td")).toBe(within(activeRow).getByText("Toán học").closest("td"));
+    expect(within(activeMeta).getByText("TOAN")).toHaveClass("wrap-anywhere");
+    expect(within(activeMeta).queryByText("Hoạt động")).toBeNull();
+    const inactiveRow = within(table).getByText("Địa lí").closest("tr")!;
+    expect(
+      within(within(inactiveRow).getByTestId("catalog-item-compact-meta")).getByText("Ngừng sử dụng"),
+    ).toBeInTheDocument();
+
+    // Nút Sửa/Ngừng/Xóa đứng riêng chỉ từ ngưỡng; dạng gọn còn nút xem và menu "⋯".
+    const editButton = within(activeRow).getByRole("button", { name: "Sửa Toán học" });
+    expect(editButton.parentElement).toHaveClass("hidden", "@min-[416px]:inline-flex");
+    expect(within(activeRow).getByRole("button", { name: "Chi tiết Toán học" }).parentElement).not.toHaveClass(
+      "hidden",
+    );
+    const menuButton = within(activeRow).getByRole("button", { name: "Thao tác khác với Toán học" });
+    expect(menuButton.parentElement).toHaveClass("@min-[416px]:hidden");
+
+    await userEvent.click(menuButton);
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Ngừng sử dụng Toán học" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Xóa Toán học" })).toBeInTheDocument();
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Sửa Toán học" }));
+    const dialog = await screen.findByRole("dialog", { name: "Sửa giá trị" });
+    expect(dialog).toBeInTheDocument();
+    expect(api.updateItem).not.toHaveBeenCalled();
+  });
+
+  it("thẻ hẹp, người chỉ xem: dạng gọn dưới 416px và không có menu ⋯", async () => {
+    renderCatalog({ permissions: ["CATALOG.VIEW"], search: "group=SUBJECT" });
+    const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+    const row = (await within(table).findByText("Toán học")).closest("tr")!;
+    expect(within(table).getByRole("columnheader", { name: "Mã" })).toHaveClass(
+      "hidden",
+      "@min-[416px]:table-cell",
+    );
+    expect(within(row).getByTestId("catalog-item-compact-meta")).toHaveClass("@min-[416px]:hidden");
+    expect(within(row).queryByRole("button", { name: "Thao tác khác với Toán học" })).toBeNull();
+  });
+
+  it("thẻ hẹp: ô tìm kiếm hết chiều ngang, ô chọn trạng thái trong lưới hai cột (một cột dưới 300px)", async () => {
+    renderCatalog({ search: "group=SUBJECT" });
+    const filters = await screen.findByRole("search", { name: viMessages.catalog.filterFormLabel });
+    expect(filters).toHaveClass(
+      "grid",
+      "grid-cols-1",
+      "@min-[300px]:grid-cols-2",
+      "@min-[416px]:flex",
+      "@min-[416px]:flex-wrap",
+    );
+    const searchBox = within(filters).getByRole("searchbox", { name: "Tìm theo mã hoặc tên" });
+    expect(searchBox.closest(".col-span-full")).not.toBeNull();
+    const status = within(filters).getByRole("combobox", { name: /Trạng thái/ });
+    expect(status.parentElement).toHaveClass("min-w-0", "@min-[416px]:w-45");
+    expect(status.parentElement).not.toHaveClass("w-45");
+  });
+
+  it("vùng nội dung hẹp: danh sách nhóm thu thành ô chọn, chọn nhóm khác đổi thẻ giá trị", async () => {
+    renderCatalog({ search: "group=SUBJECT" });
+    await screen.findByRole("heading", { level: 2, name: "Môn học" });
+
+    const groupsSection = screen.getByRole("region", { name: /^Danh mục/ });
+    expect(groupsSection).toHaveClass("w-full", "@2xl:w-66");
+    expect(groupsSection.className).not.toMatch(/(^|\s)lg:/);
+    const layout = groupsSection.parentElement!;
+    expect(layout).toHaveClass("flex-col", "@2xl:flex-row");
+    expect(layout.parentElement).toHaveClass("@container");
+
+    // Danh sách đầy đủ và ô tìm kiếm chỉ hiện từ @2xl; ô chọn chỉ hiện dưới @2xl.
+    const listButton = within(groupsSection).getByRole("button", { name: /Môn học/ });
+    expect(listButton.closest(".\\@2xl\\:flex")).toHaveClass("hidden");
+    expect(within(groupsSection).getByRole("searchbox", { name: "Tìm danh mục" }).parentElement?.parentElement)
+      .toHaveClass("hidden", "@2xl:block");
+    const picker = within(groupsSection).getByRole("combobox", { name: "Danh mục đang xem" });
+    expect(picker.parentElement).toHaveClass("@2xl:hidden");
+    expect(picker).toHaveTextContent("Môn học");
+
+    await userEvent.click(picker);
+    await userEvent.click(await screen.findByRole("option", { name: "Dạng câu" }));
+    expect(await screen.findByRole("heading", { level: 2, name: "Dạng câu" })).toBeInTheDocument();
+    expect(routerMock.search).toContain("group=QUESTION_FORMAT");
+  });
+
   it("bảng tràn ngang: khung cuộn thành vùng có tên, nhận focus bàn phím; hết tràn thì bỏ", async () => {
     const callbacks = installResizeObserver();
     renderCatalog({ search: "group=SUBJECT" });
@@ -1446,7 +1546,8 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(within(table).getByRole("columnheader", { name: "Các môn" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "Phiên bản" })).toBeInTheDocument();
 
-    expect(await within(table).findByText("QDA_QD01")).toBeInTheDocument();
+    // Mã có ở cột Mã và ở dòng phụ dưới tên (dạng gọn của thẻ hẹp); CSS chỉ hiện một trong hai.
+    expect(await within(table).findAllByText("QDA_QD01")).toHaveLength(2);
     expect(within(table).getByText("QĐ01")).toBeInTheDocument();
     expect(within(table).getByText("Đánh giá năng lực Bộ Quốc phòng")).toBeInTheDocument();
     expect(within(table).getByText("Toán học")).toBeInTheDocument();
@@ -2151,7 +2252,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
     const name = await screen.findByText("Hàm số");
-    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "line-clamp-2");
+    expect(name).toHaveClass("@min-[22rem]:min-w-[8rem]", "@min-[22rem]:flex-1", "line-clamp-2");
     expect(name).not.toHaveAttribute("title");
 
     // C-07: tiêu đề nhóm chia cột theo bề rộng thẻ; cụm nút không còn `shrink-0` ép cột tiêu đề về 0px.
@@ -2177,6 +2278,15 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(within(row).getByText("Toán học")).toHaveClass("@3xl:inline");
     expect(within(row).getByRole("img", { name: "Toán học" })).toHaveTextContent("+1");
     expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
+
+    // UNI-2586: cây hẹp (điện thoại) chỉ giữ nút "⋯" cuối dòng; nút thêm con (cũng có trong menu) hiện từ 22rem.
+    const addChild = within(row).getByRole("button", { name: "Thêm Bài vào Hàm số" });
+    expect(addChild).toHaveClass("hidden", "@min-[22rem]:inline-flex");
+    expect(within(row).getByRole("button", { name: "Thao tác của Hàm số" })).not.toHaveClass("hidden");
+    // Lề trong của khung cây nhỏ lại khi thẻ hẹp.
+    const tree = screen.getByRole("tree");
+    expect(tree).toHaveClass("p-1", "@min-[416px]:p-2");
+    expect(tree.parentElement).toHaveClass("p-1", "@min-[416px]:p-2");
   });
 
   it("cây là một điểm dừng Tab; Shift+F10 mở menu của dòng (có Thêm nút con), Escape trả focus về dòng (C-08)", async () => {

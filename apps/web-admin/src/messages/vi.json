@@ -302,6 +302,8 @@
     },
     "groupMenuLabel": "Thao tác danh mục",
     "groupMeta": "{code} · {kind} · {count, number} giá trị",
+    "groupPickerLabel": "Danh mục đang xem",
+    "groupPickerPlaceholder": "Chọn danh mục",
     "groupsErrorDescription": "Không tải được danh sách danh mục. Hãy thử lại.",
     "groupsErrorTitle": "Không tải được danh mục",
     "groupsMatchStatus": "{count, plural, =0 {Không có danh mục nào khớp từ khóa} other {Có # danh mục khớp từ khóa}}",
@@ -348,6 +350,7 @@
     "importExcel": "Nhập Excel",
     "inactiveGroupCreateHint": "Danh mục đang ngừng sử dụng nên không thể thêm giá trị mới.",
     "itemsCountStatus": "{count, plural, =0 {Không có giá trị nào} other {Có # giá trị}}",
+    "itemActionsLabel": "Thao tác khác với {name}",
     "itemDialog": {
       "codeHint": "Duy nhất trong danh mục, không phân biệt hoa thường.",
       "codeLabel": "Mã giá trị",
@@ -1594,6 +1597,7 @@
         "status": "Trạng thái",
         "users": "Tài khoản đang giữ"
       },
+      "countsSummary": "{permissions, plural, other {# quyền}} · {users, plural, other {# tài khoản đang giữ}}",
       "createButton": "+ Tạo vai trò",
       "deleteAria": "Xóa vai trò {name}",
       "deleteConfirmAction": "Xóa vai trò",

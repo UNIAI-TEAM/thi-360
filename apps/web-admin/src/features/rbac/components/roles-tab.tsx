@@ -48,6 +48,16 @@ import type {
 import { groupPermissionsByObject } from "./object-permission-picker";
 import { RoleDialog, type RoleDialogProps } from "./role-dialog";
 
+/**
+ * Bảng vai trò ở thẻ hẹp (dưới 40rem: điện thoại, tablet dọc): chỉ còn cột Vai trò và Thao tác; phạm vi, loại,
+ * trạng thái, số quyền và số tài khoản hiện thành dòng phụ dưới tên (`data-col-summary`). Cột phụ được nhận ra qua
+ * `data-col` trên nội dung do màn này vẽ, cùng cách với danh sách tài khoản (`users-list-view.tsx`).
+ */
+const COMPACT_ROLE_COLUMNS = [
+  "@container",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=secondary])]:hidden",
+].join(" ");
+
 export interface RolesTabProps {
   createOpen?: boolean;
   onCreateOpenChange?: (open: boolean) => void;
@@ -170,6 +180,18 @@ export function RolesTab({
     onCreateOpenChange?.(false);
   }
   const columns = useMemo<ColumnDef<RoleSummaryResponse>[]>(() => {
+    const accessChip = (r: RoleSummaryResponse) => (
+      <StatusChip tone={r.access === "MANAGE" ? "info" : "warning"}>
+        {t(`access.${r.access}`)}
+      </StatusChip>
+    );
+    const kindChip = (r: RoleSummaryResponse) =>
+      r.system ? (
+        <StatusChip tone="neutral">{t("rolesTab.kindSystem")}</StatusChip>
+      ) : (
+        <Chip variant="tag">{t("rolesTab.kindCustom")}</Chip>
+      );
+
     const baseColumns: ColumnDef<RoleSummaryResponse>[] = [
       {
         id: "role",
@@ -179,59 +201,68 @@ export function RolesTab({
           const r = row.original;
           const displayName = resolveRoleName(rbacT, r.code, r.name, r.system);
           return (
-            <div className="py-2">
-              <div className="font-semibold text-text">{displayName}</div>
-              <div className="text-caption text-text-muted">{r.code}</div>
+            <div className="min-w-36 py-2">
+              <div className="font-semibold wrap-break-word text-text">{displayName}</div>
+              <div className="text-caption wrap-anywhere text-text-muted">{r.code}</div>
+              {/*
+                Thẻ hẹp (dưới 40rem): các cột Phạm vi, Số quyền, Số người, Loại, Trạng thái ẩn đi và hiện ở đây dưới
+                tên vai trò. Chip trạng thái chỉ hiện khi khác Hoạt động.
+              */}
+              <div data-col-summary className="mt-1.5 flex flex-col gap-1 @min-[40rem]:hidden">
+                <div className="flex flex-wrap gap-1.5">
+                  {accessChip(r)}
+                  {kindChip(r)}
+                  {r.status !== "ACTIVE" && (
+                    <StatusChip tone="neutral">{t("rolesTab.statusInactive")}</StatusChip>
+                  )}
+                </div>
+                <div className="text-caption text-text-secondary tabular-nums">
+                  {t("rolesTab.countsSummary", {
+                    permissions: r.permissionCount,
+                    users: r.userCount,
+                  })}
+                </div>
+              </div>
             </div>
           );
         },
       },
       {
         id: "access",
-        header: t("rolesTab.columns.scope"),
+        header: () => <span data-col="secondary">{t("rolesTab.columns.scope")}</span>,
         enableSorting: false,
-        cell: ({ row }) => {
-          const scope = row.original.access;
-          return (
-            <StatusChip tone={scope === "MANAGE" ? "info" : "warning"}>
-              {t(`access.${scope}`)}
-            </StatusChip>
-          );
-        },
+        cell: ({ row }) => <span data-col="secondary">{accessChip(row.original)}</span>,
       },
       {
         id: "permissionCount",
-        header: t("rolesTab.columns.permissions"),
+        header: () => <span data-col="secondary">{t("rolesTab.columns.permissions")}</span>,
         enableSorting: false,
-        cell: ({ row }) => row.original.permissionCount,
+        cell: ({ row }) => <span data-col="secondary">{row.original.permissionCount}</span>,
       },
       {
         id: "userCount",
-        header: t("rolesTab.columns.users"),
+        header: () => <span data-col="secondary">{t("rolesTab.columns.users")}</span>,
         enableSorting: false,
-        cell: ({ row }) => row.original.userCount,
+        cell: ({ row }) => <span data-col="secondary">{row.original.userCount}</span>,
       },
       {
         id: "kind",
-        header: t("rolesTab.columns.kind"),
+        header: () => <span data-col="secondary">{t("rolesTab.columns.kind")}</span>,
         enableSorting: false,
-        cell: ({ row }) =>
-          row.original.system ? (
-            <StatusChip tone="neutral">{t("rolesTab.kindSystem")}</StatusChip>
-          ) : (
-            <Chip variant="tag">{t("rolesTab.kindCustom")}</Chip>
-          ),
+        cell: ({ row }) => <span data-col="secondary">{kindChip(row.original)}</span>,
       },
       {
         id: "status",
-        header: t("rolesTab.columns.status"),
+        header: () => <span data-col="secondary">{t("rolesTab.columns.status")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <StatusChip tone={row.original.status === "ACTIVE" ? "success" : "neutral"}>
-            {row.original.status === "ACTIVE"
-              ? t("rolesTab.statusActive")
-              : t("rolesTab.statusInactive")}
-          </StatusChip>
+          <span data-col="secondary">
+            <StatusChip tone={row.original.status === "ACTIVE" ? "success" : "neutral"}>
+              {row.original.status === "ACTIVE"
+                ? t("rolesTab.statusActive")
+                : t("rolesTab.statusInactive")}
+            </StatusChip>
+          </span>
         ),
       },
       {
@@ -362,53 +393,55 @@ export function RolesTab({
           {t("rolesTab.totalCount", { count: total })}
         </div>
 
-        <Table
-          aria-label={t("tabs.roles")}
-          columns={columns}
-          data={items}
-          getRowId={(row) => row.id}
-          loading={rolesQuery.isPending}
-          refreshing={rolesQuery.isPlaceholderData}
-          error={
-            rolesQuery.isError ? (
+        <div className={COMPACT_ROLE_COLUMNS}>
+          <Table
+            aria-label={t("tabs.roles")}
+            columns={columns}
+            data={items}
+            getRowId={(row) => row.id}
+            loading={rolesQuery.isPending}
+            refreshing={rolesQuery.isPlaceholderData}
+            error={
+              rolesQuery.isError ? (
+                <EmptyState
+                  icon={<TriangleAlert />}
+                  title={t("rolesTab.errorTitle")}
+                  description={t("rolesTab.errorDescription")}
+                  action={
+                    <Button onClick={() => void rolesQuery.refetch()}>
+                      {t("actions.retry")}
+                    </Button>
+                  }
+                />
+              ) : undefined
+            }
+            empty={
               <EmptyState
-                icon={<TriangleAlert />}
-                title={t("rolesTab.errorTitle")}
-                description={t("rolesTab.errorDescription")}
+                icon={<Shield />}
+                title={t("rolesTab.emptyTitle")}
+                description={t("rolesTab.emptyDescription")}
                 action={
-                  <Button onClick={() => void rolesQuery.refetch()}>
-                    {t("actions.retry")}
-                  </Button>
+                  canModify ? (
+                    <Button
+                      onClick={() => {
+                        if (onCreateOpenChange) {
+                          onCreateOpenChange(true);
+                        } else {
+                          setDialogState({
+                            open: true,
+                            mode: "create",
+                          });
+                        }
+                      }}
+                    >
+                      {t("rolesTab.createButton")}
+                    </Button>
+                  ) : undefined
                 }
               />
-            ) : undefined
-          }
-          empty={
-            <EmptyState
-              icon={<Shield />}
-              title={t("rolesTab.emptyTitle")}
-              description={t("rolesTab.emptyDescription")}
-              action={
-                canModify ? (
-                  <Button
-                    onClick={() => {
-                      if (onCreateOpenChange) {
-                        onCreateOpenChange(true);
-                      } else {
-                        setDialogState({
-                          open: true,
-                          mode: "create",
-                        });
-                      }
-                    }}
-                  >
-                    {t("rolesTab.createButton")}
-                  </Button>
-                ) : undefined
-              }
-            />
-          }
-        />
+            }
+          />
+        </div>
 
         {total > 0 && (
           <div className="border-t border-border px-4 py-3">
