@@ -1288,6 +1288,14 @@
         "description": "Greeting and permission-based shortcuts",
         "label": "Dashboard"
       },
+      "exams": {
+        "description": "Exams, structure and matrix, checks and publishing",
+        "label": "Exams"
+      },
+      "questions": {
+        "description": "Questions by subject, grade, difficulty and knowledge; file import",
+        "label": "Question bank"
+      },
       "rbac": {
         "description": "Roles, permission catalog, and bulk assignment",
         "label": "Permissions"
@@ -2122,6 +2130,127 @@
       "usernameInvalid": "Username must be 4–30 characters, start with a letter or digit, and use only ASCII letters, digits, and . _ @ -.",
       "usernameRequired": "Please enter a username.",
       "usernameReserved": "This username is reserved by the system."
+    }
+  },
+  "mockData": {
+    "title": "Sample data.",
+    "description": "This screen is not connected to the backend yet; changes last until you reload the page.",
+    "placeholderTitle": "Screen in progress",
+    "placeholderDescription": "The {screen} screen is being built in the mockup round."
+  },
+  "content": {
+    "questionType": {
+      "SINGLE_CHOICE": "Single choice",
+      "MULTIPLE_CHOICE": "Multiple choice",
+      "TRUE_FALSE": "True / False",
+      "FILL_IN": "Fill in the answer",
+      "DRAG_DROP": "Drag and drop",
+      "QUESTION_SET": "Question set"
+    },
+    "questionStatus": {
+      "DRAFT": "Draft",
+      "READY": "Ready",
+      "RETIRED": "Retired"
+    },
+    "knowledgePicker": {
+      "title": "Choose knowledge (MAPID)",
+      "description": "Only the Knowledge level can be selected.",
+      "subject": "Subject",
+      "grade": "Grade",
+      "allGrades": "All grades",
+      "search": "Search knowledge",
+      "searchPlaceholder": "Search by code or name",
+      "treeTitle": "Knowledge structure",
+      "selectedTitle": "Selected ({count, number})",
+      "primary": "Primary knowledge",
+      "primaryBadge": "Primary",
+      "primaryHint": "A primary knowledge item is required before a question can be Ready.",
+      "noneSelected": "No knowledge selected.",
+      "empty": "No knowledge matches the filters.",
+      "loadError": "Could not load the knowledge tree.",
+      "retry": "Retry",
+      "expand": "Expand {name}",
+      "collapse": "Collapse {name}",
+      "remove": "Remove {code}",
+      "cancel": "Cancel",
+      "apply": "Apply ({count, number})"
+    }
+  },
+  "questions": {
+    "list": {
+      "title": "Question bank"
+    },
+    "detail": {
+      "title": "Question details"
+    },
+    "editor": {
+      "title": "Edit question"
+    }
+  },
+  "questionImport": {
+    "title": "Import questions from a file"
+  },
+  "exams": {
+    "list": {
+      "title": "Exams"
+    },
+    "general": {
+      "title": "Exam details"
+    },
+    "structure": {
+      "title": "Structure and matrix"
+    },
+    "review": {
+      "title": "Check and preview"
+    },
+    "versions": {
+      "title": "Versions and publishing"
+    },
+    "editor": {
+      "backToList": "Exam list",
+      "tabsLabel": "Exam sections",
+      "tabs": {
+        "general": "Details",
+        "structure": "Structure and matrix",
+        "review": "Check and preview",
+        "versions": "Versions and publishing"
+      },
+      "errorTitle": "Could not load the exam",
+      "errorDescription": "Check your connection and try again.",
+      "retry": "Retry",
+      "notFoundTitle": "Exam not found",
+      "notFoundDescription": "The exam does not exist or has been deleted."
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Live",
+      "DISCONTINUED": "Discontinued",
+      "servingVersion": "Live v{version}",
+      "unpublishedChanges": "Unpublished changes"
+    },
+    "checkStatus": {
+      "UNCHECKED": "Not checked",
+      "VALID": "Valid",
+      "INVALID": "Invalid",
+      "NEEDS_RECHECK": "Needs recheck",
+      "issues": "{count, plural, one {# issue} other {# issues}}"
+    },
+    "kind": {
+      "HSA": "HSA",
+      "QDA": "QDA"
+    },
+    "format": {
+      "FULL": "FULL",
+      "SINGLE": "Single subject"
+    },
+    "summary": {
+      "code": "Code",
+      "kind": "Exam",
+      "format": "Format",
+      "questions": "Questions",
+      "duration": "Duration",
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "attempts": "Attempts"
     }
   }
 }

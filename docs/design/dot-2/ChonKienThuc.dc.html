@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog chọn kiến thức (MAPID)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</helmet>
+<div style="width: 1040px; height: 820px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+<dialog open aria-labelledby="dlg-title" aria-describedby="dlg-sub" style="position: static; margin: 0; border: 0; padding: 0; max-width: 100%; width: 100%; height: 100%; box-sizing: border-box; background: #FFFFFF; color: #11181C; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); overflow: hidden">
+<form method="dialog" style="height: 100%; box-sizing: border-box; padding: 24px 28px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+    <div>
+      <h2 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Chọn kiến thức (MAPID)</h2>
+      <div id="dlg-sub" style="color: #54545A">Câu hỏi đang soạn: Toán · Lớp 11. Chỉ chọn được ở cấp Kiến thức.</div>
+    </div>
+    <button type="submit" value="cancel" aria-label="Đóng" style="flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+  </div>
+
+  <search style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px">
+    <label style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: #3A3A42">Môn học
+      <select name="subject" style="height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; font-size: 14px; color: #11181C; background: #FFFFFF"><option selected>Toán</option><option>Vật lí</option><option>Hóa học</option></select>
+    </label>
+    <label style="flex: 1 1 120px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: #3A3A42">Khối lớp
+      <select name="grade" style="height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; font-size: 14px; color: #11181C; background: #FFFFFF"><option>Lớp 10</option><option selected>Lớp 11</option><option>Lớp 12</option></select>
+    </label>
+    <label style="flex: 3 1 300px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: #3A3A42">Tìm kiến thức
+      <input type="search" name="q" autofocus placeholder="Tìm theo mã hoặc tên" autocorrect="off" spellcheck="false" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; font-size: 14px; color: #11181C">
+    </label>
+  </search>
+
+  <div style="flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px">
+
+    <section aria-labelledby="tree-title" style="min-height: 0; border: 1px solid #E8E8EC; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden">
+      <div style="padding: 10px 14px; border-bottom: 1px solid #E8E8EC; background: #FAFAFB; display: flex; align-items: center; justify-content: space-between; gap: 8px">
+        <h3 id="tree-title" style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #54545A">Cấu trúc kiến thức · Chương › Bài › Kiến thức</h3>
+        <span style="font-size: 12.5px; color: #54545A">Toán · Lớp 11</span>
+      </div>
+      <ul role="list" style="list-style: none; margin: 0; padding: 6px; overflow: auto; flex: 1 1 auto">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="14">
+          <li style="{{r.rowStyle}}">
+            <sc-if value="{{r.branch}}" hint-placeholder-val="{{true}}">
+              <button type="button" aria-expanded="{{r.expanded}}" aria-label="{{r.toggleLabel}}" onClick="{{r.toggle}}" style="width: 32px; height: 32px; flex: none; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.chevron}}"></path></svg></button>
+              <span style="flex: none; height: 24px; padding: 0 8px; border-radius: 6px; background: #F1F2F4; color: #3A3A42; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; white-space: nowrap">{{r.code}}</span>
+              <span class="ell" style="flex: 1 1 auto; min-width: 0; font-weight: 500">{{r.name}}</span>
+              <span style="flex: none; font-size: 12.5px; color: #54545A; white-space: nowrap">{{r.leafCount}}</span>
+            </sc-if>
+            <sc-if value="{{r.leaf}}" hint-placeholder-val="{{false}}">
+              <label style="flex: 1 1 auto; min-width: 0; min-height: 40px; display: flex; align-items: center; gap: 10px; cursor: pointer">
+                <input type="checkbox" checked="{{r.checked}}" onChange="{{r.check}}" style="flex: none; width: 18px; height: 18px; margin: 0 7px; accent-color: #059669">
+                <span style="flex: none; height: 24px; padding: 0 8px; border-radius: 6px; background: #F1F2F4; color: #3A3A42; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; white-space: nowrap">{{r.code}}</span>
+                <span class="ell" style="flex: 1 1 auto; min-width: 0">{{r.name}}</span>
+              </label>
+            </sc-if>
+          </li>
+        </sc-for>
+      </ul>
+      <div style="padding: 8px 14px; border-top: 1px solid #E8E8EC; font-size: 12.5px; color: #54545A">Dữ liệu cây là mẫu, chỉ để minh họa. Cây thật lấy từ danh mục Cấu trúc kiến thức, chỉ hiện nút đang hoạt động.</div>
+    </section>
+
+    <section aria-labelledby="sel-title" style="min-height: 0; border: 1px solid #E8E8EC; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden">
+      <div style="padding: 10px 14px; border-bottom: 1px solid #E8E8EC; background: #FAFAFB">
+        <h3 id="sel-title" style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #54545A">Đã chọn ({{selectedCount}})</h3>
+      </div>
+      <fieldset style="margin: 0; padding: 12px 14px; border: 0; min-width: 0; overflow: auto; flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px">
+        <legend class="vh">Kiến thức chính</legend>
+        <p id="main-hint" style="margin: 0; font-size: 12.5px; line-height: 19px; color: #54545A">Cần có kiến thức chính để chuyển câu hỏi sang Sẵn sàng.</p>
+        <sc-for list="{{selected}}" as="s" hint-placeholder-count="2">
+          <div style="border: 1px solid #E8E8EC; border-radius: 10px; padding: 10px 6px 10px 12px; display: flex; align-items: flex-start; gap: 8px">
+            <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+              <div style="font-weight: 600">{{s.code}} {{s.name}}</div>
+              <div style="font-size: 12.5px; line-height: 19px; color: #54545A">{{s.path}}</div>
+              <label style="display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px">
+                <input type="radio" name="main" checked="{{s.isMain}}" onChange="{{s.makeMain}}" aria-describedby="main-hint" style="width: 18px; height: 18px; margin: 0; accent-color: #059669">
+                Kiến thức chính
+                <sc-if value="{{s.isMain}}" hint-placeholder-val="{{false}}">
+                  <span style="height: 22px; padding: 0 8px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center">Chính</span>
+                </sc-if>
+              </label>
+            </div>
+            <button type="button" aria-label="{{s.removeLabel}}" onClick="{{s.remove}}" style="flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #B91C1C; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM8 12h8"></path></svg></button>
+          </div>
+        </sc-for>
+        <sc-if value="{{noneSelected}}" hint-placeholder-val="{{false}}">
+          <p style="margin: 0; color: #54545A">Chưa chọn kiến thức nào. Tick ở cây bên trái để thêm.</p>
+        </sc-if>
+      </fieldset>
+      <div style="padding: 10px 14px; border-top: 1px solid #E8E8EC; font-size: 12.5px; line-height: 19px; color: #3A3A42; display: flex; gap: 8px">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01"></path></svg>
+        <span>Một câu gắn nhiều kiến thức vẫn chỉ được chọn một lần trong cùng đề.</span>
+      </div>
+    </section>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button type="submit" value="cancel" style="height: 40px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42">Hủy</button>
+    <button type="submit" value="apply" style="height: 40px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 0; background: #059669; color: #FFFFFF">Áp dụng ({{selectedCount}})</button>
+  </div>
+</form>
+</dialog>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":820}}'>
+class Component extends DCLogic {
+tree() {
+return [
+{ code: '1D4', name: 'Giới hạn', kids: [
+{ code: '1D4-1', name: 'Giới hạn của dãy số', kids: [
+{ code: '1D4-1-1', name: 'Giới hạn hữu hạn của dãy số' },
+{ code: '1D4-1-2', name: 'Các giới hạn đặc biệt' },
+{ code: '1D4-1-3', name: 'Tổng cấp số nhân lùi vô hạn' }
+] },
+{ code: '1D4-2', name: 'Giới hạn của hàm số', kids: [
+{ code: '1D4-2-1', name: 'Giới hạn hữu hạn tại một điểm' },
+{ code: '1D4-2-2', name: 'Giới hạn một bên' },
+{ code: '1D4-2-3', name: 'Dạng vô định 0/0' },
+{ code: '1D4-2-4', name: 'Giới hạn tại vô cực' }
+] },
+{ code: '1D4-3', name: 'Hàm số liên tục', kids: [
+{ code: '1D4-3-1', name: 'Hàm số liên tục tại một điểm' },
+{ code: '1D4-3-2', name: 'Ứng dụng tính liên tục' }
+] }
+] },
+{ code: '1D5', name: 'Đạo hàm', kids: [
+{ code: '1D5-1', name: 'Định nghĩa và ý nghĩa của đạo hàm', kids: [
+{ code: '1D5-1-1', name: 'Đạo hàm tại một điểm' },
+{ code: '1D5-1-2', name: 'Phương trình tiếp tuyến' }
+] },
+{ code: '1D5-2', name: 'Quy tắc tính đạo hàm', kids: [
+{ code: '1D5-2-1', name: 'Đạo hàm của tổng, hiệu, tích, thương' },
+{ code: '1D5-2-2', name: 'Đạo hàm của hàm hợp' },
+{ code: '1D5-2-3', name: 'Đạo hàm của hàm số lượng giác' }
+] }
+] }
+];
+}
+leaves(n) {
+return n.kids ? n.kids.reduce((a, k) => a + this.leaves(k), 0) : 1;
+}
+renderVals() {
+const s = this.state || {};
+const open = s.open || { '1D4': true, '1D4-2': true, '1D5': true };
+const picked = s.picked || ['1D4-2-3', '1D4-2-4'];
+const main = s.main !== undefined ? s.main : '1D4-2-3';
+const rows = [];
+const info = {};
+const walk = (n, depth, trail) => {
+const path = trail.concat([n.code + ' ' + n.name]);
+const indent = 'padding-left: ' + (depth * 24) + 'px; ';
+const base = indent + 'display: flex; align-items: center; gap: 8px; min-height: 40px; padding-right: 8px; border-radius: 8px; ';
+if (n.kids) {
+const isOpen = !!open[n.code];
+rows.push({ branch: true, leaf: false, code: n.code, name: n.name, leafCount: this.leaves(n) + ' kiến thức',
+expanded: isOpen ? 'true' : 'false', chevron: isOpen ? 'M6 9l6 6 6-6' : 'M9 18l6-6-6-6',
+toggleLabel: (isOpen ? 'Thu gọn ' : 'Mở rộng ') + n.code + ' ' + n.name,
+toggle: () => this.setState({ open: Object.assign({}, open, { [n.code]: !isOpen }) }),
+rowStyle: base });
+if (isOpen) n.kids.forEach((k) => walk(k, depth + 1, path));
+} else {
+const on = picked.indexOf(n.code) >= 0;
+info[n.code] = { name: n.name, path: path.join(' › ') };
+rows.push({ branch: false, leaf: true, code: n.code, name: n.name, checked: on,
+check: () => {
+const next = on ? picked.filter((c) => c !== n.code) : picked.concat([n.code]);
+let m = main;
+if (on && main === n.code) m = next[0] || null;
+if (!on && !m) m = n.code;
+this.setState({ picked: next, main: m });
+},
+rowStyle: base + (on ? 'background: #ECFDF5; ' : '') });
+}
+};
+const t = this.tree();
+t.forEach((n) => walk(n, 0, []));
+const all = {};
+const collect = (n, trail) => { const p = trail.concat([n.code + ' ' + n.name]); if (n.kids) n.kids.forEach((k) => collect(k, p)); else all[n.code] = { name: n.name, path: p.join(' › ') }; };
+t.forEach((n) => collect(n, []));
+const selected = picked.map((c) => ({
+code: c, name: all[c].name, path: all[c].path, isMain: c === main,
+makeMain: () => this.setState({ main: c }),
+removeLabel: 'Bỏ chọn kiến thức ' + c + ' ' + all[c].name,
+remove: () => {
+const next = picked.filter((x) => x !== c);
+this.setState({ picked: next, main: main === c ? (next[0] || null) : main });
+}
+}));
+return { rows, selected, selectedCount: picked.length, noneSelected: picked.length === 0 };
+}
+}
+</script>
+</body>
+</html>

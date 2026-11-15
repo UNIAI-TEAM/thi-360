@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Nhập câu hỏi · Kiểm tra và xem trước</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tab{position:relative}
+[aria-current="page"].tab::after,[aria-selected="true"].tab::after{content:"";position:absolute;inset:auto 8px 0;border-bottom:2px solid currentColor}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 1120px; display: flex; flex-wrap: wrap">
+
+<nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+<div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+<div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+</div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="14">
+<sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+<div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+</sc-if>
+<sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+<a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+<span>{{n.label}}</span>
+</a>
+</sc-if>
+</sc-for>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+<nav aria-label="Đường dẫn" style="min-width: 0; color: #54545A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Nội dung <span aria-hidden="true">›</span> <a href="NganHangCauHoi.dc.html" style="text-decoration: none">Ngân hàng câu hỏi</a> <span aria-hidden="true">›</span> <strong aria-current="page" style="color: #11181C; font-weight: 600">Nhập từ tệp</strong></nav>
+<button type="button" aria-haspopup="menu" style="flex: none; height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">CA</span>
+<span>content.admin</span>
+</button>
+</header>
+
+<main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div>
+<h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Nhập câu hỏi từ tệp</h1>
+<p style="margin: 2px 0 0; color: #54545A">ngan-hang-toan-11.xlsx · trang tính “Câu hỏi”</p>
+</div>
+
+<ol aria-label="Các bước nhập" style="list-style: none; margin: 0; padding: 12px 16px; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px 28px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+<li aria-current="{{s.current}}" style="display: flex; align-items: center; gap: 10px">
+<span aria-hidden="true" style="{{s.dot}}"><sc-if value="{{s.done}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if><sc-if value="{{s.notDone}}" hint-placeholder-val="{{true}}">{{s.num}}</sc-if></span>
+<span style="display: flex; flex-direction: column"><span style="{{s.text}}">{{s.label}}</span><span style="font-size: 12px; line-height: 18px; color: #54545A">{{s.state}}</span></span>
+</li>
+</sc-for>
+</ol>
+
+<dl aria-label="Tóm tắt kiểm tra" style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px">
+<div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column-reverse; gap: 2px">
+<dt style="color: #54545A; font-size: 13px">dòng đọc được</dt>
+<dd style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums">248</dd>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column-reverse; gap: 2px">
+<dt style="color: #54545A; font-size: 13px">câu hợp lệ · gồm 4 câu chùm = 18 câu con</dt>
+<dd style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700; color: #047857; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>231</dd>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column-reverse; gap: 2px">
+<dt style="color: #54545A; font-size: 13px">dòng lỗi · không nhập</dt>
+<dd style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700; color: #B91C1C; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM15 9l-6 6M9 9l6 6"></path></svg>9</dd>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column-reverse; gap: 2px">
+<dt style="color: #54545A; font-size: 13px">câu trùng · sẽ bỏ qua</dt>
+<dd style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700; color: #3A3A42; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM4 16V4h12"></path></svg>8</dd>
+</div>
+</dl>
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px">
+
+<section aria-label="Kết quả kiểm tra theo dòng" style="flex: 999 1 640px; min-width: 0; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+<div role="tablist" aria-label="Lọc kết quả kiểm tra" style="display: flex; gap: 4px; padding: 8px 12px 0; border-bottom: 1px solid #E8E8EC; overflow-x: auto">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<button type="button" role="tab" id="{{t.id}}" aria-selected="{{t.selected}}" class="tab" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button>
+</sc-for>
+</div>
+
+<div role="tabpanel" aria-labelledby="tab-loi" hidden="{{hideErr}}">
+<div role="region" tabindex="0" aria-labelledby="err-cap" style="overflow: auto; max-height: 620px">
+<table style="width: 100%; min-width: 860px; border-collapse: separate; border-spacing: 0">
+<caption id="err-cap" class="sr-only">9 dòng lỗi</caption>
+<thead style="position: sticky; top: 0; z-index: 1">
+<tr style="text-align: left; font-size: 13px; color: #54545A">
+<th scope="col" style="padding: 12px 16px; width: 64px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Dòng</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Cột</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Mã nguồn</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Lỗi</th>
+<th scope="col" style="padding: 12px 16px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Cách sửa</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{errors}}" as="e" hint-placeholder-count="9">
+<tr style="{{e.rowStyle}}">
+<th scope="row" style="padding: 12px 16px; text-align: left; font-weight: 600; vertical-align: top; border-bottom: 1px solid #E8E8EC; font-variant-numeric: tabular-nums">{{e.line}}</th>
+<td style="padding: 12px 8px; vertical-align: top; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{e.col}}</td>
+<td style="padding: 12px 8px; vertical-align: top; border-bottom: 1px solid #E8E8EC; white-space: nowrap; color: #3A3A42">{{e.code}}</td>
+<td style="padding: 12px 8px; vertical-align: top; border-bottom: 1px solid #E8E8EC; color: #B91C1C"><span style="display: flex; align-items: flex-start; gap: 6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM15 9l-6 6M9 9l6 6"></path></svg><span style="text-wrap: pretty">{{e.error}}</span></span></td>
+<td style="padding: 12px 16px; vertical-align: top; border-bottom: 1px solid #E8E8EC; color: #3A3A42; text-wrap: pretty">{{e.fix}}<sc-if value="{{e.viewing}}" hint-placeholder-val="{{false}}"><span style="display: block; margin-top: 4px; font-size: 12.5px; font-weight: 600; color: #047857">Đang xem trước bên phải</span></sc-if></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+
+<div role="tabpanel" aria-labelledby="tab-trung" hidden="{{hideDup}}">
+<div role="region" tabindex="0" aria-labelledby="dup-cap" style="overflow: auto">
+<table style="width: 100%; min-width: 720px; border-collapse: separate; border-spacing: 0">
+<caption id="dup-cap" class="sr-only">8 câu trùng sẽ bỏ qua</caption>
+<thead style="position: sticky; top: 0; z-index: 1">
+<tr style="text-align: left; font-size: 13px; color: #54545A">
+<th scope="col" style="padding: 12px 16px; width: 64px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Dòng</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Mã nguồn</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Câu đã có</th>
+<th scope="col" style="padding: 12px 16px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Xử lý</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{dups}}" as="d" hint-placeholder-count="2">
+<tr style="height: 52px">
+<th scope="row" style="padding: 0 16px; text-align: left; font-weight: 600; border-bottom: 1px solid #E8E8EC; font-variant-numeric: tabular-nums">{{d.line}}</th>
+<td style="padding: 0 8px; border-bottom: 1px solid #E8E8EC">{{d.code}}</td>
+<td style="padding: 0 8px; border-bottom: 1px solid #E8E8EC"><a href="CauHoi1DapAnChiTiet.dc.html" style="font-weight: 600; text-decoration: none">{{d.existing}}</a></td>
+<td style="padding: 0 16px; border-bottom: 1px solid #E8E8EC; color: #3A3A42">Trùng Mã nguồn — bỏ qua, không tạo bản sao</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; padding: 12px 16px; color: #54545A; font-size: 13px">Hiển thị 2 trên 8 câu trùng.</p>
+</div>
+
+<div role="tabpanel" aria-labelledby="tab-hople" hidden="{{hideOk}}">
+<div role="region" tabindex="0" aria-labelledby="ok-cap" style="overflow: auto">
+<table style="width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0">
+<caption id="ok-cap" class="sr-only">231 câu hợp lệ</caption>
+<thead style="position: sticky; top: 0; z-index: 1">
+<tr style="text-align: left; font-size: 13px; color: #54545A">
+<th scope="col" style="padding: 12px 16px; width: 64px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Dòng</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Mã nguồn</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Dạng câu</th>
+<th scope="col" style="padding: 12px 8px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Môn · Khối · Mức độ</th>
+<th scope="col" style="padding: 12px 16px; font-weight: 600; background: #FAFAFB; border-bottom: 1px solid #E8E8EC">Kiến thức (MAPID)</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{valid}}" as="v" hint-placeholder-count="4">
+<tr style="height: 52px">
+<th scope="row" style="padding: 0 16px; text-align: left; font-weight: 600; border-bottom: 1px solid #E8E8EC; font-variant-numeric: tabular-nums">{{v.line}}</th>
+<td style="padding: 0 8px; border-bottom: 1px solid #E8E8EC">{{v.code}}</td>
+<td style="padding: 0 8px; border-bottom: 1px solid #E8E8EC">{{v.type}}</td>
+<td style="padding: 0 8px; border-bottom: 1px solid #E8E8EC">{{v.meta}}</td>
+<td style="padding: 0 16px; border-bottom: 1px solid #E8E8EC; color: #3A3A42">{{v.mapid}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; padding: 12px 16px; color: #54545A; font-size: 13px">Hiển thị 4 trên 231 câu hợp lệ · 20 dòng mỗi trang.</p>
+</div>
+</section>
+
+<section aria-labelledby="pv-h" style="flex: 1 1 340px; min-width: 0; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h2 id="pv-h" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Xem trước dòng 17</h2>
+<span style="{{chipBad}}"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Có lỗi</span>
+</div>
+<div style="border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #FAFAFB">
+<div style="font-size: 12.5px; color: #54545A">Câu 1 · Trắc nghiệm 1 đáp án · như học viên thấy</div>
+<p style="margin: 0; font-size: 15px; line-height: 24px">Tính giới hạn <span style="white-space: nowrap">lim<sub style="font-size: 11px">x→2</sub> (x² − 4) / (x − 2)</span>.</p>
+<ul aria-label="Các phương án" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 9999px; border: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: center; font-weight: 600">A</span><span>0</span></li>
+<li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 9999px; border: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: center; font-weight: 600">B</span><span>2</span></li>
+<li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #059669; border-radius: 10px; background: #ECFDF5"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 9999px; background: #059669; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600">C</span><span style="flex: 1 1 auto">4</span><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; color: #047857"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Đáp án đúng</span></li>
+<li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 9999px; border: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: center; font-weight: 600">D</span><span>Không tồn tại</span></li>
+</ul>
+</div>
+<dl style="margin: 0; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 12px">
+<dt style="color: #54545A">Mã nguồn</dt><dd style="margin: 0">TOAN11-0016</dd>
+<dt style="color: #54545A">Môn · Khối</dt><dd style="margin: 0">Toán · Lớp 11</dd>
+<dt style="color: #54545A">Mức độ</dt>
+<dd style="margin: 0; display: flex; flex-direction: column; gap: 2px"><span>Vận dụng thấp</span><span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #B91C1C"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM15 9l-6 6M9 9l6 6"></path></svg>Không có trong danh mục Mức độ câu hỏi</span></dd>
+<dt style="color: #54545A">Kiến thức (MAPID)</dt><dd style="margin: 0">1D4-2-3 · Giới hạn › Giới hạn của hàm số</dd>
+</dl>
+<p style="margin: 0; color: #54545A; font-size: 12.5px">Sửa trong tệp rồi tải lại. Nội dung câu hỏi trong ví dụ là dữ liệu mẫu.</p>
+</section>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px">
+<p style="margin: 0; display: flex; align-items: center; gap: 8px; color: #3A3A42"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"></path></svg>9 dòng lỗi sẽ không được nhập. 8 câu trùng được bỏ qua.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; font: inherit; font-weight: 600; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>Tải file lỗi</button>
+<a href="NhapCauHoiAnhXa.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>Quay lại ánh xạ</a>
+<a href="NhapCauHoiKetQua.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: #059669; color: #FFFFFF; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap">Nhập 231 câu hợp lệ<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></a>
+</div>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { tab: 'err' };
+}
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+question: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+exam: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+list: 'M4 6h16M4 12h16M4 18h16',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, 'BangDieuKhien.dc.html'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'],
+['h', 'Nội dung'], ['questions', 'Ngân hàng câu hỏi', I.question, 'NganHangCauHoi.dc.html'], ['exams', 'Bài thi', I.exam, 'BaiThi.dc.html'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', I.sliders, 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+chip(kind) {
+const c = { ok: ['#ECFDF5', '#047857'], warn: ['#FFFBEB', '#B45309'], bad: ['#FEF2F2', '#B91C1C'], off: ['#F1F2F4', '#54545A'], info: ['#EFF6FF', '#1D4ED8'] }[kind];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + c[0] + '; color: ' + c[1];
+}
+steps(cur) {
+const names = ['Tải tệp', 'Ánh xạ cột', 'Kiểm tra và xem trước', 'Kết quả'];
+return names.map((n, i) => {
+const k = i + 1; const done = k < cur; const now = k === cur;
+return { num: String(k), label: n, done: done, notDone: !done, current: now ? 'step' : 'false',
+state: done ? 'Đã xong' : (now ? 'Đang làm' : 'Chưa làm'),
+dot: 'width: 28px; height: 28px; box-sizing: border-box; flex: none; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; ' + (done ? 'background: #059669; color: #FFFFFF' : (now ? 'background: #FFFFFF; color: #047857; border: 2px solid #059669' : 'background: #F1F2F4; color: #54545A')),
+text: now ? 'color: #11181C; font-weight: 600' : 'color: #3A3A42; font-weight: 500' };
+});
+}
+renderVals() {
+const tab = this.state.tab;
+const tabDefs = [['err', 'tab-loi', 'Lỗi (9)'], ['dup', 'tab-trung', 'Trùng (8)'], ['ok', 'tab-hople', 'Hợp lệ (231)']];
+const tStyle = 'flex: none; height: 40px; padding: 0 14px; border: 0; border-radius: 10px 10px 0 0; font: inherit; font-weight: 500; cursor: pointer; ';
+const errs = [
+['5', 'Đáp án', 'TOAN11-0004', 'Thiếu đáp án đúng', 'Ghi một trong A, B, C, D vào cột Đáp án.'],
+['17', 'Mức độ', 'TOAN11-0016', 'Mức độ "Vận dụng thấp" không có trong danh mục', 'Dùng một trong: Nhận biết, Thông hiểu, Vận dụng, Vận dụng cao.'],
+['33', 'Mã KT', 'TOAN11-0031', 'Mã kiến thức 1D4-9-9 không tồn tại trong Cấu trúc kiến thức Toán', 'Kiểm tra mã trong Cấu hình chung › Cấu trúc kiến thức.'],
+['58', 'Mã chùm', 'TOAN11-0055', 'Dòng câu con có Mã chùm CH-12 nhưng không có dòng ngữ liệu của chùm', 'Thêm dòng ngữ liệu có Mã chùm CH-12, hoặc xóa Mã chùm nếu đây là câu đơn.'],
+['59', 'Mã chùm', 'TOAN11-0056', 'Dòng câu con có Mã chùm CH-12 nhưng không có dòng ngữ liệu của chùm', 'Như dòng 58.'],
+['104', 'Đáp án', 'TOAN11-0099', 'Đáp án đúng "E" không có trong các phương án A–D', 'Ghi một trong A, B, C, D vào cột Đáp án.'],
+['126', 'Nội dung', 'TOAN11-0121', 'Công thức ở cột Nội dung không đọc được (LaTeX thiếu dấu })', 'Đóng đủ dấu ngoặc nhọn trong công thức.'],
+['187', 'Môn', 'TOAN11-0180', 'Môn học "Toan" không có trong danh mục', 'Dùng tên hoặc mã của môn đang hoạt động, ví dụ Toán.'],
+['230', 'Dạng câu', 'TOAN11-0222', 'Dạng câu "Tự luận" chưa được hỗ trợ', 'Dùng một trong 6 dạng câu đang có.']
+];
+return {
+nav: this.nav('questions'),
+steps: this.steps(3),
+chipBad: this.chip('bad'),
+hideErr: tab !== 'err', hideDup: tab !== 'dup', hideOk: tab !== 'ok',
+tabs: tabDefs.map((t) => ({ id: t[1], label: t[2], selected: tab === t[0] ? 'true' : 'false',
+style: tStyle + (tab === t[0] ? 'background: #ECFDF5; color: #047857' : 'background: transparent; color: #54545A'),
+pick: () => this.setState({ tab: t[0] }) })),
+errors: errs.map((e) => ({ line: e[0], col: e[1], code: e[2], error: e[3], fix: e[4], viewing: e[0] === '17',
+rowStyle: e[0] === '17' ? 'background: #ECFDF5' : '' })),
+dups: [
+{ line: '12', code: 'TOAN11-0042', existing: 'Q000390' },
+{ line: '13', code: 'TOAN11-0043', existing: 'Q000391' }
+],
+valid: [
+{ line: '2', code: 'TOAN11-0001', type: 'Trắc nghiệm 1 đáp án', meta: 'Toán · Lớp 11 · Thông hiểu', mapid: '1D4-2-3' },
+{ line: '3', code: 'TOAN11-0002', type: 'Điền đáp án', meta: 'Toán · Lớp 11 · Vận dụng', mapid: '1D4-2-4' },
+{ line: '4', code: 'TOAN11-0003', type: 'Đúng / Sai', meta: 'Toán · Lớp 11 · Nhận biết', mapid: '1D4-1-2' },
+{ line: '6', code: 'CH-01', type: 'Câu chùm · 5 câu con', meta: 'Toán · Lớp 11 · 3 NB, 2 TH', mapid: '1D4-3-1' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

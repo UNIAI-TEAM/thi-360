@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog ngừng sử dụng câu hỏi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+</style>
+</helmet>
+<div style="width: 680px; height: 820px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+<dialog open aria-labelledby="dlg-title" aria-describedby="dlg-desc" style="position: static; margin: 0; border: 0; padding: 0; width: 100%; max-width: 100%; box-sizing: border-box; background: #FFFFFF; color: #11181C; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08)">
+<div style="padding: 28px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: flex-start; gap: 14px">
+    <span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 12px; background: #FEF2F2; color: #B91C1C; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM4.9 4.9l14.2 14.2"></path></svg></span>
+    <div style="flex: 1 1 auto; min-width: 0">
+      <h2 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Ngừng sử dụng câu hỏi Q000512?</h2>
+      <div style="color: #54545A">Kéo thả · Hóa học · Lớp 11 · Phân loại chất điện li</div>
+    </div>
+    <form method="dialog" style="flex: none; margin: 0">
+      <button type="submit" value="cancel" aria-label="Đóng" style="width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </form>
+  </div>
+
+  <ul id="dlg-desc" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
+    <li style="display: flex; gap: 10px; align-items: flex-start"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M18 6 6 18M6 6l12 12"></path></svg><span>Câu hỏi không được đưa vào lượt thi mới và không còn trong danh sách lựa chọn khi soạn bài thi.</span></li>
+    <li style="display: flex; gap: 10px; align-items: flex-start"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Lượt thi đang làm và kết quả cũ vẫn hiện đúng câu hỏi này, không đổi.</span></li>
+    <li style="display: flex; gap: 10px; align-items: flex-start"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Có thể bật lại sau; nội dung và lịch sử phiên bản được giữ nguyên.</span></li>
+  </ul>
+
+  <section aria-labelledby="cap-noidung" style="border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+    <h3 style="margin: 0; padding: 10px 16px; background: #FAFAFB; border-bottom: 1px solid #E8E8EC; font-size: 13px; line-height: 20px; font-weight: 600; color: #54545A; display: flex; justify-content: space-between; gap: 8px">Nơi đang dùng <span style="font-weight: 500">2 bài thi</span></h3>
+    <div role="region" tabindex="0" aria-labelledby="cap-noidung" style="overflow: auto">
+      <table style="width: 100%; min-width: 560px; border-collapse: separate; border-spacing: 0">
+        <caption id="cap-noidung" class="vh">Bài thi đang dùng câu hỏi Q000512 và ảnh hưởng khi ngừng sử dụng</caption>
+        <thead style="position: sticky; top: 0">
+          <tr style="text-align: left; font-size: 13px; color: #54545A">
+            <th scope="col" style="padding: 10px 16px; font-weight: 600; background: #FFFFFF; border-bottom: 1px solid #E8E8EC">Bài thi</th>
+            <th scope="col" style="padding: 10px 8px; font-weight: 600; background: #FFFFFF; border-bottom: 1px solid #E8E8EC">Khối</th>
+            <th scope="col" style="padding: 10px 16px 10px 8px; font-weight: 600; background: #FFFFFF; border-bottom: 1px solid #E8E8EC">Ảnh hưởng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="vertical-align: top">
+            <th scope="row" style="padding: 12px 16px; text-align: left; border-bottom: 1px solid #E8E8EC">
+              <a href="BaiThiKiemTra.dc.html" style="font-weight: 600; text-decoration: none">HSA-F-001</a>
+              <div style="font-weight: 400; font-size: 12.5px; line-height: 19px; color: #54545A">HSA FULL · Đề luyện số 1<br>Đang phục vụ v2</div>
+            </th>
+            <td style="padding: 12px 8px; border-bottom: 1px solid #E8E8EC">Hóa học · Trắc nghiệm<div style="font-size: 12.5px; color: #54545A">Tổ hợp KH-2</div></td>
+            <td style="padding: 12px 16px 12px 8px; border-bottom: 1px solid #E8E8EC">
+              <span style="display: inline-flex; align-items: flex-start; gap: 6px; padding: 3px 10px; border-radius: 12px; font-size: 12.5px; line-height: 18px; font-weight: 500; background: #FEF2F2; color: #B91C1C"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M18 6 6 18M6 6l12 12"></path></svg>Thiếu nguồn: cần 3 câu Lớp 12/Vận dụng, còn 2</span>
+            </td>
+          </tr>
+          <tr style="vertical-align: top">
+            <th scope="row" style="padding: 12px 16px; text-align: left">
+              <span style="font-weight: 600; color: #047857">QDA-F-002</span>
+              <div style="font-weight: 400; font-size: 12.5px; line-height: 19px; color: #54545A">QDA FULL · Đề luyện số 2 (mẫu)</div>
+            </th>
+            <td style="padding: 12px 8px">Toán · Trắc nghiệm</td>
+            <td style="padding: 12px 16px 12px 8px">
+              <span style="display: inline-flex; align-items: flex-start; gap: 6px; padding: 3px 10px; border-radius: 12px; font-size: 12.5px; line-height: 18px; font-weight: 500; background: #ECFDF5; color: #047857"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg>Vẫn đủ nguồn (còn 14)</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div role="note" style="padding: 12px 14px; border-radius: 12px; background: #FFFBEB; color: #B45309; display: flex; gap: 10px; align-items: flex-start">
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"></path></svg>
+    <span><strong style="font-weight: 600">1 bài thi đang phục vụ sẽ cần kiểm tra lại.</strong> Lượt thi mới của tổ hợp KH-2 có thể không sinh được đề.</span>
+  </div>
+
+  <p style="margin: 0; display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: #54545A">
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+    <span>Không xóa được: câu hỏi đã có trong lịch sử thi.</span>
+  </p>
+
+  <form method="dialog" style="margin: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button type="submit" value="keep" autofocus style="height: 40px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42">Giữ lại</button>
+    <button type="submit" value="deactivate" style="height: 40px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 0; background: #DC2626; color: #FFFFFF">Ngừng sử dụng</button>
+  </form>
+</div>
+</dialog>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":680,"height":820}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -321,6 +321,18 @@ Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
 - **Vùng xem trước chỉ để nhìn** (xem trước giao diện) mang `inert` và `aria-hidden`, không nhận focus.
 - **Trang đổi mật khẩu** mở từ menu tài khoản dùng `?source=account-menu` để hiện lối "Quay lại"; luồng bắt buộc đổi mật khẩu không có lối này.
 
+### 5.14 Màn dữ liệu mẫu (đợt 2, chưa có backend)
+
+Áp dụng cho Ngân hàng câu hỏi và Bài thi (UNI-2590) cho tới khi backend có nghiệp vụ; khi nối API thật thì bỏ dải và cờ, giữ nguyên giao diện.
+
+- **Cờ:** menu và trang chỉ có khi `isContentMockEnabled()` (`lib/mock/content-mock.ts`) trả `true`: biến `NEXT_PUBLIC_THI360_CONTENT_MOCK=true|false`, bỏ trống thì bật khi `next dev`, tắt khi build. Mục menu mang `mockOnly: true` (`lib/navigation.ts`), trang gọi `notFound()` khi cờ tắt.
+- **Dải "Dữ liệu mẫu":** `MockDataBanner` (`components/mock-data-banner.tsx`), một lần mỗi màn, ngay dưới tiêu đề trang (trang soạn bài thi: dưới khung tiêu đề chung). Hộp thoại không lặp lại dải.
+- **Dữ liệu:** giao diện chỉ gọi hook trong `features/<x>/queries.ts`; hook gọi `features/<x>/api.ts`; `api.ts` trả `mockRequest(...)` đọc từ `features/<x>/mock/*.json` (chữ tiếng Việt nằm trong JSON). Ghi dữ liệu đi qua kho trong bộ nhớ (`createMockStore`) để các màn thấy cùng thay đổi tới khi tải lại trang. Nối backend = thay thân hàm trong `api.ts`, kiểu trong `types.ts` thành bí danh của `@thi360/api-client`.
+- **Bốn trạng thái xem được bằng URL:** `?mockState=loading|empty|error` cho mọi truy vấn đọc của trang (thao tác ghi dùng `ignoreScenario`). Mỗi màn vẫn phải có đủ bốn trạng thái như mọi màn khác.
+- **Mã quyền:** chưa có mã `QUESTION.*`, `EXAM.*`; mục menu để `permission: null`, không ẩn nút theo quyền.
+- **Trang soạn bài thi** `/exams/[id]` có khung chung `ExamEditorLayout` (tiêu đề, chip trạng thái, dải tóm tắt `<dl>`, `NavTabs` bốn trang con: `/exams/[id]`, `/structure`, `/review`, `/versions`). Trang con đọc bài thi bằng `useExam(id)`.
+- **Chọn kiến thức (MAPID):** dùng `KnowledgePickerDialog` (`features/content/components`) cho mọi nơi chọn nút của cây Cấu trúc kiến thức; câu hỏi chỉ tick cấp Kiến thức và có một kiến thức chính, phạm vi khối của bài thi cho tick cả Chương và Bài (`selectableLevels`, `withPrimary={false}`).
+
 ## 6. Icon và hình ảnh
 
 - Icon: **lucide-react**, nét 1.75–2px, 16px trong nút, 18px trong menu, 20px độc lập.

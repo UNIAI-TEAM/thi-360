@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog công bố bài thi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="width: 720px; height: 860px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+  <dialog open aria-labelledby="dlg-title" aria-describedby="dlg-desc" style="position: static; margin: 0; border: 0; max-width: 100%; width: 100%; box-sizing: border-box; background: #FFFFFF; color: #11181C; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); padding: 28px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h2 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Công bố bản sửa thành v3?</h2>
+        <p id="dlg-desc" style="margin: 0; color: #54545A">Lượt thi mới dùng v3 ngay sau khi công bố. Lượt đang làm và kết quả cũ không đổi.</p>
+      </div>
+      <button type="button" aria-label="Đóng" style="flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </div>
+
+    <dl style="margin: 0; padding: 12px 16px; border-radius: 12px; background: #F7F8F9; display: flex; flex-wrap: wrap; gap: 8px 28px">
+      <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Bài thi</dt><dd style="margin: 0; font-weight: 600">HSA-F-001 · HSA FULL · Đề luyện số 1</dd></div>
+      <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Thay đổi so với v2</dt><dd style="margin: 0; font-weight: 600"><a href="BaiThiPhienBan.dc.html" style="text-decoration: none">3 thay đổi</a></dd></div>
+      <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Kiểm tra</dt><dd style="margin: 0; font-weight: 600; font-variant-numeric: tabular-nums">09:42 · 15/11/2026</dd></div>
+    </dl>
+
+    <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0">
+      <legend style="padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #3A3A42">Đường lựa chọn được công bố</legend>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+        <div style="{{r.box}}">
+          <input type="checkbox" id="{{r.id}}" checked="{{r.checked}}" disabled="{{r.disabled}}" onChange="{{r.toggle}}" aria-describedby="{{r.descId}}" style="flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: #059669">
+          <div style="min-width: 0; flex: 1 1 0; display: flex; flex-direction: column; gap: 4px">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+              <label for="{{r.id}}" style="font-weight: 600; color: {{r.nameColor}}">{{r.name}}</label>
+              <span style="{{r.chip}}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.icon}}"></path></svg>{{r.result}}</span>
+              <sc-if value="{{r.isNew}}" hint-placeholder-val="{{false}}">
+                <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; background: #EFF6FF; color: #1D4ED8; font-size: 12.5px; font-weight: 500">Mới</span>
+              </sc-if>
+            </div>
+            <p id="{{r.descId}}" style="margin: 0; color: {{r.descColor}}">{{r.desc}}</p>
+            <sc-if value="{{r.hasLink}}" hint-placeholder-val="{{false}}">
+              <a href="BaiThiKiemTra.dc.html" style="align-self: flex-start; font-weight: 600; text-decoration: none">Xem kết quả kiểm tra →</a>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </fieldset>
+
+    <p style="margin: 0; padding: 10px 12px; border-radius: 10px; background: #FFFBEB; color: #92400E; display: flex; gap: 8px; align-items: flex-start"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>Thay đổi ở Phần 1 và Phần 2 chỉ áp dụng cho các đường được công bố. Đường không công bố giữ nguyên cấu hình v2.</p>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; border-top: 1px solid #E8E8EC">
+      <output for="{{outFor}}" role="status" style="padding-top: 12px; font-weight: 600; font-variant-numeric: tabular-nums">{{summary}}</output>
+      <form method="dialog" style="margin: 0; padding-top: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+        <button type="submit" value="cancel" autofocus style="height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Hủy</button>
+        <button type="submit" value="publish" style="height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: #059669; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>{{publishLabel}}</button>
+      </form>
+    </div>
+  </dialog>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":720,"height":860}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { en: true, kh1: true };
+}
+chip(kind) {
+const c = { ok: ['#ECFDF5', '#047857'], warn: ['#FFFBEB', '#B45309'], bad: ['#FEF2F2', '#B91C1C'], off: ['#F1F2F4', '#54545A'], info: ['#EFF6FF', '#1D4ED8'] }[kind];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + c[0] + '; color: ' + c[1];
+}
+renderVals() {
+const s = this.state;
+const OK = 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3';
+const BAD = 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM15 9l-6 6M9 9l6 6';
+const UNK = 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01';
+const def = [
+{ key: 'en', name: 'Tiếng Anh', kind: 'ok', result: 'Hợp lệ', icon: OK, can: true },
+{ key: 'kh1', name: 'KH-1 · Vật lí–Hóa học–Sinh học', kind: 'ok', result: 'Hợp lệ', icon: OK, can: true },
+{ key: 'kh2', name: 'KH-2 · Vật lí–Hóa học–Địa lí', kind: 'bad', result: 'Không hợp lệ', icon: BAD, can: false,
+desc: 'Không công bố được. Lượt thi mới của tổ hợp này tiếp tục dùng cấu hình v2.' },
+{ key: 'kh3', name: 'KH-3 · Lịch sử–Địa lí–Sinh học', kind: 'warn', result: 'Chưa xác nhận được', icon: UNK, can: false, isNew: true,
+desc: 'Chưa mở bán cho tới khi kiểm tra hợp lệ.' }
+];
+const rows = def.map((d) => {
+const on = d.can ? !!s[d.key] : false;
+return {
+id: 'p-' + d.key, descId: 'p-' + d.key + '-desc', name: d.name, result: d.result, icon: d.icon,
+chip: this.chip(d.kind), isNew: !!d.isNew, hasLink: !d.can,
+checked: on, disabled: !d.can,
+toggle: d.can ? () => this.setState({ [d.key]: !s[d.key] }) : undefined,
+desc: d.can ? (on ? 'Công bố: lượt thi mới của đường này dùng v3.' : 'Không công bố lần này: tiếp tục dùng v2.') : d.desc,
+descColor: d.can ? '#54545A' : (d.kind === 'bad' ? '#B91C1C' : '#3A3A42'),
+nameColor: d.can ? '#11181C' : '#3A3A42',
+box: 'display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid ' + (on ? '#059669; background: #ECFDF5' : '#E8E8EC; background: ' + (d.can ? '#FFFFFF' : '#FAFAFB'))
+};
+});
+const n = (s.en ? 1 : 0) + (s.kh1 ? 1 : 0);
+return {
+rows,
+outFor: 'p-en p-kh1',
+summary: 'Sẽ công bố ' + n + ' / 4 đường lựa chọn',
+publishLabel: 'Công bố ' + n + ' đường lựa chọn'
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog tạo bài thi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="width: 760px; height: 1060px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+<dialog open aria-labelledby="dlg-title" style="position: static; margin: 0; border: 0; max-width: 100%; width: 100%; box-sizing: border-box; background: #FFFFFF; color: #11181C; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); padding: 28px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+    <div>
+      <h2 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Tạo bài thi</h2>
+      <div style="color: #54545A">Chọn kỳ thi và hình thức để nạp mẫu cấu trúc ban đầu.</div>
+    </div>
+    <button type="button" aria-label="Đóng" style="flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <label for="exam-name" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tên bài thi <span aria-hidden="true" style="color: #B91C1C">*</span></label>
+      <input id="exam-name" name="name" type="text" required autofocus autocomplete="off" placeholder="Ví dụ: HSA FULL · Đề luyện số 2" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <label for="exam-code" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mã bài thi</label>
+      <input id="exam-code" name="code" type="text" value="{{code}}" aria-describedby="exam-code-hint" autocomplete="off" autocapitalize="characters" spellcheck="false" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+      <div id="exam-code-hint" style="font-size: 12.5px; line-height: 18px; color: #54545A">Hệ thống tự sinh, sửa được, không trùng</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px">
+    <fieldset style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+      <legend style="padding: 0 0 6px; font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Kỳ thi <span aria-hidden="true" style="color: #B91C1C">*</span></legend>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{examOpts}}" as="o" hint-placeholder-count="2">
+          <label style="{{o.style}}">
+            <input type="radio" name="exam" value="{{o.id}}" required checked="{{o.checked}}" onChange="{{o.pick}}" style="width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #059669">
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">{{o.label}}</span><span style="font-size: 12.5px; line-height: 18px; color: #54545A">{{o.desc}}</span></span>
+          </label>
+        </sc-for>
+      </div>
+    </fieldset>
+    <fieldset style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+      <legend style="padding: 0 0 6px; font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Hình thức <span aria-hidden="true" style="color: #B91C1C">*</span></legend>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{fmtOpts}}" as="o" hint-placeholder-count="2">
+          <label style="{{o.style}}">
+            <input type="radio" name="format" value="{{o.id}}" required checked="{{o.checked}}" onChange="{{o.pick}}" style="width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #059669">
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">{{o.label}}</span><span style="font-size: 12.5px; line-height: 18px; color: #54545A">{{o.desc}}</span></span>
+          </label>
+        </sc-for>
+      </div>
+    </fieldset>
+  </div>
+
+  <sc-if value="{{isSingle}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; flex-direction: column; gap: 4px; max-width: 340px">
+      <label for="exam-part" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Phần/môn áp dụng <span aria-hidden="true" style="color: #B91C1C">*</span></label>
+      <select id="exam-part" name="part" required value="{{part}}" onChange="{{pickPart}}" style="height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF">
+        <option value="Toán">Toán</option>
+        <option value="Văn">Văn</option>
+        <option value="Khoa học">Khoa học</option>
+        <option value="Tiếng Anh">Tiếng Anh</option>
+      </select>
+    </div>
+  </sc-if>
+
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <label for="exam-desc" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mô tả</label>
+    <textarea id="exam-desc" name="description" rows="2" placeholder="Giới thiệu nội dung và mục tiêu bài thi" style="box-sizing: border-box; padding: 10px 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; resize: vertical"></textarea>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <span id="exam-img-label" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Ảnh giới thiệu</span>
+    <label style="min-height: 64px; box-sizing: border-box; padding: 12px 16px; border: 1px dashed #A1A1AA; border-radius: 12px; background: #FAFAFB; display: flex; align-items: center; gap: 12px; cursor: pointer">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 9.5h.01"></path></svg>
+      <span style="display: flex; flex-direction: column"><span><strong style="color: #047857; font-weight: 600">Chọn ảnh</strong> hoặc kéo thả vào đây</span><span style="font-size: 12.5px; line-height: 18px; color: #54545A">Hiện ở danh sách và trang giới thiệu bài thi · tỉ lệ 16:9</span></span>
+      <input type="file" name="cover" accept="image/png, image/jpeg, image/webp" aria-labelledby="exam-img-label" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap">
+    </label>
+  </div>
+
+  <section aria-labelledby="tpl-title" style="border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+    <div style="padding: 12px 16px; background: #FAFAFB; border-bottom: 1px solid #E8E8EC; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+      <h3 id="tpl-title" style="margin: 0; font-size: 14px; line-height: 21px; font-weight: 600">Cấu trúc sẽ nạp · {{tplName}}</h3>
+      <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; background: #EFF6FF; color: #1D4ED8; font-size: 12.5px; font-weight: 500">Sửa được sau khi tạo</span>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums">
+      <caption style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap">Mẫu cấu trúc theo kỳ thi và hình thức đã chọn</caption>
+      <thead>
+        <tr style="text-align: left; font-size: 13px; line-height: 18px; color: #54545A">
+          <th scope="col" style="padding: 8px 16px; font-weight: 600">Phần</th>
+          <th scope="col" style="padding: 8px; font-weight: 600">Môn</th>
+          <th scope="col" style="padding: 8px; font-weight: 600; text-align: right">Số câu</th>
+          <th scope="col" style="padding: 8px 16px; font-weight: 600; text-align: right">Thời lượng</th>
+        </tr>
+      </thead>
+      <tbody>
+        <sc-for list="{{tplRows}}" as="t" hint-placeholder-count="3">
+          <tr style="border-top: 1px solid #E8E8EC">
+            <th scope="row" style="padding: 8px 16px; text-align: left; font-weight: 500">{{t.part}}</th>
+            <td style="padding: 8px">{{t.subject}}<sc-if value="{{t.hasNote}}" hint-placeholder-val="{{false}}"><div style="font-size: 12.5px; line-height: 18px; color: #54545A">{{t.note}}</div></sc-if></td>
+            <td style="padding: 8px; text-align: right">{{t.count}} câu</td>
+            <td style="padding: 8px 16px; text-align: right">{{t.minutes}} phút</td>
+          </tr>
+        </sc-for>
+      </tbody>
+      <tfoot>
+        <tr style="border-top: 1px solid #E8E8EC; background: #FAFAFB">
+          <th scope="row" colspan="2" style="padding: 8px 16px; text-align: left; font-weight: 600">Tổng</th>
+          <td style="padding: 8px; text-align: right; font-weight: 600"><output>{{tplCount}} câu</output></td>
+          <td style="padding: 8px 16px; text-align: right; font-weight: 600"><output>{{tplMinutes}} phút</output></td>
+        </tr>
+      </tfoot>
+    </table>
+    <p style="margin: 0; padding: 10px 16px; border-top: 1px solid #E8E8EC; display: flex; gap: 8px; color: #3A3A42; font-size: 13px; line-height: 20px">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 1px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01"></path></svg>
+      <span>Mẫu chỉ là cấu hình ban đầu. Bạn phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố.</span>
+    </p>
+  </section>
+
+  <form method="dialog" style="margin: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button type="submit" value="cancel" style="height: 40px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42">Hủy</button>
+    <a href="BaiThiCauTruc.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; background: #059669; color: #FFFFFF">Tạo và mở Cấu trúc<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></a>
+  </form>
+</dialog>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":1060}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { exam: 'HSA', fmt: 'FULL', part: 'Toán' };
+}
+card(on) {
+return 'min-width: 0; box-sizing: border-box; padding: 12px; border-radius: 12px; cursor: pointer; display: flex; align-items: flex-start; gap: 10px; border: 1px solid ' + (on ? '#059669; background: #ECFDF5' : '#E8E8EC; background: #FFFFFF');
+}
+renderVals() {
+const s = this.state;
+const tpl = {
+HSA: [['Phần 1', 'Toán', 50, 75], ['Phần 2', 'Văn', 50, 60], ['Phần 3', 'Khoa học hoặc Tiếng Anh', 50, 60]],
+QDA: [['Phần 1', 'Toán', 50, 80], ['Phần 2', 'Văn', 50, 55], ['Phần 3', 'Khoa học hoặc Tiếng Anh', 50, 60]]
+};
+const sciNote = s.exam === 'HSA' ? 'Khoa học theo tổ hợp 3 môn; số câu từng môn khai báo ở Cấu trúc' : 'Khoa học theo tổ hợp 2 môn, mẫu 25–25';
+let rows;
+if (s.fmt === 'FULL') {
+rows = tpl[s.exam].map((r) => ({ part: r[0], subject: r[1], count: r[2], minutes: r[3], note: r[0] === 'Phần 3' ? sciNote : '' }));
+} else {
+const idx = { 'Toán': 0, 'Văn': 1, 'Khoa học': 2, 'Tiếng Anh': 2 }[s.part];
+const r = tpl[s.exam][idx];
+rows = [{ part: 'Bài lẻ', subject: s.part, count: r[2], minutes: r[3], note: s.part === 'Khoa học' ? sciNote : 'Lấy từ phần tương ứng của mẫu FULL' }];
+}
+rows = rows.map((r) => ({ ...r, hasNote: !!r.note }));
+const examOpts = [['HSA', 'HSA', 'Mẫu FULL: Toán 75 · Văn 60 · KH/TA 60 phút'], ['QDA', 'QDA', 'Mẫu FULL: Toán 80 · Văn 55 · KH/TA 60 phút']].map((o) => ({
+id: o[0], label: o[1], desc: o[2], checked: s.exam === o[0], style: this.card(s.exam === o[0]),
+pick: () => this.setState({ exam: o[0] })
+}));
+const fmtOpts = [['FULL', 'FULL', 'Đủ ba phần'], ['LE', 'Bài lẻ', 'Một phần hoặc môn']].map((o) => ({
+id: o[0], label: o[1], desc: o[2], checked: s.fmt === o[0], style: this.card(s.fmt === o[0]),
+pick: () => this.setState({ fmt: o[0] })
+}));
+return {
+examOpts: examOpts,
+fmtOpts: fmtOpts,
+isSingle: s.fmt === 'LE',
+part: s.part,
+pickPart: (e) => this.setState({ part: e.target.value }),
+code: s.exam + '-' + (s.fmt === 'FULL' ? 'F' : 'L') + '-002',
+tplName: (s.fmt === 'FULL' ? s.exam + ' FULL' : s.exam + ' bài lẻ ' + s.part),
+tplRows: rows,
+tplCount: rows.reduce((a, r) => a + r.count, 0),
+tplMinutes: rows.reduce((a, r) => a + r.minutes, 0)
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1288,6 +1288,14 @@
         "description": "Lời chào và các lối tắt theo quyền",
         "label": "Bảng điều khiển"
       },
+      "exams": {
+        "description": "Bài thi, cấu trúc và ma trận đề, kiểm tra và công bố",
+        "label": "Bài thi"
+      },
+      "questions": {
+        "description": "Câu hỏi theo môn, khối, độ khó, kiến thức; nhập từ tệp",
+        "label": "Ngân hàng câu hỏi"
+      },
       "rbac": {
         "description": "Vai trò, danh sách quyền và gán quyền hàng loạt",
         "label": "Phân quyền"
@@ -2122,6 +2130,127 @@
       "usernameInvalid": "Tên đăng nhập 4–30 ký tự, bắt đầu bằng chữ hoặc số, chỉ gồm chữ không dấu, số và . _ @ -.",
       "usernameRequired": "Vui lòng nhập tên đăng nhập.",
       "usernameReserved": "Tên đăng nhập này thuộc danh sách tên dành riêng của hệ thống."
+    }
+  },
+  "mockData": {
+    "title": "Dữ liệu mẫu.",
+    "description": "Màn này chưa nối backend; thay đổi chỉ giữ tới khi tải lại trang.",
+    "placeholderTitle": "Màn đang dựng",
+    "placeholderDescription": "Màn {screen} đang được dựng trong đợt mockup."
+  },
+  "content": {
+    "questionType": {
+      "SINGLE_CHOICE": "Trắc nghiệm 1 đáp án",
+      "MULTIPLE_CHOICE": "Trắc nghiệm nhiều đáp án",
+      "TRUE_FALSE": "Đúng / Sai",
+      "FILL_IN": "Điền đáp án",
+      "DRAG_DROP": "Kéo thả",
+      "QUESTION_SET": "Câu chùm"
+    },
+    "questionStatus": {
+      "DRAFT": "Nháp",
+      "READY": "Sẵn sàng",
+      "RETIRED": "Ngừng sử dụng"
+    },
+    "knowledgePicker": {
+      "title": "Chọn kiến thức (MAPID)",
+      "description": "Chỉ chọn được ở cấp Kiến thức.",
+      "subject": "Môn học",
+      "grade": "Khối lớp",
+      "allGrades": "Tất cả khối",
+      "search": "Tìm kiến thức",
+      "searchPlaceholder": "Tìm theo mã hoặc tên",
+      "treeTitle": "Cấu trúc kiến thức",
+      "selectedTitle": "Đã chọn ({count, number})",
+      "primary": "Kiến thức chính",
+      "primaryBadge": "Chính",
+      "primaryHint": "Cần có kiến thức chính để chuyển câu hỏi sang Sẵn sàng.",
+      "noneSelected": "Chưa chọn kiến thức nào.",
+      "empty": "Không có kiến thức khớp bộ lọc.",
+      "loadError": "Không tải được cây kiến thức.",
+      "retry": "Thử lại",
+      "expand": "Mở {name}",
+      "collapse": "Thu gọn {name}",
+      "remove": "Bỏ {code}",
+      "cancel": "Hủy",
+      "apply": "Áp dụng ({count, number})"
+    }
+  },
+  "questions": {
+    "list": {
+      "title": "Ngân hàng câu hỏi"
+    },
+    "detail": {
+      "title": "Chi tiết câu hỏi"
+    },
+    "editor": {
+      "title": "Soạn câu hỏi"
+    }
+  },
+  "questionImport": {
+    "title": "Nhập câu hỏi từ tệp"
+  },
+  "exams": {
+    "list": {
+      "title": "Bài thi"
+    },
+    "general": {
+      "title": "Thông tin chung của bài thi"
+    },
+    "structure": {
+      "title": "Cấu trúc và ma trận"
+    },
+    "review": {
+      "title": "Kiểm tra và xem trước"
+    },
+    "versions": {
+      "title": "Phiên bản và công bố"
+    },
+    "editor": {
+      "backToList": "Danh sách bài thi",
+      "tabsLabel": "Các phần của bài thi",
+      "tabs": {
+        "general": "Thông tin chung",
+        "structure": "Cấu trúc và ma trận",
+        "review": "Kiểm tra và xem trước",
+        "versions": "Phiên bản và công bố"
+      },
+      "errorTitle": "Không tải được bài thi",
+      "errorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "retry": "Thử lại",
+      "notFoundTitle": "Không tìm thấy bài thi",
+      "notFoundDescription": "Bài thi không tồn tại hoặc đã bị xóa."
+    },
+    "status": {
+      "DRAFT": "Nháp",
+      "PUBLISHED": "Đang phục vụ",
+      "DISCONTINUED": "Ngừng bán",
+      "servingVersion": "Đang phục vụ v{version}",
+      "unpublishedChanges": "Có bản sửa chưa công bố"
+    },
+    "checkStatus": {
+      "UNCHECKED": "Chưa kiểm tra",
+      "VALID": "Hợp lệ",
+      "INVALID": "Không hợp lệ",
+      "NEEDS_RECHECK": "Cần kiểm tra lại",
+      "issues": "{count, number} vấn đề"
+    },
+    "kind": {
+      "HSA": "HSA",
+      "QDA": "QDA"
+    },
+    "format": {
+      "FULL": "FULL",
+      "SINGLE": "Bài lẻ"
+    },
+    "summary": {
+      "code": "Mã",
+      "kind": "Kỳ thi",
+      "format": "Dạng",
+      "questions": "Số câu",
+      "duration": "Thời gian",
+      "minutes": "{count, number} phút",
+      "attempts": "Lượt làm"
     }
   }
 }
