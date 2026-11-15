@@ -2031,6 +2031,9 @@ function createTreeMockApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
       if (query?.depth === 1) {
         return [KNOWLEDGE_CH1, KNOWLEDGE_CH2];
       }
+      if (query?.depth === 2) return [KNOWLEDGE_BAI1];
+      if (query?.depth === 3) return [KNOWLEDGE_KT1];
+      if (query?.depth) return [];
       if (query?.parentId === "node-ch1") return [KNOWLEDGE_BAI1];
       if (query?.parentId === "node-b1") return [KNOWLEDGE_KT1];
       if (query?.parentId) return [];
@@ -2186,6 +2189,26 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
     await waitFor(() => expect(row).toHaveFocus());
+  });
+
+  it("Mở tất cả gọi một lần cho mỗi tầng còn thiếu, không gọi lại cha đã tải (C-16)", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    await within(tree).findByText("Hàm số");
+
+    // Mở tay CH1 trước: danh sách con của CH1 đã có trong bộ đệm.
+    await userEvent.click(within(tree).getByRole("button", { name: "Mở Hàm số" }));
+    await within(tree).findByText("Tính đơn điệu");
+    const listTree = vi.mocked(api.listTree);
+    listTree.mockClear();
+
+    await userEvent.click(screen.getByRole("button", { name: "Mở tất cả" }));
+    expect(await within(tree).findByText("Cực trị")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mở tất cả" })).toBeEnabled());
+
+    // Gốc và con của CH1 lấy từ bộ đệm; chỉ tầng 3 (con của Tính đơn điệu) phải tải, bằng một lần gọi theo tầng.
+    expect(listTree.mock.calls.map(([, query]) => query)).toEqual([{ depth: 3 }]);
   });
 
   it("người chỉ xem: Shift+F10 trên dòng mở ngăn chi tiết (C-08)", async () => {

@@ -18,7 +18,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryKey,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Badge,
   Button,
@@ -171,6 +177,12 @@ export function resolveTreeDragReorder(
 }
 
 const MAX_TREE_DEPTH = 6;
+/**
+ * C-16: danh sách con vừa tải (mở tay hoặc "Mở tất cả") được coi là còn mới trong khoảng này, nên thu gọn rồi mở
+ * lại, hay danh sách con được điền sẵn từ lần gọi theo tầng, không gọi lại máy chủ. Mọi thao tác ghi trên cây đều
+ * đánh dấu cả nhóm `["catalog", "tree", groupId]` cần tải lại, nên thay đổi trong phiên vẫn hiện ngay.
+ */
+const TREE_CHILDREN_STALE_MS = 30_000;
 
 export function TreeItemsPanel({
   group,
@@ -324,6 +336,7 @@ export function TreeItemsPanel({
       queryKey: catalogQueryKeys.tree(group.id, { parentId }),
       queryFn: () => api.listTree(group.id, { parentId }),
       enabled: !isFiltered,
+      staleTime: TREE_CHILDREN_STALE_MS,
     })),
   });
 
@@ -497,25 +510,58 @@ export function TreeItemsPanel({
 
     setExpandingAll(true);
     try {
-      const roots = await queryClient.fetchQuery({
-        queryKey: catalogQueryKeys.tree(group.id, {}),
-        queryFn: () => api.listTree(group.id, {}),
-      });
+      // C-16: mỗi tầng một lần gọi `listTree({ depth })` (máy chủ trả mọi nút ở tầng đó, cùng thứ tự và cùng dữ
+      // liệu như khi hỏi theo từng cha) thay vì một lần gọi cho mỗi nút cha. Cha nào đã có danh sách con còn mới
+      // trong bộ đệm thì dùng lại; cha còn thiếu được điền bộ đệm `{ parentId }` từ kết quả theo tầng, nên các
+      // truy vấn con lười ở dưới không gọi lại.
+      const rootKey = catalogQueryKeys.tree(group.id, {});
+      const cachedRoots = freshCachedTree(rootKey);
+      const roots =
+        cachedRoots ??
+        (await queryClient.fetchQuery({
+          queryKey: rootKey,
+          queryFn: () => api.listTree(group.id, {}),
+        }));
       const nextOverrides: Record<string, boolean> = { ...expandedOverrides };
       let frontier = roots.filter((n) => n.hasChildren);
-      for (let depth = 1; depth < MAX_TREE_DEPTH && frontier.length > 0; depth++) {
-        for (const node of frontier) {
-          nextOverrides[node.id] = true;
+      for (let level = 1; level < MAX_TREE_DEPTH && frontier.length > 0; level++) {
+        const childrenByParent = new Map<string, CatalogTreeNodeResponse[]>();
+        const missingParentIds: string[] = [];
+        for (const parent of frontier) {
+          nextOverrides[parent.id] = true;
+          const cached = freshCachedTree(catalogQueryKeys.tree(group.id, { parentId: parent.id }));
+          if (cached) {
+            childrenByParent.set(parent.id, cached);
+          } else {
+            missingParentIds.push(parent.id);
+          }
         }
-        const childrenLists = await Promise.all(
-          frontier.map((parent) =>
-            queryClient.fetchQuery({
-              queryKey: catalogQueryKeys.tree(group.id, { parentId: parent.id }),
-              queryFn: () => api.listTree(group.id, { parentId: parent.id }),
-            }),
-          ),
+        if (missingParentIds.length > 0) {
+          // Mọi nút trong `frontier` cùng một tầng; con của chúng ở tầng kế tiếp.
+          const childDepth = frontier[0]!.depth + 1;
+          const levelNodes = await queryClient.fetchQuery({
+            queryKey: catalogQueryKeys.tree(group.id, { depth: childDepth }),
+            queryFn: () => api.listTree(group.id, { depth: childDepth }),
+          });
+          const grouped = new Map<string, CatalogTreeNodeResponse[]>();
+          for (const node of levelNodes) {
+            if (!node.parentId) continue;
+            const bucket = grouped.get(node.parentId);
+            if (bucket) {
+              bucket.push(node);
+            } else {
+              grouped.set(node.parentId, [node]);
+            }
+          }
+          for (const parentId of missingParentIds) {
+            const children = grouped.get(parentId) ?? [];
+            queryClient.setQueryData(catalogQueryKeys.tree(group.id, { parentId }), children);
+            childrenByParent.set(parentId, children);
+          }
+        }
+        frontier = frontier.flatMap((parent) =>
+          (childrenByParent.get(parent.id) ?? []).filter((n) => n.hasChildren),
         );
-        frontier = childrenLists.flat().filter((n) => n.hasChildren);
       }
       setExpandedOverrides(nextOverrides);
     } catch (error) {
@@ -526,6 +572,17 @@ export function TreeItemsPanel({
     } finally {
       setExpandingAll(false);
     }
+  }
+
+  /**
+   * Danh sách nút trong bộ đệm nếu đã tải xong, chưa bị đánh dấu cần tải lại (sau khi sửa, kéo thả...) và chưa quá
+   * `TREE_CHILDREN_STALE_MS`; quá hạn thì coi như thiếu để lần gọi theo tầng làm mới luôn.
+   */
+  function freshCachedTree(queryKey: QueryKey): CatalogTreeNodeResponse[] | undefined {
+    const state = queryClient.getQueryState<CatalogTreeNodeResponse[]>(queryKey);
+    if (!state || state.status !== "success" || state.isInvalidated) return undefined;
+    if (Date.now() - state.dataUpdatedAt >= TREE_CHILDREN_STALE_MS) return undefined;
+    return state.data;
   }
 
   function handleCollapseAll() {
