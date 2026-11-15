@@ -1,17 +1,8 @@
 /**
  * Vòng focus của kit (DESIGN.md mục 8), cho nút tự viết không dùng được `Button`/`IconButton` (tay nắm kéo thả, nút
- * trong chip, nút chuyển đoạn, mẩu đường dẫn). Cùng chuỗi với `focusRing` của UI kit (`packages/ui/src/lib/styles.ts`);
- * kit chưa xuất hằng này qua `@thi360/ui` nên tạm chép ở đây (C-21).
+ * trong chip, nút chuyển đoạn, mẩu đường dẫn). Lấy thẳng từ `@thi360/ui` để không lệch với kit (C-21).
  */
-export const focusRing =
-  "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-text";
-
-/**
- * Vòng focus vẽ vào trong cho vùng tự cuộn nằm sát mép thẻ `overflow-hidden`. Cùng chuỗi với `focusRingInset`
- * của UI kit (`packages/ui/src/lib/styles.ts`); kit chưa xuất hằng này qua `@thi360/ui` nên tạm chép ở đây.
- */
-export const focusRingInset =
-  "focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-primary-text";
+export { focusRing, focusRingInset } from "@thi360/ui";
 
 /**
  * Màu trung tính cho chip chỉ để đọc. Dùng kèm dạng tĩnh của kit, `<Chip variant="tag">` (thẻ `span`, không vào

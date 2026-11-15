@@ -244,7 +244,7 @@ describe("BulkImportUploadView (Step 1)", () => {
     expect(zone.tagName).toBe("LABEL");
     expect(zone).toHaveAttribute("for", fileInput.id);
     expect(fileInput).toHaveClass("peer");
-    expect(zone).toHaveClass("peer-focus-visible:ring-3");
+    expect(zone).toHaveClass("peer-focus-visible:outline-3");
     expect(fileInput).toHaveAccessibleDescription("Chỉ nhận tệp .xlsx, tối đa 2.000 dòng, không quá 5 MB");
 
     // Thứ tự Tab: nút tải mẫu → ô chọn tệp → ô đánh dấu; không có hai điểm dừng cùng tên.

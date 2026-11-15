@@ -1420,10 +1420,15 @@ describe("CatalogView: dialog nhóm và dialog giá trị", { timeout: 20_000 },
 
     const confirmDialog = await screen.findByRole("dialog");
     const confirmBtn = within(confirmDialog).getByRole("button", { name: "Xóa danh mục" });
-    expect(confirmBtn).toBeDisabled();
+    const reasonInput = within(confirmDialog).getByLabelText(/Lý do xóa/);
+    // U-15: nút xác nhận luôn bấm được; thiếu lý do thì ô lý do báo lỗi, nhận focus và không gọi API.
+    expect(confirmBtn).toBeEnabled();
+    await userEvent.click(confirmBtn);
+    expect(reasonInput).toBeInvalid();
+    expect(reasonInput).toHaveFocus();
+    expect(api.deleteGroup).not.toHaveBeenCalled();
 
-    await userEvent.type(within(confirmDialog).getByLabelText(/Lý do xóa/), "Không còn dùng");
-    expect(confirmBtn).not.toBeDisabled();
+    await userEvent.type(reasonInput, "Không còn dùng");
     await userEvent.click(confirmBtn);
 
     await waitFor(() => {

@@ -233,7 +233,7 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
               onDrop={handleDrop}
               className={cn(
                 "flex cursor-pointer flex-col items-center gap-2.5 rounded-xl border-2 border-dashed px-5 py-9 text-center transition-colors duration-150 motion-reduce:transition-none",
-                "peer-focus-visible:ring-3 peer-focus-visible:ring-primary-text",
+                "peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-text",
                 isDragging
                   ? "border-primary-text bg-primary-50"
                   : "border-primary-text/40 bg-surface hover:bg-primary-50",
