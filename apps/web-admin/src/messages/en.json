@@ -646,6 +646,7 @@
       "description": "This batch has system-generated passwords and you have not downloaded the result file yet. If you leave now, keep this URL to return and download it.",
       "title": "Leave without downloading result file?"
     },
+    "metaItem": "{label}: {value}",
     "pagination": {
       "nav": "Import rows pagination",
       "next": "Next",
@@ -794,6 +795,7 @@
         "colRequired": "Required",
         "colRules": "Rules",
         "no": "No",
+        "optional": "Optional",
         "yes": "Yes"
       },
       "dropzoneHint": "Only .xlsx files accepted, up to 2,000 rows and 5 MB",

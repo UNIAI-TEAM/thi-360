@@ -16,13 +16,14 @@ import {
   Skeleton,
   StatusChip,
   Table,
+  type TableCards,
   focusRing,
 } from "@thi360/ui";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Trash2, TriangleAlert, Upload } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -132,6 +133,36 @@ function BulkImportBatchSkeleton() {
         <Skeleton className="h-24 w-full" />
       </div>
       <Skeleton className="h-72 w-full" />
+    </div>
+  );
+}
+
+/**
+ * Một dòng của tệp ở dạng thẻ, khi khung chứa bảng hẹp (DESIGN.md mục 5.9): tên đăng nhập là tiêu đề, họ tên và
+ * email ở dòng phụ, chip kết quả luôn hiện, lý do lỗi của dòng (nếu có) ngay dưới chip, rồi số dòng trong tệp, lớp
+ * và cách đặt mật khẩu. Dòng của tệp không có trang chi tiết và không có thao tác riêng: tiêu đề không là liên kết.
+ */
+function ImportRowCard({
+  title,
+  caption,
+  status,
+  problem,
+  meta,
+}: {
+  title: string;
+  caption: (string | undefined)[];
+  status: ReactNode;
+  problem?: string;
+  meta: (string | undefined)[];
+}) {
+  const captionText = caption.filter(Boolean).join(" · ");
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="line-clamp-2 font-semibold wrap-anywhere text-text">{title}</p>
+      {captionText && <p className="text-caption wrap-anywhere text-text-muted">{captionText}</p>}
+      <div className="flex flex-wrap items-center gap-1.5">{status}</div>
+      {problem && <p className="text-caption text-danger">{problem}</p>}
+      <p className="text-caption text-text-secondary tabular-nums">{meta.filter(Boolean).join(" · ")}</p>
     </div>
   );
 }
@@ -523,8 +554,19 @@ function BulkImportBatchContent({
     },
   });
 
-  const previewColumns = useMemo<ColumnDef<ImportRow>[]>(
-    () => [
+  // Cột của bảng và thẻ của dạng danh sách (khung hẹp) dựng cùng nhau để dùng chung cách hiện chip và lỗi của dòng.
+  const previewTable = useMemo(() => {
+    const isValid = (item: ImportRow) => item.status === "VALID" && item.errors.length === 0;
+    const passwordText = (item: ImportRow) =>
+      item.passwordGenerated ? t("preview.passwordGenerated") : t("preview.passwordProvided");
+    const statusChip = (item: ImportRow) =>
+      isValid(item) ? (
+        <StatusChip tone="success">{t("preview.statusValid")}</StatusChip>
+      ) : (
+        <StatusChip tone="danger">{t("preview.statusInvalid")}</StatusChip>
+      );
+
+    const columns: ColumnDef<ImportRow>[] = [
       {
         accessorKey: "rowNo",
         header: t("preview.table.rowNo"),
@@ -545,13 +587,7 @@ function BulkImportBatchContent({
         id: "password",
         header: t("preview.table.password"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <span className="text-text-muted">
-            {row.original.passwordGenerated
-              ? t("preview.passwordGenerated")
-              : t("preview.passwordProvided")}
-          </span>
-        ),
+        cell: ({ row }) => <span className="text-text-muted">{passwordText(row.original)}</span>,
       },
       {
         accessorKey: "fullName",
@@ -583,24 +619,62 @@ function BulkImportBatchContent({
         enableSorting: false,
         cell: ({ row }) => {
           const item = row.original;
-          const isValid = item.status === "VALID" && item.errors.length === 0;
-          if (isValid) {
-            return <StatusChip tone="success">{t("preview.statusValid")}</StatusChip>;
-          }
+          if (isValid(item)) return statusChip(item);
           return (
             <div className="flex min-w-56 flex-wrap items-center gap-2 py-1">
-              <StatusChip tone="danger">{t("preview.statusInvalid")}</StatusChip>
+              {statusChip(item)}
               <span className="text-field-label text-danger">{formatRowErrorText(item)}</span>
             </div>
           );
         },
       },
-    ],
-    [t, num, formatRowErrorText],
-  );
+    ];
 
-  const resultColumns = useMemo<ColumnDef<ImportRow>[]>(
-    () => [
+    const cards: TableCards<ImportRow> = {
+      render: (item) => (
+        <ImportRowCard
+          title={item.username ?? "—"}
+          caption={[item.fullName, item.email]}
+          status={statusChip(item)}
+          problem={isValid(item) ? undefined : formatRowErrorText(item)}
+          meta={[
+            t("metaItem", { label: t("preview.table.rowNo"), value: num(item.rowNo) }),
+            item.classCode
+              ? t("metaItem", { label: t("preview.table.classCode"), value: item.classCode })
+              : undefined,
+            t("metaItem", { label: t("preview.table.password"), value: passwordText(item) }),
+          ]}
+        />
+      ),
+    };
+
+    return { columns, cards };
+  }, [t, num, formatRowErrorText]);
+
+  const resultTable = useMemo(() => {
+    const passwordText = (item: ImportRow) =>
+      item.passwordGenerated ? t("result.passwordGenerated") : t("result.passwordProvided");
+    /** Chip kết quả của dòng, kèm lý do khi dòng hỏng (không tạo được, hoặc dữ liệu lỗi). */
+    const outcome = (item: ImportRow): { chip: ReactNode; problem?: string } => {
+      if (item.status === "CREATED") {
+        return { chip: <StatusChip tone="success">{t("result.rowStatus.CREATED")}</StatusChip> };
+      }
+      if (item.status === "FAILED") {
+        return {
+          chip: <StatusChip tone="danger">{t("result.rowStatus.FAILED")}</StatusChip>,
+          problem: t(`failureCodes.${mapImportFailureCode(item.failureCode)}`),
+        };
+      }
+      if (item.status === "INVALID") {
+        return {
+          chip: <StatusChip tone="danger">{t("result.rowStatus.INVALID")}</StatusChip>,
+          problem: formatRowErrorText(item),
+        };
+      }
+      return { chip: <StatusChip tone="neutral">{t("result.rowStatus.VALID")}</StatusChip> };
+    };
+
+    const columns: ColumnDef<ImportRow>[] = [
       {
         accessorKey: "rowNo",
         header: t("result.table.rowNo"),
@@ -636,11 +710,7 @@ function BulkImportBatchContent({
         header: t("result.table.password"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-secondary">
-            {row.original.passwordGenerated
-              ? t("result.passwordGenerated")
-              : t("result.passwordProvided")}
-          </span>
+          <span className="text-text-secondary">{passwordText(row.original)}</span>
         ),
       },
       {
@@ -648,35 +718,41 @@ function BulkImportBatchContent({
         header: t("result.table.result"),
         enableSorting: false,
         cell: ({ row }) => {
-          const item = row.original;
-          if (item.status === "CREATED") {
-            return <StatusChip tone="success">{t("result.rowStatus.CREATED")}</StatusChip>;
-          }
-          if (item.status === "FAILED") {
-            const failureKey = mapImportFailureCode(item.failureCode);
-            return (
-              <div className="flex min-w-56 flex-wrap items-center gap-2 py-1">
-                <StatusChip tone="danger">{t("result.rowStatus.FAILED")}</StatusChip>
-                <span className="text-field-label text-danger">
-                  {t(`failureCodes.${failureKey}`)}
-                </span>
-              </div>
-            );
-          }
-          if (item.status === "INVALID") {
-            return (
-              <div className="flex min-w-56 flex-wrap items-center gap-2 py-1">
-                <StatusChip tone="danger">{t("result.rowStatus.INVALID")}</StatusChip>
-                <span className="text-field-label text-danger">{formatRowErrorText(item)}</span>
-              </div>
-            );
-          }
-          return <StatusChip tone="neutral">{t("result.rowStatus.VALID")}</StatusChip>;
+          const { chip, problem } = outcome(row.original);
+          if (!problem) return chip;
+          return (
+            <div className="flex min-w-56 flex-wrap items-center gap-2 py-1">
+              {chip}
+              <span className="text-field-label text-danger">{problem}</span>
+            </div>
+          );
         },
       },
-    ],
-    [t, num, formatRowErrorText],
-  );
+    ];
+
+    const cards: TableCards<ImportRow> = {
+      render: (item) => {
+        const { chip, problem } = outcome(item);
+        return (
+          <ImportRowCard
+            title={item.username ?? "—"}
+            caption={[item.fullName]}
+            status={chip}
+            problem={problem}
+            meta={[
+              t("metaItem", { label: t("result.table.rowNo"), value: num(item.rowNo) }),
+              item.classCode
+                ? t("metaItem", { label: t("result.table.classCode"), value: item.classCode })
+                : undefined,
+              t("metaItem", { label: t("result.table.password"), value: passwordText(item) }),
+            ]}
+          />
+        );
+      },
+    };
+
+    return { columns, cards };
+  }, [t, num, formatRowErrorText]);
 
   // `labels` của Pagination là object literal: memoize để prop identity ổn định
   // giữa các lần render (Pagination không memo nên chỉ là tránh cấp phát thừa,
@@ -847,7 +923,8 @@ function BulkImportBatchContent({
 
             <Table
               aria-label={t("preview.tableAriaLabel")}
-              columns={previewColumns}
+              columns={previewTable.columns}
+              cards={previewTable.cards}
               data={rowItems}
               getRowId={getImportRowId}
               loading={rowsQuery.isLoading}
@@ -1194,7 +1271,8 @@ function BulkImportBatchContent({
 
             <Table
               aria-label={t("result.tableAriaLabel")}
-              columns={resultColumns}
+              columns={resultTable.columns}
+              cards={resultTable.cards}
               data={rowItems}
               getRowId={getImportRowId}
               loading={rowsQuery.isLoading}

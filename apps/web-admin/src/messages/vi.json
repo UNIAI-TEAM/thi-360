@@ -646,6 +646,7 @@
       "description": "Đợt cấp có tài khoản do hệ thống sinh mật khẩu nhưng bạn chưa tải file kết quả. Nếu rời trang bây giờ, bạn sẽ cần giữ lại đường dẫn này để mở lại file.",
       "title": "Rời trang khi chưa tải file kết quả?"
     },
+    "metaItem": "{label}: {value}",
     "pagination": {
       "nav": "Phân trang danh sách dòng",
       "next": "Sau",
@@ -794,6 +795,7 @@
         "colRequired": "Bắt buộc",
         "colRules": "Quy tắc",
         "no": "Không",
+        "optional": "Không bắt buộc",
         "yes": "Có"
       },
       "dropzoneHint": "Chỉ nhận tệp .xlsx, tối đa 2.000 dòng, không quá 5 MB",

@@ -11,17 +11,62 @@ import {
   IconButton,
   Label,
   Skeleton,
+  StatusChip,
 } from "@thi360/ui";
 import { FileSpreadsheet, TriangleAlert, Upload, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { type ChangeEvent, type DragEvent, useId, useMemo, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type DragEvent,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { type BulkImportApiDeps, defaultBulkImportApiDeps } from "../api";
 import { resolveImportApiErrorMessage, validateSelectedExcelFile } from "../utils";
 import { BulkImportHeader } from "./bulk-import-header";
 import { BulkImportStepper } from "./bulk-import-stepper";
+
+/**
+ * Bề rộng thẻ (px) dưới đó bảng các cột của tệp mẫu thành danh sách thẻ: 32rem, chỗ ba cột Cột, Bắt buộc, Quy tắc
+ * còn đọc được mà không ép quy tắc xuống mỗi chữ một dòng. Trên máy tính thẻ này hẹp nhất khoảng 513px (cửa sổ
+ * khoảng 1210px, hai thẻ vừa đứng cạnh nhau ở `@4xl`), nên từ 1024px trở lên vẫn là bảng.
+ */
+const TEMPLATE_COLUMNS_CARD_BREAKPOINT = 512;
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * Khung có hẹp hơn `breakpoint` không, đo bằng `ResizeObserver` như `Table` của kit làm với `cards` (bảng này tự viết
+ * bằng `<table>` nên không dùng được `Table`). Chỉ dựng một trong hai dạng, không dựng cả hai rồi ẩn bằng CSS, để
+ * nội dung không lặp trong DOM và cây truy cập. Chưa đo được (máy chủ, jsdom, bề rộng 0) thì là bảng.
+ */
+function useNarrowContainer(breakpoint: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+
+  useIsomorphicLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => {
+      const width = element.getBoundingClientRect().width;
+      if (width > 0) setNarrow(width < breakpoint);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [breakpoint]);
+
+  return [ref, narrow] as const;
+}
 
 export interface BulkImportUploadViewProps {
   deps?: Partial<BulkImportApiDeps>;
@@ -106,6 +151,7 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
   const chooseFileLabelId = useId();
   const dropzoneHintId = useId();
   const columnsHeadingId = useId();
+  const [columnsFrameRef, columnsAsCards] = useNarrowContainer(TEMPLATE_COLUMNS_CARD_BREAKPOINT);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -328,7 +374,7 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
           </div>
         </Card>
 
-        <Card padding="none" className="@container overflow-hidden @4xl:col-span-7">
+        <Card padding="none" className="overflow-hidden @4xl:col-span-7">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
             <h2 id={columnsHeadingId} className="text-title font-semibold text-text">
               {t("upload.columnsHeader")}
@@ -337,61 +383,63 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
           </div>
 
           {/*
-            Thẻ hẹp (dưới 32rem): chỉ còn cột Cột; dấu "Bắt buộc" và quy tắc xuống dưới tên cột trong cùng ô
-            (`data-col-summary`), thay cho hai cột bị ẩn, để quy tắc không bị ép còn một chữ mỗi dòng.
+            Thẻ hẹp (dưới 32rem): danh sách thẻ thay cho bảng (DESIGN.md mục 5.9), mỗi cột của tệp một thẻ gồm tên cột,
+            chip Bắt buộc/Không bắt buộc và quy tắc.
           */}
-          <div className="overflow-x-auto">
-            <table aria-labelledby={columnsHeadingId} className="w-full border-collapse text-body">
-              <thead>
-                <tr className="bg-table-head text-left text-field-label text-text-muted">
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    {t("upload.columnsTable.colName")}
-                  </th>
-                  <th
-                    scope="col"
-                    data-col="required"
-                    className="px-2 py-3 font-semibold whitespace-nowrap @max-lg:hidden"
-                  >
-                    {t("upload.columnsTable.colRequired")}
-                  </th>
-                  <th scope="col" data-col="rules" className="px-4 py-3 font-semibold @max-lg:hidden">
-                    {t("upload.columnsTable.colRules")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+          <div ref={columnsFrameRef} className="min-w-0">
+            {columnsAsCards ? (
+              // Tailwind bỏ dấu đầu dòng làm Safari/VoiceOver không coi là danh sách: ghi rõ vai trò.
+              <ul role="list" aria-labelledby={columnsHeadingId} className="divide-y divide-border">
                 {templateColumns.map((col) => (
-                  <tr key={col.name} className="border-t border-border">
-                    <td className="px-4 py-2.5 align-top font-semibold whitespace-nowrap text-text @max-lg:whitespace-normal">
-                      {col.name}
-                      <span
-                        data-col-summary
-                        className="mt-0.5 hidden font-normal text-text-secondary @max-lg:block"
-                      >
-                        {col.required && (
-                          <span className="font-medium text-text">
-                            {t("upload.columnsTable.colRequired")}
-                            {" · "}
-                          </span>
-                        )}
-                        {col.rules}
-                      </span>
-                    </td>
-                    <td data-col="required" className="px-2 py-2.5 align-top text-text @max-lg:hidden">
-                      {col.required
-                        ? t("upload.columnsTable.yes")
-                        : t("upload.columnsTable.no")}
-                    </td>
-                    <td
-                      data-col="rules"
-                      className="min-w-48 px-4 py-2.5 align-top text-text-secondary @max-lg:hidden"
-                    >
-                      {col.rules}
-                    </td>
-                  </tr>
+                  <li key={col.name} className="flex flex-col gap-1.5 px-4 py-3">
+                    <p className="line-clamp-2 font-semibold wrap-break-word text-text">{col.name}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {col.required ? (
+                        <StatusChip tone="info">{t("upload.columnsTable.colRequired")}</StatusChip>
+                      ) : (
+                        <StatusChip tone="neutral">{t("upload.columnsTable.optional")}</StatusChip>
+                      )}
+                    </div>
+                    <p className="text-caption text-text-secondary">
+                      {t("metaItem", { label: t("upload.columnsTable.colRules"), value: col.rules })}
+                    </p>
+                  </li>
                 ))}
-              </tbody>
-            </table>
+              </ul>
+            ) : (
+              <div className="overflow-x-auto">
+                <table aria-labelledby={columnsHeadingId} className="w-full border-collapse text-body">
+                  <thead>
+                    <tr className="bg-table-head text-left text-field-label text-text-muted">
+                      <th scope="col" className="px-4 py-3 font-semibold">
+                        {t("upload.columnsTable.colName")}
+                      </th>
+                      <th scope="col" className="px-2 py-3 font-semibold whitespace-nowrap">
+                        {t("upload.columnsTable.colRequired")}
+                      </th>
+                      <th scope="col" className="px-4 py-3 font-semibold">
+                        {t("upload.columnsTable.colRules")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {templateColumns.map((col) => (
+                      <tr key={col.name} className="border-t border-border">
+                        <td className="px-4 py-2.5 align-top font-semibold whitespace-nowrap text-text">
+                          {col.name}
+                        </td>
+                        <td className="px-2 py-2.5 align-top text-text">
+                          {col.required
+                            ? t("upload.columnsTable.yes")
+                            : t("upload.columnsTable.no")}
+                        </td>
+                        <td className="min-w-48 px-4 py-2.5 align-top text-text-secondary">{col.rules}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-border px-5 py-3 text-caption text-text-muted">
