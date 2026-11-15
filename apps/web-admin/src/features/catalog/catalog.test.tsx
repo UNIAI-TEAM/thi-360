@@ -3547,6 +3547,79 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
     expect(within(rows[2]!).getByText("Knowledge (English)")).toBeInTheDocument();
     expect(within(errorTable).queryByText(/Chương|Bài|Kiến thức/)).not.toBeInTheDocument();
   });
+
+  describe("UNI-2587: bảng lỗi xem trước theo bề rộng khung trong dialog", () => {
+    /** Giả bề rộng mọi khung (`useCardMode` đo khung lỗi lúc dựng), mở dialog và xem trước một tệp có hai lỗi. */
+    async function openPreviewWithErrors(frameWidth: number) {
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+        () =>
+          ({
+            width: frameWidth,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: frameWidth,
+            bottom: 0,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      );
+      const api = createTreeMockApi({
+        previewImport: vi.fn(async () => ({
+          previewId: "prev-narrow",
+          groupId: "grp-knowledge",
+          groupCode: "KNOWLEDGE",
+          groupKind: "TREE" as const,
+          totalRows: 3,
+          validRows: 1,
+          errorRows: 2,
+          canConfirm: false,
+          errors: [
+            { rowNo: 4, column: "code", code: "CATALOG_CODE_TAKEN", message: "x" },
+            { rowNo: 5, column: "level2NameVi", code: "REQUIRED", message: "x" },
+          ],
+        })),
+      });
+      renderCatalog({ api, search: "group=KNOWLEDGE" });
+      await userEvent.click(await screen.findByRole("button", { name: "Nhập Excel" }));
+      const dialog = await screen.findByRole("dialog");
+      const file = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "tree.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      await userEvent.upload(within(dialog).getByLabelText(/Tệp Excel/) as HTMLInputElement, file);
+      await userEvent.click(within(dialog).getByRole("button", { name: "Kiểm tra tệp" }));
+      await within(dialog).findByText(/Tệp có 2 dòng lỗi/);
+      return dialog;
+    }
+
+    it("khung 296px (cửa sổ 360px): mỗi lỗi là một thẻ có dòng, cột và câu lỗi", async () => {
+      const dialog = await openPreviewWithErrors(296);
+      expect(within(dialog).queryByRole("table")).toBeNull();
+      const list = within(dialog).getByRole("list", { name: "Danh sách dòng lỗi" });
+      const cards = within(list).getAllByRole("listitem");
+      expect(cards).toHaveLength(2);
+      expect(cards[0]).toHaveClass("relative", "flex", "items-start", "gap-3", "px-4", "py-3");
+      expect(within(cards[0]!).getByText("Dòng 4")).toHaveClass("font-semibold");
+      expect(within(cards[0]!).getByText("Cột: Mã")).toHaveClass("text-caption", "text-text-muted");
+      expect(within(cards[0]!).getByText(viMessages.catalog.errorCodes.CATALOG_CODE_TAKEN)).toHaveClass(
+        "text-danger",
+      );
+      expect(within(cards[1]!).getByText("Cột: Bài (Tiếng Việt)")).toBeInTheDocument();
+    });
+
+    it("khung 672px (dialog ở máy tính): vẫn là bảng ba cột", async () => {
+      const dialog = await openPreviewWithErrors(672);
+      expect(within(dialog).queryByRole("list", { name: "Danh sách dòng lỗi" })).toBeNull();
+      const table = within(dialog).getByRole("table", { name: "Danh sách dòng lỗi" });
+      expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
+        "Dòng",
+        "Cột",
+        "Chi tiết",
+      ]);
+      expect(within(table).getAllByRole("row")).toHaveLength(3);
+    });
+  });
 });
 
 describe("importDialog: số nhiều ICU cho số dòng (V2-5)", () => {
