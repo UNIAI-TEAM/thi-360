@@ -86,12 +86,12 @@ function SessionErrorView({
 function BulkImportUploadSkeleton() {
   const common = useTranslations("common");
   return (
-    <div role="status" aria-label={common("loading")} className="flex flex-col gap-4">
-      <Skeleton className="h-12 w-72" />
+    <div role="status" aria-label={common("loading")} className="@container flex flex-col gap-4">
+      <Skeleton className="h-12 w-72 max-w-full" />
       <Skeleton className="h-16 w-full" />
-      <div className="grid gap-4 lg:grid-cols-12">
-        <Skeleton className="h-80 w-full lg:col-span-5" />
-        <Skeleton className="h-80 w-full lg:col-span-7" />
+      <div className="grid gap-4 @4xl:grid-cols-12">
+        <Skeleton className="h-80 w-full @4xl:col-span-5" />
+        <Skeleton className="h-80 w-full @4xl:col-span-7" />
       </div>
     </div>
   );
