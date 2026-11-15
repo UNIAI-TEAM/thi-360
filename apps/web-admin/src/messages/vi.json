@@ -2015,6 +2015,8 @@
       "filteredCount": "{count} tài khoản khớp bộ lọc",
       "hint": "Chọn nhiều dòng để ngừng hoạt động, kích hoạt lại, xóa hoặc gán vai trò và quyền hàng loạt",
       "loadingCount": "Đang tải danh sách tài khoản...",
+      "offlineDescription": "Máy đang mất kết nối nên chưa tải được danh sách theo bộ lọc này. Danh sách tự tải lại khi có mạng, hoặc bấm Thử lại.",
+      "offlineTitle": "Mất kết nối mạng",
       "paginationNav": "Phân trang danh sách tài khoản",
       "paginationNext": "Sau",
       "paginationPage": "Trang {page}",

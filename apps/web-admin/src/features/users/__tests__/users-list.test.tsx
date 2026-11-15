@@ -6,6 +6,8 @@ import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import { onlineManager, QueryClient } from "@tanstack/react-query";
+import { SESSION_QUERY_KEY } from "@/features/session/api";
 import { notify } from "@thi360/ui";
 import { defaultUsersApiDeps, type UsersApiDeps, UsersApiError, type UserSummary } from "../api";
 import { UsersListView } from "../components/users-list-view";
@@ -1143,5 +1145,57 @@ describe("CreateUserDialog: kiểm tra khi rời ô và gợi ý cho ô nhập (
     const phone = within(dialog).getByLabelText(/Số điện thoại/);
     expect(phone).toHaveAttribute("maxlength", "30");
     expect(phone).toHaveAttribute("autocomplete", "off");
+  });
+});
+
+describe("UsersListView: mất mạng khi đổi bộ lọc (U-23)", () => {
+  afterEach(() => {
+    onlineManager.setOnline(true);
+  });
+
+  it("không giữ mãi các dòng của bộ lọc cũ: báo mất kết nối, bỏ số đếm cũ; có mạng lại thì tự tải", async () => {
+    const first = SAMPLE_USERS[0]!;
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async (query) =>
+      query.neverLoggedIn
+        ? { items: [first], page: 0, size: 20, totalItems: 1, totalPages: 1 }
+        : { items: SAMPLE_USERS, page: 0, size: 20, totalItems: SAMPLE_USERS.length, totalPages: 1 },
+    );
+    renderUsersView(makeDeps({ listUsers: listUsersMock }));
+    await screen.findByText("student01");
+    expect(screen.getByText("4 tài khoản khớp bộ lọc")).toBeInTheDocument();
+
+    onlineManager.setOnline(false);
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+
+    const table = screen.getByRole("table", { name: "Danh sách tài khoản" });
+    expect(await within(table).findByText("Mất kết nối mạng")).toBeInTheDocument();
+    expect(within(table).queryByText("student02")).not.toBeInTheDocument();
+    expect(table).not.toHaveAttribute("aria-busy");
+    expect(screen.queryByText("4 tài khoản khớp bộ lọc")).not.toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+
+    onlineManager.setOnline(true);
+    // Số đếm hiện ở dải trên bảng (và được đọc lên qua vùng thông báo, nên lọc theo thẻ <p>).
+    await waitFor(() =>
+      expect(screen.getByText("1 tài khoản khớp bộ lọc", { selector: "p" })).toBeInTheDocument(),
+    );
+    expect(within(table).queryByText("Mất kết nối mạng")).not.toBeInTheDocument();
+  });
+
+  it("vào trang khi mất mạng (phiên đã có sẵn): báo mất kết nối, không hiện trạng thái Chưa có tài khoản", async () => {
+    // Phiên cũng là một truy vấn và cũng bị tạm dừng khi mất mạng; trường hợp thật là điều hướng trong ứng dụng
+    // tới /users khi phiên đã nằm sẵn trong bộ nhớ đệm.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(SESSION_QUERY_KEY, TEST_ADMIN_SESSION);
+    onlineManager.setOnline(false);
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UsersListView deps={makeDeps()} showClassFilter={false} />
+      </SessionProvider>,
+      { client },
+    );
+    const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });
+    expect(await within(table).findByText("Mất kết nối mạng")).toBeInTheDocument();
+    expect(screen.queryByText("Chưa có tài khoản")).not.toBeInTheDocument();
   });
 });

@@ -25,7 +25,19 @@ import {
   Table,
   Tooltip,
 } from "@thi360/ui";
-import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, Upload, Users } from "lucide-react";
+import {
+  Eye,
+  KeyRound,
+  MoreHorizontal,
+  Plus,
+  Power,
+  PowerOff,
+  Search,
+  Trash2,
+  Upload,
+  Users,
+  WifiOff,
+} from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -456,8 +468,13 @@ function UsersListContent({
   );
   const hasSelection = canBulkOperate && selectedAccounts.length > 0;
 
-  const items = usersQuery.data?.items ?? [];
-  const totalItems = usersQuery.data?.totalItems ?? 0;
+  // Mất mạng: TanStack Query tạm dừng truy vấn (`fetchStatus` "paused") thay vì báo lỗi, nên các dòng giữ chỗ của
+  // bộ lọc cũ (hoặc trạng thái rỗng ở lần tải đầu) sẽ đứng mãi. Khi đó báo mất kết nối thay cho dữ liệu sai bộ lọc.
+  // Dữ liệu đã đúng bộ lọc hiện tại mà chỉ lượt tải lại nền bị dừng thì vẫn hiện bình thường.
+  const isOfflineStale =
+    usersQuery.fetchStatus === "paused" && (usersQuery.isPlaceholderData || !usersQuery.data);
+  const items = isOfflineStale ? [] : (usersQuery.data?.items ?? []);
+  const totalItems = isOfflineStale ? 0 : (usersQuery.data?.totalItems ?? 0);
 
   // Số kết quả chỉ được đọc khi dữ liệu của MỘT BỘ LỌC KHÁC vừa về (không đọc lần tải đầu, đổi trang hay sắp xếp).
   // Điều chỉnh state ngay trong render theo mẫu "adjusting state when props change" của React.
@@ -667,7 +684,9 @@ function UsersListContent({
           )}
         >
           <p className="text-body font-medium text-text tabular-nums">
-            {usersQuery.isLoading
+            {isOfflineStale
+              ? t("list.offlineTitle")
+              : usersQuery.isLoading
               ? t("list.loadingCount")
               : usersQuery.isError
                 ? t("list.errorTitle")
@@ -701,7 +720,7 @@ function UsersListContent({
           data={items}
           getRowId={(row) => row.id}
           loading={usersQuery.isLoading}
-          refreshing={usersQuery.isPlaceholderData}
+          refreshing={usersQuery.isPlaceholderData && !isOfflineStale}
           selection={
             canBulkOperate
               ? {
@@ -724,6 +743,17 @@ function UsersListContent({
                 icon={<Users />}
                 title={t("list.errorTitle")}
                 description={t("list.errorDescription")}
+                action={
+                  <Button variant="secondary" onClick={() => void usersQuery.refetch()}>
+                    {common("retry")}
+                  </Button>
+                }
+              />
+            ) : isOfflineStale ? (
+              <EmptyState
+                icon={<WifiOff />}
+                title={t("list.offlineTitle")}
+                description={t("list.offlineDescription")}
                 action={
                   <Button variant="secondary" onClick={() => void usersQuery.refetch()}>
                     {common("retry")}

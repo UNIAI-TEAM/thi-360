@@ -2015,6 +2015,8 @@
       "filteredCount": "{count} matching accounts",
       "hint": "Select multiple rows to deactivate, reactivate, delete, or assign roles and permissions in bulk",
       "loadingCount": "Loading accounts...",
+      "offlineDescription": "You are offline, so the list for this filter has not loaded. It reloads automatically when the connection returns, or select Retry.",
+      "offlineTitle": "No network connection",
       "paginationNav": "Account list pagination",
       "paginationNext": "Next",
       "paginationPage": "Page {page}",
