@@ -27,47 +27,47 @@ export function BulkImportStepper({ currentStep }: BulkImportStepperProps) {
    */
   return (
     <div className="@container">
-    <ol
-      aria-label={t("ariaLabel")}
-      className="flex gap-1 rounded-lg border border-border bg-surface p-2 @2xl:gap-2 @2xl:p-3"
-    >
-      {steps.map((step) => {
-        const isCurrent = step.no === currentStep;
-        const isDone = step.no < currentStep;
-        return (
-          <li
-            key={step.no}
-            aria-current={isCurrent ? "step" : undefined}
-            className={cn(
-              "flex min-h-11 items-center gap-2.5 rounded-md text-label font-medium @2xl:min-w-0 @2xl:flex-1 @2xl:px-3",
-              isCurrent ? "min-w-0 flex-1 px-3" : "shrink-0 px-2.5",
-              isCurrent
-                ? "bg-primary-50 font-semibold text-primary-text"
-                : isDone
-                  ? "text-text"
-                  : "text-text-muted",
-            )}
-          >
-            <span
-              aria-hidden
+      <ol
+        aria-label={t("ariaLabel")}
+        className="flex gap-1 rounded-lg border border-border bg-surface p-2 @2xl:gap-2 @2xl:p-3"
+      >
+        {steps.map((step) => {
+          const isCurrent = step.no === currentStep;
+          const isDone = step.no < currentStep;
+          return (
+            <li
+              key={step.no}
+              aria-current={isCurrent ? "step" : undefined}
               className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full text-field-label font-semibold",
-                isCurrent || isDone
-                  ? "bg-primary-fill text-on-primary"
-                  : "bg-subtle text-text-muted",
+                "flex min-h-11 items-center gap-2.5 rounded-md text-label font-medium @2xl:min-w-0 @2xl:flex-1 @2xl:px-3",
+                isCurrent ? "min-w-0 flex-1 px-3" : "shrink-0 px-2.5",
+                isCurrent
+                  ? "bg-primary-50 font-semibold text-primary-text"
+                  : isDone
+                    ? "text-text"
+                    : "text-text-muted",
               )}
             >
-              {isDone ? <Check className="size-3.5" /> : step.no}
-            </span>
-            <span className={cn("min-w-0", !isCurrent && "sr-only @2xl:not-sr-only")}>
-              {step.label}
-            </span>
-            {/* Dấu tích chỉ để nhìn; trình đọc màn hình cần chữ để biết bước đã xong (bước hiện tại có aria-current). */}
-            {isDone && <span className="sr-only">{t("doneLabel")}</span>}
-          </li>
-        );
-      })}
-    </ol>
+              <span
+                aria-hidden
+                className={cn(
+                  "flex size-6 shrink-0 items-center justify-center rounded-full text-field-label font-semibold",
+                  isCurrent || isDone
+                    ? "bg-primary-fill text-on-primary"
+                    : "bg-subtle text-text-muted",
+                )}
+              >
+                {isDone ? <Check className="size-3.5" /> : step.no}
+              </span>
+              <span className={cn("min-w-0", !isCurrent && "sr-only @2xl:not-sr-only")}>
+                {step.label}
+              </span>
+              {/* Dấu tích chỉ để nhìn; trình đọc màn hình cần chữ để biết bước đã xong (bước hiện tại có aria-current). */}
+              {isDone && <span className="sr-only">{t("doneLabel")}</span>}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
