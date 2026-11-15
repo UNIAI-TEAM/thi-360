@@ -95,6 +95,7 @@ export {
   type TableProps,
   type TableSelection,
   type TableSorting,
+  useCardMode,
 } from "./components/table";
 export { Textarea, type TextareaProps } from "./components/textarea";
 export { notify, Toaster, toast, type ToasterProps } from "./components/toaster";
