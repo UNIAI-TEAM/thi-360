@@ -91,6 +91,8 @@ export interface QuestionBlock {
   knowledgeScope: KnowledgeScope;
   tagCodes: string[];
   matrix: BlockMatrix;
+  /** Quy tắc đảo (bản vẽ BaiThiCauTruc). Bỏ trống coi như `SHUFFLE`. */
+  shuffle?: BlockShuffleRule;
 }
 
 /** Một môn trong phần thi (hoặc trong một tổ hợp). */
@@ -148,6 +150,8 @@ export interface ListExamsQuery {
   format?: ExamFormat;
   status?: ExamStatus;
   checkStatus?: ExamCheckStatus;
+  /** Chỉ bài có bản sửa chưa công bố (ô đánh dấu của bản vẽ BaiThi). */
+  hasUnpublishedChanges?: boolean;
   page?: number;
   size?: number;
   sort?: string;
@@ -159,7 +163,14 @@ export interface ExamTemplate {
   kind: ExamKind;
   format: ExamFormat;
   name: string;
-  parts: Array<{ name: string; questionCount: number; durationMinutes: number; mode: "FIXED" | "CHOICE" }>;
+  parts: Array<{
+    name: string;
+    questionCount: number;
+    durationMinutes: number;
+    mode: "FIXED" | "CHOICE";
+    /** Môn của phần cố định; phần tự chọn và mẫu bài lẻ để `null` (môn do người tạo chọn). */
+    subjectCode?: string | null;
+  }>;
 }
 
 export interface CreateExamRequest {
@@ -170,4 +181,72 @@ export interface CreateExamRequest {
   templateCode: string | null;
   singleSubjectCode: string | null;
   description: string | null;
+  /**
+   * Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi (UniNote PBI-04 mục 5.1–5.3). Bỏ trống thì nạp nguyên mẫu theo
+   * `templateCode`.
+   */
+  parts?: CreateExamPartInput[];
+}
+
+/** Quy tắc đảo câu của khối: đảo thứ tự câu trong khối hoặc giữ thứ tự. */
+export type BlockShuffleRule = "SHUFFLE" | "KEEP_ORDER";
+
+/** Sửa Thông tin chung. Đổi kỳ thi, hình thức, mẫu hoặc môn của bài lẻ thì cấu trúc được nạp lại theo mẫu. */
+export interface UpdateExamInfoRequest {
+  name: string;
+  code: string;
+  kind: ExamKind;
+  format: ExamFormat;
+  templateCode: string | null;
+  singleSubjectCode: string | null;
+  description: string | null;
+}
+
+/** Bản làm việc của cấu trúc và ma trận (`GET/PUT /exams/{id}/structure`). */
+export interface ExamStructure {
+  examId: string;
+  parts: ExamPart[];
+}
+
+export interface UpdateExamStructureRequest {
+  parts: ExamPart[];
+}
+
+export interface DuplicateExamRequest {
+  /** Tên bài mới; mã do hệ thống sinh. */
+  name: string;
+}
+
+export interface SuggestExamCodeQuery {
+  kind: ExamKind;
+  format: ExamFormat;
+  /** Phần/môn của bài lẻ, để mã có đoạn môn (`HSA-L-TOAN-002`). */
+  singleScope?: string | null;
+}
+
+/** Bộ lọc nguồn của một khối: môn của phần, dạng câu, phạm vi kiến thức. Chỉ đếm câu Sẵn sàng. */
+export interface AvailableQuestionsQuery {
+  subjectCode: string;
+  questionType: QuestionType;
+  knowledgeScope: KnowledgeScope;
+}
+
+/** Số câu Sẵn sàng khớp bộ lọc của khối, tổng và theo từng ô Lớp × Độ khó (câu chùm đếm theo câu con). */
+export interface AvailableQuestionCounts {
+  total: number;
+  cells: MatrixCell[];
+}
+
+/** Một phần của cấu trúc khởi tạo khi tạo bài thi: tên, số câu, thời lượng, môn cố định hoặc các lựa chọn. */
+export interface CreateExamPartInput {
+  name: string;
+  questionCount: number;
+  durationMinutes: number;
+  mode: "FIXED" | "CHOICE";
+  /** Môn của phần cố định; phần tự chọn để `null`. */
+  subjectCode: string | null;
+  /** Phần tự chọn: có nhánh Tiếng Anh. */
+  englishOption: boolean;
+  /** Phần tự chọn: tổ hợp đã gắn, số câu từng môn theo thứ tự môn của tổ hợp (tổng bằng số câu của phần). */
+  combinations: Array<{ code: string; subjectCounts: number[] }>;
 }

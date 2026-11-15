@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { MockupPlaceholder } from "@/components/mockup-placeholder";
+import { ExamListView } from "@/features/exams/components/exam-list-view";
 import { isContentMockEnabled } from "@/lib/mock/content-mock";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -9,8 +9,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${t("title")} · Thi 360` };
 }
 
-/** Chỗ giữ của lane mockup; thay bằng màn thật (BaiThi). */
+/** Danh sách bài thi (bản vẽ BaiThi, dữ liệu mẫu). */
 export default function Page() {
   if (!isContentMockEnabled()) notFound();
-  return <MockupPlaceholder screen="BaiThi" />;
+  return <ExamListView />;
 }

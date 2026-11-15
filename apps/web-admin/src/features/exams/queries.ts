@@ -1,9 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { defaultExamsApiDeps, EXAMS_QUERY_KEYS, type ExamsApiDeps } from "./api";
-import type { ListExamsQuery } from "./types";
+import type {
+  AvailableQuestionsQuery,
+  CreateExamRequest,
+  ListExamsQuery,
+  SuggestExamCodeQuery,
+  UpdateExamInfoRequest,
+  UpdateExamStructureRequest,
+} from "./types";
 
 export function useExamList(query: ListExamsQuery, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({
@@ -25,5 +32,77 @@ export function useExamTemplates(deps: ExamsApiDeps = defaultExamsApiDeps) {
     queryKey: EXAMS_QUERY_KEYS.templates(),
     queryFn: () => deps.listExamTemplates(),
     staleTime: 5 * 60_000,
+  });
+}
+
+/** Bản làm việc của cấu trúc; không tự tải lại khi quay lại cửa sổ để không đè bản nháp đang sửa. */
+export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  return useQuery({
+    queryKey: EXAMS_QUERY_KEYS.structure(id),
+    queryFn: () => deps.getExamStructure(id),
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useSuggestedExamCode(query: SuggestExamCodeQuery, enabled: boolean, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  return useQuery({
+    queryKey: EXAMS_QUERY_KEYS.suggestedCode(query),
+    queryFn: () => deps.suggestExamCode(query),
+    enabled,
+  });
+}
+
+export function useAvailableQuestions(query: AvailableQuestionsQuery | null, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  return useQuery({
+    queryKey: query ? EXAMS_QUERY_KEYS.available(query) : ["exams", "available-questions", null],
+    queryFn: () => (query ? deps.countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [] })),
+    enabled: query !== null,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Mọi thao tác ghi làm mới cả nhóm `exams` (danh sách, chi tiết, cấu trúc, kết quả kiểm tra của lane khác). */
+function useInvalidateExams() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.all });
+}
+
+export function useCreateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const invalidate = useInvalidateExams();
+  return useMutation({
+    mutationFn: (request: CreateExamRequest) => deps.createExam(request),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useUpdateExamInfo(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const invalidate = useInvalidateExams();
+  return useMutation({
+    mutationFn: (request: UpdateExamInfoRequest) => deps.updateExamInfo(id, request),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useUpdateExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const invalidate = useInvalidateExams();
+  return useMutation({
+    mutationFn: (request: UpdateExamStructureRequest) => deps.updateExamStructure(id, request),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useDuplicateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const invalidate = useInvalidateExams();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => deps.duplicateExam(id, { name }),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useDiscontinueExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const invalidate = useInvalidateExams();
+  return useMutation({
+    mutationFn: (id: string) => deps.discontinueExam(id),
+    onSuccess: () => invalidate(),
   });
 }

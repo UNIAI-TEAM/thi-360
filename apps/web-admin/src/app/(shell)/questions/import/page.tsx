@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { MockupPlaceholder } from "@/components/mockup-placeholder";
+import { QuestionImportView } from "@/features/question-import/components/question-import-view";
 import { isContentMockEnabled } from "@/lib/mock/content-mock";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -9,8 +9,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${t("title")} · Thi 360` };
 }
 
-/** Chỗ giữ của lane mockup; thay bằng màn thật (NhapCauHoi). */
+/** Nhập câu hỏi từ tệp (UNI-2594), dữ liệu mẫu. */
 export default function Page() {
   if (!isContentMockEnabled()) notFound();
-  return <MockupPlaceholder screen="NhapCauHoi" />;
+  return <QuestionImportView />;
 }

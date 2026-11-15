@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { MockupPlaceholder } from "@/components/mockup-placeholder";
+import { QuestionDetailContent } from "@/features/questions/components/question-detail-content";
 import { isContentMockEnabled } from "@/lib/mock/content-mock";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("questions.detail");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("tabs.content")} · ${t("title")} · Thi 360` };
 }
 
-/** Chỗ giữ của lane mockup; thay bằng màn thật (CauHoiPhienBan). */
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function QuestionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   if (!isContentMockEnabled()) notFound();
-  await params;
-  return <MockupPlaceholder screen="CauHoiPhienBan" />;
+  const { id } = await params;
+  return <QuestionDetailContent questionId={id} />;
 }

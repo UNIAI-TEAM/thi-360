@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { MockupPlaceholder } from "@/components/mockup-placeholder";
+import { Suspense } from "react";
+import { QuestionBankSkeleton, QuestionBankView } from "@/features/questions/components/question-bank-view";
 import { isContentMockEnabled } from "@/lib/mock/content-mock";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -9,8 +10,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${t("title")} · Thi 360` };
 }
 
-/** Chỗ giữ của lane mockup; thay bằng màn thật (NganHangCauHoi). */
-export default function Page() {
+/** Ngân hàng câu hỏi (canvas `NganHangCauHoi`). Bộ lọc đọc từ URL nên cần Suspense cho `useSearchParams`. */
+export default function QuestionsPage() {
   if (!isContentMockEnabled()) notFound();
-  return <MockupPlaceholder screen="NganHangCauHoi" />;
+  return (
+    <Suspense fallback={<QuestionBankSkeleton />}>
+      <QuestionBankView />
+    </Suspense>
+  );
 }

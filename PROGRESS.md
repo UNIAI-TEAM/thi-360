@@ -4,7 +4,7 @@
 
 ## Trạng thái hiện tại (2026-11-15)
 
-**Giai đoạn:** đợt 1 (nền, PBI-01, PBI-02) đã merge vào `develop` ngày 2026-11-14 (PR #25, `14f983c`; 105/105 điểm của plan). Đang làm các việc phát sinh sau khi dùng thử bản demo; mỗi việc một issue và một PR vào `develop`. Các mục `T…` bên dưới là nhật ký của đợt 1, đường dẫn trang trong đó là tên cũ (xem bảng đổi tên ở mục "Sau đợt 1").
+**Giai đoạn:** đợt 1 (nền, PBI-01, PBI-02) đã merge vào `develop` ngày 2026-11-14 (PR #25, `14f983c`; 105/105 điểm của plan). Đợt 2 đã có mockup giao diện PBI-03, PBI-04 trên dữ liệu mẫu (UNI-2590, mục dưới); phần backend chưa bắt đầu. Các việc phát sinh sau khi dùng thử bản demo: mỗi việc một issue và một PR vào `develop`. Các mục `T…` bên dưới là nhật ký của đợt 1, đường dẫn trang trong đó là tên cũ (xem bảng đổi tên ở mục "Sau đợt 1").
 
 ### Sau đợt 1 (2026-11-14)
 
@@ -37,6 +37,16 @@
 - **UNI-2562** (2026-11-15, phương án b): ở chế độ tối nền nút chính (`primary-fill` và hover/bấm) và viền thẻ/chip/ô đang chọn (`primary-600`) được `deriveTokens` nâng độ sáng tới khi đạt 3:1 với nền trang, nền thẻ và nền phụ (WCAG 1.4.11), với mọi bộ phối màu. Chữ trên nút giữ trắng nếu vẫn đạt 4,5:1, không thì nút sáng tới khi chữ tối `#11181c` đạt 7:1; cả 9 bộ có sẵn đều thành nền sáng chữ tối ở chế độ tối (mặc định: `#55b38f`). Thêm token `on-danger` và `switch-thumb` (trắng cả hai chế độ) cho nút nguy hiểm và switch tắt. Cảnh báo "chữ tối trên nút" ở Tùy chỉnh giao diện xét theo chế độ sáng. `tokens.test.ts` kiểm cặp 3:1. DESIGN.md mục 2 và 8, spec 13.1.
 - **UNI-2588** (2026-11-15): sau khi đóng ngăn menu ở màn hẹp, tooltip "Mở menu điều hướng" treo cạnh nút menu (focus trả về nút làm `Tooltip` tự mở, kể cả khi chạm). `Tooltip` của kit giờ chỉ mở theo focus khi thao tác gần nhất là phím điều hướng; rê chuột vẫn mở. Áp dụng cho mọi nút icon mở hộp thoại hoặc ngăn. DESIGN.md 5.9.
 - Việc để lại đã biết: test `privilege-escalation.test.tsx` (hộp thoại Tạo tài khoản, 403) phụ thuộc thời điểm, từng fail một lần khi máy rất bận; chưa chạy thử phiên tự làm mới với Keycloak bật thu hồi refresh token.
+
+### Đợt 2 · Mockup PBI-03, PBI-04 (2026-11-15)
+
+- **UNI-2590** (cha), UNI-2591 đến UNI-2596: các màn web admin của Ngân hàng câu hỏi và Bài thi chạy trên dữ liệu mẫu, chưa nối backend. Bản vẽ ở `docs/design/dot-2/` (canvas trang 05–08). Làm song song năm lane trên nền chung UNI-2591, gộp một PR vào `develop`.
+  - Đường dẫn: `/questions`, `/questions/new`, `/questions/[id]` (Nội dung, Nơi đang dùng, Lịch sử phiên bản), `/questions/[id]/edit`, `/questions/import`; `/exams`, `/exams/new`, `/exams/[id]` (Thông tin chung, Cấu trúc, Kiểm tra, Phiên bản).
+  - Luồng dữ liệu: component → hook (`queries.ts`) → `api.ts` → `mockRequest` + kho mẫu (`lib/mock/content-mock.ts`). Nối backend chỉ thay thân hàm `api.ts`. URL `?mockState=loading|empty|error` dựng các trạng thái; chữ mẫu tiếng Việt nằm trong `mock/*.json`.
+  - Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK`: chưa đặt thì dev bật, bản build tắt (menu ẩn, trang trả 404). Bản demo đặt `true`.
+  - Quy ước mới ở `DESIGN.md` 5.14: trang Tạo cho đối tượng nhiều phần thay hộp thoại, dải trạng thái có số lượng và chip bộ lọc, layout chung cho trang con, luồng nhiều bước, cột `Table` phải ổn định.
+  - **Chờ BA:** 6 dạng câu (bản vẽ) hay 4 (UniNote); câu Nháp có bắt buộc gắn kiến thức không; sửa câu Sẵn sàng thì về Nháp hay tạo phiên bản mới; công bố một phần khi còn lỗi; tạo bài thi Nháp khi còn mục "Cần xử lý"; danh mục tổ hợp chưa có trường kỳ thi nên lọc tổ hợp theo kỳ thi đang dựa vào dữ liệu mẫu; môn của KH-2; ảnh bìa lưu ở đâu.
+  - Để lại: trình soạn thảo đầy đủ (canvas trang 07) chưa làm, ô đề bài là ô nhập nhiều dòng; test `question-import-flow` và `users-list` chậm khi chạy cả bộ trên máy bận (đạt khi chạy riêng).
 
 ### Nhật ký đợt 1
 

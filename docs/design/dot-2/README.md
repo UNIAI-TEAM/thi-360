@@ -12,7 +12,7 @@ Bản xem được: https://claude.ai/artifact/4WyWEQAR8DTdZQTmQA5eG7, trang 05�
 | UNI-2592 | `/questions` | `NganHangCauHoi` danh sách, bộ lọc · `ChonKienThuc` chọn MAPID · `KiemTraSanSang` chưa chuyển được sang Sẵn sàng · `NgungCauHoi` ngừng sử dụng |
 | UNI-2593 | `/questions/new`, `/questions/[id]`, `/questions/[id]/edit`, `/questions/[id]/usage`, `/questions/[id]/versions` | `CauHoiChonDang` chọn dạng · `CauHoi*Form` soạn theo dạng · `CauHoi*ChiTiet` chi tiết · `CauHoiPhienBan` lịch sử phiên bản |
 | UNI-2594 | `/questions/import` | bước 1 theo kiểu `docs/design/dot-1/CapBuoc1TaiTep` · `NhapCauHoiAnhXa` · `NhapCauHoiKiemTra` · `NhapCauHoiKetQua` |
-| UNI-2595 | `/exams`, `/exams/[id]`, `/exams/[id]/structure` | `BaiThi` · `TaoBaiThi` · Thông tin chung (chưa vẽ, theo trường của `TaoBaiThi`) · `BaiThiCauTruc` · `BaiThiToHop` |
+| UNI-2595 | `/exams`, `/exams/new`, `/exams/[id]`, `/exams/[id]/structure` | `BaiThi` · `TaoBaiThi` (trang riêng) · Thông tin chung (chưa vẽ, theo trường của `TaoBaiThi`) · `BaiThiCauTruc` · `BaiThiToHop` |
 | UNI-2596 | `/exams/[id]/review`, `/exams/[id]/versions` | `BaiThiKiemTra` · `BaiThiXemTruoc` · `BaiThiPhienBan` · `CongBoBaiThi` |
 
 ## Chỗ bản vẽ khác nhau hoặc chờ BA

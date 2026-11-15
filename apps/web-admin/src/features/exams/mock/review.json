@@ -1,0 +1,72 @@
+{
+  "baseline": {
+    "perCell": 24,
+    "sets": 6
+  },
+  "exams": {
+    "ex-hsa-f-001": {
+      "blocks": {
+        "blk-11": {
+          "cells": {
+            "GRADE_10:APPLICATION": 0,
+            "GRADE_11:APPLICATION": 0,
+            "GRADE_12:APPLICATION": 2
+          }
+        },
+        "blk-20": {
+          "overlap": {
+            "nodeIds": ["kn-2S1-1-1", "kn-2S1-1-2"],
+            "sharedCount": 14,
+            "solveSeconds": 90
+          }
+        }
+      },
+      "versionPaths": {
+        "1": ["opt-30", "opt-1", "opt-8"],
+        "2": ["opt-30", "opt-1", "opt-8"]
+      },
+      "changes": [
+        {
+          "id": "chg-1",
+          "kind": "OPTION_ADDED",
+          "where": "Phần 3 · Khoa học hoặc Tiếng Anh",
+          "before": "3 đường lựa chọn: Tiếng Anh, KH-1, KH-2",
+          "after": "4 đường lựa chọn: thêm KH-3 · Lịch sử – Địa lí – Sinh học (17–17–16)",
+          "blockId": "blk-16",
+          "optionId": "opt-15"
+        },
+        {
+          "id": "chg-2",
+          "kind": "MATRIX_CHANGED",
+          "where": "Phần 1 › Toán · Điền đáp án",
+          "before": "Lớp 12/Thông hiểu 5 · Lớp 12/Vận dụng 2",
+          "after": "Lớp 12/Thông hiểu 4 · Lớp 12/Vận dụng 3 (tổng khối vẫn 20 câu)",
+          "blockId": "blk-23",
+          "optionId": null
+        },
+        {
+          "id": "chg-3",
+          "kind": "ORDER_RULE_CHANGED",
+          "where": "Phần 2 › Ngữ văn · Đọc hiểu",
+          "before": "Giữ thứ tự các nhóm",
+          "after": "Đảo vị trí các nhóm; câu trong một nhóm vẫn liền nhau",
+          "blockId": "blk-26",
+          "optionId": null
+        }
+      ]
+    },
+    "ex-qda-l-ta-001": {
+      "changes": [
+        {
+          "id": "chg-1",
+          "kind": "QUESTIONS_REPLACED",
+          "where": "Tiếng Anh › Trắc nghiệm",
+          "before": "Đọc hiểu: 5 câu của đoạn Reading 03",
+          "after": "Đọc hiểu: 5 câu của đoạn Reading 07 (cùng khối lớp, độ khó)",
+          "blockId": "blk-69",
+          "optionId": null
+        }
+      ]
+    }
+  }
+}

@@ -89,7 +89,7 @@ thead th{position:sticky;top:0;z-index:1;background:#FAFAFB}
           <div style="color: #54545A; font-size: 13px">Sửa bài đang phục vụ tạo bản làm việc; bản công bố cũ vẫn phục vụ tới khi công bố bản mới</div>
         </div>
         <div role="region" tabindex="0" aria-labelledby="exam-table-cap" style="overflow: auto; max-height: 720px">
-          <table style="width: 100%; min-width: 1240px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums">
+          <table style="width: 100%; min-width: 1100px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums">
             <caption id="exam-table-cap" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap">Danh sách bài thi</caption>
             <thead>
               <tr style="text-align: left; font-size: 13px; line-height: 18px; color: #54545A">
@@ -97,7 +97,6 @@ thead th{position:sticky;top:0;z-index:1;background:#FAFAFB}
                 <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Kỳ thi</th>
                 <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Hình thức</th>
                 <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Cấu trúc</th>
-                <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Đường lựa chọn</th>
                 <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Trạng thái</th>
                 <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Bản sửa</th>
                 <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Kiểm tra gần nhất</th>
@@ -115,7 +114,6 @@ thead th{position:sticky;top:0;z-index:1;background:#FAFAFB}
                   <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC">{{r.exam}}</td>
                   <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC">{{r.format}}</td>
                   <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{r.struct}}</td>
-                  <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; color: #3A3A42">{{r.paths}}</td>
                   <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC"><span style="{{r.st.style}}"><span aria-hidden="true" style="{{r.st.dot}}"></span>{{r.st.text}}</span></td>
                   <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC">
                     <sc-if value="{{r.hasDraft}}" hint-placeholder-val="{{false}}"><span style="{{r.draft.style}}"><span aria-hidden="true" style="{{r.draft.dot}}"></span>{{r.draft.text}}</span></sc-if>
@@ -193,22 +191,22 @@ dot: 'width: 8px; height: 8px; border-radius: 9999px; flex: none; background: ' 
 }
 renderVals() {
 const data = [
-['HSA FULL · Đề luyện số 1', 'HSA-F-001', 'HSA', 'FULL', '150 câu · 195 phút', 'Tiếng Anh + 3 tổ hợp', ['ok', 'Đang phục vụ v2'], ['warn', 'Chưa công bố'], ['bad', '2 vấn đề'], '', '15/11/2026 09:30'],
-['QDA FULL · Đề luyện số 1', 'QDA-F-001', 'QDA', 'FULL', '150 câu · 195 phút', 'Tiếng Anh + 5 tổ hợp', ['ok', 'Đang phục vụ v3'], null, ['ok', 'Hợp lệ'], '', '12/11/2026 16:05'],
-['QDA FULL · Đề luyện số 2', 'QDA-F-002', 'QDA', 'FULL', '150 câu · 195 phút', 'Tiếng Anh + 5 tổ hợp', ['ok', 'Đang phục vụ v1'], null, ['warn', 'Cần kiểm tra lại'], 'Nguồn câu hỏi đã đổi', '14/11/2026 08:20'],
-['HSA Toán · Bài lẻ số 1', 'HSA-L-TOAN-001', 'HSA', 'Bài lẻ', '50 câu · 75 phút', 'Toán', ['ok', 'Đang phục vụ v1'], null, ['ok', 'Hợp lệ'], '', '09/11/2026 10:12'],
-['QDA Tiếng Anh · Bài lẻ số 1', 'QDA-L-TA-001', 'QDA', 'Bài lẻ', '50 câu · 60 phút', 'Tiếng Anh', ['ok', 'Đang phục vụ v2'], ['warn', 'Chưa công bố'], ['ok', 'Hợp lệ'], '', '14/11/2026 15:47'],
-['HSA FULL · Đề luyện số 2', 'HSA-F-002', 'HSA', 'FULL', '150 câu · 195 phút', 'Tiếng Anh + 2 tổ hợp', ['off', 'Nháp'], null, ['off', 'Chưa kiểm tra'], '', '15/11/2026 08:05'],
-['HSA FULL · Đề thử tháng 10', 'HSA-F-000', 'HSA', 'FULL', '150 câu · 195 phút', 'Tiếng Anh + 3 tổ hợp', ['off', 'Ngừng bán'], null, ['ok', 'Hợp lệ'], '', '30/10/2026 17:20']
+['HSA FULL · Đề luyện số 1', 'HSA-F-001', 'HSA', 'FULL', '150 câu · 195 phút', ['ok', 'Đang phục vụ v2'], ['warn', 'Chưa công bố'], ['bad', '2 vấn đề'], '', '15/11/2026 09:30'],
+['QDA FULL · Đề luyện số 1', 'QDA-F-001', 'QDA', 'FULL', '150 câu · 195 phút', ['ok', 'Đang phục vụ v3'], null, ['ok', 'Hợp lệ'], '', '12/11/2026 16:05'],
+['QDA FULL · Đề luyện số 2', 'QDA-F-002', 'QDA', 'FULL', '150 câu · 195 phút', ['ok', 'Đang phục vụ v1'], null, ['warn', 'Cần kiểm tra lại'], 'Nguồn câu hỏi đã đổi', '14/11/2026 08:20'],
+['HSA Toán · Bài lẻ số 1', 'HSA-L-TOAN-001', 'HSA', 'Bài lẻ', '50 câu · 75 phút', ['ok', 'Đang phục vụ v1'], null, ['ok', 'Hợp lệ'], '', '09/11/2026 10:12'],
+['QDA Tiếng Anh · Bài lẻ số 1', 'QDA-L-TA-001', 'QDA', 'Bài lẻ', '50 câu · 60 phút', ['ok', 'Đang phục vụ v2'], ['warn', 'Chưa công bố'], ['ok', 'Hợp lệ'], '', '14/11/2026 15:47'],
+['HSA FULL · Đề luyện số 2', 'HSA-F-002', 'HSA', 'FULL', '150 câu · 195 phút', ['off', 'Nháp'], null, ['off', 'Chưa kiểm tra'], '', '15/11/2026 08:05'],
+['HSA FULL · Đề thử tháng 10', 'HSA-F-000', 'HSA', 'FULL', '150 câu · 195 phút', ['off', 'Ngừng bán'], null, ['ok', 'Hợp lệ'], '', '30/10/2026 17:20']
 ];
 return {
 nav: this.nav('exams'),
 rows: data.map((d) => ({
-name: d[0], code: d[1], exam: d[2], format: d[3], struct: d[4], paths: d[5],
-st: this.chip(d[6][0], d[6][1]),
-hasDraft: !!d[7], noDraft: !d[7], draft: d[7] ? this.chip(d[7][0], d[7][1]) : this.chip('off', ''),
-check: this.chip(d[8][0], d[8][1]), hasNote: !!d[9], note: d[9],
-updated: d[10],
+name: d[0], code: d[1], exam: d[2], format: d[3], struct: d[4],
+st: this.chip(d[5][0], d[5][1]),
+hasDraft: !!d[6], noDraft: !d[6], draft: d[6] ? this.chip(d[6][0], d[6][1]) : this.chip('off', ''),
+check: this.chip(d[7][0], d[7][1]), hasNote: !!d[8], note: d[8],
+updated: d[9],
 editLabel: 'Sửa bài thi ' + d[1], copyLabel: 'Sao chép bài thi ' + d[1], menuLabel: 'Thao tác khác với bài thi ' + d[1]
 }))
 };

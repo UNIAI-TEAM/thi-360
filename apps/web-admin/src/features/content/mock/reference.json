@@ -114,6 +114,30 @@
         "GEOGRAPHY",
         "BIOLOGY"
       ]
+    },
+    {
+      "code": "KH-4",
+      "name": "Vật lí – Hóa học",
+      "subjectCodes": [
+        "PHYSICS",
+        "CHEMISTRY"
+      ]
+    },
+    {
+      "code": "KH-5",
+      "name": "Hóa học – Sinh học",
+      "subjectCodes": [
+        "CHEMISTRY",
+        "BIOLOGY"
+      ]
+    },
+    {
+      "code": "KH-6",
+      "name": "Lịch sử – Địa lí",
+      "subjectCodes": [
+        "HISTORY",
+        "GEOGRAPHY"
+      ]
     }
   ],
   "knowledgeTree": [

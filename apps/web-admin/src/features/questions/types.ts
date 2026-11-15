@@ -94,8 +94,53 @@ export interface ListQuestionsQuery {
   /** Ngày cập nhật, `YYYY-MM-DD`, tính cả hai đầu. */
   updatedFrom?: string;
   updatedTo?: string;
+  /** Ngày tạo, `YYYY-MM-DD`, tính cả hai đầu (bộ lọc "Ngày tạo từ / đến" của canvas `NganHangCauHoi`). */
+  createdFrom?: string;
+  createdTo?: string;
   page?: number;
   size?: number;
   /** `field,asc|desc`, ví dụ `updatedAt,desc`. */
   sort?: string;
+}
+
+/** Số câu theo trạng thái cho thanh trạng thái của danh sách (cùng bộ lọc, bỏ điều kiện trạng thái). */
+export interface QuestionStatusCounts {
+  total: number;
+  byStatus: Record<QuestionStatus, number>;
+}
+
+/** Lý do một câu bị bỏ qua khi đổi trạng thái hàng loạt. */
+export type QuestionStatusSkipReason = "NOT_READY" | "ALREADY_IN_STATUS" | "NOT_FOUND";
+
+export interface BulkQuestionStatusRequest {
+  ids: string[];
+}
+
+export interface BulkQuestionStatusResult {
+  succeeded: QuestionSummary[];
+  skipped: Array<{ id: string; code: string; reason: QuestionStatusSkipReason }>;
+}
+
+/** Một bài thi đang dùng câu hỏi và ảnh hưởng tới nguồn sinh đề khi ngừng sử dụng câu (canvas `NgungCauHoi`). */
+export interface QuestionUsageExam {
+  examId: string;
+  examCode: string;
+  examName: string;
+  examStatus: "DRAFT" | "PUBLISHED" | "DISCONTINUED";
+  servingVersion: number | null;
+  /** Môn và dạng câu của khối dùng câu này; mã tổ hợp khi khối nằm trong một lựa chọn của phần tự chọn. */
+  subjectCode: string;
+  questionType: QuestionType;
+  optionCode: string | null;
+  /** Số câu khối cần ở ô Lớp × Độ khó của câu này; `null` khi không xác định được. */
+  needed: number | null;
+  /** Số câu Sẵn sàng khác còn lại cho ô đó sau khi ngừng câu này. */
+  available: number;
+}
+
+export interface QuestionRetireImpact {
+  questionId: string;
+  exams: QuestionUsageExam[];
+  /** Câu đã có trong lịch sử thi hoặc bài thi: chỉ ngừng sử dụng, không xóa hẳn (UniNote PBI-03 mục 9). */
+  hardDeleteBlocked: boolean;
 }
