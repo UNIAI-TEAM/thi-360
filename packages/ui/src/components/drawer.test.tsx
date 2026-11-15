@@ -35,6 +35,45 @@ describe("Drawer", () => {
     expect(drawer).toHaveClass("max-w-[520px]", "right-0");
   });
 
+  it("mặc định bám mép phải, bo góc cạnh trong (trái), trượt từ phải; đệm 16px dưới sm, 24px từ sm", async () => {
+    render(<Example />);
+    await userEvent.click(screen.getByRole("button", { name: "Chi tiết" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(drawer).toHaveClass(
+      "right-0",
+      "rounded-l-xl",
+      "motion-safe:data-[state=open]:animate-drawer-in",
+      "motion-safe:data-[state=closed]:animate-drawer-out",
+      "p-4",
+      "sm:p-6",
+    );
+    expect(drawer).not.toHaveClass("left-0", "rounded-r-xl", "p-6");
+  });
+
+  it("side=\"left\": bám mép trái, bo góc cạnh trong (phải), trượt từ trái và chỉ trong motion-safe", async () => {
+    render(
+      <Drawer open onOpenChange={() => {}}>
+        <DrawerContent side="left" closeLabel="Đóng">
+          <DrawerTitle>Menu điều hướng</DrawerTitle>
+          <DrawerDescription>Các mục quản trị</DrawerDescription>
+        </DrawerContent>
+      </Drawer>,
+    );
+    const drawer = await screen.findByRole("dialog", { name: "Menu điều hướng" });
+    expect(drawer).toHaveClass(
+      "left-0",
+      "rounded-r-xl",
+      "motion-safe:data-[state=open]:animate-drawer-in-left",
+      "motion-safe:data-[state=closed]:animate-drawer-out-left",
+    );
+    expect(drawer).not.toHaveClass("right-0", "rounded-l-xl");
+    const animated = drawer.className.split(/\s+/).filter((name) => name.includes("animate-"));
+    expect(animated).toHaveLength(2);
+    for (const name of animated) expect(name).toMatch(/^motion-safe:/);
+    // Nút × vẫn ở cạnh trong (phải) và bấm được.
+    expect(screen.getByRole("button", { name: "Đóng" })).toHaveClass("absolute", "right-4");
+  });
+
   it("đóng bằng nút × và bằng Esc", async () => {
     render(<Example />);
     await userEvent.click(screen.getByRole("button", { name: "Chi tiết" }));
@@ -110,7 +149,7 @@ describe("Drawer", () => {
     render(<Tall withFooter />);
     await screen.findByRole("dialog");
     const footer = screen.getByRole("button", { name: "Lưu" }).parentElement as HTMLElement;
-    expect(footer).toHaveClass("sticky", "bottom-0", "mt-auto", "bg-surface", "justify-end");
+    expect(footer).toHaveClass("sticky", "bottom-0", "mt-auto", "bg-surface", "justify-end", "flex-wrap");
     expect(footer.closest("div.overflow-y-auto")).not.toBeNull();
   });
 
