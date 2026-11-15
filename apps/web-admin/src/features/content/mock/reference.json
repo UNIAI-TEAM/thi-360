@@ -1,0 +1,1203 @@
+{
+  "subjects": [
+    {
+      "code": "MATH",
+      "name": "Toán"
+    },
+    {
+      "code": "LITERATURE",
+      "name": "Ngữ văn"
+    },
+    {
+      "code": "ENGLISH",
+      "name": "Tiếng Anh"
+    },
+    {
+      "code": "PHYSICS",
+      "name": "Vật lí"
+    },
+    {
+      "code": "CHEMISTRY",
+      "name": "Hóa học"
+    },
+    {
+      "code": "BIOLOGY",
+      "name": "Sinh học"
+    },
+    {
+      "code": "HISTORY",
+      "name": "Lịch sử"
+    },
+    {
+      "code": "GEOGRAPHY",
+      "name": "Địa lí"
+    }
+  ],
+  "grades": [
+    {
+      "code": "GRADE_10",
+      "name": "Lớp 10"
+    },
+    {
+      "code": "GRADE_11",
+      "name": "Lớp 11"
+    },
+    {
+      "code": "GRADE_12",
+      "name": "Lớp 12"
+    }
+  ],
+  "difficulties": [
+    {
+      "code": "RECOGNITION",
+      "name": "Nhận biết"
+    },
+    {
+      "code": "COMPREHENSION",
+      "name": "Thông hiểu"
+    },
+    {
+      "code": "APPLICATION",
+      "name": "Vận dụng"
+    },
+    {
+      "code": "HIGH_APPLICATION",
+      "name": "Vận dụng cao"
+    }
+  ],
+  "tags": [
+    {
+      "code": "HSA_2025",
+      "name": "Đề HSA 2025"
+    },
+    {
+      "code": "QDA_2025",
+      "name": "Đề QDA 2025"
+    },
+    {
+      "code": "TRAP",
+      "name": "Câu bẫy"
+    },
+    {
+      "code": "GRAPH",
+      "name": "Có đồ thị"
+    },
+    {
+      "code": "REVIEW",
+      "name": "Cần rà soát"
+    }
+  ],
+  "combinations": [
+    {
+      "code": "KH-1",
+      "name": "Vật lí – Hóa học – Sinh học",
+      "subjectCodes": [
+        "PHYSICS",
+        "CHEMISTRY",
+        "BIOLOGY"
+      ]
+    },
+    {
+      "code": "KH-2",
+      "name": "Vật lí – Hóa học – Lịch sử",
+      "subjectCodes": [
+        "PHYSICS",
+        "CHEMISTRY",
+        "HISTORY"
+      ]
+    },
+    {
+      "code": "KH-3",
+      "name": "Lịch sử – Địa lí – Sinh học",
+      "subjectCodes": [
+        "HISTORY",
+        "GEOGRAPHY",
+        "BIOLOGY"
+      ]
+    },
+    {
+      "code": "KH-4",
+      "name": "Vật lí – Hóa học",
+      "subjectCodes": [
+        "PHYSICS",
+        "CHEMISTRY"
+      ]
+    },
+    {
+      "code": "KH-5",
+      "name": "Hóa học – Sinh học",
+      "subjectCodes": [
+        "CHEMISTRY",
+        "BIOLOGY"
+      ]
+    },
+    {
+      "code": "KH-6",
+      "name": "Lịch sử – Địa lí",
+      "subjectCodes": [
+        "HISTORY",
+        "GEOGRAPHY"
+      ]
+    }
+  ],
+  "knowledgeTree": [
+    {
+      "id": "kn-MATH",
+      "code": "TOAN",
+      "name": "Toán",
+      "level": "SUBJECT",
+      "subjectCode": "MATH",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-0D1",
+          "code": "0D1",
+          "name": "Mệnh đề và tập hợp",
+          "level": "CHAPTER",
+          "subjectCode": "MATH",
+          "gradeCode": "GRADE_10",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-0D1-1",
+              "code": "0D1-1",
+              "name": "Mệnh đề",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_10",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-0D1-1-1",
+                  "code": "0D1-1-1",
+                  "name": "Mệnh đề chứa biến",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-0D1-1-2",
+                  "code": "0D1-1-2",
+                  "name": "Phủ định của mệnh đề",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-0D1-2",
+              "code": "0D1-2",
+              "name": "Tập hợp",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_10",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-0D1-2-1",
+                  "code": "0D1-2-1",
+                  "name": "Các phép toán trên tập hợp",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-0D1-2-2",
+                  "code": "0D1-2-2",
+                  "name": "Các tập con của tập số thực",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-0D2",
+          "code": "0D2",
+          "name": "Hàm số bậc hai",
+          "level": "CHAPTER",
+          "subjectCode": "MATH",
+          "gradeCode": "GRADE_10",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-0D2-1",
+              "code": "0D2-1",
+              "name": "Hàm số",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_10",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-0D2-1-1",
+                  "code": "0D2-1-1",
+                  "name": "Tập xác định của hàm số",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-0D2-1-2",
+                  "code": "0D2-1-2",
+                  "name": "Sự biến thiên của hàm số",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-0D2-2",
+              "code": "0D2-2",
+              "name": "Parabol",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_10",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-0D2-2-1",
+                  "code": "0D2-2-1",
+                  "name": "Đồ thị hàm số bậc hai",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-0D2-2-2",
+                  "code": "0D2-2-2",
+                  "name": "Bảng biến thiên",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_10",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-1D4",
+          "code": "1D4",
+          "name": "Giới hạn",
+          "level": "CHAPTER",
+          "subjectCode": "MATH",
+          "gradeCode": "GRADE_11",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-1D4-1",
+              "code": "1D4-1",
+              "name": "Giới hạn của dãy số",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_11",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-1D4-1-1",
+                  "code": "1D4-1-1",
+                  "name": "Giới hạn hữu hạn của dãy số",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D4-1-2",
+                  "code": "1D4-1-2",
+                  "name": "Các giới hạn đặc biệt",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D4-1-3",
+                  "code": "1D4-1-3",
+                  "name": "Tổng cấp số nhân lùi vô hạn",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": false,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-1D4-2",
+              "code": "1D4-2",
+              "name": "Giới hạn của hàm số",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_11",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-1D4-2-1",
+                  "code": "1D4-2-1",
+                  "name": "Giới hạn hữu hạn tại một điểm",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D4-2-2",
+                  "code": "1D4-2-2",
+                  "name": "Giới hạn một bên",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D4-2-3",
+                  "code": "1D4-2-3",
+                  "name": "Dạng vô định 0/0",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D4-2-4",
+                  "code": "1D4-2-4",
+                  "name": "Giới hạn tại vô cực",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-1D4-3",
+              "code": "1D4-3",
+              "name": "Hàm số liên tục",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_11",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-1D4-3-1",
+                  "code": "1D4-3-1",
+                  "name": "Hàm số liên tục tại một điểm",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D4-3-2",
+                  "code": "1D4-3-2",
+                  "name": "Ứng dụng tính liên tục",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-1D5",
+          "code": "1D5",
+          "name": "Đạo hàm",
+          "level": "CHAPTER",
+          "subjectCode": "MATH",
+          "gradeCode": "GRADE_11",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-1D5-1",
+              "code": "1D5-1",
+              "name": "Định nghĩa và ý nghĩa của đạo hàm",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_11",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-1D5-1-1",
+                  "code": "1D5-1-1",
+                  "name": "Đạo hàm tại một điểm",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D5-1-2",
+                  "code": "1D5-1-2",
+                  "name": "Phương trình tiếp tuyến",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-1D5-2",
+              "code": "1D5-2",
+              "name": "Quy tắc tính đạo hàm",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_11",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-1D5-2-1",
+                  "code": "1D5-2-1",
+                  "name": "Đạo hàm của tổng, hiệu, tích, thương",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D5-2-2",
+                  "code": "1D5-2-2",
+                  "name": "Đạo hàm của hàm hợp",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1D5-2-3",
+                  "code": "1D5-2-3",
+                  "name": "Đạo hàm của hàm số lượng giác",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-2D1",
+          "code": "2D1",
+          "name": "Ứng dụng đạo hàm để khảo sát hàm số",
+          "level": "CHAPTER",
+          "subjectCode": "MATH",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2D1-1",
+              "code": "2D1-1",
+              "name": "Tính đơn điệu",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2D1-1-1",
+                  "code": "2D1-1-1",
+                  "name": "Xét tính đơn điệu",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2D1-1-2",
+                  "code": "2D1-1-2",
+                  "name": "Tìm tham số để hàm số đơn điệu",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-2D1-2",
+              "code": "2D1-2",
+              "name": "Cực trị",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2D1-2-1",
+                  "code": "2D1-2-1",
+                  "name": "Cực trị của hàm số",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2D1-2-2",
+                  "code": "2D1-2-2",
+                  "name": "Cực trị có tham số",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-2D3",
+          "code": "2D3",
+          "name": "Nguyên hàm và tích phân",
+          "level": "CHAPTER",
+          "subjectCode": "MATH",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2D3-1",
+              "code": "2D3-1",
+              "name": "Nguyên hàm",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2D3-1-1",
+                  "code": "2D3-1-1",
+                  "name": "Nguyên hàm cơ bản",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2D3-1-2",
+                  "code": "2D3-1-2",
+                  "name": "Phương pháp đổi biến",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-2D3-2",
+              "code": "2D3-2",
+              "name": "Tích phân",
+              "level": "LESSON",
+              "subjectCode": "MATH",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2D3-2-1",
+                  "code": "2D3-2-1",
+                  "name": "Tích phân xác định",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2D3-2-2",
+                  "code": "2D3-2-2",
+                  "name": "Ứng dụng tính diện tích",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "MATH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kn-PHYSICS",
+      "code": "L",
+      "name": "Vật lí",
+      "level": "SUBJECT",
+      "subjectCode": "PHYSICS",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-2L1",
+          "code": "2L1",
+          "name": "Dao động cơ",
+          "level": "CHAPTER",
+          "subjectCode": "PHYSICS",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2L1-1",
+              "code": "2L1-1",
+              "name": "Dao động điều hòa",
+              "level": "LESSON",
+              "subjectCode": "PHYSICS",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2L1-1-1",
+                  "code": "2L1-1-1",
+                  "name": "Phương trình dao động",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "PHYSICS",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2L1-1-2",
+                  "code": "2L1-1-2",
+                  "name": "Năng lượng dao động",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "PHYSICS",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-1L2",
+          "code": "1L2",
+          "name": "Điện trường",
+          "level": "CHAPTER",
+          "subjectCode": "PHYSICS",
+          "gradeCode": "GRADE_11",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-1L2-1",
+              "code": "1L2-1",
+              "name": "Điện tích",
+              "level": "LESSON",
+              "subjectCode": "PHYSICS",
+              "gradeCode": "GRADE_11",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-1L2-1-1",
+                  "code": "1L2-1-1",
+                  "name": "Định luật Cu-lông",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "PHYSICS",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-1L2-1-2",
+                  "code": "1L2-1-2",
+                  "name": "Cường độ điện trường",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "PHYSICS",
+                  "gradeCode": "GRADE_11",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kn-CHEMISTRY",
+      "code": "H",
+      "name": "Hóa học",
+      "level": "SUBJECT",
+      "subjectCode": "CHEMISTRY",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-2H1",
+          "code": "2H1",
+          "name": "Este – Lipit",
+          "level": "CHAPTER",
+          "subjectCode": "CHEMISTRY",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2H1-1",
+              "code": "2H1-1",
+              "name": "Este",
+              "level": "LESSON",
+              "subjectCode": "CHEMISTRY",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2H1-1-1",
+                  "code": "2H1-1-1",
+                  "name": "Cấu tạo và tính chất este",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "CHEMISTRY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2H1-1-2",
+                  "code": "2H1-1-2",
+                  "name": "Phản ứng thủy phân",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "CHEMISTRY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-2H2",
+          "code": "2H2",
+          "name": "Kim loại",
+          "level": "CHAPTER",
+          "subjectCode": "CHEMISTRY",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2H2-1",
+              "code": "2H2-1",
+              "name": "Dãy điện hóa",
+              "level": "LESSON",
+              "subjectCode": "CHEMISTRY",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2H2-1-1",
+                  "code": "2H2-1-1",
+                  "name": "Pin điện hóa",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "CHEMISTRY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2H2-1-2",
+                  "code": "2H2-1-2",
+                  "name": "Điện phân",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "CHEMISTRY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kn-BIOLOGY",
+      "code": "S",
+      "name": "Sinh học",
+      "level": "SUBJECT",
+      "subjectCode": "BIOLOGY",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-2S1",
+          "code": "2S1",
+          "name": "Di truyền học",
+          "level": "CHAPTER",
+          "subjectCode": "BIOLOGY",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2S1-1",
+              "code": "2S1-1",
+              "name": "Cơ chế di truyền",
+              "level": "LESSON",
+              "subjectCode": "BIOLOGY",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2S1-1-1",
+                  "code": "2S1-1-1",
+                  "name": "Nhân đôi ADN",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "BIOLOGY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2S1-1-2",
+                  "code": "2S1-1-2",
+                  "name": "Phiên mã và dịch mã",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "BIOLOGY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kn-HISTORY",
+      "code": "SU",
+      "name": "Lịch sử",
+      "level": "SUBJECT",
+      "subjectCode": "HISTORY",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-2SU1",
+          "code": "2SU1",
+          "name": "Lịch sử Việt Nam 1945–1975",
+          "level": "CHAPTER",
+          "subjectCode": "HISTORY",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2SU1-1",
+              "code": "2SU1-1",
+              "name": "Kháng chiến chống Pháp",
+              "level": "LESSON",
+              "subjectCode": "HISTORY",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2SU1-1-1",
+                  "code": "2SU1-1-1",
+                  "name": "Chiến dịch Việt Bắc",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "HISTORY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2SU1-1-2",
+                  "code": "2SU1-1-2",
+                  "name": "Chiến dịch Điện Biên Phủ",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "HISTORY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kn-GEOGRAPHY",
+      "code": "DI",
+      "name": "Địa lí",
+      "level": "SUBJECT",
+      "subjectCode": "GEOGRAPHY",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-2DI1",
+          "code": "2DI1",
+          "name": "Địa lí tự nhiên Việt Nam",
+          "level": "CHAPTER",
+          "subjectCode": "GEOGRAPHY",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2DI1-1",
+              "code": "2DI1-1",
+              "name": "Vị trí địa lí",
+              "level": "LESSON",
+              "subjectCode": "GEOGRAPHY",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2DI1-1-1",
+                  "code": "2DI1-1-1",
+                  "name": "Phạm vi lãnh thổ",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "GEOGRAPHY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2DI1-1-2",
+                  "code": "2DI1-1-2",
+                  "name": "Ý nghĩa vị trí địa lí",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "GEOGRAPHY",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kn-LITERATURE",
+      "code": "V",
+      "name": "Ngữ văn",
+      "level": "SUBJECT",
+      "subjectCode": "LITERATURE",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-2V1",
+          "code": "2V1",
+          "name": "Đọc hiểu văn bản",
+          "level": "CHAPTER",
+          "subjectCode": "LITERATURE",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2V1-1",
+              "code": "2V1-1",
+              "name": "Văn bản nghị luận",
+              "level": "LESSON",
+              "subjectCode": "LITERATURE",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2V1-1-1",
+                  "code": "2V1-1-1",
+                  "name": "Luận điểm và lí lẽ",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "LITERATURE",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2V1-1-2",
+                  "code": "2V1-1-2",
+                  "name": "Biện pháp tu từ",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "LITERATURE",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "kn-2V1-2",
+              "code": "2V1-2",
+              "name": "Văn bản thông tin",
+              "level": "LESSON",
+              "subjectCode": "LITERATURE",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2V1-2-1",
+                  "code": "2V1-2-1",
+                  "name": "Thông tin chính",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "LITERATURE",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2V1-2-2",
+                  "code": "2V1-2-2",
+                  "name": "Cách trình bày thông tin",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "LITERATURE",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kn-ENGLISH",
+      "code": "E",
+      "name": "Tiếng Anh",
+      "level": "SUBJECT",
+      "subjectCode": "ENGLISH",
+      "gradeCode": null,
+      "active": true,
+      "children": [
+        {
+          "id": "kn-2E1",
+          "code": "2E1",
+          "name": "Reading",
+          "level": "CHAPTER",
+          "subjectCode": "ENGLISH",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2E1-1",
+              "code": "2E1-1",
+              "name": "Reading comprehension",
+              "level": "LESSON",
+              "subjectCode": "ENGLISH",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2E1-1-1",
+                  "code": "2E1-1-1",
+                  "name": "Main idea",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "ENGLISH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2E1-1-2",
+                  "code": "2E1-1-2",
+                  "name": "Detail questions",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "ENGLISH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2E1-1-3",
+                  "code": "2E1-1-3",
+                  "name": "Vocabulary in context",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "ENGLISH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kn-2E2",
+          "code": "2E2",
+          "name": "Grammar",
+          "level": "CHAPTER",
+          "subjectCode": "ENGLISH",
+          "gradeCode": "GRADE_12",
+          "active": true,
+          "children": [
+            {
+              "id": "kn-2E2-1",
+              "code": "2E2-1",
+              "name": "Tenses",
+              "level": "LESSON",
+              "subjectCode": "ENGLISH",
+              "gradeCode": "GRADE_12",
+              "active": true,
+              "children": [
+                {
+                  "id": "kn-2E2-1-1",
+                  "code": "2E2-1-1",
+                  "name": "Present perfect",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "ENGLISH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                },
+                {
+                  "id": "kn-2E2-1-2",
+                  "code": "2E2-1-2",
+                  "name": "Past perfect",
+                  "level": "KNOWLEDGE",
+                  "subjectCode": "ENGLISH",
+                  "gradeCode": "GRADE_12",
+                  "active": true,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

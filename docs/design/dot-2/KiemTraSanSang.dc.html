@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Dialog chưa chuyển được sang Sẵn sàng</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="width: 680px; height: 880px; box-sizing: border-box; padding: 24px; background: #6B7280; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; display: flex; align-items: center; justify-content: center">
+<dialog open aria-labelledby="dlg-title" aria-describedby="dlg-sub" style="position: static; margin: 0; border: 0; padding: 0; width: 100%; max-width: 100%; box-sizing: border-box; background: #FFFFFF; color: #11181C; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08)">
+<div style="padding: 28px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: flex-start; gap: 14px">
+    <span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 12px; background: #FFFBEB; color: #B45309; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"></path></svg></span>
+    <div style="flex: 1 1 auto; min-width: 0">
+      <h2 id="dlg-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Chưa chuyển được sang Sẵn sàng</h2>
+      <div id="dlg-sub" style="color: #54545A">Q000531 · Câu chùm · Tiếng Anh · Lớp 12 — còn <strong style="color: #11181C; font-weight: 600">3 trên 7</strong> điều kiện chưa đạt.</div>
+    </div>
+    <form method="dialog" style="flex: none; margin: 0">
+      <button type="submit" value="cancel" aria-label="Đóng" style="width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </form>
+  </div>
+
+  <section aria-labelledby="cond-title" style="border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+    <h3 id="cond-title" style="margin: 0; padding: 10px 16px; background: #FAFAFB; border-bottom: 1px solid #E8E8EC; font-size: 13px; line-height: 20px; font-weight: 600; color: #54545A">Điều kiện để chuyển sang Sẵn sàng</h3>
+    <ol style="list-style: none; margin: 0; padding: 0">
+      <sc-for list="{{conds}}" as="c" hint-placeholder-count="7">
+        <li style="{{c.rowStyle}}">
+          <span aria-hidden="true" style="{{c.iconWrap}}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.icon}}"></path></svg></span>
+          <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+            <div style="font-weight: 500">{{c.no}}. {{c.text}}</div>
+            <sc-if value="{{c.hasDetail}}" hint-placeholder-val="{{false}}">
+              <div style="{{c.detailStyle}}">{{c.detail}}</div>
+            </sc-if>
+            <sc-if value="{{c.fail}}" hint-placeholder-val="{{false}}">
+              <a href="CauHoiChumForm.dc.html" aria-label="{{c.fixLabel}}" style="width: fit-content; min-height: 32px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; text-decoration: none">Đến chỗ cần sửa<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></a>
+            </sc-if>
+          </div>
+          <span style="{{c.chip}}"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>{{c.status}}</span>
+        </li>
+      </sc-for>
+    </ol>
+  </section>
+
+  <div role="note" style="padding: 12px 14px; border-radius: 12px; background: #EFF6FF; color: #1D4ED8; display: flex; gap: 10px; align-items: flex-start">
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01"></path></svg>
+    <span>Câu hỏi được giữ ở trạng thái Nháp. Nội dung đã nhập không mất.</span>
+  </div>
+
+  <form method="dialog" style="margin: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button type="submit" value="draft" style="height: 40px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42">Lưu nháp</button>
+    <button type="submit" value="stay" autofocus style="height: 40px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; border: 0; background: #059669; color: #FFFFFF">Ở lại sửa</button>
+  </form>
+</div>
+</dialog>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":680,"height":880}}'>
+class Component extends DCLogic {
+renderVals() {
+const list = [
+['Đầy đủ nội dung bắt buộc', true, 'Ngữ liệu và 5 câu con đã có nội dung.'],
+['Có đáp án hợp lệ cho mọi câu được chấm', true, 'Các đáp án đã nhập đều đúng định dạng.'],
+['Đầy đủ khối lớp, độ khó và kiến thức chính', false, 'Chưa chọn kiến thức chính.'],
+['Giá trị phân loại hợp lệ và phù hợp với môn học', true, ''],
+['Không có câu con hoặc vị trí khuyết thiếu đáp án', false, 'Câu con 3 chưa có đáp án đúng.'],
+['Hình ảnh, công thức và ngữ liệu hiển thị được', false, 'Hình ở câu con 2 không tải được (hinh-2.png).'],
+['Cấu trúc câu hỏi thuộc phạm vi được hỗ trợ', true, '']
+];
+const chip = (ok) => 'flex: none; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + (ok ? '#ECFDF5; color: #047857' : '#FEF2F2; color: #B91C1C');
+return {
+conds: list.map((c, i) => ({
+no: i + 1, text: c[0], fail: !c[1], status: c[1] ? 'Đạt' : 'Chưa đạt',
+detail: c[2], hasDetail: !!c[2],
+detailStyle: 'font-size: 13px; line-height: 19px; color: ' + (c[1] ? '#54545A' : '#B91C1C'),
+fixLabel: 'Đến chỗ cần sửa: ' + c[2],
+icon: c[1] ? 'M20 6 9 17l-5-5' : 'M18 6 6 18M6 6l12 12',
+iconWrap: 'width: 24px; height: 24px; flex: none; margin-top: 1px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; ' + (c[1] ? 'background: #DCFCE7; color: #047857' : 'background: #FEF2F2; color: #B91C1C'),
+chip: chip(c[1]),
+rowStyle: 'padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px; ' + (i ? 'border-top: 1px solid #E8E8EC; ' : '') + (c[1] ? '' : 'background: #FFFCFC; ')
+}))
+};
+}
+}
+</script>
+</body>
+</html>

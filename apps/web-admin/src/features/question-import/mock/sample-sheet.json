@@ -1,0 +1,32 @@
+{
+  "sheetName": "Câu hỏi",
+  "rows": [
+    ["Mã nguồn", "Dạng câu", "Nội dung", "A", "B", "C", "D", "Đáp án", "Lời giải", "Môn", "Lớp", "Mức độ", "Mã KT", "Nhãn", "Mã chùm", "Ghi chú nội bộ"],
+    ["TOAN11-0001", "Trắc nghiệm 1 đáp án", "Tính giới hạn $\\lim_{x \\to 1} \\frac{2x - \\sqrt{3x+1}}{x^2 - 1}$, ta được kết quả là", "0", "4/3", "5/8", "2", "C", "Nhân tử và mẫu với biểu thức liên hợp 2x + √(3x + 1), rồi thay x = 1.", "Toán", "11", "Thông hiểu", "1D4-2-3", "HSA_2025", "", "Đã soát 10/11"],
+    ["TOAN11-0002", "Điền đáp án", "Tính giới hạn của x² + 3x khi x tiến tới 2.", "", "", "", "", "10", "Thay x = 2 vào biểu thức.", "Toán", "11", "Vận dụng", "1D4-2-1", "", "", ""],
+    ["TOAN11-0003", "Đúng / Sai", "Xét tính đúng sai của các khẳng định về giới hạn dãy số.", "lim 1/n = 0", "lim n = 0", "lim (1/2)^n = 0", "", "Đ, S, Đ", "", "Toán", "11", "Nhận biết", "1D4-1-2", "", "", ""],
+    ["TOAN11-0004", "Trắc nghiệm 1 đáp án", "Giới hạn lim (3n − 1)/(n + 2) bằng", "1", "3", "−1/2", "0", "", "Chia cả tử và mẫu cho n.", "Toán", "11", "Nhận biết", "1D4-1-1", "", "", "Thiếu đáp án"],
+    ["CH-01", "Câu chùm", "Cho hàm số f(x) = (x² − 1)/(x − 1) với x ≠ 1. Trả lời các câu hỏi sau.", "", "", "", "", "", "", "Toán", "11", "Thông hiểu", "1D4-3-1", "", "CH-01", ""],
+    ["TOAN11-0005", "Trắc nghiệm 1 đáp án", "Giới hạn của f(x) khi x tiến tới 1 là", "0", "1", "2", "Không tồn tại", "C", "Rút gọn f(x) = x + 1 với x ≠ 1.", "", "", "", "", "", "CH-01", ""],
+    ["TOAN11-0006", "Đúng / Sai", "Xét các khẳng định về hàm số f.", "f liên tục tại x = 2", "f xác định tại x = 1", "", "", "Đ, S", "", "", "", "Nhận biết", "", "", "CH-01", ""],
+    ["TOAN11-0007", "Trắc nghiệm nhiều đáp án", "Chọn các dãy số có giới hạn bằng 0.", "u_n = 1/n", "u_n = n", "u_n = (−1)^n/n", "u_n = 2^n", "A, C", "", "Toán", "11", "Thông hiểu", "1D4-1-1", "", "", ""],
+    ["NGUON-0004", "Điền đáp án", "Hệ số góc của tiếp tuyến với đồ thị y = x² tại điểm có hoành độ 3 là ___.", "", "", "", "", "6", "", "Toán", "11", "Thông hiểu", "1D4-2-2", "", "", "Đã có trong ngân hàng"],
+    ["NGUON-0006", "Trắc nghiệm 1 đáp án", "Hàm số y = x³ − 3x + 1 đạt cực đại tại điểm nào?", "x = −1", "x = 1", "x = 0", "x = 3", "A", "", "Toán", "12", "Thông hiểu", "", "", "", "Đã có trong ngân hàng"],
+    ["TOAN11-0002", "Trắc nghiệm 1 đáp án", "Giới hạn lim (n² + 1)/(2n² − n) bằng", "0", "1/2", "1", "2", "B", "", "Toán", "11", "Thông hiểu", "1D4-1-1", "", "", "Trùng mã với dòng 3"],
+    ["TOAN11-0010", "Trắc nghiệm 1 đáp án", "Tính giới hạn lim (x² − 4)/(x − 2) khi x tiến tới 2.", "0", "2", "4", "Không tồn tại", "C", "", "Toán", "11", "Vận dụng thấp", "1D4-2-3", "", "", ""],
+    ["TOAN11-0011", "Trắc nghiệm 1 đáp án", "Giới hạn lim (√(x + 1) − 1)/x khi x tiến tới 0 bằng", "0", "1/2", "1", "2", "B", "", "Toán", "11", "Vận dụng", "1D4-9-9", "", "", "Mã KT sai"],
+    ["TOAN11-0012", "Trắc nghiệm 1 đáp án", "Với hàm số ở trên, tính f(2).", "1", "2", "3", "4", "C", "", "Toán", "11", "Nhận biết", "1D4-3-1", "", "CH-12", "Thiếu dòng ngữ liệu"],
+    ["TOAN11-0013", "Trắc nghiệm 1 đáp án", "Tổng của cấp số nhân lùi vô hạn 1 + 1/2 + 1/4 + … bằng", "1", "3/2", "2", "4", "E", "", "Toán", "11", "Thông hiểu", "1D4-1-3", "", "", ""],
+    ["TOAN11-0014", "Trắc nghiệm 1 đáp án", "Tính $\\frac{1}{x$ khi x = 2.", "1/2", "2", "1", "0", "A", "", "Toán", "11", "Nhận biết", "1D4-2-1", "", "", "Công thức lỗi"],
+    ["TOAN11-0015", "Trắc nghiệm 1 đáp án", "Giới hạn một bên lim |x|/x khi x tiến tới 0 từ bên phải bằng", "−1", "0", "1", "Không tồn tại", "C", "", "Toan", "11", "Thông hiểu", "1D4-2-2", "", "", ""],
+    ["TOAN11-0016", "Tự luận", "Chứng minh rằng phương trình x³ − 3x + 1 = 0 có ba nghiệm phân biệt.", "", "", "", "", "Xem lời giải", "", "Toán", "11", "Vận dụng cao", "1D4-3-2", "", "", ""],
+    ["TOAN11-0017", "Trắc nghiệm 1 đáp án", "Giới hạn lim (2x + 1)/(x − 1) khi x tiến tới dương vô cực bằng", "0", "1", "2", "Dương vô cực", "C", "Chia cả tử và mẫu cho x.", "Toán", "11", "Nhận biết", "", "", "", "Chưa gắn MAPID"],
+    ["LY12-0001", "Trắc nghiệm 1 đáp án", "Một vật dao động điều hòa với phương trình x = 5cos(2πt) cm. Biên độ dao động là", "2 cm", "5 cm", "10 cm", "2π cm", "B", "", "Vật lí", "12", "Nhận biết", "2L1-1-1", "", "", ""],
+    ["TOAN11-0019", "Trắc nghiệm 1 đáp án", "Hàm số nào liên tục trên ℝ?", "y = 1/x", "y = x² + 1", "y = tan x", "y = √x", "B", "", "Toán", "13", "Nhận biết", "1D4-3-2", "", "", "Lớp sai"],
+    ["TOAN11-0020", "Điền đáp án", "Tính lim (x − 1)/(x² − 1) khi x tiến tới 1 (viết dạng số thập phân hoặc phân số).", "", "", "", "", "0,5 | 1/2", "", "Toán", "11", "Thông hiểu", "1D4-2-3", "", "", ""],
+    ["TOAN11-0021", "Đúng / Sai", "Xét các khẳng định về giới hạn tại vô cực.", "lim 1/x = 0 khi x tiến tới dương vô cực", "lim x² = 0 khi x tiến tới dương vô cực", "", "", "Đ, S", "", "Toán", "11", "Thông hiểu", "1D4-2-4", "TRAP", "", ""],
+    ["TOAN11-0022", "Trắc nghiệm 1 đáp án", "Giới hạn lim (1 + 1/n) bằng", "0", "1", "2", "Dương vô cực", "B", "", "Toán", "11", "Nhận biết", "1D4-1-1", "Đề thi thử", "", "Nhãn chưa có"],
+    ["TOAN11-0023", "Trắc nghiệm 1 đáp án", "Hàm số f(x) = x² liên tục tại x = 1 vì", "f(1) không xác định", "lim f(x) = f(1)", "f là hàm lẻ", "f đồng biến", "B", "", "Toán", "11", "Thông hiểu", "1D4-3-1", "", "", ""],
+    ["NGUON-0008", "Trắc nghiệm 1 đáp án", "Tính tích phân ∫₀¹ 2x dx.", "0", "1", "2", "1/2", "B", "", "Toán", "12", "Nhận biết", "", "", "", "Đã có trong ngân hàng"]
+  ]
+}

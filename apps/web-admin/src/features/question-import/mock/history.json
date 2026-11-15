@@ -1,0 +1,45 @@
+[
+  {
+    "id": "imp-0002",
+    "importedAt": "2026-11-12T16:40:00+07:00",
+    "importedBy": { "id": "u-lan", "name": "Phạm Mai Lan" },
+    "fileName": "ngu-van-doc-hieu-dot-2.xlsx",
+    "createdCount": 54,
+    "singleCount": 48,
+    "setCount": 6,
+    "setChildCount": 18,
+    "skippedDuplicateCount": 0,
+    "newVersionCount": 0,
+    "errorRowCount": 0,
+    "missingKnowledgeCount": 0,
+    "durationMs": 6000,
+    "errors": []
+  },
+  {
+    "id": "imp-0001",
+    "importedAt": "2026-11-10T09:20:00+07:00",
+    "importedBy": { "id": "u-hung", "name": "Trần Văn Hùng" },
+    "fileName": "toan-10-chuong-1.xlsx",
+    "createdCount": 120,
+    "singleCount": 120,
+    "setCount": 0,
+    "setChildCount": 0,
+    "skippedDuplicateCount": 3,
+    "newVersionCount": 0,
+    "errorRowCount": 2,
+    "missingKnowledgeCount": 4,
+    "durationMs": 9000,
+    "errors": [
+      {
+        "rowNumber": 14,
+        "sourceCode": "TOAN10-0013",
+        "issue": { "code": "REQUIRED", "severity": "error", "field": "correctAnswer", "column": "Đáp án" }
+      },
+      {
+        "rowNumber": 87,
+        "sourceCode": "TOAN10-0085",
+        "issue": { "code": "DIFFICULTY_UNKNOWN", "severity": "error", "field": "difficulty", "column": "Mức độ", "value": "Khó" }
+      }
+    ]
+  }
+]

@@ -321,6 +321,27 @@ Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
 - **Vùng xem trước chỉ để nhìn** (xem trước giao diện) mang `inert` và `aria-hidden`, không nhận focus.
 - **Trang đổi mật khẩu** mở từ menu tài khoản dùng `?source=account-menu` để hiện lối "Quay lại"; luồng bắt buộc đổi mật khẩu không có lối này.
 
+### 5.14 Màn dữ liệu mẫu (đợt 2, chưa có backend)
+
+Áp dụng cho Ngân hàng câu hỏi và Bài thi (UNI-2590) cho tới khi backend có nghiệp vụ; khi nối API thật thì bỏ dải và cờ, giữ nguyên giao diện.
+
+- **Cờ:** menu và trang chỉ có khi `isContentMockEnabled()` (`lib/mock/content-mock.ts`) trả `true`: biến `NEXT_PUBLIC_THI360_CONTENT_MOCK=true|false`, bỏ trống thì bật khi `next dev`, tắt khi build. Mục menu mang `mockOnly: true` (`lib/navigation.ts`), trang gọi `notFound()` khi cờ tắt.
+- **Dải "Dữ liệu mẫu":** `MockDataBanner` (`components/mock-data-banner.tsx`), một lần mỗi màn, ngay dưới tiêu đề trang (trang soạn bài thi: dưới khung tiêu đề chung). Hộp thoại không lặp lại dải.
+- **Dữ liệu:** giao diện chỉ gọi hook trong `features/<x>/queries.ts`; hook gọi `features/<x>/api.ts`; `api.ts` trả `mockRequest(...)` đọc từ `features/<x>/mock/*.json` (chữ tiếng Việt nằm trong JSON). Ghi dữ liệu đi qua kho trong bộ nhớ (`createMockStore`) để các màn thấy cùng thay đổi tới khi tải lại trang. Nối backend = thay thân hàm trong `api.ts`, kiểu trong `types.ts` thành bí danh của `@thi360/api-client`.
+- **Bốn trạng thái xem được bằng URL:** `?mockState=loading|empty|error` cho mọi truy vấn đọc của trang (thao tác ghi dùng `ignoreScenario`). Mỗi màn vẫn phải có đủ bốn trạng thái như mọi màn khác.
+- **Mã quyền:** chưa có mã `QUESTION.*`, `EXAM.*`; mục menu để `permission: null`, không ẩn nút theo quyền.
+- **Trang soạn bài thi** `/exams/[id]` có khung chung `ExamEditorLayout` (tiêu đề, chip trạng thái, dải tóm tắt `<dl>`, `NavTabs` bốn trang con: `/exams/[id]`, `/structure`, `/review`, `/versions`). Trang con đọc bài thi bằng `useExam(id)`.
+- **Chọn kiến thức (MAPID):** dùng `KnowledgePickerDialog` (`features/content/components`) cho mọi nơi chọn nút của cây Cấu trúc kiến thức; câu hỏi chỉ tick cấp Kiến thức và có một kiến thức chính, phạm vi khối của bài thi cho tick cả Chương và Bài (`selectableLevels`, `withPrimary={false}`).
+
+Quy ước rút ra khi làm các màn đợt 2 (UNI-2590), áp dụng cho mọi màn sau:
+
+- **Tạo đối tượng có nhiều phần** (cấu trúc, phân bổ, nhiều quy tắc phụ thuộc nhau, ví dụ Tạo bài thi `/exams/new`) dùng **trang riêng**, không dùng hộp thoại: các khối đánh số theo thứ tự nhập, cột **Tóm tắt** bên phải dính khi cuộn (xuống dưới biểu mẫu khi khung hẹp) gồm các con số tính trực tiếp và danh sách "Cần xử lý" mà mỗi mục đưa focus tới ô lỗi. Hộp thoại chỉ cho biểu mẫu ngắn (mục 5.10).
+- **Đổi lựa chọn làm mất phần đã nhập** (nạp lại mẫu khi đổi kỳ thi, hình thức): hỏi xác nhận ngay trong trang, nêu rõ phần sẽ bị thay; chưa sửa gì thì nạp luôn.
+- **Danh sách có trạng thái** (Ngân hàng câu hỏi): dải trạng thái kèm số lượng mỗi trạng thái đứng đầu thanh lọc; bộ lọc ít dùng gom vào "Bộ lọc khác"; bộ lọc đang áp dụng hiện thành chip "Đang lọc" bỏ được từng cái, kèm "Xóa tất cả bộ lọc". Mọi bộ lọc nằm trên URL.
+- **Trang chi tiết có trang con** (câu hỏi: Nội dung, Nơi đang dùng, Lịch sử phiên bản; bài thi: bốn trang con) dùng layout chung của đoạn đường dẫn (nhóm route như `questions/[id]/(detail)/layout.tsx`) và `NavTabs`; trang Sửa nằm ngoài nhóm để không có thanh tab.
+- **Luồng nhiều bước** (Nhập câu hỏi từ tệp, Cấp tài khoản hàng loạt): đổi bước thì focus về tiêu đề bước; lỗi chặn bước tiếp hiện thành bảng tóm tắt lỗi nhận focus; báo cáo lỗi tải về là CSV tạo ở trình duyệt.
+- **Cột của `Table` phải ổn định** (`useMemo` hoặc khai báo ngoài component): mảng `columns` mới ở mỗi lần render làm bảng dựng lại ô, mất focus và hỏng việc trả focus khi đóng hộp thoại. Trạng thái của dòng (đang chạy, đang chọn) đưa vào ô qua context hoặc dữ liệu dòng, không qua closure của `columns`.
+
 ## 6. Icon và hình ảnh
 
 - Icon: **lucide-react**, nét 1.75–2px, 16px trong nút, 18px trong menu, 20px độc lập.

@@ -41,6 +41,21 @@ Không thuộc điểm của plan đợt 1; mỗi việc một issue con của U
 | UNI-2578 | Hộp thoại Tạo tài khoản: bố cục hai cột, hiện đủ trong một khung | #27 | in_review |
 | UNI-2576 | Đổi đường dẫn trang của hai web sang tiếng Anh (chồng lên ba PR trên) | #29 | in_review |
 
+## Đợt 2 — Mockup web admin PBI-03 + PBI-04 (dữ liệu mẫu)
+
+Issue cha: **UNI-2590** · Mockup web admin PBI-03 Ngân hàng câu hỏi và PBI-04 Bài thi, chạy trên dữ liệu mẫu, chưa nối backend. Bản vẽ: `docs/design/dot-2/`. Quy ước: `DESIGN.md` mục 5.14. Bật bằng `NEXT_PUBLIC_THI360_CONTENT_MOCK` (dev mặc định bật, bản build mặc định tắt).
+
+| Mã | Issue | Việc | Trạng thái |
+|---|---|---|---|
+| Nền | UNI-2591 | Lớp dữ liệu mẫu, menu Nội dung, kiểu dữ liệu, khung trang soạn bài thi, `ChonKienThuc` | in_review |
+| A | UNI-2592 | `/questions`: danh sách, bộ lọc, chọn kiến thức, kiểm tra sẵn sàng, ngừng sử dụng | in_review |
+| B | UNI-2593 | Soạn câu hỏi theo 6 dạng, chi tiết, nơi đang dùng, lịch sử phiên bản | in_review |
+| C | UNI-2594 | `/questions/import`: nhập câu hỏi từ tệp, bốn bước | in_review |
+| D | UNI-2595 | `/exams`, trang Tạo bài thi `/exams/new`, Thông tin chung, Cấu trúc và tổ hợp | in_review |
+| E | UNI-2596 | Kiểm tra, xem trước, phiên bản, công bố bài thi | in_review |
+
+Khi có backend: chỉ thay thân các hàm trong `features/<x>/api.ts` (và `*-api.ts`), giữ chữ ký; bỏ `mockOnly` ở menu và `notFound()` theo cờ ở trang.
+
 ### Thứ tự làm
 
 ```
@@ -66,7 +81,7 @@ Sóng 7:  T16
 
 | Đợt | PBI | Ghi chú |
 |---|---|---|
-| 2 · Nội dung | 03 Ngân hàng câu hỏi, 04 Bài thi và ma trận | Làm mới, rủi ro cao nhất |
+| 2 · Nội dung | 03 Ngân hàng câu hỏi, 04 Bài thi và ma trận | Làm mới, rủi ro cao nhất. Mockup giao diện đã làm ở UNI-2590; phần backend chưa tạo issue |
 | 3 · Thi | 10–13 Làm bài, lưu bài, chấm, kết quả | Port một phần từ `lms-exam` |
 | 4 · Thương mại | 05, 06, 07–09 | Port nhiều từ `lms-exam/commercial` và `exam-portal` |
 | 5 · AI | 14–18 | Làm mới |

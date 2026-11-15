@@ -179,3 +179,17 @@ describe("NAVIGATION của đợt 1", () => {
     expect(trail?.item.id).toBe("classes");
   });
 });
+
+describe("mục dữ liệu mẫu của đợt 2", () => {
+  it("Ngân hàng câu hỏi và Bài thi đứng đầu nhóm Nội dung, chỉ hiện khi bật cờ dữ liệu mẫu", () => {
+    const contentGroup = NAVIGATION.find((g) => g.id === "content");
+    expect(contentGroup?.items.map((item) => item.id)).toEqual(["questions", "exams", "catalog"]);
+    const granted = new Set(["CATALOG.VIEW"]);
+    const contentIds = (enabled: boolean) =>
+      filterNavigation(NAVIGATION, granted, enabled)
+        .find((g) => g.id === "content")
+        ?.items.map((item) => item.id);
+    expect(contentIds(true)).toEqual(["questions", "exams", "catalog"]);
+    expect(contentIds(false)).toEqual(["catalog"]);
+  });
+});
