@@ -17,6 +17,12 @@
   --color-primary-800: #065f46;
   --color-primary-900: #064e3b;
   --color-on-primary: #ffffff;
+  /*
+   * Chữ trên nút nguy hiểm và nút tròn của Switch khi tắt: luôn trắng ở cả hai chế độ. Không dùng
+   * `on-primary` cho hai chỗ này vì ở chế độ tối `on-primary` là chữ tối (UNI-2562).
+   */
+  --color-on-danger: #ffffff;
+  --color-switch-thumb: #ffffff;
   /* Chữ màu chính trên nền trắng và trên nền nhạt primary-50/100/200 (link, tab/mục đang chọn, nút nhạt): >= 4.5:1. */
   --color-primary-text: #047857;
   /* Nền nút chính, chip lọc đang chọn, ô logo, checkbox/switch bật: đi với on-primary (trắng). hover/pressed đậm dần một bậc. */
@@ -202,9 +208,19 @@
   --color-scroll-shadow: rgb(0 0 0 / 0.5);
 
   /*
-   * Chữ xanh trên nền tối (F1): chữ màu chính dùng `primary-text`, nền nút chính dùng
-   * `primary-fill` (T06b: nền đậm #047857 đi với `on-primary` trắng, nên `primary-fill*` giữ
-   * nguyên giá trị của chế độ sáng). `primary-text` dùng emerald-500 #10b981 trên nền tối: đạt
+   * Nút chính trên nền tối (UNI-2562, WCAG 1.4.11): nền #047857 của chế độ sáng chỉ đạt 2,8:1 với
+   * `subtle` nên lẫn vào nền. Ở chế độ tối `primary-fill` sáng lên tới khi chữ tối `on-primary`
+   * #11181c đạt 7:1 (nền đạt 6:1 với page/surface/subtle); hover và nhấn sáng thêm từng bậc.
+   * `primary-600` (viền, chip, ô đang chọn) giữ #059669 vì đã đạt 3:1. Các giá trị do
+   * `deriveTokens` sinh (`darkModeUiColors`), theme.test.ts kiểm khớp.
+   */
+  --color-primary-fill: #55b38f;
+  --color-primary-fill-hover: #62c09b;
+  --color-primary-fill-active: #6fcda8;
+  --color-on-primary: #11181c;
+
+  /*
+   * Chữ xanh trên nền tối (F1): chữ màu chính dùng `primary-text`. `primary-text` dùng emerald-500 #10b981 trên nền tối: đạt
    * >= 4.5:1 trên page/surface/subtle/primary-50/100/200 (#059669 chỉ đạt 4,07:1 trên subtle,
    * nơi mục select đang chọn được tô sáng). Các token 700/800/900
    * chỉ làm màu chữ nên ánh xạ sang tông sáng (Tailwind 300–600). Cặp chữ/nền được kiểm bởi

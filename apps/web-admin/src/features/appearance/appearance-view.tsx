@@ -344,7 +344,6 @@ function AppearanceEditor({
       ? checkPaletteWarnings({
           primary: resolvedPrimary,
           accent: resolvedAccent,
-          mode: activeDraft.mode,
         })
       : [];
 

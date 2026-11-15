@@ -1,4 +1,4 @@
-import { isValidHexColor, type ThemeMode } from "./palettes";
+import { isValidHexColor } from "./palettes";
 import { deltaEOklab, deriveTokens } from "./scale";
 
 export const DANGER_REFERENCE_COLOR = "#DC2626";
@@ -22,18 +22,17 @@ export interface AppearanceWarning {
 export function checkPaletteWarnings({
   primary,
   accent,
-  mode = "light",
 }: {
   primary: string;
   accent: string;
-  mode?: ThemeMode;
 }): AppearanceWarning[] {
   if (!isValidHexColor(primary) || !isValidHexColor(accent)) {
     return [];
   }
 
   const warnings: AppearanceWarning[] = [];
-  const tokens = deriveTokens({ primary, accent, mode });
+  // Xét ở chế độ sáng: ở chế độ tối nút chính luôn được làm sáng và đi với chữ tối (UNI-2562), không phải do màu chọn.
+  const tokens = deriveTokens({ primary, accent, mode: "light" });
 
   if (tokens.onPrimary.toLowerCase() !== "#ffffff") {
     warnings.push({
