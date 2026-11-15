@@ -75,6 +75,14 @@ export type TableProps<TData> = {
 };
 
 const SELECT_COLUMN_ID = "select";
+
+/**
+ * Ô thông báo rỗng/lỗi trải hết các cột (`colSpan`), nên khi các cột có bề rộng tối thiểu làm bảng rộng hơn khung
+ * (màn hẹp), nội dung canh giữa theo cả bảng và bị khung cắt mất một nửa. Phần bên trong dính mép đầu khung
+ * (`sticky start-0`) và rộng đúng phần nhìn thấy của khung (`--table-frame-width`, đo trong `useInlineOverflow`):
+ * thông báo luôn nằm giữa phần đang thấy, cuộn ngang cũng không trôi đi. Chưa đo được (lần dựng đầu) thì rộng theo ô.
+ */
+const frameWideCell = "sticky start-0 w-[var(--table-frame-width,100%)]";
 /** Hằng ổn định: `?? []`/`?? {}` tạo đối tượng mới mỗi lần render làm TanStack tính lại hàng và tự đặt lại trang (vòng lặp render). */
 const EMPTY_SORTING: SortingState = [];
 const EMPTY_ROW_SELECTION: RowSelectionState = {};
@@ -141,6 +149,8 @@ function useInlineOverflow() {
     // Lệch 1px là do làm tròn khi thu phóng lẻ, chưa phải tràn thật.
     const observer = new ResizeObserver(() => {
       setOverflows(scroller.scrollWidth - scroller.clientWidth > 1);
+      // Bề rộng phần nhìn thấy của khung, cho thông báo rỗng/lỗi đứng yên giữa khung khi bảng rộng hơn khung.
+      scroller.style.setProperty("--table-frame-width", `${scroller.clientWidth}px`);
       syncPinnedScrollPadding(scroller);
     });
     observer.observe(scroller);
@@ -324,13 +334,17 @@ export function Table<TData>({
           ) : error ? (
             <tr>
               {/* `role="alert"` nằm ở phần tử bọc: đặt lên `<td>` thì ô mất vai trò ô của bảng. */}
-              <td colSpan={columnCount}>
-                <div role="alert">{error}</div>
+              <td colSpan={columnCount} className="p-0">
+                <div role="alert" className={frameWideCell}>
+                  {error}
+                </div>
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={columnCount}>{empty}</td>
+              <td colSpan={columnCount} className="p-0">
+                <div className={frameWideCell}>{empty}</div>
+              </td>
             </tr>
           ) : (
             rows.map((row) => (
