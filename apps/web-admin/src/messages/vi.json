@@ -1599,7 +1599,7 @@
         "status": "Trạng thái",
         "users": "Tài khoản đang giữ"
       },
-      "countsSummary": "{permissions, plural, other {# quyền}} · {users, plural, other {# tài khoản đang giữ}}",
+      "cardCounts": "Số quyền: {permissions} · Tài khoản đang giữ: {users}",
       "createButton": "+ Tạo vai trò",
       "deleteAria": "Xóa vai trò {name}",
       "deleteConfirmAction": "Xóa vai trò",

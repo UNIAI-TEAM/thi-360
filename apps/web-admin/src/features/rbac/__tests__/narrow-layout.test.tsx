@@ -1,5 +1,5 @@
 import { screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
@@ -153,30 +153,6 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     expect(searchLabel.parentElement).toHaveClass("grid", "@min-[300px]:grid-cols-2", "@xl:flex");
   });
 
-  it("Vai trò: dưới 40rem chỉ còn cột Vai trò và Thao tác, phần còn lại thành dòng phụ dưới tên", async () => {
-    renderWithProviders(
-      withSession(
-        <RolesTab listRoles={async () => ROLES} listPermissions={async () => PERMISSIONS} />,
-        ["ROLE.VIEW", "ROLE.MODIFY"],
-      ),
-    );
-    await screen.findByText("Vận hành");
-    // Bảng dựng lại khi dữ liệu về: lấy lại bảng và ô sau khi đã có dữ liệu.
-    const table = screen.getByRole("table");
-    const roleCell = within(table).getByText("Vận hành").closest("td, th")!;
-
-    const wrapper = table.closest(".\\@container")!;
-    expect(wrapper.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=secondary])]:hidden");
-    expect(table.querySelectorAll("thead [data-col=secondary]")).toHaveLength(5);
-    expect(within(table).getByRole("columnheader", { name: "Vai trò" }).querySelector("[data-col]")).toBeNull();
-
-    const summary = roleCell.querySelector("[data-col-summary]") as HTMLElement;
-    expect(summary).toHaveClass("@min-[40rem]:hidden");
-    expect(within(summary).getByText("Quản trị")).toBeInTheDocument();
-    expect(within(summary).getByText("Tự tạo")).toBeInTheDocument();
-    expect(within(summary).getByText("Ngừng hoạt động")).toBeInTheDocument();
-    expect(within(summary).getByText("5 quyền · 3 tài khoản đang giữ")).toBeInTheDocument();
-  });
 
   it("Quyền hiệu lực của tài khoản: dưới 36rem cột Đối tượng và Mã nhập vào dòng phụ dưới tên quyền", async () => {
     const effective: EffectivePermissionsResponse = {
@@ -218,5 +194,96 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     expect(summary).toHaveClass("@min-[36rem]:hidden");
     expect(summary).toHaveTextContent("Tài khoản · USER.RESET_PASSWORD");
     expect(within(summary).getByText("USER.RESET_PASSWORD")).toHaveClass("wrap-anywhere");
+  });
+});
+
+/**
+ * jsdom không có layout: cho mọi phần tử cùng một bề rộng (khung đo của bảng) và thay `ResizeObserver` bằng bản
+ * rỗng, như test danh sách thẻ của kit (`packages/ui/src/components/table-cards.test.tsx`).
+ */
+function installContainerWidth(width: number) {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    () =>
+      ({ width, height: 0, top: 0, left: 0, right: width, bottom: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect,
+  );
+}
+
+describe("Phân quyền: bảng thành danh sách thẻ ở khung hẹp (UNI-2587)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function renderRoles() {
+    renderWithProviders(
+      withSession(
+        <RolesTab listRoles={async () => ROLES} listPermissions={async () => PERMISSIONS} />,
+        ["ROLE.VIEW", "ROLE.MODIFY"],
+      ),
+    );
+  }
+
+  it("Vai trò: khung hẹp hơn 640px, mỗi vai trò một thẻ: tên và nút thao tác, mã, chip trạng thái rồi phạm vi và loại, số quyền", async () => {
+    installContainerWidth(358);
+    renderRoles();
+    const list = await screen.findByRole("list", { name: "Vai trò" });
+    expect(screen.queryByRole("table")).toBeNull();
+    const title = await within(list).findByText("Vận hành");
+    const [card] = within(list).getAllByRole("listitem");
+
+    expect(title).toHaveClass("font-semibold", "line-clamp-2");
+    expect(within(card!).getByText("OPERATIONS")).toHaveClass("text-caption", "wrap-anywhere");
+    const chips = within(card!).getByText("Ngừng hoạt động").parentElement!;
+    expect(Array.from(chips.children, (chip) => chip.textContent)).toEqual([
+      "Ngừng hoạt động",
+      "Quản trị",
+      "Tự tạo",
+    ]);
+    expect(within(card!).getByText("Số quyền: 5 · Tài khoản đang giữ: 3")).toBeInTheDocument();
+
+    // Nút thao tác giống bảng, nằm trên vùng bấm của thẻ; vai trò đang có người giữ thì không xóa được.
+    const edit = within(card!).getByRole("button", { name: "Sửa vai trò Vận hành" });
+    expect(edit.closest(".z-1")).toHaveClass("relative");
+    expect(within(card!).getByRole("button", { name: "Xóa vai trò Vận hành" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("Vai trò: chip Hoạt động vẫn hiện trên thẻ; không có quyền sửa thì chỉ có nút Xem", async () => {
+    installContainerWidth(358);
+    renderWithProviders(
+      withSession(
+        <RolesTab
+          listRoles={async () => ({ ...ROLES, items: [{ ...ROLES.items[0]!, status: "ACTIVE" }] })}
+          listPermissions={async () => PERMISSIONS}
+        />,
+        ["ROLE.VIEW"],
+      ),
+    );
+    const list = await screen.findByRole("list", { name: "Vai trò" });
+    await within(list).findByText("Vận hành");
+    expect(within(list).getByText("Hoạt động")).toBeInTheDocument();
+    expect(within(list).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Xem vai trò Vận hành",
+    ]);
+  });
+
+  it("Vai trò: khung rộng vẫn là bảng đủ cột, không còn dòng tóm tắt dưới tên", async () => {
+    installContainerWidth(900);
+    renderRoles();
+    await screen.findByText("Vận hành");
+    const table = screen.getByRole("table", { name: "Vai trò" });
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(7);
+    expect(table.querySelector("[data-col-summary]")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Vai trò" })).toBeNull();
   });
 });
