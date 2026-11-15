@@ -1,4 +1,4 @@
-import { getContrastRatio, hexToRgb, pickOnColor, TEXT_CONTRAST_RATIO } from "./contrast";
+import { getContrastRatio, hexToRgb, pickOnColor, TEXT_CONTRAST_RATIO, UI_CONTRAST_RATIO } from "./contrast";
 import { normalizeHexColor, type ThemeMode } from "./palettes";
 
 export const SCALE_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
@@ -291,6 +291,62 @@ function ensureReadableLightOn(
   return "#e6eaed";
 }
 
+const DARK_INK = "#11181c";
+const DARK_INK_ON_FILL_RATIO = 7;
+
+/** Nâng độ sáng (giữ sắc độ, tông) tới khi `fits`; dùng cho màu tối cần nổi lên trên nền tối. */
+function liftUntil(hex: string, fits: (candidate: string) => boolean): string {
+  if (fits(hex)) return hex;
+  const { L, C, H } = hexToOklch(hex);
+  for (let l = L + 0.005; l < 1; l += 0.005) {
+    const candidate = oklchToHex(l, C, H);
+    if (fits(candidate)) return candidate;
+  }
+  return "#ffffff";
+}
+
+function lighter(hex: string, amount: number): string {
+  const { L, C, H } = hexToOklch(hex);
+  return oklchToHex(Math.min(1, L + amount), C, H);
+}
+
+/**
+ * Chế độ tối (UNI-2562, WCAG 1.4.11): nền nút chính và viền/thanh "đang chọn" phải đạt 3:1 với các nền tối
+ * (`page`, `surface`, `subtle`), nếu không nút lẫn vào nền khi bộ màu có màu chính đậm.
+ *
+ * - `primaryFill`: nâng độ sáng màu gốc tới khi đạt 3:1; hover và nhấn sáng thêm từng bậc (trên nền tối, sáng hơn là
+ *   nổi hơn). Chữ trên nút giữ trắng nếu trắng vẫn đạt 4,5:1 ở cả ba trạng thái; không thì nút sáng thêm tới khi chữ
+ *   tối `#11181c` đạt 7:1 và dùng chữ tối (với các bộ màu có sẵn, chữ trắng không giữ được 4,5:1 ở cả ba trạng thái
+ *   khi nền đã đạt 3:1, nên nút ở chế độ tối là nền sáng chữ tối).
+ * - `primary600` (viền thẻ, chip, ô đang chọn; thanh của tiêu đề mục): nâng độ sáng tới khi đạt 3:1.
+ */
+export function darkModeUiColors(
+  fillBase: string,
+  borderBase: string,
+  backgrounds: readonly string[],
+): { primaryFill: string; primaryFillHover: string; primaryFillActive: string; onPrimary: string; primary600: string } {
+  const visible = (candidate: string) =>
+    backgrounds.every((bg) => getContrastRatio(candidate, bg) >= UI_CONTRAST_RATIO);
+  const readableWith = (on: string) => (candidate: string) => getContrastRatio(on, candidate) >= TEXT_CONTRAST_RATIO;
+  const primary600 = liftUntil(borderBase, visible);
+
+  const fill = liftUntil(fillBase, visible);
+  const whiteStates = [fill, lighter(fill, 0.02), lighter(fill, 0.04)];
+  if (whiteStates.every(readableWith("#ffffff"))) {
+    const [primaryFill, primaryFillHover, primaryFillActive] = whiteStates as [string, string, string];
+    return { primaryFill, primaryFillHover, primaryFillActive, onPrimary: "#ffffff", primary600 };
+  }
+  // Chữ tối vừa đạt 4,5:1 trên nền tông giữa trông đục; nâng tới 7:1 (AAA) để nút rõ như nút sáng trên nền tối.
+  const inkFill = liftUntil(fill, (candidate) => getContrastRatio(DARK_INK, candidate) >= DARK_INK_ON_FILL_RATIO);
+  return {
+    primaryFill: inkFill,
+    primaryFillHover: lighter(inkFill, 0.04),
+    primaryFillActive: lighter(inkFill, 0.08),
+    onPrimary: DARK_INK,
+    primary600,
+  };
+}
+
 function toVarsRecord(tokens: Omit<DerivedTokens, "mode" | "scale" | "focusRing" | "vars">): Record<`--${string}`, string> {
   return {
     "--color-primary-50": tokens.primary50,
@@ -386,15 +442,15 @@ function deriveThi360Default(mode: ThemeMode): DerivedTokens {
           primary100: "#0c1f18",
           primary200: "#101f1a",
           primary500: "#10b981",
-          primary600: "#059669",
           primary700: "#6ee7b7",
           primary800: "#6ee7b7",
           primary900: "#a7f3d0",
-          onPrimary: "#ffffff",
           primaryText: "#10b981",
-          primaryFill: "#047857",
-          primaryFillHover: "#065f46",
-          primaryFillActive: "#064e3b",
+          ...darkModeUiColors("#047857", "#059669", [
+            DARK_NEUTRAL_AND_STATUS.page,
+            DARK_NEUTRAL_AND_STATUS.surface,
+            DARK_NEUTRAL_AND_STATUS.subtle,
+          ]),
           link: "#10b981",
           accent500: "#f59223",
           accent700: "#b45309",
@@ -544,15 +600,11 @@ export function deriveTokens({
     primary100,
     primary200,
     primary500: scale[500],
-    primary600: scale[600],
     primary700,
     primary800,
     primary900,
-    onPrimary,
     primaryText,
-    primaryFill,
-    primaryFillHover,
-    primaryFillActive,
+    ...darkModeUiColors(primaryFill, scale[600], [neutrals.page, neutrals.surface, neutrals.subtle]),
     link: primaryText,
     accent500,
     accent700,

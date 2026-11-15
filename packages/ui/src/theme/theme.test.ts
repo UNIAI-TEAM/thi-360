@@ -153,6 +153,16 @@ describe("palettes & deriveTokens", () => {
         getContrastRatio(dark.primaryText, dark.page),
         `${item.label} dark primaryText/page`,
       ).toBeGreaterThanOrEqual(4.5);
+      // Thành phần không phải chữ (WCAG 1.4.11, UNI-2562): nền nút chính và viền đang chọn đạt 3:1 với nền tối,
+      // chữ trên nút đạt 4,5:1 ở cả ba trạng thái.
+      for (const bg of [dark.page, dark.surface, dark.subtle]) {
+        for (const ui of [dark.primaryFill, dark.primaryFillHover, dark.primaryFillActive, dark.primary600]) {
+          expect(getContrastRatio(ui, bg), `${item.label} dark ${ui}/${bg}`).toBeGreaterThanOrEqual(3);
+        }
+      }
+      for (const fill of [dark.primaryFill, dark.primaryFillHover, dark.primaryFillActive]) {
+        expect(getContrastRatio(dark.onPrimary, fill), `${item.label} dark onPrimary/${fill}`).toBeGreaterThanOrEqual(4.5);
+      }
       for (const stepToken of [dark.primary700, dark.primary800, dark.primary900]) {
         expect(
           getContrastRatio(stepToken, dark.surface),
@@ -187,7 +197,8 @@ describe("checks & vars", () => {
       palette: { presetId: "custom", custom: { primary: "#0F3C6E", accent: "#00B4A6" } },
       mode: "dark",
     });
-    expect(vars["--color-primary-600"]).toBe("#0f3c6e");
+    // Chế độ tối: viền đang chọn sáng lên tới 3:1 với nền tối (UNI-2562).
+    expect(vars["--color-primary-600"]).toBe("#4471a7");
     expect(vars["--color-accent-500"]).toBe("#00b4a6");
 
     const styleLight = themeStyleTag({

@@ -306,7 +306,8 @@ describe("AppearanceView", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(
       getComputedStyle(document.documentElement).getPropertyValue("--color-primary-600").trim(),
-    ).toBe("#0f3c6e");
+      // Chế độ tối: viền đang chọn của bộ Xanh hải quân được nâng sáng tới 3:1 với nền tối (UNI-2562).
+    ).toBe("#4471a7");
     expect(document.getElementById(THEME_STYLE_ELEMENT_ID)?.textContent).toContain(
       ':root[data-theme="dark"]',
     );

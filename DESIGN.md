@@ -21,15 +21,17 @@ Sáng, sạch, thân thiện với học sinh. Nền trắng và xám rất nh�
 | `primary-100` | `#DCFCE7` | Nền nút phụ màu xanh, nền hero sáng |
 | `primary-200` | `#A7E3C2` | Viền nút viền xanh |
 | `primary-500` | `#10B981` | Điểm nhấn trong gradient |
-| `primary-600` | `#059669` | Màu thương hiệu: gradient, thanh dọc, viền focus, chấm màu. Không dùng làm chữ hay nền nút có chữ |
+| `primary-600` | `#059669` | Màu thương hiệu: gradient, thanh dọc, viền focus, chấm màu, **viền thẻ/chip/ô đang chọn** (đạt 3:1 với nền ở cả hai chế độ; bộ màu khác ở chế độ tối được nâng sáng tới 3:1). Không dùng làm chữ hay nền nút có chữ |
 | `primary-700` | `#047857` | Thanh trên cùng, chữ xanh dưới 14px trên nền trắng |
 | `primary-800` | `#065F46` | Đầu tối của gradient, chữ trên nền xanh nhạt |
 | `primary-900` | `#064E3B` | Tiêu đề lớn trên nền sáng |
 | `primary-text` | `#047857` (tối: `#10B981`) | **Chữ màu chính**: liên kết, tab/mục nav/trang đang chọn, nút nhạt, icon trên nền `primary-50/100/200`. Sáng: 5,21:1 trên `primary-50`, 4,99:1 trên `primary-100`. Tối: đạt từ 6,05:1 trên `subtle` đến 7,30:1 trên nền trang |
-| `primary-fill` | `#047857` | **Nền hành động chính**: nút chính, chip lọc đang chọn, ô logo, checkbox/switch bật. Đi với `on-primary` trắng (5,48:1) |
-| `primary-fill-hover` | `#065F46` | Nút chính khi hover (trắng 7,68:1) |
-| `primary-fill-active` | `#064E3B` | Nút chính khi bấm (trắng 9,72:1) |
-| `on-primary` | `#FFFFFF` | Chữ và icon trên `primary-fill` và nút nguy hiểm |
+| `primary-fill` | `#047857` (tối: `#55B38F`) | **Nền hành động chính**: nút chính, chip lọc đang chọn, ô logo, checkbox/switch bật. Sáng: đi với `on-primary` trắng (5,48:1). Tối: nền sáng chữ tối (7,03:1), nền đạt 6:1 với nền trang/thẻ/nền phụ (mục 8) |
+| `primary-fill-hover` | `#065F46` (tối: `#62C09B`) | Nút chính khi hover: sáng thì đậm thêm một bậc (trắng 7,68:1), tối thì sáng thêm một bậc |
+| `primary-fill-active` | `#064E3B` (tối: `#6FCDA8`) | Nút chính khi bấm (sáng: trắng 9,72:1) |
+| `on-primary` | `#FFFFFF` (tối: `#11181C`) | Chữ và icon trên `primary-fill` (nút chính, chip lọc đang chọn, ô logo, dấu tích, nút tròn của switch đang bật) |
+| `on-danger` | `#FFFFFF` | Chữ trên nút nguy hiểm `danger-solid`, ở cả hai chế độ |
+| `switch-thumb` | `#FFFFFF` | Nút tròn của switch khi tắt, ở cả hai chế độ |
 
 ### 2.2 Màu nhấn
 
@@ -336,6 +338,7 @@ Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
 
 - Độ tương phản: mọi chữ trên nền đặc hoặc nền nhạt phải đạt AA (4,5:1) ở cả hai chế độ sáng/tối; `packages/ui/src/styles/tokens.test.ts` liệt kê từng cặp và kiểm. Chữ màu chính dùng `primary-text`, nền nút chính dùng `primary-fill`, không dùng `primary-600` cho hai việc này. Không dùng `text-muted` cho chữ dưới 12px.
 - **Quyết định 2026-11-13 (UNI-2559, M.Trường chọn phương án 2 và màu nhấn A):** bản trước giữ `primary-600` làm nền nút chính để đúng trang tham khảo, nhưng đo thực tế chữ trắng trên `#059669` chỉ 3,77:1, chữ `primary-600` trên `primary-50/100` chỉ 3,58/3,43:1 và chữ trắng trên `#F59223` chỉ 2,33:1, đều dưới AA cho chữ 14px. Đổi thành: chữ màu chính và nền nút chính `#047857` (5,21/4,99:1 trên nền nhạt, 5,48:1 với chữ trắng), hover `#065F46`, bấm `#064E3B`; chữ trên nút nhấn `#1A1A1F` (7,44:1), nền `#F59223` giữ nguyên; chữ lỗi `#B91C1C` (nền `#FEF2F2` 5,9:1; `#DC2626` chỉ 4,41:1). Bảng token dưới đây thắng các bản vẽ `docs/design/*.dc.html` ở những màu này.
+- **Thành phần không phải chữ đạt 3:1** (WCAG 1.4.11; quyết định 2026-11-15, UNI-2562, M.Trường chọn phương án b): nền nút chính, checkbox/switch đang bật, viền thẻ/chip/ô đang chọn đạt 3:1 với nền trang, nền thẻ và nền phụ ở cả hai chế độ, với mọi bộ phối màu. Ở chế độ tối `deriveTokens` (`darkModeUiColors`) nâng độ sáng `primary-fill` và `primary-600` (giữ sắc độ, tông) tới khi đạt; chữ trên nút giữ trắng nếu trắng vẫn đạt 4,5:1 ở cả thường/hover/bấm, không thì nền sáng thêm tới khi chữ tối `#11181C` đạt 7:1 và dùng chữ tối (cả 9 bộ có sẵn đều thành nền sáng chữ tối). Mục menu đang mở đã có thanh dọc màu `primary-text` nên không phụ thuộc nền `primary-50`. `tokens.test.ts` và `theme.test.ts` kiểm các cặp này.
 - Mọi điều khiển dùng được bằng bàn phím, có vòng focus nhìn thấy được. Nút chỉ có icon phải có `aria-label`. Tắt viền ngoài mặc định bằng `outline-hidden` (ở chế độ tương phản cao vẫn còn viền), **không dùng `outline-none`**.
 - Vùng bấm tối thiểu 44×44px trên màn cảm ứng (mục 5.1).
 - Không truyền đạt trạng thái chỉ bằng màu: chip trạng thái luôn có chữ.

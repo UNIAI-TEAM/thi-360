@@ -67,8 +67,9 @@ const LIGHT_PAIRS: Pair[] = [
   { fg: "--color-on-primary", bg: "--color-primary-fill-active", note: "nút chính pressed" },
   // Nút nhấn (thi) và nút nguy hiểm
   { fg: "--color-on-accent", bg: "--color-accent-500", note: "nút exam" },
-  { fg: "--color-on-primary", bg: "--color-danger-solid", note: "nút nguy hiểm" },
-  { fg: "--color-on-primary", bg: "--color-danger-solid-hover", note: "nút nguy hiểm hover" },
+  { fg: "--color-on-danger", bg: "--color-danger-solid", note: "nút nguy hiểm" },
+  { fg: "--color-on-danger", bg: "--color-danger-solid-hover", note: "nút nguy hiểm hover" },
+  { fg: "--color-on-primary", bg: "--color-primary-fill", note: "nút tròn của Switch khi bật" },
   // Cặp còn lại mà thành phần dùng (R1-2)
   { fg: "--color-text-muted", bg: "--color-subtle", note: "tab phân đoạn thường" },
   { fg: "--color-text-muted", bg: "--color-table-head", note: "tiêu đề bảng" },
@@ -121,6 +122,30 @@ describe("tokens.css tương phản chữ/nền >= 4.5:1", () => {
 
   it.each(["light", "dark"] as const)("cặp chữ/nền của chế độ tối đạt trong chế độ %s", (theme) => {
     check(DARK_PAIRS, theme);
+  });
+});
+
+/**
+ * Thành phần không phải chữ (WCAG 1.4.11, UNI-2562): nền nút chính, ô/switch đang bật và viền đang chọn phải đạt
+ * 3:1 với các nền mà chúng nằm trên, ở cả hai chế độ.
+ */
+const UI_PAIRS: Pair[] = [
+  { fg: "--color-primary-fill", bg: "--color-surface", note: "nút chính trên thẻ" },
+  { fg: "--color-primary-fill", bg: "--color-page", note: "nút chính trên nền trang" },
+  { fg: "--color-primary-fill", bg: "--color-subtle", note: "nút chính trên nền phụ" },
+  { fg: "--color-primary-fill-hover", bg: "--color-surface", note: "nút chính hover" },
+  { fg: "--color-primary-fill-active", bg: "--color-surface", note: "nút chính pressed" },
+  { fg: "--color-primary-600", bg: "--color-surface", note: "viền thẻ, chip, ô đang chọn" },
+  { fg: "--color-primary-600", bg: "--color-page", note: "viền đang chọn trên nền trang" },
+];
+
+describe("tokens.css tương phản thành phần không phải chữ >= 3:1", () => {
+  it.each(["light", "dark"] as const)("chế độ %s", (theme) => {
+    const failures = UI_PAIRS.flatMap(({ fg, bg, note }) => {
+      const ratio = contrast(token(fg, theme), token(bg, theme));
+      return ratio < 3 ? [`${note}: ${token(fg, theme)} trên ${token(bg, theme)} chỉ đạt ${ratio.toFixed(2)}:1`] : [];
+    });
+    expect(failures).toEqual([]);
   });
 });
 
