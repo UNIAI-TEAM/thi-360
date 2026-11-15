@@ -141,6 +141,23 @@ describe("Table", () => {
     expect(screen.getAllByRole("row")).toHaveLength(1 + 3);
   });
 
+  it("đang tải lại (refreshing): giữ nguyên các dòng đang hiện, không hiện khung xương, đánh dấu aria-busy", () => {
+    const { rerender } = render(<Harness refreshing />);
+    expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    expect(names()).toEqual(["Cường", "An", "Bình"]);
+    expect(screen.getAllByRole("row")).toHaveLength(1 + 3);
+
+    rerender(<Harness />);
+    expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    expect(names()).toEqual(["Cường", "An", "Bình"]);
+  });
+
+  it("refreshing cùng lúc với loading (lần tải đầu): khung xương thắng", () => {
+    render(<Harness loading refreshing loadingRows={2} />);
+    expect(screen.queryByText("Cường")).toBeNull();
+    expect(screen.getAllByRole("row")).toHaveLength(1 + 2);
+  });
+
   it("rỗng: hiện nội dung empty trong một ô trải hết cột", () => {
     render(<Harness data={[]} />);
     expect(screen.getByText("Không có người nào")).toBeInTheDocument();

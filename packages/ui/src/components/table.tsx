@@ -46,6 +46,11 @@ export type TableProps<TData> = {
   loading?: boolean;
   /** Số dòng khung xương khi đang tải. */
   loadingRows?: number;
+  /**
+   * Đang tải lại trong khi vẫn hiện dữ liệu cũ (đổi bộ lọc, trang, sắp xếp). Bảng giữ nguyên các dòng,
+   * làm mờ nhẹ và báo `aria-busy`; không thay bằng khung xương nên bố cục không nhảy.
+   */
+  refreshing?: boolean;
   /** Có giá trị thì hiện thay cho dữ liệu, thường là thông báo kèm nút thử lại. */
   error?: ReactNode;
   /** Hiện khi không lỗi, không tải và không có dòng nào. */
@@ -72,6 +77,7 @@ export function Table<TData>({
   selection,
   loading = false,
   loadingRows = 5,
+  refreshing = false,
   error,
   empty,
   className,
@@ -114,7 +120,11 @@ export function Table<TData>({
 
   return (
     <div className={cn("overflow-x-auto", className)}>
-      <table aria-label={ariaLabel} aria-busy={loading || undefined} className="w-full border-collapse">
+      <table
+        aria-label={ariaLabel}
+        aria-busy={loading || refreshing || undefined}
+        className="w-full border-collapse"
+      >
         <thead>
           {table.getHeaderGroups().map((group) => (
             <tr key={group.id} className="border-b border-border">
@@ -167,7 +177,12 @@ export function Table<TData>({
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody
+          className={cn(
+            "transition-opacity duration-150 motion-reduce:transition-none",
+            refreshing && !loading && "opacity-60",
+          )}
+        >
           {loading ? (
             Array.from({ length: loadingRows }, (_, rowIndex) => (
               <tr key={rowIndex} className="border-b border-border">

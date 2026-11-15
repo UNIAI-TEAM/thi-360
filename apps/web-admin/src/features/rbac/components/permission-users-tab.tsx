@@ -21,6 +21,7 @@ import {
 import { Download, MinusCircle, Search, Shield, TriangleAlert, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { usePermissions } from "@/features/session/session-provider";
 import {
   exportUsersByPermission as defaultExportUsersByPermission,
@@ -171,6 +172,9 @@ export function PermissionUsersTab({
       ? rbacKeys.permissionUsers(activePermission.id, userQueryParams)
       : ["rbac", "permission-users", "none"],
     queryFn: () => listUsersByPermission(activePermission!.id, userQueryParams),
+    placeholderData: keepPreviousWhileSameScope(
+      activePermission ? rbacKeys.permissionUsers(activePermission.id, userQueryParams) : ["rbac", "permission-users", "none"],
+    ),
     enabled: Boolean(activePermission),
   });
 
@@ -563,6 +567,7 @@ export function PermissionUsersTab({
           columns={columns}
           getRowId={(row) => row.userId}
           loading={permissionsQuery.isPending || usersQuery.isPending}
+          refreshing={usersQuery.isPlaceholderData}
           aria-label={t("tabs.nguoi-dung")}
           error={
             usersQuery.isError ? (

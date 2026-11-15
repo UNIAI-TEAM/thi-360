@@ -33,6 +33,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
@@ -173,6 +174,7 @@ function ClassDetailContent({
   const membersQuery = useQuery({
     queryKey: CLASSES_QUERY_KEYS.members(classId, membersQueryParams),
     queryFn: () => deps.listClassMembers(classId, membersQueryParams),
+    placeholderData: keepPreviousWhileSameScope(CLASSES_QUERY_KEYS.members(classId, membersQueryParams)),
     enabled: Boolean(classQuery.data),
   });
 
@@ -486,6 +488,7 @@ function ClassDetailContent({
           data={members}
           getRowId={(row) => row.userId}
           loading={membersQuery.isLoading}
+          refreshing={membersQuery.isPlaceholderData}
           sorting={{
             state: sorting,
             manual: true,

@@ -13,6 +13,7 @@ import {
 import { FolderOpen } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -181,6 +182,7 @@ function CatalogWorkspace({
   const itemsQuery = useQuery({
     queryKey: itemsQueryKey,
     queryFn: () => api.listItems(selectedGroup!.id, itemsQueryParams),
+    placeholderData: keepPreviousWhileSameScope(itemsQueryKey),
     enabled: Boolean(selectedGroup) && selectedGroup?.kind !== "TREE",
   });
 
@@ -638,6 +640,7 @@ function CatalogWorkspace({
             searchQuery={searchQuery}
             statusFilter={statusFilter}
             loading={itemsQuery.isPending}
+            refreshing={itemsQuery.isPlaceholderData}
             error={itemsQuery.isError}
             reordering={reorderMutation.isPending}
             exporting={exporting}

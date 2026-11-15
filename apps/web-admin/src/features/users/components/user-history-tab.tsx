@@ -15,6 +15,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { type AuditEvent, type UsersApiDeps, USERS_QUERY_KEYS } from "../api";
 import { formatUserDateTime } from "../utils";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 
 const KNOWN_AUDIT_ACTIONS: Record<string, true> = {
   AUTHZ_BULK_APPLIED: true,
@@ -61,6 +62,7 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
   const historyQuery = useQuery({
     queryKey: USERS_QUERY_KEYS.audit(userId, queryParams),
     queryFn: () => listUserAuditEvents(userId, queryParams),
+    placeholderData: keepPreviousWhileSameScope(USERS_QUERY_KEYS.audit(userId, queryParams)),
   });
 
   const columns = useMemo<ColumnDef<AuditEvent>[]>(
@@ -133,6 +135,7 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         data={items}
         getRowId={(row) => row.id}
         loading={historyQuery.isLoading}
+        refreshing={historyQuery.isPlaceholderData}
         error={
           historyQuery.isError ? (
             <EmptyState

@@ -21,6 +21,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -200,6 +201,7 @@ function BulkImportBatchContent({
   const rowsQuery = useQuery({
     queryKey: BULK_IMPORT_QUERY_KEYS.rows(batchId, rowsQueryParams),
     queryFn: () => deps.listImportBatchRows(batchId, rowsQueryParams),
+    placeholderData: keepPreviousWhileSameScope(BULK_IMPORT_QUERY_KEYS.rows(batchId, rowsQueryParams)),
     enabled: shouldLoadRows && !(batch?.status === "VALIDATED" && confirmStepActive),
   });
 
@@ -776,6 +778,7 @@ function BulkImportBatchContent({
               data={rowItems}
               getRowId={getImportRowId}
               loading={rowsQuery.isLoading}
+              refreshing={rowsQuery.isPlaceholderData}
               error={
                 rowsQuery.isError ? (
                   <EmptyState
@@ -1115,6 +1118,7 @@ function BulkImportBatchContent({
               data={rowItems}
               getRowId={getImportRowId}
               loading={rowsQuery.isLoading}
+              refreshing={rowsQuery.isPlaceholderData}
               error={
                 rowsQuery.isError ? (
                   <EmptyState
