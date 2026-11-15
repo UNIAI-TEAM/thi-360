@@ -50,6 +50,7 @@ import {
 } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { createCombinationFormSchema, type CombinationFormValues } from "../schemas";
+import { DRAG_HANDLE } from "../styles";
 import {
   getCatalogErrorCode,
   getCatalogFieldErrors,
@@ -920,7 +921,10 @@ function SortableSubjectRow({
       <button
         type="button"
         aria-label={t("combinationDialog.dragSubjectLabel", { name: label })}
-        className="inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-sm text-text-muted hover:bg-subtle hover:text-text-secondary active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+        className={cn(
+          "inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-sm text-text-muted hover:bg-subtle hover:text-text-secondary active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40",
+          DRAG_HANDLE,
+        )}
         disabled={disabled}
         {...attributes}
         {...listeners}

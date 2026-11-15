@@ -58,7 +58,7 @@ import { useCallback, useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { useInlineOverflow } from "../scroll-region";
-import { focusRingInset, STATIC_CHIP } from "../styles";
+import { DRAG_HANDLE, focusRingInset, STATIC_CHIP } from "../styles";
 import { pickName } from "../utils";
 
 /**
@@ -699,6 +699,7 @@ function SortableItemRow({
                 aria-label={t("dragHandleLabel", { name: displayName })}
                 className={cn(
                   "inline-flex size-8 items-center justify-center rounded-sm text-text-placeholder transition-colors",
+                  DRAG_HANDLE,
                   reorderEnabled
                     ? "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing"
                     : "cursor-not-allowed opacity-40",

@@ -982,6 +982,31 @@ describe("CatalogView: hướng dẫn kéo thả được dịch trên mọi Dnd
   });
 });
 
+describe("CatalogView: kéo thả bằng cảm ứng (C-11)", { timeout: 20_000 }, () => {
+  // jsdom không có cảm ứng: kiểm tra hợp đồng lớp `touch-action: none` + `user-select: none` trên đúng tay nắm,
+  // còn dòng chứa tay nắm thì không (để vuốt ngoài tay nắm vẫn cuộn trang).
+  function expectTouchHandle(handle: HTMLElement) {
+    expect(handle).toHaveClass("touch-none", "select-none");
+    expect(handle.closest("tr, li, [role='treeitem']")).not.toHaveClass("touch-none");
+  }
+
+  it("tay nắm ở bảng giá trị và trong hộp thoại tổ hợp", async () => {
+    renderCatalog({ search: "group=SUBJECT_COMBINATION" });
+    expectTouchHandle(await screen.findByRole("button", { name: "Kéo để đổi thứ tự QĐ01" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Sửa QĐ01" }));
+    const dialog = await screen.findByRole("dialog");
+    const dialogHandles = await within(dialog).findAllByRole("button", { name: /^Kéo/ });
+    expect(dialogHandles.length).toBeGreaterThan(1);
+    for (const handle of dialogHandles) expectTouchHandle(handle);
+  });
+
+  it("tay nắm trên cây", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    expectTouchHandle(await screen.findByRole("button", { name: "Kéo để đổi thứ tự Hàm số" }));
+  });
+});
+
 describe("error-code mapping", () => {
   it("ánh xạ đầy đủ mã lỗi danh mục sang khóa dịch tiếng Việt và tiếng Anh", () => {
     for (const code of CATALOG_ERROR_CODES) {

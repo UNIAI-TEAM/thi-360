@@ -102,6 +102,7 @@ import {
   resolveTreeLevelLabel,
 } from "../utils";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
+import { DRAG_HANDLE } from "../styles";
 import { useDebouncedSearch } from "../use-debounced-value";
 import type { StatusFilter } from "./simple-items-panel";
 
@@ -2132,6 +2133,7 @@ function TreeDragHandle({
         }}
         className={cn(
           "inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-text-placeholder transition-colors",
+          DRAG_HANDLE,
           effectiveDisabled
             ? "cursor-not-allowed opacity-40"
             : "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing",
