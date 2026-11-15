@@ -488,6 +488,68 @@ describe("ClassDetailView", () => {
     );
   });
 
+  it("AddMembersDialog giữ trang ứng viên đang hiện khi chuyển trang hoặc tìm, hộp danh sách cao cố định (C-15)", async () => {
+    const user = userEvent.setup();
+    const manyCandidates = Array.from({ length: 25 }, (_, i) => ({
+      ...STUDENT_CANDIDATES[0]!,
+      id: `cand-${i}`,
+      username: `cand${String(i + 1).padStart(2, "0")}`,
+      fullName: `Ứng viên ${i + 1}`,
+    }));
+    // Lần gọi đầu trả ngay; các lần sau chờ tới khi test cho về, để quan sát lúc đang tải.
+    const pending: Array<() => void> = [];
+    let calls = 0;
+    const listUsersMock = vi.fn(async (query: ListUsersQuery) => {
+      const page = query.page ?? 0;
+      const size = query.size ?? 20;
+      const matched = query.q
+        ? manyCandidates.filter((c) => c.username.includes(query.q!))
+        : manyCandidates;
+      const result = {
+        items: matched.slice(page * size, page * size + size),
+        page,
+        size,
+        totalItems: matched.length,
+        totalPages: Math.ceil(matched.length / size),
+      };
+      calls += 1;
+      if (calls === 1) return result;
+      await new Promise<void>((resolve) => pending.push(resolve));
+      return result;
+    });
+    const sessionNoRoleView: Session = {
+      ...TEST_ADMIN_SESSION,
+      permissions: TEST_ADMIN_SESSION.permissions.filter((p) => p !== "ROLE.VIEW"),
+    };
+    renderDetail(makeDeps(), sessionNoRoleView, listUsersMock);
+
+    await screen.findByRole("heading", { name: "Lớp A" });
+    await user.click(screen.getByRole("button", { name: /Thêm học viên/ }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("cand01");
+    const list = within(dialog).getByRole("list", { name: "Danh sách học viên có thể thêm" });
+    const listBox = list.parentElement!;
+    expect(listBox).toHaveClass("h-96");
+    expect(listBox).not.toHaveAttribute("aria-busy");
+
+    await user.click(within(dialog).getByRole("button", { name: "Sau" }));
+    await waitFor(() => expect(pending).toHaveLength(1));
+    // Đang tải trang 2: vẫn hiện trang 1, không có khung xương, hộp đánh dấu bận.
+    expect(within(dialog).getByText("cand01")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("status", { name: "Đang tải" })).not.toBeInTheDocument();
+    expect(listBox).toHaveAttribute("aria-busy", "true");
+    pending.shift()!();
+    await within(dialog).findByText("cand21");
+    expect(listBox).not.toHaveAttribute("aria-busy");
+
+    await user.type(within(dialog).getByRole("searchbox", { name: "Tìm học viên" }), "cand2");
+    await waitFor(() => expect(pending).toHaveLength(1), { timeout: 2_000 });
+    expect(within(dialog).getByText("cand21")).toBeInTheDocument();
+    pending.shift()!();
+    await within(dialog).findByText("cand20");
+    expect(within(dialog).queryByText("cand01")).not.toBeInTheDocument();
+  });
+
   it("AddMembersDialog thiếu USER.VIEW → EmptyState không quyền, không gọi listUsers, ẩn nút submit", async () => {
     const user = userEvent.setup();
     const listUsersMock = vi.fn(async () => ({
