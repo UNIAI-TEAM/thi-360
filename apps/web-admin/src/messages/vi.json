@@ -1885,6 +1885,7 @@
       "sourceLabel": "Nguồn tạo",
       "statusLabel": "Trạng thái",
       "subtitle": "{username} · {code} · {source} · Đăng nhập cuối {lastLogin}",
+      "subtitleNeverLoggedIn": "{username} · {code} · {source} · Chưa đăng nhập lần nào",
       "tabs": {
         "classes": "Lớp học",
         "history": "Lịch sử thay đổi",

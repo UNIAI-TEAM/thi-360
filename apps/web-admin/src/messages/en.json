@@ -1885,6 +1885,7 @@
       "sourceLabel": "Source",
       "statusLabel": "Status",
       "subtitle": "{username} · {code} · {source} · Last sign-in {lastLogin}",
+      "subtitleNeverLoggedIn": "{username} · {code} · {source} · Never signed in",
       "tabs": {
         "classes": "Classes",
         "history": "Change history",

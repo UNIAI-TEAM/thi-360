@@ -15,6 +15,8 @@ import { createResetPasswordSchema } from "../schema";
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 const BASE_USER: UserDetail = {
@@ -213,6 +215,8 @@ function renderDetail(
 beforeEach(() => {
   routerMock.push.mockReset();
   stubRbacFetch();
+  // Tab của trang chi tiết nằm trong URL: mỗi test bắt đầu ở đường dẫn sạch.
+  window.history.replaceState(null, "", `/users/${BASE_USER.id}`);
 });
 
 afterEach(() => {
@@ -708,5 +712,46 @@ describe("Schema đặt lại mật khẩu", () => {
     const result = schema.safeParse({ password: "Admin@123", reason: "a".repeat(501), mustChangePassword: false });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe("too long");
+  });
+});
+
+describe("Trang chi tiết: tiêu đề riêng, tab trong URL, dòng chưa đăng nhập (U-22)", () => {
+  it("tiêu đề trang mang tên đăng nhập của tài khoản", async () => {
+    renderDetail(makeDeps());
+    await screen.findByRole("heading", { name: BASE_USER.fullName });
+    await waitFor(() => expect(document.title).toBe("student01 · Tài khoản · Thi 360"));
+  });
+
+  it("đổi tab ghi ?tab= vào URL (giữ tham số khác); về tab mặc định thì bỏ tham số", async () => {
+    window.history.replaceState(null, "", `/users/${BASE_USER.id}?from=list`);
+    renderDetail(makeDeps());
+    await userEvent.click(await screen.findByRole("tab", { name: "Lớp học" }));
+    expect(window.location.search).toBe("?from=list&tab=classes");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Thông tin" }));
+    expect(window.location.search).toBe("?from=list");
+  });
+
+  it("mở trang với ?tab=history thì tab Lịch sử thay đổi đang chọn", async () => {
+    window.history.replaceState(null, "", `/users/${BASE_USER.id}?tab=history`);
+    renderDetail(makeDeps());
+    const historyTab = await screen.findByRole("tab", { name: "Lịch sử thay đổi" });
+    expect(historyTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("?tab= không hợp lệ hoặc tab không có quyền xem thì mở tab Thông tin", async () => {
+    window.history.replaceState(null, "", `/users/${BASE_USER.id}?tab=history`);
+    renderDetail(makeDeps(), { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW"] });
+    expect(await screen.findByRole("tab", { name: "Thông tin" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("tài khoản chưa đăng nhập lần nào: dòng phụ không ghép thành \"Đăng nhập cuối Chưa đăng nhập\"", async () => {
+    renderDetail(
+      makeDeps({ getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({ ...BASE_USER, lastLoginAt: undefined })) }),
+    );
+    expect(
+      await screen.findByText("student01 · U000101 · Do quản trị tạo · Chưa đăng nhập lần nào"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Đăng nhập cuối Chưa đăng nhập/)).not.toBeInTheDocument();
   });
 });
