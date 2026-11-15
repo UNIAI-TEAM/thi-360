@@ -853,14 +853,19 @@ describe("UsersListView: kết quả không đồng bộ được đọc lên qu
     await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
     const dialog = screen.getByRole("dialog");
 
-    const status = within(dialog).getByRole("status");
-    expect(status).toBeEmptyDOMElement();
+    // Dialog có hai vùng status: kết quả kiểm tra tên đăng nhập và thông báo của nút Tạo ngẫu nhiên trong ô mật khẩu.
+    const regions = within(dialog).getAllByRole("status");
+    for (const region of regions) expect(region).toBeEmptyDOMElement();
 
     const usernameInput = within(dialog).getByLabelText(/Tên đăng nhập/);
     await userEvent.type(usernameInput, "Student06");
     await userEvent.tab();
 
-    await waitFor(() => expect(status).toHaveTextContent("Tên đăng nhập student06 có thể dùng."));
+    const status = await waitFor(() => {
+      const found = regions.find((region) => region.textContent === "Tên đăng nhập student06 có thể dùng.");
+      expect(found).toBeDefined();
+      return found as HTMLElement;
+    });
     expect(usernameInput).toHaveAccessibleDescription(/Có thể dùng\. 4–30 ký tự/);
 
     // Gõ lại thì kết quả cũ không còn đúng: vùng thông báo về rỗng.

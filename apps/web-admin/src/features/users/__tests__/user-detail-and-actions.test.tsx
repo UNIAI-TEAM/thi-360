@@ -301,7 +301,11 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     const reasonInput = screen.getByLabelText(/Lý do ngừng hoạt động/);
     const confirmBtn = screen.getByRole("dialog").querySelector("button:last-child") as HTMLButtonElement;
-    expect(confirmBtn).toBeDisabled();
+    // U-15: nút xác nhận luôn bấm được; bấm khi chưa có lý do thì báo lỗi ngay ở ô lý do thay vì khóa nút.
+    expect(confirmBtn).toBeEnabled();
+    await userEvent.click(confirmBtn);
+    expect(reasonInput).toBeInvalid();
+    expect(deactivateMock).not.toHaveBeenCalled();
 
     await userEvent.type(reasonInput, "Vi phạm quy chế");
     await userEvent.click(confirmBtn);
