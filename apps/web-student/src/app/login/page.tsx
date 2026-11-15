@@ -5,8 +5,7 @@ import { LoginView } from "@/features/auth/login-view";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("login");
-  const common = await getTranslations("common");
-  return { title: `${t("title")} · ${common("appName")}` };
+  return { title: t("title") };
 }
 
 export default function LoginPage() {

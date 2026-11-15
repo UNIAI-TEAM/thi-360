@@ -100,6 +100,62 @@ describe("LoginView", () => {
     expect(identifierInput).toHaveValue("student01");
   });
 
+  it("gửi khi thiếu mật khẩu: focus chuyển tới ô mật khẩu; thiếu cả hai thì tới ô tên đăng nhập", async () => {
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    const identifierInput = screen.getByLabelText(/Tên đăng nhập hoặc email/);
+    const passwordInput = screen.getByLabelText(/Mật khẩu/);
+    await userEvent.type(identifierInput, "student01");
+    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+
+    expect(await screen.findByText("Vui lòng nhập mật khẩu.")).toBeInTheDocument();
+    await waitFor(() => expect(passwordInput).toHaveFocus());
+    expect(mocks.loginWithPassword).not.toHaveBeenCalled();
+
+    await userEvent.clear(identifierInput);
+    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+    await waitFor(() => expect(identifierInput).toHaveFocus());
+  });
+
+  it("biểu mẫu đứng trước phần giới thiệu trong DOM, tiêu đề trang là Đăng nhập và không khối nào có bề rộng tối thiểu cứng", () => {
+    // jsdom không dàn trang: kiểm cấu trúc bảo đảm màn hẹp thấy ô nhập trước và không bị cắt ở 320px.
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    const title = screen.getByRole("heading", { level: 1, name: "Đăng nhập" });
+    const headline = screen.getByRole("heading", { level: 2, name: "Luyện thi đánh giá năng lực HSA và QDA" });
+    const submit = screen.getByRole("button", { name: "Đăng nhập" });
+    expect(title.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(submit.compareDocumentPosition(headline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const formSection = title.closest("section");
+    const introSection = headline.closest("section");
+    expect(formSection).toHaveClass("min-w-0", "p-6");
+    expect(introSection).toHaveClass("min-w-0", "p-6");
+    expect(formSection?.parentElement).toHaveClass("flex-col", "md:flex-row-reverse");
+    expect(screen.getByRole("main").innerHTML).not.toContain("min-w-[300px]");
+  });
+
+  it("ô tên đăng nhập và ô mật khẩu có thuộc tính cho bàn phím điện thoại, tự điền và chữ 16px ở màn hẹp", () => {
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    const identifierInput = screen.getByLabelText(/Tên đăng nhập hoặc email/);
+    expect(identifierInput).toBeRequired();
+    expect(identifierInput).toHaveAttribute("name", "identifier");
+    expect(identifierInput).toHaveAttribute("autocomplete", "username");
+    expect(identifierInput).toHaveAttribute("autocapitalize", "none");
+    expect(identifierInput).toHaveAttribute("autocorrect", "off");
+    expect(identifierInput).toHaveAttribute("spellcheck", "false");
+    expect(identifierInput).toHaveAttribute("enterkeyhint", "next");
+    expect(identifierInput).toHaveClass("max-sm:text-title", "pointer-coarse:text-title");
+
+    const passwordInput = screen.getByLabelText(/Mật khẩu/);
+    expect(passwordInput).toBeRequired();
+    expect(passwordInput).toHaveAttribute("name", "password");
+    expect(passwordInput).toHaveAttribute("autocomplete", "current-password");
+    expect(passwordInput).toHaveAttribute("enterkeyhint", "done");
+    expect(passwordInput).toHaveClass("max-sm:text-title", "pointer-coarse:text-title");
+  });
+
   it("dùng nhãn Show/Hide password theo ngôn ngữ tiếng Anh cho PasswordField", async () => {
     render(
       <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
@@ -139,6 +195,13 @@ describe("LoginView", () => {
     await user.type(identifierInput, "ops.admin");
     expect(identifierInput).toHaveValue("ops.admin");
 
+    mocks.loginWithPassword.mockRejectedValueOnce(
+      new ApiStatusError(401, "backend msg", { code: "INVALID_CREDENTIALS" }),
+    );
+    await user.type(screen.getByLabelText(/Mật khẩu/), "wrong");
+    await user.click(screen.getByRole("button", { name: "Đăng nhập" }));
+    expect(await screen.findByText("Tên đăng nhập hoặc mật khẩu không đúng.")).toBeInTheDocument();
+
     const switcher = screen.getByRole("button", { name: "Chọn ngôn ngữ" });
     switcher.focus();
     expect(switcher).toHaveFocus();
@@ -152,6 +215,9 @@ describe("LoginView", () => {
     await user.keyboard("{ArrowDown}{Enter}");
     await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument());
     expect(document.cookie).toContain("thi360_locale=en");
+    // Lỗi đang hiện đổi theo ngôn ngữ mới: lỗi máy chủ và lỗi của ô đều lưu bằng mã, dịch lúc hiển thị.
+    expect(screen.getByText(en_messages.login.errors.INVALID_CREDENTIALS)).toBeInTheDocument();
+    expect(screen.queryByText("Tên đăng nhập hoặc mật khẩu không đúng.")).toBeNull();
     expect(screen.getByLabelText(/Username or email/)).toBe(identifierInput);
     expect(identifierInput).toHaveValue("ops.admin");
     const updatedSwitcher = screen.getByRole("button", { name: "Change language" });

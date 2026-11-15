@@ -1206,6 +1206,12 @@
     "themeLight": "Light",
     "title": "UI components (/dev/ui)"
   },
+  "errorPage": {
+    "description": "An unexpected error occurred while processing your request. Please try again later.",
+    "eyebrow": "ERROR 500",
+    "title": "Server error",
+    "traceLabel": "Request ID: {traceId}"
+  },
   "errors": {
     "forbiddenToast": "You do not have permission to perform this action.",
     "logoutFailed": "Unable to sign out. Please try again.",
@@ -1223,7 +1229,8 @@
   },
   "metadata": {
     "description": "Thi 360 exam preparation administration portal",
-    "title": "Thi 360 — Admin"
+    "title": "Thi 360 — Admin",
+    "titleTemplate": "{title} · Thi 360"
   },
   "nav": {
     "groups": {

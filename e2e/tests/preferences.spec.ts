@@ -306,7 +306,7 @@ test.describe("Đa ngôn ngữ (vi/en) và chế độ sáng/tối theo từng n
 
       await adminPage.getByRole("button", { name: /Xanh hải quân & Ngọc lam/ }).click();
       await adminPage
-        .getByRole("tab", { name: savedDefaultMode === "light" ? "Sáng" : "Tối" })
+        .getByRole("radio", { name: savedDefaultMode === "light" ? "Sáng" : "Tối" })
         .click();
       await adminPage.getByRole("button", { name: "Lưu và áp dụng" }).click();
 

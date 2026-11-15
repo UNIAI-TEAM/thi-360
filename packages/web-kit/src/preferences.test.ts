@@ -7,6 +7,7 @@ import {
   parseLocaleCookie,
   parseThemeCookie,
   PREFERENCE_COOKIE_MAX_AGE_SECONDS,
+  readPreferenceCookies,
   resolveIntlLocale,
   resolveTheme,
 } from "./preferences";
@@ -22,6 +23,21 @@ describe("preferences cookies", () => {
     expect(parseLocaleCookie("fr")).toBe("vi");
     expect(parseLocaleCookie("EN")).toBe("vi");
     expect(parseLocaleCookie("en-GB")).toBe("vi");
+  });
+
+  it("readPreferenceCookies đọc ngôn ngữ và chế độ từ chuỗi cookie thô, bỏ qua cookie khác và giá trị sai", () => {
+    expect(readPreferenceCookies("thi360_locale=en; thi360_theme=dark")).toEqual({ locale: "en", theme: "dark" });
+    expect(readPreferenceCookies("a=1;thi360_theme=light ; b=x=y; thi360_locale=vi")).toEqual({
+      locale: "vi",
+      theme: "light",
+    });
+    expect(readPreferenceCookies("thi360_locale=fr; thi360_theme=blue")).toEqual({ locale: "vi", theme: null });
+    expect(readPreferenceCookies("thi360_theme=%64ark; broken=%E0%A4%A")).toEqual({ locale: "vi", theme: "dark" });
+    // Trùng tên: lấy giá trị đầu tiên, như trình duyệt gửi cookie cụ thể nhất trước.
+    expect(readPreferenceCookies("thi360_locale=en; thi360_locale=vi")).toEqual({ locale: "en", theme: null });
+    expect(readPreferenceCookies("")).toEqual({ locale: "vi", theme: null });
+    expect(readPreferenceCookies(undefined)).toEqual({ locale: "vi", theme: null });
+    expect(readPreferenceCookies(null)).toEqual({ locale: "vi", theme: null });
   });
 
   it("resolveIntlLocale ánh xạ en sang en-GB và normalizeUiLocale đưa về vi/en", () => {

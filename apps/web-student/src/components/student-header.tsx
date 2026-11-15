@@ -14,7 +14,8 @@ export function StudentHeader({
 
   return (
     <header className="border-b border-border bg-surface">
-      <div className="mx-auto flex max-w-[1170px] flex-wrap items-center justify-between gap-3 px-6 py-3">
+      {/* Đệm ngang 16px dưới `sm` để logo, hai nút tùy chọn và nút tài khoản vừa một hàng từ 320px (không xuống hàng khi phiên tải xong). */}
+      <div className="mx-auto flex max-w-[1170px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
           <span
             aria-hidden

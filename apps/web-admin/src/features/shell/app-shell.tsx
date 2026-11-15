@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BreadcrumbLeafProvider } from "./breadcrumb-leaf";
+import { ShellMainProvider } from "./shell-main";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 
@@ -23,7 +24,7 @@ export function AppShell({ children, skipLabel }: { children: ReactNode; skipLab
           <div className="flex min-h-full min-w-120 flex-col">
             <Topbar />
             <main id="main" className="flex flex-col gap-5 p-6">
-              {children}
+              <ShellMainProvider>{children}</ShellMainProvider>
             </main>
           </div>
         </div>

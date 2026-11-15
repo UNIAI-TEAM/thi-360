@@ -61,7 +61,22 @@ describe("AppShell", () => {
     );
     expect(nav).toContainElement(dashboardLink);
     expect(dashboardLink).toHaveAttribute("aria-current", "page");
-    expect(dashboardLink).toHaveClass("before:w-0.5", "before:bg-primary-text");
+    // Dấu hiệu mục đang mở vẽ bằng viền để còn thấy ở chế độ tương phản cao; mục khác không có thanh này.
+    expect(dashboardLink).toHaveClass("before:border-l-2", "before:border-primary-text");
+    expect(dashboardLink.className).not.toContain("before:bg-");
+    const otherLink = screen.getByRole("link", { name: "Tài khoản" });
+    expect(otherLink).not.toHaveAttribute("aria-current");
+    expect(otherLink.className).not.toContain("before:border-l-2");
+    // Vòng focus dùng chung của kit (màu đặc `primary-text`), không tự viết vòng mờ 30%.
+    expect(dashboardLink).toHaveClass("focus-visible:ring-primary-text");
+    expect(dashboardLink.className).not.toContain("ring-primary-600/30");
+
+    // Mỗi nhóm menu là một danh sách có tên; liên kết là mục của danh sách đó.
+    const usersGroup = within(nav).getByRole("list", { name: "Người dùng" });
+    expect(within(usersGroup).getAllByRole("listitem")).toHaveLength(2);
+    expect(usersGroup).toContainElement(otherLink);
+    expect(within(nav).getByRole("list", { name: "Tổng quan" })).toContainElement(dashboardLink);
+    expect(within(nav).getAllByRole("list")).toHaveLength(4);
 
     const breadcrumb = screen.getByRole("navigation", { name: "Vị trí hiện tại" });
     expect(breadcrumb).toHaveTextContent("Tổng quan");
@@ -75,6 +90,8 @@ describe("AppShell", () => {
     expect(localeButton.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(themeButton.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(trigger).toHaveTextContent("ops.admin");
+    expect(trigger).toHaveClass("focus-visible:ring-primary-text");
+    expect(trigger.className).not.toContain("ring-primary-600/30");
     await userEvent.click(trigger);
 
     expect(screen.getByRole("menuitem", { name: "Trang quản trị" })).toHaveAttribute("href", "/");
@@ -85,7 +102,7 @@ describe("AppShell", () => {
     expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
       "href",
-      "http://localhost:3000/change-password",
+      "http://localhost:3000/change-password?source=account-menu",
     );
 
     await userEvent.click(screen.getByRole("menuitem", { name: "Đăng xuất" }));
