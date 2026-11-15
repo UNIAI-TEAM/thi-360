@@ -21,7 +21,7 @@ export function DashboardView() {
       <div role="status" aria-label={t("common.loading")} className="flex flex-col gap-3">
         <Skeleton className="h-7.5 w-64" />
         <Skeleton className="h-5 w-96 max-w-full" />
-        <div className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(16.25rem,1fr))] gap-3">
+        <div className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(min(16.25rem,100%),1fr))] gap-3">
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
         </div>
@@ -51,7 +51,7 @@ export function DashboardView() {
           <h2 id="dashboard-shortcuts" className="text-title font-semibold">
             {t("dashboard.shortcuts")}
           </h2>
-          <ul className="grid grid-cols-[repeat(auto-fit,minmax(16.25rem,1fr))] gap-3">
+          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(16.25rem,100%),1fr))] gap-3">
             {shortcuts.map((item) => {
               const Icon = item.icon;
               return (
@@ -70,7 +70,7 @@ export function DashboardView() {
                       >
                         <Icon className="size-5" />
                       </span>
-                      <span className="flex flex-col">
+                      <span className="flex min-w-0 flex-col wrap-break-word">
                         <span className="font-semibold">{t(`nav.items.${item.id}.label`)}</span>
                         <span className="text-caption text-text-muted">
                           {t(`nav.items.${item.id}.description`)}
