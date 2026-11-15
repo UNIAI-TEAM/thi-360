@@ -17,6 +17,7 @@ import {
   Skeleton,
   StatusChip,
   Table,
+  focusRingInset,
 } from "@thi360/ui";
 import { Download, MinusCircle, Search, Shield, TriangleAlert, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -453,7 +454,8 @@ export function PermissionUsersTab({
                       onSelectPermission?.(perm.code);
                     }}
                     className={cn(
-                      "flex min-h-[60px] w-full cursor-pointer items-center gap-2.5 px-4 py-2 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-primary-600/30",
+                      "flex min-h-[60px] w-full cursor-pointer items-center gap-2.5 px-4 py-2 text-left transition-colors duration-150",
+                      focusRingInset,
                       // Mục thường không tô nền (thẻ đã có nền `surface`): cách dự phòng của `scroll-shadows-y`
                       // vẽ bóng bằng nền của danh sách, mục có nền đặc sẽ che mất.
                       isSelected

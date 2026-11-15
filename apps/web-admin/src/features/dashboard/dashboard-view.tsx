@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, EmptyState, PageHeader, Skeleton } from "@thi360/ui";
+import { Button, Card, cn, EmptyState, focusRing, PageHeader, Skeleton } from "@thi360/ui";
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -59,7 +59,10 @@ export function DashboardView() {
                   <Card padding="none">
                     <Link
                       href={item.href}
-                      className="flex gap-3.5 rounded-lg p-4.5 text-text transition-colors duration-150 hover:bg-subtle focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none motion-reduce:transition-none"
+                      className={cn(
+                        "flex gap-3.5 rounded-lg p-4.5 text-text transition-colors duration-150 hover:bg-subtle motion-reduce:transition-none",
+                        focusRing,
+                      )}
                     >
                       <span
                         aria-hidden

@@ -88,7 +88,11 @@ describe("DashboardView: bốn trạng thái", () => {
     renderDashboard();
 
     expect(await screen.findByRole("heading", { name: "Lối tắt" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Bảng điều khiển/ })).toHaveAttribute("href", "/a");
+    const shortcut = screen.getByRole("link", { name: /Bảng điều khiển/ });
+    expect(shortcut).toHaveAttribute("href", "/a");
+    // Vòng focus dùng chung của kit, không tự viết vòng mờ.
+    expect(shortcut).toHaveClass("focus-visible:ring-primary-text");
+    expect(shortcut.className).not.toContain("ring-primary-600/30");
     expect(screen.queryByRole("link", { name: /forbiddenItem/ })).not.toBeInTheDocument();
   });
 });

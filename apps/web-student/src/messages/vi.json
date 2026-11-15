@@ -1,9 +1,10 @@
 {
   "changePassword": {
+    "back": "Quay lại",
     "confirmPasswordLabel": "Nhập lại mật khẩu mới",
     "confirmPasswordMismatch": "Mật khẩu nhập lại không khớp.",
     "confirmPasswordRequired": "Vui lòng nhập lại mật khẩu mới.",
-    "description": "Tài khoản <strong>{username}</strong> cần đặt mật khẩu mới trước khi tiếp tục.",
+    "description": "Đặt mật khẩu mới cho tài khoản <strong>{username}</strong>.",
     "errorLoad": "Không tải được thông tin tài khoản. Hãy thử lại.",
     "errorLoadTitle": "Không tải được trang",
     "footerNote": "Sau khi lưu, bạn được đưa tới trang đang mở dở, hoặc trang chủ theo vai trò.",
@@ -17,17 +18,23 @@
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "rules": {
       "generate": "Tạo ngẫu nhiên",
-      "hidePassword": "Ẩn mật khẩu",
       "ruleDigit": "Có ít nhất một chữ số",
       "ruleLength": "Từ 8 đến 64 ký tự",
       "ruleLower": "Có ít nhất một chữ thường",
       "ruleSpecial": "Có ít nhất một ký tự đặc biệt",
       "ruleUpper": "Có ít nhất một chữ hoa",
-      "rulesLabel": "Điều kiện mật khẩu",
-      "showPassword": "Hiện mật khẩu"
+      "rulesLabel": "Điều kiện mật khẩu"
     },
     "submit": "Lưu và tiếp tục",
     "title": "Đặt mật khẩu mới",
+    "toggles": {
+      "confirmHide": "Ẩn mật khẩu nhập lại",
+      "confirmShow": "Hiện mật khẩu nhập lại",
+      "newHide": "Ẩn mật khẩu mới",
+      "newShow": "Hiện mật khẩu mới",
+      "oldHide": "Ẩn mật khẩu hiện tại",
+      "oldShow": "Hiện mật khẩu hiện tại"
+    },
     "wrongOldPassword": "Mật khẩu hiện tại không đúng."
   },
   "common": {
@@ -117,7 +124,8 @@
   },
   "metadata": {
     "description": "Cổng luyện thi đánh giá năng lực HSA và QDA",
-    "title": "Thi 360 — Luyện thi HSA, QDA"
+    "title": "Thi 360 — Luyện thi HSA, QDA",
+    "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",

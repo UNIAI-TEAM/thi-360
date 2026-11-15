@@ -217,6 +217,7 @@
     "editItem": "Edit {name}",
     "emptyItemsDescription": "This catalog has no values yet. Add the first value to start using it.",
     "emptyItemsFilteredDescription": "No values match the current search query or status filter.",
+    "emptyItemsFilteredTitle": "No matching results",
     "emptyItemsTitle": "No values yet",
     "errorCodes": {
       "CATALOG_CHANGE_BLOCKED": "Cannot deactivate because this catalog is constrained by active data.",
@@ -303,6 +304,7 @@
     "groupMeta": "{code} · {kind} · {count, number} values",
     "groupsErrorDescription": "Could not load catalogs. Please try again.",
     "groupsErrorTitle": "Could not load catalogs",
+    "groupsMatchStatus": "{count, plural, =0 {No catalogs match the search} one {# catalog matches the search} other {# catalogs match the search}}",
     "groupsTitle": "Catalogs",
     "importDialog": {
       "chooseAnotherFile": "Choose another file",
@@ -332,6 +334,7 @@
       "resultBanner": "Import complete: created {created, plural, one {# item} other {# items}}{reused, plural, =0 {} other {, reused # existing nodes}}.",
       "resultStep": "Result",
       "simpleRuleHint": "Required columns: Code*, Vietnamese name* (optional: English name, Description, Status). Only adds new codes.",
+      "stepDone": "(done)",
       "stepSummary": "Preview and validate before importing",
       "summaryTotal": "Total rows",
       "summaryValid": "Valid rows",
@@ -344,6 +347,7 @@
     },
     "importExcel": "Import Excel",
     "inactiveGroupCreateHint": "This catalog is inactive and cannot accept new values.",
+    "itemsCountStatus": "{count, plural, =0 {No values found} one {# value found} other {# values found}}",
     "itemDialog": {
       "codeHint": "Unique within the catalog, case-insensitive.",
       "codeLabel": "Value code",
@@ -464,12 +468,14 @@
       "expandAll": "Expand all",
       "expandNode": "Expand {name}",
       "filterBanner": "Tree filters active (reordering disabled; ancestors shown for context).",
-      "filterByRefLabel": "Filter by {name}",
       "filterClearGroup": "Clear selection",
+      "filterResultStatus": "{count, plural, =0 {No nodes match the filters} one {# node in the filtered tree} other {# nodes in the filtered tree}}",
       "filterSelectedCount": "{name} ({count, number})",
       "inheritedFromHint": "Inherited from {code} — {name}",
       "inheritedLockedHint": "Inherited from an ancestor, cannot be removed here",
       "jumpToAncestor": "Go to {code} — {name}",
+      "keyboardHint": "Keyboard: arrow keys move through the tree, Enter selects a node, Shift+F10 or the menu key opens the node's actions.",
+      "keyboardHintView": "Keyboard: arrow keys move through the tree, Enter selects a node, Shift+F10 or the menu key opens the node's details.",
       "kindBadge": "Tree",
       "linksHeader": "Links",
       "linksLiveHint": "Saved immediately",
@@ -689,6 +695,7 @@
       "counts": "Succeeded {created, number} · Failed {failed, number} · Remaining {remaining, number}. Progress updates automatically without refreshing.",
       "progressAriaLabel": "Batch processing progress",
       "progressValue": "{processed, number} / {total, number} rows",
+      "startedStatus": "Started creating {total, plural, one {# account} other {# accounts}}. Progress updates on the page.",
       "title": "Creating accounts"
     },
     "result": {
@@ -702,6 +709,7 @@
         "processed": "Processed",
         "processedValue": "{processed, number} / {total, number}"
       },
+      "completedStatus": "The batch has finished: {created, plural, one {# account} other {# accounts}} created, {failed, plural, one {# row} other {# rows}} failed.",
       "deleteConfirm": {
         "cancel": "Cancel",
         "close": "Close",
@@ -724,6 +732,7 @@
       "failedBanner": "The import batch failed due to a technical error.",
       "failedHint": "Failed rows did not create accounts. Fix them and import again using a file with only those rows.",
       "goToUsers": "Back to accounts",
+      "heading": "Batch result",
       "onlyFailed": "Show failed rows only",
       "passwordGenerated": "System-generated, see file",
       "passwordProvided": "From file",
@@ -765,6 +774,7 @@
     },
     "steps": {
       "ariaLabel": "Bulk account provisioning steps",
+      "doneLabel": "(completed)",
       "step1": "Download template & upload file",
       "step2": "Preview & fix errors",
       "step3": "Confirm",
@@ -788,6 +798,8 @@
       "fileSizeKb": "{size, number} KB",
       "footerNote": "Imported accounts receive the Student role. Existing accounts are not overwritten.",
       "mustChangePassword": "Require password change on first sign-in",
+      "removeFile": "Remove file {name}",
+      "removeFileTooltip": "Remove selected file",
       "ruleClassCode": "Code of an active class. Leave blank if the account belongs to no class",
       "ruleEmail": "Valid format, not used by another account",
       "ruleFullName": "Maximum 200 characters",
@@ -865,6 +877,7 @@
       "addDisabledTooltip": "Inactive classes cannot accept new students.",
       "addMembers": "Add students",
       "backToList": "Back to classes",
+      "documentTitle": "{code} · Classes",
       "editInfo": "Edit details",
       "errorDescription": "Could not load class details. Please try again.",
       "errorTitle": "Could not load class",
@@ -939,6 +952,7 @@
       "filteredCount": "{count, number} classes",
       "footnote": "Deactivating a class blocks adding new members while preserving history. Deleting a class never deletes student accounts or exam results.",
       "loadingCount": "Loading classes...",
+      "resultStatus": "{count, plural, =0 {No classes found} one {# class found} other {# classes found}}",
       "paginationNav": "Class list pagination",
       "paginationNext": "Next",
       "paginationPage": "Page {page}",
@@ -960,6 +974,7 @@
       "paginationNav": "Class members pagination",
       "removeAria": "Remove {username} from class",
       "removeTooltip": "Remove from class",
+      "resultStatus": "{count, plural, =0 {No students found} one {# student found} other {# students found}}",
       "searchLabel": "Search students in class",
       "searchPlaceholder": "Search by code, username, or full name",
       "tableActions": "Actions",
@@ -1206,6 +1221,12 @@
     "themeLight": "Light",
     "title": "UI components (/dev/ui)"
   },
+  "errorPage": {
+    "description": "An unexpected error occurred while processing your request. Please try again later.",
+    "eyebrow": "ERROR 500",
+    "title": "Server error",
+    "traceLabel": "Request ID: {traceId}"
+  },
   "errors": {
     "forbiddenToast": "You do not have permission to perform this action.",
     "logoutFailed": "Unable to sign out. Please try again.",
@@ -1223,7 +1244,8 @@
   },
   "metadata": {
     "description": "Thi 360 exam preparation administration portal",
-    "title": "Thi 360 — Admin"
+    "title": "Thi 360 — Admin",
+    "titleTemplate": "{title} · Thi 360"
   },
   "nav": {
     "groups": {
@@ -1735,6 +1757,12 @@
       "success": "Activated account {username}.",
       "title": "Activate account"
     },
+    "announce": {
+      "selectionCleared": "Selection cleared.",
+      "sortCleared": "Sorting cleared; the list is back in its default order.",
+      "sortedAsc": "Sorted by {column}, ascending.",
+      "sortedDesc": "Sorted by {column}, descending."
+    },
     "auditActions": {
       "AUTHZ_BULK_APPLIED": "Bulk authorization applied",
       "CLASS_MEMBER_ADDED": "Added to class",
@@ -1769,6 +1797,8 @@
     "bulk": {
       "activateConfirm": "Activate {count} accounts",
       "activateTitle": "Activate selected accounts",
+      "affectedAccounts": "Applies to: {names}.",
+      "affectedAccountsMore": "Applies to: {names} and {count} more.",
       "assignRolePermission": "Assign roles & permissions",
       "cancel": "Cancel",
       "clearSelection": "Clear selection",
@@ -1778,6 +1808,7 @@
       "deactivateTitle": "Deactivate selected accounts",
       "deleteConfirm": "Delete {count} accounts",
       "deleteTitle": "Delete selected accounts",
+      "helpToggle": "How this works",
       "helperNote": "\"Assign roles & permissions\" opens the Bulk assign tab in Authorization with these {count} accounts preselected. Deactivate, reactivate, and delete ask for confirmation first; ineligible accounts (such as accounts with transactions) are reported individually.",
       "noAffected": "No selected accounts are eligible for this action.",
       "previewLoading": "Checking selected accounts...",
@@ -1820,6 +1851,7 @@
       "success": "Created account {username}.",
       "title": "Create account",
       "usernameAvailable": "Available. 4–30 characters, ASCII, case-insensitive, cannot be changed after creation.",
+      "usernameAvailableStatus": "Username {username} is available.",
       "usernameChecking": "Checking username availability...",
       "usernameHint": "4–30 characters (a-z, 0-9, ., _, @, -), starts with a letter or digit, cannot be changed after creation.",
       "usernameLabel": "Username",
@@ -1869,6 +1901,7 @@
       "sourceLabel": "Source",
       "statusLabel": "Status",
       "subtitle": "{username} · {code} · {source} · Last sign-in {lastLogin}",
+      "subtitleNeverLoggedIn": "{username} · {code} · {source} · Never signed in",
       "tabs": {
         "classes": "Classes",
         "history": "Change history",
@@ -1880,6 +1913,12 @@
       "updatedAtLabel": "Last updated",
       "usernameLabel": "Username",
       "yes": "Yes"
+    },
+    "discardDialog": {
+      "cancel": "Keep editing",
+      "confirm": "Discard",
+      "description": "What you entered in this form will not be saved.",
+      "title": "Discard what you entered?"
     },
     "errorCodes": {
       "ALREADY_ACTIVE": "This account is already active.",
@@ -1992,6 +2031,8 @@
       "filteredCount": "{count} matching accounts",
       "hint": "Select multiple rows to deactivate, reactivate, delete, or assign roles and permissions in bulk",
       "loadingCount": "Loading accounts...",
+      "offlineDescription": "You are offline, so the list for this filter has not loaded. It reloads automatically when the connection returns, or select Retry.",
+      "offlineTitle": "No network connection",
       "paginationNav": "Account list pagination",
       "paginationNext": "Next",
       "paginationPage": "Page {page}",

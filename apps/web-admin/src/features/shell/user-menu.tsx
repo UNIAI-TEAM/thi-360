@@ -8,6 +8,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  cn,
+  focusRing,
   notify,
 } from "@thi360/ui";
 import { useTranslations } from "next-intl";
@@ -39,7 +41,10 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={t("trigger")}
-        className="flex h-10 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-2.5 pl-1 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none motion-reduce:transition-none"
+        className={cn(
+          "flex h-10 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-2.5 pl-1 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong motion-reduce:transition-none",
+          focusRing,
+        )}
       >
         <span
           aria-hidden
@@ -66,7 +71,8 @@ export function UserMenu() {
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href={`${webUrl()}/change-password`}>
+          {/* `source=account-menu`: trang Đổi mật khẩu của web học viên hiện lối quay lại cho người tự mở từ menu. */}
+          <a href={`${webUrl()}/change-password?source=account-menu`}>
             <KeyRound aria-hidden />
             {t("changePassword")}
           </a>

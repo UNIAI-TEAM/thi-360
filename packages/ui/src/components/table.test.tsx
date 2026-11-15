@@ -78,6 +78,40 @@ describe("Table", () => {
     expect(screen.getByRole("columnheader", { name: "Họ tên" })).toHaveAttribute("aria-sort", "descending");
   });
 
+  it("aria-sort chỉ có ở cột đang sắp xếp: cột chưa sắp xếp và cột không sắp xếp được đều không mang thuộc tính", async () => {
+    render(<Harness withSorting />);
+    for (const header of screen.getAllByRole("columnheader")) {
+      expect(header).not.toHaveAttribute("aria-sort");
+    }
+
+    await userEvent.click(screen.getByRole("button", { name: "Họ tên" }));
+    expect(screen.getByRole("columnheader", { name: "Họ tên" })).toHaveAttribute("aria-sort", "ascending");
+    expect(screen.getByRole("columnheader", { name: "Tuổi" })).not.toHaveAttribute("aria-sort");
+    expect(screen.getByRole("columnheader", { name: "Thao tác" })).not.toHaveAttribute("aria-sort");
+    expect(document.querySelectorAll("[aria-sort]")).toHaveLength(1);
+
+    // Bấm lần thứ ba bỏ sắp xếp: thuộc tính được gỡ, không quay về "none".
+    await userEvent.click(screen.getByRole("button", { name: "Họ tên" }));
+    await userEvent.click(screen.getByRole("button", { name: "Họ tên" }));
+    expect(document.querySelectorAll("[aria-sort]")).toHaveLength(0);
+  });
+
+  it("nút sắp xếp có vùng bấm phủ hết ô tiêu đề và vẫn có vòng focus", () => {
+    render(<Harness withSorting />);
+    const button = screen.getByRole("button", { name: "Họ tên" });
+    expect(button).toHaveClass("after:absolute", "after:inset-0", "focus-visible:ring-3");
+    expect(button.closest("th")).toHaveClass("relative");
+    // Cột không sắp xếp được không cần mốc định vị.
+    expect(screen.getByRole("columnheader", { name: "Thao tác" })).not.toHaveClass("relative");
+  });
+
+  it("cột ghim sắp xếp được vẫn là sticky (không bị relative ghi đè)", () => {
+    render(<Harness withSorting stickyColumns={{ start: true }} />);
+    const header = screen.getByRole("columnheader", { name: "Họ tên" });
+    expect(header).toHaveClass("sticky");
+    expect(header).not.toHaveClass("relative");
+  });
+
   it("cột không sắp xếp được thì tiêu đề không phải nút; bảng không bật sorting thì không cột nào là nút", () => {
     const { unmount } = render(<Harness withSorting />);
     expect(screen.queryByRole("button", { name: "Thao tác" })).toBeNull();
@@ -168,6 +202,12 @@ describe("Table", () => {
     render(<Harness error={<span>Không tải được danh sách</span>} />);
     expect(screen.getByRole("alert")).toHaveTextContent("Không tải được danh sách");
     expect(screen.queryByText("Cường")).toBeNull();
+    // Vùng alert nằm trong ô; ô vẫn là ô của bảng, trải hết các cột.
+    const cell = screen.getByRole("alert").parentElement as HTMLElement;
+    expect(cell.tagName).toBe("TD");
+    expect(cell).not.toHaveAttribute("role");
+    expect(cell).toHaveAttribute("colspan", "3");
+    expect(screen.getAllByRole("cell")).toContain(cell);
   });
 
   it("thử lại sau lỗi: đang tải thì hiện khung xương, không hiện lại thông báo lỗi cũ", () => {
@@ -346,5 +386,194 @@ describe("Table: vùng cuộn ngang dùng được bằng bàn phím", () => {
     const scroller = scrollerOf(screen.getByRole("table", { name: "Danh sách người" }));
     expect(scroller).not.toHaveAttribute("tabindex");
     expect(names()).toEqual(["Cường", "An", "Bình"]);
+  });
+});
+
+describe("Table: ghim cột (stickyColumns)", () => {
+  function headers() {
+    return screen.getAllByRole("columnheader");
+  }
+  function cellsOfRow(rowIndex: number) {
+    return within(screen.getAllByRole("row")[rowIndex] as HTMLElement).getAllByRole("cell");
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("không bật: không ô nào ghim, khung cuộn không thành vùng truy vấn trạng thái cuộn", () => {
+    render(<Harness withSelection />);
+    for (const cell of [...headers(), ...cellsOfRow(1)]) {
+      expect(cell).not.toHaveClass("sticky");
+    }
+    const scroller = screen.getByRole("table").parentElement as HTMLElement;
+    expect(scroller).not.toHaveClass("[container-type:scroll-state]");
+    expect(scroller).not.toHaveClass("isolate");
+    expect(screen.getAllByRole("row")[1]).not.toHaveClass("bg-surface");
+  });
+
+  it("start: ghim cột dữ liệu đầu tiên vào mép đầu, ở cả tiêu đề lẫn thân bảng; cột khác không ghim", () => {
+    render(<Harness stickyColumns={{ start: true }} />);
+    expect(headers()[0]).toHaveClass("sticky", "z-1", "start-0", "bg-table-head");
+    expect(headers()[1]).not.toHaveClass("sticky");
+    expect(headers()[2]).not.toHaveClass("sticky");
+
+    const cells = cellsOfRow(1);
+    expect(cells[0]).toHaveClass("sticky", "z-1", "start-0", "bg-inherit");
+    expect(cells[1]).not.toHaveClass("sticky");
+    expect(cells[2]).not.toHaveClass("sticky");
+  });
+
+  it("start cùng cột chọn dòng: ghim cả hai, cột dữ liệu lệch đúng bằng bề rộng cố định của cột chọn dòng", () => {
+    render(<Harness withSelection stickyColumns={{ start: true }} />);
+    expect(headers()[0]).toHaveClass("sticky", "start-0", "w-13", "min-w-13", "max-w-13");
+    expect(headers()[1]).toHaveClass("sticky", "start-13");
+    expect(headers()[1]).not.toHaveClass("start-0");
+
+    const cells = cellsOfRow(1);
+    expect(cells[0]).toHaveClass("sticky", "start-0", "min-w-13", "max-w-13", "bg-inherit");
+    expect(cells[1]).toHaveClass("sticky", "start-13", "bg-inherit");
+    // Vạch kẻ chỉ ở mép trong của nhóm cột ghim, tức là ở cột dữ liệu, không ở cột chọn dòng.
+    expect(cells[0]?.className).not.toContain("after:");
+    expect(cells[1]).toHaveClass("after:end-0");
+  });
+
+  it("end: ghim cột cuối vào mép cuối", () => {
+    render(<Harness withSelection stickyColumns={{ end: true }} />);
+    expect(headers()[3]).toHaveClass("sticky", "z-1", "end-0", "bg-table-head");
+    expect(cellsOfRow(1)[3]).toHaveClass("sticky", "z-1", "end-0", "bg-inherit");
+    // Chỉ bật `end` thì cột chọn dòng và cột dữ liệu đầu không ghim.
+    expect(headers()[0]).not.toHaveClass("sticky");
+    expect(cellsOfRow(1)[1]).not.toHaveClass("sticky");
+  });
+
+  it("nền ô ghim đi theo dòng: dòng có nền đặc cùng các lớp hover/đang chọn, ô ghim thừa kế nền của dòng", async () => {
+    render(<Harness withSelection stickyColumns={{ start: true, end: true }} />);
+    const row = screen.getAllByRole("row")[2] as HTMLElement;
+    expect(row).toHaveClass("bg-surface", "hover:bg-subtle", "data-[state=selected]:bg-primary-50");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /Chọn dòng 2/ }));
+    expect(row).toHaveAttribute("data-state", "selected");
+    for (const index of [0, 1, 3]) {
+      expect(cellsOfRow(2)[index]).toHaveClass("bg-inherit");
+      // Ô ghim không tự đặt màu nền riêng theo trạng thái: chỉ có một nguồn là dòng.
+      expect(cellsOfRow(2)[index]?.className).not.toMatch(/bg-(surface|subtle|primary-50)/);
+    }
+  });
+
+  it("vạch kẻ mép cột ghim chỉ có khi còn cuộn được về phía đó; trình duyệt cũ dựa vào data-overflows của khung", () => {
+    render(<Harness stickyColumns={{ start: true, end: true }} />);
+    const start = cellsOfRow(1)[0] as HTMLElement;
+    const end = cellsOfRow(1)[2] as HTMLElement;
+    expect(start).toHaveClass(
+      "after:absolute",
+      "after:end-0",
+      "[@container_scroll-state(scrollable:inline-start)]:after:border-e",
+      "not-supports-[container-type:scroll-state]:group-data-[overflows]/table:after:border-e",
+    );
+    expect(end).toHaveClass(
+      "after:absolute",
+      "after:start-0",
+      "[@container_scroll-state(scrollable:inline-end)]:after:border-s",
+      "not-supports-[container-type:scroll-state]:group-data-[overflows]/table:after:border-s",
+    );
+    // Không có viền vô điều kiện: bảng vừa khung thì không hiện vạch nào.
+    expect(start).not.toHaveClass("after:border-e");
+    expect(end).not.toHaveClass("after:border-s");
+
+    const scroller = screen.getByRole("table").parentElement as HTMLElement;
+    expect(scroller).toHaveClass("group/table", "isolate", "[container-type:scroll-state]", "overflow-x-auto");
+  });
+
+  /** `ResizeObserver` gọi tay được, như ở nhóm test vùng cuộn phía trên. */
+  function installResizeObserver() {
+    const callbacks: ResizeObserverCallback[] = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          callbacks.push(callback);
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    return callbacks;
+  }
+
+  it("chừa scroll-padding bằng bề rộng các cột ghim, để phần tử nhận focus không dừng dưới cột ghim", () => {
+    const callbacks = installResizeObserver();
+    const { rerender } = render(<Harness withSelection stickyColumns={{ start: true, end: true }} />);
+    const scroller = screen.getByRole("table").parentElement as HTMLElement;
+    expect(headers().map((header) => header.getAttribute("data-pinned"))).toEqual(["start", "start", null, "end"]);
+
+    [52, 180, 120, 88].forEach((width, index) => {
+      Object.defineProperty(headers()[index], "offsetWidth", { configurable: true, value: width });
+    });
+    act(() => callbacks.forEach((callback) => callback([], {} as ResizeObserver)));
+    expect(scroller.style.getPropertyValue("scroll-padding-inline-start")).toBe("232px");
+    expect(scroller.style.getPropertyValue("scroll-padding-inline-end")).toBe("88px");
+
+    rerender(<Harness withSelection />);
+    act(() => callbacks.forEach((callback) => callback([], {} as ResizeObserver)));
+    expect(scroller.style.getPropertyValue("scroll-padding-inline-start")).toBe("");
+    expect(scroller.style.getPropertyValue("scroll-padding-inline-end")).toBe("");
+  });
+
+  it("khung báo data-overflows chỉ khi bảng tràn ngang, và vẫn là vùng cuộn dùng được bằng bàn phím", () => {
+    const callbacks = installResizeObserver();
+    render(<Harness stickyColumns={{ start: true, end: true }} />);
+    const scroller = screen.getByRole("table").parentElement as HTMLElement;
+    expect(scroller).not.toHaveAttribute("data-overflows");
+
+    Object.defineProperty(scroller, "scrollWidth", { configurable: true, value: 1105 });
+    Object.defineProperty(scroller, "clientWidth", { configurable: true, value: 800 });
+    act(() => callbacks.forEach((callback) => callback([], {} as ResizeObserver)));
+
+    expect(scroller).toHaveAttribute("data-overflows", "true");
+    expect(screen.getByRole("region", { name: "Danh sách người" })).toBe(scroller);
+    expect(scroller).toHaveAttribute("tabindex", "0");
+    expect(scroller).toHaveClass("focus-visible:outline-3");
+  });
+
+  it("đang tải: ô khung xương ghim cùng cột với tiêu đề, dòng có nền đặc", () => {
+    render(<Harness withSelection loading loadingRows={2} stickyColumns={{ start: true, end: true }} />);
+    const cells = cellsOfRow(1);
+    expect(cells[0]).toHaveClass("sticky", "start-0", "bg-inherit");
+    expect(cells[1]).toHaveClass("sticky", "start-13", "bg-inherit");
+    expect(cells[2]).not.toHaveClass("sticky");
+    expect(cells[3]).toHaveClass("sticky", "end-0", "bg-inherit");
+    expect(screen.getAllByRole("row")[1]).toHaveClass("bg-surface");
+    expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("đang tải lại, rỗng và lỗi vẫn như cũ khi bật ghim cột", () => {
+    const { rerender } = render(<Harness refreshing stickyColumns={{ start: true, end: true }} />);
+    expect(screen.getByRole("table").querySelector("tbody")).toHaveClass("opacity-60");
+    expect(names()).toEqual(["Cường", "An", "Bình"]);
+
+    rerender(<Harness data={[]} stickyColumns={{ start: true, end: true }} />);
+    expect(screen.getByText("Không có người nào").closest("td")).toHaveAttribute("colspan", "3");
+    expect(screen.getByText("Không có người nào").closest("td")).not.toHaveClass("sticky");
+    expect(headers()[0]).toHaveClass("sticky");
+
+    rerender(<Harness error={<span>Không tải được danh sách</span>} stickyColumns={{ start: true, end: true }} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Không tải được danh sách");
+  });
+
+  it("bảng chỉ có một cột dữ liệu: end không ghim đè lên cột start", () => {
+    const single: ColumnDef<Person>[] = [{ accessorKey: "name", header: "Họ tên" }];
+    render(<Harness columns={single} stickyColumns={{ start: true, end: true }} />);
+    expect(headers()[0]).toHaveClass("sticky", "start-0");
+    expect(headers()[0]).not.toHaveClass("end-0");
+  });
+
+  it("đường kẻ ngang nằm ở ô (bảng border-separate) để đi theo ô ghim; dòng cuối không có đường kẻ", () => {
+    render(<Harness stickyColumns={{ start: true }} />);
+    expect(screen.getByRole("table")).toHaveClass("border-separate", "border-spacing-0");
+    expect(headers()[0]).toHaveClass("border-b", "border-border");
+    expect(cellsOfRow(1)[0]).toHaveClass("border-b", "border-border", "group-last/row:border-b-0");
+    expect(screen.getAllByRole("row")[1]).toHaveClass("group/row");
   });
 });

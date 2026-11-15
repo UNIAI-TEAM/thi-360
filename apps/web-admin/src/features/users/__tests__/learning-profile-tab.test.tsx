@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider, useSession } from "@/features/session/session-provider";
 import type { Session } from "@/features/session/types";
 import en from "@/messages/en.json";
@@ -20,7 +20,14 @@ import { UserDetailView } from "../components/user-detail-view";
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
+
+beforeEach(() => {
+  // Tab của trang chi tiết nằm trong URL: mỗi test bắt đầu ở đường dẫn sạch.
+  window.history.replaceState(null, "", "/users/test");
+});
 
 const BASE_USER: UserDetail = {
   id: "00000000-0000-4000-8000-000000000101",

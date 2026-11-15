@@ -44,6 +44,46 @@ describe("Button", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("đang xử lý: nhãn vẫn nằm trong cây truy cập (không visibility:hidden), spinner chỉ để nhìn", () => {
+    render(
+      <Button loading>
+        <span data-testid="label-text">Đăng nhập</span>
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Đăng nhập" });
+    expect(button).toHaveAccessibleName("Đăng nhập");
+    expect(button).toHaveAttribute("aria-busy", "true");
+    // Nút vẫn nhận focus khi đang xử lý, nên trình đọc màn hình đọc lại được tên và trạng thái bận.
+    expect(button).not.toHaveAttribute("disabled");
+    button.focus();
+    expect(button).toHaveFocus();
+
+    const label = screen.getByTestId("label-text").parentElement as HTMLElement;
+    expect(label).toHaveClass("opacity-0");
+    expect(label).not.toHaveClass("invisible");
+    expect(label).not.toHaveAttribute("aria-hidden");
+    expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("đang xử lý với giảm chuyển động: spinner quay chậm lại, không đứng yên", () => {
+    render(<Button loading>Lưu</Button>);
+    const spinner = screen.getByRole("button", { name: "Lưu" }).querySelector("svg");
+    expect(spinner).toHaveClass("animate-spin", "motion-reduce:animate-[spin_6s_linear_infinite]");
+    expect(spinner).not.toHaveClass("motion-reduce:animate-none");
+  });
+
+  it("không đang xử lý: không có spinner, nhãn hiện bình thường, không aria-busy", () => {
+    render(
+      <Button>
+        <span data-testid="label-text">Đăng nhập</span>
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Đăng nhập" });
+    expect(button).not.toHaveAttribute("aria-busy");
+    expect(button.querySelector("svg")).toBeNull();
+    expect(screen.getByTestId("label-text").parentElement).not.toHaveClass("opacity-0");
+  });
+
   it("asChild đưa kiểu nút cho phần tử con", () => {
     render(
       <Button asChild variant="secondary">
@@ -53,6 +93,33 @@ describe("Button", () => {
     const link = screen.getByRole("link", { name: "Hồ sơ" });
     expect(link).toHaveAttribute("href", "/ho-so");
     expect(link).toHaveClass("h-10");
+  });
+
+  it("asChild: icon và nhãn của phần tử con cùng cỡ icon, cùng khoảng cách với nút thường", () => {
+    render(
+      <>
+        <Button asChild variant="secondary">
+          <a href="/cap-hang-loat">
+            <svg data-testid="link-icon" />
+            Cấp hàng loạt
+          </a>
+        </Button>
+        <Button>
+          <svg data-testid="button-icon" />
+          Tạo tài khoản
+        </Button>
+      </>,
+    );
+    const link = screen.getByRole("link", { name: "Cấp hàng loạt" });
+    const button = screen.getByRole("button", { name: "Tạo tài khoản" });
+    // Lớp cỡ icon nằm ở phần tử gốc của cả hai nhánh, nên áp cho mọi svg bên trong.
+    for (const root of [link, button]) {
+      expect(root).toHaveClass("[&_svg]:size-4", "[&_svg]:shrink-0");
+    }
+    // Khoảng cách icon–nhãn: ở liên kết là gap của chính nó, ở nút thường là gap của phần tử bọc nhãn.
+    expect(screen.getByTestId("link-icon").parentElement).toBe(link);
+    expect(link).toHaveClass("inline-flex", "items-center", "gap-2");
+    expect(screen.getByTestId("button-icon").parentElement).toHaveClass("inline-flex", "items-center", "gap-2");
   });
 
   it("asChild + disabled: phần tử con aria-disabled, ra khỏi thứ tự Tab và không nhận bấm", async () => {

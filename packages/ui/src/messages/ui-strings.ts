@@ -14,6 +14,10 @@ export interface UiStrings {
     cancel: string;
     confirm: string;
   };
+  confirmDialog: {
+    /** Lỗi của ô lý do khi quy tắc yêu cầu lý do mà người dùng xác nhận với ô trống. */
+    reasonRequired: string;
+  };
   pagination: PaginationLabels;
   passwordField: PasswordFieldLabels;
   emptyState: {
@@ -39,6 +43,9 @@ export const UI_STRINGS_VI: UiStrings = {
     cancel: "Hủy",
     confirm: "Xác nhận",
   },
+  confirmDialog: {
+    reasonRequired: "Vui lòng nhập lý do.",
+  },
   pagination: {
     nav: "Phân trang",
     previous: "Trang trước",
@@ -52,7 +59,11 @@ export const UI_STRINGS_VI: UiStrings = {
     showPassword: "Hiện mật khẩu",
     hidePassword: "Ẩn mật khẩu",
     generate: "Tạo ngẫu nhiên",
+    generated: "Đã tạo mật khẩu ngẫu nhiên",
+    generatedShown: "Đã tạo mật khẩu ngẫu nhiên, mật khẩu đang hiện trong ô nhập",
     rulesLabel: "Điều kiện mật khẩu",
+    ruleMet: "đã đạt",
+    ruleUnmet: "chưa đạt",
     ruleLength: "Từ 8 đến 64 ký tự",
     ruleUpper: "Có ít nhất một chữ hoa",
     ruleLower: "Có ít nhất một chữ thường",
@@ -85,6 +96,9 @@ export const UI_STRINGS_EN: UiStrings = {
     cancel: "Cancel",
     confirm: "Confirm",
   },
+  confirmDialog: {
+    reasonRequired: "Please enter a reason.",
+  },
   pagination: {
     nav: "Pagination",
     previous: "Previous page",
@@ -98,7 +112,11 @@ export const UI_STRINGS_EN: UiStrings = {
     showPassword: "Show password",
     hidePassword: "Hide password",
     generate: "Generate random",
+    generated: "Random password generated",
+    generatedShown: "Random password generated and shown in the field",
     rulesLabel: "Password requirements",
+    ruleMet: "met",
+    ruleUnmet: "not met",
     ruleLength: "8 to 64 characters",
     ruleUpper: "At least one uppercase letter",
     ruleLower: "At least one lowercase letter",

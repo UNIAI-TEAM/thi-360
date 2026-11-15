@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Button,
   Checkbox,
+  ConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,13 +14,14 @@ import {
   FormField,
   Input,
   Label,
+  LiveStatus,
   notify,
   PasswordField,
   Select,
 } from "@thi360/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   CLASSES_QUERY_KEYS,
@@ -35,7 +37,7 @@ import {
   type UserDetail,
   UsersApiError,
 } from "../api";
-import { createCreateUserSchema, type CreateUserFormValues } from "../schema";
+import { createCreateUserSchema, type CreateUserFormValues, USER_FIELD_MAX_LENGTH } from "../schema";
 import { formatRoleLabel, mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
 
 const DEFAULT_STUDENT_ROLE_VALUE = "__DEFAULT_STUDENT__";
@@ -62,9 +64,25 @@ export function CreateUserDialog({
 }: CreateUserDialogProps) {
   const t = useTranslations("users");
   const [submitting, setSubmitting] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  // Biểu mẫu con báo đã có dữ liệu hay chưa; chỉ đọc trong xử lý sự kiện đóng nên giữ bằng ref, không cần render lại.
+  const dirtyRef = useRef(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    dirtyRef.current = dirty;
+  }, []);
+
+  function requestClose() {
+    if (submitting) return;
+    if (dirtyRef.current) {
+      setDiscardOpen(true);
+      return;
+    }
+    onOpenChange(false);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
+    <>
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}>
       <DialogContent
         size="xl"
         closeLabel={t("createDialog.close")}
@@ -72,7 +90,7 @@ export function CreateUserDialog({
           if (submitting) event.preventDefault();
         }}
         onPointerDownOutside={(event) => {
-          if (submitting) event.preventDefault();
+          if (submitting || dirtyRef.current) event.preventDefault();
         }}
       >
         <DialogHeader>
@@ -83,8 +101,9 @@ export function CreateUserDialog({
         {open && (
           <CreateUserFormBody
             roles={roles}
-            onCancel={() => onOpenChange(false)}
+            onCancel={requestClose}
             onSubmittingChange={setSubmitting}
+            onDirtyChange={handleDirtyChange}
             onCreated={(user) => {
               onOpenChange(false);
               onCreated(user);
@@ -96,6 +115,22 @@ export function CreateUserDialog({
         )}
       </DialogContent>
     </Dialog>
+      {/* Biểu mẫu đã có dữ liệu: Esc, nút × và Hủy hỏi lại trước khi bỏ; bấm ra ngoài thì không đóng. */}
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title={t("discardDialog.title")}
+        description={t("discardDialog.description")}
+        confirmLabel={t("discardDialog.confirm")}
+        cancelLabel={t("discardDialog.cancel")}
+        tone="danger"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          dirtyRef.current = false;
+          onOpenChange(false);
+        }}
+      />
+    </>
   );
 }
 
@@ -103,6 +138,7 @@ function CreateUserFormBody({
   roles,
   onCancel,
   onSubmittingChange,
+  onDirtyChange,
   onCreated,
   createUser,
   checkUsernameAvailability,
@@ -111,6 +147,7 @@ function CreateUserFormBody({
   roles: RoleSummary[];
   onCancel: () => void;
   onSubmittingChange: (submitting: boolean) => void;
+  onDirtyChange: (dirty: boolean) => void;
   onCreated: (user: UserDetail) => void;
   createUser: typeof defaultCreateUser;
   checkUsernameAvailability: typeof defaultCheckUsernameAvailability;
@@ -123,6 +160,7 @@ function CreateUserFormBody({
   const canAssignRole = can("USER.ASSIGN") && can("ROLE.VIEW");
   const canAssignClasses = can("CLASS.MODIFY");
   const mustChangeId = useId();
+  const usernameAvailableId = useId();
 
   const classesQuery = useQuery({
     queryKey: [...CLASSES_QUERY_KEYS.options(), "ACTIVE"],
@@ -170,9 +208,12 @@ function CreateUserFormBody({
     setError,
     clearErrors,
     getValues,
-    formState: { errors },
+    trigger,
+    formState: { errors, isDirty },
   } = useForm<CreateUserFormValues>({
     resolver: zodResolver(schema),
+    // Kiểm tra khi rời ô (lần đầu) rồi kiểm tra lại theo từng thay đổi, không chờ tới lúc bấm gửi (U-16).
+    mode: "onTouched",
     defaultValues: {
       username: "",
       password: "",
@@ -184,6 +225,12 @@ function CreateUserFormBody({
       mustChangePassword: false,
     },
   });
+
+  // Báo cho hộp thoại biết biểu mẫu đã có dữ liệu để hỏi lại trước khi đóng (U-11).
+  useEffect(() => {
+    onDirtyChange(isDirty);
+    return () => onDirtyChange(false);
+  }, [isDirty, onDirtyChange]);
 
   const mutation = useMutation({
     mutationFn: (payload: CreateUserRequest) => {
@@ -268,6 +315,14 @@ function CreateUserFormBody({
 
     const normalized = raw.toLowerCase();
     latestUsernameCheckRef.current = normalized;
+    // Sai định dạng thì báo ngay, không hỏi máy chủ. Kiểm tra định dạng xong mới hỏi máy chủ, nên kết quả
+    // "đã dùng" luôn đến sau và không bị lượt kiểm tra định dạng xóa mất.
+    const formatValid = await trigger("username");
+    if (latestUsernameCheckRef.current !== normalized) return;
+    if (!formatValid) {
+      setUsernameStatus({ state: "idle" });
+      return;
+    }
     setUsernameStatus({ state: "checking", normalized });
 
     try {
@@ -344,6 +399,14 @@ function CreateUserFormBody({
       className="flex min-h-0 flex-1 flex-col gap-4"
       noValidate
     >
+      {/* Kết quả kiểm tra tên đăng nhập "dùng được" chỉ hiện bằng chữ; vùng này đọc nó lên. Kết quả "đã dùng" là lỗi của ô nhập (role="alert"). */}
+      <LiveStatus
+        message={
+          usernameStatus.state === "available" && !errors.username
+            ? t("createDialog.usernameAvailableStatus", { username: usernameStatus.normalized })
+            : ""
+        }
+      />
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto pr-1">
       {submitError && (
         <div
@@ -380,6 +443,14 @@ function CreateUserFormBody({
               render={({ field }) => (
                 <Input
                   {...controlProps}
+                  aria-describedby={
+                    [
+                      controlProps["aria-describedby"],
+                      usernameStatus.state === "available" && !errors.username && usernameAvailableId,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                   ref={field.ref}
                   name={field.name}
                   value={field.value}
@@ -389,18 +460,20 @@ function CreateUserFormBody({
                     setSubmitError(null);
                     field.onChange(event);
                   }}
-                  onBlur={() => {
-                    field.onBlur();
-                    void handleUsernameBlur();
-                  }}
+                  // Tên đăng nhập tự kiểm tra khi rời ô (định dạng rồi tới máy chủ), không qua field.onBlur.
+                  onBlur={() => void handleUsernameBlur()}
                   autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={USER_FIELD_MAX_LENGTH.username}
                   placeholder={t("createDialog.usernamePlaceholder")}
                   disabled={mutation.isPending}
                 />
               )}
             />
             {usernameStatus.state === "available" && !errors.username && (
-              <p className="text-caption font-medium text-primary-text">
+              <p id={usernameAvailableId} className="text-caption font-medium text-primary-text">
                 {t("createDialog.usernameAvailable")}
               </p>
             )}
@@ -420,6 +493,8 @@ function CreateUserFormBody({
             render={({ field }) => (
               <PasswordField
                 {...controlProps}
+                ref={field.ref}
+                name={field.name}
                 value={field.value}
                 onChange={(event) => {
                   setSubmitError(null);
@@ -471,6 +546,9 @@ function CreateUserFormBody({
             {...register("fullName", {
               onChange: () => setSubmitError(null),
             })}
+            // Biểu mẫu nhập thông tin của NGƯỜI KHÁC: tắt tự điền để trình duyệt không gợi ý thông tin của quản trị viên.
+            autoComplete="off"
+            maxLength={USER_FIELD_MAX_LENGTH.fullName}
             placeholder={t("createDialog.fullNamePlaceholder")}
             disabled={mutation.isPending}
           />
@@ -486,6 +564,11 @@ function CreateUserFormBody({
               {...register("email", {
                 onChange: () => setSubmitError(null),
               })}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={USER_FIELD_MAX_LENGTH.email}
               placeholder={t("createDialog.emailPlaceholder")}
               disabled={mutation.isPending}
             />
@@ -500,6 +583,8 @@ function CreateUserFormBody({
               {...register("phone", {
                 onChange: () => setSubmitError(null),
               })}
+              autoComplete="off"
+              maxLength={USER_FIELD_MAX_LENGTH.phone}
               placeholder={t("createDialog.phonePlaceholder")}
               disabled={mutation.isPending}
             />
@@ -551,7 +636,7 @@ function CreateUserFormBody({
           hint={t("createDialog.classesHint")}
           error={errors.classIds?.message}
         >
-          {() => (
+          {(controlProps) => (
             <Controller
               control={control}
               name="classIds"
@@ -591,9 +676,13 @@ function CreateUserFormBody({
                   );
                 }
                 return (
+                  // Nhóm ô đánh dấu nhận id của FormField (nhãn "Lớp học" trỏ tới một phần tử có thật) và mô tả
+                  // bằng gợi ý cùng lỗi của trường, để lỗi classIds được đọc cùng nhóm (U-24).
                   <div
                     role="group"
+                    id={controlProps.id}
                     aria-label={t("createDialog.classesLabel")}
+                    aria-describedby={controlProps["aria-describedby"]}
                     className="max-h-36 overflow-y-auto rounded-lg border border-border bg-surface p-2"
                   >
                     <div className="flex flex-col gap-1.5">

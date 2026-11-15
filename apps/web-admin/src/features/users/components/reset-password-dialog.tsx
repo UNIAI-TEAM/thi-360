@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import {
   Button,
   Checkbox,
+  ConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,7 +19,7 @@ import {
   Textarea,
 } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import { useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   resetUserPassword as defaultResetUserPassword,
@@ -26,7 +27,7 @@ import {
   type UserDetail,
   UsersApiError,
 } from "../api";
-import { createResetPasswordSchema, type ResetPasswordFormValues } from "../schema";
+import { createResetPasswordSchema, type ResetPasswordFormValues, USER_FIELD_MAX_LENGTH } from "../schema";
 import { mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
 
 export interface ResetPasswordTarget {
@@ -49,9 +50,25 @@ export function ResetPasswordDialog({
 }: ResetPasswordDialogProps) {
   const t = useTranslations("users");
   const [submitting, setSubmitting] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  // Biểu mẫu con báo đã có dữ liệu hay chưa; chỉ đọc trong xử lý sự kiện đóng nên giữ bằng ref, không cần render lại.
+  const dirtyRef = useRef(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    dirtyRef.current = dirty;
+  }, []);
+
+  function requestClose() {
+    if (submitting) return;
+    if (dirtyRef.current) {
+      setDiscardOpen(true);
+      return;
+    }
+    onClose();
+  }
 
   return (
-    <Dialog open={target !== null} onOpenChange={(next) => !submitting && !next && onClose()}>
+    <>
+    <Dialog open={target !== null} onOpenChange={(next) => !next && requestClose()}>
       <DialogContent
         size="md"
         closeLabel={t("resetPasswordDialog.close")}
@@ -59,7 +76,7 @@ export function ResetPasswordDialog({
           if (submitting) event.preventDefault();
         }}
         onPointerDownOutside={(event) => {
-          if (submitting) event.preventDefault();
+          if (submitting || dirtyRef.current) event.preventDefault();
         }}
       >
         <DialogHeader>
@@ -72,8 +89,9 @@ export function ResetPasswordDialog({
         {target && (
           <ResetPasswordFormBody
             target={target}
-            onCancel={onClose}
+            onCancel={requestClose}
             onSubmittingChange={setSubmitting}
+            onDirtyChange={handleDirtyChange}
             onSuccess={(updated) => {
               onClose();
               onSuccess(updated);
@@ -83,6 +101,22 @@ export function ResetPasswordDialog({
         )}
       </DialogContent>
     </Dialog>
+      {/* Biểu mẫu đã có dữ liệu: Esc, nút × và Hủy hỏi lại trước khi bỏ; bấm ra ngoài thì không đóng. */}
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title={t("discardDialog.title")}
+        description={t("discardDialog.description")}
+        confirmLabel={t("discardDialog.confirm")}
+        cancelLabel={t("discardDialog.cancel")}
+        tone="danger"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          dirtyRef.current = false;
+          onClose();
+        }}
+      />
+    </>
   );
 }
 
@@ -90,12 +124,14 @@ function ResetPasswordFormBody({
   target,
   onCancel,
   onSubmittingChange,
+  onDirtyChange,
   onSuccess,
   resetUserPassword,
 }: {
   target: ResetPasswordTarget;
   onCancel: () => void;
   onSubmittingChange: (submitting: boolean) => void;
+  onDirtyChange: (dirty: boolean) => void;
   onSuccess: (updated: UserDetail) => void;
   resetUserPassword: typeof defaultResetUserPassword;
 }) {
@@ -122,15 +158,23 @@ function ResetPasswordFormBody({
     handleSubmit,
     reset,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(schema),
+    // Kiểm tra khi rời ô (lần đầu) rồi kiểm tra lại theo từng thay đổi (U-16).
+    mode: "onTouched",
     defaultValues: {
       password: "",
       reason: "",
       mustChangePassword: false,
     },
   });
+
+  // Báo cho hộp thoại biết biểu mẫu đã có dữ liệu để hỏi lại trước khi đóng (U-11).
+  useEffect(() => {
+    onDirtyChange(isDirty);
+    return () => onDirtyChange(false);
+  }, [isDirty, onDirtyChange]);
 
   const mutation = useMutation({
     mutationFn: (payload: ResetPasswordRequest) => {
@@ -224,6 +268,8 @@ function ResetPasswordFormBody({
             render={({ field }) => (
               <PasswordField
                 {...controlProps}
+                ref={field.ref}
+                name={field.name}
                 value={field.value}
                 onChange={(event) => {
                   setSubmitError(null);
@@ -251,6 +297,7 @@ function ResetPasswordFormBody({
               onChange: () => setSubmitError(null),
             })}
             rows={2}
+            maxLength={USER_FIELD_MAX_LENGTH.reason}
             placeholder={t("resetPasswordDialog.reasonPlaceholder")}
             disabled={mutation.isPending}
           />

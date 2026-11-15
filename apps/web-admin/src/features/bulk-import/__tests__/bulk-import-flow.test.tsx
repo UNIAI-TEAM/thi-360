@@ -230,6 +230,36 @@ describe("BulkImportUploadView (Step 1)", () => {
 
     expect(await screen.findByText("2.048 KB")).toBeInTheDocument();
   });
+
+  it("chỉ có một điều khiển chọn tệp: ô nhập thật, cả vùng thả là nhãn và mang vòng focus (U-03)", async () => {
+    renderUpload(makeDeps());
+
+    const fileInput = await screen.findByLabelText("Chọn tệp");
+    expect(fileInput).toHaveAttribute("type", "file");
+    // Không còn nút "Chọn tệp" đứng riêng lặp lại cùng việc.
+    expect(screen.queryByRole("button", { name: "Chọn tệp" })).not.toBeInTheDocument();
+
+    // Vùng thả là nhãn đứng ngay sau ô nhập, vẽ vòng focus khi ô nhập nhận focus bàn phím.
+    const zone = fileInput.nextElementSibling as HTMLElement;
+    expect(zone.tagName).toBe("LABEL");
+    expect(zone).toHaveAttribute("for", fileInput.id);
+    expect(fileInput).toHaveClass("peer");
+    expect(zone).toHaveClass("peer-focus-visible:outline-3");
+    expect(fileInput).toHaveAccessibleDescription("Chỉ nhận tệp .xlsx, tối đa 2.000 dòng, không quá 5 MB");
+
+    // Thứ tự Tab: nút tải mẫu → ô chọn tệp → ô đánh dấu; không có hai điểm dừng cùng tên.
+    screen.getByRole("button", { name: "Tải file mẫu" }).focus();
+    await userEvent.tab();
+    expect(fileInput).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByRole("checkbox", { name: "Bắt đổi mật khẩu ở lần đăng nhập đầu" })).toHaveFocus();
+
+    // Bấm vào dòng chữ trong vùng thả cũng kích hoạt ô chọn tệp.
+    const onInputClick = vi.fn();
+    fileInput.addEventListener("click", onInputClick);
+    await userEvent.click(screen.getByText("Kéo tệp vào đây hoặc bấm để chọn"));
+    expect(onInputClick).toHaveBeenCalled();
+  });
 });
 
 
@@ -1035,4 +1065,171 @@ describe("BulkImportBatchView: hộp thoại xóa file kết quả và cảnh b�
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(routerMock.push).not.toHaveBeenCalled();
   });
+});
+
+describe("BulkImportBatchView: đổi bước thì focus tới tiêu đề của bước mới (U-10)", () => {
+  it("bước 2 → 3 → 2 → 3 → đang xử lý: focus không rơi về <body>", async () => {
+    const getBatchMock = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(makeBatch({ totalRows: 2, validRows: 2 }))
+      .mockResolvedValue(
+        makeBatch({ status: "PROCESSING", totalRows: 2, validRows: 2, canConfirm: false }),
+      );
+    renderBatch(makeDeps({ getImportBatch: getBatchMock }));
+
+    // Tải lần đầu: không giành focus.
+    const continueBtn = await screen.findByRole("button", { name: "Xác nhận cấp 2 tài khoản" });
+    expect(screen.getByRole("heading", { name: "Xem trước" })).not.toHaveFocus();
+
+    await userEvent.click(continueBtn);
+    const confirmHeading = await screen.findByRole("heading", { name: "Kiểm tra lần cuối" });
+    expect(confirmHeading).toHaveFocus();
+    expect(confirmHeading).toHaveAttribute("tabindex", "-1");
+
+    await userEvent.click(screen.getByRole("button", { name: "Quay lại xem trước" }));
+    expect(await screen.findByRole("heading", { name: "Xem trước" })).toHaveFocus();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận cấp 2 tài khoản" }));
+    await screen.findByRole("heading", { name: "Kiểm tra lần cuối" });
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận cấp 2 tài khoản" }));
+
+    const processingHeading = await screen.findByRole("heading", { name: "Đang tạo tài khoản" });
+    await waitFor(() => expect(processingHeading).toHaveFocus());
+  });
+
+  it("đợt chạy xong khi focus đang ở tiêu đề đang xử lý: focus chuyển tới tiêu đề kết quả; đang đứng chỗ khác thì giữ nguyên", async () => {
+    const processing = makeBatch({ status: "PROCESSING", totalRows: 2, validRows: 2, createdRows: 1 });
+    const completed = makeBatch({
+      status: "COMPLETED",
+      totalRows: 2,
+      validRows: 2,
+      createdRows: 2,
+      resultAvailable: true,
+    });
+
+    const firstRun = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(processing)
+      .mockResolvedValue(completed);
+    const first = renderBatch(makeDeps({ getImportBatch: firstRun }));
+    const processingHeading = await screen.findByRole("heading", { name: "Đang tạo tài khoản" });
+    processingHeading.focus();
+    const resultHeading = await screen.findByRole("heading", { name: "Kết quả đợt cấp" }, { timeout: 4_000 });
+    await waitFor(() => expect(resultHeading).toHaveFocus());
+    first.unmount();
+
+    const secondRun = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(processing)
+      .mockResolvedValue(completed);
+    renderBatch(makeDeps({ getImportBatch: secondRun }));
+    await screen.findByRole("heading", { name: "Đang tạo tài khoản" });
+    const templateButton = screen.getByRole("button", { name: "Tải file mẫu" });
+    templateButton.focus();
+    await screen.findByRole("heading", { name: "Kết quả đợt cấp" }, { timeout: 4_000 });
+    expect(templateButton).toHaveFocus();
+  }, 20_000);
+});
+
+describe("Bước 1 cấp hàng loạt: tên tệp, bỏ tệp, bảng mẫu, các bước (U-20)", () => {
+  it("tên tệp dài hiện đủ (không cắt đuôi), có nút bỏ tệp; bỏ xong focus về ô chọn tệp", async () => {
+    renderUpload(makeDeps());
+    const fileInput = await screen.findByLabelText("Chọn tệp");
+    const longName = "danh-sach-hoc-vien-lop-12A1-truong-thpt-chuyen-hoc-ky-1-nam-hoc-2026-2027.xlsx";
+    fireEvent.change(fileInput, {
+      target: {
+        files: [
+          new File(["x"], longName, {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+        ],
+      },
+    });
+
+    const nameEl = await screen.findByText(longName);
+    expect(nameEl).not.toHaveClass("truncate");
+    expect(nameEl).toHaveClass("wrap-anywhere");
+
+    await userEvent.click(screen.getByRole("button", { name: `Bỏ tệp ${longName}` }));
+    expect(screen.queryByText(longName)).not.toBeInTheDocument();
+    expect(fileInput).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Tải lên và kiểm tra" })).toBeDisabled();
+  });
+
+  it("bảng cột mẫu có tên lấy từ tiêu đề khối", async () => {
+    renderUpload(makeDeps());
+    expect(await screen.findByRole("table", { name: "Các cột của tệp mẫu" })).toBeInTheDocument();
+  });
+
+  it("bước đã xong có chữ cho trình đọc màn hình, bước hiện tại mang aria-current", async () => {
+    renderBatch(makeDeps({ getImportBatch: vi.fn(async () => makeBatch()) }));
+    const steps = await screen.findByRole("list", { name: "Các bước cấp tài khoản hàng loạt" });
+    const items = within(steps).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("Tải mẫu và chọn tệp(đã xong)");
+    expect(items[1]).toHaveAttribute("aria-current", "step");
+    expect(items[1]).not.toHaveTextContent("(đã xong)");
+    expect(items[2]).not.toHaveTextContent("(đã xong)");
+  });
+});
+
+describe("Bước 4 cấp hàng loạt: tiến độ và thông báo (U-21)", () => {
+  it("thanh tiến độ là <progress> có tên và giá trị; bộ đếm không phải vùng live", async () => {
+    renderBatch(
+      makeDeps({
+        getImportBatch: vi.fn(async () =>
+          makeBatch({ status: "PROCESSING", totalRows: 4, validRows: 4, createdRows: 1, failedRows: 1 }),
+        ),
+      }),
+    );
+
+    const progress = await screen.findByRole("progressbar", { name: "Tiến độ đợt cấp" });
+    expect(progress.tagName).toBe("PROGRESS");
+    expect(progress).toHaveAttribute("value", "2");
+    expect(progress).toHaveAttribute("max", "4");
+
+    const counter = screen.getByText("2 / 4 dòng");
+    expect(counter.closest("[aria-live]")).toBeNull();
+    // Mở lại trang đang chạy: không đọc gì (vùng thông báo rỗng).
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("đọc một lần khi bắt đầu chạy và một lần khi chạy xong, không đọc lại sau mỗi lượt hỏi trạng thái", async () => {
+    const getBatchMock = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(makeBatch({ totalRows: 3, validRows: 3 }))
+      .mockResolvedValueOnce(
+        makeBatch({ status: "PROCESSING", totalRows: 3, validRows: 3, createdRows: 1, canConfirm: false }),
+      )
+      .mockResolvedValue(
+        makeBatch({
+          status: "COMPLETED_WITH_ERRORS",
+          totalRows: 3,
+          validRows: 3,
+          createdRows: 2,
+          failedRows: 1,
+          canConfirm: false,
+          resultAvailable: true,
+        }),
+      );
+    renderBatch(makeDeps({ getImportBatch: getBatchMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Xác nhận cấp 3 tài khoản" }));
+    await screen.findByRole("heading", { name: "Kiểm tra lần cuối" });
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận cấp 3 tài khoản" }));
+    await waitFor(() =>
+      expect(status).toHaveTextContent("Đã bắt đầu tạo 3 tài khoản. Tiến độ tự cập nhật trên trang."),
+    );
+
+    await waitFor(
+      () =>
+        expect(status).toHaveTextContent(
+          "Đợt cấp đã xong: tạo được 2 tài khoản, 1 dòng thất bại.",
+        ),
+      { timeout: 6_000 },
+    );
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  }, 20_000);
 });

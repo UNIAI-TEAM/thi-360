@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import {
   Button,
+  cn,
   EmptyState,
   FormField,
   isPasswordStrong,
@@ -29,6 +30,27 @@ import {
 } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl, webUrl } from "@/lib/env";
+import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
+
+/**
+ * Màn hẹp: thẻ bám mép trên (cao hơn màn hình nên căn giữa chỉ làm thẻ nhảy khi nội dung tải xong); từ `md` căn giữa.
+ * Khung chờ và biểu mẫu dùng chung hai lớp này để vị trí và đệm của thẻ không đổi giữa hai trạng thái.
+ */
+const PAGE_CLASS = "flex min-h-screen items-start justify-center bg-page p-4 sm:p-6 md:items-center";
+const CARD_CLASS =
+  "flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-6 shadow-xl sm:p-10";
+
+/** Lỗi của từng ô lưu bằng khóa dịch (`changePassword.<khóa>`), dịch lúc hiển thị: đổi ngôn ngữ là câu lỗi đổi theo. */
+type ChangePasswordErrorKey =
+  | "oldPasswordRequired"
+  | "wrongOldPassword"
+  | "newPasswordWeak"
+  | "newPasswordSameAsUsername"
+  | "confirmPasswordRequired"
+  | "confirmPasswordMismatch";
+
+/** Giá trị query `source` mà menu tài khoản của hai web gắn vào liên kết Đổi mật khẩu. */
+export const CHANGE_PASSWORD_MENU_SOURCE = "account-menu";
 
 type ChangePasswordValues = {
   oldPassword: string;
@@ -48,6 +70,10 @@ export function ChangePasswordView({
   const errT = useTranslations("errors");
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl");
+  // Người tự mở trang từ menu tài khoản (liên kết có `source=account-menu`) được thêm lối quay lại. Người bị buộc đổi
+  // mật khẩu sau đăng nhập tới đây không có dấu này nên trang giữ nguyên như trước: `MeResponse` không cho biết
+  // tài khoản có đang bị buộc đổi hay không.
+  const openedFromAccountMenu = searchParams.get("source") === CHANGE_PASSWORD_MENU_SOURCE;
 
   const sessionQuery = useQuery({
     queryKey: SESSION_QUERY_KEY,
@@ -55,8 +81,11 @@ export function ChangePasswordView({
     staleTime: 60_000,
   });
 
-  const [serverError, setServerError] = useState<string | null>(null);
+  // Chỉ có một lỗi chung (`genericError`): lưu cờ, câu chữ dịch lúc hiển thị.
+  const [hasServerError, setHasServerError] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const fieldError = (message: string | undefined) =>
+    message ? t(message as ChangePasswordErrorKey) : undefined;
 
   const username = sessionQuery.data?.username ?? "";
 
@@ -64,21 +93,21 @@ export function ChangePasswordView({
     () =>
       z
         .object({
-          oldPassword: z.string().min(1, t("oldPasswordRequired")),
+          oldPassword: z.string().min(1, "oldPasswordRequired" satisfies ChangePasswordErrorKey),
           newPassword: z
             .string()
-            .refine((value) => isPasswordStrong(value), t("newPasswordWeak"))
+            .refine((value) => isPasswordStrong(value), "newPasswordWeak" satisfies ChangePasswordErrorKey)
             .refine(
               (value) => !username || value.toLowerCase() !== username.trim().toLowerCase(),
-              t("newPasswordSameAsUsername"),
+              "newPasswordSameAsUsername" satisfies ChangePasswordErrorKey,
             ),
-          confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
+          confirmPassword: z.string().min(1, "confirmPasswordRequired" satisfies ChangePasswordErrorKey),
         })
         .refine((values) => values.newPassword === values.confirmPassword, {
-          message: t("confirmPasswordMismatch"),
+          message: "confirmPasswordMismatch" satisfies ChangePasswordErrorKey,
           path: ["confirmPassword"],
         }),
-    [t, username],
+    [username],
   );
 
   const {
@@ -112,25 +141,27 @@ export function ChangePasswordView({
     return sessionQuery.data?.homeUrl ?? "/home";
   }
 
+  // Lỗi máy chủ gắn vào ô nào thì đưa focus về ô đó, để người dùng bàn phím và trình đọc màn hình tới ngay chỗ cần sửa.
   function applyPasswordFieldError(error: ApiStatusError): boolean {
+    const setFieldError = (field: "oldPassword" | "newPassword", message: ChangePasswordErrorKey) =>
+      setError(field, { message }, { shouldFocus: true });
     if (error.code === "WRONG_OLD_PASSWORD") {
-      setError("oldPassword", { message: t("wrongOldPassword") });
+      setFieldError("oldPassword", "wrongOldPassword");
       return true;
     }
     if (error.code === "PASSWORD_WEAK") {
       const fieldCode = error.fieldErrors[0]?.code;
-      if (fieldCode === "PASSWORD_SAME_AS_USERNAME") {
-        setError("newPassword", { message: t("newPasswordSameAsUsername") });
-      } else {
-        setError("newPassword", { message: t("newPasswordWeak") });
-      }
+      setFieldError(
+        "newPassword",
+        fieldCode === "PASSWORD_SAME_AS_USERNAME" ? "newPasswordSameAsUsername" : "newPasswordWeak",
+      );
       return true;
     }
     return false;
   }
 
   async function onSubmit(values: ChangePasswordValues) {
-    setServerError(null);
+    setHasServerError(false);
     const payload = {
       oldPassword: values.oldPassword,
       newPassword: values.newPassword,
@@ -163,14 +194,14 @@ export function ChangePasswordView({
             }
             if (applyPasswordFieldError(retryError)) return;
           }
-          setServerError(t("genericError"));
+          setHasServerError(true);
         }
         return;
       }
       if (error instanceof ApiStatusError && applyPasswordFieldError(error)) {
         return;
       }
-      setServerError(t("genericError"));
+      setHasServerError(true);
     }
   }
 
@@ -187,18 +218,35 @@ export function ChangePasswordView({
   }
 
   if (sessionQuery.isLoading) {
+    // Khung chờ xếp đúng như biểu mẫu thật (logo, tiêu đề, ba ô, danh sách điều kiện, nút, ghi chú) để thẻ gần như
+    // không đổi chiều cao khi phiên tải xong.
+    const fieldSkeleton = (
+      <div className="flex flex-col gap-1.5">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    );
     return (
-      <main className="flex min-h-screen items-center justify-center bg-page p-6">
-        <div
-          role="status"
-          aria-label={common("loading")}
-          className="flex w-full max-w-[480px] flex-col gap-4 rounded-2xl border border-border bg-surface p-10 shadow-xl"
-        >
-          <Skeleton className="h-10 w-40" />
-          <Skeleton className="h-7 w-56" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
+      <main className={PAGE_CLASS}>
+        <div role="status" aria-label={common("loading")} className={CARD_CLASS}>
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-10 rounded-lg" />
+            <Skeleton className="h-7 w-20" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-7.5 w-48" />
+            <Skeleton className="h-10.5 w-full sm:h-5.25" />
+          </div>
+          <div className="flex flex-col gap-5">
+            {fieldSkeleton}
+            <div className="flex flex-col gap-2">
+              {fieldSkeleton}
+              <Skeleton className="h-27.75 w-56 max-w-full" />
+            </div>
+            {fieldSkeleton}
+            <Skeleton className="h-13 w-full rounded-lg" />
+          </div>
+          <Skeleton className="h-15 w-full sm:h-10" />
         </div>
       </main>
     );
@@ -206,7 +254,7 @@ export function ChangePasswordView({
 
   if (sessionQuery.isError || !sessionQuery.data) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-page p-6">
+      <main className={PAGE_CLASS}>
         <div className="w-full max-w-[480px] rounded-2xl border border-border bg-surface p-8 shadow-xl">
           <EmptyState
             icon={<TriangleAlert />}
@@ -220,9 +268,10 @@ export function ChangePasswordView({
   }
 
   const session = sessionQuery.data;
+  // Ba nút hiện/ẩn mật khẩu mang tên riêng theo ô, để không có ba nút trùng tên trên cùng màn hình.
   const ruleLabels = {
-    showPassword: t("rules.showPassword"),
-    hidePassword: t("rules.hidePassword"),
+    showPassword: t("toggles.newShow"),
+    hidePassword: t("toggles.newHide"),
     generate: t("rules.generate"),
     rulesLabel: t("rules.rulesLabel"),
     ruleLength: t("rules.ruleLength"),
@@ -233,8 +282,8 @@ export function ChangePasswordView({
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-page p-6">
-      <div className="flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-10 shadow-xl">
+    <main className={PAGE_CLASS}>
+      <div className={CARD_CLASS}>
         <div className="flex items-center gap-3">
           <span
             aria-hidden
@@ -243,6 +292,17 @@ export function ChangePasswordView({
             {common("logoMark")}
           </span>
           <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+          {openedFromAccountMenu && (
+            <a
+              href={session.homeUrl}
+              className={cn(
+                "ml-auto text-label font-medium text-primary-text transition-colors duration-150 hover:underline",
+                coarseTextHitArea,
+              )}
+            >
+              ← {t("back")}
+            </a>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -261,17 +321,17 @@ export function ChangePasswordView({
           </div>
         ) : (
           <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-            {serverError && (
+            {hasServerError && (
               <div
                 role="alert"
                 className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-3 text-body text-danger"
               >
                 <AlertCircle aria-hidden className="mt-0.5 size-4.5 shrink-0" />
-                <span>{serverError}</span>
+                <span>{t("genericError")}</span>
               </div>
             )}
 
-            <FormField label={t("oldPasswordLabel")} error={errors.oldPassword?.message} required>
+            <FormField label={t("oldPasswordLabel")} error={fieldError(errors.oldPassword?.message)} required>
               {(field) => (
                 <Controller
                   name="oldPassword"
@@ -279,16 +339,20 @@ export function ChangePasswordView({
                   render={({ field: controllerField }) => (
                     <PasswordField
                       {...field}
+                      ref={controllerField.ref}
                       name={controllerField.name}
                       value={controllerField.value}
                       onChange={controllerField.onChange}
                       onBlur={controllerField.onBlur}
                       size="lg"
+                      required
                       autoComplete="current-password"
+                      enterKeyHint="next"
+                      className={touchFieldText}
                       leadingIcon={<Lock />}
                       labels={{
-                        showPassword: ruleLabels.showPassword,
-                        hidePassword: ruleLabels.hidePassword,
+                        showPassword: t("toggles.oldShow"),
+                        hidePassword: t("toggles.oldHide"),
                       }}
                     />
                   )}
@@ -296,7 +360,7 @@ export function ChangePasswordView({
               )}
             </FormField>
 
-            <FormField label={t("newPasswordLabel")} error={errors.newPassword?.message} required>
+            <FormField label={t("newPasswordLabel")} error={fieldError(errors.newPassword?.message)} required>
               {(field) => (
                 <Controller
                   name="newPassword"
@@ -304,14 +368,18 @@ export function ChangePasswordView({
                   render={({ field: controllerField }) => (
                     <PasswordField
                       {...field}
+                      ref={controllerField.ref}
                       name={controllerField.name}
                       value={controllerField.value}
                       onChange={controllerField.onChange}
                       onBlur={controllerField.onBlur}
                       size="lg"
+                      required
                       showRules
                       labels={ruleLabels}
                       autoComplete="new-password"
+                      enterKeyHint="next"
+                      className={touchFieldText}
                       leadingIcon={<Lock />}
                     />
                   )}
@@ -319,7 +387,7 @@ export function ChangePasswordView({
               )}
             </FormField>
 
-            <FormField label={t("confirmPasswordLabel")} error={errors.confirmPassword?.message} required>
+            <FormField label={t("confirmPasswordLabel")} error={fieldError(errors.confirmPassword?.message)} required>
               {(field) => (
                 <Controller
                   name="confirmPassword"
@@ -327,16 +395,20 @@ export function ChangePasswordView({
                   render={({ field: controllerField }) => (
                     <PasswordField
                       {...field}
+                      ref={controllerField.ref}
                       name={controllerField.name}
                       value={controllerField.value}
                       onChange={controllerField.onChange}
                       onBlur={controllerField.onBlur}
                       size="lg"
+                      required
                       autoComplete="new-password"
+                      enterKeyHint="done"
+                      className={touchFieldText}
                       leadingIcon={<Lock />}
                       labels={{
-                        showPassword: ruleLabels.showPassword,
-                        hidePassword: ruleLabels.hidePassword,
+                        showPassword: t("toggles.confirmShow"),
+                        hidePassword: t("toggles.confirmHide"),
                       }}
                     />
                   )}
@@ -356,7 +428,7 @@ export function ChangePasswordView({
             type="button"
             disabled={leaving}
             onClick={() => void switchAccount()}
-            className="font-medium text-primary-text hover:underline disabled:opacity-50"
+            className={cn("font-medium text-primary-text hover:underline disabled:opacity-50", coarseTextHitArea)}
           >
             {t("otherAccount")}
           </button>

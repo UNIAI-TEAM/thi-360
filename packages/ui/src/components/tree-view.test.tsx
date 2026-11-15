@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -96,14 +96,52 @@ function TreeHarness({
 }
 
 describe("TreeView", () => {
-  it("tên truy cập của treeitem chỉ là tên nút, không gộp mã, chip, nút mở/đóng (VIS-10)", () => {
+  it("tên truy cập của treeitem là mã rồi tên như chữ đang hiện, không gộp chip, số đếm, nút mở/đóng (VIS-10, C-06)", () => {
     render(<TreeHarness initialExpanded={["n-1", "n-1-1"]} />);
     const items = screen.getAllByRole("treeitem");
-    expect(items[0]).toHaveAccessibleName("Mệnh đề. Tập hợp");
-    expect(items[1]).toHaveAccessibleName("Mệnh đề");
-    expect(items[2]).toHaveAccessibleName("Mệnh đề chứa biến");
-    expect(items[3]).toHaveAccessibleName("Bất phương trình");
-    expect(screen.getByRole("treeitem", { name: "Mệnh đề chứa biến" })).toBe(items[2]);
+    expect(items[0]).toHaveAccessibleName("0D1 Mệnh đề. Tập hợp");
+    expect(items[1]).toHaveAccessibleName("0D1-1 Mệnh đề");
+    expect(items[2]).toHaveAccessibleName("0D1-1-1 Mệnh đề chứa biến");
+    expect(items[3]).toHaveAccessibleName("0D2 Bất phương trình");
+    expect(screen.getByRole("treeitem", { name: "0D1-1-1 Mệnh đề chứa biến" })).toBe(items[2]);
+  });
+
+  it("trạng thái khác Hoạt động và liên kết riêng là mô tả của dòng (C-06)", () => {
+    render(<TreeHarness initialExpanded={["n-1", "n-1-1"]} />);
+    const items = screen.getAllByRole("treeitem");
+    // Liên kết riêng: mô tả lấy từ dòng chữ đầy đủ, kể cả khi cây hẹp chỉ hiện chip +N.
+    expect(items[0]).toHaveAccessibleDescription("Toán · Lớp 10");
+    // Nút đang hoạt động, không có liên kết riêng: không có mô tả.
+    expect(items[1]).not.toHaveAttribute("aria-describedby");
+    expect(items[2]).toHaveAccessibleDescription("Ngừng theo cấp trên");
+    expect(items[3]).toHaveAccessibleDescription("Ngừng sử dụng");
+  });
+
+  it("mô tả gồm cả trạng thái lẫn liên kết khi dòng có cả hai (C-06)", () => {
+    render(
+      <TreeView
+        aria-label="Cây mô tả"
+        items={[
+          {
+            id: "a",
+            parentId: null,
+            depth: 1,
+            code: "CH1",
+            name: "Hàm số",
+            hasChildren: false,
+            statusLabel: "Ngừng sử dụng",
+            refsSummary: "Toán học, Lớp 10",
+            refsCount: 2,
+          },
+        ]}
+        expandedIds={new Set()}
+        onToggleExpand={vi.fn()}
+        onSelect={vi.fn()}
+        labels={{ expandNode: (n) => n, collapseNode: (n) => n }}
+      />,
+    );
+    const row = screen.getByRole("treeitem", { name: "CH1 Hàm số" });
+    expect(row).toHaveAccessibleDescription("Ngừng sử dụng Toán học, Lớp 10");
   });
 
   it("render đúng role=tree, treeitem, aria-level, aria-expanded, aria-selected và chỉ hiện chip khi khác Hoạt động", () => {
@@ -294,8 +332,102 @@ describe("TreeView", () => {
     expect(screen.getAllByRole("treeitem")).toHaveLength(2);
   });
 
+  it("dòng đang chọn hiện đủ tên, không giới hạn hai dòng (C-14)", async () => {
+    render(<TreeHarness />);
+    const row = screen.getByRole("treeitem", { name: "0D1 Mệnh đề. Tập hợp" });
+    const name = within(row).getByText("Mệnh đề. Tập hợp");
+    expect(name).toHaveClass("line-clamp-2");
+
+    await userEvent.click(row);
+    expect(row).toHaveAttribute("aria-selected", "true");
+    expect(name).not.toHaveClass("line-clamp-2");
+  });
+
+  describe("mở thao tác của dòng bằng phím (C-08)", () => {
+    function renderWithMenu(onRowMenu = vi.fn()) {
+      render(
+        <>
+          <p id="tree-hint">Shift+F10 để mở thao tác</p>
+          <TreeView
+            aria-label="Cây có menu"
+            aria-describedby="tree-hint"
+            items={SAMPLE_ITEMS}
+            expandedIds={new Set()}
+            onToggleExpand={vi.fn()}
+            onSelect={vi.fn()}
+            onRowMenu={onRowMenu}
+            labels={{ expandNode: (n) => `Mở ${n}`, collapseNode: (n) => `Thu gọn ${n}` }}
+            renderTrailing={(item) => (
+              <button type="button" tabIndex={-1}>
+                Thao tác {item.code}
+              </button>
+            )}
+          />
+        </>,
+      );
+      return onRowMenu;
+    }
+
+    it("Shift+F10 và phím menu gọi onRowMenu cho dòng đang focus; F10 không kèm Shift thì không", async () => {
+      const onRowMenu = renderWithMenu();
+      const [first, second] = screen.getAllByRole("treeitem");
+      first!.focus();
+      await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+      expect(onRowMenu).toHaveBeenLastCalledWith(expect.objectContaining({ id: "n-1" }));
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(second).toHaveFocus();
+      await userEvent.keyboard("{ContextMenu}");
+      expect(onRowMenu).toHaveBeenLastCalledWith(expect.objectContaining({ id: "n-2" }));
+
+      await userEvent.keyboard("{F10}");
+      expect(onRowMenu).toHaveBeenCalledTimes(2);
+    });
+
+    it("khai báo phím trên dòng, cây mô tả bằng dòng hướng dẫn, và chỉ là một điểm dừng Tab", () => {
+      renderWithMenu();
+      const tree = screen.getByRole("tree");
+      expect(tree).toHaveAccessibleDescription("Shift+F10 để mở thao tác");
+      const rows = screen.getAllByRole("treeitem");
+      for (const row of rows) {
+        expect(row).toHaveAttribute("aria-keyshortcuts", "Shift+F10 ContextMenu");
+      }
+      const tabStops = tree.querySelectorAll('[tabindex="0"], button:not([tabindex="-1"])');
+      expect(tabStops).toHaveLength(1);
+      expect(tabStops[0]).toBe(rows[0]);
+    });
+
+    it("chặn menu chuột phải của trình duyệt chỉ ngay sau phím menu, chuột phải vẫn như cũ", async () => {
+      renderWithMenu();
+      const row = screen.getAllByRole("treeitem")[0]!;
+      row.focus();
+      await userEvent.keyboard("{ContextMenu}");
+      expect(fireEvent.contextMenu(row)).toBe(false);
+      // Lần chuột phải sau đó không bị chặn.
+      expect(fireEvent.contextMenu(row)).toBe(true);
+
+      // Phím menu rồi bấm chuột (không có contextmenu từ phím): chuột phải ngay sau đó vẫn như cũ.
+      await userEvent.keyboard("{ContextMenu}");
+      fireEvent.pointerDown(row);
+      expect(fireEvent.contextMenu(row)).toBe(true);
+    });
+
+    it("không truyền onRowMenu thì không khai báo phím", () => {
+      render(<TreeHarness />);
+      expect(screen.getAllByRole("treeitem")[0]).not.toHaveAttribute("aria-keyshortcuts");
+    });
+
+    it("focus trả về một dòng bằng mã cũng chuyển điểm dừng Tab sang dòng đó", () => {
+      renderWithMenu();
+      const rows = screen.getAllByRole("treeitem");
+      act(() => rows[1]!.focus());
+      expect(rows[1]).toHaveAttribute("tabindex", "0");
+      expect(rows[0]).toHaveAttribute("tabindex", "-1");
+    });
+  });
+
   // V2-1: jsdom không có layout; kiểm tra hợp đồng lớp quyết định ai được giữ chiều rộng khi dòng hẹp.
-  it("dòng hẹp: tên giữ >= 8rem, mã chip bị chặn max-w-24, chip trạng thái và cụm thao tác không co, liên kết thu về +N", () => {
+  it("dòng hẹp: tên giữ >= 8rem và xuống tối đa hai dòng, mã chip bị chặn max-w-24, chip trạng thái và cụm thao tác không co, liên kết thu về +N", () => {
     render(
       <TreeView
         aria-label="Cây hẹp"
@@ -324,7 +456,16 @@ describe("TreeView", () => {
 
     const row = screen.getByRole("treeitem");
     const name = screen.getByText("Chương có tên khá dài để kiểm tra");
-    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "truncate");
+    // C-14: hai dòng thay vì cắt một dòng; không dựa vào `title`; dòng được focus bằng bàn phím hiện đủ tên.
+    expect(name).toHaveClass(
+      "min-w-[8rem]",
+      "flex-1",
+      "line-clamp-2",
+      "group-focus-visible:line-clamp-none",
+    );
+    expect(name).not.toHaveClass("truncate");
+    expect(name).not.toHaveAttribute("title");
+    expect(row).toHaveClass("group");
 
     const code = screen.getByText("CH_MWG2P0WN_DAI_QUA_MUC");
     expect(code).toHaveClass("max-w-24", "truncate", "shrink-0");

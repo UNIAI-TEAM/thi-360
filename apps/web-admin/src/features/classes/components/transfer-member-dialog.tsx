@@ -16,7 +16,7 @@ import {
   Textarea,
 } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   CLASSES_QUERY_KEYS,
@@ -67,6 +67,13 @@ export function TransferMemberDialog({
         size="md"
         closeLabel={t("transferDialog.close")}
         className="flex max-h-[85vh] flex-col overflow-hidden"
+        onOpenAutoFocus={(event) => {
+          // C-19: focus đầu tiên vào ô bắt buộc "Lớp đích". Khi danh sách lớp còn đang tải (ô bị khóa) thì focus
+          // hộp thoại, và chuyển sang ô khi danh sách về (xem TransferMemberBody); không rơi vào ô Lý do.
+          event.preventDefault();
+          const content = event.currentTarget as HTMLElement;
+          (findTargetClassTrigger(content) ?? content).focus();
+        }}
       >
         <DialogHeader className="shrink-0">
           <DialogTitle>{t("transferDialog.title")}</DialogTitle>
@@ -98,6 +105,11 @@ export function TransferMemberDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Nút mở ô chọn "Lớp đích" nếu đang dùng được. */
+function findTargetClassTrigger(root: ParentNode): HTMLElement | null {
+  return root.querySelector<HTMLElement>('[data-transfer-target] [role="combobox"]:not(:disabled)');
 }
 
 function TransferMemberBody({
@@ -167,6 +179,18 @@ function TransferMemberBody({
     };
   }, [classesQuery.data, sourceClassId, t]);
 
+  // C-19: danh sách lớp về sau khi hộp thoại đã mở; nếu focus vẫn đang ở hộp thoại (người dùng chưa đi đâu) thì
+  // chuyển vào ô "Lớp đích" vừa dùng được.
+  const formRef = useRef<HTMLFormElement>(null);
+  const targetReady = classesQuery.isSuccess && targetOptions.length > 0;
+  useEffect(() => {
+    if (!targetReady) return;
+    const form = formRef.current;
+    const dialog = form?.closest<HTMLElement>('[role="dialog"]');
+    if (!form || !dialog || document.activeElement !== dialog) return;
+    findTargetClassTrigger(form)?.focus();
+  }, [targetReady]);
+
   const mutation = useMutation({
     mutationFn: (values: TransferMemberFormValues) => {
       onSubmittingChange(true);
@@ -195,6 +219,7 @@ function TransferMemberBody({
 
   return (
     <form
+      ref={formRef}
       onSubmit={handleSubmit((values) => {
         setSubmitError(null);
         mutation.mutate(values);
@@ -229,7 +254,7 @@ function TransferMemberBody({
           }
         >
           {(controlProps) => (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2" data-transfer-target="">
               <Controller
                 control={control}
                 name="targetClassId"

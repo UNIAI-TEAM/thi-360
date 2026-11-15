@@ -15,6 +15,7 @@ import {
   Pagination,
   StatusChip,
   Table,
+  focusRing,
 } from "@thi360/ui";
 import { Eye, Pencil, Search, Shield, Trash2, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -342,7 +343,7 @@ export function RolesTab({
                   }}
                   className={cn(
                     "inline-flex h-8 items-center justify-center rounded-md px-3.5 text-label transition-colors duration-150 motion-reduce:transition-none",
-                    "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                    focusRing,
                     active
                       ? "bg-surface font-semibold text-primary-text shadow-xs"
                       : "font-medium text-text-secondary hover:bg-surface/60",

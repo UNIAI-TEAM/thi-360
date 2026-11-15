@@ -1,11 +1,12 @@
 "use client";
 
-import type { ColumnDef, RowSelectionState, SortingState } from "@tanstack/react-table";
+import type { ColumnDef, RowSelectionState, SortingState, Updater } from "@tanstack/react-table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
   Checkbox,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,6 +16,7 @@ import {
   FormField,
   Input,
   Label,
+  LiveStatus,
   PageHeader,
   Pagination,
   Select,
@@ -23,10 +25,22 @@ import {
   Table,
   Tooltip,
 } from "@thi360/ui";
-import { Eye, KeyRound, MoreHorizontal, Plus, Power, PowerOff, Search, Trash2, Upload, Users } from "lucide-react";
+import {
+  Eye,
+  KeyRound,
+  MoreHorizontal,
+  Plus,
+  Power,
+  PowerOff,
+  Search,
+  Trash2,
+  Upload,
+  Users,
+  WifiOff,
+} from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { CLASSES_QUERY_KEYS } from "@/features/classes/api";
 import { Can } from "@/features/session/can";
@@ -47,6 +61,24 @@ import { UserBulkBar } from "./user-bulk-bar";
 const ALL_VALUE = "ALL";
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+/**
+ * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, không theo bề rộng màn hình vì
+ * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước, rồi tới Vai trò, để cột Trạng thái còn nằm
+ * trong khung ở cửa sổ 1024–1366px. Thông tin của hai cột vẫn có ở trang chi tiết tài khoản. Ô tiêu đề và ô dữ
+ * liệu của cột được nhận ra qua `data-col` đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
+ */
+const DROP_LOW_PRIORITY_COLUMNS = [
+  "@container",
+  "@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden",
+  "@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden",
+].join(" ");
+
+/** Cột sắp xếp được và khóa nhãn của nó, dùng cho câu thông báo sau khi đổi sắp xếp. */
+const SORTABLE_COLUMN_LABEL_KEYS = {
+  username: "table.username",
+  fullName: "table.fullName",
+} as const;
 
 type SourceFilter = "ALL" | "ADMIN_CREATED" | "BULK_IMPORT" | "SELF_REGISTERED" | "GOOGLE";
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
@@ -103,6 +135,8 @@ function UsersListContent({
   const queryClient = useQueryClient();
   const neverLoggedInId = useId();
   const includeDeletedId = useId();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const tableAreaRef = useRef<HTMLDivElement>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -116,7 +150,12 @@ function UsersListContent({
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  // Tên đăng nhập của các dòng đang chọn, ghi lại lúc tích: dòng đã chọn có thể không còn ở trang đang hiện.
+  const [selectedUsernames, setSelectedUsernames] = useState<Record<string, string>>({});
   const [createOpen, setCreateOpen] = useState(false);
+  // Câu đang nằm trong vùng thông báo của danh sách (số kết quả, sắp xếp, số dòng đang chọn): chỉ một vùng, đổi nội dung.
+  const [announcement, setAnnouncement] = useState("");
+  const [announcedFilterKey, setAnnouncedFilterKey] = useState<string | null>(null);
 
   const actionController = useUserActionController({
     deps,
@@ -198,6 +237,19 @@ function UsersListContent({
     setNeverLoggedIn(false);
     setIncludeDeleted(false);
     setPage(1);
+    // Nút "Xóa bộ lọc" biến mất ngay sau khi bấm: đưa focus về ô tìm kiếm thay vì để rơi về <body>.
+    searchInputRef.current?.focus();
+  }
+
+  /**
+   * Sau "Bỏ chọn" thanh thao tác hàng loạt không còn nhận focus: đưa focus về ô chọn tất cả của bảng (điểm bắt đầu
+   * để chọn lại). Ô đó bị khóa khi trang đang hiện không có dòng nào thì về ô tìm kiếm.
+   */
+  function focusAfterClearSelection() {
+    const selectAll = tableAreaRef.current?.querySelector<HTMLElement>(
+      "thead [role='checkbox']:not([disabled])",
+    );
+    (selectAll ?? searchInputRef.current)?.focus();
   }
 
   const sourceOptions = useMemo(
@@ -260,9 +312,7 @@ function UsersListContent({
         accessorKey: "fullName",
         header: t("table.fullName"),
         cell: ({ row }) => (
-          <span className="block max-w-44 truncate font-medium text-text" title={row.original.fullName}>
-            {row.original.fullName}
-          </span>
+          <span className="line-clamp-2 min-w-24 font-medium text-text">{row.original.fullName}</span>
         ),
       },
       {
@@ -270,17 +320,14 @@ function UsersListContent({
         header: t("table.email"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span
-            className="block max-w-52 truncate text-text-secondary"
-            title={row.original.email ?? undefined}
-          >
+          <span className="line-clamp-2 min-w-28 wrap-anywhere text-text-secondary">
             {row.original.email ?? "—"}
           </span>
         ),
       },
       {
         id: "roles",
-        header: t("table.roles"),
+        header: () => <span data-col="roles">{t("table.roles")}</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const roleText =
@@ -290,7 +337,7 @@ function UsersListContent({
                   .join(", ")
               : "—";
           return (
-            <span className="block max-w-44 truncate text-text" title={roleText !== "—" ? roleText : undefined}>
+            <span data-col="roles" className="line-clamp-2 min-w-24 text-text">
               {roleText}
             </span>
           );
@@ -298,10 +345,10 @@ function UsersListContent({
       },
       {
         id: "source",
-        header: t("table.source"),
+        header: () => <span data-col="source">{t("table.source")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-text-secondary">
+          <span data-col="source" className="whitespace-nowrap text-text-secondary">
             {t(`sources.${row.original.source}`)}
           </span>
         ),
@@ -412,13 +459,74 @@ function UsersListContent({
   );
 
   const canBulkOperate = can("USER.MODIFY") || can("USER.ASSIGN");
-  const selectedIds = useMemo(
-    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
-    [rowSelection],
+  const selectedAccounts = useMemo(
+    () =>
+      Object.keys(rowSelection)
+        .filter((id) => rowSelection[id])
+        .map((id) => ({ id, username: selectedUsernames[id] ?? id })),
+    [rowSelection, selectedUsernames],
   );
+  const hasSelection = canBulkOperate && selectedAccounts.length > 0;
 
-  const items = usersQuery.data?.items ?? [];
-  const totalItems = usersQuery.data?.totalItems ?? 0;
+  // Mất mạng: TanStack Query tạm dừng truy vấn (`fetchStatus` "paused") thay vì báo lỗi, nên các dòng giữ chỗ của
+  // bộ lọc cũ (hoặc trạng thái rỗng ở lần tải đầu) sẽ đứng mãi. Khi đó báo mất kết nối thay cho dữ liệu sai bộ lọc.
+  // Dữ liệu đã đúng bộ lọc hiện tại mà chỉ lượt tải lại nền bị dừng thì vẫn hiện bình thường.
+  const isOfflineStale =
+    usersQuery.fetchStatus === "paused" && (usersQuery.isPlaceholderData || !usersQuery.data);
+  const items = isOfflineStale ? [] : (usersQuery.data?.items ?? []);
+  const totalItems = isOfflineStale ? 0 : (usersQuery.data?.totalItems ?? 0);
+
+  // Số kết quả chỉ được đọc khi dữ liệu của MỘT BỘ LỌC KHÁC vừa về (không đọc lần tải đầu, đổi trang hay sắp xếp).
+  // Điều chỉnh state ngay trong render theo mẫu "adjusting state when props change" của React.
+  const filterKey = JSON.stringify([
+    debouncedSearch,
+    source,
+    status,
+    roleId,
+    canViewClasses ? classId : ALL_VALUE,
+    neverLoggedIn,
+    includeDeleted,
+  ]);
+  if (usersQuery.isSuccess && !usersQuery.isPlaceholderData && announcedFilterKey !== filterKey) {
+    setAnnouncedFilterKey(filterKey);
+    if (announcedFilterKey !== null) {
+      setAnnouncement(t("list.filteredCount", { count: format.number(totalItems) }));
+    }
+  }
+
+  function handleSelectionChange(updater: Updater<RowSelectionState>) {
+    const next = typeof updater === "function" ? updater(rowSelection) : updater;
+    setRowSelection(next);
+    setSelectedUsernames((previous) => {
+      const usernames: Record<string, string> = {};
+      for (const id of Object.keys(next)) {
+        if (!next[id]) continue;
+        usernames[id] = previous[id] ?? items.find((item) => item.id === id)?.username ?? id;
+      }
+      return usernames;
+    });
+    const count = Object.values(next).filter(Boolean).length;
+    setAnnouncement(
+      count > 0
+        ? t("bulk.selectedCount", { count: format.number(count) })
+        : t("announce.selectionCleared"),
+    );
+  }
+
+  function handleSortingChange(updater: Updater<SortingState>) {
+    const next = typeof updater === "function" ? updater(sorting) : updater;
+    setSorting(next);
+    setPage(1);
+    const first = next[0];
+    const labelKey = first
+      ? SORTABLE_COLUMN_LABEL_KEYS[first.id as keyof typeof SORTABLE_COLUMN_LABEL_KEYS]
+      : undefined;
+    setAnnouncement(
+      first && labelKey
+        ? t(first.desc ? "announce.sortedDesc" : "announce.sortedAsc", { column: t(labelKey) })
+        : t("announce.sortCleared"),
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -451,7 +559,11 @@ function UsersListContent({
             {(controlProps) => (
               <Input
                 {...controlProps}
+                ref={searchInputRef}
                 type="search"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 leadingIcon={<Search />}
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
@@ -557,9 +669,24 @@ function UsersListContent({
       </Card>
 
       <Card padding="none" className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <LiveStatus message={announcement} />
+        {/*
+          Một ô lưới cho hai lớp chồng nhau: dải "N tài khoản / gợi ý" và thanh thao tác hàng loạt. Ô luôn cao bằng
+          lớp cao hơn, nên tích hay bỏ tích dòng chỉ đổi lớp đang hiện, bảng bên dưới không nhảy.
+        */}
+        <div className={cn("grid border-b", hasSelection ? "border-primary-200" : "border-border")}>
+        <div
+          aria-hidden={hasSelection || undefined}
+          inert={hasSelection}
+          className={cn(
+            "col-start-1 row-start-1 flex flex-wrap items-center justify-between gap-2 px-4 py-3",
+            hasSelection && "invisible",
+          )}
+        >
           <p className="text-body font-medium text-text tabular-nums">
-            {usersQuery.isLoading
+            {isOfflineStale
+              ? t("list.offlineTitle")
+              : usersQuery.isLoading
               ? t("list.loadingCount")
               : usersQuery.isError
                 ? t("list.errorTitle")
@@ -570,8 +697,12 @@ function UsersListContent({
 
         {canBulkOperate && (
           <UserBulkBar
-            selectedIds={selectedIds}
-            onClearSelection={() => setRowSelection({})}
+            className="col-start-1 row-start-1"
+            selected={selectedAccounts}
+            onClearSelection={() => {
+              handleSelectionChange({});
+              focusAfterClearSelection();
+            }}
             onBulkApplied={() => {
               void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.lists() });
             }}
@@ -579,19 +710,22 @@ function UsersListContent({
             applyBulkUserActions={deps.applyBulkUserActions}
           />
         )}
+        </div>
 
+        <div ref={tableAreaRef} className={DROP_LOW_PRIORITY_COLUMNS}>
         <Table
           aria-label={t("list.tableAriaLabel")}
+          stickyColumns={{ start: true, end: true }}
           columns={columns}
           data={items}
           getRowId={(row) => row.id}
           loading={usersQuery.isLoading}
-          refreshing={usersQuery.isPlaceholderData}
+          refreshing={usersQuery.isPlaceholderData && !isOfflineStale}
           selection={
             canBulkOperate
               ? {
                   state: rowSelection,
-                  onChange: setRowSelection,
+                  onChange: handleSelectionChange,
                   selectAllLabel: t("table.selectAll"),
                   rowLabel: (_index, row) =>
                     t("table.selectRow", { username: row.username }),
@@ -601,10 +735,7 @@ function UsersListContent({
           sorting={{
             state: sorting,
             manual: true,
-            onChange: (updater) => {
-              setSorting(updater);
-              setPage(1);
-            },
+            onChange: handleSortingChange,
           }}
           error={
             usersQuery.isError ? (
@@ -612,6 +743,17 @@ function UsersListContent({
                 icon={<Users />}
                 title={t("list.errorTitle")}
                 description={t("list.errorDescription")}
+                action={
+                  <Button variant="secondary" onClick={() => void usersQuery.refetch()}>
+                    {common("retry")}
+                  </Button>
+                }
+              />
+            ) : isOfflineStale ? (
+              <EmptyState
+                icon={<WifiOff />}
+                title={t("list.offlineTitle")}
+                description={t("list.offlineDescription")}
                 action={
                   <Button variant="secondary" onClick={() => void usersQuery.refetch()}>
                     {common("retry")}
@@ -649,6 +791,7 @@ function UsersListContent({
             )
           }
         />
+        </div>
 
         {totalItems > 0 && (
           <div className="border-t border-border px-4 py-3">

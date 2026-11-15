@@ -30,6 +30,7 @@ import {
   type CatalogItemResponse,
   type CombinationVersionResponse,
 } from "../api";
+import { STATIC_CHIP } from "../styles";
 import {
   pickName,
   resolveCatalogAuditActionKey,
@@ -65,7 +66,17 @@ export function ItemDetailDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       {open && item && (
-        <DrawerContent closeLabel={t("close")}>
+        <DrawerContent
+          closeLabel={t("close")}
+          onOpenAutoFocus={(event) => {
+            // C-19: mở ngăn thì focus vào thẻ đang chọn (Thông tin) thay vì nút đầu tiên "Ngừng sử dụng"; không có
+            // thẻ thì focus chính ngăn để trình đọc màn hình đọc tên ngăn.
+            event.preventDefault();
+            const content = event.currentTarget as HTMLElement;
+            const activeTab = content.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+            (activeTab ?? content).focus();
+          }}
+        >
           <DrawerHeader>
             <div className="flex flex-wrap items-center gap-2">
               <DrawerTitle>{pickName(item, locale)}</DrawerTitle>
@@ -265,7 +276,7 @@ function ItemDetailBody({
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {orderedCombinationSubjects.map((subject, idx) => (
-                  <Chip key={subject.subjectItemId} size="sm">
+                  <Chip key={subject.subjectItemId} variant="tag" className={STATIC_CHIP}>
                     {idx + 1}. {pickName(subject, locale)} ({subject.code})
                     {subject.status === "INACTIVE" ? ` · ${t("statuses.INACTIVE")}` : ""}
                   </Chip>
@@ -495,7 +506,7 @@ function VersionCard({
 
       <div className="flex flex-wrap gap-1.5">
         {orderedSubjects.map((subject, idx) => (
-          <Chip key={subject.subjectItemId} size="sm">
+          <Chip key={subject.subjectItemId} variant="tag" className={STATIC_CHIP}>
             {idx + 1}. {pickName(subject, locale)}
             {subject.status === "INACTIVE" ? ` (${t("statuses.INACTIVE")})` : ""}
           </Chip>

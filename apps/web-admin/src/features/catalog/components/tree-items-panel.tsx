@@ -18,7 +18,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryKey,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Badge,
   Button,
@@ -34,6 +40,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  LiveStatus,
   Select,
   Skeleton,
   StatusChip,
@@ -73,12 +80,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
   catalogQueryKeys,
@@ -99,6 +108,9 @@ import {
   resolveTreeLevelLabel,
 } from "../utils";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
+import { DRAG_HANDLE, focusRing } from "../styles";
+import { usePrefersReducedMotion } from "../use-reduced-motion";
+import { useDebouncedSearch } from "../use-debounced-value";
 import type { StatusFilter } from "./simple-items-panel";
 
 export interface TreeItemsPanelProps {
@@ -166,6 +178,12 @@ export function resolveTreeDragReorder(
 }
 
 const MAX_TREE_DEPTH = 6;
+/**
+ * C-16: danh sách con vừa tải (mở tay hoặc "Mở tất cả") được coi là còn mới trong khoảng này, nên thu gọn rồi mở
+ * lại, hay danh sách con được điền sẵn từ lần gọi theo tầng, không gọi lại máy chủ. Mọi thao tác ghi trên cây đều
+ * đánh dấu cả nhóm `["catalog", "tree", groupId]` cần tải lại, nên thay đổi trong phiên vẫn hiện ngay.
+ */
+const TREE_CHILDREN_STALE_MS = 30_000;
 
 export function TreeItemsPanel({
   group,
@@ -199,6 +217,10 @@ export function TreeItemsPanel({
   const [expandingAll, setExpandingAll] = useState(false);
   const [addRefGroupValue, setAddRefGroupValue] = useState("");
   const [addItemRefByGroup, setAddItemRefByGroup] = useState<Record<string, string>>({});
+  // Menu "⋯" đang mở của dòng nào (điều khiển được để mở bằng phím từ dòng đang focus, C-08).
+  const [rowMenuOpenId, setRowMenuOpenId] = useState<string | null>(null);
+  const rowMenuFromKeyboardRef = useRef(false);
+  const treeHintId = useId();
 
   const reorderTreeMutation = useMutation({
     mutationFn: (itemIds: string[]) => api.reorderItems(group.id, { itemIds }),
@@ -229,7 +251,8 @@ export function TreeItemsPanel({
     () => Object.values(selectedRefByGroup).flat().filter(Boolean),
     [selectedRefByGroup],
   );
-  const trimmedSearch = searchQuery.trim();
+  // Ô tìm hiện chữ ngay; cây chỉ lọc (và gửi yêu cầu) sau khi ngừng gõ 300ms (C-10).
+  const trimmedSearch = useDebouncedSearch(searchQuery);
   const isFiltered = Boolean(trimmedSearch) || statusFilter !== "ALL" || selectedRefItemIds.length > 0;
 
   const refGroupsQuery = useQuery({
@@ -285,10 +308,15 @@ export function TreeItemsPanel({
     [isFiltered, selectedRefItemIds, statusFilter, trimmedSearch],
   );
 
+  // Đổi từ khóa hoặc bộ lọc: giữ cây đang hiện (làm mờ nhẹ) cho tới khi kết quả mới về, không thay bằng khung
+  // xương; đổi sang nhóm khác thì tải như lần đầu.
+  const rootTreeQueryKey = catalogQueryKeys.tree(group.id, rootQueryParams);
   const rootTreeQuery = useQuery({
-    queryKey: catalogQueryKeys.tree(group.id, rootQueryParams),
+    queryKey: rootTreeQueryKey,
     queryFn: () => api.listTree(group.id, rootQueryParams),
+    placeholderData: keepPreviousWhileSameScope(rootTreeQueryKey),
   });
+  const treeRefreshing = rootTreeQuery.isPlaceholderData;
 
   // Lazy child queries (only when not in filtered mode)
   const expandedCandidateIds = useMemo(() => {
@@ -309,6 +337,7 @@ export function TreeItemsPanel({
       queryKey: catalogQueryKeys.tree(group.id, { parentId }),
       queryFn: () => api.listTree(group.id, { parentId }),
       enabled: !isFiltered,
+      staleTime: TREE_CHILDREN_STALE_MS,
     })),
   });
 
@@ -482,25 +511,57 @@ export function TreeItemsPanel({
 
     setExpandingAll(true);
     try {
-      const roots = await queryClient.fetchQuery({
-        queryKey: catalogQueryKeys.tree(group.id, {}),
-        queryFn: () => api.listTree(group.id, {}),
-      });
+      // C-16: mỗi tầng một lần gọi `listTree({ depth })` (máy chủ trả mọi nút ở tầng đó, cùng thứ tự và cùng dữ
+      // liệu như khi hỏi theo từng cha) thay vì một lần gọi cho mỗi nút cha. Cha nào đã có danh sách con còn mới
+      // trong bộ đệm thì dùng lại; cha còn thiếu được điền bộ đệm `{ parentId }` từ kết quả theo tầng, nên các
+      // truy vấn con lười ở dưới không gọi lại.
+      const rootKey = catalogQueryKeys.tree(group.id, {});
+      const roots =
+        freshCachedTree(rootKey) ??
+        (await queryClient.fetchQuery<CatalogTreeNodeResponse[]>({
+          queryKey: rootKey,
+          queryFn: () => api.listTree(group.id, {}),
+        }));
       const nextOverrides: Record<string, boolean> = { ...expandedOverrides };
       let frontier = roots.filter((n) => n.hasChildren);
-      for (let depth = 1; depth < MAX_TREE_DEPTH && frontier.length > 0; depth++) {
-        for (const node of frontier) {
-          nextOverrides[node.id] = true;
+      for (let level = 1; level < MAX_TREE_DEPTH && frontier.length > 0; level++) {
+        const childrenByParent = new Map<string, CatalogTreeNodeResponse[]>();
+        const missingParentIds: string[] = [];
+        for (const parent of frontier) {
+          nextOverrides[parent.id] = true;
+          const cached = freshCachedTree(catalogQueryKeys.tree(group.id, { parentId: parent.id }));
+          if (cached) {
+            childrenByParent.set(parent.id, cached);
+          } else {
+            missingParentIds.push(parent.id);
+          }
         }
-        const childrenLists = await Promise.all(
-          frontier.map((parent) =>
-            queryClient.fetchQuery({
-              queryKey: catalogQueryKeys.tree(group.id, { parentId: parent.id }),
-              queryFn: () => api.listTree(group.id, { parentId: parent.id }),
-            }),
-          ),
+        if (missingParentIds.length > 0) {
+          // Mọi nút trong `frontier` cùng một tầng; con của chúng ở tầng kế tiếp.
+          const childDepth = frontier[0]!.depth + 1;
+          const levelNodes = await queryClient.fetchQuery({
+            queryKey: catalogQueryKeys.tree(group.id, { depth: childDepth }),
+            queryFn: () => api.listTree(group.id, { depth: childDepth }),
+          });
+          const grouped = new Map<string, CatalogTreeNodeResponse[]>();
+          for (const node of levelNodes) {
+            if (!node.parentId) continue;
+            const bucket = grouped.get(node.parentId);
+            if (bucket) {
+              bucket.push(node);
+            } else {
+              grouped.set(node.parentId, [node]);
+            }
+          }
+          for (const parentId of missingParentIds) {
+            const children = grouped.get(parentId) ?? [];
+            queryClient.setQueryData(catalogQueryKeys.tree(group.id, { parentId }), children);
+            childrenByParent.set(parentId, children);
+          }
+        }
+        frontier = frontier.flatMap((parent) =>
+          (childrenByParent.get(parent.id) ?? []).filter((n) => n.hasChildren),
         );
-        frontier = childrenLists.flat().filter((n) => n.hasChildren);
       }
       setExpandedOverrides(nextOverrides);
     } catch (error) {
@@ -511,6 +572,17 @@ export function TreeItemsPanel({
     } finally {
       setExpandingAll(false);
     }
+  }
+
+  /**
+   * Danh sách nút trong bộ đệm nếu đã tải xong, chưa bị đánh dấu cần tải lại (sau khi sửa, kéo thả...) và chưa quá
+   * `TREE_CHILDREN_STALE_MS`; quá hạn thì coi như thiếu để lần gọi theo tầng làm mới luôn.
+   */
+  function freshCachedTree(queryKey: QueryKey): CatalogTreeNodeResponse[] | undefined {
+    const state = queryClient.getQueryState<CatalogTreeNodeResponse[]>(queryKey);
+    if (!state || state.status !== "success" || state.isInvalidated) return undefined;
+    if (Date.now() - state.dataUpdatedAt >= TREE_CHILDREN_STALE_MS) return undefined;
+    return state.data;
   }
 
   function handleCollapseAll() {
@@ -780,6 +852,12 @@ export function TreeItemsPanel({
     { value: "INACTIVE", label: t("statuses.INACTIVE") },
   ];
 
+  // Câu đọc cho trình đọc màn hình khi cây lọc xong (WCAG 4.1.3). Chỉ đọc kết quả lọc; mở/đóng nút không đọc.
+  const filterStatus =
+    !isFiltered || rootTreeQuery.isPending || rootTreeQuery.isPlaceholderData || rootTreeQuery.isError
+      ? ""
+      : t("tree.filterResultStatus", { count: rootTreeQuery.data.length });
+
   const activeNode = crossGroupMismatch ? null : (selectedDetail ?? selectedTreeNode);
   const activeNodeLevelName = activeNode
     ? displayLevels[activeNode.depth - 1] ?? `${t("tree.defaultLevelName")} ${activeNode.depth}`
@@ -809,6 +887,27 @@ export function TreeItemsPanel({
   const detailPaneRef = useRef<HTMLElement>(null);
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const pendingFocusNodeIdRef = useRef<string | null>(null);
+
+  /**
+   * Phím menu/Shift+F10 trên dòng cây (C-08): cây chỉ là một điểm dừng Tab, các nút trên dòng chỉ dành cho chuột.
+   * Người có quyền sửa được mở menu "⋯" của dòng (đủ mọi thao tác, kể cả thêm nút con); người chỉ xem được mở
+   * ngăn chi tiết như nút con mắt.
+   */
+  function handleTreeRowMenu(id: string) {
+    const row = rowById.get(id);
+    if (!row) return;
+    if (!canModify) {
+      onViewNodeDetail(row.node);
+      return;
+    }
+    rowMenuFromKeyboardRef.current = true;
+    setRowMenuOpenId(id);
+  }
+
+  function focusTreeRow(id: string) {
+    const rows = document.querySelectorAll<HTMLElement>('[role="treeitem"][data-tree-item-id]');
+    [...rows].find((row) => row.dataset.treeItemId === id)?.focus();
+  }
 
   function handleTreeSelectNode(id: string) {
     onSelectNode(id);
@@ -864,10 +963,15 @@ export function TreeItemsPanel({
     : 0;
 
   return (
-    <Card className="min-w-0 flex-1" padding="md">
-      {/* Group header */}
-      <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
+    <Card className="@container min-w-0 flex-1" padding="md">
+      {/*
+        Tiêu đề nhóm. Chia hai cột theo bề rộng của chính thẻ (truy vấn vùng chứa), không theo màn hình: thẻ hẹp
+        hơn màn hình khoảng 593px, nên ngưỡng `sm:` cũ đặt cụm nút cạnh tiêu đề khi thẻ mới rộng 400px và ép cột
+        tiêu đề về 0px (C-07). Dưới 48rem: tiêu đề ở trên, cụm nút xuống dòng bên dưới. Từ 48rem: cụm nút chiếm
+        tối đa 55% và tự xuống dòng, cột tiêu đề luôn còn ít nhất 45%.
+      */}
+      <div className="flex flex-col gap-3 border-b border-border pb-4 @3xl:flex-row @3xl:items-start @3xl:justify-between">
+        <div className="min-w-0 @3xl:flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-h3 font-bold text-text">{pickName(group, locale)}</h2>
             <StatusChip tone={group.status === "ACTIVE" ? "success" : "neutral"}>
@@ -887,7 +991,7 @@ export function TreeItemsPanel({
           )}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 @3xl:max-w-[55%] @3xl:shrink-0 @3xl:justify-end">
           {canModify && !isSystemGroup && (
             <>
               <Button variant="secondary" size="sm" onClick={onEditGroup}>
@@ -997,7 +1101,10 @@ export function TreeItemsPanel({
                       aria-label={t("tree.removeRefGroupLabel", { name: label })}
                       onClick={() => void handleRemoveRefGroup(rg.refGroupId, label)}
                       disabled={refActionPending}
-                      className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
+                      className={cn(
+                        "-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60",
+                        focusRing,
+                      )}
                     >
                       <X aria-hidden="true" className="size-3" />
                     </button>
@@ -1011,10 +1118,13 @@ export function TreeItemsPanel({
         <span className="text-caption text-text-muted">{t("tree.addRefGroupHint")}</span>
 
         {canModify && availableRefGroupsToAdd.length > 0 && (
-          <div className="ml-auto w-56">
+          // C-22: rộng theo chữ (tối thiểu 224px) và giữ một dòng, chữ gợi ý tiếng Việt không còn xuống dòng rồi bị
+          // cắt; hàng chật thì ô xuống dòng riêng, không rộng quá hàng.
+          <div className="ml-auto min-w-56 max-w-full">
             <Select
               aria-label={t("tree.addRefGroupPlaceholder")}
               size="md"
+              className="whitespace-nowrap"
               placeholder={t("tree.addRefGroupPlaceholder")}
               value={addRefGroupValue}
               onValueChange={(val) => {
@@ -1068,6 +1178,7 @@ export function TreeItemsPanel({
                     onClick={() => setStatusFilter(opt.value)}
                     className={cn(
                       "rounded-sm px-3 py-1.5 text-caption font-semibold transition-colors",
+                      focusRing,
                       active
                         ? "bg-surface text-primary-text shadow-xs"
                         : "text-text-muted hover:text-text",
@@ -1119,6 +1230,8 @@ export function TreeItemsPanel({
                         count: selectedVals.length,
                       });
 
+              // Không đặt aria-label cố định: tên truy cập của nút là chính dòng chữ đang hiện (đã có tên danh mục
+              // và giá trị đang lọc), nên trình đọc màn hình biết bộ lọc nào đang bật (WCAG 2.5.3).
               return (
                 <DropdownMenu key={rg.refGroupId}>
                   <DropdownMenuTrigger asChild>
@@ -1126,7 +1239,6 @@ export function TreeItemsPanel({
                       type="button"
                       variant="secondary"
                       size="md"
-                      aria-label={t("tree.filterByRefLabel", { name: rgLabel })}
                       className={cn(
                         "min-w-44 justify-between gap-2 font-normal",
                         selectedVals.length > 0 && "border-primary-600 bg-primary-50 text-primary-text",
@@ -1205,6 +1317,7 @@ export function TreeItemsPanel({
             {t("tree.filterBanner")}
           </p>
         )}
+        <LiveStatus message={filterStatus} />
       </form>
 
       {/*
@@ -1214,7 +1327,10 @@ export function TreeItemsPanel({
       */}
       <div className="mt-4 flex flex-col gap-4 min-[1600px]:flex-row min-[1600px]:items-start">
         {/* Tree pane */}
-        <div className="min-w-0 flex-1 rounded-md border border-border bg-surface p-2">
+        <div
+          aria-busy={rootTreeQuery.isPending || treeRefreshing || undefined}
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface p-2"
+        >
           {rootTreeQuery.isPending ? (
             <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-2 p-2">
               {Array.from({ length: 6 }).map((_, idx) => (
@@ -1279,10 +1395,16 @@ export function TreeItemsPanel({
               >
                 <TreeView
                   aria-label={t("tree.treeAriaLabel", { name: pickName(group, locale) })}
+                  aria-describedby={treeHintId}
+                  onRowMenu={(item) => handleTreeRowMenu(item.id)}
                   items={treeViewItems}
                   expandedIds={expandedIdSet}
                   selectedId={selectedNodeId}
                   loadingIds={loadingIds}
+                  className={cn(
+                    "transition-opacity duration-150 motion-reduce:transition-none",
+                    treeRefreshing && "opacity-60",
+                  )}
                   onSelect={(item) => handleTreeSelectNode(item.id)}
                   onToggleExpand={(item) => handleToggleExpand(item.id)}
                   labels={{
@@ -1353,6 +1475,7 @@ export function TreeItemsPanel({
                             tooltip={t("detailItem", { name: displayName })}
                             icon={<Eye />}
                             size="md"
+                            tabIndex={-1}
                             onClick={() => onViewNodeDetail(node)}
                           />
                         </div>
@@ -1379,25 +1502,60 @@ export function TreeItemsPanel({
                             }
                             icon={<Plus />}
                             size="md"
+                            tabIndex={-1}
                             disabled={childAddDisabled}
                             onClick={() => onAddChildNode(node)}
                           />
                         )}
 
-                        <DropdownMenu>
+                        <DropdownMenu
+                          open={rowMenuOpenId === node.id}
+                          onOpenChange={(open) => {
+                            if (open) rowMenuFromKeyboardRef.current = false;
+                            setRowMenuOpenId(open ? node.id : null);
+                          }}
+                        >
                           <DropdownMenuTrigger asChild>
                             <IconButton
                               icon={<MoreHorizontal />}
                               aria-label={t("tree.rowActionsLabel", { name: displayName })}
                               tooltip={t("tree.rowActionsLabel", { name: displayName })}
                               size="md"
+                              tabIndex={-1}
                             />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent
+                            align="end"
+                            onCloseAutoFocus={(event) => {
+                              // Mở bằng phím từ dòng thì đóng xong trả focus về dòng, không về nút "⋯" ngoài thứ tự Tab.
+                              if (!rowMenuFromKeyboardRef.current) return;
+                              rowMenuFromKeyboardRef.current = false;
+                              event.preventDefault();
+                              focusTreeRow(node.id);
+                            }}
+                          >
                             <DropdownMenuItem onSelect={() => onViewNodeDetail(node)}>
                               <Eye aria-hidden="true" />
                               <span>{t("detailItem", { name: displayName })}</span>
                             </DropdownMenuItem>
+                            {canAddChild && (
+                              <DropdownMenuItem
+                                disabled={childAddDisabled}
+                                onSelect={() => onAddChildNode(node)}
+                              >
+                                <Plus aria-hidden="true" />
+                                <span>
+                                  {childAddDisabled
+                                    ? group.status === "INACTIVE"
+                                      ? t("inactiveGroupCreateHint")
+                                      : t("tree.stoppedParentAddChildHint")
+                                    : t("tree.addChildLabel", {
+                                        levelName: nextLevelName,
+                                        name: displayName,
+                                      })}
+                                </span>
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onSelect={() => onEditNode(node)}>
                               <Pencil aria-hidden="true" />
                               <span>{t("tree.editAction")}</span>
@@ -1470,6 +1628,10 @@ export function TreeItemsPanel({
               </SortableContext>
             </DndContext>
           )}
+          {/* Hướng dẫn phím nhìn thấy được, cũng là mô tả của cây (aria-describedby). */}
+          <p id={treeHintId} className="px-2 pt-2 text-caption text-text-muted">
+            {canModify ? t("tree.keyboardHint") : t("tree.keyboardHintView")}
+          </p>
         </div>
 
         {/* 340px Node detail pane (DESIGN.md §5.11) */}
@@ -1544,7 +1706,7 @@ export function TreeItemsPanel({
                 <button
                   type="button"
                   onClick={() => onSelectNode(null)}
-                  className="rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text"
+                  className={cn("rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text", focusRing)}
                 >
                   {t("tree.breadcrumbRoot")}
                 </button>
@@ -1557,7 +1719,7 @@ export function TreeItemsPanel({
                       <button
                         type="button"
                         onClick={() => onSelectNode(anc.id)}
-                        className="rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text"
+                        className={cn("rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text", focusRing)}
                       >
                         {pickName(anc, locale)}
                       </button>
@@ -1746,7 +1908,10 @@ export function TreeItemsPanel({
                                     name: fromName,
                                   })}
                                   onClick={() => onSelectNode(ref.fromItemId)}
-                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-0.5 text-caption text-text-secondary transition-colors hover:border-primary-600 hover:text-primary-text"
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-0.5 text-caption text-text-secondary transition-colors hover:border-primary-600 hover:text-primary-text",
+                                    focusRing,
+                                  )}
                                 >
                                   <Lock aria-hidden="true" className="size-3 shrink-0" />
                                   <span>{refName}</span>
@@ -1775,7 +1940,10 @@ export function TreeItemsPanel({
                                       )
                                     }
                                     disabled={refActionPending}
-                                    className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
+                                    className={cn(
+                        "-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60",
+                        focusRing,
+                      )}
                                   >
                                     <X aria-hidden="true" className="size-3" />
                                   </button>
@@ -1978,10 +2146,13 @@ function SortableTreeRow({
   children: ReactNode;
 }) {
   const sortableAttributes = useCatalogSortableAttributes();
+  const reduceMotion = usePrefersReducedMotion();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
     attributes: sortableAttributes,
+    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
+    transition: reduceMotion ? null : undefined,
   });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -2026,12 +2197,17 @@ function TreeDragHandle({
           : ctx
             ? { ...ctx.attributes, ...ctx.listeners }
             : {})}
+        // Ngoài thứ tự Tab (cây là một điểm dừng Tab, C-08): bàn phím đổi thứ tự qua "Di chuyển lên/xuống" trong
+        // menu của dòng (Shift+F10).
+        tabIndex={-1}
         onClick={(event) => {
           event.stopPropagation();
           if (effectiveDisabled) event.preventDefault();
         }}
         className={cn(
           "inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-text-placeholder transition-colors",
+          DRAG_HANDLE,
+          focusRing,
           effectiveDisabled
             ? "cursor-not-allowed opacity-40"
             : "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing",

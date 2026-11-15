@@ -1,9 +1,10 @@
 {
   "changePassword": {
+    "back": "Back",
     "confirmPasswordLabel": "Confirm new password",
     "confirmPasswordMismatch": "Passwords do not match.",
     "confirmPasswordRequired": "Please confirm your new password.",
-    "description": "Account <strong>{username}</strong> must set a new password before continuing.",
+    "description": "Set a new password for the account <strong>{username}</strong>.",
     "errorLoad": "Unable to load account details. Please try again.",
     "errorLoadTitle": "Unable to load page",
     "footerNote": "After saving, you will continue to your requested page or role home.",
@@ -17,17 +18,23 @@
     "otherAccount": "Sign in with another account",
     "rules": {
       "generate": "Generate random",
-      "hidePassword": "Hide password",
       "ruleDigit": "At least one digit",
       "ruleLength": "8 to 64 characters",
       "ruleLower": "At least one lowercase letter",
       "ruleSpecial": "At least one special character",
       "ruleUpper": "At least one uppercase letter",
-      "rulesLabel": "Password requirements",
-      "showPassword": "Show password"
+      "rulesLabel": "Password requirements"
     },
     "submit": "Save and continue",
     "title": "Set new password",
+    "toggles": {
+      "confirmHide": "Hide confirmed password",
+      "confirmShow": "Show confirmed password",
+      "newHide": "Hide new password",
+      "newShow": "Show new password",
+      "oldHide": "Hide current password",
+      "oldShow": "Show current password"
+    },
     "wrongOldPassword": "Current password is incorrect."
   },
   "common": {
@@ -117,7 +124,8 @@
   },
   "metadata": {
     "description": "Online practice portal for HSA and QDA aptitude exams",
-    "title": "Thi 360 — HSA & QDA Exam Prep"
+    "title": "Thi 360 — HSA & QDA Exam Prep",
+    "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",

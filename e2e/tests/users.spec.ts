@@ -267,7 +267,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
       await page.getByRole("checkbox", { name: `Chọn tài khoản ${userA}` }).click();
       await page.getByRole("checkbox", { name: `Chọn tài khoản ${userB}` }).click();
 
-      const toolbar = page.getByRole("toolbar", { name: "Thao tác với các tài khoản đã chọn" });
+      const toolbar = page.getByRole("group", { name: "Thao tác với các tài khoản đã chọn" });
       await expect(toolbar).toContainText("Đã chọn 2 tài khoản");
       await toolbar.getByRole("button", { name: "Ngừng hoạt động" }).click();
 

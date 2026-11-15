@@ -1,8 +1,18 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Button, Card, Checkbox, cn, EmptyState, Label, Skeleton } from "@thi360/ui";
-import { FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
+import {
+  Button,
+  buttonVariants,
+  Card,
+  Checkbox,
+  cn,
+  EmptyState,
+  IconButton,
+  Label,
+  Skeleton,
+} from "@thi360/ui";
+import { FileSpreadsheet, TriangleAlert, Upload, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, type DragEvent, useId, useMemo, useRef, useState } from "react";
@@ -92,6 +102,10 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mustChangeId = useId();
+  const fileInputId = useId();
+  const chooseFileLabelId = useId();
+  const dropzoneHintId = useId();
+  const columnsHeadingId = useId();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -132,10 +146,17 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
     event.target.value = "";
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setIsDragging(false);
     acceptFile(event.dataTransfer.files?.[0]);
+  }
+
+  function handleRemoveFile() {
+    setSelectedFile(null);
+    setErrorMessage(null);
+    // Nút bỏ tệp biến mất cùng ô tệp: đưa focus về ô chọn tệp để chọn tệp khác ngay.
+    fileInputRef.current?.focus();
   }
 
   function handleUploadSubmit() {
@@ -186,45 +207,59 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
         <Card padding="lg" className="flex flex-col gap-4 lg:col-span-5">
           <h2 className="text-title font-semibold text-text">{t("upload.sectionTitle")}</h2>
 
-          <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            className={cn(
-              "flex flex-col items-center gap-2.5 rounded-xl border-2 border-dashed px-5 py-9 text-center transition-colors duration-150 motion-reduce:transition-none",
-              isDragging
-                ? "border-primary-text bg-primary-50"
-                : "border-primary-text/40 bg-surface",
-            )}
-          >
-            <span
-              aria-hidden
-              className="flex size-13 items-center justify-center rounded-xl bg-primary-50 text-primary-text"
-            >
-              <Upload className="size-6" />
-            </span>
-            <div className="text-body font-semibold text-text">{t("upload.dropzoneTitle")}</div>
-            <div className="text-body text-text-muted">{t("upload.dropzoneHint")}</div>
-
+          {/*
+            Một điều khiển duy nhất: ô chọn tệp thật (ẩn về hình ảnh, vẫn nhận Tab và Enter/Space) và cả vùng thả
+            là nhãn của nó, nên bấm vào đâu trong vùng cũng mở hộp chọn tệp. Ô nhập đứng trước nhãn để lớp `peer`
+            vẽ vòng focus lên vùng thả khi ô nhập nhận focus bằng bàn phím.
+          */}
+          <div className="relative">
             <input
               ref={fileInputRef}
+              id={fileInputId}
               type="file"
-              aria-label={t("upload.chooseFile")}
+              aria-labelledby={chooseFileLabelId}
+              aria-describedby={dropzoneHintId}
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFileInputChange}
-              className="sr-only"
+              className="peer sr-only"
             />
-            <Button
-              type="button"
-              variant={selectedFile ? "secondary" : "primary"}
-              onClick={() => fileInputRef.current?.click()}
+            <label
+              htmlFor={fileInputId}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={cn(
+                "flex cursor-pointer flex-col items-center gap-2.5 rounded-xl border-2 border-dashed px-5 py-9 text-center transition-colors duration-150 motion-reduce:transition-none",
+                "peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-text",
+                isDragging
+                  ? "border-primary-text bg-primary-50"
+                  : "border-primary-text/40 bg-surface hover:bg-primary-50",
+              )}
             >
-              <Upload />
-              <span>{selectedFile ? t("upload.changeFile") : t("upload.chooseFile")}</span>
-            </Button>
+              <span
+                aria-hidden
+                className="flex size-13 items-center justify-center rounded-xl bg-primary-50 text-primary-text"
+              >
+                <Upload className="size-6" />
+              </span>
+              <span className="text-body font-semibold text-text">{t("upload.dropzoneTitle")}</span>
+              <span id={dropzoneHintId} className="text-body text-text-muted">
+                {t("upload.dropzoneHint")}
+              </span>
+              <span
+                id={chooseFileLabelId}
+                className={cn(
+                  buttonVariants({ variant: selectedFile ? "secondary" : "primary" }),
+                  "gap-2",
+                )}
+              >
+                <Upload aria-hidden className="size-4" />
+                <span>{selectedFile ? t("upload.changeFile") : t("upload.chooseFile")}</span>
+              </span>
+            </label>
           </div>
 
           {selectedFile && (
@@ -233,16 +268,26 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
                 <FileSpreadsheet aria-hidden className="size-5 shrink-0 text-primary-text" />
                 <div className="min-w-0">
                   <div className="text-caption text-text-muted">{t("upload.selectedFileLabel")}</div>
-                  <div className="truncate text-body font-semibold text-text">
+                  {/* Tên tệp chỉ hiện ở đây: xuống dòng cho đủ, không cắt mất phần đuôi .xlsx (DESIGN.md 5.13). */}
+                  <div className="text-body font-semibold wrap-anywhere text-text">
                     {selectedFile.name}
                   </div>
                 </div>
               </div>
-              <span className="shrink-0 text-caption text-text-muted tabular-nums">
-                {t("upload.fileSizeKb", {
-                  size: Math.max(1, Math.round(selectedFile.size / 1024)),
-                })}
-              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <span className="text-caption text-text-muted tabular-nums">
+                  {t("upload.fileSizeKb", {
+                    size: Math.max(1, Math.round(selectedFile.size / 1024)),
+                  })}
+                </span>
+                <IconButton
+                  icon={<X />}
+                  aria-label={t("upload.removeFile", { name: selectedFile.name })}
+                  tooltip={t("upload.removeFileTooltip")}
+                  disabled={uploadMutation.isPending}
+                  onClick={handleRemoveFile}
+                />
+              </div>
             </div>
           )}
 
@@ -281,12 +326,14 @@ function BulkImportUploadContent({ deps }: { deps: BulkImportApiDeps }) {
 
         <Card padding="none" className="overflow-hidden lg:col-span-7">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
-            <h2 className="text-title font-semibold text-text">{t("upload.columnsHeader")}</h2>
+            <h2 id={columnsHeadingId} className="text-title font-semibold text-text">
+              {t("upload.columnsHeader")}
+            </h2>
             <span className="text-body text-text-muted">{t("upload.columnsHint")}</span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-body">
+            <table aria-labelledby={columnsHeadingId} className="w-full border-collapse text-body">
               <thead>
                 <tr className="bg-table-head text-left text-field-label text-text-muted">
                   <th scope="col" className="px-4 py-3 font-semibold">

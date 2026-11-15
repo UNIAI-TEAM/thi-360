@@ -7,12 +7,16 @@ import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
+import { notify } from "@thi360/ui";
 import { defaultUsersApiDeps, type UserDetail, type UsersApiDeps, UsersApiError } from "../api";
 import { UserDetailView } from "../components/user-detail-view";
+import { createResetPasswordSchema } from "../schema";
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 const BASE_USER: UserDetail = {
@@ -211,6 +215,8 @@ function renderDetail(
 beforeEach(() => {
   routerMock.push.mockReset();
   stubRbacFetch();
+  // Tab của trang chi tiết nằm trong URL: mỗi test bắt đầu ở đường dẫn sạch.
+  window.history.replaceState(null, "", `/users/${BASE_USER.id}`);
 });
 
 afterEach(() => {
@@ -295,7 +301,11 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     const reasonInput = screen.getByLabelText(/Lý do ngừng hoạt động/);
     const confirmBtn = screen.getByRole("dialog").querySelector("button:last-child") as HTMLButtonElement;
-    expect(confirmBtn).toBeDisabled();
+    // U-15: nút xác nhận luôn bấm được; bấm khi chưa có lý do thì báo lỗi ngay ở ô lý do thay vì khóa nút.
+    expect(confirmBtn).toBeEnabled();
+    await userEvent.click(confirmBtn);
+    expect(reasonInput).toBeInvalid();
+    expect(deactivateMock).not.toHaveBeenCalled();
 
     await userEvent.type(reasonInput, "Vi phạm quy chế");
     await userEvent.click(confirmBtn);
@@ -447,10 +457,12 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     const generated = (passwordInput as HTMLInputElement).value;
     expect(generated.length).toBe(12);
 
+    // Ô lý do có maxLength 500 (U-16): dán 501 ký tự thì ô chỉ nhận 500, không cần báo lỗi sau khi gửi.
+    // Quy tắc 500 ký tự của schema vẫn giữ làm lưới an toàn (kiểm ở test schema bên dưới).
     await userEvent.click(reasonInput);
     await userEvent.paste("a".repeat(501));
-    await userEvent.click(submitButton);
-    expect(await within(dialog).findByText(viMessages.users.validation.reasonMax)).toBeInTheDocument();
+    expect((reasonInput as HTMLTextAreaElement).value).toHaveLength(500);
+    expect(within(dialog).queryByText(viMessages.users.validation.reasonMax)).not.toBeInTheDocument();
     expect(resetMock).not.toHaveBeenCalled();
 
     await userEvent.clear(reasonInput);
@@ -545,5 +557,205 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
 
     await userEvent.click(await screen.findByRole("tab", { name: "Roles & permissions" }));
     expect(await screen.findByText(en.rbac.userRbac.deletedAccountNote)).toBeInTheDocument();
+  });
+});
+
+describe("Hộp thoại xác nhận báo lỗi ngay bên trong, không dùng toast (U-07)", () => {
+  it("ngừng hoạt động thất bại: lỗi hiện trong hộp thoại, thử lại thì xóa lỗi, đóng rồi mở lại không còn lỗi cũ", async () => {
+    const deactivateMock = vi
+      .fn<UsersApiDeps["deactivateUser"]>()
+      .mockRejectedValueOnce(new UsersApiError(409, "raw backend text", "ALREADY_INACTIVE"))
+      .mockRejectedValueOnce(new UsersApiError(500, "raw backend text", "INTERNAL_ERROR"))
+      .mockResolvedValueOnce({ ...BASE_USER, status: "INACTIVE" });
+    const toastError = vi.spyOn(notify, "error");
+    renderDetail(makeDeps({ deactivateUser: deactivateMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ngừng hoạt động" }));
+    let dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Lý do ngừng hoạt động/), "Vi phạm");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Ngừng hoạt động" }));
+
+    // Lần 1 thất bại: hộp thoại còn mở, lỗi nằm bên trong dưới dạng role=alert, không có toast.
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert).toHaveTextContent(viMessages.users.errorCodes.ALREADY_INACTIVE);
+    expect(screen.queryByText(/raw backend text/)).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+
+    // Thử lại: lỗi cũ được thay bằng lỗi của lần mới.
+    await userEvent.click(within(dialog).getByRole("button", { name: "Ngừng hoạt động" }));
+    await waitFor(() =>
+      expect(within(dialog).getByRole("alert")).toHaveTextContent(viMessages.users.errorCodes.INTERNAL_ERROR),
+    );
+    expect(within(dialog).getAllByRole("alert")).toHaveLength(1);
+
+    // Đóng rồi mở lại: không mang lỗi của lần trước sang.
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("xóa thất bại (không phải lỗi chặn xóa): lỗi hiện trong hộp thoại xóa", async () => {
+    const deleteMock = vi
+      .fn<UsersApiDeps["deleteUser"]>()
+      .mockRejectedValueOnce(new UsersApiError(403, "raw", "SELF_DELETE"));
+    const toastError = vi.spyOn(notify, "error");
+    renderDetail(makeDeps({ deleteUser: deleteMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Xóa" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Lý do xóa tài khoản/), "Trùng");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Xóa tài khoản" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      viMessages.users.errorCodes.SELF_DELETE,
+    );
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("kích hoạt lại thất bại: lỗi hiện trong hộp thoại kích hoạt", async () => {
+    const activateMock = vi
+      .fn<UsersApiDeps["activateUser"]>()
+      .mockRejectedValueOnce(new UsersApiError(409, "raw", "ALREADY_ACTIVE"));
+    const toastError = vi.spyOn(notify, "error");
+    renderDetail(
+      makeDeps({
+        getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({ ...BASE_USER, status: "INACTIVE" })),
+        activateUser: activateMock,
+      }),
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Kích hoạt lại" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kích hoạt lại" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      viMessages.users.errorCodes.ALREADY_ACTIVE,
+    );
+    expect(toastError).not.toHaveBeenCalled();
+  });
+});
+
+describe("ResetPasswordDialog: gửi biểu mẫu sai thì focus về ô sai đầu tiên (U-08)", () => {
+  it("mật khẩu yếu: focus chuyển vào ô mật khẩu mới", async () => {
+    const resetMock = vi.fn<UsersApiDeps["resetUserPassword"]>();
+    renderDetail(makeDeps({ resetUserPassword: resetMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Đặt lại mật khẩu" }));
+    const dialog = await screen.findByRole("dialog");
+    const passwordInput = dialog.querySelector<HTMLInputElement>("input[autocomplete='new-password']")!;
+    await userEvent.type(passwordInput, "abc");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Đặt lại mật khẩu" }));
+
+    await waitFor(() => expect(passwordInput).toHaveAttribute("aria-invalid", "true"));
+    expect(passwordInput).toHaveFocus();
+    expect(resetMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("ResetPasswordDialog: không làm mất dữ liệu đã nhập khi đóng nhầm (U-11)", () => {
+  it("đã nhập mật khẩu: Esc hỏi lại, Tiếp tục nhập giữ dữ liệu, Bỏ thay đổi mới đóng; chưa nhập thì đóng ngay", async () => {
+    renderDetail(makeDeps());
+
+    await userEvent.click(await screen.findByRole("button", { name: "Đặt lại mật khẩu" }));
+    let dialog = await screen.findByRole("dialog", { name: "Đặt lại mật khẩu" });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "Đặt lại mật khẩu" }));
+    dialog = await screen.findByRole("dialog", { name: "Đặt lại mật khẩu" });
+    const passwordInput = dialog.querySelector<HTMLInputElement>("input[autocomplete='new-password']")!;
+    await userEvent.type(passwordInput, "Admin@123");
+
+    await userEvent.keyboard("{Escape}");
+    let discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Tiếp tục nhập" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).not.toBeInTheDocument(),
+    );
+    expect(passwordInput).toHaveValue("Admin@123");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Bỏ thay đổi" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+});
+
+describe("Biểu mẫu sửa thông tin: kiểm tra khi rời ô và gợi ý cho ô nhập (U-16)", () => {
+  it("email sai báo lỗi khi rời ô; ô có maxLength và tắt tự điền", async () => {
+    renderDetail(makeDeps());
+    const email = await screen.findByLabelText(/^Email/);
+    expect(email).toHaveAttribute("maxlength", "255");
+    expect(email).toHaveAttribute("autocomplete", "off");
+    expect(screen.getByLabelText(/Họ và tên/)).toHaveAttribute("maxlength", "200");
+    expect(screen.getByLabelText(/Số điện thoại/)).toHaveAttribute("maxlength", "30");
+
+    await userEvent.clear(email);
+    await userEvent.type(email, "sai-email");
+    await userEvent.tab();
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "true"));
+  });
+
+  it("ô lý do đặt lại mật khẩu giới hạn 500 ký tự", async () => {
+    renderDetail(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: "Đặt lại mật khẩu" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText(/Lý do đặt lại mật khẩu/)).toHaveAttribute("maxlength", "500");
+  });
+});
+
+describe("Schema đặt lại mật khẩu", () => {
+  it("vẫn từ chối lý do dài hơn 500 ký tự (lưới an toàn sau maxLength của ô nhập)", () => {
+    const schema = createResetPasswordSchema(
+      { passwordWeak: "weak", passwordSameAsUsername: "same", reasonMax: "too long" },
+      "student01",
+    );
+    const result = schema.safeParse({ password: "Admin@123", reason: "a".repeat(501), mustChangePassword: false });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe("too long");
+  });
+});
+
+describe("Trang chi tiết: tiêu đề riêng, tab trong URL, dòng chưa đăng nhập (U-22)", () => {
+  it("tiêu đề trang mang tên đăng nhập của tài khoản", async () => {
+    renderDetail(makeDeps());
+    await screen.findByRole("heading", { name: BASE_USER.fullName });
+    await waitFor(() => expect(document.title).toBe("student01 · Tài khoản · Thi 360"));
+  });
+
+  it("đổi tab ghi ?tab= vào URL (giữ tham số khác); về tab mặc định thì bỏ tham số", async () => {
+    window.history.replaceState(null, "", `/users/${BASE_USER.id}?from=list`);
+    renderDetail(makeDeps());
+    await userEvent.click(await screen.findByRole("tab", { name: "Lớp học" }));
+    expect(window.location.search).toBe("?from=list&tab=classes");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Thông tin" }));
+    expect(window.location.search).toBe("?from=list");
+  });
+
+  it("mở trang với ?tab=history thì tab Lịch sử thay đổi đang chọn", async () => {
+    window.history.replaceState(null, "", `/users/${BASE_USER.id}?tab=history`);
+    renderDetail(makeDeps());
+    const historyTab = await screen.findByRole("tab", { name: "Lịch sử thay đổi" });
+    expect(historyTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("?tab= không hợp lệ hoặc tab không có quyền xem thì mở tab Thông tin", async () => {
+    window.history.replaceState(null, "", `/users/${BASE_USER.id}?tab=history`);
+    renderDetail(makeDeps(), { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW"] });
+    expect(await screen.findByRole("tab", { name: "Thông tin" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("tài khoản chưa đăng nhập lần nào: dòng phụ không ghép thành \"Đăng nhập cuối Chưa đăng nhập\"", async () => {
+    renderDetail(
+      makeDeps({ getUser: vi.fn<UsersApiDeps["getUser"]>(async () => ({ ...BASE_USER, lastLoginAt: undefined })) }),
+    );
+    expect(
+      await screen.findByText("student01 · U000101 · Do quản trị tạo · Chưa đăng nhập lần nào"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Đăng nhập cuối Chưa đăng nhập/)).not.toBeInTheDocument();
   });
 });

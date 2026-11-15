@@ -21,6 +21,7 @@ import {
   Skeleton,
   StatusChip,
   Textarea,
+  focusRing,
 } from "@thi360/ui";
 import { Plus, Search, TriangleAlert, Users, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -721,7 +722,8 @@ export function BulkAssignTab({
                         setAction(option);
                       }}
                       className={cn(
-                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50",
+                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+                        focusRing,
                         active
                           ? "bg-surface font-semibold text-primary-text shadow-xs"
                           : "font-medium text-text-secondary hover:text-text",
@@ -759,7 +761,8 @@ export function BulkAssignTab({
                         setTarget(option);
                       }}
                       className={cn(
-                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50",
+                        "cursor-pointer rounded-md px-4 text-label transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+                        focusRing,
                         active
                           ? "bg-surface font-semibold text-primary-text shadow-xs"
                           : "font-medium text-text-secondary hover:text-text",
@@ -902,7 +905,10 @@ export function BulkAssignTab({
                               prev.filter((item) => item !== code),
                             );
                           }}
-                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-primary-text hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                          className={cn(
+                            "inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-primary-text hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50",
+                            focusRing,
+                          )}
                         >
                           <X aria-hidden="true" className="size-3.5" />
                         </button>

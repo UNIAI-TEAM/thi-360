@@ -21,7 +21,8 @@ import { initialsOf } from "@thi360/web-kit/client";
 import { ArrowLeft, UserX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
@@ -35,7 +36,7 @@ import {
   USERS_QUERY_KEYS,
   UsersApiError,
 } from "../api";
-import { createUpdateUserSchema, type UpdateUserFormValues } from "../schema";
+import { createUpdateUserSchema, type UpdateUserFormValues, USER_FIELD_MAX_LENGTH } from "../schema";
 import {
   formatUserDateTime,
   getUserDisplayStatus,
@@ -47,6 +48,28 @@ import { UserClassesTab } from "@/features/classes/components/user-classes-tab";
 import { LearningProfileTab } from "./learning-profile-tab";
 import { UserHistoryTab } from "./user-history-tab";
 import { UserRolesPermissionsPlaceholder } from "./user-roles-permissions-placeholder";
+
+/**
+ * Tab của trang chi tiết, giữ trong `?tab=` để tải lại hoặc gửi đường dẫn vẫn mở đúng tab (DESIGN.md 5.13: tên và
+ * giá trị query bằng tiếng Anh). Tab mặc định `info` không ghi vào URL.
+ */
+const DETAIL_TABS = ["info", "classes", "roles", "learning", "history"] as const;
+type DetailTab = (typeof DETAIL_TABS)[number];
+const DEFAULT_DETAIL_TAB: DetailTab = "info";
+
+function isDetailTab(value: string | null): value is DetailTab {
+  return value !== null && (DETAIL_TABS as readonly string[]).includes(value);
+}
+
+/** Ghi tab vào URL tại chỗ (không thêm mục lịch sử, không tải lại trang), giữ nguyên các tham số khác. */
+function writeTabToUrl(pathname: string, tab: DetailTab): void {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  if (tab === DEFAULT_DETAIL_TAB) params.delete("tab");
+  else params.set("tab", tab);
+  const query = params.toString();
+  window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+}
 
 export interface UserDetailViewProps {
   userId: string;
@@ -68,7 +91,7 @@ export function UserDetailView({ userId, deps }: UserDetailViewProps) {
   return <UserDetailContent userId={userId} deps={{ ...defaultUsersApiDeps, ...deps }} />;
 }
 
-function UserDetailSkeleton() {
+export function UserDetailSkeleton() {
   const common = useTranslations("common");
   return (
     <div role="status" aria-label={common("loading")} className="flex flex-col gap-4">
@@ -84,12 +107,37 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
   const common = useTranslations("common");
   const { can } = usePermissions();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("info");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [selectedTab, setSelectedTab] = useState<DetailTab>(() => {
+    const requested = searchParams.get("tab");
+    return isDetailTab(requested) ? requested : DEFAULT_DETAIL_TAB;
+  });
+  // Tab không được xem (thiếu quyền) thì mở tab mặc định thay vì để trống nội dung.
+  const activeTab: DetailTab =
+    (selectedTab === "learning" && !can("USER.LEARNING_VIEW")) ||
+    (selectedTab === "history" && !can("AUDIT.VIEW"))
+      ? DEFAULT_DETAIL_TAB
+      : selectedTab;
+
+  function handleTabChange(value: string) {
+    if (!isDetailTab(value)) return;
+    setSelectedTab(value);
+    writeTabToUrl(pathname, value);
+  }
 
   const detailQuery = useQuery({
     queryKey: USERS_QUERY_KEYS.detail(userId),
     queryFn: () => deps.getUser(userId),
   });
+
+  // Mỗi tài khoản một tiêu đề trang riêng ("<tên đăng nhập> · Tài khoản · Thi 360"); tiêu đề chung của route chỉ
+  // dùng tới khi dữ liệu về. Trang kế tiếp tự đặt lại tiêu đề của nó khi điều hướng.
+  const loadedUsername = detailQuery.data?.username;
+  const accountsTitle = t("list.title");
+  useEffect(() => {
+    if (loadedUsername) document.title = `${loadedUsername} · ${accountsTitle} · Thi 360`;
+  }, [loadedUsername, accountsTitle]);
 
   function refreshUser() {
     void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEYS.detail(userId) });
@@ -147,9 +195,11 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
 
   const displayStatus = getUserDisplayStatus(user);
   const isDeleted = Boolean(user.deletedAt);
-  const lastLoginDisplay = user.lastLoginAt
-    ? formatUserDateTime(user.lastLoginAt)
-    : t("detail.neverLoggedIn");
+  const subtitleValues = {
+    username: user.username,
+    code: user.code,
+    source: t(`sources.${user.source}`),
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -178,12 +228,12 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
               </StatusChip>
             </div>
             <p className="text-body text-text-secondary tabular-nums">
-              {t("detail.subtitle", {
-                username: user.username,
-                code: user.code,
-                source: t(`sources.${user.source}`),
-                lastLogin: lastLoginDisplay,
-              })}
+              {user.lastLoginAt
+                ? t("detail.subtitle", {
+                    ...subtitleValues,
+                    lastLogin: formatUserDateTime(user.lastLoginAt),
+                  })
+                : t("detail.subtitleNeverLoggedIn", subtitleValues)}
             </p>
           </div>
         </div>
@@ -263,7 +313,7 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
         </div>
       )}
 
-      <Tabs variant="content" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs variant="content" value={activeTab} onValueChange={handleTabChange}>
         <TabsList aria-label={t("detail.tabsAriaLabel")}>
           <TabsTrigger value="info">{t("detail.tabs.info")}</TabsTrigger>
           <TabsTrigger value="classes">{t("detail.tabs.classes")}</TabsTrigger>
@@ -358,6 +408,8 @@ function UserInfoTab({
     formState: { errors, isDirty },
   } = useForm<UpdateUserFormValues>({
     resolver: zodResolver(schema),
+    // Kiểm tra khi rời ô (lần đầu) rồi kiểm tra lại theo từng thay đổi (U-16).
+    mode: "onTouched",
     defaultValues: {
       fullName: user.fullName,
       email: user.email ?? "",
@@ -494,6 +546,9 @@ function UserInfoTab({
               <Input
                 {...controlProps}
                 {...register("fullName")}
+                // Sửa thông tin của người khác: tắt tự điền để trình duyệt không gợi ý thông tin của quản trị viên.
+                autoComplete="off"
+                maxLength={USER_FIELD_MAX_LENGTH.fullName}
                 disabled={!canEdit || mutation.isPending}
               />
             )}
@@ -505,6 +560,11 @@ function UserInfoTab({
                 {...controlProps}
                 type="email"
                 {...register("email")}
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={USER_FIELD_MAX_LENGTH.email}
                 disabled={!canEdit || mutation.isPending}
               />
             )}
@@ -516,6 +576,8 @@ function UserInfoTab({
                 {...controlProps}
                 type="tel"
                 {...register("phone")}
+                autoComplete="off"
+                maxLength={USER_FIELD_MAX_LENGTH.phone}
                 disabled={!canEdit || mutation.isPending}
               />
             )}

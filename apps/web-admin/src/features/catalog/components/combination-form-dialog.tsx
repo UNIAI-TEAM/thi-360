@@ -50,6 +50,8 @@ import {
 } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { createCombinationFormSchema, type CombinationFormValues } from "../schemas";
+import { DRAG_HANDLE, focusRing } from "../styles";
+import { usePrefersReducedMotion } from "../use-reduced-motion";
 import {
   getCatalogErrorCode,
   getCatalogFieldErrors,
@@ -897,10 +899,13 @@ function SortableSubjectRow({
 }) {
   const t = useTranslations("catalog");
   const sortableAttributes = useCatalogSortableAttributes();
+  const reduceMotion = usePrefersReducedMotion();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
     attributes: sortableAttributes,
+    // C-17: giảm chuyển động thì bỏ hiệu ứng trượt 200ms của dnd-kit, dòng nhảy thẳng tới chỗ mới.
+    transition: reduceMotion ? null : undefined,
   });
 
   const style: CSSProperties = {
@@ -920,7 +925,11 @@ function SortableSubjectRow({
       <button
         type="button"
         aria-label={t("combinationDialog.dragSubjectLabel", { name: label })}
-        className="inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-sm text-text-muted hover:bg-subtle hover:text-text-secondary active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+        className={cn(
+          "inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-sm text-text-muted hover:bg-subtle hover:text-text-secondary active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40",
+          DRAG_HANDLE,
+          focusRing,
+        )}
         disabled={disabled}
         {...attributes}
         {...listeners}

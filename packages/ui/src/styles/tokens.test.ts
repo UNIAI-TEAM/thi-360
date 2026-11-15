@@ -123,3 +123,51 @@ describe("tokens.css tương phản chữ/nền >= 4.5:1", () => {
     check(DARK_PAIRS, theme);
   });
 });
+
+/**
+ * Cỡ chữ và chiều cao dòng theo DESIGN.md mục 3, tính bằng px ở cỡ gốc 16px. Token viết bằng rem để chữ đi theo
+ * cỡ chữ người dùng đặt trong trình duyệt; bảng này giữ cho giá trị ở thiết lập mặc định không đổi.
+ */
+const TEXT_SIZES_PX: Record<string, [size: number, lineHeight: number]> = {
+  display: [44, 50],
+  h1: [30, 38],
+  h2: [27, 40],
+  h3: [18, 28],
+  title: [16, 24],
+  body: [14, 21],
+  label: [14, 20],
+  "field-label": [13, 20],
+  caption: [12.5, 19],
+  overline: [13, 20],
+  "page-title": [22, 30],
+};
+
+describe("tokens.css cỡ chữ theo cỡ chữ của người dùng", () => {
+  const textTokens = [...light].filter(([name]) => name.startsWith("--text-"));
+
+  it("mọi token cỡ chữ và chiều cao dòng dùng rem, không dùng px", () => {
+    expect(textTokens).toHaveLength(Object.keys(TEXT_SIZES_PX).length * 2);
+    for (const [name, value] of textTokens) {
+      expect(value, name).toMatch(/^\d+(\.\d+)?rem$/);
+    }
+  });
+
+  it.each(Object.entries(TEXT_SIZES_PX))("%s giữ đúng cỡ của DESIGN.md ở cỡ gốc 16px", (name, [size, lineHeight]) => {
+    expect(parseFloat(token(`--text-${name}`, "light")) * 16).toBe(size);
+    expect(parseFloat(token(`--text-${name}--line-height`, "light")) * 16).toBe(lineHeight);
+  });
+
+  it.each(["web-admin", "web-student"])("%s: body dùng rem (14/21 ở cỡ gốc 16px) và không đặt cỡ chữ cho html", (app) => {
+    const globals = readFileSync(`../../apps/${app}/src/app/globals.css`, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const body = /(?:^|\n)body\s*\{([^}]*)\}/.exec(globals)?.[1] ?? "";
+    expect(body).toMatch(/font-size:\s*0\.875rem;/);
+    expect(body).toMatch(/line-height:\s*1\.3125rem;/);
+    expect(globals).not.toMatch(/font-size:\s*[\d.]+px/);
+    // Cỡ gốc là của trình duyệt (và của hệ điều hành khi trang bật <meta name="text-scale">): không ghi đè.
+    for (const [, selector, declarations] of globals.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      if (/(^|[\s,])(html|:root)\s*$/.test(selector!.trim())) {
+        expect(declarations, selector).not.toMatch(/font-size/);
+      }
+    }
+  });
+});
