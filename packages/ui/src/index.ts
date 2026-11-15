@@ -91,6 +91,7 @@ export {
 export { NavTab, NavTabs, type NavTabProps, type NavTabsProps } from "./components/nav-tabs";
 export {
   Table,
+  type TableCards,
   type TableProps,
   type TableSelection,
   type TableSorting,

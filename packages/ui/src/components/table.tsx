@@ -11,10 +11,11 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { focusRing, focusRingInset } from "../lib/styles";
 import { Checkbox } from "./checkbox";
+import { Select } from "./select";
 import { Skeleton } from "./skeleton";
 
 export type TableSelection<TData = unknown> = {
@@ -32,6 +33,28 @@ export type TableSorting = {
   onChange: OnChangeFn<SortingState>;
   /** Sắp xếp ở máy chủ: bảng không tự sắp xếp lại `data`. */
   manual?: boolean;
+};
+
+/**
+ * Chế độ danh sách thẻ cho khung hẹp (DESIGN.md mục 5.9). Khi khung chứa bảng hẹp hơn `breakpoint`, bảng hiện
+ * thành danh sách (`<ul role="list">`), mỗi dòng dữ liệu là một thẻ do `render` vẽ; rộng hơn thì là bảng như cũ.
+ */
+export type TableCards<TData> = {
+  /**
+   * Nội dung một thẻ: dòng tiêu đề (thường là liên kết tới chi tiết), các dòng phụ, chip trạng thái, nút thao tác.
+   * Ô chọn dòng (khi bảng có `selection`) do `Table` vẽ ở đầu thẻ, không vẽ lại ở đây.
+   *
+   * Cả thẻ bấm được để mở chi tiết: cho liên kết tiêu đề lớp `after:absolute after:inset-0` (thẻ đã là `relative`);
+   * nút và menu trong thẻ thêm `relative z-1` để nằm trên vùng bấm đó.
+   */
+  render: (row: TData, index: number) => ReactNode;
+  /** Bề rộng khung (px) dưới đó hiện thẻ. Mặc định 640 (40rem). */
+  breakpoint?: number;
+  /**
+   * Nhãn cho ô chọn sắp xếp, cần khi bảng có `sorting`: trên thẻ không có tiêu đề cột để bấm, nên các cột sắp xếp
+   * được thành một ô chọn "‹cột› · ‹chiều›". Tên cột lấy từ `header` (chuỗi) hoặc `meta.label` của cột.
+   */
+  sortLabels?: { label: string; ascending: string; descending: string };
 };
 
 export type TableProps<TData> = {
@@ -69,6 +92,8 @@ export type TableProps<TData> = {
   error?: ReactNode;
   /** Hiện khi không lỗi, không tải và không có dòng nào. */
   empty: ReactNode;
+  /** Bật chế độ danh sách thẻ khi khung hẹp. */
+  cards?: TableCards<TData>;
   /** Tên bảng cho trình đọc màn hình. Khi bảng tràn ngang, vùng cuộn bọc ngoài cũng mang tên này. */
   "aria-label": string;
   className?: string;
@@ -161,6 +186,34 @@ function useInlineOverflow() {
   return [ref, overflows] as const;
 }
 
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * Khung chứa có hẹp hơn `breakpoint` không, đo bằng `ResizeObserver` (đổi theo cửa sổ, sidebar, bố cục của màn).
+ * Chọn một trong hai dạng để dựng chứ không dựng cả hai rồi ẩn bằng CSS: nội dung không bị lặp trong DOM và cây
+ * truy cập. Chưa đo được (máy chủ, jsdom, bề rộng 0) thì là bảng.
+ */
+function useCardMode(enabled: boolean, breakpoint: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [cards, setCards] = useState(false);
+
+  useIsomorphicLayoutEffect(() => {
+    const element = ref.current;
+    if (!enabled || !element) return;
+    const measure = () => {
+      const width = element.getBoundingClientRect().width;
+      if (width > 0) setCards(width < breakpoint);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [enabled, breakpoint]);
+
+  return [ref, enabled && cards] as const;
+}
+
 /** Bọc TanStack Table: sắp xếp, chọn dòng, trạng thái tải/rỗng/lỗi (DESIGN.md mục 5.9). */
 export function Table<TData>({
   columns,
@@ -174,9 +227,12 @@ export function Table<TData>({
   stickyColumns,
   error,
   empty,
+  cards,
   className,
   "aria-label": ariaLabel,
 }: TableProps<TData>) {
+  const [modeRef, cardMode] = useCardMode(cards !== undefined, cards?.breakpoint ?? 640);
+  const selectAllId = useId();
   const hasSelection = selection !== undefined;
   const allColumns = useMemo<ColumnDef<TData>[]>(
     () => (hasSelection ? [{ id: SELECT_COLUMN_ID, enableSorting: false }, ...columns] : columns),
@@ -240,7 +296,7 @@ export function Table<TData>({
     return cn(bodyCell, extra, pin && [pin, pinnedBodyCell]);
   }
 
-  return (
+  const tableView = (
     <div
       ref={scrollerRef}
       {...(overflows ? { role: "region", "aria-label": ariaLabel, tabIndex: 0 } : null)}
@@ -374,6 +430,114 @@ export function Table<TData>({
           )}
         </tbody>
       </table>
+    </div>
+  );
+
+  if (!cards) return tableView;
+
+  /** Ô chọn sắp xếp của dạng thẻ: mỗi cột sắp xếp được có hai lựa chọn, tăng dần và giảm dần. */
+  const sortLabels = cards.sortLabels;
+  const sortOptions =
+    sorting && sortLabels
+      ? table.getAllLeafColumns().flatMap((column) => {
+          if (!column.getCanSort()) return [];
+          const header = column.columnDef.header;
+          const label =
+            typeof header === "string" ? header : (column.columnDef.meta as { label?: string } | undefined)?.label;
+          if (!label) return [];
+          return [
+            { value: `${column.id}:asc`, label: `${label} · ${sortLabels.ascending}` },
+            { value: `${column.id}:desc`, label: `${label} · ${sortLabels.descending}` },
+          ];
+        })
+      : [];
+  const currentSort = sorting?.state[0];
+  const showSelectAll = selection !== undefined && !loading && !error && rows.length > 0;
+
+  const cardView = (
+    <div>
+      {(showSelectAll || sortOptions.length > 0) && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-2.5">
+          {showSelectAll ? (
+            <div className="flex min-h-11 items-center gap-3">
+              <Checkbox
+                id={selectAllId}
+                checked={selectAllChecked}
+                onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked === true)}
+              />
+              <label htmlFor={selectAllId} className="text-label font-medium text-text-secondary">
+                {selection.selectAllLabel}
+              </label>
+            </div>
+          ) : (
+            <span />
+          )}
+          {sortLabels && sortOptions.length > 0 && (
+            <Select
+              aria-label={sortLabels.label}
+              placeholder={sortLabels.label}
+              options={sortOptions}
+              value={currentSort ? `${currentSort.id}:${currentSort.desc ? "desc" : "asc"}` : undefined}
+              onValueChange={(value) => {
+                const separator = value.lastIndexOf(":");
+                table.setSorting([{ id: value.slice(0, separator), desc: value.slice(separator + 1) === "desc" }]);
+              }}
+              className="w-auto max-w-full min-w-48"
+            />
+          )}
+        </div>
+      )}
+      <ul
+        // Tailwind bỏ dấu đầu dòng (`list-style: none`) làm Safari/VoiceOver không coi là danh sách: ghi rõ vai trò.
+        role="list"
+        aria-label={ariaLabel}
+        aria-busy={loading || refreshing || undefined}
+        className={cn(
+          "divide-y divide-border transition-opacity duration-150 motion-reduce:transition-none",
+          refreshing && !loading && "opacity-60",
+        )}
+      >
+        {loading ? (
+          Array.from({ length: loadingRows }, (_, index) => (
+            <li key={index} className="flex flex-col gap-2 px-4 py-3.5">
+              <Skeleton className="h-4 w-2/5" />
+              <Skeleton className="h-3.5 w-3/5" />
+            </li>
+          ))
+        ) : error ? (
+          <li>
+            <div role="alert">{error}</div>
+          </li>
+        ) : rows.length === 0 ? (
+          <li>{empty}</li>
+        ) : (
+          rows.map((row) => (
+            <li
+              key={row.id}
+              data-state={row.getIsSelected() ? "selected" : undefined}
+              className="relative flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-subtle data-[state=selected]:bg-primary-50 motion-reduce:transition-none"
+            >
+              {selection && (
+                <div className="relative z-1 flex min-h-6 items-center">
+                  <Checkbox
+                    aria-label={selection.rowLabel(row.index, row.original)}
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(checked) => row.toggleSelected(checked === true)}
+                  />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">{cards.render(row.original, row.index)}</div>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+
+  return (
+    // Phần tử đo bề rộng: cùng một phần tử ở cả hai dạng, để đổi dạng không làm mất điểm đo.
+    <div ref={modeRef} className="min-w-0">
+      {cardMode ? cardView : tableView}
     </div>
   );
 }
