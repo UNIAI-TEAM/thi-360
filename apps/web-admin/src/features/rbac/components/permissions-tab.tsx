@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, EmptyState, Input, Select, Skeleton, StatusChip } from "@thi360/ui";
+import { Button, Card, EmptyState, Input, Select, Skeleton, StatusChip, cn, focusRing } from "@thi360/ui";
 import { Info, KeyRound, Search, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -304,7 +304,10 @@ function PermissionGroupSection({
                   type="button"
                   aria-label={t("permissionsTab.userCountAria", { name: shortName })}
                   onClick={() => onSelectPermissionUsers(item.code)}
-                  className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-primary-text tabular-nums hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-600/30"
+                  className={cn(
+                    "inline-flex min-h-11 cursor-pointer items-center font-semibold text-primary-text tabular-nums hover:underline focus-visible:rounded-sm",
+                    focusRing,
+                  )}
                 >
                   {t("permissionsTab.userCountValue", { count: item.userCount })}
                 </button>

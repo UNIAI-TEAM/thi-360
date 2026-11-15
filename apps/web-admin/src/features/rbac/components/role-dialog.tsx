@@ -17,6 +17,7 @@ import {
   Select,
   Skeleton,
   Textarea,
+  focusRing,
 } from "@thi360/ui";
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -356,7 +357,7 @@ function RoleDialogBody({
                   onClick={() => handleScopeChange(scope)}
                   className={cn(
                     "inline-flex items-center justify-center rounded-sm text-label transition-colors duration-150 motion-reduce:transition-none",
-                    "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                    focusRing,
                     "disabled:cursor-not-allowed disabled:opacity-60",
                     active
                       ? "bg-surface font-semibold text-primary-text shadow-xs"

@@ -16,6 +16,7 @@ import {
   Skeleton,
   StatusChip,
   Table,
+  focusRing,
 } from "@thi360/ui";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Trash2, TriangleAlert, Upload } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -69,7 +70,7 @@ const PROGRESS_BAR_CLASS = [
 
 /** Tiêu đề của bước nhận focus bằng mã (tabIndex -1) khi đổi bước; vòng focus giống các điều khiển của bộ giao diện. */
 const STEP_HEADING_FOCUS =
-  "rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-text";
+  `rounded-sm ${focusRing}`;
 
 type BatchPhase = "preview" | "confirm" | "processing" | "result";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, cn } from "@thi360/ui";
+import { Checkbox, cn, focusRing } from "@thi360/ui";
 import {
   Eye,
   GraduationCap,
@@ -334,7 +334,7 @@ export function ObjectPermissionPicker({
                         }}
                         className={cn(
                           "inline-flex h-9 items-center justify-center gap-1.5 rounded-sm text-label transition-colors duration-150 motion-reduce:transition-none",
-                          "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                          focusRing,
                           "disabled:cursor-not-allowed",
                           currentLevel === "VIEW"
                             ? "bg-surface font-semibold text-primary-text shadow-xs"
@@ -361,7 +361,7 @@ export function ObjectPermissionPicker({
                         }}
                         className={cn(
                           "inline-flex h-9 items-center justify-center gap-1.5 rounded-sm text-label transition-colors duration-150 motion-reduce:transition-none",
-                          "focus-visible:ring-3 focus-visible:ring-primary-600/30 focus-visible:outline-none",
+                          focusRing,
                           "disabled:cursor-not-allowed",
                           currentLevel === "MODIFY"
                             ? "bg-surface font-semibold text-primary-text shadow-xs"
