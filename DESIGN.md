@@ -342,6 +342,8 @@ Giữ bộ cấu hình giao diện như reap, áp dụng **toàn hệ thống** 
 | Chế độ mặc định | Sáng, tối (tab phân đoạn). Nằm trên cùng; chú thích: "Áp dụng cho người chưa tự chọn chế độ ở thanh trên cùng" |
 | Bộ phối màu | 9 thẻ bộ cố định để chọn nhanh (mỗi thẻ: hai ô màu, tên, dải thu nhỏ nút chính và nút nhấn); thẻ đang dùng có viền `primary-600` và dấu tích. Thẻ thứ mười "Tự tùy chỉnh" mở hai ô Màu chính và Màu nhấn (bảng chọn màu + ô nhập mã). Danh sách bộ, cách suy ra token và các kiểm tra: spec mục 13.1 |
 
+- **Người chưa tự chọn sáng/tối** dùng chế độ mặc định ở trên (cài sẵn: **Sáng**). Không tự theo chế độ sáng/tối của hệ điều hành (`prefers-color-scheme`); người dùng đổi bằng nút sáng/tối ở thanh trên, lựa chọn lưu bằng cookie (quyết định 2026-11-15, S-09).
+
 Không có tùy chọn bố cục và kích thước: sidebar, toolbar, bo góc, chiều cao điều khiển cố định theo tài liệu này.
 
 - Thanh dưới cùng: **Khôi phục mặc định** (kiểu Phụ) và **Lưu và áp dụng** (kiểu Chính). Thay đổi chưa lưu chỉ hiện ở vùng xem trước.
