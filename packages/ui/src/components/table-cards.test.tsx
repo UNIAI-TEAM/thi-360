@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Table, type TableCards, type TableProps } from "./table";
+import { Table, useCardMode, type TableCards, type TableProps } from "./table";
 
 type Person = { id: string; name: string; age: number };
 
@@ -165,5 +165,38 @@ describe("Table: danh sách thẻ khi khung hẹp", () => {
     expect(list).toHaveAttribute("aria-busy", "true");
     expect(list).toHaveClass("opacity-60");
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+  });
+});
+
+/** Bảng tự viết dùng chung cách đo với `Table`: phần tử đo luôn có mặt, chỉ phần bên trong đổi dạng. */
+function HandWritten({ enabled = true, breakpoint = 416 }: { enabled?: boolean; breakpoint?: number }) {
+  const [ref, cardMode] = useCardMode<HTMLElement>(enabled, breakpoint);
+  return (
+    <section ref={ref} aria-label="Khung">
+      {cardMode ? <ul role="list" aria-label="Thẻ" /> : <table aria-label="Bảng" />}
+    </section>
+  );
+}
+
+describe("useCardMode: hook đo khung cho bảng tự viết", () => {
+  it("chưa đo được bề rộng thì là bảng", () => {
+    render(<HandWritten />);
+    expect(screen.getByRole("table", { name: "Bảng" })).toBeInTheDocument();
+  });
+
+  it("hẹp hơn ngưỡng là thẻ, bằng hoặc rộng hơn ngưỡng là bảng, đổi theo ResizeObserver", () => {
+    const setWidth = installWidth(415);
+    render(<HandWritten />);
+    expect(screen.getByRole("list", { name: "Thẻ" })).toBeInTheDocument();
+    setWidth(416);
+    expect(screen.getByRole("table", { name: "Bảng" })).toBeInTheDocument();
+    setWidth(300);
+    expect(screen.getByRole("list", { name: "Thẻ" })).toBeInTheDocument();
+  });
+
+  it("tắt (enabled = false) thì luôn là bảng", () => {
+    installWidth(200);
+    render(<HandWritten enabled={false} />);
+    expect(screen.getByRole("table", { name: "Bảng" })).toBeInTheDocument();
   });
 });

@@ -192,9 +192,12 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : us
  * Khung chứa có hẹp hơn `breakpoint` không, đo bằng `ResizeObserver` (đổi theo cửa sổ, sidebar, bố cục của màn).
  * Chọn một trong hai dạng để dựng chứ không dựng cả hai rồi ẩn bằng CSS: nội dung không bị lặp trong DOM và cây
  * truy cập. Chưa đo được (máy chủ, jsdom, bề rộng 0) thì là bảng.
+ *
+ * Xuất ra cho bảng tự viết bằng `<table>` (DESIGN.md mục 5.9): gắn `ref` lên một phần tử luôn có mặt ở cả hai dạng
+ * (khối bọc ngoài bảng, không phải chính bảng), vì phần tử đo chỉ được lấy một lần khi `enabled`/`breakpoint` đổi.
  */
-function useCardMode(enabled: boolean, breakpoint: number) {
-  const ref = useRef<HTMLDivElement>(null);
+export function useCardMode<TElement extends HTMLElement = HTMLDivElement>(enabled: boolean, breakpoint: number) {
+  const ref = useRef<TElement>(null);
   const [cards, setCards] = useState(false);
 
   useIsomorphicLayoutEffect(() => {

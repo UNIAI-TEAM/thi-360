@@ -115,7 +115,7 @@ describe("PermissionsTab & PermissionUsersTab", () => {
       </SessionProvider>,
     );
 
-    // Mã ở cột Mã (`td > code`); bản sao dưới tên quyền chỉ hiện khi thẻ hẹp (kiểm ở test bố cục).
+    // Mã ở cột Mã (`td > code`); vùng hẹp là danh sách thẻ (permissions-tab-cards.test.tsx).
     expect(await screen.findByText("CATALOG.VIEW", { selector: "td > code" })).toBeInTheDocument();
     expect(
       screen.getByText(/Danh sách quyền cố định theo phần mềm/),
@@ -149,7 +149,7 @@ describe("PermissionsTab & PermissionUsersTab", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: "Thử lại" }));
-    // Mã ở cột Mã (`td > code`); bản sao dưới tên quyền chỉ hiện khi thẻ hẹp (kiểm ở test bố cục).
+    // Mã ở cột Mã (`td > code`); vùng hẹp là danh sách thẻ (permissions-tab-cards.test.tsx).
     expect(await screen.findByText("CATALOG.VIEW", { selector: "td > code" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Tìm kiếm"), "CATALOG");
