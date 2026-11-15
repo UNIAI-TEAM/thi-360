@@ -38,4 +38,12 @@ describe("Select", () => {
     render(<Select aria-label="Trạng thái" options={options} aria-invalid />);
     expect(screen.getByRole("combobox", { name: "Trạng thái" })).toBeInvalid();
   });
+
+  it("mục trong danh sách tắt viền ngoài bằng outline-hidden để còn thấy ở chế độ tương phản cao", async () => {
+    render(<Select aria-label="Trạng thái" options={options} />);
+    await userEvent.click(screen.getByRole("combobox", { name: "Trạng thái" }));
+    const option = await screen.findByRole("option", { name: "Hoạt động" });
+    expect(option).toHaveClass("outline-hidden");
+    expect(option).not.toHaveClass("outline-none");
+  });
 });
