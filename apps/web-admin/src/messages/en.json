@@ -766,6 +766,7 @@
     },
     "steps": {
       "ariaLabel": "Bulk account provisioning steps",
+      "doneLabel": "(completed)",
       "step1": "Download template & upload file",
       "step2": "Preview & fix errors",
       "step3": "Confirm",
@@ -789,6 +790,8 @@
       "fileSizeKb": "{size, number} KB",
       "footerNote": "Imported accounts receive the Student role. Existing accounts are not overwritten.",
       "mustChangePassword": "Require password change on first sign-in",
+      "removeFile": "Remove file {name}",
+      "removeFileTooltip": "Remove selected file",
       "ruleClassCode": "Code of an active class. Leave blank if the account belongs to no class",
       "ruleEmail": "Valid format, not used by another account",
       "ruleFullName": "Maximum 200 characters",

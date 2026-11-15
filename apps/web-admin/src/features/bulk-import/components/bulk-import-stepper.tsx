@@ -53,6 +53,8 @@ export function BulkImportStepper({ currentStep }: BulkImportStepperProps) {
               {isDone ? <Check className="size-3.5" /> : step.no}
             </span>
             <span>{step.label}</span>
+            {/* Dấu tích chỉ để nhìn; trình đọc màn hình cần chữ để biết bước đã xong (bước hiện tại có aria-current). */}
+            {isDone && <span className="sr-only">{t("doneLabel")}</span>}
           </li>
         );
       })}

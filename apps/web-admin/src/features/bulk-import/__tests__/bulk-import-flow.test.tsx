@@ -1130,3 +1130,44 @@ describe("BulkImportBatchView: đổi bước thì focus tới tiêu đề của
     expect(templateButton).toHaveFocus();
   }, 20_000);
 });
+
+describe("Bước 1 cấp hàng loạt: tên tệp, bỏ tệp, bảng mẫu, các bước (U-20)", () => {
+  it("tên tệp dài hiện đủ (không cắt đuôi), có nút bỏ tệp; bỏ xong focus về ô chọn tệp", async () => {
+    renderUpload(makeDeps());
+    const fileInput = await screen.findByLabelText("Chọn tệp");
+    const longName = "danh-sach-hoc-vien-lop-12A1-truong-thpt-chuyen-hoc-ky-1-nam-hoc-2026-2027.xlsx";
+    fireEvent.change(fileInput, {
+      target: {
+        files: [
+          new File(["x"], longName, {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+        ],
+      },
+    });
+
+    const nameEl = await screen.findByText(longName);
+    expect(nameEl).not.toHaveClass("truncate");
+    expect(nameEl).toHaveClass("wrap-anywhere");
+
+    await userEvent.click(screen.getByRole("button", { name: `Bỏ tệp ${longName}` }));
+    expect(screen.queryByText(longName)).not.toBeInTheDocument();
+    expect(fileInput).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Tải lên và kiểm tra" })).toBeDisabled();
+  });
+
+  it("bảng cột mẫu có tên lấy từ tiêu đề khối", async () => {
+    renderUpload(makeDeps());
+    expect(await screen.findByRole("table", { name: "Các cột của tệp mẫu" })).toBeInTheDocument();
+  });
+
+  it("bước đã xong có chữ cho trình đọc màn hình, bước hiện tại mang aria-current", async () => {
+    renderBatch(makeDeps({ getImportBatch: vi.fn(async () => makeBatch()) }));
+    const steps = await screen.findByRole("list", { name: "Các bước cấp tài khoản hàng loạt" });
+    const items = within(steps).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("Tải mẫu và chọn tệp(đã xong)");
+    expect(items[1]).toHaveAttribute("aria-current", "step");
+    expect(items[1]).not.toHaveTextContent("(đã xong)");
+    expect(items[2]).not.toHaveTextContent("(đã xong)");
+  });
+});

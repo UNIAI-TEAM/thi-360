@@ -766,6 +766,7 @@
     },
     "steps": {
       "ariaLabel": "Các bước cấp tài khoản hàng loạt",
+      "doneLabel": "(đã xong)",
       "step1": "Tải mẫu và chọn tệp",
       "step2": "Xem trước và sửa lỗi",
       "step3": "Xác nhận",
@@ -789,6 +790,8 @@
       "fileSizeKb": "{size, number} KB",
       "footerNote": "Tài khoản tạo từ tệp nhận vai trò Học viên. Tài khoản đã có không bị ghi đè.",
       "mustChangePassword": "Bắt đổi mật khẩu ở lần đăng nhập đầu",
+      "removeFile": "Bỏ tệp {name}",
+      "removeFileTooltip": "Bỏ tệp đã chọn",
       "ruleClassCode": "Mã của lớp đang hoạt động. Để trống thì tài khoản không thuộc lớp nào",
       "ruleEmail": "Đúng định dạng, không trùng tài khoản khác",
       "ruleFullName": "Tối đa 200 ký tự",
