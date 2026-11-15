@@ -458,8 +458,8 @@ describe("TreeView", () => {
     const name = screen.getByText("Chương có tên khá dài để kiểm tra");
     // C-14: hai dòng thay vì cắt một dòng; không dựa vào `title`; dòng được focus bằng bàn phím hiện đủ tên.
     expect(name).toHaveClass(
-      "min-w-[8rem]",
-      "flex-1",
+      "@md:min-w-[8rem]",
+      "@md:flex-1",
       "line-clamp-2",
       "group-focus-visible:line-clamp-none",
     );
@@ -470,10 +470,21 @@ describe("TreeView", () => {
     const code = screen.getByText("CH_MWG2P0WN_DAI_QUA_MUC");
     expect(code).toHaveClass("max-w-24", "truncate", "shrink-0");
 
-    // Chip trạng thái đứng ngay sau tên và không bị ép co.
+    // Chip trạng thái đứng ngay sau tên (thứ tự hiển thị từ @md) và không bị ép co.
     const status = screen.getByText("Ngừng sử dụng");
-    expect(status).toHaveClass("shrink-0");
-    expect(name.nextElementSibling).toBe(status);
+    expect(status).toHaveClass("shrink-0", "@md:order-3");
+    expect(code).toHaveClass("@md:order-1");
+    expect(name).toHaveClass("@md:order-2");
+
+    // Cây hẹp (dưới @md): tên một dòng riêng, mã và chip xuống dòng phụ; từ @md dòng phụ nhập vào hàng chính.
+    const lines = name.parentElement!;
+    expect(lines).toHaveClass("flex-col", "@md:flex-row");
+    const meta = code.parentElement!;
+    expect(meta.parentElement).toBe(lines);
+    expect(meta).toHaveClass("flex-wrap", "@md:contents");
+    expect(status.parentElement).toBe(meta);
+    expect(name.compareDocumentPosition(meta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("3").parentElement).toBe(meta);
 
     // Cụm thao tác không co: nút "⋯" không bao giờ tràn ra ngoài viền cây.
     const actions = screen.getByRole("button", { name: "Thao tác" }).parentElement;
@@ -488,5 +499,27 @@ describe("TreeView", () => {
 
     // Vùng chứa cho các biến thể @3xl là chính cây.
     expect(screen.getByRole("tree")).toHaveClass("@container");
+  });
+});
+
+describe("TreeView ở bề rộng điện thoại", () => {
+  it("thụt cấp 12px khi cây hẹp, 28px từ @md", () => {
+    render(
+      <TreeView
+        aria-label="Cây"
+        items={SAMPLE_ITEMS}
+        expandedIds={new Set(["n-1", "n-1-1"])}
+        onToggleExpand={vi.fn()}
+        onSelect={vi.fn()}
+        labels={{ expandNode: (n) => n, collapseNode: (n) => n }}
+      />,
+    );
+    const leaf = screen.getByRole("treeitem", { name: /Mệnh đề chứa biến/ });
+    const indents = Array.from(leaf.children).filter((child) => child.getAttribute("aria-hidden") === "true");
+    expect(indents).toHaveLength(2);
+    for (const indent of indents) {
+      expect(indent).toHaveClass("w-3", "@md:w-7");
+      expect(indent).not.toHaveClass("w-7");
+    }
   });
 });

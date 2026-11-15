@@ -2151,7 +2151,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
     const name = await screen.findByText("Hàm số");
-    expect(name).toHaveClass("min-w-[8rem]", "flex-1", "line-clamp-2");
+    expect(name).toHaveClass("@md:min-w-[8rem]", "@md:flex-1", "line-clamp-2");
     expect(name).not.toHaveAttribute("title");
 
     // C-07: tiêu đề nhóm chia cột theo bề rộng thẻ; cụm nút không còn `shrink-0` ép cột tiêu đề về 0px.
@@ -2177,6 +2177,15 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(within(row).getByText("Toán học")).toHaveClass("@3xl:inline");
     expect(within(row).getByRole("img", { name: "Toán học" })).toHaveTextContent("+1");
     expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
+
+    // UNI-2586: cây hẹp (điện thoại) chỉ giữ nút "⋯" cuối dòng; nút thêm con (cũng có trong menu) hiện từ @md.
+    const addChild = within(row).getByRole("button", { name: "Thêm Bài vào Hàm số" });
+    expect(addChild).toHaveClass("hidden", "@md:inline-flex");
+    expect(within(row).getByRole("button", { name: "Thao tác của Hàm số" })).not.toHaveClass("hidden");
+    // Lề trong của khung cây nhỏ lại khi thẻ hẹp.
+    const tree = screen.getByRole("tree");
+    expect(tree).toHaveClass("p-1", "@md:p-2");
+    expect(tree.parentElement).toHaveClass("p-1", "@md:p-2");
   });
 
   it("cây là một điểm dừng Tab; Shift+F10 mở menu của dòng (có Thêm nút con), Escape trả focus về dòng (C-08)", async () => {

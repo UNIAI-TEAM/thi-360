@@ -1329,7 +1329,7 @@ export function TreeItemsPanel({
         {/* Tree pane */}
         <div
           aria-busy={rootTreeQuery.isPending || treeRefreshing || undefined}
-          className="min-w-0 flex-1 rounded-md border border-border bg-surface p-2"
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface p-1 @md:p-2"
         >
           {rootTreeQuery.isPending ? (
             <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-2 p-2">
@@ -1402,7 +1402,8 @@ export function TreeItemsPanel({
                   selectedId={selectedNodeId}
                   loadingIds={loadingIds}
                   className={cn(
-                    "transition-opacity duration-150 motion-reduce:transition-none",
+                    // Thẻ hẹp (điện thoại) bớt lề trong để dành chỗ cho tên nút.
+                    "p-1 transition-opacity duration-150 motion-reduce:transition-none @md:p-2",
                     treeRefreshing && "opacity-60",
                   )}
                   onSelect={(item) => handleTreeSelectNode(item.id)}
@@ -1505,6 +1506,8 @@ export function TreeItemsPanel({
                             tabIndex={-1}
                             disabled={childAddDisabled}
                             onClick={() => onAddChildNode(node)}
+                            // Cây hẹp chỉ giữ nút "⋯" (trong menu đã có "Thêm ..."), để tên nút còn chỗ.
+                            className="hidden @md:inline-flex"
                           />
                         )}
 
@@ -1735,7 +1738,7 @@ export function TreeItemsPanel({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge>{activeNodeLevelName}</Badge>
-                    <span className="rounded-sm bg-subtle px-2 py-0.5 font-mono text-caption font-semibold text-text">
+                    <span className="rounded-sm bg-subtle px-2 py-0.5 font-mono text-caption font-semibold wrap-anywhere text-text">
                       {activeNode.code}
                     </span>
                     {activeNode.effectiveStatus === "INACTIVE" &&
@@ -1761,7 +1764,7 @@ export function TreeItemsPanel({
                 <h3
                   ref={detailHeadingRef}
                   tabIndex={-1}
-                  className="mt-2 text-h3 font-bold text-text"
+                  className="mt-2 text-h3 font-bold wrap-break-word text-text"
                 >
                   {pickName(activeNode, locale)}
                 </h3>
