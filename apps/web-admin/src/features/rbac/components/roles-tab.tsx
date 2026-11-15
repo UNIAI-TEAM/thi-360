@@ -15,6 +15,7 @@ import {
   Pagination,
   StatusChip,
   Table,
+  type TableCards,
   focusRing,
 } from "@thi360/ui";
 import { Eye, Pencil, Search, Shield, Trash2, TriangleAlert } from "lucide-react";
@@ -47,16 +48,6 @@ import type {
 } from "../types";
 import { groupPermissionsByObject } from "./object-permission-picker";
 import { RoleDialog, type RoleDialogProps } from "./role-dialog";
-
-/**
- * Bảng vai trò ở thẻ hẹp (dưới 40rem: điện thoại, tablet dọc): chỉ còn cột Vai trò và Thao tác; phạm vi, loại,
- * trạng thái, số quyền và số tài khoản hiện thành dòng phụ dưới tên (`data-col-summary`). Cột phụ được nhận ra qua
- * `data-col` trên nội dung do màn này vẽ, cùng cách với danh sách tài khoản (`users-list-view.tsx`).
- */
-const COMPACT_ROLE_COLUMNS = [
-  "@container",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=secondary])]:hidden",
-].join(" ");
 
 export interface RolesTabProps {
   createOpen?: boolean;
@@ -179,19 +170,76 @@ export function RolesTab({
     });
     onCreateOpenChange?.(false);
   }
-  const columns = useMemo<ColumnDef<RoleSummaryResponse>[]>(() => {
-    const accessChip = (r: RoleSummaryResponse) => (
-      <StatusChip tone={r.access === "MANAGE" ? "info" : "warning"}>
-        {t(`access.${r.access}`)}
-      </StatusChip>
+  // Chip và nút thao tác dùng chung cho bảng và dạng thẻ (khung hẹp).
+  const accessChip = (r: RoleSummaryResponse) => (
+    <StatusChip tone={r.access === "MANAGE" ? "info" : "warning"}>{t(`access.${r.access}`)}</StatusChip>
+  );
+  const kindChip = (r: RoleSummaryResponse) =>
+    r.system ? (
+      <StatusChip tone="neutral">{t("rolesTab.kindSystem")}</StatusChip>
+    ) : (
+      <Chip variant="tag">{t("rolesTab.kindCustom")}</Chip>
     );
-    const kindChip = (r: RoleSummaryResponse) =>
-      r.system ? (
-        <StatusChip tone="neutral">{t("rolesTab.kindSystem")}</StatusChip>
-      ) : (
-        <Chip variant="tag">{t("rolesTab.kindCustom")}</Chip>
-      );
+  const statusChip = (r: RoleSummaryResponse) => (
+    <StatusChip tone={r.status === "ACTIVE" ? "success" : "neutral"}>
+      {r.status === "ACTIVE" ? t("rolesTab.statusActive") : t("rolesTab.statusInactive")}
+    </StatusChip>
+  );
 
+  function renderActions(r: RoleSummaryResponse) {
+    const displayName = resolveRoleName(rbacT, r.code, r.name, r.system);
+
+    if (!canModify) {
+      return (
+        <IconButton
+          icon={<Eye />}
+          aria-label={t("rolesTab.viewAria", { name: displayName })}
+          tooltip={t("rolesTab.viewTooltip")}
+          onClick={() =>
+            setDialogState({
+              open: true,
+              mode: "view",
+              roleId: r.id,
+            })
+          }
+        />
+      );
+    }
+
+    const deleteLocked = r.system || r.userCount > 0;
+    const deleteTooltip = r.system
+      ? t("rolesTab.deleteSystemTooltip")
+      : r.userCount > 0
+        ? t("rolesTab.deleteInUseTooltip")
+        : t("rolesTab.deleteTooltip");
+
+    return (
+      <>
+        <IconButton
+          icon={<Pencil />}
+          aria-label={t("rolesTab.editAria", { name: displayName })}
+          tooltip={t("rolesTab.editTooltip")}
+          onClick={() =>
+            setDialogState({
+              open: true,
+              mode: "edit",
+              roleId: r.id,
+            })
+          }
+        />
+        <IconButton
+          icon={<Trash2 />}
+          tone="danger"
+          disabled={deleteLocked}
+          aria-label={t("rolesTab.deleteAria", { name: displayName })}
+          tooltip={deleteTooltip}
+          onClick={() => setDeleteTarget(r)}
+        />
+      </>
+    );
+  }
+
+  const columns = useMemo<ColumnDef<RoleSummaryResponse>[]>(() => {
     const baseColumns: ColumnDef<RoleSummaryResponse>[] = [
       {
         id: "role",
@@ -204,131 +252,79 @@ export function RolesTab({
             <div className="min-w-36 py-2">
               <div className="font-semibold wrap-break-word text-text">{displayName}</div>
               <div className="text-caption wrap-anywhere text-text-muted">{r.code}</div>
-              {/*
-                Thẻ hẹp (dưới 40rem): các cột Phạm vi, Số quyền, Số người, Loại, Trạng thái ẩn đi và hiện ở đây dưới
-                tên vai trò. Chip trạng thái chỉ hiện khi khác Hoạt động.
-              */}
-              <div data-col-summary className="mt-1.5 flex flex-col gap-1 @min-[40rem]:hidden">
-                <div className="flex flex-wrap gap-1.5">
-                  {accessChip(r)}
-                  {kindChip(r)}
-                  {r.status !== "ACTIVE" && (
-                    <StatusChip tone="neutral">{t("rolesTab.statusInactive")}</StatusChip>
-                  )}
-                </div>
-                <div className="text-caption text-text-secondary tabular-nums">
-                  {t("rolesTab.countsSummary", {
-                    permissions: r.permissionCount,
-                    users: r.userCount,
-                  })}
-                </div>
-              </div>
             </div>
           );
         },
       },
       {
         id: "access",
-        header: () => <span data-col="secondary">{t("rolesTab.columns.scope")}</span>,
+        header: t("rolesTab.columns.scope"),
         enableSorting: false,
-        cell: ({ row }) => <span data-col="secondary">{accessChip(row.original)}</span>,
+        cell: ({ row }) => accessChip(row.original),
       },
       {
         id: "permissionCount",
-        header: () => <span data-col="secondary">{t("rolesTab.columns.permissions")}</span>,
+        header: t("rolesTab.columns.permissions"),
         enableSorting: false,
-        cell: ({ row }) => <span data-col="secondary">{row.original.permissionCount}</span>,
+        cell: ({ row }) => row.original.permissionCount,
       },
       {
         id: "userCount",
-        header: () => <span data-col="secondary">{t("rolesTab.columns.users")}</span>,
+        header: t("rolesTab.columns.users"),
         enableSorting: false,
-        cell: ({ row }) => <span data-col="secondary">{row.original.userCount}</span>,
+        cell: ({ row }) => row.original.userCount,
       },
       {
         id: "kind",
-        header: () => <span data-col="secondary">{t("rolesTab.columns.kind")}</span>,
+        header: t("rolesTab.columns.kind"),
         enableSorting: false,
-        cell: ({ row }) => <span data-col="secondary">{kindChip(row.original)}</span>,
+        cell: ({ row }) => kindChip(row.original),
       },
       {
         id: "status",
-        header: () => <span data-col="secondary">{t("rolesTab.columns.status")}</span>,
+        header: t("rolesTab.columns.status"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <span data-col="secondary">
-            <StatusChip tone={row.original.status === "ACTIVE" ? "success" : "neutral"}>
-              {row.original.status === "ACTIVE"
-                ? t("rolesTab.statusActive")
-                : t("rolesTab.statusInactive")}
-            </StatusChip>
-          </span>
-        ),
+        cell: ({ row }) => statusChip(row.original),
       },
       {
         id: "actions",
         header: () => <span className="block text-right">{t("rolesTab.columns.actions")}</span>,
         enableSorting: false,
-        cell: ({ row }) => {
-          const r = row.original;
-          const displayName = resolveRoleName(rbacT, r.code, r.name, r.system);
-
-          if (!canModify) {
-            return (
-              <div className="flex justify-end">
-                <IconButton
-                  icon={<Eye />}
-                  aria-label={t("rolesTab.viewAria", { name: displayName })}
-                  tooltip={t("rolesTab.viewTooltip")}
-                  onClick={() =>
-                    setDialogState({
-                      open: true,
-                      mode: "view",
-                      roleId: r.id,
-                    })
-                  }
-                />
-              </div>
-            );
-          }
-
-          const deleteLocked = r.system || r.userCount > 0;
-          const deleteTooltip = r.system
-            ? t("rolesTab.deleteSystemTooltip")
-            : r.userCount > 0
-              ? t("rolesTab.deleteInUseTooltip")
-              : t("rolesTab.deleteTooltip");
-
-          return (
-            <div className="flex items-center justify-end gap-1">
-              <IconButton
-                icon={<Pencil />}
-                aria-label={t("rolesTab.editAria", { name: displayName })}
-                tooltip={t("rolesTab.editTooltip")}
-                onClick={() =>
-                  setDialogState({
-                    open: true,
-                    mode: "edit",
-                    roleId: r.id,
-                  })
-                }
-              />
-              <IconButton
-                icon={<Trash2 />}
-                tone="danger"
-                disabled={deleteLocked}
-                aria-label={t("rolesTab.deleteAria", { name: displayName })}
-                tooltip={deleteTooltip}
-                onClick={() => setDeleteTarget(r)}
-              />
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-1">{renderActions(row.original)}</div>
+        ),
       },
     ];
 
     return baseColumns;
   }, [canModify, t]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Dạng thẻ khi khung hẹp hơn 640px (mặc định của `Table`, DESIGN.md mục 5.9): tên vai trò và nút thao tác, mã ở dòng
+   * phụ, chip trạng thái (luôn hiện) rồi phạm vi và loại, cuối cùng số quyền và số tài khoản đang giữ. Vai trò không có
+   * trang chi tiết riêng (xem, sửa mở hộp thoại bằng nút), nên tiêu đề không là liên kết.
+   */
+  const cards: TableCards<RoleSummaryResponse> = {
+    render: (r) => (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-start justify-between gap-3">
+          <p className="line-clamp-2 min-w-0 font-semibold wrap-break-word text-text">
+            {resolveRoleName(rbacT, r.code, r.name, r.system)}
+          </p>
+          <div className="relative z-1 -my-2 flex shrink-0 items-center gap-1">{renderActions(r)}</div>
+        </div>
+        <p className="text-caption wrap-anywhere text-text-muted">{r.code}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {statusChip(r)}
+          {accessChip(r)}
+          {kindChip(r)}
+        </div>
+        <p className="text-caption text-text-secondary tabular-nums">
+          {t("rolesTab.cardCounts", { permissions: r.permissionCount, users: r.userCount })}
+        </p>
+      </div>
+    ),
+  };
 
   const items = rolesQuery.data?.items ?? [];
   const total = rolesQuery.data?.totalItems ?? 0;
@@ -393,55 +389,54 @@ export function RolesTab({
           {t("rolesTab.totalCount", { count: total })}
         </div>
 
-        <div className={COMPACT_ROLE_COLUMNS}>
-          <Table
-            aria-label={t("tabs.roles")}
-            columns={columns}
-            data={items}
-            getRowId={(row) => row.id}
-            loading={rolesQuery.isPending}
-            refreshing={rolesQuery.isPlaceholderData}
-            error={
-              rolesQuery.isError ? (
-                <EmptyState
-                  icon={<TriangleAlert />}
-                  title={t("rolesTab.errorTitle")}
-                  description={t("rolesTab.errorDescription")}
-                  action={
-                    <Button onClick={() => void rolesQuery.refetch()}>
-                      {t("actions.retry")}
-                    </Button>
-                  }
-                />
-              ) : undefined
-            }
-            empty={
+        <Table
+          aria-label={t("tabs.roles")}
+          columns={columns}
+          cards={cards}
+          data={items}
+          getRowId={(row) => row.id}
+          loading={rolesQuery.isPending}
+          refreshing={rolesQuery.isPlaceholderData}
+          error={
+            rolesQuery.isError ? (
               <EmptyState
-                icon={<Shield />}
-                title={t("rolesTab.emptyTitle")}
-                description={t("rolesTab.emptyDescription")}
+                icon={<TriangleAlert />}
+                title={t("rolesTab.errorTitle")}
+                description={t("rolesTab.errorDescription")}
                 action={
-                  canModify ? (
-                    <Button
-                      onClick={() => {
-                        if (onCreateOpenChange) {
-                          onCreateOpenChange(true);
-                        } else {
-                          setDialogState({
-                            open: true,
-                            mode: "create",
-                          });
-                        }
-                      }}
-                    >
-                      {t("rolesTab.createButton")}
-                    </Button>
-                  ) : undefined
+                  <Button onClick={() => void rolesQuery.refetch()}>
+                    {t("actions.retry")}
+                  </Button>
                 }
               />
-            }
-          />
-        </div>
+            ) : undefined
+          }
+          empty={
+            <EmptyState
+              icon={<Shield />}
+              title={t("rolesTab.emptyTitle")}
+              description={t("rolesTab.emptyDescription")}
+              action={
+                canModify ? (
+                  <Button
+                    onClick={() => {
+                      if (onCreateOpenChange) {
+                        onCreateOpenChange(true);
+                      } else {
+                        setDialogState({
+                          open: true,
+                          mode: "create",
+                        });
+                      }
+                    }}
+                  >
+                    {t("rolesTab.createButton")}
+                  </Button>
+                ) : undefined
+              }
+            />
+          }
+        />
 
         {total > 0 && (
           <div className="border-t border-border px-4 py-3">

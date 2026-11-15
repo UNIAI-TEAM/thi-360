@@ -228,7 +228,7 @@ describe("PermissionsTab & PermissionUsersTab", () => {
     );
     expect(await screen.findByText("content.admin")).toBeInTheDocument();
     expect(screen.getByText("ops.admin")).toBeInTheDocument();
-    // Cột Chi tiết (`data-col=detail`); dòng phụ dưới tên tài khoản chỉ hiện khi thẻ hẹp.
+    // Cột Chi tiết (`data-col=detail`).
     const detailCell = { selector: "[data-col=detail] > span" };
     expect(screen.getByText("Vai trò: Quản trị nội dung", detailCell)).toBeInTheDocument();
     expect(
