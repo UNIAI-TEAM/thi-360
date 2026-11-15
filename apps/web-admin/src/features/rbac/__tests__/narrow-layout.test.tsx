@@ -118,7 +118,7 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     expect(within(codeLine).getByText(/2 vai trò/)).toHaveClass("@lg:hidden");
   });
 
-  it("Người dùng theo quyền: dưới 40rem cột Nguồn, Chi tiết, Trạng thái nhập vào ô tài khoản", async () => {
+  it("Người dùng theo quyền: dưới 36rem cột Nguồn, Chi tiết, Trạng thái nhập vào ô tài khoản", async () => {
     renderWithProviders(
       withSession(
         <PermissionUsersTab
@@ -134,7 +134,7 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
 
     const wrapper = table.closest(".\\@container")!;
     for (const col of ["source", "detail", "status"]) {
-      expect(wrapper.className).toContain(`@max-[40rem]:[&_:is(th,td):has([data-col=${col}])]:hidden`);
+      expect(wrapper.className).toContain(`@max-[36rem]:[&_:is(th,td):has([data-col=${col}])]:hidden`);
       expect(table.querySelectorAll(`thead [data-col=${col}]`)).toHaveLength(1);
       expect(table.querySelectorAll(`tbody [data-col=${col}]`)).toHaveLength(1);
     }
@@ -142,7 +142,7 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     expect(table.querySelector("tbody [data-col=detail]")).toHaveClass("min-w-48");
 
     const summary = accountCell.querySelector("[data-col-summary]")!;
-    expect(summary).toHaveClass("@min-[40rem]:hidden");
+    expect(summary).toHaveClass("@min-[36rem]:hidden");
     expect(within(summary as HTMLElement).getByText("Từ vai trò")).toBeInTheDocument();
     expect(within(summary as HTMLElement).getByText("Vai trò: Quản trị nội dung")).toBeInTheDocument();
     expect(within(summary as HTMLElement).getByText("Ngừng hoạt động")).toBeInTheDocument();
@@ -178,7 +178,7 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     expect(within(summary).getByText("5 quyền · 3 tài khoản đang giữ")).toBeInTheDocument();
   });
 
-  it("Quyền hiệu lực của tài khoản: dưới 40rem cột Đối tượng và Mã nhập vào dòng phụ dưới tên quyền", async () => {
+  it("Quyền hiệu lực của tài khoản: dưới 36rem cột Đối tượng và Mã nhập vào dòng phụ dưới tên quyền", async () => {
     const effective: EffectivePermissionsResponse = {
       userId: "u-1",
       effectiveAccess: "MANAGE",
@@ -211,11 +211,11 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     );
     const table = await screen.findByRole("table");
     const wrapper = table.closest(".\\@container")!;
-    expect(wrapper.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=object])]:hidden");
-    expect(wrapper.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=code])]:hidden");
+    expect(wrapper.className).toContain("@max-[36rem]:[&_:is(th,td):has([data-col=object])]:hidden");
+    expect(wrapper.className).toContain("@max-[36rem]:[&_:is(th,td):has([data-col=code])]:hidden");
 
     const summary = table.querySelector("tbody [data-col-summary]") as HTMLElement;
-    expect(summary).toHaveClass("@min-[40rem]:hidden");
+    expect(summary).toHaveClass("@min-[36rem]:hidden");
     expect(summary).toHaveTextContent("Tài khoản · USER.RESET_PASSWORD");
     expect(within(summary).getByText("USER.RESET_PASSWORD")).toHaveClass("wrap-anywhere");
   });

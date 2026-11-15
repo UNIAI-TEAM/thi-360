@@ -324,13 +324,13 @@ export function TreeView({
               <span
                 key={indentIdx}
                 aria-hidden
-                className="flex w-3 shrink-0 justify-center @md:w-7"
+                className="flex w-3 shrink-0 justify-center @min-[22rem]:w-7"
               >
                 <span className="h-full w-px bg-border" />
               </span>
             ))}
 
-            <div className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 pl-1 @md:gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 pl-1 @min-[22rem]:gap-2">
               {renderLeading && renderLeading(item)}
               {item.hasChildren ? (
                 <button
@@ -371,22 +371,22 @@ export function TreeView({
               )}
 
               {/*
-                Cây hẹp (dưới `@md` = 28rem, ví dụ điện thoại): tên đứng một dòng riêng, mã và các chip xuống dòng
-                dưới, để tên còn đủ chỗ đọc thay vì bị mã, chip và cụm thao tác ép lại. Từ `@md`, mọi thứ nằm trên một
-                hàng như cũ: `@md:contents` thả các phần tử của dòng phụ vào hàng chính và `order` xếp lại đúng thứ tự
-                mã · tên · trạng thái · liên kết · số nút lá. Thứ tự đọc không đổi: tên truy cập lấy từ
-                `aria-labelledby` (mã rồi tên).
+                Cây hẹp hơn 22rem (điện thoại): thụt cấp 12px, tên đứng một dòng riêng, mã và các chip xuống dòng dưới,
+                để tên còn đủ chỗ đọc thay vì bị mã, chip và cụm thao tác ép lại. Từ 22rem mọi thứ nằm trên một hàng
+                như cũ (cây ở cửa sổ 1024px rộng khoảng 365px): `contents` thả các phần tử của dòng phụ vào hàng chính
+                và `order` xếp lại đúng thứ tự mã · tên · trạng thái · liên kết · số nút lá. Thứ tự đọc không đổi: tên
+                truy cập lấy từ `aria-labelledby` (mã rồi tên).
               */}
-              <div className="flex min-w-0 flex-1 flex-col gap-1 @md:flex-row @md:items-center @md:gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-1 @min-[22rem]:flex-row @min-[22rem]:items-center @min-[22rem]:gap-2">
                 {/*
-                  Tên có ưu tiên chiều rộng: từ `@md` không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. Tên dài
+                  Tên có ưu tiên chiều rộng: từ 22rem không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. Tên dài
                   xuống tối đa hai dòng (DESIGN.md mục 5.13) thay vì cắt một dòng; dòng đang chọn hoặc đang được focus
                   bằng bàn phím hiện đủ tên, nên không cần `title` (bàn phím và màn hình cảm ứng không tới được `title`).
                 */}
                 <span
                   id={nameId}
                   className={cn(
-                    "min-w-0 wrap-break-word @md:order-2 @md:min-w-[8rem] @md:flex-1",
+                    "min-w-0 wrap-break-word @min-[22rem]:order-2 @min-[22rem]:min-w-[8rem] @min-[22rem]:flex-1",
                     !isSelected && "line-clamp-2 group-focus-visible:line-clamp-none",
                     nameStyle,
                     nameColor,
@@ -395,11 +395,11 @@ export function TreeView({
                   {item.name}
                 </span>
 
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5 @md:contents">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5 @min-[22rem]:contents">
                   <span
                     id={codeId}
                     title={item.code}
-                    className="max-w-24 shrink-0 truncate rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text @md:order-1"
+                    className="max-w-24 shrink-0 truncate rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text @min-[22rem]:order-1"
                   >
                     {item.code}
                   </span>
@@ -408,7 +408,7 @@ export function TreeView({
                     <StatusChip
                       id={statusId ?? undefined}
                       tone={item.statusTone ?? "neutral"}
-                      className="shrink-0 @md:order-3"
+                      className="shrink-0 @min-[22rem]:order-3"
                     >
                       {item.statusLabel}
                     </StatusChip>
@@ -420,7 +420,7 @@ export function TreeView({
                       <span
                         id={refsId ?? undefined}
                         title={item.refsSummary}
-                        className="hidden max-w-48 min-w-0 shrink truncate text-caption whitespace-nowrap text-text-muted @md:order-3 @3xl:inline"
+                        className="hidden max-w-48 min-w-0 shrink truncate text-caption whitespace-nowrap text-text-muted @min-[22rem]:order-3 @3xl:inline"
                       >
                         {item.refsSummary}
                       </span>
@@ -429,7 +429,7 @@ export function TreeView({
                           role="img"
                           aria-label={item.refsSummary}
                           title={item.refsSummary}
-                          className="shrink-0 rounded-full bg-subtle px-1.5 text-caption font-medium whitespace-nowrap text-text-muted tabular-nums @md:order-3 @3xl:hidden"
+                          className="shrink-0 rounded-full bg-subtle px-1.5 text-caption font-medium whitespace-nowrap text-text-muted tabular-nums @min-[22rem]:order-3 @3xl:hidden"
                         >
                           +{item.refsCount}
                         </span>
@@ -438,7 +438,7 @@ export function TreeView({
                   )}
 
                   {item.leafCount !== undefined && item.leafCount !== null && (
-                    <span className="ml-auto min-w-5 shrink-0 text-right text-caption font-medium text-text-muted tabular-nums @md:order-3 @md:ml-0">
+                    <span className="ml-auto min-w-5 shrink-0 text-right text-caption font-medium text-text-muted tabular-nums @min-[22rem]:order-3 @min-[22rem]:ml-0">
                       {item.leafCount}
                     </span>
                   )}

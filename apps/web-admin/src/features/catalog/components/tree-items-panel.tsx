@@ -1329,7 +1329,7 @@ export function TreeItemsPanel({
         {/* Tree pane */}
         <div
           aria-busy={rootTreeQuery.isPending || treeRefreshing || undefined}
-          className="min-w-0 flex-1 rounded-md border border-border bg-surface p-1 @md:p-2"
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface p-1 @min-[416px]:p-2"
         >
           {rootTreeQuery.isPending ? (
             <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-2 p-2">
@@ -1402,8 +1402,9 @@ export function TreeItemsPanel({
                   selectedId={selectedNodeId}
                   loadingIds={loadingIds}
                   className={cn(
-                    // Thẻ hẹp (điện thoại) bớt lề trong để dành chỗ cho tên nút.
-                    "p-1 transition-opacity duration-150 motion-reduce:transition-none @md:p-2",
+                    // Thẻ hẹp hơn 416px (điện thoại) bớt lề trong để dành chỗ cho tên nút; thẻ ở cửa sổ 1024px rộng
+                    // khoảng 431px nên từ đó giữ nguyên.
+                    "p-1 transition-opacity duration-150 motion-reduce:transition-none @min-[416px]:p-2",
                     treeRefreshing && "opacity-60",
                   )}
                   onSelect={(item) => handleTreeSelectNode(item.id)}
@@ -1506,8 +1507,8 @@ export function TreeItemsPanel({
                             tabIndex={-1}
                             disabled={childAddDisabled}
                             onClick={() => onAddChildNode(node)}
-                            // Cây hẹp chỉ giữ nút "⋯" (trong menu đã có "Thêm ..."), để tên nút còn chỗ.
-                            className="hidden @md:inline-flex"
+                            // Cây hẹp hơn 22rem chỉ giữ nút "⋯" (trong menu đã có "Thêm ..."), để tên nút còn chỗ.
+                            className="hidden @min-[22rem]:inline-flex"
                           />
                         )}
 

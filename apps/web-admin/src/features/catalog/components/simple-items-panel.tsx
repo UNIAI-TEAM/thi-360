@@ -73,12 +73,14 @@ import { pickName } from "../utils";
  * tên khi cột của chúng bị bỏ. Mỗi ngưỡng bên dưới là tổng bề rộng tối thiểu của bộ cột đang hiện cộng 6px dự
  * phòng, nên từ ngưỡng `stickyActions` trở lên bảng luôn vừa thẻ và không ô nào nằm dưới cột Thao tác.
  *
- * Dưới ngưỡng `stickyActions` bộ cột tối thiểu không vừa nên bảng chuyển sang dạng gọn (điện thoại và tablet dọc,
- * UNI-2586): cột Mã và Trạng thái nhập vào ô tên thành dòng phụ (mã, và chip trạng thái khi khác Hoạt động), các
- * nút Sửa/Ngừng/Xóa gom vào menu "⋯" cạnh nút xem. Bộ cột gọn là sắp xếp 104 · tên 112 · thao tác 102 (người quản
- * lý) hoặc tên 112 · thao tác 96 (người chỉ xem), vừa vùng nội dung 328px ở cửa sổ 360px. Bảng vẫn cuộn ngang
- * trong vùng có tên khi một mã hay tên rất dài làm bảng rộng hơn thẻ; cột Thao tác khi đó không dính mép phải để
- * không che dữ liệu ở vị trí cuộn đầu.
+ * Dưới ngưỡng `stickyActions` bộ cột tối thiểu không vừa: bảng cuộn ngang trong vùng có tên, nhận focus bàn phím,
+ * và cột Thao tác thôi dính mép phải để không che dữ liệu ở vị trí cuộn đầu.
+ *
+ * Thẻ hẹp hơn 416px (điện thoại, UNI-2586) thì bảng chuyển sang dạng gọn: cột Mã và Trạng thái nhập vào ô tên thành
+ * dòng phụ (mã, và chip trạng thái khi khác Hoạt động), các nút Sửa/Ngừng/Xóa gom vào menu "⋯" cạnh nút xem. Bộ cột
+ * gọn là sắp xếp 104 · tên 112 · thao tác 102 (người quản lý) hoặc tên 112 · thao tác 96 (người chỉ xem), vừa thẻ
+ * 328px ở cửa sổ 360px. Ngưỡng 416px nằm dưới bề rộng thẻ ở cửa sổ 1024px (khoảng 431px), nên từ 1024px trở lên
+ * bảng giữ nguyên như trước.
  */
 type ColumnLayout = {
   stickyActions: string;
@@ -94,7 +96,7 @@ type ColumnLayout = {
   summary: string;
   /** Phần các môn của dòng phụ: ẩn khi cột Các môn đã hiện. */
   summarySubjects: string;
-  /** Cột Mã và Trạng thái: chỉ hiện từ ngưỡng `stickyActions`, dưới đó bảng ở dạng gọn. */
+  /** Cột Mã và Trạng thái: ẩn khi thẻ hẹp hơn 416px (dạng gọn). */
   full: string;
   /** Dòng mã + trạng thái dưới tên ở dạng gọn: ẩn khi hai cột kia đã hiện. */
   compactMeta: string;
@@ -105,15 +107,15 @@ type ColumnLayout = {
 };
 
 const MANAGE_COMPACT = {
-  full: "hidden @min-[672px]:table-cell",
-  compactMeta: "@min-[672px]:hidden",
-  inlineActions: "hidden @min-[672px]:inline-flex",
-  menuActions: "@min-[672px]:hidden",
+  full: "hidden @min-[416px]:table-cell",
+  compactMeta: "@min-[416px]:hidden",
+  inlineActions: "hidden @min-[416px]:inline-flex",
+  menuActions: "@min-[416px]:hidden",
 };
 
 const VIEW_COMPACT = {
-  full: "hidden @min-[480px]:table-cell",
-  compactMeta: "@min-[480px]:hidden",
+  full: "hidden @min-[416px]:table-cell",
+  compactMeta: "@min-[416px]:hidden",
   // Người chỉ xem chỉ có nút xem nên không có nút đứng riêng hay menu "⋯" nào để đổi.
   inlineActions: "inline-flex",
   menuActions: "hidden",
@@ -436,11 +438,11 @@ export function SimpleItemsPanel({
       <div
         role="search"
         aria-label={t("filterFormLabel")}
-        // Thẻ hẹp: ô tìm kiếm hết chiều ngang, ô chọn trong lưới hai cột (một cột dưới 300px). Từ 456px cả
-        // hàng vừa một dòng nên trở lại hàng flex như cũ.
-        className="grid grid-cols-1 gap-2.5 px-5 pb-3.5 @min-[300px]:grid-cols-2 @min-[456px]:flex @min-[456px]:flex-wrap @min-[456px]:items-center"
+        // Thẻ hẹp hơn 416px (điện thoại): ô tìm kiếm hết chiều ngang, ô chọn trong lưới hai cột (một cột dưới
+        // 300px). Rộng hơn thì giữ hàng flex như cũ (thẻ ở cửa sổ 1024px rộng khoảng 431px).
+        className="grid grid-cols-1 gap-2.5 px-5 pb-3.5 @min-[300px]:grid-cols-2 @min-[416px]:flex @min-[416px]:flex-wrap @min-[416px]:items-center"
       >
-        <div className="col-span-full @min-[456px]:min-w-56 @min-[456px]:flex-1">
+        <div className="col-span-full @min-[416px]:min-w-56 @min-[416px]:flex-1">
           <Input
             type="search"
             aria-label={t("searchItemsPlaceholder")}
@@ -450,7 +452,7 @@ export function SimpleItemsPanel({
             onChange={(event) => onSearchChange(event.target.value)}
           />
         </div>
-        <div className="min-w-0 @min-[456px]:w-45 @min-[456px]:shrink-0">
+        <div className="min-w-0 @min-[416px]:w-45 @min-[416px]:shrink-0">
           <Select
             aria-label={t("statusFilterLabel")}
             options={statusOptions}

@@ -811,18 +811,18 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
     const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
     await within(table).findByText("Toán học");
 
-    // Cột Mã và Trạng thái chỉ hiện từ ngưỡng của bộ cột đầy đủ (cùng ngưỡng cột Thao tác dính mép phải).
+    // Cột Mã và Trạng thái ẩn khi thẻ hẹp hơn 416px (dưới bề rộng thẻ ở cửa sổ 1024px, khoảng 431px).
     for (const name of ["Mã", "Trạng thái"]) {
       expect(within(table).getByRole("columnheader", { name })).toHaveClass(
         "hidden",
-        "@min-[672px]:table-cell",
+        "@min-[416px]:table-cell",
       );
     }
 
     // Dòng phụ dưới tên: mã, và chip trạng thái chỉ khi khác Hoạt động.
     const activeRow = within(table).getByText("Toán học").closest("tr")!;
     const activeMeta = within(activeRow).getByTestId("catalog-item-compact-meta");
-    expect(activeMeta).toHaveClass("@min-[672px]:hidden");
+    expect(activeMeta).toHaveClass("@min-[416px]:hidden");
     expect(activeMeta.closest("td")).toBe(within(activeRow).getByText("Toán học").closest("td"));
     expect(within(activeMeta).getByText("TOAN")).toHaveClass("wrap-anywhere");
     expect(within(activeMeta).queryByText("Hoạt động")).toBeNull();
@@ -833,12 +833,12 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
 
     // Nút Sửa/Ngừng/Xóa đứng riêng chỉ từ ngưỡng; dạng gọn còn nút xem và menu "⋯".
     const editButton = within(activeRow).getByRole("button", { name: "Sửa Toán học" });
-    expect(editButton.parentElement).toHaveClass("hidden", "@min-[672px]:inline-flex");
+    expect(editButton.parentElement).toHaveClass("hidden", "@min-[416px]:inline-flex");
     expect(within(activeRow).getByRole("button", { name: "Chi tiết Toán học" }).parentElement).not.toHaveClass(
       "hidden",
     );
     const menuButton = within(activeRow).getByRole("button", { name: "Thao tác khác với Toán học" });
-    expect(menuButton.parentElement).toHaveClass("@min-[672px]:hidden");
+    expect(menuButton.parentElement).toHaveClass("@min-[416px]:hidden");
 
     await userEvent.click(menuButton);
     const menu = await screen.findByRole("menu");
@@ -850,15 +850,15 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
     expect(api.updateItem).not.toHaveBeenCalled();
   });
 
-  it("thẻ hẹp, người chỉ xem: dạng gọn từ dưới 480px và không có menu ⋯", async () => {
+  it("thẻ hẹp, người chỉ xem: dạng gọn dưới 416px và không có menu ⋯", async () => {
     renderCatalog({ permissions: ["CATALOG.VIEW"], search: "group=SUBJECT" });
     const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
     const row = (await within(table).findByText("Toán học")).closest("tr")!;
     expect(within(table).getByRole("columnheader", { name: "Mã" })).toHaveClass(
       "hidden",
-      "@min-[480px]:table-cell",
+      "@min-[416px]:table-cell",
     );
-    expect(within(row).getByTestId("catalog-item-compact-meta")).toHaveClass("@min-[480px]:hidden");
+    expect(within(row).getByTestId("catalog-item-compact-meta")).toHaveClass("@min-[416px]:hidden");
     expect(within(row).queryByRole("button", { name: "Thao tác khác với Toán học" })).toBeNull();
   });
 
@@ -869,13 +869,13 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
       "grid",
       "grid-cols-1",
       "@min-[300px]:grid-cols-2",
-      "@min-[456px]:flex",
-      "@min-[456px]:flex-wrap",
+      "@min-[416px]:flex",
+      "@min-[416px]:flex-wrap",
     );
     const searchBox = within(filters).getByRole("searchbox", { name: "Tìm theo mã hoặc tên" });
     expect(searchBox.closest(".col-span-full")).not.toBeNull();
     const status = within(filters).getByRole("combobox", { name: /Trạng thái/ });
-    expect(status.parentElement).toHaveClass("min-w-0", "@min-[456px]:w-45");
+    expect(status.parentElement).toHaveClass("min-w-0", "@min-[416px]:w-45");
     expect(status.parentElement).not.toHaveClass("w-45");
   });
 
@@ -2252,7 +2252,7 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
 
     const name = await screen.findByText("Hàm số");
-    expect(name).toHaveClass("@md:min-w-[8rem]", "@md:flex-1", "line-clamp-2");
+    expect(name).toHaveClass("@min-[22rem]:min-w-[8rem]", "@min-[22rem]:flex-1", "line-clamp-2");
     expect(name).not.toHaveAttribute("title");
 
     // C-07: tiêu đề nhóm chia cột theo bề rộng thẻ; cụm nút không còn `shrink-0` ép cột tiêu đề về 0px.
@@ -2279,14 +2279,14 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(within(row).getByRole("img", { name: "Toán học" })).toHaveTextContent("+1");
     expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
 
-    // UNI-2586: cây hẹp (điện thoại) chỉ giữ nút "⋯" cuối dòng; nút thêm con (cũng có trong menu) hiện từ @md.
+    // UNI-2586: cây hẹp (điện thoại) chỉ giữ nút "⋯" cuối dòng; nút thêm con (cũng có trong menu) hiện từ 22rem.
     const addChild = within(row).getByRole("button", { name: "Thêm Bài vào Hàm số" });
-    expect(addChild).toHaveClass("hidden", "@md:inline-flex");
+    expect(addChild).toHaveClass("hidden", "@min-[22rem]:inline-flex");
     expect(within(row).getByRole("button", { name: "Thao tác của Hàm số" })).not.toHaveClass("hidden");
     // Lề trong của khung cây nhỏ lại khi thẻ hẹp.
     const tree = screen.getByRole("tree");
-    expect(tree).toHaveClass("p-1", "@md:p-2");
-    expect(tree.parentElement).toHaveClass("p-1", "@md:p-2");
+    expect(tree).toHaveClass("p-1", "@min-[416px]:p-2");
+    expect(tree.parentElement).toHaveClass("p-1", "@min-[416px]:p-2");
   });
 
   it("cây là một điểm dừng Tab; Shift+F10 mở menu của dòng (có Thêm nút con), Escape trả focus về dòng (C-08)", async () => {

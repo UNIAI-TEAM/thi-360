@@ -54,15 +54,15 @@ import type {
 } from "../types";
 
 /**
- * Bảng tài khoản theo quyền ở thẻ hẹp (dưới 40rem: điện thoại, tablet dọc): ẩn cột Nguồn, Chi tiết, Trạng thái; nội
+ * Bảng tài khoản theo quyền ở thẻ hẹp (dưới 36rem: điện thoại, tablet dọc): ẩn cột Nguồn, Chi tiết, Trạng thái; nội
  * dung của chúng hiện thành dòng phụ dưới tên tài khoản (`data-col-summary`). Cột được nhận ra qua `data-col` đặt
  * trên nội dung do màn này vẽ, cùng cách với danh sách tài khoản (`users-list-view.tsx`).
  */
 const COMPACT_USER_COLUMNS = [
   "@container",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=source])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=detail])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
+  "@max-[36rem]:[&_:is(th,td):has([data-col=source])]:hidden",
+  "@max-[36rem]:[&_:is(th,td):has([data-col=detail])]:hidden",
+  "@max-[36rem]:[&_:is(th,td):has([data-col=status])]:hidden",
 ].join(" ");
 
 export interface PermissionUsersTabProps {
@@ -309,16 +309,16 @@ export function PermissionUsersTab({
         cell: ({ row }) => {
           const u = row.original;
           return (
-            <div className="min-w-40 py-2">
+            <div className="py-2">
               <div className="font-semibold wrap-anywhere text-text">{u.username}</div>
               <div className="text-caption wrap-break-word text-text-muted">
                 {u.fullName} · {u.code}
               </div>
               {/*
-                Thẻ hẹp (dưới 40rem, ví dụ điện thoại): cột Nguồn, Chi tiết và Trạng thái ẩn đi, nội dung của chúng
+                Thẻ hẹp (dưới 36rem, ví dụ điện thoại): cột Nguồn, Chi tiết và Trạng thái ẩn đi, nội dung của chúng
                 hiện ở đây dưới tên tài khoản. Chip trạng thái chỉ hiện khi khác Hoạt động.
               */}
-              <div data-col-summary className="mt-1.5 flex flex-col gap-1.5 @min-[40rem]:hidden">
+              <div data-col-summary className="mt-1.5 flex flex-col gap-1.5 @min-[36rem]:hidden">
                 <div className="flex flex-wrap gap-1.5">
                   {renderSourceChips(u)}
                   {u.status !== "ACTIVE" && (

@@ -458,8 +458,8 @@ describe("TreeView", () => {
     const name = screen.getByText("Chương có tên khá dài để kiểm tra");
     // C-14: hai dòng thay vì cắt một dòng; không dựa vào `title`; dòng được focus bằng bàn phím hiện đủ tên.
     expect(name).toHaveClass(
-      "@md:min-w-[8rem]",
-      "@md:flex-1",
+      "@min-[22rem]:min-w-[8rem]",
+      "@min-[22rem]:flex-1",
       "line-clamp-2",
       "group-focus-visible:line-clamp-none",
     );
@@ -470,18 +470,18 @@ describe("TreeView", () => {
     const code = screen.getByText("CH_MWG2P0WN_DAI_QUA_MUC");
     expect(code).toHaveClass("max-w-24", "truncate", "shrink-0");
 
-    // Chip trạng thái đứng ngay sau tên (thứ tự hiển thị từ @md) và không bị ép co.
+    // Chip trạng thái đứng ngay sau tên (thứ tự hiển thị từ 22rem) và không bị ép co.
     const status = screen.getByText("Ngừng sử dụng");
-    expect(status).toHaveClass("shrink-0", "@md:order-3");
-    expect(code).toHaveClass("@md:order-1");
-    expect(name).toHaveClass("@md:order-2");
+    expect(status).toHaveClass("shrink-0", "@min-[22rem]:order-3");
+    expect(code).toHaveClass("@min-[22rem]:order-1");
+    expect(name).toHaveClass("@min-[22rem]:order-2");
 
-    // Cây hẹp (dưới @md): tên một dòng riêng, mã và chip xuống dòng phụ; từ @md dòng phụ nhập vào hàng chính.
+    // Cây hẹp (dưới 22rem): tên một dòng riêng, mã và chip xuống dòng phụ; từ 22rem dòng phụ nhập vào hàng chính.
     const lines = name.parentElement!;
-    expect(lines).toHaveClass("flex-col", "@md:flex-row");
+    expect(lines).toHaveClass("flex-col", "@min-[22rem]:flex-row");
     const meta = code.parentElement!;
     expect(meta.parentElement).toBe(lines);
-    expect(meta).toHaveClass("flex-wrap", "@md:contents");
+    expect(meta).toHaveClass("flex-wrap", "@min-[22rem]:contents");
     expect(status.parentElement).toBe(meta);
     expect(name.compareDocumentPosition(meta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText("3").parentElement).toBe(meta);
@@ -503,7 +503,7 @@ describe("TreeView", () => {
 });
 
 describe("TreeView ở bề rộng điện thoại", () => {
-  it("thụt cấp 12px khi cây hẹp, 28px từ @md", () => {
+  it("thụt cấp 12px khi cây hẹp, 28px từ 22rem", () => {
     render(
       <TreeView
         aria-label="Cây"
@@ -518,7 +518,7 @@ describe("TreeView ở bề rộng điện thoại", () => {
     const indents = Array.from(leaf.children).filter((child) => child.getAttribute("aria-hidden") === "true");
     expect(indents).toHaveLength(2);
     for (const indent of indents) {
-      expect(indent).toHaveClass("w-3", "@md:w-7");
+      expect(indent).toHaveClass("w-3", "@min-[22rem]:w-7");
       expect(indent).not.toHaveClass("w-7");
     }
   });

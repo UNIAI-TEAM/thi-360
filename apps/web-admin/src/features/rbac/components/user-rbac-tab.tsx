@@ -66,13 +66,13 @@ import {
 } from "./object-permission-picker";
 
 /**
- * Bảng quyền hiệu lực ở thẻ hẹp (dưới 40rem): cột Đối tượng và Mã ẩn, hiện thành dòng phụ dưới tên quyền
+ * Bảng quyền hiệu lực ở thẻ hẹp (dưới 36rem): cột Đối tượng và Mã ẩn, hiện thành dòng phụ dưới tên quyền
  * (`data-col-summary`), để mã quyền luôn đọc được đủ thay vì bị cắt ở mép khung.
  */
 const COMPACT_EFFECTIVE_COLUMNS = [
   "@container",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=object])]:hidden",
-  "@max-[40rem]:[&_:is(th,td):has([data-col=code])]:hidden",
+  "@max-[36rem]:[&_:is(th,td):has([data-col=object])]:hidden",
+  "@max-[36rem]:[&_:is(th,td):has([data-col=code])]:hidden",
 ].join(" ");
 
 export interface UserRbacTabProps {
@@ -299,10 +299,10 @@ export function UserRbacTab({
             <span className="font-medium wrap-break-word text-text">
               {resolvePermissionName(rbacT, row.original.code, row.original.name)}
             </span>
-            {/* Thẻ hẹp (dưới 40rem): cột Đối tượng và Mã ẩn, nội dung hiện ở đây dưới tên quyền. */}
+            {/* Thẻ hẹp (dưới 36rem): cột Đối tượng và Mã ẩn, nội dung hiện ở đây dưới tên quyền. */}
             <span
               data-col-summary
-              className="mt-0.5 block text-caption text-text-muted @min-[40rem]:hidden"
+              className="mt-0.5 block text-caption text-text-muted @min-[36rem]:hidden"
             >
               {resolveObjectName(rbacT, row.original.groupCode, row.original.groupName)}
               {" · "}
