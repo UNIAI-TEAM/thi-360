@@ -100,6 +100,7 @@
     },
     "behaviorWarning": "Adding a value does not automatically create its corresponding processing logic.",
     "cancel": "Cancel",
+    "cardValueMeta": "Value: {value}",
     "close": "Close",
     "columns": {
       "actions": "Actions",
