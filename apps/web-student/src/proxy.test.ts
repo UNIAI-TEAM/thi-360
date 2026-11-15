@@ -98,3 +98,116 @@ describe("web-student proxy.ts", () => {
     expect(matcher.test("/api/v1/me")).toBe(false);
   });
 });
+
+describe("web-student proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (UNI-2574)", () => {
+  const API = "http://api.internal:8080";
+  const fetchMock = vi.fn<typeof fetch>();
+  let rt = "";
+
+  async function refreshedResponse(access: "MANAGE" | "EXAM") {
+    const ctx = await signCtxCookie(
+      { userId: USER_ID, realm: "APP", access, version: 2, expiresAt: Math.floor(Date.now() / 1000) + 300 },
+      SECRET,
+    );
+    const headers = new Headers();
+    headers.append("set-cookie", "thi360_at=at2; Path=/; Max-Age=300; HttpOnly");
+    headers.append("set-cookie", "thi360_rt=rt2; Path=/; Max-Age=28800; HttpOnly");
+    headers.append("set-cookie", `${CTX_COOKIE_NAME}=${ctx}; Path=/; Max-Age=300; HttpOnly`);
+    headers.append("set-cookie", "thi360_xsrf=x2; Path=/; Max-Age=28800");
+    return new Response("{}", { status: 200, headers });
+  }
+
+  beforeEach(() => {
+    rt = `rt-${crypto.randomUUID()}`;
+    fetchMock.mockReset();
+    vi.stubEnv("THI360_API_URL", API);
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  it("/home khi thi360_ctx đã hết hạn nhưng còn thi360_rt: làm mới rồi cho đi tiếp", async () => {
+    fetchMock.mockResolvedValueOnce(await refreshedResponse("EXAM"));
+
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/home", {
+        headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
+      }),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${API}/api/v1/auth/refresh`);
+    expect(response.status).toBe(200);
+    expect(response.headers.getSetCookie()).toHaveLength(4);
+  });
+
+  it("/dang-nhap kèm callbackUrl khi còn thi360_rt: làm mới rồi quay lại đúng trang trong callbackUrl", async () => {
+    fetchMock.mockResolvedValueOnce(await refreshedResponse("MANAGE"));
+
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/dang-nhap?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Flop-hoc", {
+        headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
+      }),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost:3001/lop-hoc");
+    expect(response.headers.getSetCookie()).toHaveLength(4);
+  });
+
+  it("/dang-nhap không có callbackUrl khi còn thi360_rt: làm mới rồi về trang chủ theo access", async () => {
+    fetchMock.mockResolvedValueOnce(await refreshedResponse("MANAGE"));
+
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/dang-nhap", {
+        headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
+      }),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost:3001/");
+  });
+
+  it("/dang-nhap với thi360_ctx còn hạn: callbackUrl hợp lệ được dùng, callbackUrl ngoài hệ thống bị bỏ qua", async () => {
+    const valid = await signCtxCookie(
+      { userId: USER_ID, realm: "APP", access: "MANAGE", version: 1, expiresAt: Math.floor(Date.now() / 1000) + 300 },
+      SECRET,
+    );
+    const open = (callbackUrl: string) =>
+      proxy(
+        new NextRequest(`http://localhost:3000/dang-nhap?callbackUrl=${encodeURIComponent(callbackUrl)}`, {
+          headers: { cookie: `${CTX_COOKIE_NAME}=${valid}` },
+        }),
+      );
+
+    expect((await open("http://localhost:3001/tai-khoan?q=a")).headers.get("location")).toBe(
+      "http://localhost:3001/tai-khoan?q=a",
+    );
+    expect((await open("/home")).headers.get("location")).toBe("http://localhost:3000/home");
+    expect((await open("https://trang-la.example/x")).headers.get("location")).toBe("http://localhost:3001/");
+    expect((await open("/dang-nhap")).headers.get("location")).toBe("http://localhost:3001/");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("/dang-nhap khi refresh token bị từ chối: hiện trang đăng nhập và xóa cookie cũ", async () => {
+    const headers = new Headers();
+    headers.append("set-cookie", "thi360_rt=; Path=/; Max-Age=0; HttpOnly");
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 401, headers }));
+
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/dang-nhap", {
+        headers: { cookie: `thi360_rt=${rt}; thi360_xsrf=x1` },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.getSetCookie()).toEqual(["thi360_rt=; Path=/; Max-Age=0; HttpOnly"]);
+  });
+
+  it("trang công khai / không gọi backend dù có thi360_rt", async () => {
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/", { headers: { cookie: `thi360_rt=${rt}` } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
