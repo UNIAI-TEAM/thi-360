@@ -689,6 +689,7 @@
       "counts": "Thành công {created, number} · Thất bại {failed, number} · Còn lại {remaining, number}. Tiến độ tự cập nhật, không cần tải lại trang.",
       "progressAriaLabel": "Tiến độ đợt cấp",
       "progressValue": "{processed, number} / {total, number} dòng",
+      "startedStatus": "Đã bắt đầu tạo {total, number} tài khoản. Tiến độ tự cập nhật trên trang.",
       "title": "Đang tạo tài khoản"
     },
     "result": {
@@ -702,6 +703,7 @@
         "processed": "Đã xử lý",
         "processedValue": "{processed, number} / {total, number}"
       },
+      "completedStatus": "Đợt cấp đã xong: tạo được {created, number} tài khoản, {failed, number} dòng thất bại.",
       "deleteConfirm": {
         "cancel": "Hủy",
         "close": "Đóng",
@@ -724,6 +726,7 @@
       "failedBanner": "Đợt cấp tài khoản không hoàn tất do lỗi kỹ thuật.",
       "failedHint": "Dòng thất bại không tạo tài khoản. Sửa rồi cấp lại bằng một tệp chỉ gồm các dòng đó.",
       "goToUsers": "Về danh sách tài khoản",
+      "heading": "Kết quả đợt cấp",
       "onlyFailed": "Chỉ hiện dòng thất bại",
       "passwordGenerated": "Hệ thống sinh, xem trong file",
       "passwordProvided": "Theo tệp",
@@ -765,6 +768,7 @@
     },
     "steps": {
       "ariaLabel": "Các bước cấp tài khoản hàng loạt",
+      "doneLabel": "(đã xong)",
       "step1": "Tải mẫu và chọn tệp",
       "step2": "Xem trước và sửa lỗi",
       "step3": "Xác nhận",
@@ -788,6 +792,8 @@
       "fileSizeKb": "{size, number} KB",
       "footerNote": "Tài khoản tạo từ tệp nhận vai trò Học viên. Tài khoản đã có không bị ghi đè.",
       "mustChangePassword": "Bắt đổi mật khẩu ở lần đăng nhập đầu",
+      "removeFile": "Bỏ tệp {name}",
+      "removeFileTooltip": "Bỏ tệp đã chọn",
       "ruleClassCode": "Mã của lớp đang hoạt động. Để trống thì tài khoản không thuộc lớp nào",
       "ruleEmail": "Đúng định dạng, không trùng tài khoản khác",
       "ruleFullName": "Tối đa 200 ký tự",
@@ -1742,6 +1748,12 @@
       "success": "Đã kích hoạt lại tài khoản {username}.",
       "title": "Kích hoạt lại tài khoản"
     },
+    "announce": {
+      "selectionCleared": "Đã bỏ chọn tất cả tài khoản.",
+      "sortCleared": "Đã bỏ sắp xếp, danh sách về thứ tự mặc định.",
+      "sortedAsc": "Đã sắp xếp theo {column}, tăng dần.",
+      "sortedDesc": "Đã sắp xếp theo {column}, giảm dần."
+    },
     "auditActions": {
       "AUTHZ_BULK_APPLIED": "Cập nhật phân quyền hàng loạt",
       "CLASS_MEMBER_ADDED": "Thêm vào lớp học",
@@ -1776,6 +1788,8 @@
     "bulk": {
       "activateConfirm": "Kích hoạt {count} tài khoản",
       "activateTitle": "Kích hoạt lại nhiều tài khoản",
+      "affectedAccounts": "Áp dụng cho: {names}.",
+      "affectedAccountsMore": "Áp dụng cho: {names} và {count} tài khoản khác.",
       "assignRolePermission": "Gán vai trò, quyền",
       "cancel": "Hủy",
       "clearSelection": "Bỏ chọn",
@@ -1785,6 +1799,7 @@
       "deactivateTitle": "Ngừng hoạt động nhiều tài khoản",
       "deleteConfirm": "Xóa {count} tài khoản",
       "deleteTitle": "Xóa nhiều tài khoản",
+      "helpToggle": "Cách hoạt động",
       "helperNote": "\"Gán vai trò, quyền\" mở tab Gán hàng loạt của Phân quyền với {count} tài khoản này đã chọn sẵn. Ngừng hoạt động, kích hoạt lại và xóa hỏi xác nhận trước; tài khoản không hợp lệ cho thao tác (ví dụ đã có giao dịch thì không xóa được) được báo riêng từng dòng.",
       "noAffected": "Không có tài khoản nào đủ điều kiện thực hiện thao tác này.",
       "previewLoading": "Đang kiểm tra các tài khoản đã chọn...",
@@ -1827,6 +1842,7 @@
       "success": "Đã tạo tài khoản {username}.",
       "title": "Tạo tài khoản",
       "usernameAvailable": "Có thể dùng. 4–30 ký tự, không dấu, không phân biệt hoa/thường, không sửa được sau khi tạo.",
+      "usernameAvailableStatus": "Tên đăng nhập {username} có thể dùng.",
       "usernameChecking": "Đang kiểm tra tên đăng nhập...",
       "usernameHint": "4–30 ký tự (a-z, 0-9, ., _, @, -), bắt đầu bằng chữ cái hoặc chữ số, không sửa được sau khi tạo.",
       "usernameLabel": "Tên đăng nhập",
@@ -1876,6 +1892,7 @@
       "sourceLabel": "Nguồn tạo",
       "statusLabel": "Trạng thái",
       "subtitle": "{username} · {code} · {source} · Đăng nhập cuối {lastLogin}",
+      "subtitleNeverLoggedIn": "{username} · {code} · {source} · Chưa đăng nhập lần nào",
       "tabs": {
         "classes": "Lớp học",
         "history": "Lịch sử thay đổi",
@@ -1887,6 +1904,12 @@
       "updatedAtLabel": "Cập nhật lần cuối",
       "usernameLabel": "Tên đăng nhập",
       "yes": "Có"
+    },
+    "discardDialog": {
+      "cancel": "Tiếp tục nhập",
+      "confirm": "Bỏ thay đổi",
+      "description": "Thông tin bạn vừa nhập trong biểu mẫu này sẽ không được lưu.",
+      "title": "Bỏ thông tin đã nhập?"
     },
     "errorCodes": {
       "ALREADY_ACTIVE": "Tài khoản đang hoạt động.",
@@ -1999,6 +2022,8 @@
       "filteredCount": "{count} tài khoản khớp bộ lọc",
       "hint": "Chọn nhiều dòng để ngừng hoạt động, kích hoạt lại, xóa hoặc gán vai trò và quyền hàng loạt",
       "loadingCount": "Đang tải danh sách tài khoản...",
+      "offlineDescription": "Máy đang mất kết nối nên chưa tải được danh sách theo bộ lọc này. Danh sách tự tải lại khi có mạng, hoặc bấm Thử lại.",
+      "offlineTitle": "Mất kết nối mạng",
       "paginationNav": "Phân trang danh sách tài khoản",
       "paginationNext": "Sau",
       "paginationPage": "Trang {page}",

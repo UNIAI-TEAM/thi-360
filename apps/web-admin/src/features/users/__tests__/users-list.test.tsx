@@ -6,7 +6,10 @@ import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
-import { defaultUsersApiDeps, type UsersApiDeps, type UserSummary } from "../api";
+import { onlineManager, QueryClient } from "@tanstack/react-query";
+import { SESSION_QUERY_KEY } from "@/features/session/api";
+import { notify } from "@thi360/ui";
+import { defaultUsersApiDeps, type UsersApiDeps, UsersApiError, type UserSummary } from "../api";
 import { UsersListView } from "../components/users-list-view";
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
@@ -431,14 +434,21 @@ describe("UsersListView (Slice 1)", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student04" }));
 
-    const toolbar = await screen.findByRole("toolbar", {
+    const toolbar = await screen.findByRole("group", {
       name: "Thao tác với các tài khoản đã chọn",
     });
     expect(toolbar).toHaveTextContent("Đã chọn 2 tài khoản");
     expect(screen.queryByRole("button", { name: "Cấp hàng loạt" })).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/mở tab Gán hàng loạt của Phân quyền với 2 tài khoản này đã chọn sẵn/),
-    ).toBeInTheDocument();
+    // Ghi chú dài nằm sau nút mở/đóng, không chiếm chỗ khi chưa mở.
+    expect(screen.queryByText(/mở tab Gán hàng loạt của Phân quyền/)).not.toBeInTheDocument();
+    const helpToggle = within(toolbar).getByRole("button", { name: "Cách hoạt động" });
+    expect(helpToggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(helpToggle);
+    expect(helpToggle).toHaveAttribute("aria-expanded", "true");
+    const note = screen.getByText(/mở tab Gán hàng loạt của Phân quyền với 2 tài khoản này đã chọn sẵn/);
+    expect(note).toHaveAttribute("id", helpToggle.getAttribute("aria-controls"));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByText(/mở tab Gán hàng loạt của Phân quyền/)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Gán vai trò, quyền" }));
     expect(window.sessionStorage.getItem("rbac.bulk.userIds")).toBe(
@@ -454,6 +464,8 @@ describe("UsersListView (Slice 1)", () => {
 
     expect(await screen.findByText("1 / 2 tài khoản đủ điều kiện thực hiện thao tác.")).toBeInTheDocument();
     expect(screen.getByText(/Tài khoản không tồn tại hoặc đã bị xóa/)).toBeInTheDocument();
+    // Hộp thoại nêu đích danh tài khoản sẽ bị tác động (student04 bị bỏ qua nên không nằm trong câu này).
+    expect(screen.getByText("Áp dụng cho: student01.")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText(/Lý do thực hiện/), "Ngừng hàng loạt");
     await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động 1 tài khoản" }));
@@ -735,5 +747,483 @@ describe("UsersListView (Slice 1)", () => {
 
     expect(await screen.findByText("1,250 matching accounts")).toBeInTheDocument();
     expect(screen.getByText("Showing 1–20 of 1,250")).toBeInTheDocument();
+  });
+});
+
+describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => {
+  it("họ tên, email, vai trò xuống tối đa hai dòng, không cắt một dòng và không dựa vào title", async () => {
+    const longName = "Nguyễn Hoàng Phương Thảo Nguyên Khánh Linh Bảo Trâm";
+    const longEmail = "nguyen.hoang.phuong.thao.nguyen@truong-thpt-chuyen.example.edu.vn";
+    const deps = makeDeps({
+      listUsers: vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+        items: [{ ...SAMPLE_USERS[0]!, fullName: longName, email: longEmail }],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      })),
+    });
+    renderUsersView(deps);
+
+    const nameCell = await screen.findByText(longName);
+    const emailCell = screen.getByText(longEmail);
+    const roleCell = screen.getByText("Học viên", { selector: "[data-col='roles']" });
+    for (const cell of [nameCell, emailCell, roleCell]) {
+      expect(cell).toHaveClass("line-clamp-2");
+      expect(cell).not.toHaveClass("truncate");
+      expect(cell).not.toHaveAttribute("title");
+      expect(cell.className).not.toMatch(/\bmax-w-/);
+    }
+  });
+
+  it("cột Nguồn và Vai trò được đánh dấu để ẩn theo bề rộng khung chứa bảng; cột đầu và cột Thao tác được ghim", async () => {
+    renderUsersView(makeDeps());
+
+    const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });
+    await within(table).findByText("student01");
+
+    const sourceHeader = within(table).getByRole("columnheader", { name: "Nguồn" });
+    const rolesHeader = within(table).getByRole("columnheader", { name: "Vai trò" });
+    expect(sourceHeader.querySelector("[data-col='source']")).not.toBeNull();
+    expect(rolesHeader.querySelector("[data-col='roles']")).not.toBeNull();
+    // Mỗi dòng dữ liệu có đúng một ô mang dấu của từng cột.
+    expect(table.querySelectorAll("tbody [data-col='source']")).toHaveLength(SAMPLE_USERS.length);
+    expect(table.querySelectorAll("tbody [data-col='roles']")).toHaveLength(SAMPLE_USERS.length);
+
+    // Khung chứa là query container và mang quy tắc ẩn cột Nguồn trước (ngưỡng rộng hơn), rồi Vai trò.
+    const container = table.closest(".\\@container");
+    expect(container).not.toBeNull();
+    expect(container!.className).toContain("@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden");
+    expect(container!.className).toContain("@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden");
+  });
+});
+
+describe("UsersListView: kết quả không đồng bộ được đọc lên qua một vùng role=status (U-04)", () => {
+  it("không đọc số kết quả ở lần tải đầu; đọc số kết quả mới sau khi đổi bộ lọc", async () => {
+    const first = SAMPLE_USERS[0]!;
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async (query) =>
+      query.neverLoggedIn
+        ? { items: [first], page: 0, size: 20, totalItems: 1, totalPages: 1 }
+        : { items: SAMPLE_USERS, page: 0, size: 20, totalItems: SAMPLE_USERS.length, totalPages: 1 },
+    );
+    renderUsersView(makeDeps({ listUsers: listUsersMock }));
+
+    await screen.findByText("student01");
+    // Vùng thông báo có sẵn từ đầu và đang rỗng: lần tải đầu không đọc gì.
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toBeEmptyDOMElement();
+
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+    await waitFor(() => expect(status).toHaveTextContent("1 tài khoản khớp bộ lọc"));
+    // Vẫn chỉ một vùng thông báo cho cả danh sách.
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("đọc cột và chiều sắp xếp sau mỗi lần đổi sắp xếp", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+    const status = screen.getByRole("status");
+
+    const sortButton = screen.getByRole("button", { name: "Họ và tên" });
+    await userEvent.click(sortButton);
+    expect(status).toHaveTextContent("Đã sắp xếp theo Họ và tên, tăng dần.");
+    await userEvent.click(sortButton);
+    expect(status).toHaveTextContent("Đã sắp xếp theo Họ và tên, giảm dần.");
+    await userEvent.click(sortButton);
+    expect(status).toHaveTextContent("Đã bỏ sắp xếp, danh sách về thứ tự mặc định.");
+  });
+
+  it("đọc số tài khoản đang chọn và đọc khi bỏ chọn hết", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+    const status = screen.getByRole("status");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    expect(status).toHaveTextContent("Đã chọn 1 tài khoản");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student02" }));
+    expect(status).toHaveTextContent("Đã chọn 2 tài khoản");
+
+    await userEvent.click(screen.getByRole("button", { name: "Bỏ chọn" }));
+    expect(status).toHaveTextContent("Đã bỏ chọn tất cả tài khoản.");
+  });
+
+  it("hộp thoại tạo tài khoản đọc kết quả tên đăng nhập dùng được và gắn dòng chữ vào ô nhập", async () => {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const status = within(dialog).getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    const usernameInput = within(dialog).getByLabelText(/Tên đăng nhập/);
+    await userEvent.type(usernameInput, "Student06");
+    await userEvent.tab();
+
+    await waitFor(() => expect(status).toHaveTextContent("Tên đăng nhập student06 có thể dùng."));
+    expect(usernameInput).toHaveAccessibleDescription(/Có thể dùng\. 4–30 ký tự/);
+
+    // Gõ lại thì kết quả cũ không còn đúng: vùng thông báo về rỗng.
+    await userEvent.type(usernameInput, "x");
+    expect(status).toBeEmptyDOMElement();
+  });
+});
+
+describe("UsersListView: thanh thao tác hàng loạt có chỗ giữ sẵn (U-05, U-14)", () => {
+  it("tích dòng chỉ đổi lớp đang hiện trong cùng một ô lưới, không chèn thêm khối phía trên bảng", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+
+    const countStrip = screen.getByText("4 tài khoản khớp bộ lọc").parentElement as HTMLElement;
+    const slot = countStrip.parentElement as HTMLElement;
+    const table = screen.getByRole("table", { name: "Danh sách tài khoản" });
+    const childrenBefore = slot.parentElement!.children.length;
+
+    // Chưa chọn: thanh thao tác đã nằm sẵn trong ô nhưng ẩn và không nhận thao tác.
+    expect(screen.queryByRole("group", { name: "Thao tác với các tài khoản đã chọn" })).not.toBeInTheDocument();
+    const bar = slot.querySelector<HTMLElement>("[role='group']")!;
+    expect(bar).toHaveClass("invisible", "col-start-1", "row-start-1");
+    expect(bar).toHaveAttribute("inert");
+    expect(countStrip).toHaveClass("col-start-1", "row-start-1");
+    expect(countStrip).not.toHaveClass("invisible");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+
+    // Đã chọn: hai lớp đổi vai, vẫn cùng ô lưới; không có phần tử nào được chèn vào giữa ô và bảng.
+    expect(screen.getByRole("group", { name: "Thao tác với các tài khoản đã chọn" })).toBe(bar);
+    expect(bar).not.toHaveClass("invisible");
+    expect(bar).not.toHaveAttribute("inert");
+    expect(countStrip).toHaveClass("invisible");
+    expect(countStrip).toHaveAttribute("inert");
+    expect(countStrip).toHaveAttribute("aria-hidden", "true");
+    expect(slot.parentElement!.children.length).toBe(childrenBefore);
+    expect(slot.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Không còn role="toolbar" (không có mô hình phím mũi tên).
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+  });
+
+  it("hộp thoại xác nhận nêu vài tài khoản đầu và gộp phần còn lại thành số đếm", async () => {
+    const manyUsers: UserSummary[] = Array.from({ length: 7 }, (_, index) => ({
+      ...SAMPLE_USERS[0]!,
+      id: `00000000-0000-4000-8000-0000000002${String(index).padStart(2, "0")}`,
+      username: `bulk${index + 1}`,
+    }));
+    const previewMock = vi.fn<UsersApiDeps["previewBulkUserActions"]>(async () => ({
+      total: 7,
+      affected: 7,
+      skipped: [],
+    }));
+    renderUsersView(
+      makeDeps({
+        listUsers: vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+          items: manyUsers,
+          page: 0,
+          size: 20,
+          totalItems: 7,
+          totalPages: 1,
+        })),
+        previewBulkUserActions: previewMock,
+      }),
+    );
+
+    await screen.findByText("bulk1");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tất cả tài khoản" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Áp dụng cho: bulk1, bulk2, bulk3, bulk4, bulk5 và 2 tài khoản khác."),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("UsersListView: áp dụng hàng loạt thất bại báo lỗi trong hộp thoại (U-07)", () => {
+  it("lỗi hiện trong hộp thoại xác nhận, không dùng toast; đóng rồi mở lại không còn lỗi cũ", async () => {
+    const previewMock = vi.fn<UsersApiDeps["previewBulkUserActions"]>(async () => ({
+      total: 1,
+      affected: 1,
+      skipped: [],
+    }));
+    const applyMock = vi
+      .fn<UsersApiDeps["applyBulkUserActions"]>()
+      .mockRejectedValueOnce(new UsersApiError(429, "raw backend text", "RATE_LIMITED"));
+    const toastError = vi.spyOn(notify, "error");
+    renderUsersView(
+      makeDeps({ previewBulkUserActions: previewMock, applyBulkUserActions: applyMock }),
+    );
+
+    await screen.findByText("student01");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    await userEvent.click(screen.getByRole("button", { name: "Kích hoạt lại" }));
+
+    let dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kích hoạt 1 tài khoản" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+    );
+    expect(screen.queryByText(/raw backend text/)).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Kích hoạt lại" }));
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("CreateUserDialog: gửi biểu mẫu sai thì focus về ô sai đầu tiên (U-08)", () => {
+  it("mật khẩu là ô sai duy nhất: focus chuyển vào ô mật khẩu, không ở lại nút gửi", async () => {
+    const createMock = vi.fn<UsersApiDeps["createUser"]>();
+    renderUsersView(makeDeps({ createUser: createMock }));
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    await userEvent.type(within(dialog).getByLabelText(/Tên đăng nhập/), "student77");
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 77");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo tài khoản" }));
+
+    const passwordInput = dialog.querySelector<HTMLInputElement>("input[autocomplete='new-password']")!;
+    await waitFor(() => expect(passwordInput).toHaveFocus());
+    expect(passwordInput).toHaveAttribute("aria-invalid", "true");
+    expect(createMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("UsersListView: focus không rơi về <body> khi nút vừa bấm biến mất (U-10)", () => {
+  it("Xóa bộ lọc bằng bàn phím: focus về ô tìm kiếm", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+    const clearButton = await screen.findByRole("button", { name: "Xóa bộ lọc" });
+    clearButton.focus();
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Xóa bộ lọc" })).not.toBeInTheDocument());
+    expect(screen.getByLabelText("Tìm kiếm")).toHaveFocus();
+  });
+
+  it("Bỏ chọn: focus về ô chọn tất cả của bảng", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    const clearSelection = screen.getByRole("button", { name: "Bỏ chọn" });
+    clearSelection.focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(screen.getByRole("checkbox", { name: "Chọn tất cả tài khoản" })).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+});
+
+describe("CreateUserDialog: không làm mất dữ liệu đã nhập khi đóng nhầm (U-11)", () => {
+  async function openCreateDialog() {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    return screen.getByRole("dialog", { name: "Tạo tài khoản" });
+  }
+
+  it("biểu mẫu chưa nhập gì: Esc đóng ngay, không hỏi", async () => {
+    await openCreateDialog();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("biểu mẫu chưa nhập gì: bấm ra ngoài vẫn đóng như trước", async () => {
+    await openCreateDialog();
+    // Radix gắn bộ nghe pointerdown ở document sau một nhịp; chờ nhịp đó rồi mới bấm.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await userEvent.click(document.querySelector<HTMLElement>("[data-state='open'].fixed.inset-0")!);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("biểu mẫu đã nhập: bấm ra ngoài không đóng và không hỏi", async () => {
+    const dialog = await openCreateDialog();
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 88");
+
+    const overlay = document.querySelector<HTMLElement>("[data-state='open'].fixed.inset-0")!;
+    expect(overlay).not.toBeNull();
+    await userEvent.click(overlay);
+
+    expect(screen.getByRole("dialog", { name: "Tạo tài khoản" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/Họ và tên/)).toHaveValue("Học viên 88");
+  });
+
+  it("biểu mẫu đã nhập: Esc hỏi lại; Tiếp tục nhập giữ nguyên dữ liệu; Hủy rồi Bỏ thay đổi mới đóng", async () => {
+    const dialog = await openCreateDialog();
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 88");
+
+    await userEvent.keyboard("{Escape}");
+    let discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Tiếp tục nhập" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).not.toBeInTheDocument(),
+    );
+    const stillOpen = screen.getByRole("dialog", { name: "Tạo tài khoản" });
+    expect(within(stillOpen).getByLabelText(/Họ và tên/)).toHaveValue("Học viên 88");
+
+    await userEvent.click(within(stillOpen).getByRole("button", { name: "Hủy" }));
+    discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Bỏ thay đổi" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // Mở lại là biểu mẫu trống, không còn hỏi.
+    await userEvent.click(screen.getByRole("button", { name: /Tạo tài khoản/ }));
+    const reopened = screen.getByRole("dialog", { name: "Tạo tài khoản" });
+    expect(within(reopened).getByLabelText(/Họ và tên/)).toHaveValue("");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("nút × cũng hỏi lại khi biểu mẫu đã nhập", async () => {
+    const dialog = await openCreateDialog();
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 88");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Đóng" }));
+    expect(await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).toBeInTheDocument();
+    expect(screen.getByText("Thông tin bạn vừa nhập trong biểu mẫu này sẽ không được lưu.")).toBeInTheDocument();
+  });
+});
+
+describe("CreateUserDialog: kiểm tra khi rời ô và gợi ý cho ô nhập (U-16)", () => {
+  it("email sai báo lỗi ngay khi rời ô, sửa đúng thì lỗi tự mất, không cần bấm gửi", async () => {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const email = within(dialog).getByLabelText(/Email/);
+    await userEvent.type(email, "khong-phai-email");
+    await userEvent.tab();
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "true"));
+    expect(within(dialog).getByText("Email không đúng định dạng.")).toBeInTheDocument();
+
+    await userEvent.clear(email);
+    await userEvent.type(email, "hv@example.com");
+    await waitFor(() => expect(email).not.toHaveAttribute("aria-invalid"));
+  });
+
+  it("tên đăng nhập sai định dạng báo lỗi khi rời ô và không hỏi máy chủ; ô để trống rời đi không báo lỗi", async () => {
+    const checkMock = vi.fn<UsersApiDeps["checkUsernameAvailability"]>(async () => ({ available: true }));
+    renderUsersView(makeDeps({ checkUsernameAvailability: checkMock }));
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+    const username = within(dialog).getByLabelText(/Tên đăng nhập/);
+
+    username.focus();
+    await userEvent.tab();
+    expect(username).not.toHaveAttribute("aria-invalid");
+
+    await userEvent.type(username, "ab");
+    await userEvent.tab();
+    await waitFor(() => expect(username).toHaveAttribute("aria-invalid", "true"));
+    expect(checkMock).not.toHaveBeenCalled();
+  });
+
+  it("ô nhập có maxLength theo schema và gợi ý cho trình duyệt", async () => {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const username = within(dialog).getByLabelText(/Tên đăng nhập/);
+    expect(username).toHaveAttribute("maxlength", "30");
+    expect(username).toHaveAttribute("autocapitalize", "none");
+    expect(username).toHaveAttribute("spellcheck", "false");
+
+    const fullName = within(dialog).getByLabelText(/Họ và tên/);
+    expect(fullName).toHaveAttribute("maxlength", "200");
+    expect(fullName).toHaveAttribute("autocomplete", "off");
+
+    const email = within(dialog).getByLabelText(/Email/);
+    expect(email).toHaveAttribute("maxlength", "255");
+    expect(email).toHaveAttribute("autocomplete", "off");
+    expect(email).toHaveAttribute("spellcheck", "false");
+
+    const phone = within(dialog).getByLabelText(/Số điện thoại/);
+    expect(phone).toHaveAttribute("maxlength", "30");
+    expect(phone).toHaveAttribute("autocomplete", "off");
+  });
+});
+
+describe("UsersListView: mất mạng khi đổi bộ lọc (U-23)", () => {
+  afterEach(() => {
+    onlineManager.setOnline(true);
+  });
+
+  it("không giữ mãi các dòng của bộ lọc cũ: báo mất kết nối, bỏ số đếm cũ; có mạng lại thì tự tải", async () => {
+    const first = SAMPLE_USERS[0]!;
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async (query) =>
+      query.neverLoggedIn
+        ? { items: [first], page: 0, size: 20, totalItems: 1, totalPages: 1 }
+        : { items: SAMPLE_USERS, page: 0, size: 20, totalItems: SAMPLE_USERS.length, totalPages: 1 },
+    );
+    renderUsersView(makeDeps({ listUsers: listUsersMock }));
+    await screen.findByText("student01");
+    expect(screen.getByText("4 tài khoản khớp bộ lọc")).toBeInTheDocument();
+
+    onlineManager.setOnline(false);
+    await userEvent.click(screen.getByLabelText("Chưa đăng nhập"));
+
+    const table = screen.getByRole("table", { name: "Danh sách tài khoản" });
+    expect(await within(table).findByText("Mất kết nối mạng")).toBeInTheDocument();
+    expect(within(table).queryByText("student02")).not.toBeInTheDocument();
+    expect(table).not.toHaveAttribute("aria-busy");
+    expect(screen.queryByText("4 tài khoản khớp bộ lọc")).not.toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+
+    onlineManager.setOnline(true);
+    // Số đếm hiện ở dải trên bảng (và được đọc lên qua vùng thông báo, nên lọc theo thẻ <p>).
+    await waitFor(() =>
+      expect(screen.getByText("1 tài khoản khớp bộ lọc", { selector: "p" })).toBeInTheDocument(),
+    );
+    expect(within(table).queryByText("Mất kết nối mạng")).not.toBeInTheDocument();
+  });
+
+  it("vào trang khi mất mạng (phiên đã có sẵn): báo mất kết nối, không hiện trạng thái Chưa có tài khoản", async () => {
+    // Phiên cũng là một truy vấn và cũng bị tạm dừng khi mất mạng; trường hợp thật là điều hướng trong ứng dụng
+    // tới /users khi phiên đã nằm sẵn trong bộ nhớ đệm.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(SESSION_QUERY_KEY, TEST_ADMIN_SESSION);
+    onlineManager.setOnline(false);
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UsersListView deps={makeDeps()} showClassFilter={false} />
+      </SessionProvider>,
+      { client },
+    );
+    const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });
+    expect(await within(table).findByText("Mất kết nối mạng")).toBeInTheDocument();
+    expect(screen.queryByText("Chưa có tài khoản")).not.toBeInTheDocument();
+  });
+});
+
+describe("CreateUserDialog: nhóm Lớp học gắn với nhãn, gợi ý và lỗi (U-24)", () => {
+  it("nhãn trỏ tới nhóm có thật; nhóm được mô tả bằng gợi ý và lỗi CLASS_INACTIVE", async () => {
+    const createMock = vi.fn<UsersApiDeps["createUser"]>(async () => {
+      throw new UsersApiError(400, "raw", "CLASS_INACTIVE");
+    });
+    renderUsersView(makeDeps({ createUser: createMock }), TEST_ADMIN_SESSION, true);
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const group = await within(dialog).findByRole("group", { name: "Lớp học" });
+    const label = within(dialog).getByText("Lớp học", { selector: "label" });
+    expect(label).toHaveAttribute("for", group.id);
+    expect(group).toHaveAccessibleDescription(
+      "Tùy chọn gán tài khoản vào các lớp đang hoạt động ngay khi tạo.",
+    );
+
+    await userEvent.click(within(group).getByRole("checkbox", { name: /LOP-A/ }));
+    await userEvent.type(within(dialog).getByLabelText(/Tên đăng nhập/), "student55");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo ngẫu nhiên" }));
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 55");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Tạo tài khoản" }));
+
+    await waitFor(() =>
+      expect(group).toHaveAccessibleDescription(/Lớp học được chọn đang ngừng sử dụng\./),
+    );
   });
 });
