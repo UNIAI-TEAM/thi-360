@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   cn,
@@ -42,7 +43,9 @@ export function UserMenu() {
       <DropdownMenuTrigger
         aria-label={t("trigger")}
         className={cn(
-          "flex h-10 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-2.5 pl-1 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong motion-reduce:transition-none",
+          "relative flex h-10 items-center gap-2 rounded-full border border-border bg-surface py-0 pr-1 pl-1 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong motion-reduce:transition-none sm:pr-2.5",
+          // Màn cảm ứng: vùng bấm nới ra 44px bằng phần tử giả, không đổi kích thước nhìn thấy (DESIGN mục 8).
+          "pointer-coarse:after:absolute pointer-coarse:after:-inset-0.5",
           focusRing,
         )}
       >
@@ -52,10 +55,12 @@ export function UserMenu() {
         >
           {initialsOf(session.fullName, session.username)}
         </span>
-        <span>{session.username}</span>
-        <ChevronDown aria-hidden className="size-4 text-text-muted" />
+        {/* Dưới `sm` chỉ còn avatar để thanh trên vừa một hàng ở 360px; tên đăng nhập hiện ở đầu menu (như web học viên). */}
+        <span className="hidden sm:inline">{session.username}</span>
+        <ChevronDown aria-hidden className="hidden size-4 text-text-muted sm:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
+        <DropdownMenuLabel className="sm:hidden">{t("signedInAs", { username: session.username })}</DropdownMenuLabel>
         {session.access === "MANAGE" && (
           <DropdownMenuItem asChild>
             <Link href="/">

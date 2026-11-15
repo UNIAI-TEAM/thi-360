@@ -7,9 +7,14 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { NAVIGATION, resolveBreadcrumb } from "@/lib/navigation";
 import { useBreadcrumbLeaf } from "./breadcrumb-leaf";
+import { NavDrawer } from "./nav-drawer";
 import { UserMenu } from "./user-menu";
 
-/** Thanh trên cao 56px: breadcrumb bên trái, menu avatar luôn ở bên phải, kể cả khi trang không có breadcrumb (DESIGN 5.8). */
+/**
+ * Thanh trên cao 56px: nút mở menu (dưới `lg`) và breadcrumb bên trái, nút sáng/tối, ngôn ngữ và menu avatar luôn ở
+ * bên phải, kể cả khi trang không có breadcrumb (DESIGN 5.8). Dưới `sm` breadcrumb chỉ còn trang hiện tại và menu
+ * avatar chỉ còn avatar, để cả thanh vừa một hàng ở 360px.
+ */
 export function Topbar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
   const t = useTranslations();
   const pathname = usePathname();
@@ -27,14 +32,18 @@ export function Topbar({ rightSlot }: { rightSlot?: ReactNode } = {}) {
     : [];
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-end gap-4 border-b border-border bg-surface px-6">
-      <Breadcrumb
-        aria-label={t("shell.breadcrumbLabel")}
-        items={items}
-        linkComponent={Link}
-        className="mr-auto"
-      />
-      <div className="flex items-center gap-3">
+    <header className="flex h-14 shrink-0 items-center justify-end gap-2 border-b border-border bg-surface px-4 sm:gap-4 sm:px-6">
+      {/* `flex-1 min-w-0`: nhóm trái chiếm phần còn lại và co được, breadcrumb cắt chữ thay vì đẩy nhóm phải ra ngoài. */}
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        <NavDrawer />
+        <Breadcrumb
+          aria-label={t("shell.breadcrumbLabel")}
+          items={items}
+          linkComponent={Link}
+          collapseOnNarrow
+        />
+      </div>
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         {rightSlot}
         <div className="flex items-center gap-2">
           <ThemeToggle />
