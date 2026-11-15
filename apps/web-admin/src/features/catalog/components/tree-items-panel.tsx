@@ -108,7 +108,7 @@ import {
   resolveTreeLevelLabel,
 } from "../utils";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
-import { DRAG_HANDLE } from "../styles";
+import { DRAG_HANDLE, focusRing } from "../styles";
 import { usePrefersReducedMotion } from "../use-reduced-motion";
 import { useDebouncedSearch } from "../use-debounced-value";
 import type { StatusFilter } from "./simple-items-panel";
@@ -1101,7 +1101,10 @@ export function TreeItemsPanel({
                       aria-label={t("tree.removeRefGroupLabel", { name: label })}
                       onClick={() => void handleRemoveRefGroup(rg.refGroupId, label)}
                       disabled={refActionPending}
-                      className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
+                      className={cn(
+                        "-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60",
+                        focusRing,
+                      )}
                     >
                       <X aria-hidden="true" className="size-3" />
                     </button>
@@ -1172,6 +1175,7 @@ export function TreeItemsPanel({
                     onClick={() => setStatusFilter(opt.value)}
                     className={cn(
                       "rounded-sm px-3 py-1.5 text-caption font-semibold transition-colors",
+                      focusRing,
                       active
                         ? "bg-surface text-primary-text shadow-xs"
                         : "text-text-muted hover:text-text",
@@ -1699,7 +1703,7 @@ export function TreeItemsPanel({
                 <button
                   type="button"
                   onClick={() => onSelectNode(null)}
-                  className="rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text"
+                  className={cn("rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text", focusRing)}
                 >
                   {t("tree.breadcrumbRoot")}
                 </button>
@@ -1712,7 +1716,7 @@ export function TreeItemsPanel({
                       <button
                         type="button"
                         onClick={() => onSelectNode(anc.id)}
-                        className="rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text"
+                        className={cn("rounded-xs px-1 py-0.5 hover:bg-subtle hover:text-text", focusRing)}
                       >
                         {pickName(anc, locale)}
                       </button>
@@ -1901,7 +1905,10 @@ export function TreeItemsPanel({
                                     name: fromName,
                                   })}
                                   onClick={() => onSelectNode(ref.fromItemId)}
-                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-0.5 text-caption text-text-secondary transition-colors hover:border-primary-600 hover:text-primary-text"
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-0.5 text-caption text-text-secondary transition-colors hover:border-primary-600 hover:text-primary-text",
+                                    focusRing,
+                                  )}
                                 >
                                   <Lock aria-hidden="true" className="size-3 shrink-0" />
                                   <span>{refName}</span>
@@ -1930,7 +1937,10 @@ export function TreeItemsPanel({
                                       )
                                     }
                                     disabled={refActionPending}
-                                    className="-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60"
+                                    className={cn(
+                        "-mr-1 inline-flex size-6 items-center justify-center rounded-full text-primary-text hover:bg-primary-100/60",
+                        focusRing,
+                      )}
                                   >
                                     <X aria-hidden="true" className="size-3" />
                                   </button>
@@ -2194,6 +2204,7 @@ function TreeDragHandle({
         className={cn(
           "inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-text-placeholder transition-colors",
           DRAG_HANDLE,
+          focusRing,
           effectiveDisabled
             ? "cursor-not-allowed opacity-40"
             : "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing",

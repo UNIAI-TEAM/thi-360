@@ -2313,6 +2313,31 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     });
   });
 
+  it("nút tự viết trên trang cây dùng vòng focus của kit (C-21)", async () => {
+    // jsdom không vẽ: kiểm tra lớp vòng focus của kit (`focus-visible:ring-3 ring-primary-text`).
+    const KIT_RING = ["focus-visible:ring-3", "focus-visible:ring-primary-text"];
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    await screen.findByText("Hàm số");
+
+    const handle = screen.getByRole("button", { name: "Kéo để đổi thứ tự Hàm số" });
+    expect(handle).toHaveClass(...KIT_RING);
+    for (const segment of screen.getAllByRole("button", { pressed: true })) {
+      expect(segment).toHaveClass(...KIT_RING);
+    }
+    // Nút × trên chip nhóm liên kết (chỉ có ở nhóm không phải hệ thống) dùng chung lớp với nút × giá trị bên dưới.
+    for (const remove of screen.queryAllByRole("button", { name: /^Bỏ danh mục liên kết/ })) {
+      if (!remove.hasAttribute("disabled")) expect(remove).toHaveClass(...KIT_RING);
+    }
+
+    await userEvent.click(screen.getByRole("button", { name: "Mở Hàm số" }));
+    await userEvent.click(await screen.findByRole("treeitem", { name: /Tính đơn điệu/ }));
+    const detailPane = screen.getByRole("complementary", { name: "Chi tiết nút đang chọn" });
+    expect(await within(detailPane).findByRole("button", { name: "Gốc" })).toHaveClass(...KIT_RING);
+    expect(within(detailPane).getByRole("button", { name: "Hàm số" })).toHaveClass(...KIT_RING);
+    expect(within(detailPane).getByRole("button", { name: /^Đi tới / })).toHaveClass(...KIT_RING);
+    expect(await within(detailPane).findByRole("button", { name: "Gỡ Ngữ văn" })).toHaveClass(...KIT_RING);
+  });
+
   it("tải lười nút con khi mở rộng, mở tất cả / thu gọn, đồng bộ ?node= và thao tác liên kết ở pane 340px", async () => {
     const api = createTreeMockApi();
     renderCatalog({ api, search: "group=KNOWLEDGE" });

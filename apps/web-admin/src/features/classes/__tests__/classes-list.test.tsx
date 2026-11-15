@@ -313,6 +313,11 @@ describe("ClassesListView", () => {
     );
 
     await screen.findByText("LOP-A");
+    // C-21: nút "⋯" là IconButton của kit, mang vòng focus chung.
+    expect(screen.getByRole("button", { name: "Thao tác khác với lớp LOP-A" })).toHaveClass(
+      "focus-visible:ring-3",
+      "focus-visible:ring-primary-text",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Thao tác khác với lớp LOP-A" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Ngừng sử dụng" }));
 

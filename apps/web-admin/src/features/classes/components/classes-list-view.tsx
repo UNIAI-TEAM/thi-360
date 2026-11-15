@@ -21,7 +21,6 @@ import {
   Skeleton,
   StatusChip,
   Table,
-  Tooltip,
 } from "@thi360/ui";
 import {
   Eye,
@@ -290,17 +289,13 @@ function ClassesListContent({
                     }}
                   />
                   <DropdownMenu>
-                    <Tooltip content={t("actions.moreAria", { code: item.code })}>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={t("actions.moreAria", { code: item.code })}
-                          className="inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none"
-                        >
-                          <MoreHorizontal aria-hidden className="size-[18px]" />
-                        </button>
-                      </DropdownMenuTrigger>
-                    </Tooltip>
+                    {/* C-21: IconButton của kit (vòng focus, cỡ, tooltip chung) thay cho nút tự viết. */}
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        icon={<MoreHorizontal />}
+                        aria-label={t("actions.moreAria", { code: item.code })}
+                      />
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent>
                       {item.status === "ACTIVE" ? (
                         <DropdownMenuItem

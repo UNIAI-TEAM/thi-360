@@ -50,7 +50,7 @@ import {
 } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { createCombinationFormSchema, type CombinationFormValues } from "../schemas";
-import { DRAG_HANDLE } from "../styles";
+import { DRAG_HANDLE, focusRing } from "../styles";
 import { usePrefersReducedMotion } from "../use-reduced-motion";
 import {
   getCatalogErrorCode,
@@ -928,6 +928,7 @@ function SortableSubjectRow({
         className={cn(
           "inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-sm text-text-muted hover:bg-subtle hover:text-text-secondary active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40",
           DRAG_HANDLE,
+          focusRing,
         )}
         disabled={disabled}
         {...attributes}

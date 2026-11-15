@@ -58,7 +58,7 @@ import { useCallback, useMemo, type CSSProperties } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { useInlineOverflow } from "../scroll-region";
-import { DRAG_HANDLE, focusRingInset, STATIC_CHIP } from "../styles";
+import { DRAG_HANDLE, focusRing, focusRingInset, STATIC_CHIP } from "../styles";
 import { usePrefersReducedMotion } from "../use-reduced-motion";
 import { pickName } from "../utils";
 
@@ -704,6 +704,7 @@ function SortableItemRow({
                 className={cn(
                   "inline-flex size-8 items-center justify-center rounded-sm text-text-placeholder transition-colors",
                   DRAG_HANDLE,
+                  focusRing,
                   reorderEnabled
                     ? "cursor-grab hover:bg-subtle hover:text-text-secondary active:cursor-grabbing"
                     : "cursor-not-allowed opacity-40",
