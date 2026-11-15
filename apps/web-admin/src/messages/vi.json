@@ -473,6 +473,8 @@
       "inheritedFromHint": "Kế thừa từ {code} — {name}",
       "inheritedLockedHint": "Kế thừa từ cấp trên, không bỏ được ở đây",
       "jumpToAncestor": "Đi tới {code} — {name}",
+      "keyboardHint": "Bàn phím: mũi tên để đi trong cây, Enter để chọn nút, Shift+F10 hoặc phím menu để mở thao tác của nút.",
+      "keyboardHintView": "Bàn phím: mũi tên để đi trong cây, Enter để chọn nút, Shift+F10 hoặc phím menu để xem chi tiết nút.",
       "kindBadge": "Cây",
       "linksHeader": "Liên kết",
       "linksLiveHint": "Lưu ngay khi đổi",

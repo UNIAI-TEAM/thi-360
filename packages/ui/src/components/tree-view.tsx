@@ -44,11 +44,25 @@ export interface TreeViewProps {
   onSelect: (item: TreeViewItem) => void;
   labels: TreeViewLabels;
   "aria-label": string;
+  /** Id của dòng hướng dẫn phím (nhìn thấy được) đặt cạnh cây. */
+  "aria-describedby"?: string;
   className?: string;
+  /**
+   * Cây là MỘT điểm dừng Tab (mẫu tree của WAI-ARIA): điều khiển trong `renderLeading`/`renderTrailing` phải đặt
+   * `tabIndex={-1}` và chỉ dành cho chuột. Người dùng bàn phím tới các thao tác đó qua `onRowMenu`.
+   */
   renderLeading?: (item: TreeViewItem) => ReactNode;
   renderTrailing?: (item: TreeViewItem) => ReactNode;
   renderRowWrapper?: (item: TreeViewItem, row: ReactNode) => ReactNode;
+  /**
+   * Phím menu ngữ cảnh hoặc Shift+F10 trên dòng đang focus: mở thao tác của dòng (thường là menu "⋯" sẵn có).
+   * Truyền thì dòng khai báo `aria-keyshortcuts` và menu chuột phải của trình duyệt không bật lên khi dùng phím.
+   */
+  onRowMenu?: (item: TreeViewItem) => void;
 }
+
+/** Phím mở thao tác của dòng, theo cú pháp `aria-keyshortcuts`. */
+const TREE_ROW_MENU_KEYSHORTCUTS = "Shift+F10 ContextMenu";
 
 interface VisibleTreeRow {
   item: TreeViewItem;
@@ -72,12 +86,17 @@ export function TreeView({
   onSelect,
   labels,
   "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   className,
   renderLeading,
   renderTrailing,
   renderRowWrapper,
+  onRowMenu,
 }: TreeViewProps) {
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  // Phím menu/Shift+F10 còn sinh sự kiện `contextmenu` (trên Windows là lúc nhả phím): cờ này chặn menu của trình
+  // duyệt đúng lần đó. Cờ tự bỏ sau 1 giây hoặc khi bấm chuột, nên chuột phải vẫn giữ hành vi mặc định.
+  const menuKeyPressedRef = useRef(false);
   const nameIdPrefix = useId();
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
@@ -206,13 +225,29 @@ export function TreeView({
         onSelect(item);
         break;
       }
+      case "ContextMenu":
+      case "F10": {
+        if (!onRowMenu || (event.key === "F10" && !event.shiftKey)) return;
+        event.preventDefault();
+        menuKeyPressedRef.current = true;
+        setTimeout(() => {
+          menuKeyPressedRef.current = false;
+        }, 1_000);
+        onRowMenu(item);
+        break;
+      }
       default:
         break;
     }
   }
 
   return (
-    <div role="tree" aria-label={ariaLabel} className={cn("@container flex flex-col gap-0.5 p-2", className)}>
+    <div
+      role="tree"
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
+      className={cn("@container flex flex-col gap-0.5 p-2", className)}
+    >
       {visibleRows.map(({ item, level, setSize, posInSet }, rowIndex) => {
         const isExpanded = expandedIds.has(item.id);
         const isSelected = selectedId === item.id;
@@ -251,6 +286,7 @@ export function TreeView({
               }
             }}
             role="treeitem"
+            data-tree-item-id={item.id}
             aria-labelledby={`${codeId} ${nameId}`}
             aria-describedby={describedBy}
             aria-level={level}
@@ -258,8 +294,22 @@ export function TreeView({
             aria-posinset={posInSet}
             aria-selected={isSelected}
             aria-expanded={item.hasChildren ? isExpanded : undefined}
+            aria-keyshortcuts={onRowMenu ? TREE_ROW_MENU_KEYSHORTCUTS : undefined}
             tabIndex={activeFocusId === item.id ? 0 : -1}
             onKeyDown={(event) => handleKeyDown(event, rowIndex)}
+            onFocus={(event) => {
+              // Focus trả về dòng bằng mã (sau khi đóng menu) cũng cập nhật điểm dừng Tab của cây.
+              if (event.target === event.currentTarget) setFocusedId(item.id);
+            }}
+            onPointerDown={() => {
+              menuKeyPressedRef.current = false;
+            }}
+            onContextMenu={(event) => {
+              if (menuKeyPressedRef.current) {
+                menuKeyPressedRef.current = false;
+                event.preventDefault();
+              }
+            }}
             onClick={() => {
               setFocusedId(item.id);
               onSelect(item);

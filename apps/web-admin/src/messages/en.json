@@ -473,6 +473,8 @@
       "inheritedFromHint": "Inherited from {code} — {name}",
       "inheritedLockedHint": "Inherited from an ancestor, cannot be removed here",
       "jumpToAncestor": "Go to {code} — {name}",
+      "keyboardHint": "Keyboard: arrow keys move through the tree, Enter selects a node, Shift+F10 or the menu key opens the node's actions.",
+      "keyboardHintView": "Keyboard: arrow keys move through the tree, Enter selects a node, Shift+F10 or the menu key opens the node's details.",
       "kindBadge": "Tree",
       "linksHeader": "Links",
       "linksLiveHint": "Saved immediately",

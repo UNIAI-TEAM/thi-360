@@ -2138,6 +2138,42 @@ describe("CatalogView Slice 3: danh mục cây nhiều cấp, liên kết và ch
     expect(within(row).getByText("CH1")).toHaveClass("max-w-24", "truncate");
   });
 
+  it("cây là một điểm dừng Tab; Shift+F10 mở menu của dòng (có Thêm nút con), Escape trả focus về dòng (C-08)", async () => {
+    renderCatalog({ api: createTreeMockApi(), search: "group=KNOWLEDGE" });
+    const tree = await screen.findByRole("tree");
+    await within(tree).findByText("Hàm số");
+
+    const focusable = tree.querySelectorAll<HTMLElement>("button, [tabindex]");
+    const tabStops = [...focusable].filter((el) => el.tabIndex >= 0);
+    expect(tabStops).toHaveLength(1);
+    expect(tabStops[0]).toHaveAttribute("role", "treeitem");
+    expect(tree).toHaveAccessibleDescription(viMessages.catalog.tree.keyboardHint);
+    expect(screen.getByText(viMessages.catalog.tree.keyboardHint)).toBeVisible();
+
+    const row = screen.getByRole("treeitem", { name: "CH1 Hàm số" });
+    expect(row).toHaveAttribute("aria-keyshortcuts", "Shift+F10 ContextMenu");
+    row.focus();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Thêm Bài vào Hàm số" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Sửa" })).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    await waitFor(() => expect(row).toHaveFocus());
+  });
+
+  it("người chỉ xem: Shift+F10 trên dòng mở ngăn chi tiết (C-08)", async () => {
+    const api = createTreeMockApi();
+    renderCatalog({ api, search: "group=KNOWLEDGE", permissions: ["CATALOG.VIEW"] });
+    const row = await screen.findByRole("treeitem", { name: "CH1 Hàm số" });
+    expect(screen.getByText(viMessages.catalog.tree.keyboardHintView)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chi tiết Hàm số" })).toHaveAttribute("tabindex", "-1");
+    row.focus();
+    await userEvent.keyboard("{ContextMenu}");
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
   // V3-1: jsdom không có layout; matchMedia giả lập bề rộng (>= 1600px: ô cạnh cây) và giảm chuyển động.
   describe("cây: đưa ô chi tiết xếp dưới cây vào vùng nhìn thấy khi chọn nút (V3-1)", () => {
     let scrollSpy: MockInstance<Element["scrollIntoView"]>;

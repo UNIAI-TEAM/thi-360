@@ -74,6 +74,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -202,6 +203,10 @@ export function TreeItemsPanel({
   const [expandingAll, setExpandingAll] = useState(false);
   const [addRefGroupValue, setAddRefGroupValue] = useState("");
   const [addItemRefByGroup, setAddItemRefByGroup] = useState<Record<string, string>>({});
+  // Menu "⋯" đang mở của dòng nào (điều khiển được để mở bằng phím từ dòng đang focus, C-08).
+  const [rowMenuOpenId, setRowMenuOpenId] = useState<string | null>(null);
+  const rowMenuFromKeyboardRef = useRef(false);
+  const treeHintId = useId();
 
   const reorderTreeMutation = useMutation({
     mutationFn: (itemIds: string[]) => api.reorderItems(group.id, { itemIds }),
@@ -825,6 +830,27 @@ export function TreeItemsPanel({
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const pendingFocusNodeIdRef = useRef<string | null>(null);
 
+  /**
+   * Phím menu/Shift+F10 trên dòng cây (C-08): cây chỉ là một điểm dừng Tab, các nút trên dòng chỉ dành cho chuột.
+   * Người có quyền sửa được mở menu "⋯" của dòng (đủ mọi thao tác, kể cả thêm nút con); người chỉ xem được mở
+   * ngăn chi tiết như nút con mắt.
+   */
+  function handleTreeRowMenu(id: string) {
+    const row = rowById.get(id);
+    if (!row) return;
+    if (!canModify) {
+      onViewNodeDetail(row.node);
+      return;
+    }
+    rowMenuFromKeyboardRef.current = true;
+    setRowMenuOpenId(id);
+  }
+
+  function focusTreeRow(id: string) {
+    const rows = document.querySelectorAll<HTMLElement>('[role="treeitem"][data-tree-item-id]');
+    [...rows].find((row) => row.dataset.treeItemId === id)?.focus();
+  }
+
   function handleTreeSelectNode(id: string) {
     onSelectNode(id);
     if (window.matchMedia("(min-width: 1600px)").matches) return;
@@ -1304,6 +1330,8 @@ export function TreeItemsPanel({
               >
                 <TreeView
                   aria-label={t("tree.treeAriaLabel", { name: pickName(group, locale) })}
+                  aria-describedby={treeHintId}
+                  onRowMenu={(item) => handleTreeRowMenu(item.id)}
                   items={treeViewItems}
                   expandedIds={expandedIdSet}
                   selectedId={selectedNodeId}
@@ -1382,6 +1410,7 @@ export function TreeItemsPanel({
                             tooltip={t("detailItem", { name: displayName })}
                             icon={<Eye />}
                             size="md"
+                            tabIndex={-1}
                             onClick={() => onViewNodeDetail(node)}
                           />
                         </div>
@@ -1408,25 +1437,60 @@ export function TreeItemsPanel({
                             }
                             icon={<Plus />}
                             size="md"
+                            tabIndex={-1}
                             disabled={childAddDisabled}
                             onClick={() => onAddChildNode(node)}
                           />
                         )}
 
-                        <DropdownMenu>
+                        <DropdownMenu
+                          open={rowMenuOpenId === node.id}
+                          onOpenChange={(open) => {
+                            if (open) rowMenuFromKeyboardRef.current = false;
+                            setRowMenuOpenId(open ? node.id : null);
+                          }}
+                        >
                           <DropdownMenuTrigger asChild>
                             <IconButton
                               icon={<MoreHorizontal />}
                               aria-label={t("tree.rowActionsLabel", { name: displayName })}
                               tooltip={t("tree.rowActionsLabel", { name: displayName })}
                               size="md"
+                              tabIndex={-1}
                             />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent
+                            align="end"
+                            onCloseAutoFocus={(event) => {
+                              // Mở bằng phím từ dòng thì đóng xong trả focus về dòng, không về nút "⋯" ngoài thứ tự Tab.
+                              if (!rowMenuFromKeyboardRef.current) return;
+                              rowMenuFromKeyboardRef.current = false;
+                              event.preventDefault();
+                              focusTreeRow(node.id);
+                            }}
+                          >
                             <DropdownMenuItem onSelect={() => onViewNodeDetail(node)}>
                               <Eye aria-hidden="true" />
                               <span>{t("detailItem", { name: displayName })}</span>
                             </DropdownMenuItem>
+                            {canAddChild && (
+                              <DropdownMenuItem
+                                disabled={childAddDisabled}
+                                onSelect={() => onAddChildNode(node)}
+                              >
+                                <Plus aria-hidden="true" />
+                                <span>
+                                  {childAddDisabled
+                                    ? group.status === "INACTIVE"
+                                      ? t("inactiveGroupCreateHint")
+                                      : t("tree.stoppedParentAddChildHint")
+                                    : t("tree.addChildLabel", {
+                                        levelName: nextLevelName,
+                                        name: displayName,
+                                      })}
+                                </span>
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onSelect={() => onEditNode(node)}>
                               <Pencil aria-hidden="true" />
                               <span>{t("tree.editAction")}</span>
@@ -1499,6 +1563,10 @@ export function TreeItemsPanel({
               </SortableContext>
             </DndContext>
           )}
+          {/* Hướng dẫn phím nhìn thấy được, cũng là mô tả của cây (aria-describedby). */}
+          <p id={treeHintId} className="px-2 pt-2 text-caption text-text-muted">
+            {canModify ? t("tree.keyboardHint") : t("tree.keyboardHintView")}
+          </p>
         </div>
 
         {/* 340px Node detail pane (DESIGN.md §5.11) */}
@@ -2055,6 +2123,9 @@ function TreeDragHandle({
           : ctx
             ? { ...ctx.attributes, ...ctx.listeners }
             : {})}
+        // Ngoài thứ tự Tab (cây là một điểm dừng Tab, C-08): bàn phím đổi thứ tự qua "Di chuyển lên/xuống" trong
+        // menu của dòng (Shift+F10).
+        tabIndex={-1}
         onClick={(event) => {
           event.stopPropagation();
           if (effectiveDisabled) event.preventDefault();

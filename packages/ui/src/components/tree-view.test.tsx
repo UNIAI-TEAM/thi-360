@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -341,6 +341,89 @@ describe("TreeView", () => {
     await userEvent.click(row);
     expect(row).toHaveAttribute("aria-selected", "true");
     expect(name).not.toHaveClass("line-clamp-2");
+  });
+
+  describe("mở thao tác của dòng bằng phím (C-08)", () => {
+    function renderWithMenu(onRowMenu = vi.fn()) {
+      render(
+        <>
+          <p id="tree-hint">Shift+F10 để mở thao tác</p>
+          <TreeView
+            aria-label="Cây có menu"
+            aria-describedby="tree-hint"
+            items={SAMPLE_ITEMS}
+            expandedIds={new Set()}
+            onToggleExpand={vi.fn()}
+            onSelect={vi.fn()}
+            onRowMenu={onRowMenu}
+            labels={{ expandNode: (n) => `Mở ${n}`, collapseNode: (n) => `Thu gọn ${n}` }}
+            renderTrailing={(item) => (
+              <button type="button" tabIndex={-1}>
+                Thao tác {item.code}
+              </button>
+            )}
+          />
+        </>,
+      );
+      return onRowMenu;
+    }
+
+    it("Shift+F10 và phím menu gọi onRowMenu cho dòng đang focus; F10 không kèm Shift thì không", async () => {
+      const onRowMenu = renderWithMenu();
+      const [first, second] = screen.getAllByRole("treeitem");
+      first!.focus();
+      await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+      expect(onRowMenu).toHaveBeenLastCalledWith(expect.objectContaining({ id: "n-1" }));
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(second).toHaveFocus();
+      await userEvent.keyboard("{ContextMenu}");
+      expect(onRowMenu).toHaveBeenLastCalledWith(expect.objectContaining({ id: "n-2" }));
+
+      await userEvent.keyboard("{F10}");
+      expect(onRowMenu).toHaveBeenCalledTimes(2);
+    });
+
+    it("khai báo phím trên dòng, cây mô tả bằng dòng hướng dẫn, và chỉ là một điểm dừng Tab", () => {
+      renderWithMenu();
+      const tree = screen.getByRole("tree");
+      expect(tree).toHaveAccessibleDescription("Shift+F10 để mở thao tác");
+      const rows = screen.getAllByRole("treeitem");
+      for (const row of rows) {
+        expect(row).toHaveAttribute("aria-keyshortcuts", "Shift+F10 ContextMenu");
+      }
+      const tabStops = tree.querySelectorAll('[tabindex="0"], button:not([tabindex="-1"])');
+      expect(tabStops).toHaveLength(1);
+      expect(tabStops[0]).toBe(rows[0]);
+    });
+
+    it("chặn menu chuột phải của trình duyệt chỉ ngay sau phím menu, chuột phải vẫn như cũ", async () => {
+      renderWithMenu();
+      const row = screen.getAllByRole("treeitem")[0]!;
+      row.focus();
+      await userEvent.keyboard("{ContextMenu}");
+      expect(fireEvent.contextMenu(row)).toBe(false);
+      // Lần chuột phải sau đó không bị chặn.
+      expect(fireEvent.contextMenu(row)).toBe(true);
+
+      // Phím menu rồi bấm chuột (không có contextmenu từ phím): chuột phải ngay sau đó vẫn như cũ.
+      await userEvent.keyboard("{ContextMenu}");
+      fireEvent.pointerDown(row);
+      expect(fireEvent.contextMenu(row)).toBe(true);
+    });
+
+    it("không truyền onRowMenu thì không khai báo phím", () => {
+      render(<TreeHarness />);
+      expect(screen.getAllByRole("treeitem")[0]).not.toHaveAttribute("aria-keyshortcuts");
+    });
+
+    it("focus trả về một dòng bằng mã cũng chuyển điểm dừng Tab sang dòng đó", () => {
+      renderWithMenu();
+      const rows = screen.getAllByRole("treeitem");
+      act(() => rows[1]!.focus());
+      expect(rows[1]).toHaveAttribute("tabindex", "0");
+      expect(rows[0]).toHaveAttribute("tabindex", "-1");
+    });
   });
 
   // V2-1: jsdom không có layout; kiểm tra hợp đồng lớp quyết định ai được giữ chiều rộng khi dòng hẹp.
