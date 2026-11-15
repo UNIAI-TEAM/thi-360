@@ -1172,6 +1172,61 @@ describe("Bước 1 cấp hàng loạt: tên tệp, bỏ tệp, bảng mẫu, c�
   });
 });
 
+describe("Cấp hàng loạt dùng được từ 360px (UNI-2586)", () => {
+  it("thanh bước gọn ở khung hẹp: chỉ bước hiện tại giãn ra và hiện tên, tên bước khác vẫn còn cho trình đọc màn hình", async () => {
+    renderBatch(makeDeps({ getImportBatch: vi.fn(async () => makeBatch()) }));
+    const steps = await screen.findByRole("list", { name: "Các bước cấp tài khoản hàng loạt" });
+    expect(steps.parentElement).toHaveClass("@container");
+    const items = within(steps).getAllByRole("listitem");
+
+    expect(items[1]).toHaveClass("flex-1", "@2xl:flex-1");
+    expect(within(items[1]!).getByText("Xem trước và sửa lỗi")).not.toHaveClass("sr-only");
+    for (const index of [0, 2, 3]) {
+      expect(items[index]).toHaveClass("shrink-0", "@2xl:flex-1");
+      const label = items[index]!.querySelector("span:not([aria-hidden])")!;
+      expect(label).toHaveClass("sr-only", "@2xl:not-sr-only");
+    }
+    expect(items[2]).toHaveTextContent("Xác nhận");
+  });
+
+  it("bảng cột mẫu ở thẻ hẹp: cột Bắt buộc, Quy tắc ẩn, quy tắc xuống dưới tên cột", async () => {
+    renderUpload(makeDeps());
+    const table = await screen.findByRole("table", { name: "Các cột của tệp mẫu" });
+    expect(table.closest(".\\@container")).not.toBeNull();
+
+    const requiredHeader = within(table).getByRole("columnheader", { name: "Bắt buộc" });
+    const rulesHeader = within(table).getByRole("columnheader", { name: "Quy tắc" });
+    expect(requiredHeader).toHaveClass("@max-lg:hidden");
+    expect(rulesHeader).toHaveClass("@max-lg:hidden");
+    expect(table.querySelectorAll("tbody td[data-col='rules']")).toHaveLength(6);
+    for (const cell of table.querySelectorAll("tbody td[data-col]")) {
+      expect(cell).toHaveClass("@max-lg:hidden");
+    }
+
+    const usernameCell = within(table).getByRole("cell", { name: /^Tên đăng nhập/ });
+    const summary = usernameCell.querySelector("[data-col-summary]")!;
+    expect(summary).toHaveClass("hidden", "@max-lg:block");
+    expect(summary).toHaveTextContent(
+      "Bắt buộc · Duy nhất, 4–30 ký tự, không khoảng trắng, không phân biệt hoa thường",
+    );
+    // Cột không bắt buộc chỉ có quy tắc.
+    const emailSummary = within(table)
+      .getByRole("cell", { name: /^Email/ })
+      .querySelector("[data-col-summary]")!;
+    expect(emailSummary).toHaveTextContent(/^Đúng định dạng/);
+  });
+
+  it("thẻ số liệu xếp hai cột ở khung hẹp, bốn cột từ @4xl; tên tệp xuống dòng thay vì cắt", async () => {
+    renderBatch(makeDeps({ getImportBatch: vi.fn(async () => makeBatch()) }));
+    const fileName = await screen.findByText("students.xlsx");
+    expect(fileName).toHaveClass("line-clamp-2", "wrap-anywhere");
+    expect(fileName).not.toHaveClass("truncate");
+    const cardsGrid = fileName.parentElement!.parentElement!;
+    expect(cardsGrid).toHaveClass("grid-cols-2", "@4xl:grid-cols-4");
+    expect(cardsGrid.closest(".\\@container")).not.toBeNull();
+  });
+});
+
 describe("Bước 4 cấp hàng loạt: tiến độ và thông báo (U-21)", () => {
   it("thanh tiến độ là <progress> có tên và giá trị; bộ đếm không phải vùng live", async () => {
     renderBatch(

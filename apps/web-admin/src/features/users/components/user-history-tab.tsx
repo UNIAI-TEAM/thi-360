@@ -82,7 +82,7 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         header: t("history.actor"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="font-medium text-text">
+          <span className="font-medium whitespace-nowrap text-text">
             {row.original.actorUsername ?? t("history.systemActor")}
           </span>
         ),
@@ -94,7 +94,7 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         cell: ({ row }) => {
           const action = row.original.action;
           return (
-            <span className="text-text">
+            <span className="block min-w-40 text-text">
               {Object.hasOwn(KNOWN_AUDIT_ACTIONS, action)
                 ? t(`auditActions.${action}`)
                 : action}
@@ -117,7 +117,7 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         header: t("history.reason"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-secondary">{row.original.reason ?? "—"}</span>
+          <span className="block min-w-48 text-text-secondary">{row.original.reason ?? "—"}</span>
         ),
       },
     ],

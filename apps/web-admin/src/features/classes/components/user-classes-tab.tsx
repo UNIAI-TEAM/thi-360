@@ -63,7 +63,9 @@ export function UserClassesTab({
         id: "className",
         header: t("userTab.currentTableName"),
         enableSorting: false,
-        cell: ({ row }) => <span className="font-medium text-text">{row.original.className}</span>,
+        cell: ({ row }) => (
+          <span className="block min-w-36 font-medium text-text">{row.original.className}</span>
+        ),
       },
       {
         id: "classStatus",
@@ -133,7 +135,7 @@ export function UserClassesTab({
         cell: ({ row }) => (
           <Link
             href={`/classes/${row.original.classId}`}
-            className="font-medium text-primary-text hover:underline"
+            className="inline-block min-w-40 font-medium text-primary-text hover:underline"
           >
             {row.original.classCode} — {row.original.className}
           </Link>
@@ -147,7 +149,7 @@ export function UserClassesTab({
           row.original.relatedClassId && row.original.relatedClassCode ? (
             <Link
               href={`/classes/${row.original.relatedClassId}`}
-              className="text-primary-text hover:underline"
+              className="inline-block min-w-40 text-primary-text hover:underline"
             >
               {row.original.relatedClassCode}
               {row.original.relatedClassName ? ` — ${row.original.relatedClassName}` : ""}
@@ -171,7 +173,7 @@ export function UserClassesTab({
         header: t("userTab.historyTableReason"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-secondary">{row.original.reason ?? "—"}</span>
+          <span className="block min-w-48 text-text-secondary">{row.original.reason ?? "—"}</span>
         ),
       },
     ],

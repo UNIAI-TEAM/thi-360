@@ -5,8 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
+  cn,
   ConfirmDialog,
   EmptyState,
+  focusRing,
   IconButton,
   Input,
   LiveStatus,
@@ -60,6 +62,13 @@ import { TransferMemberDialog } from "./transfer-member-dialog";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+/** Cột của bảng thành viên ẩn theo bề rộng thẻ chứa (container query), cùng ngưỡng với danh sách tài khoản. */
+const MEMBER_COLUMNS = [
+  "@container",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=joinedAt])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=userStatus])]:hidden",
+].join(" ");
 
 export interface ClassDetailViewProps {
   classId: string;
@@ -243,33 +252,57 @@ function ClassDetailContent({
       {
         accessorKey: "username",
         header: t("members.tableStudent"),
-        cell: ({ row }) => (
-          <div className="flex flex-col">
-            <Link
-              href={`/users/${row.original.userId}`}
-              className="whitespace-nowrap font-semibold text-primary-text hover:underline"
-            >
-              {row.original.username}
-            </Link>
-            <span className="text-caption text-text-muted">{row.original.fullName}</span>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const isActiveUser = row.original.userStatus === "ACTIVE";
+          return (
+            // Vùng bấm của liên kết phủ cả khối (phần tử giả); tên liên kết vẫn chỉ là tên đăng nhập.
+            <div className="relative flex min-w-0 flex-col">
+              <Link
+                href={`/users/${row.original.userId}`}
+                className={cn(
+                  "self-start rounded-sm font-semibold whitespace-nowrap text-primary-text after:absolute after:inset-0 hover:underline @max-[40rem]:whitespace-normal @max-[40rem]:wrap-anywhere",
+                  focusRing,
+                )}
+              >
+                {row.original.username}
+              </Link>
+              <span className="line-clamp-2 text-caption text-text-muted">{row.original.fullName}</span>
+              {/*
+                Dòng tóm tắt thay cho cột Vào lớp, Trạng thái khi khung hẹp (dưới 40rem). Nhãn, ngày và dấu ngăn là
+                chữ trực tiếp của cùng một phần tử, nên khối này không trùng chữ với hai ô kia.
+              */}
+              <span
+                data-col-summary
+                className="hidden text-caption text-text-secondary tabular-nums @max-[40rem]:block"
+              >
+                {t("members.tableJoinedAt")} {formatClassDate(row.original.joinedAt)}
+                {" · "}
+                <span className={isActiveUser ? "text-success" : "text-danger"}>
+                  {isActiveUser ? t("members.userStatusActive") : t("members.userStatusInactive")}
+                </span>
+              </span>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "joinedAt",
-        header: t("members.tableJoinedAt"),
+        header: () => <span data-col="joinedAt">{t("members.tableJoinedAt")}</span>,
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-text-secondary">
+          <span data-col="joinedAt" className="whitespace-nowrap text-text-secondary">
             {formatClassDate(row.original.joinedAt)}
           </span>
         ),
       },
       {
         id: "userStatus",
-        header: t("members.tableStatus"),
+        header: () => <span data-col="userStatus">{t("members.tableStatus")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <StatusChip tone={row.original.userStatus === "ACTIVE" ? "success" : "danger"}>
+          <StatusChip
+            data-col="userStatus"
+            tone={row.original.userStatus === "ACTIVE" ? "success" : "danger"}
+          >
             {row.original.userStatus === "ACTIVE"
               ? t("members.userStatusActive")
               : t("members.userStatusInactive")}
@@ -378,12 +411,12 @@ function ClassDetailContent({
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-page-title font-bold text-text">{classDetail.name}</h1>
+            <h1 className="text-page-title font-bold break-words text-text">{classDetail.name}</h1>
             <StatusChip tone={isActive ? "success" : "neutral"}>
               {t(`statuses.${classDetail.status}`)}
             </StatusChip>
           </div>
-          <p className="text-body text-text-secondary">
+          <p className="text-body break-words text-text-secondary">
             {t("detail.subtitle", {
               code: classDetail.code,
               descriptionPart: classDetail.description ? `${classDetail.description} · ` : "",
@@ -472,7 +505,11 @@ function ClassDetailContent({
         </div>
       )}
 
-      <Card padding="none" className="overflow-hidden">
+      {/*
+        Thẻ thành viên là vùng truy vấn bề rộng: ô tìm kiếm rộng hết hàng ở khung hẹp, cột Vào lớp và Trạng thái
+        ẩn dưới 40rem (dữ liệu của chúng xuống dòng tóm tắt dưới tên).
+      */}
+      <Card padding="none" className={cn("overflow-hidden", MEMBER_COLUMNS)}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <h2 className="text-title font-semibold text-text">{t("members.title")}</h2>
@@ -486,7 +523,7 @@ function ClassDetailContent({
             <LiveStatus message={membersStatus} />
           </div>
 
-          <div className="w-full sm:w-72">
+          <div className="w-full @lg:w-72">
             <Input
               type="search"
               leadingIcon={<Search />}

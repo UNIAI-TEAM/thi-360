@@ -62,12 +62,12 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
       <div
         role="status"
         aria-label={common("loading")}
-        className="grid grid-cols-1 gap-4 lg:grid-cols-2"
+        className="grid grid-cols-1 gap-4 @2xl:grid-cols-2"
       >
         {LEARNING_BLOCKS.map((block) => (
           <Card
             key={block.key}
-            className={block.fullWidth ? "flex flex-col gap-4 lg:col-span-2" : "flex flex-col gap-4"}
+            className={block.fullWidth ? "flex flex-col gap-4 @2xl:col-span-2" : "flex flex-col gap-4"}
           >
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-32 w-full" />
@@ -107,14 +107,14 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
     <div
       data-slot="learning-profile-tab"
       data-data-available={String(data.dataAvailable)}
-      className="grid grid-cols-1 gap-4 lg:grid-cols-2"
+      className="grid grid-cols-1 gap-4 @2xl:grid-cols-2"
     >
       {LEARNING_BLOCKS.map((block) => (
         <Card
           key={block.key}
           data-slot="learning-profile-block"
           data-block={block.key}
-          className={block.fullWidth ? "flex flex-col gap-2 lg:col-span-2" : "flex flex-col gap-2"}
+          className={block.fullWidth ? "flex flex-col gap-2 @2xl:col-span-2" : "flex flex-col gap-2"}
         >
           <SectionTitle title={t(`learning.blocks.${block.key}.title`)} />
           <EmptyState

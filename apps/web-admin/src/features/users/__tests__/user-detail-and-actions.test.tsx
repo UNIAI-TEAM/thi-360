@@ -759,3 +759,22 @@ describe("Trang chi tiết: tiêu đề riêng, tab trong URL, dòng chưa đăn
     expect(screen.queryByText(/Đăng nhập cuối Chưa đăng nhập/)).not.toBeInTheDocument();
   });
 });
+
+describe("Trang chi tiết tài khoản dùng được từ 360px (UNI-2586)", () => {
+  it("bố cục chia theo bề rộng vùng chứa: hai thẻ từ @2xl, danh sách thông tin hai cột theo bề rộng thẻ", async () => {
+    renderDetail(makeDeps());
+    const heading = await screen.findByRole("heading", { name: BASE_USER.fullName });
+    // Tên dài xuống dòng trong khối tên, không đẩy nút thao tác ra ngoài thẻ.
+    expect(heading).toHaveClass("break-words");
+    expect(heading.parentElement!.parentElement).toHaveClass("min-w-0");
+
+    const codeTerm = screen.getByText("Mã tài khoản");
+    const list = codeTerm.closest("dl")!;
+    expect(list).toHaveClass("grid-cols-1", "@[17rem]:grid-cols-2", "[&_dd]:wrap-anywhere");
+    expect(list.parentElement).toHaveClass("@container");
+    const grid = list.parentElement!.parentElement!;
+    expect(grid).toHaveClass("grid-cols-1", "@2xl:grid-cols-2");
+    expect(grid.closest(".\\@container")).not.toBeNull();
+    expect(grid.className).not.toMatch(/(^|\s)lg:grid-cols-2/);
+  });
+});

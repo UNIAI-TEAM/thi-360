@@ -202,7 +202,7 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container flex flex-col gap-5">
       <div>
         <Button asChild variant="link" size="sm">
           <Link href="/users">
@@ -213,21 +213,21 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
       </div>
 
       <Card className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
+        <div className="flex min-w-0 items-center gap-3.5">
           <div
             aria-hidden
             className="grid size-13 shrink-0 place-items-center rounded-full bg-primary-50 text-title font-bold text-primary-text"
           >
             {initialsOf(user.fullName, user.username)}
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-page-title font-bold text-text">{user.fullName}</h1>
+              <h1 className="text-page-title font-bold break-words text-text">{user.fullName}</h1>
               <StatusChip tone={displayStatus.tone}>
                 {t(`statuses.${displayStatus.status}`)}
               </StatusChip>
             </div>
-            <p className="text-body text-text-secondary tabular-nums">
+            <p className="text-body break-words text-text-secondary tabular-nums">
               {user.lastLoginAt
                 ? t("detail.subtitle", {
                     ...subtitleValues,
@@ -472,10 +472,12 @@ function UserInfoTab({
   const displayStatus = getUserDisplayStatus(user);
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card className="flex flex-col gap-4">
+    // Hai thẻ cạnh nhau theo bề rộng vùng chứa (từ `@2xl`), không theo màn hình; danh sách thông tin chia hai cột
+    // theo bề rộng của chính thẻ, kể cả trên điện thoại (giá trị dài xuống dòng ở bất kỳ ký tự nào).
+    <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
+      <Card className="@container flex flex-col gap-4">
         <SectionTitle title={t("detail.infoMetaTitle")} />
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2 [&_dd]:wrap-anywhere">
           <div>
             <dt className="text-caption text-text-muted">{t("detail.codeLabel")}</dt>
             <dd className="text-body font-semibold text-text tabular-nums">{user.code}</dd>
