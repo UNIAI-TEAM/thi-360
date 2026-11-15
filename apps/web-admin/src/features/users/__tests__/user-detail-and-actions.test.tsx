@@ -10,6 +10,7 @@ import { renderWithProviders } from "@/test/render";
 import { notify } from "@thi360/ui";
 import { defaultUsersApiDeps, type UserDetail, type UsersApiDeps, UsersApiError } from "../api";
 import { UserDetailView } from "../components/user-detail-view";
+import { createResetPasswordSchema } from "../schema";
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -448,10 +449,12 @@ describe("UserDetailView & action dialogs (Slice 2)", () => {
     const generated = (passwordInput as HTMLInputElement).value;
     expect(generated.length).toBe(12);
 
+    // Ô lý do có maxLength 500 (U-16): dán 501 ký tự thì ô chỉ nhận 500, không cần báo lỗi sau khi gửi.
+    // Quy tắc 500 ký tự của schema vẫn giữ làm lưới an toàn (kiểm ở test schema bên dưới).
     await userEvent.click(reasonInput);
     await userEvent.paste("a".repeat(501));
-    await userEvent.click(submitButton);
-    expect(await within(dialog).findByText(viMessages.users.validation.reasonMax)).toBeInTheDocument();
+    expect((reasonInput as HTMLTextAreaElement).value).toHaveLength(500);
+    expect(within(dialog).queryByText(viMessages.users.validation.reasonMax)).not.toBeInTheDocument();
     expect(resetMock).not.toHaveBeenCalled();
 
     await userEvent.clear(reasonInput);
@@ -670,5 +673,40 @@ describe("ResetPasswordDialog: không làm mất dữ liệu đã nhập khi đ�
     discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
     await userEvent.click(within(discard).getByRole("button", { name: "Bỏ thay đổi" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+});
+
+describe("Biểu mẫu sửa thông tin: kiểm tra khi rời ô và gợi ý cho ô nhập (U-16)", () => {
+  it("email sai báo lỗi khi rời ô; ô có maxLength và tắt tự điền", async () => {
+    renderDetail(makeDeps());
+    const email = await screen.findByLabelText(/^Email/);
+    expect(email).toHaveAttribute("maxlength", "255");
+    expect(email).toHaveAttribute("autocomplete", "off");
+    expect(screen.getByLabelText(/Họ và tên/)).toHaveAttribute("maxlength", "200");
+    expect(screen.getByLabelText(/Số điện thoại/)).toHaveAttribute("maxlength", "30");
+
+    await userEvent.clear(email);
+    await userEvent.type(email, "sai-email");
+    await userEvent.tab();
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "true"));
+  });
+
+  it("ô lý do đặt lại mật khẩu giới hạn 500 ký tự", async () => {
+    renderDetail(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: "Đặt lại mật khẩu" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText(/Lý do đặt lại mật khẩu/)).toHaveAttribute("maxlength", "500");
+  });
+});
+
+describe("Schema đặt lại mật khẩu", () => {
+  it("vẫn từ chối lý do dài hơn 500 ký tự (lưới an toàn sau maxLength của ô nhập)", () => {
+    const schema = createResetPasswordSchema(
+      { passwordWeak: "weak", passwordSameAsUsername: "same", reasonMax: "too long" },
+      "student01",
+    );
+    const result = schema.safeParse({ password: "Admin@123", reason: "a".repeat(501), mustChangePassword: false });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe("too long");
   });
 });

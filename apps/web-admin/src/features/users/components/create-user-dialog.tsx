@@ -37,7 +37,7 @@ import {
   type UserDetail,
   UsersApiError,
 } from "../api";
-import { createCreateUserSchema, type CreateUserFormValues } from "../schema";
+import { createCreateUserSchema, type CreateUserFormValues, USER_FIELD_MAX_LENGTH } from "../schema";
 import { formatRoleLabel, mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
 
 const DEFAULT_STUDENT_ROLE_VALUE = "__DEFAULT_STUDENT__";
@@ -208,9 +208,12 @@ function CreateUserFormBody({
     setError,
     clearErrors,
     getValues,
+    trigger,
     formState: { errors, isDirty },
   } = useForm<CreateUserFormValues>({
     resolver: zodResolver(schema),
+    // Kiểm tra khi rời ô (lần đầu) rồi kiểm tra lại theo từng thay đổi, không chờ tới lúc bấm gửi (U-16).
+    mode: "onTouched",
     defaultValues: {
       username: "",
       password: "",
@@ -312,6 +315,14 @@ function CreateUserFormBody({
 
     const normalized = raw.toLowerCase();
     latestUsernameCheckRef.current = normalized;
+    // Sai định dạng thì báo ngay, không hỏi máy chủ. Kiểm tra định dạng xong mới hỏi máy chủ, nên kết quả
+    // "đã dùng" luôn đến sau và không bị lượt kiểm tra định dạng xóa mất.
+    const formatValid = await trigger("username");
+    if (latestUsernameCheckRef.current !== normalized) return;
+    if (!formatValid) {
+      setUsernameStatus({ state: "idle" });
+      return;
+    }
     setUsernameStatus({ state: "checking", normalized });
 
     try {
@@ -449,11 +460,13 @@ function CreateUserFormBody({
                     setSubmitError(null);
                     field.onChange(event);
                   }}
-                  onBlur={() => {
-                    field.onBlur();
-                    void handleUsernameBlur();
-                  }}
+                  // Tên đăng nhập tự kiểm tra khi rời ô (định dạng rồi tới máy chủ), không qua field.onBlur.
+                  onBlur={() => void handleUsernameBlur()}
                   autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={USER_FIELD_MAX_LENGTH.username}
                   placeholder={t("createDialog.usernamePlaceholder")}
                   disabled={mutation.isPending}
                 />
@@ -533,6 +546,9 @@ function CreateUserFormBody({
             {...register("fullName", {
               onChange: () => setSubmitError(null),
             })}
+            // Biểu mẫu nhập thông tin của NGƯỜI KHÁC: tắt tự điền để trình duyệt không gợi ý thông tin của quản trị viên.
+            autoComplete="off"
+            maxLength={USER_FIELD_MAX_LENGTH.fullName}
             placeholder={t("createDialog.fullNamePlaceholder")}
             disabled={mutation.isPending}
           />
@@ -548,6 +564,11 @@ function CreateUserFormBody({
               {...register("email", {
                 onChange: () => setSubmitError(null),
               })}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={USER_FIELD_MAX_LENGTH.email}
               placeholder={t("createDialog.emailPlaceholder")}
               disabled={mutation.isPending}
             />
@@ -562,6 +583,8 @@ function CreateUserFormBody({
               {...register("phone", {
                 onChange: () => setSubmitError(null),
               })}
+              autoComplete="off"
+              maxLength={USER_FIELD_MAX_LENGTH.phone}
               placeholder={t("createDialog.phonePlaceholder")}
               disabled={mutation.isPending}
             />

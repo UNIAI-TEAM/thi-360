@@ -35,7 +35,7 @@ import {
   USERS_QUERY_KEYS,
   UsersApiError,
 } from "../api";
-import { createUpdateUserSchema, type UpdateUserFormValues } from "../schema";
+import { createUpdateUserSchema, type UpdateUserFormValues, USER_FIELD_MAX_LENGTH } from "../schema";
 import {
   formatUserDateTime,
   getUserDisplayStatus,
@@ -358,6 +358,8 @@ function UserInfoTab({
     formState: { errors, isDirty },
   } = useForm<UpdateUserFormValues>({
     resolver: zodResolver(schema),
+    // Kiểm tra khi rời ô (lần đầu) rồi kiểm tra lại theo từng thay đổi (U-16).
+    mode: "onTouched",
     defaultValues: {
       fullName: user.fullName,
       email: user.email ?? "",
@@ -494,6 +496,9 @@ function UserInfoTab({
               <Input
                 {...controlProps}
                 {...register("fullName")}
+                // Sửa thông tin của người khác: tắt tự điền để trình duyệt không gợi ý thông tin của quản trị viên.
+                autoComplete="off"
+                maxLength={USER_FIELD_MAX_LENGTH.fullName}
                 disabled={!canEdit || mutation.isPending}
               />
             )}
@@ -505,6 +510,11 @@ function UserInfoTab({
                 {...controlProps}
                 type="email"
                 {...register("email")}
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={USER_FIELD_MAX_LENGTH.email}
                 disabled={!canEdit || mutation.isPending}
               />
             )}
@@ -516,6 +526,8 @@ function UserInfoTab({
                 {...controlProps}
                 type="tel"
                 {...register("phone")}
+                autoComplete="off"
+                maxLength={USER_FIELD_MAX_LENGTH.phone}
                 disabled={!canEdit || mutation.isPending}
               />
             )}

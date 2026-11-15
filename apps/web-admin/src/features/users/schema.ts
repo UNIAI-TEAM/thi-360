@@ -3,6 +3,15 @@ import { z } from "zod";
 
 export const USERNAME_NORMALIZED_REGEX = /^[a-z0-9][a-z0-9._@-]{3,29}$/;
 
+/** Độ dài tối đa của từng trường, dùng chung cho kiểm tra zod và thuộc tính `maxLength` của ô nhập. */
+export const USER_FIELD_MAX_LENGTH = {
+  username: 30,
+  fullName: 200,
+  email: 255,
+  phone: 30,
+  reason: 500,
+} as const;
+
 export const DEFAULT_RESERVED_USERNAMES: Record<string, true> = {
   admin: true,
   administrator: true,
@@ -50,11 +59,11 @@ export function createCreateUserSchema(messages: CreateUserValidationMessages) {
         .string()
         .transform((value) => value.trim())
         .refine((value) => value.length > 0, messages.fullNameRequired)
-        .refine((value) => value.length <= 200, messages.fullNameMax),
+        .refine((value) => value.length <= USER_FIELD_MAX_LENGTH.fullName, messages.fullNameMax),
       email: z
         .string()
         .transform((value) => value.trim())
-        .refine((value) => value.length <= 255, messages.emailMax)
+        .refine((value) => value.length <= USER_FIELD_MAX_LENGTH.email, messages.emailMax)
         .refine(
           (value) => value.length === 0 || z.email().safeParse(value).success,
           messages.emailInvalid,
@@ -62,7 +71,7 @@ export function createCreateUserSchema(messages: CreateUserValidationMessages) {
       phone: z
         .string()
         .transform((value) => value.trim())
-        .refine((value) => value.length <= 30, messages.phoneMax),
+        .refine((value) => value.length <= USER_FIELD_MAX_LENGTH.phone, messages.phoneMax),
       roleId: z.string(),
       classIds: z.array(z.string()),
       mustChangePassword: z.boolean(),
@@ -103,11 +112,11 @@ export function createUpdateUserSchema(messages: UpdateUserValidationMessages) {
       .string()
       .transform((value) => value.trim())
       .refine((value) => value.length > 0, messages.fullNameRequired)
-      .refine((value) => value.length <= 200, messages.fullNameMax),
+      .refine((value) => value.length <= USER_FIELD_MAX_LENGTH.fullName, messages.fullNameMax),
     email: z
       .string()
       .transform((value) => value.trim())
-      .refine((value) => value.length <= 255, messages.emailMax)
+      .refine((value) => value.length <= USER_FIELD_MAX_LENGTH.email, messages.emailMax)
       .refine(
         (value) => value.length === 0 || z.email().safeParse(value).success,
         messages.emailInvalid,
@@ -115,7 +124,7 @@ export function createUpdateUserSchema(messages: UpdateUserValidationMessages) {
     phone: z
       .string()
       .transform((value) => value.trim())
-      .refine((value) => value.length <= 30, messages.phoneMax),
+      .refine((value) => value.length <= USER_FIELD_MAX_LENGTH.phone, messages.phoneMax),
   });
 }
 
@@ -146,7 +155,7 @@ export function createResetPasswordSchema(
     reason: z
       .string()
       .transform((value) => value.trim())
-      .refine((value) => value.length <= 500, messages.reasonMax),
+      .refine((value) => value.length <= USER_FIELD_MAX_LENGTH.reason, messages.reasonMax),
     mustChangePassword: z.boolean(),
   });
 }

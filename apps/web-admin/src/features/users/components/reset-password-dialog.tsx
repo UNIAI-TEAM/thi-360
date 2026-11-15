@@ -27,7 +27,7 @@ import {
   type UserDetail,
   UsersApiError,
 } from "../api";
-import { createResetPasswordSchema, type ResetPasswordFormValues } from "../schema";
+import { createResetPasswordSchema, type ResetPasswordFormValues, USER_FIELD_MAX_LENGTH } from "../schema";
 import { mapUserErrorCodeToKey, resolveUsersErrorMessage } from "../utils";
 
 export interface ResetPasswordTarget {
@@ -161,6 +161,8 @@ function ResetPasswordFormBody({
     formState: { errors, isDirty },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(schema),
+    // Kiểm tra khi rời ô (lần đầu) rồi kiểm tra lại theo từng thay đổi (U-16).
+    mode: "onTouched",
     defaultValues: {
       password: "",
       reason: "",
@@ -295,6 +297,7 @@ function ResetPasswordFormBody({
               onChange: () => setSubmitError(null),
             })}
             rows={2}
+            maxLength={USER_FIELD_MAX_LENGTH.reason}
             placeholder={t("resetPasswordDialog.reasonPlaceholder")}
             disabled={mutation.isPending}
           />

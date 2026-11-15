@@ -1086,3 +1086,62 @@ describe("CreateUserDialog: không làm mất dữ liệu đã nhập khi đóng
     expect(screen.getByText("Thông tin bạn vừa nhập trong biểu mẫu này sẽ không được lưu.")).toBeInTheDocument();
   });
 });
+
+describe("CreateUserDialog: kiểm tra khi rời ô và gợi ý cho ô nhập (U-16)", () => {
+  it("email sai báo lỗi ngay khi rời ô, sửa đúng thì lỗi tự mất, không cần bấm gửi", async () => {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const email = within(dialog).getByLabelText(/Email/);
+    await userEvent.type(email, "khong-phai-email");
+    await userEvent.tab();
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "true"));
+    expect(within(dialog).getByText("Email không đúng định dạng.")).toBeInTheDocument();
+
+    await userEvent.clear(email);
+    await userEvent.type(email, "hv@example.com");
+    await waitFor(() => expect(email).not.toHaveAttribute("aria-invalid"));
+  });
+
+  it("tên đăng nhập sai định dạng báo lỗi khi rời ô và không hỏi máy chủ; ô để trống rời đi không báo lỗi", async () => {
+    const checkMock = vi.fn<UsersApiDeps["checkUsernameAvailability"]>(async () => ({ available: true }));
+    renderUsersView(makeDeps({ checkUsernameAvailability: checkMock }));
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+    const username = within(dialog).getByLabelText(/Tên đăng nhập/);
+
+    username.focus();
+    await userEvent.tab();
+    expect(username).not.toHaveAttribute("aria-invalid");
+
+    await userEvent.type(username, "ab");
+    await userEvent.tab();
+    await waitFor(() => expect(username).toHaveAttribute("aria-invalid", "true"));
+    expect(checkMock).not.toHaveBeenCalled();
+  });
+
+  it("ô nhập có maxLength theo schema và gợi ý cho trình duyệt", async () => {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    const dialog = screen.getByRole("dialog");
+
+    const username = within(dialog).getByLabelText(/Tên đăng nhập/);
+    expect(username).toHaveAttribute("maxlength", "30");
+    expect(username).toHaveAttribute("autocapitalize", "none");
+    expect(username).toHaveAttribute("spellcheck", "false");
+
+    const fullName = within(dialog).getByLabelText(/Họ và tên/);
+    expect(fullName).toHaveAttribute("maxlength", "200");
+    expect(fullName).toHaveAttribute("autocomplete", "off");
+
+    const email = within(dialog).getByLabelText(/Email/);
+    expect(email).toHaveAttribute("maxlength", "255");
+    expect(email).toHaveAttribute("autocomplete", "off");
+    expect(email).toHaveAttribute("spellcheck", "false");
+
+    const phone = within(dialog).getByLabelText(/Số điện thoại/);
+    expect(phone).toHaveAttribute("maxlength", "30");
+    expect(phone).toHaveAttribute("autocomplete", "off");
+  });
+});

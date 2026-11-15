@@ -544,6 +544,9 @@ function UsersListContent({
                 {...controlProps}
                 ref={searchInputRef}
                 type="search"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 leadingIcon={<Search />}
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
