@@ -871,6 +871,7 @@
       "addDisabledTooltip": "Inactive classes cannot accept new students.",
       "addMembers": "Add students",
       "backToList": "Back to classes",
+      "documentTitle": "{code} · Classes",
       "editInfo": "Edit details",
       "errorDescription": "Could not load class details. Please try again.",
       "errorTitle": "Could not load class",

@@ -234,6 +234,13 @@ describe("ClassDetailView", () => {
     expect(screen.queryByText(/Lịch sử thành viên/i)).not.toBeInTheDocument();
   });
 
+  it("tiêu đề tab mang mã lớp đang xem (C-20)", async () => {
+    document.title = "Chi tiết lớp học · Thi 360";
+    renderDetail(makeDeps());
+    await screen.findByRole("heading", { name: "Lớp A" });
+    await waitFor(() => expect(document.title).toBe("LOP-A · Lớp học · Thi 360"));
+  });
+
   it("đọc số học viên tìm được qua vùng status (C-05)", async () => {
     const listClassMembersMock = vi.fn<ClassesApiDeps["listClassMembers"]>(async (_classId, query) =>
       query?.q

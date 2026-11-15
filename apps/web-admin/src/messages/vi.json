@@ -871,6 +871,7 @@
       "addDisabledTooltip": "Lớp đang ngừng sử dụng nên không thể thêm học viên.",
       "addMembers": "Thêm học viên",
       "backToList": "Quay lại danh sách",
+      "documentTitle": "{code} · Lớp học",
       "editInfo": "Sửa thông tin",
       "errorDescription": "Không tải được thông tin lớp học. Hãy thử lại.",
       "errorTitle": "Không tải được lớp học",

@@ -156,6 +156,15 @@ function ClassDetailContent({
   });
   useSetBreadcrumbLeaf(classQuery.data?.code);
 
+  // C-20: tiêu đề tab riêng cho từng lớp ("LOP-A · Lớp học · Thi 360"). Metadata ở máy chủ không có dữ liệu lớp
+  // (lớp tải ở trình duyệt), nên đặt sau khi tải xong. Không trả lại tiêu đề cũ khi rời trang: trang kế tiếp tự đặt
+  // tiêu đề của nó, trả lại muộn sẽ ghi đè lên.
+  const documentTitleCode = classQuery.data?.code;
+  useEffect(() => {
+    if (!documentTitleCode) return;
+    document.title = `${t("detail.documentTitle", { code: documentTitleCode })} · Thi 360`;
+  }, [documentTitleCode, t]);
+
   const sortParam = useMemo(() => {
     const first = sorting[0];
     if (!first) return "joinedAt,desc";
