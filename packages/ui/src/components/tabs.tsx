@@ -5,7 +5,10 @@ import { createContext, use, type ComponentProps } from "react";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 
-/** `segmented`: thanh nền xám, tab chọn nổi lên (chuyển chế độ). `content`: tab chọn nền xanh nhạt (chi tiết). */
+/**
+ * `segmented`: thanh nền xám, tab chọn nổi lên (chuyển chế độ). `content`: tab chọn nền xanh nhạt (chi tiết).
+ * Cả hai kiểu đều gạch chân tab đang chọn, cùng hình với `NavTabs`.
+ */
 export type TabsVariant = "segmented" | "content";
 
 const TabsVariantContext = createContext<TabsVariant>("content");
@@ -41,10 +44,15 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "inline-flex h-10 items-center justify-center rounded-md px-4 text-label font-medium whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none",
-        "disabled:pointer-events-none disabled:opacity-50 data-[state=active]:font-semibold",
+        // Độ đậm chữ không đổi theo trạng thái: đổi độ đậm làm tab đổi bề rộng và đẩy các tab bên cạnh.
+        "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-label font-medium whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none",
+        "disabled:pointer-events-none disabled:opacity-50",
+        // Gạch chân vẽ bằng viền của phần tử giả: không chỉ dựa vào màu (WCAG 1.4.1), không chiếm chỗ, và còn
+        // thấy ở chế độ tương phản cao của hệ điều hành, nơi nền và bóng đổ bị bỏ. Viền chỉ có ở tab đang chọn
+        // (không để sẵn viền trong suốt): chế độ tương phản cao tô lại cả viền trong suốt, tab nào cũng thành có gạch.
+        "after:pointer-events-none after:absolute after:inset-x-3 after:bottom-1 data-[state=active]:after:border-b-2 data-[state=active]:after:border-current",
         variant === "segmented"
-          ? "relative flex-1 text-text-muted data-[state=active]:bg-surface data-[state=active]:text-primary-text data-[state=active]:shadow-sm data-[state=active]:after:absolute data-[state=active]:after:inset-x-3 data-[state=active]:after:bottom-1 data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary-text"
+          ? "flex-1 text-text-muted data-[state=active]:bg-surface data-[state=active]:text-primary-text data-[state=active]:shadow-sm"
           : "text-neutral hover:bg-subtle data-[state=active]:bg-primary-50 data-[state=active]:text-primary-text",
         focusRing,
         className,

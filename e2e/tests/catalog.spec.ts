@@ -281,6 +281,10 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await subjDialog.getByLabel(/Mã giá trị/).fill(subjCode);
     await subjDialog.getByLabel(/Tên tiếng Việt/).fill(subjName);
     await subjDialog.getByRole("button", { name: "Lưu", exact: true }).click();
+    await expect(subjDialog).toBeHidden();
+    // Danh sách phân trang 20 dòng và cơ sở dữ liệu dev dùng chung tích lũy môn của các lượt chạy trước:
+    // tìm theo mã để dòng vừa tạo chắc chắn nằm trong trang đang hiện.
+    await page.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" }).fill(subjCode);
     await expect(page.getByText(subjName)).toBeVisible();
 
     await page.getByRole("button", { name: /Mã tổ hợp/ }).click();
@@ -296,9 +300,12 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await page.getByRole("option", { name: new RegExp(subjName) }).click();
 
     await comboDialog.getByRole("button", { name: "Lưu", exact: true }).click();
+    await expect(comboDialog).toBeHidden();
+    await page.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" }).fill(comboCode);
     await expect(page.getByText(comboName)).toBeVisible();
 
     await page.getByRole("button", { name: /Môn học/ }).click();
+    await page.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" }).fill(subjCode);
     await page.getByRole("button", { name: `Xóa ${subjName}` }).click();
     const confirmDelete = page.getByRole("dialog");
     await confirmDelete.getByLabel(/Lý do xóa/).fill("Thử xóa môn đang dùng");

@@ -46,6 +46,8 @@
   --color-border-strong: #d4d4d8;
   --color-border-primary: #d4eee0;
   --color-overlay: rgb(17 24 28 / 0.5);
+  /* Bóng báo "còn nội dung để cuộn" ở mép vùng cuộn (lớp `scroll-shadows-y` trong utilities.css). */
+  --color-scroll-shadow: rgb(17 24 28 / 0.14);
 
   /* 2.4 Màu trạng thái: chữ và nền */
   --color-success: #047857;
@@ -113,6 +115,18 @@
   --animate-dialog-out: dialog-out 200ms ease-out;
   --animate-drawer-in: drawer-in 200ms ease-out;
   --animate-drawer-out: drawer-out 200ms ease-out;
+  /*
+   * Hiệu ứng vào của nội dung khi đổi trang con trong một nhóm điều hướng dạng tab (NavTabs): hiện dần và
+   * trượt lên 4px. Đặt lên khối nội dung có `key` theo đường dẫn; nơi dùng thêm `motion-reduce:animate-none`.
+   */
+  --animate-route-in: route-in 200ms ease-out;
+
+  @keyframes route-in {
+    from {
+      opacity: 0;
+      translate: 0 0.25rem;
+    }
+  }
 
   @keyframes fade-in {
     from {
@@ -167,6 +181,8 @@
   --color-border-strong: #3a444c;
   --color-border-primary: #1f4a3a;
   --color-overlay: rgb(0 0 0 / 0.6);
+  /* Trên bề mặt tối, bóng đen phải đậm hơn nhiều mới còn nhận ra. */
+  --color-scroll-shadow: rgb(0 0 0 / 0.5);
 
   /*
    * Chữ xanh trên nền tối (F1): chữ màu chính dùng `primary-text`, nền nút chính dùng

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../../../../packages/ui/src/styles/tokens.css";
+@import "../../../../packages/ui/src/styles/utilities.css";
 
 /* Tailwind quét cả class dùng trong UI kit dùng chung. */
 @source "../../../../packages/ui/src";

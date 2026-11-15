@@ -1,0 +1,116 @@
+/*
+ * Lớp tiện ích dùng chung của UI kit, khai báo một lần ở đây; hai app nhập file này ngay sau tokens.css.
+ * Màu lấy từ token (tokens.css), không viết mã màu ở đây.
+ */
+
+/*
+ * scroll-shadows-y: bóng mờ ở mép trên/dưới của một vùng cuộn dọc, chỉ hiện ở phía còn nội dung để cuộn tới.
+ * Đặt lên chính phần tử cuộn (phần tử có `overflow-y: auto` và chiều cao giới hạn), ví dụ
+ * `<ul class="scroll-shadows-y max-h-80 overflow-y-auto">`. Không cần JavaScript, không thêm phần tử vào markup.
+ *
+ * Cách vẽ: `::before`/`::after` của vùng cuộn là con đầu và con cuối, `position: sticky` giữ chúng ở mép
+ * khung cuộn, lề âm triệt tiêu chiều cao nên không chiếm chỗ và không đẩy nội dung. Là phần tử giả với
+ * `content` rỗng nên không vào cây truy cập: danh sách vẫn đủ số mục, bảng/khối bên trong không đổi nghĩa.
+ * Bóng nằm đè lên nội dung (z-index trong ngữ cảnh xếp lớp riêng của vùng cuộn) và không nhận chuột.
+ *
+ * Ba tầng hỗ trợ trình duyệt:
+ *   1. Truy vấn trạng thái cuộn (`scroll-state`): bật/tắt bóng theo việc còn cuộn được về phía đó hay không.
+ *   2. Chưa có (1): hoạt ảnh gắn với vị trí cuộn (`animation-timeline: scroll()`), bóng hiện dần trong 2rem đầu/cuối.
+ *   3. Chưa có cả hai: kỹ thuật `background-attachment: local` vẽ bóng bằng nền của vùng cuộn. Bóng khi đó nằm
+ *      DƯỚI nội dung, nên mục con có nền đặc sẽ che bóng: để nền mục con trong suốt ở trạng thái thường. Tầng
+ *      này cần biết màu nền của vùng cuộn; mặc định là `surface`, vùng cuộn nằm trên nền khác thì đặt biến
+ *      `--scroll-shadows-surface` (ví dụ `[--scroll-shadows-surface:var(--color-subtle)]`).
+ *
+ * Lưu ý: lớp này đặt `container-type: scroll-state`. Nếu cùng phần tử còn cần là vùng truy vấn kích thước thì
+ * đặt cả hai giá trị (`container-type: scroll-state inline-size`) thay vì thêm lớp `@container`. Vùng cuộn nên
+ * dùng bố cục khối hoặc cột đơn; trong lưới nhiều cột, hai phần tử giả sẽ chiếm ô.
+ */
+@utility scroll-shadows-y {
+  container-type: scroll-state;
+  isolation: isolate;
+
+  &::before,
+  &::after {
+    content: "";
+    display: block;
+    position: sticky;
+    z-index: 1;
+    block-size: 0.75rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+  }
+
+  /* Gradient tròn: bóng cong và mảnh dần về hai bên, đủ nhẹ để không tranh với nội dung. */
+  &::before {
+    inset-block-start: 0;
+    margin-block-end: -0.75rem;
+    background: radial-gradient(farthest-side at 50% 0, var(--color-scroll-shadow), transparent);
+  }
+
+  &::after {
+    inset-block-end: 0;
+    margin-block-start: -0.75rem;
+    background: radial-gradient(farthest-side at 50% 100%, var(--color-scroll-shadow), transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::before,
+    &::after {
+      transition: none;
+    }
+  }
+
+  /* Tầng 1. Phần tử giả truy vấn được chính phần tử sinh ra nó. */
+  @container scroll-state(scrollable: block-start) {
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  @container scroll-state(scrollable: block-end) {
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  /* Tầng 2. Nội dung vừa khung thì dòng thời gian cuộn không hoạt động, không bóng nào hiện. */
+  @supports not (container-type: scroll-state) {
+    &::before,
+    &::after {
+      animation: scroll-shadows-show linear both;
+      animation-timeline: scroll();
+    }
+
+    &::before {
+      animation-range: 0 2rem;
+    }
+
+    &::after {
+      animation-direction: reverse;
+      animation-range: calc(100% - 2rem) 100%;
+    }
+  }
+
+  /*
+   * Tầng 3. Mỗi bóng là một nền đứng yên ở mép khung cuộn; mỗi bóng có một tấm che cùng màu nền, cuộn theo
+   * nội dung (`local`). Ở đầu hoặc cuối nội dung, tấm che nằm trên bóng; cuộn rời khỏi đó thì bóng lộ ra.
+   */
+  @supports not ((container-type: scroll-state) or (animation-timeline: scroll())) {
+    background:
+      linear-gradient(var(--scroll-shadows-surface, var(--color-surface)) 30%, transparent) top / 100% 2.5rem
+        no-repeat local,
+      linear-gradient(transparent, var(--scroll-shadows-surface, var(--color-surface)) 70%) bottom / 100% 2.5rem
+        no-repeat local,
+      radial-gradient(farthest-side at 50% 0, var(--color-scroll-shadow), transparent) top / 100% 0.75rem no-repeat,
+      radial-gradient(farthest-side at 50% 100%, var(--color-scroll-shadow), transparent) bottom / 100% 0.75rem
+        no-repeat,
+      var(--scroll-shadows-surface, var(--color-surface));
+  }
+}
+
+@keyframes scroll-shadows-show {
+  to {
+    opacity: 1;
+  }
+}
