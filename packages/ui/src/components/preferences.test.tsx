@@ -94,6 +94,9 @@ describe("LocaleSwitcher", () => {
     expect(enItem).toHaveAttribute("aria-checked", "false");
     expect(viItem).toHaveFocus();
     expect(screen.getByRole("menu")).not.toHaveFocus();
+    // Tên ngôn ngữ viết bằng chính ngôn ngữ đó nên mang thuộc tính lang tương ứng.
+    expect(screen.getByText("Tiếng Việt")).toHaveAttribute("lang", "vi");
+    expect(screen.getByText("English")).toHaveAttribute("lang", "en");
 
     await user.keyboard("{ArrowDown}{Enter}");
     expect(onLocaleChange).toHaveBeenCalledWith("en");

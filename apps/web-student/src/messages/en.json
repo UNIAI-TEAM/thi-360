@@ -124,7 +124,8 @@
   },
   "metadata": {
     "description": "Online practice portal for HSA and QDA aptitude exams",
-    "title": "Thi 360 — HSA & QDA Exam Prep"
+    "title": "Thi 360 — HSA & QDA Exam Prep",
+    "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",

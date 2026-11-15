@@ -63,7 +63,7 @@ export function StudentHomeView({
               </h1>
               <p className="text-body text-text-muted">{t("intro")}</p>
             </div>
-            <section aria-label={t("sectionTitle")} className="flex flex-col gap-4">
+            <section className="flex flex-col gap-4">
               <SectionTitle title={t("sectionTitle")} />
               <EmptyState
                 icon={<FileText />}

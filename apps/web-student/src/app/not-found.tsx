@@ -6,7 +6,9 @@ import Link from "next/link";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("notFound");
-  return { title: t("title") };
+  const metadata = await getTranslations("metadata");
+  // `not-found.tsx` cùng đoạn route với layout gốc nên mẫu tiêu đề của layout không áp dụng: ghép trực tiếp.
+  return { title: metadata("titleTemplate", { title: t("title") }) };
 }
 
 export default async function NotFound() {

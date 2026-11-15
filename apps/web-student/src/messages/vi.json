@@ -124,7 +124,8 @@
   },
   "metadata": {
     "description": "Cổng luyện thi đánh giá năng lực HSA và QDA",
-    "title": "Thi 360 — Luyện thi HSA, QDA"
+    "title": "Thi 360 — Luyện thi HSA, QDA",
+    "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",

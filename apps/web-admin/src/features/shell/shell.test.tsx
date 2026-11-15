@@ -71,6 +71,13 @@ describe("AppShell", () => {
     expect(dashboardLink).toHaveClass("focus-visible:ring-primary-text");
     expect(dashboardLink.className).not.toContain("ring-primary-600/30");
 
+    // Mỗi nhóm menu là một danh sách có tên; liên kết là mục của danh sách đó.
+    const usersGroup = within(nav).getByRole("list", { name: "Người dùng" });
+    expect(within(usersGroup).getAllByRole("listitem")).toHaveLength(2);
+    expect(usersGroup).toContainElement(otherLink);
+    expect(within(nav).getByRole("list", { name: "Tổng quan" })).toContainElement(dashboardLink);
+    expect(within(nav).getAllByRole("list")).toHaveLength(4);
+
     const breadcrumb = screen.getByRole("navigation", { name: "Vị trí hiện tại" });
     expect(breadcrumb).toHaveTextContent("Tổng quan");
     expect(breadcrumb).toHaveTextContent("Bảng điều khiển");

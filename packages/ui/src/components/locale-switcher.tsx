@@ -104,7 +104,8 @@ export function LocaleSwitcher({
         >
           {LOCALE_OPTIONS.map((itemLocale) => (
             <DropdownMenuRadioItem key={itemLocale} value={itemLocale}>
-              <span>{strings.localeSwitcher.options[itemLocale]}</span>
+              {/* Tên mỗi ngôn ngữ viết bằng chính ngôn ngữ đó ("Tiếng Việt", "English"): khai báo `lang` để đọc đúng giọng. */}
+              <span lang={itemLocale}>{strings.localeSwitcher.options[itemLocale]}</span>
               <DropdownMenuItemIndicator className="ml-auto flex items-center">
                 <Check aria-hidden className="size-4" />
               </DropdownMenuItemIndicator>
