@@ -643,3 +643,32 @@ describe("ResetPasswordDialog: gửi biểu mẫu sai thì focus về ô sai đ�
     expect(resetMock).not.toHaveBeenCalled();
   });
 });
+
+describe("ResetPasswordDialog: không làm mất dữ liệu đã nhập khi đóng nhầm (U-11)", () => {
+  it("đã nhập mật khẩu: Esc hỏi lại, Tiếp tục nhập giữ dữ liệu, Bỏ thay đổi mới đóng; chưa nhập thì đóng ngay", async () => {
+    renderDetail(makeDeps());
+
+    await userEvent.click(await screen.findByRole("button", { name: "Đặt lại mật khẩu" }));
+    let dialog = await screen.findByRole("dialog", { name: "Đặt lại mật khẩu" });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "Đặt lại mật khẩu" }));
+    dialog = await screen.findByRole("dialog", { name: "Đặt lại mật khẩu" });
+    const passwordInput = dialog.querySelector<HTMLInputElement>("input[autocomplete='new-password']")!;
+    await userEvent.type(passwordInput, "Admin@123");
+
+    await userEvent.keyboard("{Escape}");
+    let discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Tiếp tục nhập" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).not.toBeInTheDocument(),
+    );
+    expect(passwordInput).toHaveValue("Admin@123");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Bỏ thay đổi" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+});

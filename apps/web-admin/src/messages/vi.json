@@ -1892,6 +1892,12 @@
       "usernameLabel": "Tên đăng nhập",
       "yes": "Có"
     },
+    "discardDialog": {
+      "cancel": "Tiếp tục nhập",
+      "confirm": "Bỏ thay đổi",
+      "description": "Thông tin bạn vừa nhập trong biểu mẫu này sẽ không được lưu.",
+      "title": "Bỏ thông tin đã nhập?"
+    },
     "errorCodes": {
       "ALREADY_ACTIVE": "Tài khoản đang hoạt động.",
       "ALREADY_INACTIVE": "Tài khoản đã ở trạng thái ngừng hoạt động.",

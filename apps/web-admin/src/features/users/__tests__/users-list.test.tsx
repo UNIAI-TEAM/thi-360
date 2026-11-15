@@ -1017,3 +1017,72 @@ describe("UsersListView: focus không rơi về <body> khi nút vừa bấm bi�
     expect(document.body).not.toHaveFocus();
   });
 });
+
+describe("CreateUserDialog: không làm mất dữ liệu đã nhập khi đóng nhầm (U-11)", () => {
+  async function openCreateDialog() {
+    renderUsersView(makeDeps());
+    await userEvent.click(await screen.findByRole("button", { name: /Tạo tài khoản/ }));
+    return screen.getByRole("dialog", { name: "Tạo tài khoản" });
+  }
+
+  it("biểu mẫu chưa nhập gì: Esc đóng ngay, không hỏi", async () => {
+    await openCreateDialog();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("biểu mẫu chưa nhập gì: bấm ra ngoài vẫn đóng như trước", async () => {
+    await openCreateDialog();
+    // Radix gắn bộ nghe pointerdown ở document sau một nhịp; chờ nhịp đó rồi mới bấm.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await userEvent.click(document.querySelector<HTMLElement>("[data-state='open'].fixed.inset-0")!);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("biểu mẫu đã nhập: bấm ra ngoài không đóng và không hỏi", async () => {
+    const dialog = await openCreateDialog();
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 88");
+
+    const overlay = document.querySelector<HTMLElement>("[data-state='open'].fixed.inset-0")!;
+    expect(overlay).not.toBeNull();
+    await userEvent.click(overlay);
+
+    expect(screen.getByRole("dialog", { name: "Tạo tài khoản" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/Họ và tên/)).toHaveValue("Học viên 88");
+  });
+
+  it("biểu mẫu đã nhập: Esc hỏi lại; Tiếp tục nhập giữ nguyên dữ liệu; Hủy rồi Bỏ thay đổi mới đóng", async () => {
+    const dialog = await openCreateDialog();
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 88");
+
+    await userEvent.keyboard("{Escape}");
+    let discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Tiếp tục nhập" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).not.toBeInTheDocument(),
+    );
+    const stillOpen = screen.getByRole("dialog", { name: "Tạo tài khoản" });
+    expect(within(stillOpen).getByLabelText(/Họ và tên/)).toHaveValue("Học viên 88");
+
+    await userEvent.click(within(stillOpen).getByRole("button", { name: "Hủy" }));
+    discard = await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" });
+    await userEvent.click(within(discard).getByRole("button", { name: "Bỏ thay đổi" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // Mở lại là biểu mẫu trống, không còn hỏi.
+    await userEvent.click(screen.getByRole("button", { name: /Tạo tài khoản/ }));
+    const reopened = screen.getByRole("dialog", { name: "Tạo tài khoản" });
+    expect(within(reopened).getByLabelText(/Họ và tên/)).toHaveValue("");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("nút × cũng hỏi lại khi biểu mẫu đã nhập", async () => {
+    const dialog = await openCreateDialog();
+    await userEvent.type(within(dialog).getByLabelText(/Họ và tên/), "Học viên 88");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Đóng" }));
+    expect(await screen.findByRole("dialog", { name: "Bỏ thông tin đã nhập?" })).toBeInTheDocument();
+    expect(screen.getByText("Thông tin bạn vừa nhập trong biểu mẫu này sẽ không được lưu.")).toBeInTheDocument();
+  });
+});

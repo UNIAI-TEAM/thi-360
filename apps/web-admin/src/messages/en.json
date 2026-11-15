@@ -1892,6 +1892,12 @@
       "usernameLabel": "Username",
       "yes": "Yes"
     },
+    "discardDialog": {
+      "cancel": "Keep editing",
+      "confirm": "Discard",
+      "description": "What you entered in this form will not be saved.",
+      "title": "Discard what you entered?"
+    },
     "errorCodes": {
       "ALREADY_ACTIVE": "This account is already active.",
       "ALREADY_INACTIVE": "This account is already inactive.",

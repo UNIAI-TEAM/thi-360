@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Button,
   Checkbox,
+  ConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -20,7 +21,7 @@ import {
 } from "@thi360/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   CLASSES_QUERY_KEYS,
@@ -63,9 +64,25 @@ export function CreateUserDialog({
 }: CreateUserDialogProps) {
   const t = useTranslations("users");
   const [submitting, setSubmitting] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  // Biểu mẫu con báo đã có dữ liệu hay chưa; chỉ đọc trong xử lý sự kiện đóng nên giữ bằng ref, không cần render lại.
+  const dirtyRef = useRef(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    dirtyRef.current = dirty;
+  }, []);
+
+  function requestClose() {
+    if (submitting) return;
+    if (dirtyRef.current) {
+      setDiscardOpen(true);
+      return;
+    }
+    onOpenChange(false);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
+    <>
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}>
       <DialogContent
         size="xl"
         closeLabel={t("createDialog.close")}
@@ -73,7 +90,7 @@ export function CreateUserDialog({
           if (submitting) event.preventDefault();
         }}
         onPointerDownOutside={(event) => {
-          if (submitting) event.preventDefault();
+          if (submitting || dirtyRef.current) event.preventDefault();
         }}
       >
         <DialogHeader>
@@ -84,8 +101,9 @@ export function CreateUserDialog({
         {open && (
           <CreateUserFormBody
             roles={roles}
-            onCancel={() => onOpenChange(false)}
+            onCancel={requestClose}
             onSubmittingChange={setSubmitting}
+            onDirtyChange={handleDirtyChange}
             onCreated={(user) => {
               onOpenChange(false);
               onCreated(user);
@@ -97,6 +115,22 @@ export function CreateUserDialog({
         )}
       </DialogContent>
     </Dialog>
+      {/* Biểu mẫu đã có dữ liệu: Esc, nút × và Hủy hỏi lại trước khi bỏ; bấm ra ngoài thì không đóng. */}
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title={t("discardDialog.title")}
+        description={t("discardDialog.description")}
+        confirmLabel={t("discardDialog.confirm")}
+        cancelLabel={t("discardDialog.cancel")}
+        tone="danger"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          dirtyRef.current = false;
+          onOpenChange(false);
+        }}
+      />
+    </>
   );
 }
 
@@ -104,6 +138,7 @@ function CreateUserFormBody({
   roles,
   onCancel,
   onSubmittingChange,
+  onDirtyChange,
   onCreated,
   createUser,
   checkUsernameAvailability,
@@ -112,6 +147,7 @@ function CreateUserFormBody({
   roles: RoleSummary[];
   onCancel: () => void;
   onSubmittingChange: (submitting: boolean) => void;
+  onDirtyChange: (dirty: boolean) => void;
   onCreated: (user: UserDetail) => void;
   createUser: typeof defaultCreateUser;
   checkUsernameAvailability: typeof defaultCheckUsernameAvailability;
@@ -172,7 +208,7 @@ function CreateUserFormBody({
     setError,
     clearErrors,
     getValues,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CreateUserFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -186,6 +222,12 @@ function CreateUserFormBody({
       mustChangePassword: false,
     },
   });
+
+  // Báo cho hộp thoại biết biểu mẫu đã có dữ liệu để hỏi lại trước khi đóng (U-11).
+  useEffect(() => {
+    onDirtyChange(isDirty);
+    return () => onDirtyChange(false);
+  }, [isDirty, onDirtyChange]);
 
   const mutation = useMutation({
     mutationFn: (payload: CreateUserRequest) => {
