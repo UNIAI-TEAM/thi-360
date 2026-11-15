@@ -66,7 +66,17 @@ export function ItemDetailDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       {open && item && (
-        <DrawerContent closeLabel={t("close")}>
+        <DrawerContent
+          closeLabel={t("close")}
+          onOpenAutoFocus={(event) => {
+            // C-19: mở ngăn thì focus vào thẻ đang chọn (Thông tin) thay vì nút đầu tiên "Ngừng sử dụng"; không có
+            // thẻ thì focus chính ngăn để trình đọc màn hình đọc tên ngăn.
+            event.preventDefault();
+            const content = event.currentTarget as HTMLElement;
+            const activeTab = content.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+            (activeTab ?? content).focus();
+          }}
+        >
           <DrawerHeader>
             <div className="flex flex-wrap items-center gap-2">
               <DrawerTitle>{pickName(item, locale)}</DrawerTitle>

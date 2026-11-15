@@ -420,6 +420,46 @@ describe("ClassDetailView", () => {
     });
   });
 
+  it("dialog chuyển lớp: focus ở hộp thoại khi danh sách lớp đang tải, về thì chuyển vào ô Lớp đích (C-19)", async () => {
+    let resolveClasses: (value: ClassSummary[]) => void = () => {};
+    const baseDeps = makeDeps();
+    const options = await baseDeps.listAllClasses!();
+    const listAllClassesMock = vi.fn<ClassesApiDeps["listAllClasses"]>(
+      () => new Promise<ClassSummary[]>((resolve) => (resolveClasses = resolve)),
+    );
+    renderDetail(makeDeps({ listAllClasses: listAllClassesMock }));
+
+    await screen.findByText("student01");
+    await userEvent.click(screen.getByRole("button", { name: "Chuyển student01 sang lớp khác" }));
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() => expect(dialog).toHaveFocus());
+    expect(within(dialog).getByLabelText(/Lý do chuyển lớp/)).not.toHaveFocus();
+
+    resolveClasses(options);
+    const targetSelect = await within(dialog).findByRole("combobox", { name: /Lớp đích/ });
+    await waitFor(() => expect(targetSelect).toBeEnabled());
+    await waitFor(() => expect(targetSelect).toHaveFocus());
+  });
+
+  it("dialog chuyển lớp: danh sách lớp có sẵn thì focus thẳng vào ô Lớp đích (C-19)", async () => {
+    renderDetail(makeDeps());
+    await screen.findByText("student01");
+    // Tải trước danh sách lớp bằng lần mở đầu, đóng lại rồi mở lần hai.
+    await userEvent.click(screen.getByRole("button", { name: "Chuyển student01 sang lớp khác" }));
+    const first = screen.getByRole("dialog");
+    await waitFor(() =>
+      expect(within(first).getByRole("combobox", { name: /Lớp đích/ })).toBeEnabled(),
+    );
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "Chuyển student01 sang lớp khác" }));
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() =>
+      expect(within(dialog).getByRole("combobox", { name: /Lớp đích/ })).toHaveFocus(),
+    );
+  });
+
   it("dialog loại khỏi lớp gửi reason khi xác nhận", async () => {
     const removeMock = vi.fn(async () => undefined);
     renderDetail(makeDeps({ removeClassMember: removeMock }));

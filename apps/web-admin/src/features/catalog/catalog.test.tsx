@@ -1631,6 +1631,14 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
     expect(listAuditMock).not.toHaveBeenCalled();
   });
 
+  it("mở ngăn chi tiết thì focus vào thẻ đang chọn, không vào nút Ngừng sử dụng (C-19)", async () => {
+    renderCatalog({ search: "group=SUBJECT" });
+    await userEvent.click(await screen.findByRole("button", { name: "Chi tiết Toán học" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByRole("button", { name: /Ngừng sử dụng/ })).toBeInTheDocument();
+    await waitFor(() => expect(within(drawer).getByRole("tab", { selected: true })).toHaveFocus());
+  });
+
   it("luồng ngừng sử dụng gọi usages trước, khóa khi blocking và gửi lý do khi hợp lệ", async () => {
     const blockedApi = createMockApi({
       getItemUsages: vi.fn(async () => ({
