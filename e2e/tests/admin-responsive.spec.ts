@@ -108,16 +108,21 @@ test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
     await expect(bar).toBeVisible();
     await expect(bar).toContainText("Đã chọn 1 tài khoản");
     await expect(first).toHaveAttribute("data-state", "selected");
-    const sort = page.getByRole("combobox", { name: "Sắp xếp theo" });
+    // Hàng đầu dưới thanh là ô "Chọn tất cả"; ở 358px ô "Sắp xếp theo" xuống hàng thứ hai.
+    const selectAll = page.getByRole("checkbox", { name: "Chọn tất cả tài khoản" });
     const barBox = await bar.boundingBox();
-    const sortBox = await sort.boundingBox();
+    const selectAllBox = await selectAll.boundingBox();
     expect(barBox).not.toBeNull();
-    expect(sortBox).not.toBeNull();
+    expect(selectAllBox).not.toBeNull();
     expect(barBox!.x + barBox!.width, "thanh thao tác hàng loạt tràn mép phải").toBeLessThanOrEqual(PHONE.width);
-    expect(sortBox!.y - (barBox!.y + barBox!.height), "khoảng trống giữa thanh thao tác và danh sách").toBeLessThan(48);
+    expect(
+      selectAllBox!.y - (barBox!.y + barBox!.height),
+      "khoảng trống giữa thanh thao tác và danh sách",
+    ).toBeLessThan(48);
     await bar.getByRole("button", { name: "Bỏ chọn" }).click();
     await expect(bar).toBeHidden();
-    await expect(page.getByRole("checkbox", { name: "Chọn tất cả tài khoản" })).toBeFocused();
+    await expect(selectAll).toBeFocused();
+    const sort = page.getByRole("combobox", { name: "Sắp xếp theo" });
 
     // Ô Sắp xếp theo thay cho tiêu đề cột: sắp xếp ở máy chủ, đổi chiều thì đổi thứ tự thẻ.
     async function sortBy(option: string, sortParam: string) {
