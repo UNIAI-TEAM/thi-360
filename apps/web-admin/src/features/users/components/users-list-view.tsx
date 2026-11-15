@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
+  focusRing,
   FormField,
   Input,
   Label,
@@ -22,6 +23,7 @@ import {
   Select,
   Skeleton,
   StatusChip,
+  type StatusTone,
   Table,
   Tooltip,
 } from "@thi360/ui";
@@ -55,6 +57,7 @@ import {
 } from "../api";
 import { formatRoleLabel, getUserDisplayStatus } from "../utils";
 import { CreateUserDialog } from "./create-user-dialog";
+import { FILTER_FORM, FILTER_SEARCH, FILTER_SELECT, FILTER_TOGGLES } from "./list-filters";
 import { UserActionDialogs, useUserActionController } from "./user-action-dialogs";
 import { UserBulkBar } from "./user-bulk-bar";
 
@@ -65,14 +68,28 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 /**
  * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, không theo bề rộng màn hình vì
  * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước, rồi tới Vai trò, để cột Trạng thái còn nằm
- * trong khung ở cửa sổ 1024–1366px. Thông tin của hai cột vẫn có ở trang chi tiết tài khoản. Ô tiêu đề và ô dữ
- * liệu của cột được nhận ra qua `data-col` đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
+ * trong khung ở cửa sổ 1024–1366px; tiếp theo là Email. Khung hẹp như điện thoại (dưới 40rem) chỉ còn cột tên
+ * đăng nhập và cột Thao tác: họ tên và trạng thái chuyển thành dòng tóm tắt dưới tên đăng nhập
+ * (`data-col-summary`, chỉ hiện ở ngưỡng đó). Thông tin của các cột ẩn vẫn có ở trang chi tiết tài khoản. Ô tiêu
+ * đề và ô dữ liệu của cột được nhận ra qua `data-col` đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
   "@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden",
   "@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden",
+  "@max-3xl:[&_:is(th,td):has([data-col=email])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=fullName])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
 ].join(" ");
+
+/** Màu chữ của trạng thái trong dòng tóm tắt, cùng tông với chip trạng thái ở cột Trạng thái. */
+const STATUS_TEXT_TONE: Record<StatusTone, string> = {
+  success: "text-success",
+  warning: "text-warning",
+  danger: "text-danger",
+  info: "text-info",
+  neutral: "text-neutral",
+};
 
 /** Cột sắp xếp được và khóa nhãn của nó, dùng cho câu thông báo sau khi đổi sắp xếp. */
 const SORTABLE_COLUMN_LABEL_KEYS = {
@@ -299,28 +316,54 @@ function UsersListContent({
       {
         accessorKey: "username",
         header: t("table.username"),
-        cell: ({ row }) => (
-          <Link
-            href={`/users/${row.original.id}`}
-            className="whitespace-nowrap font-semibold text-primary-text hover:underline"
-          >
-            {row.original.username}
-          </Link>
-        ),
+        cell: ({ row }) => {
+          const display = getUserDisplayStatus(row.original);
+          return (
+            // Vùng bấm của liên kết phủ cả khối tên + dòng tóm tắt (phần tử giả), để chạm vào dòng tóm tắt trên
+            // điện thoại cũng mở chi tiết; tên của liên kết vẫn chỉ là tên đăng nhập.
+            <div className="relative flex min-w-0 flex-col">
+              <Link
+                href={`/users/${row.original.id}`}
+                className={cn(
+                  "self-start rounded-sm font-semibold whitespace-nowrap text-primary-text after:absolute after:inset-0 hover:underline @max-[40rem]:whitespace-normal @max-[40rem]:wrap-anywhere",
+                  focusRing,
+                )}
+              >
+                {row.original.username}
+              </Link>
+              {/*
+                Dòng tóm tắt thay cho cột Họ và tên, Trạng thái khi khung hẹp (hai cột đó ẩn cùng ngưỡng). Họ tên và
+                dấu ngăn là chữ trực tiếp của cùng một phần tử, nên khối này không trùng chữ với ô Họ và tên.
+              */}
+              <span
+                data-col-summary
+                className="hidden text-caption text-text-secondary @max-[40rem]:line-clamp-2"
+              >
+                {row.original.fullName}
+                {" · "}
+                <span className={STATUS_TEXT_TONE[display.tone]}>
+                  {t(`statuses.${display.status}`)}
+                </span>
+              </span>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "fullName",
-        header: t("table.fullName"),
+        header: () => <span data-col="fullName">{t("table.fullName")}</span>,
         cell: ({ row }) => (
-          <span className="line-clamp-2 min-w-24 font-medium text-text">{row.original.fullName}</span>
+          <span data-col="fullName" className="line-clamp-2 min-w-32 font-medium text-text">
+            {row.original.fullName}
+          </span>
         ),
       },
       {
         id: "email",
-        header: t("table.email"),
+        header: () => <span data-col="email">{t("table.email")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="line-clamp-2 min-w-28 wrap-anywhere text-text-secondary">
+          <span data-col="email" className="line-clamp-2 min-w-36 wrap-anywhere text-text-secondary">
             {row.original.email ?? "—"}
           </span>
         ),
@@ -355,11 +398,15 @@ function UsersListContent({
       },
       {
         id: "status",
-        header: t("table.status"),
+        header: () => <span data-col="status">{t("table.status")}</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const display = getUserDisplayStatus(row.original);
-          return <StatusChip tone={display.tone}>{t(`statuses.${display.status}`)}</StatusChip>;
+          return (
+            <StatusChip data-col="status" tone={display.tone}>
+              {t(`statuses.${display.status}`)}
+            </StatusChip>
+          );
         },
       },
       ...(can("USER.MODIFY")
@@ -379,7 +426,10 @@ function UsersListContent({
                           <button
                             type="button"
                             aria-label={t("actions.rowMenu", { username: item.username })}
-                            className="inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none"
+                            className={cn(
+                              "inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-subtle motion-reduce:transition-none",
+                              focusRing,
+                            )}
                           >
                             <MoreHorizontal aria-hidden className="size-[18px]" />
                           </button>
@@ -549,13 +599,13 @@ function UsersListContent({
         }
       />
 
-      <Card padding="md">
+      <Card padding="md" className="@container">
         <form
           aria-label={t("filters.ariaLabel")}
           onSubmit={(event) => event.preventDefault()}
-          className="flex flex-wrap items-end gap-3"
+          className={FILTER_FORM}
         >
-          <FormField label={t("filters.searchLabel")} className="min-w-60 flex-[2_1_240px]">
+          <FormField label={t("filters.searchLabel")} className={FILTER_SEARCH}>
             {(controlProps) => (
               <Input
                 {...controlProps}
@@ -572,7 +622,7 @@ function UsersListContent({
             )}
           </FormField>
 
-          <FormField label={t("filters.sourceLabel")} className="min-w-36 flex-1">
+          <FormField label={t("filters.sourceLabel")} className={cn(FILTER_SELECT, "@3xl:min-w-36")}>
             {(controlProps) => (
               <Select
                 {...controlProps}
@@ -586,7 +636,7 @@ function UsersListContent({
             )}
           </FormField>
 
-          <FormField label={t("filters.statusLabel")} className="min-w-36 flex-1">
+          <FormField label={t("filters.statusLabel")} className={cn(FILTER_SELECT, "@3xl:min-w-36")}>
             {(controlProps) => (
               <Select
                 {...controlProps}
@@ -601,7 +651,7 @@ function UsersListContent({
           </FormField>
 
           {canViewRoles && (
-            <FormField label={t("filters.roleLabel")} className="min-w-40 flex-1">
+            <FormField label={t("filters.roleLabel")} className={cn(FILTER_SELECT, "@3xl:min-w-40")}>
               {(controlProps) => (
                 <Select
                   {...controlProps}
@@ -617,7 +667,7 @@ function UsersListContent({
           )}
 
           {canViewClasses && (
-            <FormField label={t("filters.classLabel")} className="min-w-44 flex-1">
+            <FormField label={t("filters.classLabel")} className={cn(FILTER_SELECT, "@3xl:min-w-44")}>
               {(controlProps) => (
                 <Select
                   {...controlProps}
@@ -632,39 +682,41 @@ function UsersListContent({
             </FormField>
           )}
 
-          <div className="flex min-h-10 items-center gap-2">
-            <Checkbox
-              id={neverLoggedInId}
-              checked={neverLoggedIn}
-              onCheckedChange={(checked) => {
-                setNeverLoggedIn(checked === true);
-                setPage(1);
-              }}
-            />
-            <Label htmlFor={neverLoggedInId} className="cursor-pointer font-normal text-text">
-              {t("filters.neverLoggedIn")}
-            </Label>
-          </div>
+          <div className={FILTER_TOGGLES}>
+            <div className="flex min-h-10 items-center gap-2">
+              <Checkbox
+                id={neverLoggedInId}
+                checked={neverLoggedIn}
+                onCheckedChange={(checked) => {
+                  setNeverLoggedIn(checked === true);
+                  setPage(1);
+                }}
+              />
+              <Label htmlFor={neverLoggedInId} className="cursor-pointer font-normal text-text">
+                {t("filters.neverLoggedIn")}
+              </Label>
+            </div>
 
-          <div className="flex min-h-10 items-center gap-2">
-            <Checkbox
-              id={includeDeletedId}
-              checked={includeDeleted}
-              onCheckedChange={(checked) => {
-                setIncludeDeleted(checked === true);
-                setPage(1);
-              }}
-            />
-            <Label htmlFor={includeDeletedId} className="cursor-pointer font-normal text-text">
-              {t("filters.includeDeleted")}
-            </Label>
-          </div>
+            <div className="flex min-h-10 items-center gap-2">
+              <Checkbox
+                id={includeDeletedId}
+                checked={includeDeleted}
+                onCheckedChange={(checked) => {
+                  setIncludeDeleted(checked === true);
+                  setPage(1);
+                }}
+              />
+              <Label htmlFor={includeDeletedId} className="cursor-pointer font-normal text-text">
+                {t("filters.includeDeleted")}
+              </Label>
+            </div>
 
-          {hasActiveFilters && (
-            <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
-              {t("filters.clear")}
-            </Button>
-          )}
+            {hasActiveFilters && (
+              <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
+                {t("filters.clear")}
+              </Button>
+            )}
+          </div>
         </form>
       </Card>
 
@@ -672,9 +724,16 @@ function UsersListContent({
         <LiveStatus message={announcement} />
         {/*
           Một ô lưới cho hai lớp chồng nhau: dải "N tài khoản / gợi ý" và thanh thao tác hàng loạt. Ô luôn cao bằng
-          lớp cao hơn, nên tích hay bỏ tích dòng chỉ đổi lớp đang hiện, bảng bên dưới không nhảy.
+          lớp cao hơn, nên tích hay bỏ tích dòng chỉ đổi lớp đang hiện, bảng bên dưới không nhảy. Ô là vùng truy
+          vấn bề rộng: ở khung hẹp thanh thao tác gọn lại còn hai hàng (xem `UserBulkBar`) để hai lớp cao xấp xỉ
+          nhau, không để lại khoảng trống lớn phía trên bảng.
         */}
-        <div className={cn("grid border-b", hasSelection ? "border-primary-200" : "border-border")}>
+        <div
+          className={cn(
+            "@container grid border-b",
+            hasSelection ? "border-primary-200" : "border-border",
+          )}
+        >
         <div
           aria-hidden={hasSelection || undefined}
           inert={hasSelection}

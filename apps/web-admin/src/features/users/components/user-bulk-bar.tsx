@@ -231,11 +231,17 @@ export function UserBulkBar({
               onClick={() => setHelpOpen((open) => !open)}
             >
               <CircleHelp />
-              <span>{t("bulk.helpToggle")}</span>
+              {/* Khung hẹp chỉ còn icon để hàng đầu vừa một dòng; chữ vẫn là tên của nút. */}
+              <span className="@max-md:sr-only">{t("bulk.helpToggle")}</span>
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/*
+            Khung hẹp (dưới 40rem): các nút thao tác nằm trên một hàng tự cuộn ngang thay vì xuống hai, ba dòng, để
+            thanh luôn cao hai hàng, xấp xỉ dải "N tài khoản / gợi ý" mà nó thay chỗ: ô giữ sẵn không thừa một khoảng
+            trống lớn trên bảng. Đệm 4px bù bằng lề âm để vùng cuộn không cắt mất vòng focus của nút.
+          */}
+          <div className="flex flex-wrap items-center gap-2 @max-[40rem]:-m-1 @max-[40rem]:w-[calc(100%+0.5rem)] @max-[40rem]:flex-nowrap @max-[40rem]:overflow-x-auto @max-[40rem]:p-1 @max-[40rem]:[scrollbar-width:thin]">
             <Can permission="USER.ASSIGN">
               <Button type="button" size="sm" onClick={handleAssignRolesAndPermissions}>
                 {t("bulk.assignRolePermission")}
