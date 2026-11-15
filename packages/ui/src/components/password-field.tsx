@@ -88,6 +88,8 @@ export type PasswordFieldProps = Omit<ComponentProps<"input">, "size" | "type"> 
   size?: "md" | "lg";
   leadingIcon?: ReactNode;
   showRules?: boolean;
+  /** Số cột của danh sách quy tắc; `2` cho bố cục cần tiết kiệm chiều cao (từ bề rộng `sm` trở lên). */
+  rulesColumns?: 1 | 2;
   allowGenerate?: boolean;
   revealOnGenerate?: boolean;
   onValueChange?: (value: string) => void;
@@ -99,6 +101,7 @@ export function PasswordField({
   size = "md",
   leadingIcon,
   showRules = false,
+  rulesColumns = 1,
   allowGenerate = false,
   revealOnGenerate = false,
   value,
@@ -214,7 +217,11 @@ export function PasswordField({
       </div>
 
       {rules && (
-        <ul id={rulesId} aria-label={mergedLabels.rulesLabel} className="grid gap-1 text-caption">
+        <ul
+          id={rulesId}
+          aria-label={mergedLabels.rulesLabel}
+          className={cn("grid gap-1 text-caption", rulesColumns === 2 && "gap-x-4 sm:grid-cols-2")}
+        >
           {rules.map((rule) => (
             <li
               key={rule.key}
