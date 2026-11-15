@@ -799,6 +799,16 @@ describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => 
 });
 
 describe("UsersListView: dùng được từ 360px (UNI-2586)", () => {
+  it("dải số kết quả và thanh thao tác hàng loạt nằm trong cột lưới co theo thẻ, câu gợi ý không bị cắt", async () => {
+    renderUsersView(makeDeps());
+    const hint = await screen.findByText(/^Chọn nhiều dòng để ngừng hoạt động/);
+    const layer = hint.parentElement!;
+    const slot = layer.parentElement!;
+    // grid-cols-1 = repeat(1, minmax(0, 1fr)): hàng nút không xuống dòng của thanh thao tác không kéo cột rộng hơn thẻ.
+    expect(slot).toHaveClass("grid", "grid-cols-1");
+    expect(layer).toHaveClass("min-w-0");
+  });
+
   it("khung hẹp: Email, Họ và tên, Trạng thái được đánh dấu để ẩn; cột đầu có dòng tóm tắt họ tên và trạng thái", async () => {
     renderUsersView(makeDeps());
     const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });

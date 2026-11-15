@@ -730,7 +730,9 @@ function UsersListContent({
         */}
         <div
           className={cn(
-            "@container grid border-b",
+            // `grid-cols-1` (= minmax(0, 1fr)): cột lưới không nở theo hàng nút không xuống dòng của thanh thao tác hàng
+            // loạt ở khung hẹp, nên câu gợi ý xuống dòng trong thẻ thay vì bị thẻ cắt mất.
+            "@container grid grid-cols-1 border-b",
             hasSelection ? "border-primary-200" : "border-border",
           )}
         >
@@ -738,7 +740,7 @@ function UsersListContent({
           aria-hidden={hasSelection || undefined}
           inert={hasSelection}
           className={cn(
-            "col-start-1 row-start-1 flex flex-wrap items-center justify-between gap-2 px-4 py-3",
+            "col-start-1 row-start-1 flex min-w-0 flex-wrap items-center justify-between gap-2 px-4 py-3",
             hasSelection && "invisible",
           )}
         >
@@ -756,7 +758,7 @@ function UsersListContent({
 
         {canBulkOperate && (
           <UserBulkBar
-            className="col-start-1 row-start-1"
+            className="col-start-1 row-start-1 min-w-0"
             selected={selectedAccounts}
             onClearSelection={() => {
               handleSelectionChange({});
