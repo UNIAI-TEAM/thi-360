@@ -2,7 +2,7 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
-## Trạng thái hiện tại (2026-11-14)
+## Trạng thái hiện tại (2026-11-15)
 
 **Giai đoạn:** đợt 1 (nền, PBI-01, PBI-02) đã merge vào `develop` ngày 2026-11-14 (PR #25, `14f983c`; 105/105 điểm của plan). Đang làm các việc phát sinh sau khi dùng thử bản demo; mỗi việc một issue và một PR vào `develop`. Các mục `T…` bên dưới là nhật ký của đợt 1, đường dẫn trang trong đó là tên cũ (xem bảng đổi tên ở mục "Sau đợt 1").
 
@@ -26,6 +26,10 @@
   | admin | `/tuy-chinh-giao-dien` | `/appearance` |
 
   Spec và plan của đợt 1 (`docs/specs/`, `docs/plans/`) là tài liệu theo ngày và vẫn ghi đường dẫn cũ. Tên tệp mẫu tải về `mau-cap-tai-khoan-hang-loat.xlsx` không phải đường dẫn nên giữ nguyên.
+- **UNI-2579** (PR #30): nâng cấp bộ giao diện dùng chung và tab "Người dùng theo quyền" theo bộ hướng dẫn modern-web-guidance (tab có gạch chân, bảng cuộn ngang bằng bàn phím, bóng mờ `scroll-shadows-y`, bố cục theo vùng chứa); quy ước ghi vào `DESIGN.md` mục 5.13.
+- **UNI-2581** (PR chồng lên #30, 2026-11-15): rà soát và nâng cấp các màn còn lại, 75 phát hiện chia bốn nhóm (bộ giao diện, tài khoản và cấp hàng loạt, lớp học và cấu hình chung, khung trang và web học viên). Có thêm `LiveStatus`, lỗi trong `ConfirmDialog`, `Table.stickyColumns`, focus tự trả về ở `Dialog`/`Drawer`, `StatusPage embedded`; bảng giá trị danh mục chọn cột theo bề rộng thẻ (lỗi bảng tổ hợp môn ở 1883px); test chặn `outline-none` và vòng focus viết tay ở hai web. Quy ước mới ghi vào `DESIGN.md` (5.1, 5.2, 5.3, 5.5, 5.9–5.11, 5.13, 7, 8).
+  - Còn chờ chủ sản phẩm chọn: giao diện theo hệ điều hành khi người dùng chưa chọn (S-09); tương phản thành phần không phải chữ ở chế độ tối (UNI-2562).
+  - Để lại: ô chọn có tìm kiếm và tải từng trang cho danh sách người dùng dài (C-23, kit chưa có); `Tooltip` không cho bỏ `aria-describedby` của chính nó nên ô Lớp học được mô tả hai lần (U-24); chỉ truyền bản dịch của khung trang và feature đang mở cho client (S-20, đo được 15–23 KB gzip mỗi lần tải trang admin).
 - Việc để lại đã biết: test `privilege-escalation.test.tsx` (hộp thoại Tạo tài khoản, 403) phụ thuộc thời điểm, từng fail một lần khi máy rất bận; chưa chạy thử phiên tự làm mới với Keycloak bật thu hồi refresh token.
 
 ### Nhật ký đợt 1
