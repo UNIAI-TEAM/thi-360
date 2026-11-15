@@ -42,6 +42,7 @@ import {
   resolveRoleName,
   type RbacTranslator,
 } from "../messages";
+import { FILTER_GRID } from "../styles";
 import type {
   PageResponsePermissionUserResponse,
   PermissionResponse,
@@ -51,6 +52,18 @@ import type {
   UserDirectPermissionsResponse,
   UserStatus,
 } from "../types";
+
+/**
+ * Bảng tài khoản theo quyền ở thẻ hẹp (dưới 40rem: điện thoại, tablet dọc): ẩn cột Nguồn, Chi tiết, Trạng thái; nội
+ * dung của chúng hiện thành dòng phụ dưới tên tài khoản (`data-col-summary`). Cột được nhận ra qua `data-col` đặt
+ * trên nội dung do màn này vẽ, cùng cách với danh sách tài khoản (`users-list-view.tsx`).
+ */
+const COMPACT_USER_COLUMNS = [
+  "@container",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=source])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=detail])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
+].join(" ");
 
 export interface PermissionUsersTabProps {
   selectedPermissionCode?: string | null;
@@ -243,6 +256,51 @@ export function PermissionUsersTab({
   );
 
   const columns = useMemo<ColumnDef<PermissionUserResponse>[]>(() => {
+    const statusTone = (status: PermissionUserResponse["status"]) =>
+      status === "ACTIVE" ? "success" : status === "INACTIVE" ? "neutral" : "info";
+
+    function renderSourceChips(user: PermissionUserResponse) {
+      const hasRole = user.sources.some((item) => item.type === "ROLE");
+      const hasDirect = user.sources.some((item) => item.type === "DIRECT");
+      return (
+        <>
+          {hasRole && <Chip variant="tag">{t("permissionUsers.roleSource")}</Chip>}
+          {hasDirect && (
+            <StatusChip tone="warning">{t("permissionUsers.directSource")}</StatusChip>
+          )}
+        </>
+      );
+    }
+
+    function renderSourceDetail(user: PermissionUserResponse) {
+      const roleNames = user.sources
+        .filter((item) => item.type === "ROLE")
+        .map((item) => resolveRoleName(rbacT, item.roleCode ?? "", item.roleName ?? ""));
+      const directSource = user.sources.find((item) => item.type === "DIRECT");
+      return (
+        <>
+          {roleNames.length > 0 && (
+            <span>{t("permissionUsers.roleDetail", { roles: roleNames.join(", ") })}</span>
+          )}
+          {directSource && (
+            <span>
+              {t("permissionUsers.directDetail", {
+                actor: directSource.grantedByUsername ?? t("permissionUsers.unknownActor"),
+                date: directSource.grantedAt
+                  ? formatter.dateTime(new Date(directSource.grantedAt), {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })
+                  : "—",
+                reason: directSource.reason ?? "",
+              })}
+            </span>
+          )}
+        </>
+      );
+    }
+
     return [
       {
         id: "account",
@@ -251,10 +309,27 @@ export function PermissionUsersTab({
         cell: ({ row }) => {
           const u = row.original;
           return (
-            <div className="py-2">
-              <div className="font-semibold text-text">{u.username}</div>
-              <div className="text-caption text-text-muted">
+            <div className="min-w-40 py-2">
+              <div className="font-semibold wrap-anywhere text-text">{u.username}</div>
+              <div className="text-caption wrap-break-word text-text-muted">
                 {u.fullName} · {u.code}
+              </div>
+              {/*
+                Thẻ hẹp (dưới 40rem, ví dụ điện thoại): cột Nguồn, Chi tiết và Trạng thái ẩn đi, nội dung của chúng
+                hiện ở đây dưới tên tài khoản. Chip trạng thái chỉ hiện khi khác Hoạt động.
+              */}
+              <div data-col-summary className="mt-1.5 flex flex-col gap-1.5 @min-[40rem]:hidden">
+                <div className="flex flex-wrap gap-1.5">
+                  {renderSourceChips(u)}
+                  {u.status !== "ACTIVE" && (
+                    <StatusChip tone={statusTone(u.status)}>
+                      {t(`userStatuses.${u.status}`)}
+                    </StatusChip>
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5 text-caption wrap-break-word text-text-secondary">
+                  {renderSourceDetail(u)}
+                </div>
               </div>
             </div>
           );
@@ -262,72 +337,36 @@ export function PermissionUsersTab({
       },
       {
         id: "source",
-        header: t("permissionUsers.columns.source"),
+        header: () => <span data-col="source">{t("permissionUsers.columns.source")}</span>,
         enableSorting: false,
-        cell: ({ row }) => {
-          const sources = row.original.sources;
-          const hasRole = sources.some((item) => item.type === "ROLE");
-          const hasDirect = sources.some((item) => item.type === "DIRECT");
-          return (
-            <div className="flex flex-wrap gap-1.5">
-              {hasRole && (
-                <Chip variant="tag">{t("permissionUsers.roleSource")}</Chip>
-              )}
-              {hasDirect && (
-                <StatusChip tone="warning">{t("permissionUsers.directSource")}</StatusChip>
-              )}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div data-col="source" className="flex flex-wrap gap-1.5">
+            {renderSourceChips(row.original)}
+          </div>
+        ),
       },
       {
         id: "detail",
-        header: t("permissionUsers.columns.detail"),
+        header: () => <span data-col="detail">{t("permissionUsers.columns.detail")}</span>,
         enableSorting: false,
-        cell: ({ row }) => {
-          const sources = row.original.sources;
-          const roleSources = sources.filter((item) => item.type === "ROLE");
-          const directSource = sources.find((item) => item.type === "DIRECT");
-
-          const roleNames = roleSources.map((item) =>
-            resolveRoleName(rbacT, item.roleCode ?? "", item.roleName ?? ""),
-          );
-
-          return (
-            <div className="flex flex-col gap-1 text-text-secondary">
-              {roleNames.length > 0 && (
-                <span>
-                  {t("permissionUsers.roleDetail", { roles: roleNames.join(", ") })}
-                </span>
-              )}
-              {directSource && (
-                <span>
-                  {t("permissionUsers.directDetail", {
-                    actor: directSource.grantedByUsername ?? t("permissionUsers.unknownActor"),
-                    date: directSource.grantedAt
-                      ? formatter.dateTime(new Date(directSource.grantedAt), {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })
-                      : "—",
-                    reason: directSource.reason ?? "",
-                  })}
-                </span>
-              )}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          // Bề rộng tối thiểu để chữ không bị ép xuống từng từ một dòng khi bảng hẹp (UNI-2586).
+          <div data-col="detail" className="flex min-w-48 flex-col gap-1 text-text-secondary">
+            {renderSourceDetail(row.original)}
+          </div>
+        ),
       },
       {
         id: "status",
-        header: t("permissionUsers.columns.status"),
+        header: () => <span data-col="status">{t("permissionUsers.columns.status")}</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const status = row.original.status;
-          const tone =
-            status === "ACTIVE" ? "success" : status === "INACTIVE" ? "neutral" : "info";
-          return <StatusChip tone={tone}>{t(`userStatuses.${status}`)}</StatusChip>;
+          return (
+            <span data-col="status">
+              <StatusChip tone={statusTone(status)}>{t(`userStatuses.${status}`)}</StatusChip>
+            </span>
+          );
         },
       },
       {
@@ -468,7 +507,9 @@ export function PermissionUsersTab({
                       <span className="line-clamp-2 font-semibold wrap-anywhere text-text">
                         {objName} · {permName}
                       </span>
-                      <span className="block text-caption text-text-muted">{perm.code}</span>
+                      <span className="block text-caption wrap-anywhere text-text-muted">
+                        {perm.code}
+                      </span>
                     </span>
                     <Chip variant="tag" className="shrink-0 tabular-nums">
                       {t("permissionUsers.userCountChip", { count: perm.userCount })}
@@ -485,11 +526,11 @@ export function PermissionUsersTab({
         padding="none"
         role="region"
         aria-labelledby="rbac-perm-users-heading"
-        className="min-w-0 flex-[1_1_100%] overflow-hidden @4xl:flex-1"
+        className="@container min-w-0 flex-[1_1_100%] overflow-hidden @4xl:flex-1"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">
-            <h2 id="rbac-perm-users-heading" className="text-title font-semibold text-text">
+            <h2 id="rbac-perm-users-heading" className="text-title font-semibold wrap-anywhere text-text">
               {activePermission ? (
                 <>
                   {activeObjectName} · {activePermissionName} ·{" "}
@@ -528,8 +569,14 @@ export function PermissionUsersTab({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 border-b border-border px-4 py-3">
-          <label className="flex min-w-[200px] flex-[2_1_220px] flex-col gap-1.5 text-caption text-text-muted">
+        {/* Từ @xl (576px) ô tìm kiếm và hai ô chọn vừa một dòng; hẹp hơn thì xếp lưới (FILTER_GRID). */}
+        <div
+          className={cn(
+            FILTER_GRID,
+            "border-b border-border px-4 py-3 @xl:flex @xl:flex-wrap @xl:items-end",
+          )}
+        >
+          <label className="col-span-full flex flex-col gap-1.5 text-caption text-text-muted @xl:min-w-[200px] @xl:flex-[2_1_220px]">
             <span>{t("permissionUsers.filterSearchLabel")}</span>
             <Input
               type="search"
@@ -543,7 +590,7 @@ export function PermissionUsersTab({
             />
           </label>
 
-          <div className="flex min-w-[150px] flex-[1_1_150px] flex-col gap-1.5">
+          <div className="flex min-w-0 flex-col gap-1.5 @xl:min-w-[150px] @xl:flex-[1_1_150px]">
             <span className="text-caption text-text-muted">
               {t("permissionUsers.filterSourceLabel")}
             </span>
@@ -558,7 +605,7 @@ export function PermissionUsersTab({
             />
           </div>
 
-          <div className="flex min-w-[150px] flex-[1_1_150px] flex-col gap-1.5">
+          <div className="flex min-w-0 flex-col gap-1.5 @xl:min-w-[150px] @xl:flex-[1_1_150px]">
             <span className="text-caption text-text-muted">
               {t("permissionUsers.filterStatusLabel")}
             </span>
@@ -574,35 +621,37 @@ export function PermissionUsersTab({
           </div>
         </div>
 
-        <Table
-          data={users}
-          columns={columns}
-          getRowId={(row) => row.userId}
-          loading={permissionsQuery.isPending || usersQuery.isPending}
-          refreshing={usersQuery.isPlaceholderData}
-          aria-label={t("tabs.users")}
-          error={
-            usersQuery.isError ? (
+        <div className={COMPACT_USER_COLUMNS}>
+          <Table
+            data={users}
+            columns={columns}
+            getRowId={(row) => row.userId}
+            loading={permissionsQuery.isPending || usersQuery.isPending}
+            refreshing={usersQuery.isPlaceholderData}
+            aria-label={t("tabs.users")}
+            error={
+              usersQuery.isError ? (
+                <EmptyState
+                  icon={<TriangleAlert />}
+                  title={t("permissionUsers.errorTitle")}
+                  description={t("permissionUsers.errorDescription")}
+                  action={
+                    <Button variant="secondary" onClick={() => usersQuery.refetch()}>
+                      {t("actions.retry")}
+                    </Button>
+                  }
+                />
+              ) : undefined
+            }
+            empty={
               <EmptyState
-                icon={<TriangleAlert />}
-                title={t("permissionUsers.errorTitle")}
-                description={t("permissionUsers.errorDescription")}
-                action={
-                  <Button variant="secondary" onClick={() => usersQuery.refetch()}>
-                    {t("actions.retry")}
-                  </Button>
-                }
+                icon={<Users />}
+                title={t("permissionUsers.emptyTitle")}
+                description={t("permissionUsers.emptyDescription")}
               />
-            ) : undefined
-          }
-          empty={
-            <EmptyState
-              icon={<Users />}
-              title={t("permissionUsers.emptyTitle")}
-              description={t("permissionUsers.emptyDescription")}
-            />
-          }
-        />
+            }
+          />
+        </div>
 
         {totalUsers > 0 && (
           <div className="border-t border-border px-4 py-3">

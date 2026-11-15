@@ -65,6 +65,16 @@ import {
   groupPermissionsByObject,
 } from "./object-permission-picker";
 
+/**
+ * Bảng quyền hiệu lực ở thẻ hẹp (dưới 40rem): cột Đối tượng và Mã ẩn, hiện thành dòng phụ dưới tên quyền
+ * (`data-col-summary`), để mã quyền luôn đọc được đủ thay vì bị cắt ở mép khung.
+ */
+const COMPACT_EFFECTIVE_COLUMNS = [
+  "@container",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=object])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=code])]:hidden",
+].join(" ");
+
 export interface UserRbacTabProps {
   userId: string;
   readOnly?: boolean;
@@ -272,10 +282,10 @@ export function UserRbacTab({
     return [
       {
         id: "object",
-        header: t("userRbac.effectiveColumns.object"),
+        header: () => <span data-col="object">{t("userRbac.effectiveColumns.object")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-secondary">
+          <span data-col="object" className="text-text-secondary">
             {resolveObjectName(rbacT, row.original.groupCode, row.original.groupName)}
           </span>
         ),
@@ -285,17 +295,30 @@ export function UserRbacTab({
         header: t("userRbac.effectiveColumns.level"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="font-medium text-text">
-            {resolvePermissionName(rbacT, row.original.code, row.original.name)}
-          </span>
+          <div className="min-w-32">
+            <span className="font-medium wrap-break-word text-text">
+              {resolvePermissionName(rbacT, row.original.code, row.original.name)}
+            </span>
+            {/* Thẻ hẹp (dưới 40rem): cột Đối tượng và Mã ẩn, nội dung hiện ở đây dưới tên quyền. */}
+            <span
+              data-col-summary
+              className="mt-0.5 block text-caption text-text-muted @min-[40rem]:hidden"
+            >
+              {resolveObjectName(rbacT, row.original.groupCode, row.original.groupName)}
+              {" · "}
+              <code className="wrap-anywhere">{row.original.code}</code>
+            </span>
+          </div>
         ),
       },
       {
         id: "code",
-        header: t("userRbac.effectiveColumns.code"),
+        header: () => <span data-col="code">{t("userRbac.effectiveColumns.code")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <code className="text-field-label text-text-muted">{row.original.code}</code>
+          <code data-col="code" className="text-field-label text-text-muted">
+            {row.original.code}
+          </code>
         ),
       },
       {
@@ -547,7 +570,7 @@ export function UserRbacTab({
                       <div className="flex flex-wrap items-center gap-2 font-semibold text-text">
                         <span>
                           {objName} · {permName}{" "}
-                          <span className="font-normal text-text-muted">
+                          <span className="font-normal wrap-anywhere text-text-muted">
                             · {item.permissionCode}
                           </span>
                         </span>
@@ -602,19 +625,21 @@ export function UserRbacTab({
           </span>
         </div>
 
-        <Table
-          data={effectivePermissions}
-          columns={effectiveColumns}
-          getRowId={(row) => row.permissionId}
-          aria-label={t("userRbac.effectiveSectionTitle")}
-          empty={
-            <EmptyState
-              icon={<Shield />}
-              title={t("userRbac.effectiveSectionTitle")}
-              description={t("userRbac.effectiveEmpty")}
-            />
-          }
-        />
+        <div className={COMPACT_EFFECTIVE_COLUMNS}>
+          <Table
+            data={effectivePermissions}
+            columns={effectiveColumns}
+            getRowId={(row) => row.permissionId}
+            aria-label={t("userRbac.effectiveSectionTitle")}
+            empty={
+              <EmptyState
+                icon={<Shield />}
+                title={t("userRbac.effectiveSectionTitle")}
+                description={t("userRbac.effectiveEmpty")}
+              />
+            }
+          />
+        </div>
       </Card>
 
       <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
@@ -669,9 +694,10 @@ export function UserRbacTab({
                     return (
                       <label
                         key={role.id}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2.5 hover:bg-subtle"
+                        // Dialog hẹp: chip phạm vi/trạng thái xuống dòng dưới tên thay vì ép tên vai trò lại.
+                        className="flex cursor-pointer flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-md border border-border bg-surface px-3 py-2.5 hover:bg-subtle"
                       >
-                        <span className="flex min-w-0 items-center gap-3">
+                        <span className="flex min-w-0 flex-[1_1_12rem] items-center gap-3">
                           <Checkbox
                             checked={checked}
                             onCheckedChange={(next) => {
@@ -686,10 +712,12 @@ export function UserRbacTab({
                           />
                           <span className="min-w-0">
                             <span className="block font-semibold text-text">{displayName}</span>
-                            <span className="block text-caption text-text-muted">{role.code}</span>
+                            <span className="block text-caption wrap-anywhere text-text-muted">
+                              {role.code}
+                            </span>
                           </span>
                         </span>
-                        <div className="flex shrink-0 items-center gap-1.5">
+                        <div className="ml-auto flex shrink-0 items-center gap-1.5">
                           {role.status === "INACTIVE" && (
                             <StatusChip tone="neutral">{t("rolesTab.statusInactive")}</StatusChip>
                           )}

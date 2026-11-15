@@ -630,7 +630,9 @@ export function BulkAssignTab({
                 <li key={user.id} className="border-b border-border last:border-b-0">
                   <label
                     className={cn(
-                      "flex min-h-[60px] cursor-pointer items-center gap-3 px-4 py-2 transition-colors duration-150",
+                      // Chip trạng thái/phạm vi xuống dòng dưới (căn phải) khi tên không còn đủ 9rem, thay vì ép tên
+                      // lại (thẻ hẹp, tài khoản có hai chip).
+                      "flex min-h-[60px] cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 transition-colors duration-150",
                       isChecked ? "bg-primary-50" : "bg-surface hover:bg-subtle",
                     )}
                   >
@@ -642,7 +644,7 @@ export function BulkAssignTab({
                         toggleUserSelection(user, Boolean(checked));
                       }}
                     />
-                    <span className="min-w-0 flex-1">
+                    <span className="min-w-36 flex-1">
                       <span className="block truncate font-semibold text-text">
                         {user.username}
                       </span>
@@ -650,7 +652,7 @@ export function BulkAssignTab({
                         {user.fullName} · {roleLabel}
                       </span>
                     </span>
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    <div className="ml-auto flex shrink-0 items-center gap-1.5">
                       {user.status !== "ACTIVE" && (
                         <StatusChip tone="neutral">
                           {t(`userStatuses.${user.status}`)}

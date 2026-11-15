@@ -1597,6 +1597,7 @@
         "status": "Status",
         "users": "Assigned users"
       },
+      "countsSummary": "{permissions, plural, one {# permission} other {# permissions}} · {users, plural, one {# assigned user} other {# assigned users}}",
       "createButton": "+ Create role",
       "deleteAria": "Delete role {name}",
       "deleteConfirmAction": "Delete role",
