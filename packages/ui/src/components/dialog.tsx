@@ -66,7 +66,7 @@ export function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-surface p-6 shadow-xl",
+          "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-surface p-4 shadow-xl sm:p-6",
           "motion-safe:data-[state=open]:animate-dialog-in motion-safe:data-[state=closed]:animate-dialog-out",
           size === "xl" ? "max-w-[920px]" : size === "lg" ? "max-w-[720px]" : "max-w-[480px]",
           className,
@@ -132,11 +132,11 @@ export function DialogDescription({
   );
 }
 
-/** Nút căn phải, nút chính ở ngoài cùng bên phải (đặt nút chính cuối cùng). */
+/** Nút căn phải, nút chính ở ngoài cùng bên phải (đặt nút chính cuối cùng); thiếu chỗ (màn hẹp) thì xuống dòng. */
 export function DialogFooter({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("sticky bottom-0 z-10 flex justify-end gap-3 bg-surface pt-2 pb-1", className)}
+      className={cn("sticky bottom-0 z-10 flex flex-wrap justify-end gap-3 bg-surface pt-2 pb-1", className)}
       {...props}
     />
   );

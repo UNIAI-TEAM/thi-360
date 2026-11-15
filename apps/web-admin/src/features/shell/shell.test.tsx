@@ -110,8 +110,8 @@ describe("AppShell", () => {
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
   });
 
-  it("cửa sổ hẹp: vùng nội dung cuộn ngang còn sidebar nằm ngoài vùng cuộn và không bị co", async () => {
-    // jsdom không dàn trang nên chỉ kiểm cấu trúc: nội dung trong vùng cuộn ngang, sidebar thì không.
+  it("dưới lg: sidebar ẩn, cột nội dung co theo cửa sổ, không bề rộng tối thiểu, không tự cuộn ngang; lề hẹp dưới sm", async () => {
+    // jsdom không dàn trang và không áp media query: kiểm lớp quyết định bố cục ở 360px (e2e admin-responsive đo thật).
     renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
@@ -120,12 +120,24 @@ describe("AppShell", () => {
       </SessionProvider>,
     );
 
-    const scroller = screen.getByTestId("content-scroll");
-    expect(scroller).toHaveClass("overflow-x-auto", "min-w-0");
-    expect(scroller).toContainElement(screen.getByRole("main"));
+    const column = screen.getByTestId("content-column");
+    expect(column).toHaveClass("min-w-0", "flex-1", "flex-col");
+    expect(column.className).not.toMatch(/(^|\s)(min-w-120|overflow-x-auto|overflow-x-scroll)(\s|$)/);
+    expect(column.querySelector(".min-w-120")).toBeNull();
+    const main = screen.getByRole("main");
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(column).toContainElement(main);
+    expect(main).toHaveAttribute("id", "main");
+    expect(main).toHaveClass("min-w-0", "p-4", "sm:p-6");
+    expect(main).not.toHaveClass("p-6");
+    expect(screen.getByRole("banner")).toHaveClass("px-4", "sm:px-6", "h-14");
+
     const nav = screen.getByRole("navigation", { name: "Menu chính" });
-    expect(scroller).not.toContainElement(nav);
-    expect(nav).toHaveClass("w-62", "shrink-0");
+    expect(column).not.toContainElement(nav);
+    expect(nav).toHaveClass("hidden", "lg:flex", "w-62", "shrink-0");
+
+    // Lối tắt tới nội dung chính trỏ vào đúng `<main>`.
+    expect(screen.getByRole("link", { name: "Chuyển tới nội dung chính" })).toHaveAttribute("href", "#main");
     await waitFor(() => screen.getByRole("link", { name: "Bảng điều khiển" }));
   });
 
@@ -140,6 +152,116 @@ describe("AppShell", () => {
 
     const nav = await waitFor(() => screen.getByRole("navigation", { name: "Menu chính" }));
     expect(nav).toHaveClass("sticky", "top-0", "h-dvh", "overflow-y-auto", "w-62");
+  });
+
+  it("thanh trên ở 360px: breadcrumb chỉ còn trang hiện tại, menu avatar chỉ còn avatar và tên đăng nhập hiện trong menu", async () => {
+    mocks.pathname.current = "/users";
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <p>Nội dung trang</p>
+        </AppShell>
+      </SessionProvider>,
+    );
+
+    const breadcrumb = await screen.findByRole("navigation", { name: "Vị trí hiện tại" });
+    const [group, current] = within(breadcrumb).getAllByRole("listitem");
+    expect(group).toHaveTextContent("Người dùng");
+    expect(group).toHaveClass("max-sm:hidden");
+    expect(current).toHaveTextContent("Tài khoản");
+    expect(current).not.toHaveClass("max-sm:hidden");
+    // Nhóm trái co được để breadcrumb cắt chữ thay vì đẩy các nút bên phải ra ngoài; nhóm phải không co.
+    expect(breadcrumb.parentElement).toHaveClass("flex-1", "min-w-0");
+
+    const banner = screen.getByRole("banner");
+    const trigger = await within(banner).findByRole("button", { name: "Menu tài khoản" });
+    expect(trigger.parentElement).toHaveClass("shrink-0");
+    expect(within(trigger).getByText("ops.admin")).toHaveClass("hidden", "sm:inline");
+    expect(trigger).toHaveClass("pointer-coarse:after:absolute", "relative");
+
+    await userEvent.click(trigger);
+    expect(screen.getByText("Tài khoản: ops.admin")).toHaveClass("sm:hidden");
+  });
+
+  it("dưới lg: nút menu mở ngăn kéo trái chứa cùng menu; bấm một mục thì đóng và focus về nút menu", async () => {
+    mocks.pathname.current = "/";
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <p>Nội dung trang</p>
+        </AppShell>
+      </SessionProvider>,
+    );
+
+    const banner = screen.getByRole("banner");
+    const menuButton = within(banner).getByRole("button", { name: "Mở menu điều hướng" });
+    expect(menuButton).toHaveClass("lg:hidden");
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(menuButton).toHaveAttribute("aria-haspopup", "dialog");
+    expect(menuButton).not.toHaveAttribute("aria-controls");
+    // Nút menu đứng đầu thanh trên, trước breadcrumb.
+    const breadcrumb = screen.getByRole("navigation", { name: "Vị trí hiện tại" });
+    expect(menuButton.compareDocumentPosition(breadcrumb) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await waitFor(() => screen.getByRole("link", { name: "Bảng điều khiển" }));
+
+    await userEvent.click(menuButton);
+    const drawer = await screen.findByRole("dialog", { name: "Menu điều hướng" });
+    expect(drawer).toHaveClass("left-0", "rounded-r-xl");
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+    expect(menuButton).toHaveAttribute("aria-controls", drawer.id);
+
+    // Cùng danh sách với sidebar: bốn nhóm, mục đang mở đánh dấu như nhau. Sidebar nằm sau lớp phủ (aria-hidden).
+    const drawerNav = within(drawer).getByRole("navigation", { name: "Menu chính" });
+    expect(screen.getAllByRole("navigation", { name: "Menu chính" })).toEqual([drawerNav]);
+    expect(within(drawerNav).getAllByRole("list")).toHaveLength(4);
+    expect(within(drawerNav).getByRole("link", { name: "Bảng điều khiển" })).toHaveAttribute("aria-current", "page");
+    expect(within(drawer).getByText("Thi 360 · Quản trị")).toBeInTheDocument();
+
+    // jsdom không có router của Next: chặn điều hướng tải lại trang (sau khi handler của React đã chạy).
+    const stopDocumentNavigation = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener("click", stopDocumentNavigation);
+    try {
+      await userEvent.click(within(drawerNav).getByRole("link", { name: "Tài khoản" }));
+    } finally {
+      document.removeEventListener("click", stopDocumentNavigation);
+    }
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(menuButton).toHaveFocus());
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("ngăn menu đóng bằng Esc, bằng nút × và khi đổi trang; focus về nút menu", async () => {
+    mocks.pathname.current = "/";
+    const tree = () => (
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <AppShell skipLabel="Chuyển tới nội dung chính">
+          <p>Nội dung trang</p>
+        </AppShell>
+      </SessionProvider>
+    );
+    const { rerender } = renderWithProviders(tree());
+    const menuButton = screen.getByRole("button", { name: "Mở menu điều hướng" });
+
+    await userEvent.click(menuButton);
+    await screen.findByRole("dialog", { name: "Menu điều hướng" });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(menuButton).toHaveFocus());
+
+    await userEvent.click(menuButton);
+    const drawer = await screen.findByRole("dialog", { name: "Menu điều hướng" });
+    await userEvent.click(within(drawer).getByRole("button", { name: "Đóng menu điều hướng" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(menuButton).toHaveFocus());
+
+    // Đổi trang không qua menu (nút Lùi của trình duyệt): ngăn tự đóng.
+    await userEvent.click(menuButton);
+    await screen.findByRole("dialog", { name: "Menu điều hướng" });
+    mocks.pathname.current = "/classes";
+    rerender(tree());
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(menuButton).toHaveFocus());
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
   });
 
   it("trang ngoài menu không có breadcrumb: menu avatar vẫn nằm bên phải thanh trên", async () => {

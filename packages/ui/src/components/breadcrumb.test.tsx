@@ -75,6 +75,22 @@ describe("Breadcrumb", () => {
     expect(last).toHaveClass("shrink", "min-w-0");
   });
 
+  it("collapseOnNarrow: dưới sm chỉ còn trang hiện tại, các mục trước và dấu phân cách ẩn; mặc định không ẩn gì", () => {
+    const { unmount } = render(<Breadcrumb aria-label="Đường dẫn" items={items} collapseOnNarrow />);
+    const list = screen.getByRole("list");
+    const [first, middle, last] = screen.getAllByRole("listitem");
+    expect(first).toHaveClass("max-sm:hidden");
+    expect(middle).toHaveClass("max-sm:hidden");
+    expect(last).not.toHaveClass("max-sm:hidden");
+    for (const separator of list.querySelectorAll("li[aria-hidden]")) {
+      expect(separator).toHaveClass("max-sm:hidden");
+    }
+    unmount();
+
+    render(<Breadcrumb aria-label="Đường dẫn" items={items} />);
+    expect(screen.getByRole("list").innerHTML).not.toContain("max-sm:hidden");
+  });
+
   it("không có mục nào: không hiện vùng điều hướng rỗng", () => {
     const { container } = render(<Breadcrumb aria-label="Vị trí hiện tại" items={[]} />);
     expect(screen.queryByRole("navigation")).toBeNull();

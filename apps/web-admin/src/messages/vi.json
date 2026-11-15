@@ -1728,12 +1728,18 @@
     "logoMark": "360",
     "menuLabel": "Menu chính",
     "menuLoading": "Đang tải menu",
+    "navDrawer": {
+      "close": "Đóng menu điều hướng",
+      "open": "Mở menu điều hướng",
+      "title": "Menu điều hướng"
+    },
     "skipToContent": "Chuyển tới nội dung chính",
     "userMenu": {
       "adminPortal": "Trang quản trị",
       "changePassword": "Đổi mật khẩu",
       "logout": "Đăng xuất",
       "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
+      "signedInAs": "Tài khoản: {username}",
       "studentPortal": "Trang học viên",
       "trigger": "Menu tài khoản"
     }

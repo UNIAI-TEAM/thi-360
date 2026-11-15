@@ -103,7 +103,7 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 ## 4. Khoảng cách, bo góc, viền, bóng
 
 - **Lưới khoảng cách:** bội số của 4px. Khoảng đệm trong thẻ 16–24px. Khoảng cách giữa các khối 24–32px (admin), 48–64px (web học viên).
-- **Chiều rộng nội dung:** web học viên tối đa 1170px; admin giãn theo màn hình, lề 24px.
+- **Chiều rộng nội dung:** web học viên tối đa 1170px; admin giãn theo màn hình, lề 24px (16px dưới 640px, mục 5.8).
 - **Viền:** 1px, màu `border`.
 
 | Bo góc | Giá trị | Dùng cho |
@@ -215,7 +215,12 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 - Sidebar: mục cao 40px, bo góc 8px, icon lucide 18px; mục đang chọn nền `primary-50`, chữ và icon `primary-text`, đậm 600. Tên nhóm menu dùng kiểu `overline`.
 - Nền vùng nội dung `bg-page`.
-- **Phạm vi màn hình:** web admin thiết kế cho 768–1920px (máy tính và tablet); điện thoại chưa thuộc phạm vi. Web học viên phải dùng được từ 360px.
+- **Phạm vi màn hình:** web admin dùng được từ 360px tới 1920px (điện thoại, tablet, máy tính; UNI-2586, 2026-11-15); máy tính vẫn là nơi dùng chính. Web học viên cũng từ 360px. Không màn nào được làm cả trang cuộn ngang: nội dung rộng (bảng) cuộn trong khung của nó (mục 5.9).
+- **Từ 1024px (`lg`):** sidebar 248px cố định bên trái như hình trên, không có nút menu.
+- **Dưới 1024px:** sidebar ẩn. Đầu thanh trên có nút icon menu (lucide `Menu`, 40px, vùng bấm 44px trên màn cảm ứng, `aria-label` "Mở menu điều hướng", `aria-expanded`, `aria-controls`) mở **ngăn menu** trượt từ trái (`DrawerContent side="left"`, rộng tối đa 288px) chứa cùng danh sách với sidebar (`NavigationGroups`, không viết danh sách thứ hai). Ngăn đóng khi bấm một mục (kể cả trang đang mở), khi đổi trang, bằng Esc, bấm nền mờ hoặc nút ×, và tự đóng khi cửa sổ nới tới 1024px; focus về nút menu. Mục menu cao 44px trên màn cảm ứng.
+- **Lề:** thanh trên và vùng nội dung đệm 16px (`px-4`, `p-4`) dưới 640px (`sm`), 24px từ 640px. Cột nội dung co theo cửa sổ (`min-w-0`), không có bề rộng tối thiểu. Bề rộng dùng được cho nội dung của một màn: 360px → 328px, 390px → 358px; 640–1023px → bề rộng cửa sổ − 48px; từ 1024px → bề rộng cửa sổ − 248px − 48px.
+- **Thanh trên dưới 640px** phải vừa một hàng ở 360px: nút menu, breadcrumb chỉ còn trang hiện tại (`Breadcrumb collapseOnNarrow`, cắt bằng dấu ba chấm nếu vẫn dài), nút sáng/tối, nút ngôn ngữ, menu avatar chỉ còn avatar (tên đăng nhập hiện ở dòng đầu của menu). Từ 640px breadcrumb đủ các mục và menu avatar có tên đăng nhập kèm mũi tên.
+- **Tiêu đề trang** (`PageHeader`): dưới 640px nút của màn xuống dưới tiêu đề và mô tả, căn trái, tự xuống dòng khi không đủ một hàng; từ 640px nút nằm cùng hàng với tiêu đề, căn phải. Màn chỉ truyền nút qua `actions`, không tự bọc thêm hàng.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
 - Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện, Nhật ký). Chức năng phụ của một mục là nút hoặc tab bên trong màn đó, không thành mục menu riêng: Cấp hàng loạt là nút trong màn Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền.
 
@@ -247,7 +252,8 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - **Focus đầu tiên khi mở:** dialog biểu mẫu focus vào ô bắt buộc đầu tiên; ô đó còn đang tải dữ liệu thì focus vào chính dialog rồi chuyển sang ô khi dữ liệu về. Drawer chi tiết focus vào tab đang chọn.
 - **Dialog có dữ liệu đã nhập** hỏi lại trước khi đóng bằng Esc, bấm ra ngoài hoặc Hủy.
 - **Focus trả về** nút đã mở dialog/drawer: `Dialog` và `Drawer` của kit tự làm, không cần tự viết. Khi nút đó đã biến mất (dòng bị xóa, thanh chọn đã ẩn), chuyển focus có chủ đích tới một đích có tên (ô chọn tất cả, ô tìm kiếm, tiêu đề bước mới), không để focus rơi về `<body>`.
-- **Drawer:** trượt từ phải, rộng 520px, dùng cho chi tiết (nơi đang dùng, lịch sử thay đổi); tiêu đề dính mép trên, hàng nút đặt trong `DrawerFooter` dính mép dưới, phần giữa cuộn.
+- **Drawer:** trượt từ phải, rộng 520px, dùng cho chi tiết (nơi đang dùng, lịch sử thay đổi); tiêu đề dính mép trên, hàng nút đặt trong `DrawerFooter` dính mép dưới, phần giữa cuộn. `DrawerContent side`: `right` (mặc định, chi tiết) hoặc `left` (ngăn menu điều hướng của admin dưới 1024px, mục 5.8); drawer trượt ra từ đúng cạnh đó (chỉ trong `motion-safe:`, hiệu ứng `drawer-in`/`drawer-out` và `drawer-in-left`/`drawer-out-left`) và bo góc 16px ở cạnh trong, phía nội dung trang.
+- **Màn hẹp (dưới 640px):** dialog và drawer đệm 16px thay vì 24px; dialog rộng bằng cửa sổ trừ 32px. Hàng nút của `DialogFooter`/`DrawerFooter` xuống dòng khi không đủ chỗ, vẫn căn phải. Biểu mẫu hai cột của cỡ `xl` xếp một cột dưới 768px (`grid-cols-1 md:grid-cols-2`).
 - **Toast:** góc trên phải, tự ẩn sau 4 giây; lỗi không tự ẩn. Toast có tông theo trạng thái (thành công, lỗi, cảnh báo, thông tin).
 
 ### 5.11 Bố cục hai khu vực (màn Cấu hình chung)
@@ -275,7 +281,7 @@ Các quy ước dưới đây rút từ đợt rà soát theo bộ hướng dẫ
 - **Chữ dài:** tên, nhãn có thể dài thì cho xuống **tối đa hai dòng** (`line-clamp-2`), không cắt một dòng bằng dấu ba chấm khi người dùng không còn cách nào đọc đủ. Không dựa vào thuộc tính `title` để lộ phần bị cắt (bàn phím và màn hình cảm ứng không tới được). Chỉ cắt một dòng ở nơi chật cố định (ô bảng, mã) và khi nội dung đầy đủ có ở chỗ khác trên cùng màn hình.
 - **Vùng cuộn dọc có chiều cao giới hạn** (danh sách chọn, cột bên): thêm lớp `scroll-shadows-y` lên chính phần tử cuộn để có bóng mờ báo còn nội dung ở phía còn cuộn được. Lớp này là CSS thuần (`packages/ui/src/styles/utilities.css`), màu lấy từ token `scroll-shadow`. Mục con trong vùng cuộn để nền trong suốt ở trạng thái thường.
 - **Thanh cuộn của trang:** trang luôn giữ chỗ cho thanh cuộn dọc (`scrollbar-gutter: stable` trong `globals.css` của hai web), để nội dung dài/ngắn hay việc mở dialog không làm trang lệch ngang.
-- **Bố cục nhiều cột chia theo bề rộng vùng chứa, không theo bề rộng màn hình:** vùng nội dung của admin hẹp hơn màn hình 248px vì có sidebar. Đặt `@container` lên khối chứa và dùng biến thể container của Tailwind (`@5xl:` …) cho các cột bên trong; chọn ngưỡng sao cho cột chứa bảng còn đủ rộng cho bảng của nó. Dưới ngưỡng thì xếp chồng.
+- **Bố cục nhiều cột chia theo bề rộng vùng chứa, không theo bề rộng màn hình:** từ 1024px vùng nội dung của admin hẹp hơn màn hình 248px vì có sidebar, dưới 1024px thì bằng màn hình trừ lề (mục 5.8). Đặt `@container` lên khối chứa và dùng biến thể container của Tailwind (`@5xl:` …) cho các cột bên trong; chọn ngưỡng sao cho cột chứa bảng còn đủ rộng cho bảng của nó. Dưới ngưỡng thì xếp chồng.
 - **Đường dẫn trang** viết bằng tiếng Anh, trùng tên thư mục feature và tên tài nguyên của API (`/users`, `/classes`, `/catalog`, `/rbac`, `/appearance`, `/login`, `/change-password`). Phần có nội dung và dữ liệu riêng là **trang con** (`/users/bulk-import`, `/rbac/roles`), không phải giá trị query. Query chỉ dùng cho bộ lọc và lựa chọn trong trang (`?permission=USER.VIEW`, `?group=SUBJECT`), tên và giá trị cũng không dùng tiếng Việt không dấu.
 - **Trạng thái đang chọn, đang mở, lỗi** không truyền đạt chỉ bằng màu hay nền: luôn có thêm hình (gạch chân, thanh dọc, icon) hoặc chữ, vẽ bằng `border`/`outline` để còn thấy ở chế độ tương phản cao.
 
