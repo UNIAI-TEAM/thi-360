@@ -81,7 +81,10 @@ test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
   }) => {
     await login(page);
     await openScreen(page, "/");
-    const menuButton = page.getByRole("banner").getByRole("button", { name: "Mở menu điều hướng" });
+    // Khi ngăn (hộp thoại modal) mở, Radix đặt aria-hidden lên phần còn lại của trang nên truy vấn theo role không
+    // còn thấy nút menu; kiểm tên truy cập một lần rồi giữ nút bằng bộ chọn CSS để đọc aria-expanded khi ngăn mở.
+    await expect(page.getByRole("banner").getByRole("button", { name: "Mở menu điều hướng" })).toBeVisible();
+    const menuButton = page.locator('header button[aria-haspopup="dialog"][aria-label="Mở menu điều hướng"]');
     const drawer = page.getByRole("dialog", { name: "Menu điều hướng" });
     await expect(menuButton).toHaveAttribute("aria-expanded", "false");
 
@@ -92,9 +95,10 @@ test.describe("Khung admin trên màn hẹp (UNI-2586)", () => {
     await expect(menuButton).toHaveAttribute("aria-expanded", "true");
     await expect(menuButton).toHaveAttribute("aria-controls", (await drawer.getAttribute("id")) ?? "");
     await expect(drawer.locator(":focus")).toHaveCount(1);
+    // Ngăn trượt vào trong 200ms: chờ hiệu ứng xong rồi mới đo vị trí.
+    await expect.poll(async () => Math.round((await drawer.boundingBox())?.x ?? -1)).toBe(0);
     const box = await drawer.boundingBox();
     expect(box).not.toBeNull();
-    expect(Math.round(box!.x)).toBe(0);
     expect(box!.width).toBeLessThan(PHONE.width);
 
     // Điều hướng qua ngăn: tới trang mới, ngăn đóng, focus về nút menu.
