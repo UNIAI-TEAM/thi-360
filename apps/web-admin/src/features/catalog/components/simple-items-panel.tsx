@@ -54,7 +54,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useMemo, type CSSProperties } from "react";
+import { Fragment, type CSSProperties, useCallback, useMemo } from "react";
 import type { CatalogGroupResponse, CatalogItemResponse, CatalogStatus } from "../api";
 import { useCatalogDndAccessibility, useCatalogSortableAttributes } from "../dnd-accessibility";
 import { useInlineOverflow } from "../scroll-region";
@@ -452,7 +452,8 @@ export function SimpleItemsPanel({
             onChange={(event) => onSearchChange(event.target.value)}
           />
         </div>
-        <div className="min-w-0 @min-[416px]:w-45 @min-[416px]:shrink-0">
+        {/* Chỉ có một ô chọn: chiếm cả hàng trên điện thoại để nhãn "Mọi trạng thái" không bị ép xuống hai dòng. */}
+        <div className="col-span-full min-w-0 @min-[416px]:w-45 @min-[416px]:shrink-0">
           <Select
             aria-label={t("statusFilterLabel")}
             options={statusOptions}
@@ -795,8 +796,8 @@ function SortableItemRow({
           data-testid="catalog-item-compact-meta"
           className={cn("mt-1 flex flex-wrap items-center gap-1.5 font-normal", layout.compactMeta)}
         >
-          <span className={cn(CODE_CHIP, "max-w-full whitespace-normal wrap-anywhere")}>
-            {item.code}
+          <span className={cn(CODE_CHIP, "max-w-full whitespace-normal wrap-break-word")}>
+            <CodeWithBreaks code={item.code} />
           </span>
           {item.status !== "ACTIVE" && (
             <StatusChip tone="neutral">{t(`statuses.${item.status}`)}</StatusChip>
@@ -963,5 +964,27 @@ function SortableItemRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+/**
+ * Mã danh mục trong ô hẹp: cho xuống dòng ngay sau dấu "_" (`QDA_` / `QD01`) thay vì bẻ giữa một phần của mã.
+ * Dùng `<wbr>` chứ không chèn ký tự vô hình, để sao chép mã vẫn ra đúng chuỗi gốc.
+ */
+export function CodeWithBreaks({ code }: { code: string }) {
+  const parts = code.split("_");
+  return (
+    <>
+      {parts.map((part, index) => (
+        <Fragment key={index}>
+          {part}
+          {index < parts.length - 1 && (
+            <>
+              _<wbr />
+            </>
+          )}
+        </Fragment>
+      ))}
+    </>
   );
 }

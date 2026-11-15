@@ -824,7 +824,7 @@ describe("CatalogView: bảng giá trị chọn cột theo bề rộng thẻ (VI
     const activeMeta = within(activeRow).getByTestId("catalog-item-compact-meta");
     expect(activeMeta).toHaveClass("@min-[416px]:hidden");
     expect(activeMeta.closest("td")).toBe(within(activeRow).getByText("Toán học").closest("td"));
-    expect(within(activeMeta).getByText("TOAN")).toHaveClass("wrap-anywhere");
+    expect(within(activeMeta).getByText("TOAN")).toHaveClass("wrap-break-word");
     expect(within(activeMeta).queryByText("Hoạt động")).toBeNull();
     const inactiveRow = within(table).getByText("Địa lí").closest("tr")!;
     expect(
