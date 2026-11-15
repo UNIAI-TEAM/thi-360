@@ -182,8 +182,11 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await page.getByLabel("Tìm tài khoản").fill(watchUsername);
       const row = page.locator("tbody tr", { hasText: watchUsername });
       await expect(row).toBeVisible();
-      await expect(row.getByText("Từ vai trò")).toBeVisible();
-      await expect(row.getByText(new RegExp(`Vai trò:.*${roleName}`))).toBeVisible();
+      // Ở màn rộng nguồn và chi tiết nằm ở cột riêng (`data-col`); bản sao dưới tên tài khoản chỉ hiện khi thẻ hẹp.
+      await expect(row.locator("[data-col=source]").getByText("Từ vai trò")).toBeVisible();
+      await expect(
+        row.locator("[data-col=detail]").getByText(new RegExp(`Vai trò:.*${roleName}`)),
+      ).toBeVisible();
     });
   });
 

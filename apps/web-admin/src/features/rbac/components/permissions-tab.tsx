@@ -14,6 +14,7 @@ import {
   resolvePermissionShortName,
   type RbacTranslator,
 } from "../messages";
+import { FILTER_GRID } from "../styles";
 import type { AccessScope, PermissionResponse } from "../types";
 
 export interface PermissionsTabProps {
@@ -129,7 +130,8 @@ export function PermissionsTab({
   const totalPermissions = groupedRows.reduce((sum, group) => sum + group.items.length, 0);
 
   return (
-    <div className="flex flex-col gap-4">
+    // Vùng chứa cho thanh lọc và bảng: chia bố cục theo bề rộng vùng nội dung, không theo cửa sổ (DESIGN.md 5.13).
+    <div className="@container flex flex-col gap-4">
       <div
         role="note"
         className="flex items-start gap-2.5 rounded-lg border border-info/30 bg-info-bg px-3.5 py-3 text-body text-info"
@@ -138,8 +140,12 @@ export function PermissionsTab({
         <span>{t("permissionsTab.bannerNote")}</span>
       </div>
 
-      <Card padding="md" className="flex flex-wrap items-end gap-3">
-        <label className="flex min-w-[220px] flex-[2_1_240px] flex-col gap-1.5 text-caption text-text-muted">
+      {/* Từ @2xl ô tìm kiếm và hai ô chọn vừa một dòng; hẹp hơn thì xếp lưới (FILTER_GRID). */}
+      <Card
+        padding="md"
+        className={cn(FILTER_GRID, "@2xl:flex @2xl:flex-wrap @2xl:items-end")}
+      >
+        <label className="col-span-full flex flex-col gap-1.5 text-caption text-text-muted @2xl:min-w-[220px] @2xl:flex-[2_1_240px]">
           <span>{t("permissionsTab.filterSearchLabel")}</span>
           <Input
             type="search"
@@ -150,7 +156,7 @@ export function PermissionsTab({
           />
         </label>
 
-        <div className="flex min-w-[160px] flex-[1_1_160px] flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5 @2xl:min-w-[160px] @2xl:flex-[1_1_160px]">
           <span className="text-caption text-text-muted">{t("permissionsTab.filterObjectLabel")}</span>
           <Select
             aria-label={t("permissionsTab.filterObjectLabel")}
@@ -160,7 +166,7 @@ export function PermissionsTab({
           />
         </div>
 
-        <div className="flex min-w-[160px] flex-[1_1_160px] flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5 @2xl:min-w-[160px] @2xl:flex-[1_1_160px]">
           <span className="text-caption text-text-muted">{t("permissionsTab.filterScopeLabel")}</span>
           <Select
             aria-label={t("permissionsTab.filterScopeLabel")}
@@ -203,20 +209,25 @@ export function PermissionsTab({
         </Card>
       ) : (
         <Card padding="none" className="overflow-hidden">
+          {/*
+            Từ @2xl bảng giữ năm cột, rộng tối thiểu 780px và cuộn ngang trong khung như cũ. Hẹp hơn (điện thoại,
+            tablet dọc): cột Mã ẩn, mã hiện dưới tên quyền và được ngắt ở bất kỳ chỗ nào để đọc đủ; dưới @lg cột Vai
+            trò cũng ẩn, số vai trò nhập vào dòng mã.
+          */}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] border-collapse">
+            <table className="w-full border-collapse @2xl:min-w-[780px]">
               <thead>
                 <tr className="bg-table-head text-left text-field-label text-text-muted">
                   <th scope="col" className="px-4 py-3 font-semibold">
                     {t("permissionsTab.columns.name")}
                   </th>
-                  <th scope="col" className="px-3 py-3 font-semibold">
+                  <th scope="col" className="hidden px-3 py-3 font-semibold @2xl:table-cell">
                     {t("permissionsTab.columns.code")}
                   </th>
                   <th scope="col" className="px-3 py-3 font-semibold">
                     {t("permissionsTab.columns.scope")}
                   </th>
-                  <th scope="col" className="px-3 py-3 font-semibold">
+                  <th scope="col" className="hidden px-3 py-3 font-semibold @lg:table-cell">
                     {t("permissionsTab.columns.roles")}
                   </th>
                   <th scope="col" className="px-4 py-3 font-semibold">
@@ -284,8 +295,20 @@ function PermissionGroupSection({
 
         return (
           <tr key={item.id} className="h-12 border-t border-border bg-surface">
-            <td className="px-4 py-2 font-medium text-text">{displayName}</td>
-            <td className="px-3 py-2">
+            <td className="px-4 py-2 font-medium text-text">
+              <span className="wrap-break-word">{displayName}</span>
+              <span
+                data-testid="permission-code-line"
+                className="mt-0.5 block text-caption font-normal text-text-muted @2xl:hidden"
+              >
+                <code className="wrap-anywhere">{item.code}</code>
+                <span className="@lg:hidden">
+                  {" · "}
+                  {t("permissionsTab.roleCountValue", { count: item.roleCount })}
+                </span>
+              </span>
+            </td>
+            <td className="hidden px-3 py-2 @2xl:table-cell">
               <code className="text-field-label text-text-muted">{item.code}</code>
             </td>
             <td className="px-3 py-2">
@@ -293,7 +316,7 @@ function PermissionGroupSection({
                 {t(`access.${item.scope}`)}
               </StatusChip>
             </td>
-            <td className="px-3 py-2 text-text-secondary tabular-nums">
+            <td className="hidden px-3 py-2 text-text-secondary tabular-nums @lg:table-cell">
               {item.roleCount > 0
                 ? t("permissionsTab.roleCountValue", { count: item.roleCount })
                 : "—"}

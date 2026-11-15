@@ -13,6 +13,12 @@ const labels: PaginationLabels = {
 };
 
 describe("Pagination", () => {
+  it("dãy nút trang xuống dòng khi khung hẹp (9 nút 36px rộng hơn vùng nội dung 328px ở màn 360px)", () => {
+    render(<Pagination page={10} pageSize={20} total={400} onPageChange={() => {}} labels={labels} />);
+    const list = screen.getByRole("button", { name: "Trang 10" }).closest("ul");
+    expect(list).toHaveClass("flex-wrap");
+  });
+
   it("hiện khoảng bản ghi và đánh dấu trang hiện tại", () => {
     render(<Pagination page={2} pageSize={20} total={95} onPageChange={() => {}} labels={labels} />);
     expect(screen.getByText("21–40 / 95")).toBeInTheDocument();

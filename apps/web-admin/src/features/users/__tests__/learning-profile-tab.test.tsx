@@ -120,6 +120,11 @@ describe("LearningProfileTab (T12 / UNI-2549)", () => {
     }
 
     expect(screen.getAllByText(viMessages.users.learning.emptyTitle)).toHaveLength(5);
+
+    // Hai cột theo bề rộng vùng chứa (trang chi tiết là `@container`), không theo bề rộng màn hình (UNI-2586).
+    const grid = document.querySelector<HTMLElement>("[data-slot='learning-profile-tab']")!;
+    expect(grid).toHaveClass("grid-cols-1", "@2xl:grid-cols-2");
+    expect(grid.closest(".\\@container")).not.toBeNull();
   });
 
   it("ẩn tab Hồ sơ học tập và không gọi API learning khi thiếu quyền USER.LEARNING_VIEW", async () => {

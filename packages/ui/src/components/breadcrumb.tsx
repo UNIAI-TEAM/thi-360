@@ -17,6 +17,11 @@ export type BreadcrumbProps = {
   "aria-label": string;
   /** Thành phần liên kết của router (ví dụ `next/link`) để chuyển trang không tải lại. Mặc định là thẻ `a`. */
   linkComponent?: ComponentType<LinkComponentProps>;
+  /**
+   * Dưới `sm` (điện thoại) chỉ hiện mục cuối (trang hiện tại), ẩn các mục trước và dấu phân cách. Dùng ở thanh trên
+   * cùng của admin, nơi màn 360px chỉ còn chỗ cho một mục (DESIGN.md mục 5.8).
+   */
+  collapseOnNarrow?: boolean;
   className?: string;
 };
 
@@ -30,6 +35,7 @@ export type BreadcrumbProps = {
 export function Breadcrumb({
   items,
   linkComponent: LinkComponent = DefaultLink,
+  collapseOnNarrow = false,
   className,
   "aria-label": ariaLabel,
 }: BreadcrumbProps) {
@@ -42,7 +48,7 @@ export function Breadcrumb({
         {items.map((item, index) => (
           <Fragment key={`${index}-${item.label}`}>
             {index > 0 && (
-              <li aria-hidden className="shrink-0 text-text-placeholder">
+              <li aria-hidden className={cn("shrink-0 text-text-placeholder", collapseOnNarrow && "max-sm:hidden")}>
                 <ChevronRight className="size-4" />
               </li>
             )}
@@ -51,6 +57,7 @@ export function Breadcrumb({
                 // Hệ số co chênh nhau rất xa để tạo thứ tự ưu tiên: mục nào hệ số lớn thì nhường chỗ trước.
                 index === lastIndex ? "min-w-0 shrink" : "min-w-6",
                 index !== lastIndex && (index === 0 ? "shrink-[100]" : "shrink-[10000]"),
+                collapseOnNarrow && index !== lastIndex && "max-sm:hidden",
               )}
             >
               {item.href && index < lastIndex ? (

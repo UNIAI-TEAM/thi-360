@@ -107,6 +107,17 @@ describe("Dialog", () => {
     expect(header).toHaveClass("pr-10");
   });
 
+  // UNI-2586: màn 360px. jsdom không áp media query nên kiểm lớp: đệm 16px dưới `sm`, 24px từ `sm`; hàng nút xuống dòng.
+  it("màn hẹp: đệm 16px dưới sm, 24px từ sm, rộng tối đa bằng viewport trừ 2rem, hàng nút xuống dòng khi thiếu chỗ", async () => {
+    render(<Example />);
+    await userEvent.click(screen.getByRole("button", { name: "Mở" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveClass("p-4", "sm:p-6", "w-[calc(100vw-2rem)]");
+    expect(dialog).not.toHaveClass("p-6");
+    const footer = screen.getByRole("button", { name: "Lưu" }).parentElement as HTMLElement;
+    expect(footer).toHaveClass("flex", "flex-wrap", "justify-end");
+  });
+
   it("vùng cuộn không có margin/padding dọc để nội dung cuộn không lộ ra phía trên tiêu đề dính", async () => {
     render(<Example />);
     await userEvent.click(screen.getByRole("button", { name: "Mở" }));

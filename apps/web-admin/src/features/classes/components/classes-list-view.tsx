@@ -5,12 +5,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
+  focusRing,
   FormField,
   IconButton,
   Input,
@@ -55,6 +57,12 @@ import {
   ClassActionDialogs,
   useClassActionController,
 } from "./class-action-dialogs";
+import {
+  FILTER_FORM,
+  FILTER_SEARCH,
+  FILTER_SELECT,
+  FILTER_TOGGLES,
+} from "@/features/users/components/list-filters";
 import { type ClassEditableFields, ClassFormDialog } from "./class-form-dialog";
 
 const ALL_VALUE = "ALL";
@@ -62,6 +70,21 @@ const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 type StatusFilter = "ALL" | ClassStatus;
+
+/**
+ * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, cùng cách với danh sách tài khoản):
+ * Mô tả ẩn trước, rồi Người phụ trách, Số học viên. Khung hẹp như điện thoại (dưới 40rem) chỉ còn cột Mã lớp và
+ * cột Thao tác: tên lớp, số học viên và trạng thái chuyển thành dòng tóm tắt dưới mã (`data-col-summary`). Đầy đủ
+ * thông tin có ở trang chi tiết lớp.
+ */
+const DROP_LOW_PRIORITY_COLUMNS = [
+  "@container",
+  "@max-[64rem]:[&_:is(th,td):has([data-col=description])]:hidden",
+  "@max-[56rem]:[&_:is(th,td):has([data-col=owner])]:hidden",
+  "@max-3xl:[&_:is(th,td):has([data-col=memberCount])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=name])]:hidden",
+  "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
+].join(" ");
 
 export interface ClassesListViewProps {
   deps?: Partial<ClassesApiDeps>;
@@ -203,62 +226,83 @@ function ClassesListContent({
         accessorKey: "code",
         header: t("table.code"),
         cell: ({ row }) => (
-          <Link
-            href={`/classes/${row.original.id}`}
-            className="whitespace-nowrap font-semibold text-primary-text hover:underline"
-          >
-            {row.original.code}
-          </Link>
+          // Vùng bấm của liên kết phủ cả khối mã + dòng tóm tắt (phần tử giả); tên liên kết vẫn chỉ là mã lớp.
+          <div className="relative flex min-w-0 flex-col">
+            <Link
+              href={`/classes/${row.original.id}`}
+              className={cn(
+                "self-start rounded-sm font-semibold whitespace-nowrap text-primary-text after:absolute after:inset-0 hover:underline @max-[40rem]:whitespace-normal @max-[40rem]:wrap-anywhere",
+                focusRing,
+              )}
+            >
+              {row.original.code}
+            </Link>
+            {/*
+              Dòng tóm tắt thay cho các cột Tên lớp, Số học viên, Trạng thái khi khung hẹp. Tên lớp và dấu ngăn là
+              chữ trực tiếp của cùng một phần tử, nên khối này không trùng chữ với ô Tên lớp.
+            */}
+            <span
+              data-col-summary
+              className="hidden text-caption text-text-secondary @max-[40rem]:line-clamp-2"
+            >
+              {row.original.name}
+              {" · "}
+              {t("members.countBadge", { count: row.original.memberCount })}
+              {" · "}
+              <span className={row.original.status === "ACTIVE" ? "text-success" : "text-neutral"}>
+                {t(`statuses.${row.original.status}`)}
+              </span>
+            </span>
+          </div>
         ),
       },
       {
         accessorKey: "name",
-        header: t("table.name"),
+        header: () => <span data-col="name">{t("table.name")}</span>,
         cell: ({ row }) => (
-          <span className="block max-w-52 truncate font-medium text-text" title={row.original.name}>
+          <span data-col="name" className="line-clamp-2 min-w-36 font-medium text-text">
             {row.original.name}
           </span>
         ),
       },
       {
         id: "description",
-        header: t("table.description"),
+        header: () => <span data-col="description">{t("table.description")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <span
-            className="block max-w-64 truncate text-text-secondary"
-            title={row.original.description ?? undefined}
-          >
+          <span data-col="description" className="line-clamp-2 min-w-48 text-text-secondary">
             {row.original.description ?? "—"}
           </span>
         ),
       },
       {
         id: "owner",
-        header: t("table.owner"),
+        header: () => <span data-col="owner">{t("table.owner")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <span
-            className="whitespace-nowrap text-text"
-            title={row.original.ownerFullName ?? undefined}
-          >
+          <span data-col="owner" className="whitespace-nowrap text-text">
             {row.original.ownerUsername ?? "—"}
           </span>
         ),
       },
       {
         id: "memberCount",
-        header: t("table.memberCount"),
+        header: () => <span data-col="memberCount">{t("table.memberCount")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="tabular-nums text-text">{row.original.memberCount}</span>
+          <span data-col="memberCount" className="tabular-nums text-text">
+            {row.original.memberCount}
+          </span>
         ),
       },
       {
         accessorKey: "status",
-        header: t("table.status"),
+        header: () => <span data-col="status">{t("table.status")}</span>,
         cell: ({ row }) => (
-          <StatusChip tone={row.original.status === "ACTIVE" ? "success" : "neutral"}>
+          <StatusChip
+            data-col="status"
+            tone={row.original.status === "ACTIVE" ? "success" : "neutral"}
+          >
             {t(`statuses.${row.original.status}`)}
           </StatusChip>
         ),
@@ -382,13 +426,13 @@ function ClassesListContent({
         }
       />
 
-      <Card padding="md">
+      <Card padding="md" className="@container">
         <form
           aria-label={t("filters.ariaLabel")}
           onSubmit={(event) => event.preventDefault()}
-          className="flex flex-wrap items-end gap-3"
+          className={FILTER_FORM}
         >
-          <FormField label={t("filters.searchLabel")} className="min-w-60 flex-[2_1_240px]">
+          <FormField label={t("filters.searchLabel")} className={FILTER_SEARCH}>
             {(controlProps) => (
               <Input
                 {...controlProps}
@@ -401,7 +445,7 @@ function ClassesListContent({
             )}
           </FormField>
 
-          <FormField label={t("filters.statusLabel")} className="min-w-40 flex-1">
+          <FormField label={t("filters.statusLabel")} className={cn(FILTER_SELECT, "@3xl:min-w-40")}>
             {(controlProps) => (
               <Select
                 {...controlProps}
@@ -416,9 +460,11 @@ function ClassesListContent({
           </FormField>
 
           {hasActiveFilters && (
-            <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
-              {t("filters.clear")}
-            </Button>
+            <div className={FILTER_TOGGLES}>
+              <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
+                {t("filters.clear")}
+              </Button>
+            </div>
           )}
         </form>
       </Card>
@@ -435,6 +481,7 @@ function ClassesListContent({
           <LiveStatus message={resultStatus} />
         </div>
 
+        <div className={DROP_LOW_PRIORITY_COLUMNS}>
         <Table
           aria-label={t("list.tableAriaLabel")}
           columns={columns}
@@ -498,6 +545,7 @@ function ClassesListContent({
             )
           }
         />
+        </div>
 
         {totalItems > 0 && (
           <div className="border-t border-border px-4 py-3">

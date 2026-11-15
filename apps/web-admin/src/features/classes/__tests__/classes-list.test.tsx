@@ -485,3 +485,49 @@ describe("ClassesListView", () => {
     }
   });
 });
+
+describe("ClassesListView: dùng được từ 360px (UNI-2586)", () => {
+  it("cột ưu tiên thấp được đánh dấu để ẩn theo khung chứa bảng; cột đầu có dòng tóm tắt tên, số học viên, trạng thái", async () => {
+    renderListView(makeDeps());
+    const table = await screen.findByRole("table", { name: "Danh sách lớp học" });
+    await within(table).findByText("LOP-A");
+
+    const container = table.closest(".\\@container")!;
+    expect(container).not.toBeNull();
+    for (const rule of [
+      "@max-[64rem]:[&_:is(th,td):has([data-col=description])]:hidden",
+      "@max-[56rem]:[&_:is(th,td):has([data-col=owner])]:hidden",
+      "@max-3xl:[&_:is(th,td):has([data-col=memberCount])]:hidden",
+      "@max-[40rem]:[&_:is(th,td):has([data-col=name])]:hidden",
+      "@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden",
+    ]) {
+      expect(container.className).toContain(rule);
+    }
+    for (const col of ["name", "description", "owner", "memberCount", "status"]) {
+      expect(table.querySelector(`thead [data-col='${col}']`)).not.toBeNull();
+      expect(table.querySelectorAll(`tbody [data-col='${col}']`)).toHaveLength(SAMPLE_CLASSES.length);
+    }
+
+    const link = within(table).getByRole("link", { name: "LOP-A" });
+    const summary = link.parentElement!.querySelector<HTMLElement>("[data-col-summary]")!;
+    expect(summary).toHaveTextContent("Lớp A · 2 học viên · Hoạt động");
+    expect(summary).toHaveClass("hidden", "@max-[40rem]:line-clamp-2");
+    expect(link).toHaveClass("after:absolute", "after:inset-0");
+
+    // Tên lớp xuống tối đa hai dòng, không cắt một dòng và không dựa vào title (DESIGN.md 5.13).
+    const nameCell = table.querySelector<HTMLElement>("tbody [data-col='name']")!;
+    expect(nameCell).toHaveClass("line-clamp-2");
+    expect(nameCell).not.toHaveClass("truncate");
+    expect(nameCell).not.toHaveAttribute("title");
+  });
+
+  it("thanh lọc chia theo bề rộng thẻ lọc như danh sách tài khoản", async () => {
+    renderListView(makeDeps());
+    await screen.findByText("LOP-A");
+
+    const form = screen.getByRole("form", { name: "Bộ lọc lớp học" });
+    expect(form.parentElement).toHaveClass("@container");
+    expect(form).toHaveClass("grid", "@3xl:flex");
+    expect(screen.getByLabelText("Tìm kiếm").closest(".col-span-full")).not.toBeNull();
+  });
+});

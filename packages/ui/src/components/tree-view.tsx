@@ -324,13 +324,13 @@ export function TreeView({
               <span
                 key={indentIdx}
                 aria-hidden
-                className="flex w-7 shrink-0 justify-center"
+                className="flex w-3 shrink-0 justify-center @min-[22rem]:w-7"
               >
                 <span className="h-full w-px bg-border" />
               </span>
             ))}
 
-            <div className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-1">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 pl-1 @min-[22rem]:gap-2">
               {renderLeading && renderLeading(item)}
               {item.hasChildren ? (
                 <button
@@ -370,69 +370,80 @@ export function TreeView({
                 </span>
               )}
 
-              <span
-                id={codeId}
-                title={item.code}
-                className="max-w-24 shrink-0 truncate rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text"
-              >
-                {item.code}
-              </span>
-
               {/*
-                Tên có ưu tiên chiều rộng: không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. Tên dài xuống tối
-                đa hai dòng (DESIGN.md mục 5.13) thay vì cắt một dòng; dòng đang chọn hoặc đang được focus bằng bàn
-                phím hiện đủ tên, nên không cần `title` (bàn phím và màn hình cảm ứng không tới được `title`).
+                Cây hẹp hơn 22rem (điện thoại): thụt cấp 12px, tên đứng một dòng riêng, mã và các chip xuống dòng dưới,
+                để tên còn đủ chỗ đọc thay vì bị mã, chip và cụm thao tác ép lại. Từ 22rem mọi thứ nằm trên một hàng
+                như cũ (cây ở cửa sổ 1024px rộng khoảng 365px): `contents` thả các phần tử của dòng phụ vào hàng chính
+                và `order` xếp lại đúng thứ tự mã · tên · trạng thái · liên kết · số nút lá. Thứ tự đọc không đổi: tên
+                truy cập lấy từ `aria-labelledby` (mã rồi tên).
               */}
-              <span
-                id={nameId}
-                className={cn(
-                  "min-w-[8rem] flex-1 wrap-break-word",
-                  !isSelected && "line-clamp-2 group-focus-visible:line-clamp-none",
-                  nameStyle,
-                  nameColor,
-                )}
-              >
-                {item.name}
-              </span>
-
-              {item.statusLabel && (
-                <StatusChip
-                  id={statusId ?? undefined}
-                  tone={item.statusTone ?? "neutral"}
-                  className="shrink-0"
+              <div className="flex min-w-0 flex-1 flex-col gap-1 @min-[22rem]:flex-row @min-[22rem]:items-center @min-[22rem]:gap-2">
+                {/*
+                  Tên có ưu tiên chiều rộng: từ 22rem không bao giờ hẹp hơn 8rem, phần còn lại co lại trước. Tên dài
+                  xuống tối đa hai dòng (DESIGN.md mục 5.13) thay vì cắt một dòng; dòng đang chọn hoặc đang được focus
+                  bằng bàn phím hiện đủ tên, nên không cần `title` (bàn phím và màn hình cảm ứng không tới được `title`).
+                */}
+                <span
+                  id={nameId}
+                  className={cn(
+                    "min-w-0 wrap-break-word @min-[22rem]:order-2 @min-[22rem]:min-w-[8rem] @min-[22rem]:flex-1",
+                    !isSelected && "line-clamp-2 group-focus-visible:line-clamp-none",
+                    nameStyle,
+                    nameColor,
+                  )}
                 >
-                  {item.statusLabel}
-                </StatusChip>
-              )}
+                  {item.name}
+                </span>
 
-              {item.refsSummary && (
-                <>
-                  {/* Dù bị ẩn khi cây hẹp, phần tử này vẫn là mô tả của dòng qua `aria-describedby`. */}
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5 @min-[22rem]:contents">
                   <span
-                    id={refsId ?? undefined}
-                    title={item.refsSummary}
-                    className="hidden max-w-48 min-w-0 shrink truncate text-caption whitespace-nowrap text-text-muted @3xl:inline"
+                    id={codeId}
+                    title={item.code}
+                    className="max-w-24 shrink-0 truncate rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-text @min-[22rem]:order-1"
                   >
-                    {item.refsSummary}
+                    {item.code}
                   </span>
-                  {item.refsCount !== undefined && (
-                    <span
-                      role="img"
-                      aria-label={item.refsSummary}
-                      title={item.refsSummary}
-                      className="shrink-0 rounded-full bg-subtle px-1.5 text-caption font-medium whitespace-nowrap text-text-muted tabular-nums @3xl:hidden"
+
+                  {item.statusLabel && (
+                    <StatusChip
+                      id={statusId ?? undefined}
+                      tone={item.statusTone ?? "neutral"}
+                      className="shrink-0 @min-[22rem]:order-3"
                     >
-                      +{item.refsCount}
+                      {item.statusLabel}
+                    </StatusChip>
+                  )}
+
+                  {item.refsSummary && (
+                    <>
+                      {/* Dù bị ẩn khi cây hẹp, phần tử này vẫn là mô tả của dòng qua `aria-describedby`. */}
+                      <span
+                        id={refsId ?? undefined}
+                        title={item.refsSummary}
+                        className="hidden max-w-48 min-w-0 shrink truncate text-caption whitespace-nowrap text-text-muted @min-[22rem]:order-3 @3xl:inline"
+                      >
+                        {item.refsSummary}
+                      </span>
+                      {item.refsCount !== undefined && (
+                        <span
+                          role="img"
+                          aria-label={item.refsSummary}
+                          title={item.refsSummary}
+                          className="shrink-0 rounded-full bg-subtle px-1.5 text-caption font-medium whitespace-nowrap text-text-muted tabular-nums @min-[22rem]:order-3 @3xl:hidden"
+                        >
+                          +{item.refsCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+
+                  {item.leafCount !== undefined && item.leafCount !== null && (
+                    <span className="ml-auto min-w-5 shrink-0 text-right text-caption font-medium text-text-muted tabular-nums @min-[22rem]:order-3 @min-[22rem]:ml-0">
+                      {item.leafCount}
                     </span>
                   )}
-                </>
-              )}
-
-              {item.leafCount !== undefined && item.leafCount !== null && (
-                <span className="min-w-5 shrink-0 text-right text-caption font-medium text-text-muted tabular-nums">
-                  {item.leafCount}
-                </span>
-              )}
+                </div>
+              </div>
 
               {renderTrailing && (
                 <div

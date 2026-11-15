@@ -120,6 +120,8 @@
   --animate-dialog-out: dialog-out 200ms ease-out;
   --animate-drawer-in: drawer-in 200ms ease-out;
   --animate-drawer-out: drawer-out 200ms ease-out;
+  --animate-drawer-in-left: drawer-in-left 200ms ease-out;
+  --animate-drawer-out-left: drawer-out-left 200ms ease-out;
   /*
    * Hiệu ứng vào của nội dung khi đổi trang con trong một nhóm điều hướng dạng tab (NavTabs): hiện dần và
    * trượt lên 4px. Đặt lên khối nội dung có `key` theo đường dẫn; nơi dùng thêm `motion-reduce:animate-none`.
@@ -163,6 +165,16 @@
   @keyframes drawer-out {
     to {
       transform: translateX(100%);
+    }
+  }
+  @keyframes drawer-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+  }
+  @keyframes drawer-out-left {
+    to {
+      transform: translateX(-100%);
     }
   }
 }

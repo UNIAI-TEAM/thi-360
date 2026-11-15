@@ -122,10 +122,10 @@ export function BulkImportBatchView({ batchId, deps }: BulkImportBatchViewProps)
 function BulkImportBatchSkeleton() {
   const common = useTranslations("common");
   return (
-    <div role="status" aria-label={common("loading")} className="flex flex-col gap-4">
+    <div role="status" aria-label={common("loading")} className="@container flex flex-col gap-4">
       <Skeleton className="h-12 w-72" />
       <Skeleton className="h-16 w-full" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
@@ -557,14 +557,18 @@ function BulkImportBatchContent({
         accessorKey: "fullName",
         header: t("preview.table.fullName"),
         enableSorting: false,
-        cell: ({ row }) => <span className="text-text">{row.original.fullName ?? "—"}</span>,
+        cell: ({ row }) => (
+          <span className="block min-w-32 text-text">{row.original.fullName ?? "—"}</span>
+        ),
       },
       {
         accessorKey: "email",
         header: t("preview.table.email"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-text-secondary">{row.original.email ?? "—"}</span>
+          <span className="block min-w-40 wrap-anywhere text-text-secondary">
+            {row.original.email ?? "—"}
+          </span>
         ),
       },
       {
@@ -584,7 +588,7 @@ function BulkImportBatchContent({
             return <StatusChip tone="success">{t("preview.statusValid")}</StatusChip>;
           }
           return (
-            <div className="flex flex-wrap items-center gap-2 py-1">
+            <div className="flex min-w-56 flex-wrap items-center gap-2 py-1">
               <StatusChip tone="danger">{t("preview.statusInvalid")}</StatusChip>
               <span className="text-field-label text-danger">{formatRowErrorText(item)}</span>
             </div>
@@ -617,7 +621,9 @@ function BulkImportBatchContent({
         accessorKey: "fullName",
         header: t("result.table.fullName"),
         enableSorting: false,
-        cell: ({ row }) => <span className="text-text">{row.original.fullName ?? "—"}</span>,
+        cell: ({ row }) => (
+          <span className="block min-w-32 text-text">{row.original.fullName ?? "—"}</span>
+        ),
       },
       {
         accessorKey: "classCode",
@@ -649,7 +655,7 @@ function BulkImportBatchContent({
           if (item.status === "FAILED") {
             const failureKey = mapImportFailureCode(item.failureCode);
             return (
-              <div className="flex flex-wrap items-center gap-2 py-1">
+              <div className="flex min-w-56 flex-wrap items-center gap-2 py-1">
                 <StatusChip tone="danger">{t("result.rowStatus.FAILED")}</StatusChip>
                 <span className="text-field-label text-danger">
                   {t(`failureCodes.${failureKey}`)}
@@ -659,7 +665,7 @@ function BulkImportBatchContent({
           }
           if (item.status === "INVALID") {
             return (
-              <div className="flex flex-wrap items-center gap-2 py-1">
+              <div className="flex min-w-56 flex-wrap items-center gap-2 py-1">
                 <StatusChip tone="danger">{t("result.rowStatus.INVALID")}</StatusChip>
                 <span className="text-field-label text-danger">{formatRowErrorText(item)}</span>
               </div>
@@ -733,7 +739,7 @@ function BulkImportBatchContent({
   const totalRowItems = rowsQuery.data?.totalItems ?? 0;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="@container flex flex-col gap-4">
       <LiveStatus message={announcement} />
       <BulkImportHeader deps={deps} />
       <BulkImportStepper currentStep={currentStep} />
@@ -750,10 +756,10 @@ function BulkImportBatchContent({
       {/* Bước 2: Xem trước & lỗi theo dòng */}
       {(batch.status === "UPLOADED" || (batch.status === "VALIDATED" && !confirmStepActive)) && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
             <Card padding="md">
               <div className="text-body text-text-muted">{t("preview.cards.file")}</div>
-              <div className="mt-1 truncate text-body font-semibold text-text">
+              <div className="mt-1 line-clamp-2 text-body font-semibold wrap-anywhere text-text">
                 {batch.originalFilename ?? "—"}
               </div>
             </Card>
@@ -927,10 +933,10 @@ function BulkImportBatchContent({
       {/* Bước 3: Xác nhận */}
       {batch.status === "VALIDATED" && confirmStepActive && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
             <Card padding="md">
               <div className="text-body text-text-muted">{t("confirm.cards.file")}</div>
-              <div className="mt-1 truncate text-body font-semibold text-text">
+              <div className="mt-1 line-clamp-2 text-body font-semibold wrap-anywhere text-text">
                 {batch.originalFilename ?? "—"}
               </div>
             </Card>
@@ -958,7 +964,7 @@ function BulkImportBatchContent({
             </Card>
           </div>
 
-          <Card padding="lg" className="flex flex-col gap-4">
+          <Card padding="lg" className="@container flex flex-col gap-4">
             <h2
               ref={stepHeadingRef}
               tabIndex={-1}
@@ -967,7 +973,7 @@ function BulkImportBatchContent({
               {t("confirm.sectionTitle")}
             </h2>
 
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-[200px_1fr]">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-2.5 @lg:grid-cols-[200px_1fr]">
               <dt className="text-body text-text-muted">{t("confirm.fields.role")}</dt>
               <dd className="text-body font-medium text-text">{t("confirm.fields.roleValue")}</dd>
               <dt className="text-body text-text-muted">{t("confirm.fields.passwordMode")}</dt>
@@ -1076,10 +1082,10 @@ function BulkImportBatchContent({
           <h2 ref={stepHeadingRef} tabIndex={-1} className="sr-only">
             {t("result.heading")}
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
             <Card padding="md">
               <div className="text-body text-text-muted">{t("result.cards.file")}</div>
-              <div className="mt-1 truncate text-body font-semibold text-text">
+              <div className="mt-1 line-clamp-2 text-body font-semibold wrap-anywhere text-text">
                 {batch.originalFilename ?? "—"}
               </div>
             </Card>

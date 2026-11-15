@@ -798,6 +798,63 @@ describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => 
   });
 });
 
+describe("UsersListView: dùng được từ 360px (UNI-2586)", () => {
+  it("khung hẹp: Email, Họ và tên, Trạng thái được đánh dấu để ẩn; cột đầu có dòng tóm tắt họ tên và trạng thái", async () => {
+    renderUsersView(makeDeps());
+    const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });
+    await within(table).findByText("student01");
+
+    const container = table.closest(".\\@container")!;
+    expect(container.className).toContain("@max-3xl:[&_:is(th,td):has([data-col=email])]:hidden");
+    expect(container.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=fullName])]:hidden");
+    expect(container.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden");
+    for (const col of ["fullName", "email", "status"]) {
+      expect(table.querySelector(`thead [data-col='${col}']`)).not.toBeNull();
+      expect(table.querySelectorAll(`tbody [data-col='${col}']`)).toHaveLength(SAMPLE_USERS.length);
+    }
+
+    // Dòng tóm tắt nằm cùng ô với tên đăng nhập, chỉ hiện ở khung hẹp (cùng ngưỡng với hai cột nó thay chỗ).
+    const link = within(table).getByRole("link", { name: "student01" });
+    const summary = link.parentElement!.querySelector<HTMLElement>("[data-col-summary]")!;
+    expect(summary).toHaveTextContent("Học viên 01 · Hoạt động");
+    expect(summary).toHaveClass("hidden", "@max-[40rem]:line-clamp-2");
+    expect(within(table).getByRole("link", { name: "student03" }).parentElement).toHaveTextContent(
+      "student03Học viên 03 · Ngừng hoạt động",
+    );
+    // Vùng bấm của liên kết phủ cả khối tên + tóm tắt; liên kết có vòng focus của kit.
+    expect(link.parentElement).toHaveClass("relative");
+    expect(link).toHaveClass("after:absolute", "after:inset-0", "focus-visible:ring-3");
+  });
+
+  it("thanh lọc chia theo bề rộng thẻ lọc: tìm kiếm cả hàng, ô chọn chia lưới, ô đánh dấu chung một hàng", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+
+    const form = screen.getByRole("form", { name: "Bộ lọc tài khoản" });
+    expect(form.parentElement).toHaveClass("@container");
+    expect(form).toHaveClass("grid", "grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))]", "@3xl:flex");
+
+    const searchField = screen.getByLabelText("Tìm kiếm").closest(".col-span-full");
+    expect(searchField).not.toBeNull();
+    const toggles = screen.getByLabelText("Chưa đăng nhập").closest(".col-span-full")!;
+    expect(toggles).toHaveClass("flex", "flex-wrap", "@3xl:contents");
+    expect(toggles).toContainElement(screen.getByLabelText("Hiện tài khoản đã xóa"));
+  });
+
+  it("thanh thao tác hàng loạt ở khung hẹp: nút thao tác một hàng cuộn ngang, nút trợ giúp chỉ còn icon", async () => {
+    renderUsersView(makeDeps());
+    await screen.findByText("student01");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+
+    const bar = screen.getByRole("group", { name: "Thao tác với các tài khoản đã chọn" });
+    expect(bar.parentElement).toHaveClass("@container");
+    const actions = within(bar).getByRole("button", { name: "Ngừng hoạt động" }).parentElement!;
+    expect(actions).toHaveClass("@max-[40rem]:flex-nowrap", "@max-[40rem]:overflow-x-auto");
+    const help = within(bar).getByRole("button", { name: "Cách hoạt động" });
+    expect(within(help).getByText("Cách hoạt động")).toHaveClass("@max-md:sr-only");
+  });
+});
+
 describe("UsersListView: kết quả không đồng bộ được đọc lên qua một vùng role=status (U-04)", () => {
   it("không đọc số kết quả ở lần tải đầu; đọc số kết quả mới sau khi đổi bộ lọc", async () => {
     const first = SAMPLE_USERS[0]!;

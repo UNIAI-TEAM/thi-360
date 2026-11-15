@@ -92,7 +92,7 @@ export function Pagination({
           />
         )}
       </div>
-      <ul className="flex items-center gap-1">
+      <ul className="flex flex-wrap items-center gap-1">
         <li>
           <button
             type="button"

@@ -115,7 +115,8 @@ describe("PermissionsTab & PermissionUsersTab", () => {
       </SessionProvider>,
     );
 
-    expect(await screen.findByText("CATALOG.VIEW")).toBeInTheDocument();
+    // Mã ở cột Mã (`td > code`); bản sao dưới tên quyền chỉ hiện khi thẻ hẹp (kiểm ở test bố cục).
+    expect(await screen.findByText("CATALOG.VIEW", { selector: "td > code" })).toBeInTheDocument();
     expect(
       screen.getByText(/Danh sách quyền cố định theo phần mềm/),
     ).toBeInTheDocument();
@@ -148,10 +149,11 @@ describe("PermissionsTab & PermissionUsersTab", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: "Thử lại" }));
-    expect(await screen.findByText("CATALOG.VIEW")).toBeInTheDocument();
+    // Mã ở cột Mã (`td > code`); bản sao dưới tên quyền chỉ hiện khi thẻ hẹp (kiểm ở test bố cục).
+    expect(await screen.findByText("CATALOG.VIEW", { selector: "td > code" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Tìm kiếm"), "CATALOG");
-    expect(screen.getByText("CATALOG.VIEW")).toBeInTheDocument();
+    expect(screen.getByText("CATALOG.VIEW", { selector: "td > code" })).toBeInTheDocument();
     expect(screen.queryByText("USER.VIEW")).not.toBeInTheDocument();
     expect(screen.getByText("1 quyền trên 1 đối tượng")).toBeInTheDocument();
   });
@@ -226,8 +228,12 @@ describe("PermissionsTab & PermissionUsersTab", () => {
     );
     expect(await screen.findByText("content.admin")).toBeInTheDocument();
     expect(screen.getByText("ops.admin")).toBeInTheDocument();
-    expect(screen.getByText("Vai trò: Quản trị nội dung")).toBeInTheDocument();
-    expect(screen.getByText(/platform gán ngày .*Hỗ trợ rà soát danh mục/)).toBeInTheDocument();
+    // Cột Chi tiết (`data-col=detail`); dòng phụ dưới tên tài khoản chỉ hiện khi thẻ hẹp.
+    const detailCell = { selector: "[data-col=detail] > span" };
+    expect(screen.getByText("Vai trò: Quản trị nội dung", detailCell)).toBeInTheDocument();
+    expect(
+      screen.getByText(/platform gán ngày .*Hỗ trợ rà soát danh mục/, detailCell),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Tài khoản platform có mọi quyền/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Xuất Excel" }));

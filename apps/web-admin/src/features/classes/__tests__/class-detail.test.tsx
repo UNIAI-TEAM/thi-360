@@ -874,3 +874,27 @@ describe("ClassDetailView", () => {
     }
   });
 });
+
+describe("ClassDetailView: dùng được từ 360px (UNI-2586)", () => {
+  it("thẻ thành viên ẩn cột Vào lớp, Trạng thái ở khung hẹp và đưa chúng xuống dòng tóm tắt dưới tên", async () => {
+    renderDetail(makeDeps());
+    const link = await screen.findByRole("link", { name: "student01" });
+    const table = screen.getByRole("table", { name: "Học viên trong lớp" });
+
+    const card = table.closest(".\\@container")!;
+    expect(card).not.toBeNull();
+    expect(card.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=joinedAt])]:hidden");
+    expect(card.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=userStatus])]:hidden");
+    for (const col of ["joinedAt", "userStatus"]) {
+      expect(table.querySelector(`thead [data-col='${col}']`)).not.toBeNull();
+      expect(table.querySelectorAll(`tbody [data-col='${col}']`)).toHaveLength(SAMPLE_MEMBERS.length);
+    }
+
+    const summary = link.parentElement!.querySelector<HTMLElement>("[data-col-summary]")!;
+    expect(summary).toHaveClass("hidden", "@max-[40rem]:block");
+    expect(summary).toHaveTextContent(/^Vào lớp \d{2}\/\d{2}\/\d{4} · Hoạt động$/);
+    expect(link).toHaveClass("after:absolute", "after:inset-0");
+    // Ô tìm học viên rộng hết hàng ở thẻ hẹp, 18rem từ @lg.
+    expect(screen.getByLabelText("Tìm học viên trong lớp").closest(".\\@lg\\:w-72")).not.toBeNull();
+  });
+});

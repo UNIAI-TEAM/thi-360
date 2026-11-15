@@ -17,10 +17,16 @@ export const DrawerClose = DialogPrimitive.Close;
 export type DrawerContentProps = ComponentProps<typeof DialogPrimitive.Content> & {
   /** Tên nút đóng (×) cho trình đọc màn hình. */
   closeLabel?: string;
+  /**
+   * Cạnh màn hình drawer bám vào và trượt ra từ đó. `right` (mặc định) cho chi tiết; `left` cho menu điều hướng
+   * trên màn hẹp (DESIGN.md mục 5.8). Góc bo nằm ở cạnh trong, phía nội dung trang.
+   */
+  side?: "right" | "left";
 };
 
 /**
- * Trượt từ phải, rộng 520px, dùng cho chi tiết (DESIGN.md mục 5.10).
+ * Trượt từ phải (hoặc từ trái với `side="left"`), rộng 520px, dùng cho chi tiết (DESIGN.md mục 5.10). Màn hẹp hơn
+ * `sm` đệm 16px thay vì 24px.
  *
  * Cùng cấu trúc với `DialogContent` (C-12): khung drawer KHÔNG cuộn; nội dung nằm trong một vùng cuộn bên trong,
  * `DrawerHeader` dính mép trên, `DrawerFooter` (tùy chọn) dính mép dưới, nút × nằm ngoài vùng cuộn nên luôn
@@ -33,6 +39,7 @@ export function DrawerContent({
   className,
   children,
   closeLabel,
+  side = "right",
   onCloseAutoFocus,
   ...props
 }: DrawerContentProps) {
@@ -43,9 +50,11 @@ export function DrawerContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full max-w-[520px] flex-col gap-4 rounded-l-xl bg-surface p-6 shadow-xl",
+          "fixed inset-y-0 z-50 flex w-full max-w-[520px] flex-col gap-4 bg-surface p-4 shadow-xl sm:p-6",
           // Chỉ chạy hiệu ứng trong `motion-safe:` (xem ghi chú ở `DialogOverlay`).
-          "motion-safe:data-[state=open]:animate-drawer-in motion-safe:data-[state=closed]:animate-drawer-out",
+          side === "left"
+            ? "left-0 rounded-r-xl motion-safe:data-[state=open]:animate-drawer-in-left motion-safe:data-[state=closed]:animate-drawer-out-left"
+            : "right-0 rounded-l-xl motion-safe:data-[state=open]:animate-drawer-in motion-safe:data-[state=closed]:animate-drawer-out",
           className,
         )}
         {...props}
@@ -86,13 +95,13 @@ export function DrawerHeader({ className, ...props }: ComponentProps<"div">) {
 
 /**
  * Hàng nút dính mép dưới của drawer (tùy chọn). Đặt làm con cuối của `DrawerContent`; `mt-auto` đẩy nó xuống
- * đáy khi nội dung ngắn. Nút căn phải, nút chính ở ngoài cùng bên phải.
+ * đáy khi nội dung ngắn. Nút căn phải, nút chính ở ngoài cùng bên phải; thiếu chỗ (màn hẹp) thì xuống dòng.
  */
 export function DrawerFooter({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-10 mt-auto flex justify-end gap-3 bg-surface pt-2 pb-1",
+        "sticky bottom-0 z-10 mt-auto flex flex-wrap justify-end gap-3 bg-surface pt-2 pb-1",
         className,
       )}
       {...props}

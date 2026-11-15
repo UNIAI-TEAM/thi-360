@@ -103,7 +103,7 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 ## 4. Khoảng cách, bo góc, viền, bóng
 
 - **Lưới khoảng cách:** bội số của 4px. Khoảng đệm trong thẻ 16–24px. Khoảng cách giữa các khối 24–32px (admin), 48–64px (web học viên).
-- **Chiều rộng nội dung:** web học viên tối đa 1170px; admin giãn theo màn hình, lề 24px.
+- **Chiều rộng nội dung:** web học viên tối đa 1170px; admin giãn theo màn hình, lề 24px (16px dưới 640px, mục 5.8).
 - **Viền:** 1px, màu `border`.
 
 | Bo góc | Giá trị | Dùng cho |
@@ -215,7 +215,12 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 
 - Sidebar: mục cao 40px, bo góc 8px, icon lucide 18px; mục đang chọn nền `primary-50`, chữ và icon `primary-text`, đậm 600. Tên nhóm menu dùng kiểu `overline`.
 - Nền vùng nội dung `bg-page`.
-- **Phạm vi màn hình:** web admin thiết kế cho 768–1920px (máy tính và tablet); điện thoại chưa thuộc phạm vi. Web học viên phải dùng được từ 360px.
+- **Phạm vi màn hình:** web admin dùng được từ 360px tới 1920px (điện thoại, tablet, máy tính; UNI-2586, 2026-11-15); máy tính vẫn là nơi dùng chính. Web học viên cũng từ 360px. Không màn nào được làm cả trang cuộn ngang: nội dung rộng (bảng) cuộn trong khung của nó (mục 5.9).
+- **Từ 1024px (`lg`):** sidebar 248px cố định bên trái như hình trên, không có nút menu.
+- **Dưới 1024px:** sidebar ẩn. Đầu thanh trên có nút icon menu (lucide `Menu`, 40px, vùng bấm 44px trên màn cảm ứng, `aria-label` "Mở menu điều hướng", `aria-expanded`, `aria-controls`) mở **ngăn menu** trượt từ trái (`DrawerContent side="left"`, rộng tối đa 288px) chứa cùng danh sách với sidebar (`NavigationGroups`, không viết danh sách thứ hai). Ngăn đóng khi bấm một mục (kể cả trang đang mở), khi đổi trang, bằng Esc, bấm nền mờ hoặc nút ×, và tự đóng khi cửa sổ nới tới 1024px; focus về nút menu. Mục menu cao 44px trên màn cảm ứng.
+- **Lề:** thanh trên và vùng nội dung đệm 16px (`px-4`, `p-4`) dưới 640px (`sm`), 24px từ 640px. Cột nội dung co theo cửa sổ (`min-w-0`), không có bề rộng tối thiểu. Bề rộng dùng được cho nội dung của một màn: 360px → 328px, 390px → 358px; 640–1023px → bề rộng cửa sổ − 48px; từ 1024px → bề rộng cửa sổ − 248px − 48px.
+- **Thanh trên dưới 640px** phải vừa một hàng ở 360px: nút menu, breadcrumb chỉ còn trang hiện tại (`Breadcrumb collapseOnNarrow`, cắt bằng dấu ba chấm nếu vẫn dài), nút sáng/tối, nút ngôn ngữ, menu avatar chỉ còn avatar (tên đăng nhập hiện ở dòng đầu của menu). Từ 640px breadcrumb đủ các mục và menu avatar có tên đăng nhập kèm mũi tên.
+- **Tiêu đề trang** (`PageHeader`): dưới 640px nút của màn xuống dưới tiêu đề và mô tả, căn trái, tự xuống dòng khi không đủ một hàng; từ 640px nút nằm cùng hàng với tiêu đề, căn phải. Màn chỉ truyền nút qua `actions`, không tự bọc thêm hàng.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
 - Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện, Nhật ký). Chức năng phụ của một mục là nút hoặc tab bên trong màn đó, không thành mục menu riêng: Cấp hàng loạt là nút trong màn Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền.
 
@@ -233,8 +238,10 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - **Bảng nhiều cột:** ghim cột nhận diện (đầu) và cột Thao tác (cuối) bằng `stickyColumns={{ start: true, end: true }}`; ô ghim có nền đặc nên nội dung cuộn qua không lộ ra dưới. Cột ít quan trọng **ẩn theo bề rộng vùng chứa**: đặt `@container` lên phần tử cha của bảng, đánh dấu cột bằng `data-col` và ẩn bằng biến thể container. Chọn cột hiện theo bề rộng thẻ chứa bảng, không theo bề rộng màn hình, để không ô nào nằm dưới cột Thao tác.
   - Mỗi cột giữ bề rộng tối thiểu; tiêu đề cột tối đa hai dòng. Cột bị ẩn thì dữ liệu của nó hiện thành **dòng tóm tắt** (tối đa hai dòng) dưới tên ở cột đầu, bản đầy đủ có trong ngăn chi tiết.
   - Cột Thao tác chỉ ghim từ ngưỡng đủ rộng; dưới ngưỡng, bảng cuộn ngang trong khung (ở trên).
+- **Bảng ở khung hẹp** (thẻ chứa bảng dưới khoảng 40rem; mỗi màn chọn ngưỡng nằm dưới bề rộng thẻ ở cửa sổ 1024px để máy tính không đổi): chỉ giữ cột đầu và cột Thao tác. Cột phụ ẩn bằng `@max-[…]:[&_:is(th,td):has([data-col=x])]:hidden`; nội dung của chúng hiện thành **dòng tóm tắt** (`data-col-summary`) dưới cột đầu, ví dụ "Họ tên · trạng thái", "Tên lớp · N học viên · trạng thái"; chip trạng thái trong dòng tóm tắt chỉ hiện khi khác Hoạt động. Liên kết của dòng phủ cả khối tên và tóm tắt (`relative` + `after:absolute after:inset-0`), tên truy cập vẫn chỉ là tên. Cột chữ có thể xuống dòng phải có bề rộng tối thiểu để bảng cuộn trong khung thay vì ép còn một chữ mỗi dòng. Khung hẹp mà một dòng có hơn 2–3 thao tác thì giữ thao tác chính (Xem) và gom phần còn lại vào menu "⋯".
 - Khung chờ lần đầu có số dòng bằng số dòng mỗi trang (`loadingRows={pageSize}`). Cột chưa sắp xếp không mang `aria-sort="none"`.
-- **Thanh thao tác hàng loạt** (khi có dòng được chọn) nằm trong chỗ **giữ sẵn** phía trên bảng, ẩn bằng `invisible` + `inert` khi chưa chọn, không chèn rồi gỡ khỏi DOM (bảng không nhảy). Thanh là `role="group"` có tên, không dùng `role="toolbar"`.
+- **Phân trang** tự xuống dòng khi không đủ một hàng.
+- **Thanh thao tác hàng loạt** (khi có dòng được chọn) nằm trong chỗ **giữ sẵn** phía trên bảng, ẩn bằng `invisible` + `inert` khi chưa chọn, không chèn rồi gỡ khỏi DOM (bảng không nhảy). Thanh là `role="group"` có tên, không dùng `role="toolbar"`. Khung hẹp (dưới 40rem): hai hàng, hàng trên số dòng đã chọn, "Bỏ chọn" và nút trợ giúp chỉ có icon, hàng dưới các nút thao tác trên một hàng cuộn ngang; chiều cao chỗ giữ sẵn không đổi theo việc có chọn hay không.
 - **Tìm kiếm trong danh sách** chờ người dùng ngừng gõ 300ms mới gửi; xóa ô tìm thì áp dụng ngay. Trong lúc chờ kết quả mới vẫn giữ kết quả cũ (mờ nhẹ, `aria-busy`).
 - **Mất kết nối:** truy vấn bị tạm dừng vì offline thì hiện trạng thái "Không có kết nối" kèm nút Thử lại, không hiện dòng và tổng số của bộ lọc cũ như thể là kết quả mới.
 
@@ -247,7 +254,8 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - **Focus đầu tiên khi mở:** dialog biểu mẫu focus vào ô bắt buộc đầu tiên; ô đó còn đang tải dữ liệu thì focus vào chính dialog rồi chuyển sang ô khi dữ liệu về. Drawer chi tiết focus vào tab đang chọn.
 - **Dialog có dữ liệu đã nhập** hỏi lại trước khi đóng bằng Esc, bấm ra ngoài hoặc Hủy.
 - **Focus trả về** nút đã mở dialog/drawer: `Dialog` và `Drawer` của kit tự làm, không cần tự viết. Khi nút đó đã biến mất (dòng bị xóa, thanh chọn đã ẩn), chuyển focus có chủ đích tới một đích có tên (ô chọn tất cả, ô tìm kiếm, tiêu đề bước mới), không để focus rơi về `<body>`.
-- **Drawer:** trượt từ phải, rộng 520px, dùng cho chi tiết (nơi đang dùng, lịch sử thay đổi); tiêu đề dính mép trên, hàng nút đặt trong `DrawerFooter` dính mép dưới, phần giữa cuộn.
+- **Drawer:** trượt từ phải, rộng 520px, dùng cho chi tiết (nơi đang dùng, lịch sử thay đổi); tiêu đề dính mép trên, hàng nút đặt trong `DrawerFooter` dính mép dưới, phần giữa cuộn. `DrawerContent side`: `right` (mặc định, chi tiết) hoặc `left` (ngăn menu điều hướng của admin dưới 1024px, mục 5.8); drawer trượt ra từ đúng cạnh đó (chỉ trong `motion-safe:`, hiệu ứng `drawer-in`/`drawer-out` và `drawer-in-left`/`drawer-out-left`) và bo góc 16px ở cạnh trong, phía nội dung trang.
+- **Màn hẹp (dưới 640px):** dialog và drawer đệm 16px thay vì 24px; dialog rộng bằng cửa sổ trừ 32px. Hàng nút của `DialogFooter`/`DrawerFooter` xuống dòng khi không đủ chỗ, vẫn căn phải. Biểu mẫu hai cột của cỡ `xl` xếp một cột dưới 768px (`grid-cols-1 md:grid-cols-2`).
 - **Toast:** góc trên phải, tự ẩn sau 4 giây; lỗi không tự ẩn. Toast có tông theo trạng thái (thành công, lỗi, cảnh báo, thông tin).
 
 ### 5.11 Bố cục hai khu vực (màn Cấu hình chung)
@@ -256,6 +264,8 @@ Trái 264px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm; mỗi dò
 
 **Nhóm kiểu cây** (spec mục 9.10): thẻ phải chia hai phần, cây ở giữa và ô chi tiết 340px có viền trái.
 
+- **Màn hẹp:** khi thẻ chứa hẹp hơn 672px, hai khu vực xếp chồng và danh sách nhóm bên trái thay bằng **một ô chọn** "Danh mục đang xem" (nhóm Hệ thống trước), để thẻ giá trị nằm ngay dưới; từ 672px trở lên là danh sách 264px như trên. Bảng giá trị ở thẻ dưới 416px: Mã và Trạng thái vào ô tên, Sửa/Ngừng/Xóa vào menu "⋯" cạnh nút Xem.
+- **Cây ở khung hẹp** (cây hẹp hơn 22rem): thụt 12px mỗi cấp thay vì 28px, tên một dòng riêng (tối đa hai dòng), mã, trạng thái, số nút xuống dòng thứ hai; nút "+" thêm cấp con ẩn đi, thao tác đó vẫn có trong menu "⋯".
 - **Bàn phím trên cây** (`TreeView`): cả cây là **một điểm dừng Tab**, đi giữa các dòng bằng phím mũi tên; nút trong dòng không nằm trong thứ tự Tab. Shift+F10 hoặc phím menu mở thao tác của dòng (`onRowMenu`), có một dòng gợi ý nhìn thấy được nói điều này, đóng menu thì focus về lại dòng. Tên dòng đọc cả mã lẫn tên; tên dài xuống tối đa hai dòng.
 - **Kéo thả** để sắp xếp: chỉ tay nắm mang `touch-none select-none` và vòng focus của kit (phần còn lại của dòng vẫn cuộn trang bằng cảm ứng); khi bật giảm chuyển động thì không có hiệu ứng trượt.
 
@@ -275,11 +285,17 @@ Các quy ước dưới đây rút từ đợt rà soát theo bộ hướng dẫ
 - **Chữ dài:** tên, nhãn có thể dài thì cho xuống **tối đa hai dòng** (`line-clamp-2`), không cắt một dòng bằng dấu ba chấm khi người dùng không còn cách nào đọc đủ. Không dựa vào thuộc tính `title` để lộ phần bị cắt (bàn phím và màn hình cảm ứng không tới được). Chỉ cắt một dòng ở nơi chật cố định (ô bảng, mã) và khi nội dung đầy đủ có ở chỗ khác trên cùng màn hình.
 - **Vùng cuộn dọc có chiều cao giới hạn** (danh sách chọn, cột bên): thêm lớp `scroll-shadows-y` lên chính phần tử cuộn để có bóng mờ báo còn nội dung ở phía còn cuộn được. Lớp này là CSS thuần (`packages/ui/src/styles/utilities.css`), màu lấy từ token `scroll-shadow`. Mục con trong vùng cuộn để nền trong suốt ở trạng thái thường.
 - **Thanh cuộn của trang:** trang luôn giữ chỗ cho thanh cuộn dọc (`scrollbar-gutter: stable` trong `globals.css` của hai web), để nội dung dài/ngắn hay việc mở dialog không làm trang lệch ngang.
-- **Bố cục nhiều cột chia theo bề rộng vùng chứa, không theo bề rộng màn hình:** vùng nội dung của admin hẹp hơn màn hình 248px vì có sidebar. Đặt `@container` lên khối chứa và dùng biến thể container của Tailwind (`@5xl:` …) cho các cột bên trong; chọn ngưỡng sao cho cột chứa bảng còn đủ rộng cho bảng của nó. Dưới ngưỡng thì xếp chồng.
+- **Bố cục nhiều cột chia theo bề rộng vùng chứa, không theo bề rộng màn hình:** từ 1024px vùng nội dung của admin hẹp hơn màn hình 248px vì có sidebar, dưới 1024px thì bằng màn hình trừ lề (mục 5.8). Đặt `@container` lên khối chứa và dùng biến thể container của Tailwind (`@5xl:` …) cho các cột bên trong; chọn ngưỡng sao cho cột chứa bảng còn đủ rộng cho bảng của nó. Dưới ngưỡng thì xếp chồng.
 - **Đường dẫn trang** viết bằng tiếng Anh, trùng tên thư mục feature và tên tài nguyên của API (`/users`, `/classes`, `/catalog`, `/rbac`, `/appearance`, `/login`, `/change-password`). Phần có nội dung và dữ liệu riêng là **trang con** (`/users/bulk-import`, `/rbac/roles`), không phải giá trị query. Query chỉ dùng cho bộ lọc và lựa chọn trong trang (`?permission=USER.VIEW`, `?group=SUBJECT`), tên và giá trị cũng không dùng tiếng Việt không dấu.
 - **Trạng thái đang chọn, đang mở, lỗi** không truyền đạt chỉ bằng màu hay nền: luôn có thêm hình (gạch chân, thanh dọc, icon) hoặc chữ, vẽ bằng `border`/`outline` để còn thấy ở chế độ tương phản cao.
 
 Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
+
+- **Thanh lọc ở khung hẹp** (đặt `@container` lên thẻ lọc): ô tìm kiếm chiếm cả hàng; các ô chọn xếp hai cột (một cột khi thẻ hẹp hơn khoảng 300px); ô đánh dấu và nút Xóa bộ lọc chung một hàng tự xuống dòng. Từ bề rộng mà cả dải vừa một hàng, trở lại dải `flex-wrap` như trên máy tính. DOM và thứ tự Tab giống nhau ở mọi bề rộng. Hiện có hai bản: `FILTER_FORM`/`FILTER_SEARCH`/`FILTER_SELECT`/`FILTER_TOGGLES` (`features/users/components/list-filters.ts`, Tài khoản và Lớp học) và `FILTER_GRID` (`features/rbac/styles.ts`); màn mới dùng bản của Tài khoản, khi có màn thứ ba thì chuyển thành thành phần chung của kit.
+- **Mã và định danh dài** (mã quyền, mã danh mục) xuống dòng ở bất kỳ ký tự nào (`wrap-anywhere`), không cắt bằng dấu ba chấm.
+- **Lưới tự chia cột** dùng `minmax(min(X, 100%), 1fr)` để ô co lại khi vùng chứa hẹp hơn X, không tràn.
+- **Thanh bước ở khung hẹp:** bước đang làm có tên và giãn ra, các bước khác chỉ còn số (tên vẫn có cho trình đọc màn hình).
+- **Phần tử không tự truy vấn được chính nó:** `@container` đặt trên phần tử cha của khối cần đổi bố cục.
 
 - **Vòng focus** luôn lấy từ `focusRing` / `focusRingInset` của kit (xuất từ `@thi360/ui`), không viết tay `focus-visible:ring-*`. Tắt viền ngoài bằng `outline-hidden`, không bằng `outline-none` (mục 8).
 - **Thông báo cho trình đọc màn hình:** kết quả của thao tác không đồng bộ (số kết quả sau khi lọc/tìm, sắp xếp, số dòng chọn, kết quả kiểm tra tên đăng nhập, bắt đầu/kết thúc một tác vụ dài) đi qua **một** `LiveStatus` cho mỗi khu vực, luôn có mặt trong DOM, chỉ đổi `message`. Không làm bộ đếm tiến độ đọc lên từng bước.

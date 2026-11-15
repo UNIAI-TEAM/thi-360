@@ -1,6 +1,16 @@
 "use client";
 
-import { Button, cn, EmptyState, focusRing, IconButton, Input, LiveStatus, Skeleton } from "@thi360/ui";
+import {
+  Button,
+  cn,
+  EmptyState,
+  focusRing,
+  IconButton,
+  Input,
+  LiveStatus,
+  Select,
+  Skeleton,
+} from "@thi360/ui";
 import { GitBranch, Link2, List, Lock, Plus, Search, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -30,6 +40,12 @@ function groupKindIcon(kind: CatalogGroupKind) {
   }
 }
 
+/**
+ * Danh sách nhóm của màn Cấu hình chung (DESIGN.md mục 5.11). Bề rộng chọn theo vùng chứa `@container` do
+ * `CatalogView` đặt bao ngoài: từ `@2xl` là cột trái 264px có ô tìm kiếm và danh sách đầy đủ; hẹp hơn (điện thoại,
+ * tablet dọc) danh sách thu thành một ô chọn nằm trên thẻ giá trị, để giá trị của nhóm đang chọn hiện ngay mà
+ * không phải cuộn qua mọi nhóm. Hai cách hiển thị dùng chung dữ liệu, chỉ ẩn/hiện bằng CSS.
+ */
 export function GroupSidebar({
   groups,
   selectedGroupId,
@@ -63,6 +79,11 @@ export function GroupSidebar({
   }, [groups, search]);
 
   const totalMatches = systemGroups.length + customGroups.length;
+  // Ô chọn của màn hẹp không có ô tìm kiếm: luôn liệt kê mọi nhóm, Hệ thống trước rồi tới Tùy chỉnh như danh sách.
+  const pickerGroups = useMemo(() => {
+    const isSystem = (g: CatalogGroupResponse) => g.type === "SYSTEM" || g.system;
+    return [...groups.filter(isSystem), ...groups.filter((g) => !isSystem(g))];
+  }, [groups]);
   // Danh sách lọc ngay theo từng phím; câu đọc cho trình đọc màn hình thì chờ người dùng ngừng gõ (WCAG 4.1.3).
   const matchStatus = useDebouncedValue(
     search.trim() && !loading && !error ? t("groupsMatchStatus", { count: totalMatches }) : "",
@@ -71,7 +92,7 @@ export function GroupSidebar({
   return (
     <section
       aria-labelledby="catalog-groups-heading"
-      className="flex w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xs lg:w-66"
+      className="flex w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xs @2xl:w-66"
     >
       <div className="flex items-center justify-between gap-2 px-3.5 pt-3.5 pb-2.5">
         <h2 id="catalog-groups-heading" className="text-body font-semibold text-text">
@@ -89,7 +110,7 @@ export function GroupSidebar({
         )}
       </div>
 
-      <div className="px-3.5 pb-3">
+      <div className="hidden px-3.5 pb-3 @2xl:block">
         <Input
           type="search"
           aria-label={t("searchGroups")}
@@ -104,7 +125,10 @@ export function GroupSidebar({
       {loading ? (
         <div role="status" aria-label={commonT("loading")} className="flex flex-col gap-2 px-3 pb-3">
           {Array.from({ length: 6 }, (_, index) => (
-            <Skeleton key={index} className="h-14 w-full" />
+            <Skeleton
+              key={index}
+              className={cn("w-full", index === 0 ? "h-10 @2xl:h-14" : "hidden h-14 @2xl:block")}
+            />
           ))}
         </div>
       ) : error ? (
@@ -126,35 +150,60 @@ export function GroupSidebar({
           title={t("noGroupsTitle")}
           description={t("noGroupsDescription")}
         />
-      ) : totalMatches === 0 ? (
-        <p className="px-4 py-6 text-center text-body text-text-muted">{t("noGroupMatches")}</p>
       ) : (
-        <div className="flex flex-col gap-1 px-2 pb-2">
-          {systemGroups.length > 0 && (
-            <GroupSection
-              title={t("systemSection")}
-              count={systemGroups.length}
-              locked
-              groups={systemGroups}
-              selectedGroupId={selectedGroupId}
-              locale={locale}
-              inactiveLabel={t("statuses.INACTIVE")}
-              onSelectGroup={onSelectGroup}
+        <>
+          <div className="px-3.5 pb-3.5 @2xl:hidden">
+            <Select
+              aria-label={t("groupPickerLabel")}
+              placeholder={t("groupPickerPlaceholder")}
+              value={selectedGroupId ?? ""}
+              options={pickerGroups.map((group) => ({
+                value: group.id,
+                label:
+                  group.status === "INACTIVE"
+                    ? `${pickName(group, locale)} · ${t("statuses.INACTIVE")}`
+                    : pickName(group, locale),
+              }))}
+              onValueChange={(groupId) => {
+                const group = groups.find((candidate) => candidate.id === groupId);
+                if (group) onSelectGroup(group);
+              }}
+              className="[&>span]:min-w-0 [&>span]:truncate"
             />
+          </div>
+          {totalMatches === 0 ? (
+            <p className="hidden px-4 py-6 text-center text-body text-text-muted @2xl:block">
+              {t("noGroupMatches")}
+            </p>
+          ) : (
+            <div className="hidden flex-col gap-1 px-2 pb-2 @2xl:flex">
+              {systemGroups.length > 0 && (
+                <GroupSection
+                  title={t("systemSection")}
+                  count={systemGroups.length}
+                  locked
+                  groups={systemGroups}
+                  selectedGroupId={selectedGroupId}
+                  locale={locale}
+                  inactiveLabel={t("statuses.INACTIVE")}
+                  onSelectGroup={onSelectGroup}
+                />
+              )}
+              {customGroups.length > 0 && (
+                <GroupSection
+                  title={t("customSection")}
+                  count={customGroups.length}
+                  locked={false}
+                  groups={customGroups}
+                  selectedGroupId={selectedGroupId}
+                  locale={locale}
+                  inactiveLabel={t("statuses.INACTIVE")}
+                  onSelectGroup={onSelectGroup}
+                />
+              )}
+            </div>
           )}
-          {customGroups.length > 0 && (
-            <GroupSection
-              title={t("customSection")}
-              count={customGroups.length}
-              locked={false}
-              groups={customGroups}
-              selectedGroupId={selectedGroupId}
-              locale={locale}
-              inactiveLabel={t("statuses.INACTIVE")}
-              onSelectGroup={onSelectGroup}
-            />
-          )}
-        </div>
+        </>
       )}
     </section>
   );
