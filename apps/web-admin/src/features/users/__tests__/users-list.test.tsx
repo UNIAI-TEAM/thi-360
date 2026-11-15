@@ -6,6 +6,7 @@ import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { SESSION_QUERY_KEY } from "@/features/session/api";
 import { notify } from "@thi360/ui";
@@ -799,31 +800,33 @@ describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => 
 });
 
 describe("UsersListView: dùng được từ 360px (UNI-2586)", () => {
-  it("khung hẹp: Email, Họ và tên, Trạng thái được đánh dấu để ẩn; cột đầu có dòng tóm tắt họ tên và trạng thái", async () => {
+  it("dải số kết quả và thanh thao tác hàng loạt nằm trong cột lưới co theo thẻ, câu gợi ý không bị cắt", async () => {
+    renderUsersView(makeDeps());
+    const hint = await screen.findByText(/^Chọn nhiều dòng để ngừng hoạt động/);
+    const layer = hint.parentElement!;
+    const slot = layer.parentElement!;
+    // grid-cols-1 = repeat(1, minmax(0, 1fr)): hàng nút không xuống dòng của thanh thao tác không kéo cột rộng hơn thẻ.
+    expect(slot).toHaveClass("grid", "grid-cols-1");
+    expect(layer).toHaveClass("min-w-0");
+  });
+
+  it("khung vừa (40–48rem): Email được đánh dấu để ẩn, Họ và tên và Trạng thái vẫn là cột; không còn dòng tóm tắt", async () => {
     renderUsersView(makeDeps());
     const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });
     await within(table).findByText("student01");
 
     const container = table.closest(".\\@container")!;
     expect(container.className).toContain("@max-3xl:[&_:is(th,td):has([data-col=email])]:hidden");
-    expect(container.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=fullName])]:hidden");
-    expect(container.className).toContain("@max-[40rem]:[&_:is(th,td):has([data-col=status])]:hidden");
-    for (const col of ["fullName", "email", "status"]) {
-      expect(table.querySelector(`thead [data-col='${col}']`)).not.toBeNull();
-      expect(table.querySelectorAll(`tbody [data-col='${col}']`)).toHaveLength(SAMPLE_USERS.length);
-    }
-
-    // Dòng tóm tắt nằm cùng ô với tên đăng nhập, chỉ hiện ở khung hẹp (cùng ngưỡng với hai cột nó thay chỗ).
+    expect(container.className).not.toContain("@max-[40rem]");
+    expect(table.querySelectorAll("tbody [data-col='email']")).toHaveLength(SAMPLE_USERS.length);
+    expect(within(table).getByRole("columnheader", { name: "Họ và tên" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Trạng thái" })).toBeInTheDocument();
+    expect(table.querySelector("[data-col-summary]")).toBeNull();
+    // Liên kết tên đăng nhập là liên kết thường của ô, có vòng focus của kit.
     const link = within(table).getByRole("link", { name: "student01" });
-    const summary = link.parentElement!.querySelector<HTMLElement>("[data-col-summary]")!;
-    expect(summary).toHaveTextContent("Học viên 01 · Hoạt động");
-    expect(summary).toHaveClass("hidden", "@max-[40rem]:line-clamp-2");
-    expect(within(table).getByRole("link", { name: "student03" }).parentElement).toHaveTextContent(
-      "student03Học viên 03 · Ngừng hoạt động",
-    );
-    // Vùng bấm của liên kết phủ cả khối tên + tóm tắt; liên kết có vòng focus của kit.
-    expect(link.parentElement).toHaveClass("relative");
-    expect(link).toHaveClass("after:absolute", "after:inset-0", "focus-visible:ring-3");
+    expect(link).toHaveAttribute("href", `/users/${SAMPLE_USERS[0]!.id}`);
+    expect(link).toHaveClass("focus-visible:ring-3");
+    expect(link).not.toHaveClass("after:absolute");
   });
 
   it("thanh lọc chia theo bề rộng thẻ lọc: tìm kiếm cả hàng, ô chọn chia lưới, ô đánh dấu chung một hàng", async () => {
@@ -1287,5 +1290,134 @@ describe("CreateUserDialog: nhóm Lớp học gắn với nhãn, gợi ý và l�
     await waitFor(() =>
       expect(group).toHaveAccessibleDescription(/Lớp học được chọn đang ngừng sử dụng\./),
     );
+  });
+});
+
+describe("UsersListView: khung hẹp thành danh sách thẻ (UNI-2587)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("khung 358px: danh sách có tên thay cho bảng, mỗi tài khoản một thẻ đủ tiêu đề, họ tên, chip và email", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderUsersView(makeDeps());
+
+    const list = await screen.findByRole("list", { name: "Danh sách tài khoản" });
+    await within(list).findByText("student01");
+    expect(screen.queryByRole("table")).toBeNull();
+    const cards = within(list).getAllByRole("listitem");
+    expect(cards).toHaveLength(SAMPLE_USERS.length);
+
+    const first = cards[0]!;
+    // Tiêu đề là liên kết tới chi tiết, vùng bấm phủ cả thẻ; tên của liên kết chỉ là tên đăng nhập.
+    const link = within(first).getByRole("link", { name: "student01" });
+    expect(link).toHaveAttribute("href", `/users/${SAMPLE_USERS[0]!.id}`);
+    expect(link).toHaveClass("after:absolute", "after:inset-0", "focus-visible:ring-3");
+    expect(first).toHaveClass("relative");
+    expect(within(first).getByText("Học viên 01")).toHaveClass("text-caption");
+    // Chip trạng thái luôn hiện, kể cả Hoạt động; sau đó vai trò và nguồn.
+    expect(within(first).getByText("Hoạt động").closest("[data-tone]")).toHaveAttribute("data-tone", "success");
+    expect(within(first).getByText("Học viên", { selector: "[data-variant='tag']" })).toBeInTheDocument();
+    expect(within(first).getByText("Do quản trị tạo")).toBeInTheDocument();
+    expect(first).toHaveTextContent("Email: student01@example.com");
+
+    // Tài khoản không có email thì không có mục Email; trạng thái suy ra (chưa đăng nhập, đã xóa) vẫn có chip.
+    expect(cards[1]).not.toHaveTextContent("Email:");
+    expect(within(cards[1]!).getByText("Chưa đăng nhập")).toBeInTheDocument();
+    expect(within(cards[3]!).getByText("Đã xóa")).toBeInTheDocument();
+  });
+
+  it("thao tác của thẻ là menu ⋯ của dòng, nằm trên vùng bấm của liên kết", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderUsersView(makeDeps());
+    const list = await screen.findByRole("list", { name: "Danh sách tài khoản" });
+    const menuButton = await within(list).findByRole("button", { name: "Thao tác với student01" });
+    expect(menuButton.closest(".z-1")).toHaveClass("relative");
+
+    await userEvent.click(menuButton);
+    expect(await screen.findByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Xem chi tiết" })).toHaveAttribute(
+      "href",
+      `/users/${SAMPLE_USERS[0]!.id}`,
+    );
+  });
+
+  it("không có quyền USER.MODIFY: thẻ không có nút thao tác và không có ô chọn", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderUsersView(makeDeps(), { ...TEST_ADMIN_SESSION, permissions: ["USER.VIEW"] });
+    const list = await screen.findByRole("list", { name: "Danh sách tài khoản" });
+    await within(list).findByText("student01");
+    expect(within(list).queryByRole("button", { name: /Thao tác với/ })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /Chọn tài khoản/ })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Chọn tất cả tài khoản" })).toBeNull();
+  });
+
+  it("chọn thẻ hiện thanh thao tác hàng loạt; Bỏ chọn đưa focus về ô Chọn tất cả ở đầu danh sách", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderUsersView(makeDeps());
+    await screen.findByRole("list", { name: "Danh sách tài khoản" });
+    await screen.findByText("student01");
+
+    const barName = "Thao tác với các tài khoản đã chọn";
+    // Thanh giữ sẵn chỗ nhưng ẩn với trình đọc màn hình khi chưa chọn.
+    expect(screen.queryByRole("group", { name: barName })).toBeNull();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Chọn tài khoản student01" }));
+    const bar = screen.getByRole("group", { name: barName });
+    expect(bar).toHaveTextContent("Đã chọn 1 tài khoản");
+    expect(screen.getAllByRole("listitem")[0]).toHaveAttribute("data-state", "selected");
+
+    const selectAll = screen.getByRole("checkbox", { name: "Chọn tất cả tài khoản" });
+    await userEvent.click(selectAll);
+    expect(bar).toHaveTextContent(`Đã chọn ${SAMPLE_USERS.length} tài khoản`);
+
+    const clearSelection = within(bar).getByRole("button", { name: "Bỏ chọn" });
+    clearSelection.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(selectAll).toHaveFocus();
+    expect(screen.queryByRole("group", { name: barName })).toBeNull();
+  });
+
+  it("ô Sắp xếp theo thay cho tiêu đề cột: gửi sắp xếp lên máy chủ và đọc thông báo như khi bấm tiêu đề cột", async () => {
+    const listUsersMock = vi.fn<UsersApiDeps["listUsers"]>(async () => ({
+      items: SAMPLE_USERS,
+      page: 0,
+      size: 20,
+      totalItems: SAMPLE_USERS.length,
+      totalPages: 1,
+    }));
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderUsersView(makeDeps({ listUsers: listUsersMock }));
+    await screen.findByText("student01");
+
+    const sort = screen.getByRole("combobox", { name: "Sắp xếp theo" });
+    await userEvent.click(sort);
+    const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
+    expect(options).toEqual([
+      "Tên đăng nhập · tăng dần",
+      "Tên đăng nhập · giảm dần",
+      "Họ và tên · tăng dần",
+      "Họ và tên · giảm dần",
+    ]);
+    await userEvent.click(screen.getByRole("option", { name: "Họ và tên · giảm dần" }));
+
+    await waitFor(() =>
+      expect(listUsersMock).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "fullName,desc", page: 0 })),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Đã sắp xếp theo Họ và tên, giảm dần.");
+    expect(screen.getByRole("combobox", { name: "Sắp xếp theo" })).toHaveTextContent("Họ và tên · giảm dần");
+  });
+
+  it("khung rộng: vẫn là bảng như trước, nới khung từ hẹp sang rộng thì về bảng", async () => {
+    const setWidth = installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderUsersView(makeDeps());
+    await screen.findByRole("list", { name: "Danh sách tài khoản" });
+
+    setWidth(1100);
+    const table = screen.getByRole("table", { name: "Danh sách tài khoản" });
+    expect(screen.queryByRole("list", { name: "Danh sách tài khoản" })).toBeNull();
+    expect(within(table).getByRole("columnheader", { name: "Email" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Họ và tên" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Sắp xếp theo" })).toBeNull();
   });
 });

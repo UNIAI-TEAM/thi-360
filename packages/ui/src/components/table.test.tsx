@@ -300,6 +300,26 @@ describe("Table: vùng cuộn ngang dùng được bằng bàn phím", () => {
     vi.unstubAllGlobals();
   });
 
+  it("bảng rỗng rộng hơn khung: thông báo rỗng dính mép đầu và rộng đúng phần nhìn thấy của khung", () => {
+    const instances = installResizeObserver();
+    render(
+      <Table<Person>
+        aria-label="Danh sách người"
+        columns={columns}
+        data={[]}
+        getRowId={(person) => person.id}
+        empty={<p>Không có người nào</p>}
+      />,
+    );
+    const scroller = scrollerOf(screen.getByRole("table", { name: "Danh sách người" }));
+    resize(scroller, instances, { scrollWidth: 900, clientWidth: 328 });
+
+    expect(scroller.style.getPropertyValue("--table-frame-width")).toBe("328px");
+    const wrapper = screen.getByText("Không có người nào").parentElement!;
+    expect(wrapper).toHaveClass("sticky", "start-0", "w-[var(--table-frame-width,100%)]");
+    expect(wrapper.closest("td")).toHaveClass("p-0");
+  });
+
   it("bảng vừa khung: khung bọc không là điểm dừng Tab, không là vùng có tên", () => {
     const instances = installResizeObserver();
     render(<Harness />);

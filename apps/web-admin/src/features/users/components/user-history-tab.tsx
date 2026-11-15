@@ -6,13 +6,15 @@ import {
   Button,
   Card,
   EmptyState,
+  ListCard,
   Pagination,
   StatusChip,
   Table,
+  type TableCards,
 } from "@thi360/ui";
 import { History } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { type AuditEvent, type UsersApiDeps, USERS_QUERY_KEYS } from "../api";
 import { formatUserDateTime } from "../utils";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
@@ -65,6 +67,12 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
     placeholderData: keepPreviousWhileSameScope(USERS_QUERY_KEYS.audit(userId, queryParams)),
   });
 
+  /** Tên hành động hiển thị; mã lạ (sự kiện mới chưa có bản dịch) hiện nguyên mã. */
+  const actionLabel = useCallback(
+    (action: string) => (Object.hasOwn(KNOWN_AUDIT_ACTIONS, action) ? t(`auditActions.${action}`) : action),
+    [t],
+  );
+
   const columns = useMemo<ColumnDef<AuditEvent>[]>(
     () => [
       {
@@ -91,26 +99,13 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         id: "action",
         header: t("history.action"),
         enableSorting: false,
-        cell: ({ row }) => {
-          const action = row.original.action;
-          return (
-            <span className="block min-w-40 text-text">
-              {Object.hasOwn(KNOWN_AUDIT_ACTIONS, action)
-                ? t(`auditActions.${action}`)
-                : action}
-            </span>
-          );
-        },
+        cell: ({ row }) => <span className="block min-w-40 text-text">{actionLabel(row.original.action)}</span>,
       },
       {
         id: "outcome",
         header: t("history.outcome"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <StatusChip tone={row.original.outcome === "SUCCESS" ? "success" : "danger"}>
-            {t(`history.outcomes.${row.original.outcome}`)}
-          </StatusChip>
-        ),
+        cell: ({ row }) => <OutcomeChip outcome={row.original.outcome} />,
       },
       {
         id: "reason",
@@ -121,7 +116,28 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         ),
       },
     ],
-    [t],
+    [t, actionLabel],
+  );
+
+  /**
+   * Khung hẹp (dưới 640px): mỗi sự kiện một thẻ, hành động là tiêu đề, thời gian ở dòng phụ, kết quả là chip
+   * trạng thái, người thực hiện và lý do ở dòng thông tin thêm. Sự kiện không có trang chi tiết nên tiêu đề là chữ.
+   */
+  const cards = useMemo<TableCards<AuditEvent>>(
+    () => ({
+      render: (event) => (
+        <ListCard
+          title={actionLabel(event.action)}
+          caption={formatUserDateTime(event.occurredAt)}
+          status={<OutcomeChip outcome={event.outcome} />}
+          meta={[
+            { label: t("history.actor"), value: event.actorUsername ?? t("history.systemActor") },
+            Boolean(event.reason) && { label: t("history.reason"), value: event.reason },
+          ]}
+        />
+      ),
+    }),
+    [t, actionLabel],
   );
 
   const items = historyQuery.data?.items ?? [];
@@ -136,6 +152,7 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         getRowId={(row) => row.id}
         loading={historyQuery.isLoading}
         refreshing={historyQuery.isPlaceholderData}
+        cards={cards}
         error={
           historyQuery.isError ? (
             <EmptyState
@@ -183,5 +200,12 @@ export function UserHistoryTab({ userId, listUserAuditEvents }: UserHistoryTabPr
         </div>
       )}
     </Card>
+  );
+}
+
+function OutcomeChip({ outcome }: { outcome: AuditEvent["outcome"] }) {
+  const t = useTranslations("users");
+  return (
+    <StatusChip tone={outcome === "SUCCESS" ? "success" : "danger"}>{t(`history.outcomes.${outcome}`)}</StatusChip>
   );
 }

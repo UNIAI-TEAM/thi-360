@@ -17,10 +17,12 @@ import {
   EmptyState,
   IconButton,
   Input,
+  ListCard,
   notify,
   Skeleton,
   StatusChip,
   Table,
+  type TableCards,
   Textarea,
   Tooltip,
 } from "@thi360/ui";
@@ -64,16 +66,6 @@ import {
   ObjectPermissionPicker,
   groupPermissionsByObject,
 } from "./object-permission-picker";
-
-/**
- * Bảng quyền hiệu lực ở thẻ hẹp (dưới 36rem): cột Đối tượng và Mã ẩn, hiện thành dòng phụ dưới tên quyền
- * (`data-col-summary`), để mã quyền luôn đọc được đủ thay vì bị cắt ở mép khung.
- */
-const COMPACT_EFFECTIVE_COLUMNS = [
-  "@container",
-  "@max-[36rem]:[&_:is(th,td):has([data-col=object])]:hidden",
-  "@max-[36rem]:[&_:is(th,td):has([data-col=code])]:hidden",
-].join(" ");
 
 export interface UserRbacTabProps {
   userId: string;
@@ -278,14 +270,30 @@ export function UserRbacTab({
     },
   });
 
-  const effectiveColumns = useMemo<ColumnDef<EffectivePermissionItemResponse>[]>(() => {
-    return [
+  // Cột của bảng và thẻ của dạng danh sách (khung hẹp) dựng cùng nhau để dùng chung chip nguồn quyền.
+  const effectiveTable = useMemo(() => {
+    const sourceChips = (item: EffectivePermissionItemResponse) =>
+      item.sources.map((src, idx) =>
+        src.type === "ROLE" ? (
+          <Chip key={`${src.roleId ?? idx}`} variant="tag">
+            {t("userRbac.effectiveSourceRole", {
+              name: resolveRoleName(rbacT, src.roleCode ?? "", src.roleName ?? ""),
+            })}
+          </Chip>
+        ) : (
+          <StatusChip key={`direct-${idx}`} tone="warning">
+            {t("userRbac.effectiveSourceDirect")}
+          </StatusChip>
+        ),
+      );
+
+    const columns: ColumnDef<EffectivePermissionItemResponse>[] = [
       {
         id: "object",
-        header: () => <span data-col="object">{t("userRbac.effectiveColumns.object")}</span>,
+        header: t("userRbac.effectiveColumns.object"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span data-col="object" className="text-text-secondary">
+          <span className="text-text-secondary">
             {resolveObjectName(rbacT, row.original.groupCode, row.original.groupName)}
           </span>
         ),
@@ -299,51 +307,47 @@ export function UserRbacTab({
             <span className="font-medium wrap-break-word text-text">
               {resolvePermissionName(rbacT, row.original.code, row.original.name)}
             </span>
-            {/* Thẻ hẹp (dưới 36rem): cột Đối tượng và Mã ẩn, nội dung hiện ở đây dưới tên quyền. */}
-            <span
-              data-col-summary
-              className="mt-0.5 block text-caption text-text-muted @min-[36rem]:hidden"
-            >
-              {resolveObjectName(rbacT, row.original.groupCode, row.original.groupName)}
-              {" · "}
-              <code className="wrap-anywhere">{row.original.code}</code>
-            </span>
           </div>
         ),
       },
       {
         id: "code",
-        header: () => <span data-col="code">{t("userRbac.effectiveColumns.code")}</span>,
+        header: t("userRbac.effectiveColumns.code"),
         enableSorting: false,
         cell: ({ row }) => (
-          <code data-col="code" className="text-field-label text-text-muted">
-            {row.original.code}
-          </code>
+          <code className="text-field-label text-text-muted">{row.original.code}</code>
         ),
       },
       {
         id: "source",
         header: t("userRbac.effectiveColumns.source"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1.5">
-            {row.original.sources.map((src, idx) =>
-              src.type === "ROLE" ? (
-                <Chip key={`${src.roleId ?? idx}`} variant="tag">
-                  {t("userRbac.effectiveSourceRole", {
-                    name: resolveRoleName(rbacT, src.roleCode ?? "", src.roleName ?? ""),
-                  })}
-                </Chip>
-              ) : (
-                <StatusChip key={`direct-${idx}`} tone="warning">
-                  {t("userRbac.effectiveSourceDirect")}
-                </StatusChip>
-              ),
-            )}
-          </div>
-        ),
+        cell: ({ row }) => <div className="flex flex-wrap gap-1.5">{sourceChips(row.original)}</div>,
       },
     ];
+
+    /**
+     * Dạng thẻ khi khung hẹp hơn 640px (mặc định của `Table`, DESIGN.md mục 5.9): tên quyền là tiêu đề, đối tượng và
+     * mã quyền ở dòng phụ (mã xuống dòng ở bất kỳ ký tự nào), rồi chip nguồn quyền. Quyền hiệu lực không có trạng
+     * thái riêng (danh sách chỉ gồm quyền đang có hiệu lực), không có thao tác và không có trang chi tiết.
+     */
+    const cards: TableCards<EffectivePermissionItemResponse> = {
+      render: (item) => (
+        <ListCard
+          title={resolvePermissionName(rbacT, item.code, item.name)}
+          caption={
+            <>
+              {resolveObjectName(rbacT, item.groupCode, item.groupName)}
+              {" · "}
+              <code>{item.code}</code>
+            </>
+          }
+          tags={sourceChips(item)}
+        />
+      ),
+    };
+
+    return { columns, cards };
   }, [t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isLoading =
@@ -625,21 +629,20 @@ export function UserRbacTab({
           </span>
         </div>
 
-        <div className={COMPACT_EFFECTIVE_COLUMNS}>
-          <Table
-            data={effectivePermissions}
-            columns={effectiveColumns}
-            getRowId={(row) => row.permissionId}
-            aria-label={t("userRbac.effectiveSectionTitle")}
-            empty={
-              <EmptyState
-                icon={<Shield />}
-                title={t("userRbac.effectiveSectionTitle")}
-                description={t("userRbac.effectiveEmpty")}
-              />
-            }
-          />
-        </div>
+        <Table
+          data={effectivePermissions}
+          columns={effectiveTable.columns}
+          cards={effectiveTable.cards}
+          getRowId={(row) => row.permissionId}
+          aria-label={t("userRbac.effectiveSectionTitle")}
+          empty={
+            <EmptyState
+              icon={<Shield />}
+              title={t("userRbac.effectiveSectionTitle")}
+              description={t("userRbac.effectiveEmpty")}
+            />
+          }
+        />
       </Card>
 
       <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>

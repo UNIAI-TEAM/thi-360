@@ -100,6 +100,7 @@
     },
     "behaviorWarning": "Adding a value does not automatically create its corresponding processing logic.",
     "cancel": "Cancel",
+    "cardValueMeta": "Value: {value}",
     "close": "Close",
     "columns": {
       "actions": "Actions",
@@ -326,9 +327,12 @@
       "downloadTemplate": "Download template",
       "dropHint": "Choose an .xlsx file (max 5 MB, 5,000 rows).",
       "errorColumnCol": "Column",
+      "errorColumnMeta": "Column: {column}",
       "errorFileBanner": "{count, plural, one {The file has # invalid row. Fix it in Excel or download the error report below and re-upload.} other {The file has # invalid rows. Fix them in Excel or download the error report below and re-upload.}}",
+      "errorListLabel": "Rows with errors",
       "errorMessageCol": "Details",
       "errorRowCol": "Row",
+      "errorRowTitle": "Row {row}",
       "errorsLabel": "Invalid rows",
       "fileLabel": "Excel file (.xlsx)",
       "fileSizeNote": "{size} KB",
@@ -794,6 +798,7 @@
         "colRequired": "Required",
         "colRules": "Rules",
         "no": "No",
+        "optional": "Optional",
         "yes": "Yes"
       },
       "dropzoneHint": "Only .xlsx files accepted, up to 2,000 rows and 5 MB",
@@ -1076,7 +1081,12 @@
     "closeToast": "Close toast",
     "loading": "Loading",
     "notificationsLabel": "Notifications",
-    "retry": "Retry"
+    "retry": "Retry",
+    "table": {
+      "ascending": "ascending",
+      "descending": "descending",
+      "sortBy": "Sort by"
+    }
   },
   "dashboard": {
     "errorDescription": "An error occurred while loading account details. Please try again.",
@@ -1597,7 +1607,7 @@
         "status": "Status",
         "users": "Assigned users"
       },
-      "countsSummary": "{permissions, plural, one {# permission} other {# permissions}} · {users, plural, one {# assigned user} other {# assigned users}}",
+      "cardCounts": "Permissions: {permissions} · Assigned users: {users}",
       "createButton": "+ Create role",
       "deleteAria": "Delete role {name}",
       "deleteConfirmAction": "Delete role",

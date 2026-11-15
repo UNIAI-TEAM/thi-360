@@ -9,15 +9,17 @@ import {
   cn,
   ConfirmDialog,
   EmptyState,
+  focusRingInset,
   IconButton,
   Input,
+  ListCard,
   notify,
   Pagination,
   Select,
   Skeleton,
   StatusChip,
   Table,
-  focusRingInset,
+  type TableCards,
 } from "@thi360/ui";
 import { Download, MinusCircle, Search, Shield, TriangleAlert, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -54,16 +56,12 @@ import type {
 } from "../types";
 
 /**
- * Bảng tài khoản theo quyền ở thẻ hẹp (dưới 36rem: điện thoại, tablet dọc): ẩn cột Nguồn, Chi tiết, Trạng thái; nội
- * dung của chúng hiện thành dòng phụ dưới tên tài khoản (`data-col-summary`). Cột được nhận ra qua `data-col` đặt
- * trên nội dung do màn này vẽ, cùng cách với danh sách tài khoản (`users-list-view.tsx`).
+ * Bề rộng khung (px) dưới đó bảng tài khoản theo quyền thành danh sách thẻ: 36rem. Bảng nằm ở khung phải của bố cục
+ * hai khung, hẹp hơn vùng nội dung: trên máy tính khung này hẹp nhất khoảng 600px (cửa sổ khoảng 1210px, lúc hai khung
+ * vừa đứng cạnh nhau ở `@4xl`; xem ghi chú ở bố cục bên dưới), nên ngưỡng phải dưới mức đó để từ cửa sổ 1024px trở lên
+ * vẫn là bảng năm cột như cũ. Ngưỡng mặc định 640px sẽ đổi cửa sổ 1210–1280px sang thẻ.
  */
-const COMPACT_USER_COLUMNS = [
-  "@container",
-  "@max-[36rem]:[&_:is(th,td):has([data-col=source])]:hidden",
-  "@max-[36rem]:[&_:is(th,td):has([data-col=detail])]:hidden",
-  "@max-[36rem]:[&_:is(th,td):has([data-col=status])]:hidden",
-].join(" ");
+const USERS_CARD_BREAKPOINT = 576;
 
 export interface PermissionUsersTabProps {
   selectedPermissionCode?: string | null;
@@ -255,52 +253,85 @@ export function PermissionUsersTab({
     [t],
   );
 
+  // Chip, chữ chi tiết và nút thao tác dùng chung cho bảng và dạng thẻ (khung hẹp).
+  const statusChip = (user: PermissionUserResponse) => (
+    <StatusChip
+      tone={user.status === "ACTIVE" ? "success" : user.status === "INACTIVE" ? "neutral" : "info"}
+    >
+      {t(`userStatuses.${user.status}`)}
+    </StatusChip>
+  );
+
+  function renderSourceChips(user: PermissionUserResponse) {
+    const hasRole = user.sources.some((item) => item.type === "ROLE");
+    const hasDirect = user.sources.some((item) => item.type === "DIRECT");
+    return (
+      <>
+        {hasRole && <Chip variant="tag">{t("permissionUsers.roleSource")}</Chip>}
+        {hasDirect && <StatusChip tone="warning">{t("permissionUsers.directSource")}</StatusChip>}
+      </>
+    );
+  }
+
+  /** Chữ của cột Chi tiết: các vai trò cấp quyền, và ai gán trực tiếp, ngày nào, lý do gì. */
+  function sourceDetails(user: PermissionUserResponse): string[] {
+    const details: string[] = [];
+    const roleNames = user.sources
+      .filter((item) => item.type === "ROLE")
+      .map((item) => resolveRoleName(rbacT, item.roleCode ?? "", item.roleName ?? ""));
+    if (roleNames.length > 0) {
+      details.push(t("permissionUsers.roleDetail", { roles: roleNames.join(", ") }));
+    }
+    const directSource = user.sources.find((item) => item.type === "DIRECT");
+    if (directSource) {
+      details.push(
+        t("permissionUsers.directDetail", {
+          actor: directSource.grantedByUsername ?? t("permissionUsers.unknownActor"),
+          date: directSource.grantedAt
+            ? formatter.dateTime(new Date(directSource.grantedAt), {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : "—",
+          reason: directSource.reason ?? "",
+        }),
+      );
+    }
+    return details;
+  }
+
+  function renderActions(user: PermissionUserResponse) {
+    const hasDirect = user.sources.some((item) => item.type === "DIRECT");
+    const hasRole = user.sources.some((item) => item.type === "ROLE");
+    const canRevoke = hasDirect && canAssign;
+    const canOpenRoles = hasRole && canViewRoles && onViewRoles !== undefined;
+    if (!canRevoke && !canOpenRoles) return null;
+    return (
+      <>
+        {canRevoke && (
+          <IconButton
+            icon={<MinusCircle />}
+            tone="danger"
+            aria-label={t("permissionUsers.revokeAria", { username: user.username })}
+            tooltip={t("permissionUsers.revokeTooltip")}
+            onClick={() => setRevokeTarget(user)}
+          />
+        )}
+        {canOpenRoles && (
+          <IconButton
+            icon={<Shield />}
+            aria-label={t("permissionUsers.viewRoleAria", { username: user.username })}
+            tooltip={t("permissionUsers.viewRoleTooltip")}
+            onClick={onViewRoles}
+          />
+        )}
+      </>
+    );
+  }
+
+  // `data-col` của cột Nguồn và Chi tiết là mốc cho e2e (`e2e/tests/rbac.spec.ts`) tìm đúng ô của một dòng.
   const columns = useMemo<ColumnDef<PermissionUserResponse>[]>(() => {
-    const statusTone = (status: PermissionUserResponse["status"]) =>
-      status === "ACTIVE" ? "success" : status === "INACTIVE" ? "neutral" : "info";
-
-    function renderSourceChips(user: PermissionUserResponse) {
-      const hasRole = user.sources.some((item) => item.type === "ROLE");
-      const hasDirect = user.sources.some((item) => item.type === "DIRECT");
-      return (
-        <>
-          {hasRole && <Chip variant="tag">{t("permissionUsers.roleSource")}</Chip>}
-          {hasDirect && (
-            <StatusChip tone="warning">{t("permissionUsers.directSource")}</StatusChip>
-          )}
-        </>
-      );
-    }
-
-    function renderSourceDetail(user: PermissionUserResponse) {
-      const roleNames = user.sources
-        .filter((item) => item.type === "ROLE")
-        .map((item) => resolveRoleName(rbacT, item.roleCode ?? "", item.roleName ?? ""));
-      const directSource = user.sources.find((item) => item.type === "DIRECT");
-      return (
-        <>
-          {roleNames.length > 0 && (
-            <span>{t("permissionUsers.roleDetail", { roles: roleNames.join(", ") })}</span>
-          )}
-          {directSource && (
-            <span>
-              {t("permissionUsers.directDetail", {
-                actor: directSource.grantedByUsername ?? t("permissionUsers.unknownActor"),
-                date: directSource.grantedAt
-                  ? formatter.dateTime(new Date(directSource.grantedAt), {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })
-                  : "—",
-                reason: directSource.reason ?? "",
-              })}
-            </span>
-          )}
-        </>
-      );
-    }
-
     return [
       {
         id: "account",
@@ -314,30 +345,13 @@ export function PermissionUsersTab({
               <div className="text-caption wrap-break-word text-text-muted">
                 {u.fullName} · {u.code}
               </div>
-              {/*
-                Thẻ hẹp (dưới 36rem, ví dụ điện thoại): cột Nguồn, Chi tiết và Trạng thái ẩn đi, nội dung của chúng
-                hiện ở đây dưới tên tài khoản. Chip trạng thái chỉ hiện khi khác Hoạt động.
-              */}
-              <div data-col-summary className="mt-1.5 flex flex-col gap-1.5 @min-[36rem]:hidden">
-                <div className="flex flex-wrap gap-1.5">
-                  {renderSourceChips(u)}
-                  {u.status !== "ACTIVE" && (
-                    <StatusChip tone={statusTone(u.status)}>
-                      {t(`userStatuses.${u.status}`)}
-                    </StatusChip>
-                  )}
-                </div>
-                <div className="flex flex-col gap-0.5 text-caption wrap-break-word text-text-secondary">
-                  {renderSourceDetail(u)}
-                </div>
-              </div>
             </div>
           );
         },
       },
       {
         id: "source",
-        header: () => <span data-col="source">{t("permissionUsers.columns.source")}</span>,
+        header: t("permissionUsers.columns.source"),
         enableSorting: false,
         cell: ({ row }) => (
           <div data-col="source" className="flex flex-wrap gap-1.5">
@@ -347,27 +361,22 @@ export function PermissionUsersTab({
       },
       {
         id: "detail",
-        header: () => <span data-col="detail">{t("permissionUsers.columns.detail")}</span>,
+        header: t("permissionUsers.columns.detail"),
         enableSorting: false,
         cell: ({ row }) => (
           // Bề rộng tối thiểu để chữ không bị ép xuống từng từ một dòng khi bảng hẹp (UNI-2586).
           <div data-col="detail" className="flex min-w-48 flex-col gap-1 text-text-secondary">
-            {renderSourceDetail(row.original)}
+            {sourceDetails(row.original).map((detail) => (
+              <span key={detail}>{detail}</span>
+            ))}
           </div>
         ),
       },
       {
         id: "status",
-        header: () => <span data-col="status">{t("permissionUsers.columns.status")}</span>,
+        header: t("permissionUsers.columns.status"),
         enableSorting: false,
-        cell: ({ row }) => {
-          const status = row.original.status;
-          return (
-            <span data-col="status">
-              <StatusChip tone={statusTone(status)}>{t(`userStatuses.${status}`)}</StatusChip>
-            </span>
-          );
-        },
+        cell: ({ row }) => statusChip(row.original),
       },
       {
         id: "actions",
@@ -375,36 +384,38 @@ export function PermissionUsersTab({
           <span className="block text-right">{t("permissionUsers.columns.actions")}</span>
         ),
         enableSorting: false,
-        cell: ({ row }) => {
-          const u = row.original;
-          const hasDirect = u.sources.some((item) => item.type === "DIRECT");
-          const hasRole = u.sources.some((item) => item.type === "ROLE");
-
-          return (
-            <div className="flex items-center justify-end gap-1">
-              {hasDirect && canAssign && (
-                <IconButton
-                  icon={<MinusCircle />}
-                  tone="danger"
-                  aria-label={t("permissionUsers.revokeAria", { username: u.username })}
-                  tooltip={t("permissionUsers.revokeTooltip")}
-                  onClick={() => setRevokeTarget(u)}
-                />
-              )}
-              {hasRole && canViewRoles && onViewRoles && (
-                <IconButton
-                  icon={<Shield />}
-                  aria-label={t("permissionUsers.viewRoleAria", { username: u.username })}
-                  tooltip={t("permissionUsers.viewRoleTooltip")}
-                  onClick={onViewRoles}
-                />
-              )}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-1">{renderActions(row.original)}</div>
+        ),
       },
     ];
   }, [canAssign, canViewRoles, formatter, onViewRoles, t]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Dạng thẻ khi khung phải hẹp hơn 36rem (DESIGN.md mục 5.9): tên đăng nhập và nút thao tác, họ tên và mã ở dòng phụ,
+   * chip trạng thái (luôn hiện) rồi chip nguồn quyền, cuối cùng chữ của cột Chi tiết. Bảng không có liên kết tới chi
+   * tiết tài khoản nên thẻ cũng không có.
+   */
+  const cards: TableCards<PermissionUserResponse> = {
+    breakpoint: USERS_CARD_BREAKPOINT,
+    render: (user) => {
+      const actions = renderActions(user);
+      const details = sourceDetails(user);
+      return (
+        <ListCard
+          title={user.username}
+          actions={actions}
+          caption={`${user.fullName} · ${user.code}`}
+          status={statusChip(user)}
+          tags={renderSourceChips(user)}
+        >
+          {details.length > 0 && (
+            <p className="text-caption wrap-break-word text-text-muted">{details.join(" · ")}</p>
+          )}
+        </ListCard>
+      );
+    },
+  };
 
   const activeObjectName = activePermission
     ? resolveObjectName(rbacT, activePermission.groupCode, activePermission.groupName)
@@ -621,37 +632,36 @@ export function PermissionUsersTab({
           </div>
         </div>
 
-        <div className={COMPACT_USER_COLUMNS}>
-          <Table
-            data={users}
-            columns={columns}
-            getRowId={(row) => row.userId}
-            loading={permissionsQuery.isPending || usersQuery.isPending}
-            refreshing={usersQuery.isPlaceholderData}
-            aria-label={t("tabs.users")}
-            error={
-              usersQuery.isError ? (
-                <EmptyState
-                  icon={<TriangleAlert />}
-                  title={t("permissionUsers.errorTitle")}
-                  description={t("permissionUsers.errorDescription")}
-                  action={
-                    <Button variant="secondary" onClick={() => usersQuery.refetch()}>
-                      {t("actions.retry")}
-                    </Button>
-                  }
-                />
-              ) : undefined
-            }
-            empty={
+        <Table
+          data={users}
+          columns={columns}
+          cards={cards}
+          getRowId={(row) => row.userId}
+          loading={permissionsQuery.isPending || usersQuery.isPending}
+          refreshing={usersQuery.isPlaceholderData}
+          aria-label={t("tabs.users")}
+          error={
+            usersQuery.isError ? (
               <EmptyState
-                icon={<Users />}
-                title={t("permissionUsers.emptyTitle")}
-                description={t("permissionUsers.emptyDescription")}
+                icon={<TriangleAlert />}
+                title={t("permissionUsers.errorTitle")}
+                description={t("permissionUsers.errorDescription")}
+                action={
+                  <Button variant="secondary" onClick={() => usersQuery.refetch()}>
+                    {t("actions.retry")}
+                  </Button>
+                }
               />
-            }
-          />
-        </div>
+            ) : undefined
+          }
+          empty={
+            <EmptyState
+              icon={<Users />}
+              title={t("permissionUsers.emptyTitle")}
+              description={t("permissionUsers.emptyDescription")}
+            />
+          }
+        />
 
         {totalUsers > 0 && (
           <div className="border-t border-border px-4 py-3">

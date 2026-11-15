@@ -100,6 +100,7 @@
     },
     "behaviorWarning": "Thêm giá trị không tự tạo chức năng xử lý tương ứng.",
     "cancel": "Hủy",
+    "cardValueMeta": "Giá trị: {value}",
     "close": "Đóng",
     "columns": {
       "actions": "Thao tác",
@@ -326,9 +327,12 @@
       "downloadTemplate": "Tải tệp mẫu",
       "dropHint": "Chọn tệp .xlsx (tối đa 5 MB, 5.000 dòng).",
       "errorColumnCol": "Cột",
+      "errorColumnMeta": "Cột: {column}",
       "errorFileBanner": "{count, plural, other {Tệp có # dòng lỗi. Hãy sửa trong tệp Excel hoặc tải báo cáo lỗi bên dưới rồi tải lên lại.}}",
+      "errorListLabel": "Danh sách dòng lỗi",
       "errorMessageCol": "Chi tiết",
       "errorRowCol": "Dòng",
+      "errorRowTitle": "Dòng {row}",
       "errorsLabel": "Dòng lỗi",
       "fileLabel": "Tệp Excel (.xlsx)",
       "fileSizeNote": "{size} KB",
@@ -794,6 +798,7 @@
         "colRequired": "Bắt buộc",
         "colRules": "Quy tắc",
         "no": "Không",
+        "optional": "Không bắt buộc",
         "yes": "Có"
       },
       "dropzoneHint": "Chỉ nhận tệp .xlsx, tối đa 2.000 dòng, không quá 5 MB",
@@ -1076,7 +1081,12 @@
     "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
     "notificationsLabel": "Thông báo",
-    "retry": "Thử lại"
+    "retry": "Thử lại",
+    "table": {
+      "ascending": "tăng dần",
+      "descending": "giảm dần",
+      "sortBy": "Sắp xếp theo"
+    }
   },
   "dashboard": {
     "errorDescription": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
@@ -1597,7 +1607,7 @@
         "status": "Trạng thái",
         "users": "Tài khoản đang giữ"
       },
-      "countsSummary": "{permissions, plural, other {# quyền}} · {users, plural, other {# tài khoản đang giữ}}",
+      "cardCounts": "Số quyền: {permissions} · Tài khoản đang giữ: {users}",
       "createButton": "+ Tạo vai trò",
       "deleteAria": "Xóa vai trò {name}",
       "deleteConfirmAction": "Xóa vai trò",

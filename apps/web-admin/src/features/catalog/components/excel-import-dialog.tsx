@@ -2,6 +2,9 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   Button,
+  CardList,
+  CardListItem,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -9,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
   FormField,
-  cn,
+  ListCard,
+  useCardMode,
 } from "@thi360/ui";
 import { Check, Download, FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -427,39 +431,13 @@ function ExcelImportBody({
           )}
 
           {preview.errors.length > 0 && (
-            <div className="max-h-64 overflow-auto rounded-md border border-border">
-              <table className="w-full border-collapse text-left text-caption">
-                <thead className="sticky top-0 bg-page text-text-secondary">
-                  <tr>
-                    <th scope="col" className="px-3 py-2 font-semibold">
-                      {t("importDialog.errorRowCol")}
-                    </th>
-                    <th scope="col" className="px-3 py-2 font-semibold">
-                      {t("importDialog.errorColumnCol")}
-                    </th>
-                    <th scope="col" className="px-3 py-2 font-semibold">
-                      {t("importDialog.errorMessageCol")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.errors.map((err, idx) => (
-                    <tr
-                      key={`${err.rowNo}-${err.column}-${idx}`}
-                      className="border-t border-border bg-danger-bg/40"
-                    >
-                      <td className="px-3 py-2 font-mono tabular-nums text-text">
-                        {err.rowNo}
-                      </td>
-                      <td className="px-3 py-2 font-medium text-text">
-                        {columnLabel(err.column)}
-                      </td>
-                      <td className="px-3 py-2 text-danger">{errorMessage(err.code)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ImportErrorList
+              errors={preview.errors.map((err) => ({
+                rowNo: err.rowNo,
+                column: columnLabel(err.column),
+                message: errorMessage(err.code),
+              }))}
+            />
           )}
 
           <p className="text-caption text-text-muted">
@@ -521,6 +499,70 @@ function ExcelImportBody({
             </Button>
           </DialogFooter>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Khung lỗi rộng (px) dưới đó bảng lỗi thành danh sách thẻ (DESIGN.md mục 5.9). Ba cột Dòng · Cột · Chi tiết cần
+ * khoảng 480px để câu lỗi không bị ép thành nhiều dòng ngắn. Dialog cỡ `lg` ở máy tính cho khung rộng 672px (720 − 2 ×
+ * 24 đệm) nên vẫn là bảng; ở điện thoại khung chỉ còn 296px (cửa sổ 360px) hoặc 326px (390px) nên là thẻ.
+ */
+const ERROR_CARD_BREAKPOINT = 480;
+
+type ImportErrorRow = { rowNo: number; column: string; message: string };
+
+/** Danh sách lỗi của bước xem trước: bảng khi khung đủ rộng, danh sách thẻ khi hẹp. */
+function ImportErrorList({ errors }: { errors: ImportErrorRow[] }) {
+  const t = useTranslations("catalog");
+  // Khung cuộn có viền là phần tử đo: luôn có mặt ở cả hai dạng.
+  const [frameRef, cardMode] = useCardMode<HTMLDivElement>(true, ERROR_CARD_BREAKPOINT);
+  const label = t("importDialog.errorListLabel");
+
+  return (
+    <div ref={frameRef} className="max-h-64 overflow-auto rounded-md border border-border">
+      {cardMode ? (
+        <CardList aria-label={label}>
+          {errors.map((err, idx) => (
+            <CardListItem key={`${err.rowNo}-${err.column}-${idx}`} className="bg-danger-bg/40">
+              <ListCard
+                title={t("importDialog.errorRowTitle", { row: err.rowNo })}
+                caption={t("importDialog.errorColumnMeta", { column: err.column })}
+              >
+                <p className="text-caption wrap-break-word text-danger">{err.message}</p>
+              </ListCard>
+            </CardListItem>
+          ))}
+        </CardList>
+      ) : (
+        <table aria-label={label} className="w-full border-collapse text-left text-caption">
+          <thead className="sticky top-0 bg-page text-text-secondary">
+            <tr>
+              <th scope="col" className="px-3 py-2 font-semibold">
+                {t("importDialog.errorRowCol")}
+              </th>
+              <th scope="col" className="px-3 py-2 font-semibold">
+                {t("importDialog.errorColumnCol")}
+              </th>
+              <th scope="col" className="px-3 py-2 font-semibold">
+                {t("importDialog.errorMessageCol")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {errors.map((err, idx) => (
+              <tr
+                key={`${err.rowNo}-${err.column}-${idx}`}
+                className="border-t border-border bg-danger-bg/40"
+              >
+                <td className="px-3 py-2 font-mono tabular-nums text-text">{err.rowNo}</td>
+                <td className="px-3 py-2 font-medium text-text">{err.column}</td>
+                <td className="px-3 py-2 text-danger">{err.message}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );
