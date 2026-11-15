@@ -18,6 +18,7 @@ import type {
 /*
  * UNI-2586: bốn trang con của Phân quyền dùng được từ cửa sổ 360px (vùng nội dung khoảng 328px). jsdom không có
  * layout nên các test này kiểm hợp đồng lớp: cột nào ẩn theo bề rộng vùng chứa, nội dung của cột ẩn hiện ở đâu.
+ * UNI-2587: bảng ở khung hẹp thành danh sách thẻ, kiểm bằng bề rộng giả của khung (`installContainerWidth`).
  */
 
 const PERMISSIONS: PermissionResponse[] = [
@@ -139,48 +140,6 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     const searchLabel = screen.getByLabelText("Tìm tài khoản").closest("label")!;
     expect(searchLabel).toHaveClass("col-span-full", "@xl:flex-[2_1_220px]");
     expect(searchLabel.parentElement).toHaveClass("grid", "@min-[300px]:grid-cols-2", "@xl:flex");
-  });
-
-  it("Quyền hiệu lực của tài khoản: dưới 36rem cột Đối tượng và Mã nhập vào dòng phụ dưới tên quyền", async () => {
-    const effective: EffectivePermissionsResponse = {
-      userId: "u-1",
-      effectiveAccess: "MANAGE",
-      hasManageRole: true,
-      inactiveDirectPermissions: [],
-      permissions: [
-        {
-          permissionId: "perm-user-reset",
-          code: "USER.RESET_PASSWORD",
-          name: "Đặt lại mật khẩu",
-          groupCode: "USER",
-          groupName: "Tài khoản",
-          sources: [{ type: "DIRECT" }],
-        },
-      ],
-    };
-    renderWithProviders(
-      withSession(
-        <UserRbacTab
-          userId="u-1"
-          readOnly
-          getUserRoles={async () => ({ userId: "u-1", access: "MANAGE", roles: [] })}
-          getUserPermissions={async () => ({ userId: "u-1", hasManageRole: true, permissions: [] })}
-          getEffectivePermissions={async () => effective}
-          listRoles={async () => ROLES}
-          listPermissions={async () => PERMISSIONS}
-        />,
-        ["USER.VIEW", "ROLE.VIEW", "PERMISSION.VIEW"],
-      ),
-    );
-    const table = await screen.findByRole("table");
-    const wrapper = table.closest(".\\@container")!;
-    expect(wrapper.className).toContain("@max-[36rem]:[&_:is(th,td):has([data-col=object])]:hidden");
-    expect(wrapper.className).toContain("@max-[36rem]:[&_:is(th,td):has([data-col=code])]:hidden");
-
-    const summary = table.querySelector("tbody [data-col-summary]") as HTMLElement;
-    expect(summary).toHaveClass("@min-[36rem]:hidden");
-    expect(summary).toHaveTextContent("Tài khoản · USER.RESET_PASSWORD");
-    expect(within(summary).getByText("USER.RESET_PASSWORD")).toHaveClass("wrap-anywhere");
   });
 });
 
@@ -342,5 +301,71 @@ describe("Phân quyền: bảng thành danh sách thẻ ở khung hẹp (UNI-258
     expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
     expect(table.querySelector("[data-col-summary]")).toBeNull();
     expect(screen.queryByRole("list", { name: "Người dùng theo quyền" })).toBeNull();
+  });
+
+  function renderEffective() {
+    const effective: EffectivePermissionsResponse = {
+      userId: "u-1",
+      effectiveAccess: "MANAGE",
+      hasManageRole: true,
+      inactiveDirectPermissions: [],
+      permissions: [
+        {
+          permissionId: "perm-user-reset",
+          code: "USER.RESET_PASSWORD",
+          name: "Đặt lại mật khẩu",
+          groupCode: "USER",
+          groupName: "Tài khoản",
+          sources: [
+            { type: "ROLE", roleId: "role-review", roleCode: "CONTENT_REVIEW", roleName: "Rà soát nội dung" },
+            { type: "DIRECT" },
+          ],
+        },
+      ],
+    };
+    renderWithProviders(
+      withSession(
+        <UserRbacTab
+          userId="u-1"
+          readOnly
+          getUserRoles={async () => ({ userId: "u-1", access: "MANAGE", roles: [] })}
+          getUserPermissions={async () => ({ userId: "u-1", hasManageRole: true, permissions: [] })}
+          getEffectivePermissions={async () => effective}
+          listRoles={async () => ROLES}
+          listPermissions={async () => PERMISSIONS}
+        />,
+        ["USER.VIEW", "ROLE.VIEW", "PERMISSION.VIEW"],
+      ),
+    );
+  }
+
+  it("Quyền hiệu lực của tài khoản: khung hẹp hơn 640px, mỗi quyền một thẻ: tên quyền, đối tượng và mã, chip nguồn", async () => {
+    installContainerWidth(358);
+    renderEffective();
+    const list = await screen.findByRole("list", { name: "Quyền hiệu lực" });
+    expect(screen.queryByRole("table")).toBeNull();
+    const [card] = within(list).getAllByRole("listitem");
+
+    expect(within(card!).getByText("Đặt lại mật khẩu")).toHaveClass("font-semibold", "line-clamp-2");
+    const caption = within(card!).getByText("USER.RESET_PASSWORD").parentElement!;
+    expect(caption).toHaveTextContent("Tài khoản · USER.RESET_PASSWORD");
+    expect(caption).toHaveClass("text-caption");
+    // Mã quyền dài xuống dòng ở bất kỳ ký tự nào, không bị cắt.
+    expect(within(card!).getByText("USER.RESET_PASSWORD")).toHaveClass("wrap-anywhere");
+    expect(within(card!).getByText("Vai trò: Rà soát nội dung")).toBeInTheDocument();
+    expect(within(card!).getByText("Gán trực tiếp")).toBeInTheDocument();
+  });
+
+  it("Quyền hiệu lực của tài khoản: khung rộng vẫn là bảng bốn cột, không còn dòng tóm tắt dưới tên quyền", async () => {
+    installContainerWidth(900);
+    renderEffective();
+    const table = await screen.findByRole("table", { name: "Quyền hiệu lực" });
+    expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
+      "Đối tượng",
+      "Mức",
+      "Mã",
+      "Nguồn",
+    ]);
+    expect(table.querySelector("[data-col-summary]")).toBeNull();
   });
 });
