@@ -88,11 +88,12 @@ function withSession(children: React.ReactNode, permissions: string[]) {
 }
 
 describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
-  it("Quyền: thanh lọc xếp lưới khi hẹp; cột Mã và Vai trò ẩn, mã đọc đủ dưới tên quyền", async () => {
+  // Bảng quyền ở vùng hẹp là danh sách thẻ (UNI-2587): xem permissions-tab-cards.test.tsx.
+  it("Quyền: thanh lọc xếp lưới khi hẹp", async () => {
     renderWithProviders(
       withSession(<PermissionsTab listPermissions={async () => PERMISSIONS} />, ["PERMISSION.VIEW"]),
     );
-    const table = await screen.findByRole("table");
+    await screen.findByRole("table");
 
     const searchLabel = screen.getByLabelText("Tìm kiếm").closest("label")!;
     expect(searchLabel).toHaveClass("col-span-full", "@2xl:min-w-[220px]");
@@ -100,22 +101,6 @@ describe("Phân quyền ở bề rộng điện thoại (UNI-2586)", () => {
     const filterBar = searchLabel.parentElement!;
     expect(filterBar).toHaveClass("grid", "@min-[300px]:grid-cols-2", "@2xl:flex", "@2xl:flex-wrap");
     expect(filterBar.closest(".\\@container")).not.toBeNull();
-
-    expect(table).toHaveClass("@2xl:min-w-[780px]");
-    expect(table).not.toHaveClass("min-w-[780px]");
-    expect(within(table).getByRole("columnheader", { name: "Mã" })).toHaveClass(
-      "hidden",
-      "@2xl:table-cell",
-    );
-    expect(within(table).getByRole("columnheader", { name: "Vai trò đang dùng" })).toHaveClass(
-      "hidden",
-      "@lg:table-cell",
-    );
-
-    const codeLine = within(table).getByTestId("permission-code-line");
-    expect(codeLine).toHaveClass("@2xl:hidden");
-    expect(within(codeLine).getByText("USER.RESET_PASSWORD")).toHaveClass("wrap-anywhere");
-    expect(within(codeLine).getByText(/2 vai trò/)).toHaveClass("@lg:hidden");
   });
 
   it("Người dùng theo quyền: dưới 36rem cột Nguồn, Chi tiết, Trạng thái nhập vào ô tài khoản", async () => {
