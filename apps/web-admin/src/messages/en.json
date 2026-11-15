@@ -334,6 +334,7 @@
       "resultBanner": "Import complete: created {created, plural, one {# item} other {# items}}{reused, plural, =0 {} other {, reused # existing nodes}}.",
       "resultStep": "Result",
       "simpleRuleHint": "Required columns: Code*, Vietnamese name* (optional: English name, Description, Status). Only adds new codes.",
+      "stepDone": "(done)",
       "stepSummary": "Preview and validate before importing",
       "summaryTotal": "Total rows",
       "summaryValid": "Valid rows",

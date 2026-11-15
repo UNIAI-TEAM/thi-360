@@ -3203,6 +3203,11 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
     const dialog = await screen.findByRole("dialog");
 
     expect(within(dialog).getByText(viMessages.catalog.importDialog.treeRuleHint)).toBeInTheDocument();
+    // C-18: bước đang làm có aria-current="step", bước đã xong có chữ ẩn "(đã xong)".
+    const stepItem = (label: string) =>
+      within(dialog).getByText(label, { exact: false, selector: "li span" }).closest("li")!;
+    expect(stepItem("Tải tệp")).toHaveAttribute("aria-current", "step");
+    expect(stepItem("Xem trước")).not.toHaveAttribute("aria-current");
     const fileInput = within(dialog).getByLabelText(/Tệp Excel/) as HTMLInputElement;
 
     const validXlsx = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "tree.xlsx", {
@@ -3243,6 +3248,9 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
       name: /Nhập 3 dòng hợp lệ/,
     });
     expect(confirmBtn).not.toBeDisabled();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Tất cả 3 dòng đều hợp lệ và sẵn sàng nhập.");
+    expect(stepItem("Xem trước")).toHaveAttribute("aria-current", "step");
+    expect(stepItem("Tải tệp")).toHaveTextContent("Tải tệp (đã xong)");
     await userEvent.click(confirmBtn);
 
     await waitFor(() => {
@@ -3255,6 +3263,8 @@ describe("CatalogView Slice 4: xuất và nhập Excel danh mục", { timeout: 2
     expect(
       await within(dialog).findByText(/Đã nhập xong: tạo mới 2 giá trị, dùng lại 1 nút có sẵn/),
     ).toBeInTheDocument();
+    expect(within(dialog).getByRole("status")).toHaveTextContent(/Đã nhập xong/);
+    expect(stepItem("Kết quả")).toHaveAttribute("aria-current", "step");
   });
 
   it("R3-01: xem trước nhập cây hệ thống KNOWLEDGE ở locale en dùng Chapter/Lesson/Knowledge, không lộ tên cấp tiếng Việt", async () => {

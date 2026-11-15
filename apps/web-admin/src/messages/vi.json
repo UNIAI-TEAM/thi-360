@@ -334,6 +334,7 @@
       "resultBanner": "Đã nhập xong: tạo mới {created, number} giá trị{reused, plural, =0 {} other {, dùng lại # nút có sẵn}}.",
       "resultStep": "Kết quả",
       "simpleRuleHint": "Cần các cột: Mã*, Tên tiếng Việt* (tùy chọn: Tên tiếng Anh, Mô tả, Trạng thái). Chỉ thêm mới các mã chưa tồn tại.",
+      "stepDone": "(đã xong)",
       "stepSummary": "Bước kiểm tra trước khi nhập",
       "summaryTotal": "Tổng số dòng",
       "summaryValid": "Dòng hợp lệ",
