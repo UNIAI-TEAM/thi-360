@@ -97,6 +97,9 @@ Web admin không dùng gradient, trừ trang đăng nhập.
 
 Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 
+- Token cỡ chữ khai báo bằng `rem` để theo cỡ chữ người dùng đặt trong trình duyệt; không đặt cỡ chữ trên `html`.
+- Ô nhập ở web học viên dùng chữ 16px trên màn hẹp và màn cảm ứng (lớp `touchFieldText`), để iOS không phóng to trang khi focus.
+
 ## 4. Khoảng cách, bo góc, viền, bóng
 
 - **Lưới khoảng cách:** bội số của 4px. Khoảng đệm trong thẻ 16–24px. Khoảng cách giữa các khối 24–32px (admin), 48–64px (web học viên).
@@ -138,12 +141,18 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 - Cỡ: `sm` 36px, `md` 40px (mặc định), `lg` 48px, `xl` 52px (nút gửi ở trang đăng nhập).
 - Bo góc 12px, chữ 14/20 đậm 600, đệm ngang 16px (`md`) hoặc 28px (`lg`).
 - Icon lucide 16–18px đặt trước chữ; mũi tên đặt sau chữ.
-- Đang xử lý: hiện spinner, khóa nút, giữ nguyên chiều rộng.
+- Đang xử lý (`loading`): hiện spinner, khóa nút, giữ nguyên chiều rộng **và giữ nguyên tên nút** (trình đọc màn hình đọc "đang xử lý" qua `aria-busy`, không đổi chữ).
+- Vùng bấm tối thiểu 44×44px trên màn cảm ứng (`pointer-coarse:`), mở rộng bằng phần tử giả, không đổi kích thước nhìn thấy.
 
 ### 5.2 Ô nhập, chọn
 
 - Cao 40px (admin) hoặc 48px (web học viên, trang đăng nhập); bo góc 10–12px; nền trắng; viền `border`.
-- Focus: viền `primary-600` và vòng sáng `0 0 0 3px rgba(5,150,105,.15)`.
+- Focus: viền `primary-text` và vòng sáng `0 0 0 3px rgba(5,150,105,.15)`.
+- **Kiểm tra khi rời ô** (`mode: "onTouched"`), không báo lỗi theo từng phím; lỗi biến mất ngay khi giá trị hợp lệ trở lại. `maxLength` lấy từ cùng schema với phần kiểm tra.
+- Gửi biểu mẫu lỗi (cả lỗi do máy chủ trả về) thì **focus về ô sai đầu tiên** (`setError(..., { shouldFocus: true })`).
+- Gợi ý cho trình duyệt và bàn phím điện thoại: `autoComplete` đúng nghĩa (`username`, `current-password`, `new-password`); ô tên đăng nhập `autoCapitalize="none"`, `autoCorrect="off"`, `spellCheck={false}`; `enterKeyHint` next/done. Ô nhập dữ liệu của **người khác** (admin tạo tài khoản) dùng `autoComplete="off"` để trình duyệt không điền thông tin của chính admin.
+- Chọn một trong vài giá trị là **nhóm radio** có tên, không dùng `Tabs` cho việc chọn giá trị.
+- Chọn tệp là **một điều khiển**: ô `input type="file"` ẩn nằm trong `label` làm vùng thả, có vòng focus; hiện đủ tên tệp và nút bỏ tệp.
 - Nhãn đặt phía trên, 13/20 đậm 500, màu `text-secondary`. Có thể có icon dẫn đầu 16px màu `text-placeholder`.
 - Lỗi: viền `danger` (`#B91C1C`), dòng lỗi 12.5px màu `danger` ngay dưới ô. Giữ nguyên dữ liệu người dùng đã nhập.
 
@@ -175,7 +184,8 @@ Có ba kiểu, chọn theo việc tab làm gì chứ không theo hình dáng:
 - **Dấu hiệu đang chọn (mọi kiểu):** ngoài màu phải có **gạch chân 2px** vẽ bằng `border` của phần tử giả `::after`, chỉ tồn tại ở tab đang chọn. Không dùng nền hay `box-shadow` làm dấu hiệu duy nhất (chế độ tương phản cao của hệ điều hành bỏ cả hai), không để viền trong suốt ở tab thường (chế độ đó tô lại thành gạch chân).
 - **Độ đậm chữ không đổi theo trạng thái** (luôn 500): đổi độ đậm làm tab đổi bề rộng và đẩy các tab bên cạnh.
 - **Tab điều hướng là liên kết, không phải `role="tablist"`:** nằm trong `<nav>` có tên, mục đang mở mang `aria-current="page"`. Nhờ vậy mở được ở tab trình duyệt mới và nút Back đúng nghĩa. Tiêu đề trang và thanh tab đặt ở `layout.tsx` của nhóm route để không dựng lại khi đổi trang con; phần nội dung đổi trang dùng hiệu ứng `animate-route-in` (mục 7).
-- Thanh tab luôn **một hàng**; không đủ chỗ thì cuộn ngang, không xuống dòng.
+- Thanh tab luôn **một hàng**; không đủ chỗ thì cuộn ngang ngay trong thanh, không xuống dòng (không truyền `flex-wrap`).
+- **Tab nội dung ghi vào `?tab=`** bằng `history.replaceState` để tải lại trang và gửi đường dẫn vẫn mở đúng tab; tab mặc định không ghi tham số.
 
 ### 5.6 Tiêu đề khối
 
@@ -219,14 +229,21 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - Trạng thái rỗng: icon, một câu giải thích, nút hành động (nếu có quyền).
 - **Đang tải:** khung chờ (`loading`) chỉ dùng cho **lần tải đầu**. Khi đổi bộ lọc, trang hoặc sắp xếp, bảng **giữ dữ liệu đang hiện**, làm mờ nhẹ và báo `aria-busy` (`refreshing`) cho tới khi dữ liệu mới về; không thay bằng khung chờ, để chiều cao bảng và vị trí cột không nhảy. Truy vấn danh sách dùng `placeholderData: keepPreviousWhileSameScope(queryKey)` (`apps/web-admin/src/lib/api/keep-previous.ts`): chỉ giữ khi tham số lọc đổi, đổi đối tượng (lớp khác, nhóm khác, quyền khác) thì hiện khung chờ như lần đầu.
 - **Bảng rộng hơn khung:** cuộn ngang trong khung của bảng, không làm cả trang cuộn ngang. Thành phần `Table` tự biến khung thành vùng có tên, nhận focus bàn phím (vòng focus nằm trong khung) khi và chỉ khi bảng thực sự tràn.
+- **Bảng nhiều cột:** ghim cột nhận diện (đầu) và cột Thao tác (cuối) bằng `stickyColumns={{ start: true, end: true }}`; ô ghim có nền đặc nên nội dung cuộn qua không lộ ra dưới. Cột ít quan trọng **ẩn theo bề rộng vùng chứa**: đặt `@container` lên phần tử cha của bảng, đánh dấu cột bằng `data-col` và ẩn bằng biến thể container. Chọn cột hiện theo bề rộng thẻ chứa bảng, không theo bề rộng màn hình, để không ô nào nằm dưới cột Thao tác.
+- Khung chờ lần đầu có số dòng bằng số dòng mỗi trang (`loadingRows={pageSize}`). Cột chưa sắp xếp không mang `aria-sort="none"`.
+- **Thanh thao tác hàng loạt** (khi có dòng được chọn) nằm trong chỗ **giữ sẵn** phía trên bảng, ẩn bằng `invisible` + `inert` khi chưa chọn, không chèn rồi gỡ khỏi DOM (bảng không nhảy). Thanh là `role="group"` có tên, không dùng `role="toolbar"`.
+- **Mất kết nối:** truy vấn bị tạm dừng vì offline thì hiện trạng thái "Không có kết nối" kèm nút Thử lại, không hiện dòng và tổng số của bộ lọc cũ như thể là kết quả mới.
 
 ### 5.10 Dialog, drawer, thông báo
 
 - **Dialog:** bo góc 24px, `shadow-xl`; nút căn phải, nút chính ở ngoài cùng bên phải. Ba cỡ của `DialogContent`: `md` 480px (biểu mẫu ngắn, xác nhận), `lg` 720px (bảng chọn, biểu mẫu vừa), `xl` 920px (biểu mẫu dài chia hai cột).
 - **Biểu mẫu trong dialog phải hiện đủ mà không cuộn ở 1366×768 và 1280×720.** Một cột không đủ thì dùng cỡ `xl` và chia hai cột từ bề rộng `md`: cột trái là nhóm trường chính (ví dụ thông tin đăng nhập), cột phải là nhóm còn lại; thứ tự trong DOM (và thứ tự Tab) đi hết cột trái rồi sang cột phải; màn hình hẹp xếp lại một cột và cuộn trong dialog. Danh sách quy tắc dài (quy tắc mật khẩu) xếp hai cột (`PasswordField rulesColumns={2}`). Tiêu đề và hàng nút luôn dính mép trên/dưới, nút đóng (×) luôn bấm được.
-- **Dialog xác nhận hành động nhạy cảm** (khóa, xóa, reset, ngừng sử dụng): nêu rõ đối tượng và số bản ghi bị ảnh hưởng, có ô **lý do** khi quy tắc yêu cầu, nút xác nhận kiểu Nguy hiểm.
-- **Drawer:** trượt từ phải, rộng 520px, dùng cho chi tiết (nơi đang dùng, lịch sử thay đổi).
-- **Toast:** góc trên phải, tự ẩn sau 4 giây; lỗi không tự ẩn.
+- **Dialog xác nhận hành động nhạy cảm** (khóa, xóa, reset, ngừng sử dụng): nêu rõ đối tượng và số bản ghi bị ảnh hưởng (hàng loạt: nêu tối đa 5 tên rồi "và N khác"), có ô **lý do** khi quy tắc yêu cầu, nút xác nhận kiểu Nguy hiểm. Nút xác nhận **luôn bấm được**: bấm khi thiếu lý do thì ô lý do báo lỗi và nhận focus, không khóa nút (người dùng không biết vì sao nút bị khóa).
+- **Lỗi của thao tác trong dialog hiện ngay trong dialog** (`ConfirmDialog error`, `role="alert"`), không bắn toast nằm sau lớp phủ.
+- **Dialog có dữ liệu đã nhập** hỏi lại trước khi đóng bằng Esc, bấm ra ngoài hoặc Hủy.
+- **Focus trả về** nút đã mở dialog/drawer: `Dialog` và `Drawer` của kit tự làm, không cần tự viết. Khi nút đó đã biến mất (dòng bị xóa, thanh chọn đã ẩn), chuyển focus có chủ đích tới một đích có tên (ô chọn tất cả, ô tìm kiếm, tiêu đề bước mới), không để focus rơi về `<body>`.
+- **Drawer:** trượt từ phải, rộng 520px, dùng cho chi tiết (nơi đang dùng, lịch sử thay đổi); tiêu đề dính mép trên, hàng nút đặt trong `DrawerFooter` dính mép dưới, phần giữa cuộn.
+- **Toast:** góc trên phải, tự ẩn sau 4 giây; lỗi không tự ẩn. Toast có tông theo trạng thái (thành công, lỗi, cảnh báo, thông tin).
 
 ### 5.11 Bố cục hai khu vực (màn Cấu hình chung)
 
@@ -254,6 +271,18 @@ Các quy ước dưới đây rút từ đợt rà soát theo bộ hướng dẫ
 - **Đường dẫn trang** viết bằng tiếng Anh, trùng tên thư mục feature và tên tài nguyên của API (`/users`, `/classes`, `/catalog`, `/rbac`, `/appearance`, `/login`, `/change-password`). Phần có nội dung và dữ liệu riêng là **trang con** (`/users/bulk-import`, `/rbac/roles`), không phải giá trị query. Query chỉ dùng cho bộ lọc và lựa chọn trong trang (`?permission=USER.VIEW`, `?group=SUBJECT`), tên và giá trị cũng không dùng tiếng Việt không dấu.
 - **Trạng thái đang chọn, đang mở, lỗi** không truyền đạt chỉ bằng màu hay nền: luôn có thêm hình (gạch chân, thanh dọc, icon) hoặc chữ, vẽ bằng `border`/`outline` để còn thấy ở chế độ tương phản cao.
 
+Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
+
+- **Vòng focus** luôn lấy từ `focusRing` / `focusRingInset` của kit (xuất từ `@thi360/ui`), không viết tay `focus-visible:ring-*`. Tắt viền ngoài bằng `outline-hidden`, không bằng `outline-none` (mục 8).
+- **Thông báo cho trình đọc màn hình:** kết quả của thao tác không đồng bộ (số kết quả sau khi lọc/tìm, sắp xếp, số dòng chọn, kết quả kiểm tra tên đăng nhập, bắt đầu/kết thúc một tác vụ dài) đi qua **một** `LiveStatus` cho mỗi khu vực, luôn có mặt trong DOM, chỉ đổi `message`. Không làm bộ đếm tiến độ đọc lên từng bước.
+- **Tiến độ** dùng `<progress>` gốc của trình duyệt, tô bằng token.
+- **Mỗi trang có tiêu đề tab riêng** theo mẫu "‹trang› · Thi 360" (trang chi tiết: "‹đối tượng› · ‹mục› · Thi 360").
+- **Một `<main>` mỗi trang.** Trang trạng thái (403, 404) hiện trong khung admin dùng `StatusPage embedded`; `EmptyState` chọn cấp tiêu đề bằng `headingLevel` cho đúng thứ bậc của trang.
+- **Lỗi lưu dưới dạng mã hoặc khóa dịch**, dịch lúc hiển thị, để lỗi đang hiện đổi theo ngôn ngữ vừa chọn.
+- **Nút bật/tắt** nêu trạng thái **một lần**: hoặc nhãn hành động đổi theo trạng thái ("Chuyển sang chế độ tối"), hoặc nhãn cố định kèm `aria-pressed`, không dùng cả hai. Thành phần chung dùng kiểu nhãn đổi theo trạng thái.
+- **Vùng xem trước chỉ để nhìn** (xem trước giao diện) mang `inert` và `aria-hidden`, không nhận focus.
+- **Trang đổi mật khẩu** mở từ menu tài khoản dùng `?source=account-menu` để hiện lối "Quay lại"; luồng bắt buộc đổi mật khẩu không có lối này.
+
 ## 6. Icon và hình ảnh
 
 - Icon: **lucide-react**, nét 1.75–2px, 16px trong nút, 18px trong menu, 20px độc lập.
@@ -266,13 +295,14 @@ Các quy ước dưới đây rút từ đợt rà soát theo bộ hướng dẫ
 - Dialog và drawer: 200ms.
 - Đổi trang con trong nhóm tab điều hướng: nội dung mới hiện dần và trượt lên 4px trong 200ms `ease-out` (`animate-route-in`, khai báo ở `tokens.css`); tiêu đề trang và thanh tab đứng yên. Không chuyển focus bằng mã: focus ở lại liên kết vừa bấm.
 - Bảng đang tải lại: phần thân mờ còn 60% trong 150ms, không đổi kích thước.
-- Tôn trọng `prefers-reduced-motion`: mọi hiệu ứng trên kèm `motion-reduce:animate-none` / `motion-reduce:transition-none`.
+- Tôn trọng `prefers-reduced-motion`: mọi hiệu ứng trên kèm `motion-reduce:animate-none` / `motion-reduce:transition-none`. Riêng phần tử có hiệu ứng gắn với `data-[state=…]` (dialog, drawer, menu) thì viết `motion-safe:data-[state=open]:animate-*`, không viết `motion-reduce:animate-none` (biến thể theo trạng thái thắng và hiệu ứng vẫn chạy). Spinner của nút đang xử lý quay chậm lại (6 giây một vòng) thay vì dừng hẳn, để vẫn thấy là đang chạy.
 
 ## 8. Truy cập và ngôn ngữ
 
 - Độ tương phản: mọi chữ trên nền đặc hoặc nền nhạt phải đạt AA (4,5:1) ở cả hai chế độ sáng/tối; `packages/ui/src/styles/tokens.test.ts` liệt kê từng cặp và kiểm. Chữ màu chính dùng `primary-text`, nền nút chính dùng `primary-fill`, không dùng `primary-600` cho hai việc này. Không dùng `text-muted` cho chữ dưới 12px.
 - **Quyết định 2026-11-13 (UNI-2559, M.Trường chọn phương án 2 và màu nhấn A):** bản trước giữ `primary-600` làm nền nút chính để đúng trang tham khảo, nhưng đo thực tế chữ trắng trên `#059669` chỉ 3,77:1, chữ `primary-600` trên `primary-50/100` chỉ 3,58/3,43:1 và chữ trắng trên `#F59223` chỉ 2,33:1, đều dưới AA cho chữ 14px. Đổi thành: chữ màu chính và nền nút chính `#047857` (5,21/4,99:1 trên nền nhạt, 5,48:1 với chữ trắng), hover `#065F46`, bấm `#064E3B`; chữ trên nút nhấn `#1A1A1F` (7,44:1), nền `#F59223` giữ nguyên; chữ lỗi `#B91C1C` (nền `#FEF2F2` 5,9:1; `#DC2626` chỉ 4,41:1). Bảng token dưới đây thắng các bản vẽ `docs/design/*.dc.html` ở những màu này.
-- Mọi điều khiển dùng được bằng bàn phím, có vòng focus nhìn thấy được. Nút chỉ có icon phải có `aria-label`.
+- Mọi điều khiển dùng được bằng bàn phím, có vòng focus nhìn thấy được. Nút chỉ có icon phải có `aria-label`. Tắt viền ngoài mặc định bằng `outline-hidden` (ở chế độ tương phản cao vẫn còn viền), **không dùng `outline-none`**.
+- Vùng bấm tối thiểu 44×44px trên màn cảm ứng (mục 5.1).
 - Không truyền đạt trạng thái chỉ bằng màu: chip trạng thái luôn có chữ.
 - Ngôn ngữ mặc định tiếng Việt, có thêm tiếng Anh (quyết định 2026-11-14). Thanh trên cùng có hai nút icon 36px ngay bên trái avatar: chuyển sáng/tối (mặt trời khi đang sáng, mặt trăng khi đang tối) và chọn ngôn ngữ (icon dịch, mở danh sách Tiếng Việt / English); cả hai có `aria-label` và tooltip, lưu theo từng người bằng cookie. Trang đăng nhập và landing có hai nút này ở góc trên phải. Chuỗi hiển thị nằm trong file dịch (`next-intl`), hai tệp `vi.json` và `en.json` cùng bộ khóa. Ngày `dd/MM/yyyy`, số dùng dấu chấm phân tách nghìn.
 
