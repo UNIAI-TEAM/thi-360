@@ -138,6 +138,33 @@ describe("ClassFormDialog owner selector", () => {
 });
 
 describe("fetchDefaultActiveUsers", () => {
+  it("tải các trang sau song song, tối đa 4 trang một lúc, và giữ đúng thứ tự (C-23)", async () => {
+    const total = 750; // 8 trang 100
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const fetchPage = vi.fn(async (query: ListUsersQuery): Promise<PageResponseUserSummary> => {
+      const page = query.page ?? 0;
+      const size = query.size ?? 20;
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      // Trang sau về trước trang trước, để thứ tự ghép không dựa vào thứ tự trả lời.
+      await new Promise((resolve) => setTimeout(resolve, 20 - page * 2));
+      inFlight -= 1;
+      const items = Array.from({ length: Math.max(0, Math.min(size, total - page * size)) }, (_, i) =>
+        makeUser(page * size + i + 1),
+      );
+      return { items, page, size, totalItems: total, totalPages: Math.ceil(total / size) };
+    });
+
+    const result = await fetchDefaultActiveUsers(fetchPage);
+    expect(fetchPage).toHaveBeenCalledTimes(8);
+    expect(maxInFlight).toBe(4);
+    expect(result).toHaveLength(total);
+    expect(result.map((u) => u.username)).toEqual(
+      Array.from({ length: total }, (_, i) => makeUser(i + 1).username),
+    );
+  });
+
   it("gộp toàn bộ trang khi tổng người dùng > 100", async () => {
     const fetchPage = vi.fn(async (query: ListUsersQuery): Promise<PageResponseUserSummary> => {
       const page = query.page ?? 0;

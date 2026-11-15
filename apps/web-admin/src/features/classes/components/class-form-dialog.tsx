@@ -53,29 +53,37 @@ export interface ClassFormDialogProps {
   listActiveUsers?: () => Promise<UserSummary[]>;
 }
 
+/** Số trang người dùng tải cùng lúc khi lấy danh sách người phụ trách (C-23). */
+export const OWNER_PAGE_CONCURRENCY = 4;
+
 export async function fetchDefaultActiveUsers(
   fetchPage: (query: ListUsersQuery) => Promise<PageResponseUserSummary> = defaultListUsers,
 ): Promise<UserSummary[]> {
-  const first = await fetchPage({
+  const pageQuery = (page: number): ListUsersQuery => ({
     status: "ACTIVE",
-    page: 0,
+    page,
     size: 100,
     sort: "username,asc",
   });
+  const first = await fetchPage(pageQuery(0));
   if (first.totalPages <= 1) {
     return first.items;
   }
-  const items = [...first.items];
-  for (let page = 1; page < first.totalPages; page += 1) {
-    const next = await fetchPage({
-      status: "ACTIVE",
-      page,
-      size: 100,
-      sort: "username,asc",
-    });
-    items.push(...next.items);
+  // C-23: các trang sau tải song song, tối đa OWNER_PAGE_CONCURRENCY trang một lúc, thay vì lần lượt từng trang;
+  // ghép lại đúng thứ tự trang. Ô chọn có tìm kiếm (gọi `q` theo trang) cần một thành phần mà kit chưa có.
+  const pages: UserSummary[][] = [first.items];
+  let nextPage = 1;
+  async function worker() {
+    while (nextPage < first.totalPages) {
+      const page = nextPage;
+      nextPage += 1;
+      pages[page] = (await fetchPage(pageQuery(page))).items;
+    }
   }
-  return items;
+  await Promise.all(
+    Array.from({ length: Math.min(OWNER_PAGE_CONCURRENCY, first.totalPages - 1) }, () => worker()),
+  );
+  return pages.flat();
 }
 
 export function ClassFormDialog({
