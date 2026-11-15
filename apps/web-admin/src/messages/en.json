@@ -2185,6 +2185,10 @@
     },
     "editor": {
       "title": "Edit question"
+    },
+    "statusDialogs": {
+      "markReadyTitle": "Mark question as Ready",
+      "retireTitle": "Retire question"
     }
   },
   "questionImport": {

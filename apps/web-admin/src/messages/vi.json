@@ -2185,6 +2185,10 @@
     },
     "editor": {
       "title": "Soạn câu hỏi"
+    },
+    "statusDialogs": {
+      "markReadyTitle": "Chuyển câu hỏi sang Sẵn sàng",
+      "retireTitle": "Ngừng sử dụng câu hỏi"
     }
   },
   "questionImport": {
