@@ -238,8 +238,10 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - **Bảng nhiều cột:** ghim cột nhận diện (đầu) và cột Thao tác (cuối) bằng `stickyColumns={{ start: true, end: true }}`; ô ghim có nền đặc nên nội dung cuộn qua không lộ ra dưới. Cột ít quan trọng **ẩn theo bề rộng vùng chứa**: đặt `@container` lên phần tử cha của bảng, đánh dấu cột bằng `data-col` và ẩn bằng biến thể container. Chọn cột hiện theo bề rộng thẻ chứa bảng, không theo bề rộng màn hình, để không ô nào nằm dưới cột Thao tác.
   - Mỗi cột giữ bề rộng tối thiểu; tiêu đề cột tối đa hai dòng. Cột bị ẩn thì dữ liệu của nó hiện thành **dòng tóm tắt** (tối đa hai dòng) dưới tên ở cột đầu, bản đầy đủ có trong ngăn chi tiết.
   - Cột Thao tác chỉ ghim từ ngưỡng đủ rộng; dưới ngưỡng, bảng cuộn ngang trong khung (ở trên).
+- **Bảng ở khung hẹp** (thẻ chứa bảng dưới khoảng 40rem; mỗi màn chọn ngưỡng nằm dưới bề rộng thẻ ở cửa sổ 1024px để máy tính không đổi): chỉ giữ cột đầu và cột Thao tác. Cột phụ ẩn bằng `@max-[…]:[&_:is(th,td):has([data-col=x])]:hidden`; nội dung của chúng hiện thành **dòng tóm tắt** (`data-col-summary`) dưới cột đầu, ví dụ "Họ tên · trạng thái", "Tên lớp · N học viên · trạng thái"; chip trạng thái trong dòng tóm tắt chỉ hiện khi khác Hoạt động. Liên kết của dòng phủ cả khối tên và tóm tắt (`relative` + `after:absolute after:inset-0`), tên truy cập vẫn chỉ là tên. Cột chữ có thể xuống dòng phải có bề rộng tối thiểu để bảng cuộn trong khung thay vì ép còn một chữ mỗi dòng. Khung hẹp mà một dòng có hơn 2–3 thao tác thì giữ thao tác chính (Xem) và gom phần còn lại vào menu "⋯".
 - Khung chờ lần đầu có số dòng bằng số dòng mỗi trang (`loadingRows={pageSize}`). Cột chưa sắp xếp không mang `aria-sort="none"`.
-- **Thanh thao tác hàng loạt** (khi có dòng được chọn) nằm trong chỗ **giữ sẵn** phía trên bảng, ẩn bằng `invisible` + `inert` khi chưa chọn, không chèn rồi gỡ khỏi DOM (bảng không nhảy). Thanh là `role="group"` có tên, không dùng `role="toolbar"`.
+- **Phân trang** tự xuống dòng khi không đủ một hàng.
+- **Thanh thao tác hàng loạt** (khi có dòng được chọn) nằm trong chỗ **giữ sẵn** phía trên bảng, ẩn bằng `invisible` + `inert` khi chưa chọn, không chèn rồi gỡ khỏi DOM (bảng không nhảy). Thanh là `role="group"` có tên, không dùng `role="toolbar"`. Khung hẹp (dưới 40rem): hai hàng, hàng trên số dòng đã chọn, "Bỏ chọn" và nút trợ giúp chỉ có icon, hàng dưới các nút thao tác trên một hàng cuộn ngang; chiều cao chỗ giữ sẵn không đổi theo việc có chọn hay không.
 - **Tìm kiếm trong danh sách** chờ người dùng ngừng gõ 300ms mới gửi; xóa ô tìm thì áp dụng ngay. Trong lúc chờ kết quả mới vẫn giữ kết quả cũ (mờ nhẹ, `aria-busy`).
 - **Mất kết nối:** truy vấn bị tạm dừng vì offline thì hiện trạng thái "Không có kết nối" kèm nút Thử lại, không hiện dòng và tổng số của bộ lọc cũ như thể là kết quả mới.
 
@@ -262,6 +264,8 @@ Trái 264px: danh sách nhóm trong thẻ trắng, có ô tìm kiếm; mỗi dò
 
 **Nhóm kiểu cây** (spec mục 9.10): thẻ phải chia hai phần, cây ở giữa và ô chi tiết 340px có viền trái.
 
+- **Màn hẹp:** khi thẻ chứa hẹp hơn 672px, hai khu vực xếp chồng và danh sách nhóm bên trái thay bằng **một ô chọn** "Danh mục đang xem" (nhóm Hệ thống trước), để thẻ giá trị nằm ngay dưới; từ 672px trở lên là danh sách 264px như trên. Bảng giá trị ở thẻ dưới 416px: Mã và Trạng thái vào ô tên, Sửa/Ngừng/Xóa vào menu "⋯" cạnh nút Xem.
+- **Cây ở khung hẹp** (cây hẹp hơn 22rem): thụt 12px mỗi cấp thay vì 28px, tên một dòng riêng (tối đa hai dòng), mã, trạng thái, số nút xuống dòng thứ hai; nút "+" thêm cấp con ẩn đi, thao tác đó vẫn có trong menu "⋯".
 - **Bàn phím trên cây** (`TreeView`): cả cây là **một điểm dừng Tab**, đi giữa các dòng bằng phím mũi tên; nút trong dòng không nằm trong thứ tự Tab. Shift+F10 hoặc phím menu mở thao tác của dòng (`onRowMenu`), có một dòng gợi ý nhìn thấy được nói điều này, đóng menu thì focus về lại dòng. Tên dòng đọc cả mã lẫn tên; tên dài xuống tối đa hai dòng.
 - **Kéo thả** để sắp xếp: chỉ tay nắm mang `touch-none select-none` và vòng focus của kit (phần còn lại của dòng vẫn cuộn trang bằng cảm ứng); khi bật giảm chuyển động thì không có hiệu ứng trượt.
 
@@ -286,6 +290,12 @@ Các quy ước dưới đây rút từ đợt rà soát theo bộ hướng dẫ
 - **Trạng thái đang chọn, đang mở, lỗi** không truyền đạt chỉ bằng màu hay nền: luôn có thêm hình (gạch chân, thanh dọc, icon) hoặc chữ, vẽ bằng `border`/`outline` để còn thấy ở chế độ tương phản cao.
 
 Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
+
+- **Thanh lọc ở khung hẹp** (đặt `@container` lên thẻ lọc): ô tìm kiếm chiếm cả hàng; các ô chọn xếp hai cột (một cột khi thẻ hẹp hơn khoảng 300px); ô đánh dấu và nút Xóa bộ lọc chung một hàng tự xuống dòng. Từ bề rộng mà cả dải vừa một hàng, trở lại dải `flex-wrap` như trên máy tính. DOM và thứ tự Tab giống nhau ở mọi bề rộng. Hiện có hai bản: `FILTER_FORM`/`FILTER_SEARCH`/`FILTER_SELECT`/`FILTER_TOGGLES` (`features/users/components/list-filters.ts`, Tài khoản và Lớp học) và `FILTER_GRID` (`features/rbac/styles.ts`); màn mới dùng bản của Tài khoản, khi có màn thứ ba thì chuyển thành thành phần chung của kit.
+- **Mã và định danh dài** (mã quyền, mã danh mục) xuống dòng ở bất kỳ ký tự nào (`wrap-anywhere`), không cắt bằng dấu ba chấm.
+- **Lưới tự chia cột** dùng `minmax(min(X, 100%), 1fr)` để ô co lại khi vùng chứa hẹp hơn X, không tràn.
+- **Thanh bước ở khung hẹp:** bước đang làm có tên và giãn ra, các bước khác chỉ còn số (tên vẫn có cho trình đọc màn hình).
+- **Phần tử không tự truy vấn được chính nó:** `@container` đặt trên phần tử cha của khối cần đổi bố cục.
 
 - **Vòng focus** luôn lấy từ `focusRing` / `focusRingInset` của kit (xuất từ `@thi360/ui`), không viết tay `focus-visible:ring-*`. Tắt viền ngoài bằng `outline-hidden`, không bằng `outline-none` (mục 8).
 - **Thông báo cho trình đọc màn hình:** kết quả của thao tác không đồng bộ (số kết quả sau khi lọc/tìm, sắp xếp, số dòng chọn, kết quả kiểm tra tên đăng nhập, bắt đầu/kết thúc một tác vụ dài) đi qua **một** `LiveStatus` cho mỗi khu vực, luôn có mặt trong DOM, chỉ đổi `message`. Không làm bộ đếm tiến độ đọc lên từng bước.
