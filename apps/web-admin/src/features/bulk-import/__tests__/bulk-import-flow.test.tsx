@@ -1171,3 +1171,65 @@ describe("Bước 1 cấp hàng loạt: tên tệp, bỏ tệp, bảng mẫu, c�
     expect(items[2]).not.toHaveTextContent("(đã xong)");
   });
 });
+
+describe("Bước 4 cấp hàng loạt: tiến độ và thông báo (U-21)", () => {
+  it("thanh tiến độ là <progress> có tên và giá trị; bộ đếm không phải vùng live", async () => {
+    renderBatch(
+      makeDeps({
+        getImportBatch: vi.fn(async () =>
+          makeBatch({ status: "PROCESSING", totalRows: 4, validRows: 4, createdRows: 1, failedRows: 1 }),
+        ),
+      }),
+    );
+
+    const progress = await screen.findByRole("progressbar", { name: "Tiến độ đợt cấp" });
+    expect(progress.tagName).toBe("PROGRESS");
+    expect(progress).toHaveAttribute("value", "2");
+    expect(progress).toHaveAttribute("max", "4");
+
+    const counter = screen.getByText("2 / 4 dòng");
+    expect(counter.closest("[aria-live]")).toBeNull();
+    // Mở lại trang đang chạy: không đọc gì (vùng thông báo rỗng).
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("đọc một lần khi bắt đầu chạy và một lần khi chạy xong, không đọc lại sau mỗi lượt hỏi trạng thái", async () => {
+    const getBatchMock = vi
+      .fn<BulkImportApiDeps["getImportBatch"]>()
+      .mockResolvedValueOnce(makeBatch({ totalRows: 3, validRows: 3 }))
+      .mockResolvedValueOnce(
+        makeBatch({ status: "PROCESSING", totalRows: 3, validRows: 3, createdRows: 1, canConfirm: false }),
+      )
+      .mockResolvedValue(
+        makeBatch({
+          status: "COMPLETED_WITH_ERRORS",
+          totalRows: 3,
+          validRows: 3,
+          createdRows: 2,
+          failedRows: 1,
+          canConfirm: false,
+          resultAvailable: true,
+        }),
+      );
+    renderBatch(makeDeps({ getImportBatch: getBatchMock }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Xác nhận cấp 3 tài khoản" }));
+    await screen.findByRole("heading", { name: "Kiểm tra lần cuối" });
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận cấp 3 tài khoản" }));
+    await waitFor(() =>
+      expect(status).toHaveTextContent("Đã bắt đầu tạo 3 tài khoản. Tiến độ tự cập nhật trên trang."),
+    );
+
+    await waitFor(
+      () =>
+        expect(status).toHaveTextContent(
+          "Đợt cấp đã xong: tạo được 2 tài khoản, 1 dòng thất bại.",
+        ),
+      { timeout: 6_000 },
+    );
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  }, 20_000);
+});

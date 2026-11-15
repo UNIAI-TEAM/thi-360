@@ -689,6 +689,7 @@
       "counts": "Succeeded {created, number} · Failed {failed, number} · Remaining {remaining, number}. Progress updates automatically without refreshing.",
       "progressAriaLabel": "Batch processing progress",
       "progressValue": "{processed, number} / {total, number} rows",
+      "startedStatus": "Started creating {total, plural, one {# account} other {# accounts}}. Progress updates on the page.",
       "title": "Creating accounts"
     },
     "result": {
@@ -702,6 +703,7 @@
         "processed": "Processed",
         "processedValue": "{processed, number} / {total, number}"
       },
+      "completedStatus": "The batch has finished: {created, plural, one {# account} other {# accounts}} created, {failed, plural, one {# row} other {# rows}} failed.",
       "deleteConfirm": {
         "cancel": "Cancel",
         "close": "Close",

@@ -10,6 +10,7 @@ import {
   ConfirmDialog,
   EmptyState,
   Label,
+  LiveStatus,
   notify,
   Pagination,
   Skeleton,
@@ -54,6 +55,18 @@ const EMPTY_ROW_ITEMS: ImportRow[] = [];
 /** `getRowId` ổn định ở module scope: inline arrow tạo hàm mới mỗi render. */
 const getImportRowId = (row: ImportRow) => row.id;
 const GUARD_STATE_KEY = "__thi360BulkImportLeaveGuard";
+/**
+ * Thanh tiến độ dùng `<progress>` gốc (vai trò progressbar và giá trị có sẵn cho trình đọc màn hình). Tự vẽ rãnh
+ * và phần đã chạy: `appearance-none` rồi tô riêng từng phần tử giả của WebKit/Blink và Firefox (mỗi phần tử giả
+ * nằm ở một quy tắc riêng, gộp chung thì trình duyệt bỏ cả quy tắc).
+ */
+const PROGRESS_BAR_CLASS = [
+  "block h-2.5 w-full appearance-none overflow-clip rounded-full border-0 bg-subtle",
+  "[&::-webkit-progress-bar]:bg-transparent",
+  "[&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary-fill",
+  "[&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-primary-fill",
+].join(" ");
+
 /** Tiêu đề của bước nhận focus bằng mã (tabIndex -1) khi đổi bước; vòng focus giống các điều khiển của bộ giao diện. */
 const STEP_HEADING_FOCUS =
   "rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary-text";
@@ -188,6 +201,24 @@ function BulkImportBatchContent({
 
   // Đổi bước là thay cả khối, nút vừa bấm (hoặc tiêu đề đang giữ focus) bị gỡ khỏi trang và focus rơi về <body>.
   // Khi đó đưa focus tới tiêu đề của khối mới. Không giành focus nếu người dùng đang đứng ở chỗ khác còn tồn tại.
+  // Câu cho vùng thông báo của trang đợt: chỉ đọc MỘT lần khi bắt đầu chạy và MỘT lần khi chạy xong, không đọc
+  // lại bộ đếm sau mỗi lượt hỏi trạng thái 2 giây. Lần tải đầu (mở lại trang) không đọc gì.
+  const [announcement, setAnnouncement] = useState("");
+  const [announcedPhase, setAnnouncedPhase] = useState<BatchPhase | null>(null);
+  if (batch && phase !== null && phase !== announcedPhase) {
+    setAnnouncedPhase(phase);
+    if (announcedPhase !== null) {
+      if (phase === "processing") {
+        setAnnouncement(t("processing.startedStatus", { total: batch.totalRows }));
+      } else if (phase === "result" && batch.status !== "FAILED") {
+        // Đợt hỏng (FAILED) đã có băng lỗi role="alert" được đọc ngay; không đọc lần thứ hai.
+        setAnnouncement(
+          t("result.completedStatus", { created: batch.createdRows, failed: batch.failedRows }),
+        );
+      }
+    }
+  }
+
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousPhaseRef = useRef<BatchPhase | null>(null);
   useEffect(() => {
@@ -702,6 +733,7 @@ function BulkImportBatchContent({
 
   return (
     <div className="flex flex-col gap-4">
+      <LiveStatus message={announcement} />
       <BulkImportHeader deps={deps} />
       <BulkImportStepper currentStep={currentStep} />
 
@@ -993,7 +1025,6 @@ function BulkImportBatchContent({
             const processed = batch.createdRows + batch.failedRows;
             const total = Math.max(batch.totalRows, 1);
             const remaining = Math.max(0, batch.totalRows - processed);
-            const percent = Math.min(100, Math.round((processed / total) * 100));
             return (
               <>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -1004,7 +1035,8 @@ function BulkImportBatchContent({
                   >
                     {t("processing.title")}
                   </h2>
-                  <div aria-live="polite" className="text-body font-semibold text-text tabular-nums">
+                  {/* Không phải vùng live: bộ đếm đổi sau mỗi lượt hỏi trạng thái, đọc liên tục sẽ làm phiền. */}
+                  <div className="text-body font-semibold text-text tabular-nums">
                     {t("processing.progressValue", {
                       processed,
                       total: batch.totalRows,
@@ -1012,19 +1044,12 @@ function BulkImportBatchContent({
                   </div>
                 </div>
 
-                <div
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={percent}
+                <progress
+                  value={Math.min(processed, total)}
+                  max={total}
                   aria-label={t("processing.progressAriaLabel")}
-                  className="h-2.5 overflow-hidden rounded-full bg-subtle"
-                >
-                  <div
-                    className="h-full bg-primary-fill transition-all duration-150 motion-reduce:transition-none"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
+                  className={PROGRESS_BAR_CLASS}
+                />
 
                 <div className="text-body text-text-muted tabular-nums">
                   {t("processing.counts", {

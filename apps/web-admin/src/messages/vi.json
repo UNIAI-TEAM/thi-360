@@ -689,6 +689,7 @@
       "counts": "Thành công {created, number} · Thất bại {failed, number} · Còn lại {remaining, number}. Tiến độ tự cập nhật, không cần tải lại trang.",
       "progressAriaLabel": "Tiến độ đợt cấp",
       "progressValue": "{processed, number} / {total, number} dòng",
+      "startedStatus": "Đã bắt đầu tạo {total, number} tài khoản. Tiến độ tự cập nhật trên trang.",
       "title": "Đang tạo tài khoản"
     },
     "result": {
@@ -702,6 +703,7 @@
         "processed": "Đã xử lý",
         "processedValue": "{processed, number} / {total, number}"
       },
+      "completedStatus": "Đợt cấp đã xong: tạo được {created, number} tài khoản, {failed, number} dòng thất bại.",
       "deleteConfirm": {
         "cancel": "Hủy",
         "close": "Đóng",
