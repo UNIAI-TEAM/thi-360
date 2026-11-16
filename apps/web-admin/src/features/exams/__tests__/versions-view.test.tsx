@@ -1,14 +1,17 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
 import { ExamVersionsView } from "../components/exam-versions-view";
-import { reviewStore } from "../mock/review-store";
-import { examStore } from "../mock/store";
-import { pinInMemoryBackend } from "./in-memory-backend";
+import { getExam } from "../api";
+import { ExamsBackend } from "./fake-exams-backend";
 
-pinInMemoryBackend();
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/exams/ex-hsa-f-001/versions",
@@ -17,11 +20,27 @@ vi.mock("next/navigation", () => ({
 }));
 
 const HSA = "ex-hsa-f-001";
+const EN = "opt-30";
+const SCIENCE = "opt-sci-1";
 
 beforeEach(() => {
-  examStore.reset();
-  questionStore.reset();
-  reviewStore.reset();
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+  const backend = new ExamsBackend();
+  // Kiểm tra gần nhất: đường Tiếng Anh hợp lệ, đường Khoa học thiếu nguồn (hộp thoại chỉ cho chọn đường hợp lệ).
+  backend.seedCheck(HSA, {
+    examId: HSA,
+    status: "INVALID",
+    stale: false,
+    checkedAt: "2026-11-15T09:28:00+07:00",
+    durationSeconds: 31,
+    timeLimitSeconds: 30,
+    issueCount: 2,
+    paths: [
+      backend.checkPath(HSA, EN, "VALID"),
+      backend.checkPath(HSA, SCIENCE, "INVALID"),
+    ],
+  });
+  backend.install();
   window.history.replaceState(null, "", "/");
 });
 
@@ -61,9 +80,9 @@ describe("ExamVersionsView", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const table = await screen.findByRole("table", { name: "Các phiên bản đã công bố của HSA-F-001" });
     await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(4));
-    const latest = reviewStore.state(examStore.require(HSA)).versions;
-    expect(latest.some((item) => item.version === 3)).toBe(true);
-    expect(examStore.require(HSA).hasUnpublishedChanges).toBe(true);
+    const exam = await getExam(HSA);
+    expect(exam.versions.some((item) => item.version === 3)).toBe(true);
+    expect(exam.hasUnpublishedChanges).toBe(true);
   });
 
   it("bao loi khi ghi chu qua dai", async () => {

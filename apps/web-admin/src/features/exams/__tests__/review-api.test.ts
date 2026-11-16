@@ -126,6 +126,7 @@ describe("publishExam", () => {
 
     const list = await listExamVersions({ examId: HSA });
     expect(list.workingCopy?.unpublishedPaths.map((path) => path.pathId)).toEqual([SCIENCE]);
+    expect(list.items[1]!.servingPaths.map((path) => path.pathId)).toEqual([SCIENCE]);
   });
 
   it("công bố mọi đường: bản cũ thành đã thay thế, hết bản sửa chưa công bố", async () => {

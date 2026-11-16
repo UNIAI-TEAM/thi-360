@@ -1,19 +1,27 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { examStore } from "../mock/store";
-import { pinInMemoryBackend } from "./in-memory-backend";
+import { ExamsBackend } from "./fake-exams-backend";
 
-pinInMemoryBackend();
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-afterEach(() => {
-  examStore.reset();
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 function openStructure(examId: string, search = "") {
@@ -59,7 +67,7 @@ describe("Cấu trúc theo bảy kỳ thi", () => {
   it("QDA: không còn nút sinh tổ hợp; gắn tổ hợp danh mục QD02 vào phần tự chọn", async () => {
     // HSA đã chuyển sang một phương án chọn môn; QDA, BCA giữ màn tổ hợp (gắn từ danh mục, không sinh).
     const user = userEvent.setup();
-    openStructure("ex-qda-f-001", "?part=" + examStore.require("ex-qda-f-001").parts[2]!.id);
+    openStructure("ex-qda-f-001", "?part=" + backend.app("ex-qda-f-001").parts[2]!.id);
     expect(await screen.findByRole("heading", { name: "Phần 3 · Khoa học hoặc Tiếng Anh" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sinh tổ hợp" })).not.toBeInTheDocument();
     expect(screen.queryByText("QD02")).not.toBeInTheDocument();

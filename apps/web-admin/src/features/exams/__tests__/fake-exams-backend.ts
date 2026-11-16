@@ -367,6 +367,14 @@ export class ExamsBackend {
     return this;
   }
 
+  /** Một đường của kết quả kiểm tra kèm các lựa chọn (phần, phương án) như máy chủ trả, để màn ghi đúng tên đường. */
+  checkPath(examId: string, pathId: string, result: "VALID" | "INVALID" | "UNCONFIRMED" = "VALID"): NonNullable<WireCheck["paths"]>[number] {
+    const exam = this.exams.get(examId);
+    if (!exam) throw new Error(`khong co bai ${examId}`);
+    const { choices } = this.pathRef(exam, pathId);
+    return { pathId, result, choices, issues: [] };
+  }
+
   /** Ghi kết quả kiểm tra gần nhất (GET/POST /check trả bản này nếu `checkReplies` rỗng). */
   seedCheck(examId: string, result: WireCheck): this {
     this.checks.set(examId, result);
@@ -473,6 +481,18 @@ export class ExamsBackend {
     let next = 1;
     while (used.has(`${prefix}${String(next).padStart(3, "0")}`)) next += 1;
     return `${prefix}${String(next).padStart(3, "0")}`;
+  }
+
+  /** Đường lựa chọn như máy chủ trả: mã đường kèm các lựa chọn (phần, phương án) tạo nên đường đó. */
+  private pathRef(exam: WireDetail, pathId: string): NonNullable<WireVersion["servingPaths"]>[number] {
+    for (const part of exam.parts) {
+      if (part.participation?.mode !== "CHOICE") continue;
+      const option = (part.options ?? []).find((item) => (item.id ?? item.code) === pathId);
+      if (option) {
+        return { pathId, choices: [{ partId: part.id, optionId: option.id, kind: option.kind, code: option.code, name: option.name }] };
+      }
+    }
+    return { pathId };
   }
 
   private pathIds(exam: WireDetail): string[] {
@@ -733,7 +753,7 @@ export class ExamsBackend {
     const served = this.servedPaths.get(exam.id);
     const unpublished = served ? known.filter((id) => !served.has(id)) : known;
     const working: WireVersionsList["workingCopy"] = exam.hasUnpublishedChanges
-      ? { baseVersion: exam.servingVersion ?? items[0]?.version ?? 0, unpublishedPaths: unpublished.map((pathId) => ({ pathId })), check: exam.check, savedAt: exam.updatedAt, editedBy: exam.updatedBy }
+      ? { baseVersion: exam.servingVersion ?? items[0]?.version ?? 0, unpublishedPaths: unpublished.map((pathId) => this.pathRef(exam, pathId)), check: exam.check, savedAt: exam.updatedAt, editedBy: exam.updatedBy }
       : undefined;
     return { status: 200, body: { examId: exam.id, items, workingCopy: working, changes: [] } satisfies WireVersionsList };
   }
@@ -756,9 +776,18 @@ export class ExamsBackend {
     const results = new Map((check.paths ?? []).map((path) => [path.pathId ?? "", path.result ?? "INVALID"]));
     if (pathIds.some((id) => results.get(id) !== "VALID")) return err(422, "PATH_NOT_VALID");
     const nextVersion = Math.max(exam.servingVersion ?? 0, ...exam.versions.map((version) => version.version ?? 0)) + 1;
-    const all = known.every((id) => pathIds.includes(id));
     const alreadyServed = this.servedPaths.get(exam.id) ?? new Set<string>();
-    this.servedPaths.set(exam.id, new Set([...alreadyServed, ...pathIds]));
+    const served = new Set([...alreadyServed, ...pathIds]);
+    this.servedPaths.set(exam.id, served);
+    const all = known.every((id) => served.has(id));
+    const kept: Array<{ pathId: string; version: number }> = [];
+    for (const version of exam.versions) {
+      if (version.state !== "SERVING") continue;
+      const remaining = (version.servingPaths ?? known.map((id) => this.pathRef(exam, id))).filter((path) => !pathIds.includes(path.pathId ?? ""));
+      version.servingPaths = remaining;
+      for (const path of remaining) kept.push({ pathId: path.pathId ?? "", version: version.version ?? 0 });
+      if (remaining.length === 0) version.state = "RETIRED";
+    }
     const row: WireVersion = {
       version: nextVersion,
       state: "SERVING",
@@ -766,25 +795,19 @@ export class ExamsBackend {
       publishedBy: AUTHOR,
       attemptCount: 0,
       note: typeof body.note === "string" ? body.note.trim() || undefined : undefined,
-      publishedPaths: pathIds.map((pathId) => ({ pathId })),
-      servingPaths: (all ? pathIds : known.map((id) => ({ id, version: pathIds.includes(id) ? nextVersion : (exam.servingVersion ?? nextVersion) }))).map((item) => (typeof item === "string" ? { pathId: item } : { pathId: item.id, version: item.version })),
+      publishedPaths: pathIds.map((pathId) => this.pathRef(exam, pathId)),
+      servingPaths: pathIds.map((pathId) => this.pathRef(exam, pathId)),
     };
-    exam.versions = exam.versions.filter((version) => version.state === "WORKING" || version.version !== undefined);
-    for (const version of exam.versions) {
-      if (version.state === "SERVING" && all) version.state = "RETIRED";
-    }
     // Bản làm việc (WORKING) giữ đầu danh sách như chi tiết màn hình; bản mới đứng trước lịch sử đã công bố.
     const workingRows = exam.versions.filter((version) => version.state === "WORKING");
     const history = exam.versions.filter((version) => version.state !== "WORKING" && version.version !== row.version);
     exam.versions = [...workingRows, row, ...history];
-    const previousServing = exam.servingVersion ?? nextVersion;
     exam.status = "PUBLISHED";
     exam.servingVersion = nextVersion;
     exam.hasUnpublishedChanges = !all;
     exam.versions = exam.versions.filter((version) => version.state !== "WORKING" || exam.hasUnpublishedChanges);
     exam.updatedAt = NOW;
     exam.revision += 1;
-    const kept = known.filter((id) => !pathIds.includes(id)).map((pathId) => ({ pathId, version: previousServing }));
     return {
       status: 200,
       body: { examId: exam.id, version: nextVersion, publishedPathIds: pathIds, keptPaths: kept },
