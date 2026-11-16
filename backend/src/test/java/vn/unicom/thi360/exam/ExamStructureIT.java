@@ -104,4 +104,132 @@ class ExamStructureIT extends AbstractIntegrationTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
     }
+
+    @Test
+    void invalidNestedValuesAndReferencesLeaveStructureUnchanged() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        for (int scenario = 0; scenario < 13; scenario++) {
+            var parts = (com.fasterxml.jackson.databind.node.ArrayNode) before.path("parts").deepCopy();
+            var first = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0);
+            var section = (com.fasterxml.jackson.databind.node.ObjectNode) first.path("sections").get(0);
+            var block = (com.fasterxml.jackson.databind.node.ObjectNode) section.path("blocks").get(0);
+            var matrix = (com.fasterxml.jackson.databind.node.ObjectNode) section.path("matrix");
+            switch (scenario) {
+                case 0 -> parts.addNull();
+                case 1 -> ((com.fasterxml.jackson.databind.node.ArrayNode) first.path("sections")).addNull();
+                case 2 -> ((com.fasterxml.jackson.databind.node.ArrayNode) first.path("options")).addNull();
+                case 3 -> ((com.fasterxml.jackson.databind.node.ArrayNode) section.path("blocks")).addNull();
+                case 4 -> matrix.putArray("cells").addNull();
+                case 5 -> matrix.putArray("byGrade").addNull();
+                case 6 -> matrix.putArray("byDifficulty").addNull();
+                case 7 -> matrix.putArray("byCompetency").addNull();
+                case 8 -> section.put("subjectCode", "MISSING_SUBJECT");
+                case 9 -> block.put("taskTypeCode", "MISSING_TASK");
+                case 10 -> section.set("knowledgeScope", mapper.readTree(
+                        "{\"nodeIds\":[\"00000000-0000-7000-8200-999999999999\"],\"match\":\"ANY\"}"));
+                case 11 -> section.set("knowledgeScope", mapper.readTree(
+                        "{\"nodeIds\":[],\"match\":\"ANY\",\"competencyCodes\":[\"MISSING_COMPETENCY\"]}"));
+                case 12 -> {
+                    var option = (com.fasterxml.jackson.databind.node.ObjectNode)
+                            parts.get(2).path("options").get(0);
+                    option.put("kind", "COMBINATION");
+                    option.put("code", "MISSING_COMBINATION");
+                }
+                default -> throw new AssertionError(scenario);
+            }
+            var request = mapper.createObjectNode();
+            request.set("parts", parts);
+            request.put("expectedRevision", before.path("revision").asLong());
+            mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        }
+        JsonNode after = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after).isEqualTo(before);
+    }
+
+    @Test
+    void countMatrixMayExceedHundredButPercentMayNot() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = before.path("parts").deepCopy();
+        var matrix = (com.fasterxml.jackson.databind.node.ObjectNode)
+                parts.get(0).path("sections").get(0).path("matrix");
+        matrix.put("unit", "PERCENT");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) matrix.path("byGrade").get(0)).put("value", 101);
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", before.path("revision").asLong());
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        matrix.put("unit", "COUNT");
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].sections[0].matrix.byGrade[0].value").value(101));
+    }
+
+    @Test
+    void structureLimitsEnforcedAtBoundaries() throws Exception {
+        for (String limit : new String[] {"parts", "options", "blocks"}) {
+            JsonNode current = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                            .with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            var parts = mapper.createArrayNode();
+            var part = mapper.createObjectNode();
+            parts.add(part);
+            com.fasterxml.jackson.databind.node.ArrayNode items;
+            int maximum;
+            if ("parts".equals(limit)) {
+                items = parts;
+                maximum = 10;
+            } else if ("options".equals(limit)) {
+                part.set("participation", mapper.readTree("{\"mode\":\"CHOICE\",\"choose\":1}"));
+                items = part.putArray("options");
+                maximum = 20;
+            } else {
+                var section = part.putArray("sections").addObject();
+                section.put("subjectCode", "TOAN");
+                items = section.putArray("blocks");
+                maximum = 30;
+            }
+            while (items.size() < maximum) {
+                var item = items.addObject();
+                if ("options".equals(limit)) {
+                    item.put("kind", "BRANCH");
+                    item.put("code", "OPTION-" + items.size());
+                }
+            }
+            var request = mapper.createObjectNode();
+            request.set("parts", parts);
+            request.put("expectedRevision", current.path("revision").asLong());
+            JsonNode saved = mapper.readTree(mockMvc.perform(put(EXAM + "/structure")
+                            .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                            .content(request.toString()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            var extra = items.addObject();
+            if ("options".equals(limit)) {
+                extra.put("kind", "BRANCH");
+                extra.put("code", "OPTION-EXTRA");
+            }
+            request.put("expectedRevision", saved.path("revision").asLong());
+            mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("EXAM_PATH_LIMIT_EXCEEDED"));
+            JsonNode after = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                            .with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            assertThat(after.path("parts")).isEqualTo(saved.path("parts"));
+            assertThat(after.path("revision")).isEqualTo(saved.path("revision"));
+        }
+    }
 }

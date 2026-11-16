@@ -12,7 +12,7 @@ public record KnowledgeScope(
         Boolean includeDescendants,
         List<String> competencyCodes) {
     public KnowledgeScope {
-        nodeIds = nodeIds == null ? List.of() : List.copyOf(nodeIds);
-        competencyCodes = competencyCodes == null ? List.of() : List.copyOf(competencyCodes);
+        nodeIds = nodeIds == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(nodeIds));
+        competencyCodes = competencyCodes == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(competencyCodes));
     }
 }

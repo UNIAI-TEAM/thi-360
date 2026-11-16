@@ -4,6 +4,6 @@ import java.util.List;
 
 public record ExamStructureDocument(List<ExamPart> parts) {
     public ExamStructureDocument {
-        parts = parts == null ? List.of() : List.copyOf(parts);
+        parts = parts == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(parts));
     }
 }

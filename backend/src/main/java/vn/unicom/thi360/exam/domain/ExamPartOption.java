@@ -14,8 +14,8 @@ public record ExamPartOption(
         List<ExamSection> sections,
         List<QuestionBlock> blocks) {
     public ExamPartOption {
-        countsByPick = countsByPick == null ? null : List.copyOf(countsByPick);
-        sections = sections == null ? List.of() : List.copyOf(sections);
-        blocks = blocks == null ? List.of() : List.copyOf(blocks);
+        countsByPick = countsByPick == null ? null : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(countsByPick));
+        sections = sections == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(sections));
+        blocks = blocks == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(blocks));
     }
 }

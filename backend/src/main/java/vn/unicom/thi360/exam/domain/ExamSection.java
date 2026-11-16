@@ -15,6 +15,6 @@ public record ExamSection(
         ChoiceGroup choiceGroup,
         List<QuestionBlock> blocks) {
     public ExamSection {
-        blocks = blocks == null ? List.of() : List.copyOf(blocks);
+        blocks = blocks == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(blocks));
     }
 }

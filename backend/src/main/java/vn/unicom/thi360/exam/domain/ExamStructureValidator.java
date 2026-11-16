@@ -20,7 +20,13 @@ public final class ExamStructureValidator {
             invalid("structure", "structure is required");
         }
         Set<String> ids = new HashSet<>();
+        if (document.parts().size() > 10) {
+            throw new BusinessRuleException("EXAM_PATH_LIMIT_EXCEEDED");
+        }
         for (ExamPart part : document.parts()) {
+            if (part == null) {
+                invalid("parts", "part must not be null");
+            }
             validatePart(part, ids);
         }
         long paths = pathCount(document.parts());
@@ -52,11 +58,28 @@ public final class ExamStructureValidator {
         if (part.maxPoints() != null && part.maxPoints().signum() <= 0) {
             invalid("parts.maxPoints", "max points must be positive");
         }
+        int blockCount = 0;
         for (ExamSection section : part.sections()) {
             validateSection(section, ids);
+            blockCount += section == null ? 0 : section.blocks().size();
         }
+        int optionCount = 0;
         for (ExamPartOption option : part.options()) {
             validateOption(option, ids);
+            optionCount++;
+            if (option != null) {
+                blockCount += option.blocks().size();
+                for (ExamSection s : option.sections()) {
+                    blockCount += s == null ? 0 : s.blocks().size();
+                }
+            }
+        }
+        if (blockCount > 30) {
+            throw new BusinessRuleException("EXAM_PATH_LIMIT_EXCEEDED");
+        }
+        if (part.participation() != null && part.participation().mode() == ParticipationMode.CHOICE
+                && optionCount > 20) {
+            throw new BusinessRuleException("EXAM_PATH_LIMIT_EXCEEDED");
         }
     }
 
@@ -157,17 +180,25 @@ public final class ExamStructureValidator {
         if (matrix.mode() == null || matrix.unit() == null) {
             invalid(field, "matrix mode and unit are required");
         }
-        validateDimensionValues(matrix.cells(), field + ".cells", true);
-        validateDimensionValues(matrix.byGrade(), field + ".byGrade", false);
-        validateDimensionValues(matrix.byDifficulty(), field + ".byDifficulty", false);
-        validateDimensionValues(matrix.byCompetency(), field + ".byCompetency", false);
+        validateDimensionValues(matrix.cells(), field + ".cells", true, matrix.unit());
+        validateDimensionValues(matrix.byGrade(), field + ".byGrade", false, matrix.unit());
+        validateDimensionValues(matrix.byDifficulty(), field + ".byDifficulty", false, matrix.unit());
+        validateDimensionValues(matrix.byCompetency(), field + ".byCompetency", false, matrix.unit());
     }
 
-    private static void validateDimensionValues(List<?> values, String field, boolean cells) {
+    private static void validateDimensionValues(List<?> values, String field, boolean cells,
+            MatrixUnit unit) {
         for (Object value : values) {
-            BigDecimal number = cells ? ((MatrixCell) value).value() : ((MatrixDimensionValue) value).value();
-            if (number == null || number.signum() < 0 || number.compareTo(ONE_HUNDRED) > 0) {
-                invalid(field, "matrix value must be between 0 and 100");
+            if (value == null) {
+                invalid(field, "matrix value must not be null");
+            }
+            BigDecimal number = cells ? ((MatrixCell) value).value()
+                    : ((MatrixDimensionValue) value).value();
+            if (number == null || number.signum() < 0) {
+                invalid(field, "matrix value must not be negative");
+            }
+            if (unit == MatrixUnit.PERCENT && number.compareTo(ONE_HUNDRED) > 0) {
+                invalid(field, "percent matrix value must not exceed 100");
             }
         }
     }

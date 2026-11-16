@@ -41,6 +41,9 @@ public final class ExamStructureOps {
     }
 
     private static ExamPart mapPart(ExamPart part, boolean regenerate) {
+        if (part == null) {
+            return null;
+        }
         List<ExamSection> sections = new ArrayList<>();
         for (ExamSection s : part.sections()) {
             sections.add(mapSection(s, regenerate));
@@ -56,6 +59,9 @@ public final class ExamStructureOps {
     }
 
     private static ExamSection mapSection(ExamSection s, boolean regenerate) {
+        if (s == null) {
+            return null;
+        }
         List<QuestionBlock> blocks = new ArrayList<>();
         for (QuestionBlock b : s.blocks()) {
             blocks.add(mapBlock(b, regenerate));
@@ -65,7 +71,11 @@ public final class ExamStructureOps {
                 blocks);
     }
 
+
     private static ExamPartOption mapOption(ExamPartOption o, boolean regenerate) {
+        if (o == null) {
+            return null;
+        }
         List<ExamSection> sections = new ArrayList<>();
         for (ExamSection s : o.sections()) {
             sections.add(mapSection(s, regenerate));
@@ -78,7 +88,11 @@ public final class ExamStructureOps {
                 o.chooseSubjects(), o.countsByPick(), sections, blocks);
     }
 
+
     private static QuestionBlock mapBlock(QuestionBlock b, boolean regenerate) {
+        if (b == null) {
+            return null;
+        }
         return new QuestionBlock(id(b.id(), regenerate), b.name(), b.questionType(),
                 b.questionCount(), b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(),
                 b.taskTypeCode(), b.childAnswerType(), b.templateGroupCode(), b.answerTypeLocked(),
@@ -108,19 +122,29 @@ public final class ExamStructureOps {
 
         List<ExamPart> parts = new ArrayList<>();
         for (ExamPart part : incoming.parts()) {
+            if (part == null) {
+                parts.add(null);
+                continue;
+            }
             List<ExamSection> sections = new ArrayList<>();
             for (ExamSection s : part.sections()) {
-                sections.add(restoreSection(s, storedSections, storedBlocks, templateGroups));
+                sections.add(s == null ? null
+                        : restoreSection(s, storedSections, storedBlocks, templateGroups));
             }
             List<ExamPartOption> options = new ArrayList<>();
             for (ExamPartOption o : part.options()) {
+                if (o == null) {
+                    options.add(null);
+                    continue;
+                }
                 List<ExamSection> oSections = new ArrayList<>();
                 for (ExamSection s : o.sections()) {
-                    oSections.add(restoreSection(s, storedSections, storedBlocks, templateGroups));
+                    oSections.add(s == null ? null
+                            : restoreSection(s, storedSections, storedBlocks, templateGroups));
                 }
                 List<QuestionBlock> oBlocks = new ArrayList<>();
                 for (QuestionBlock b : o.blocks()) {
-                    oBlocks.add(restoreBlock(b, storedBlocks, templateGroups));
+                    oBlocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateGroups));
                 }
                 options.add(new ExamPartOption(o.id(), o.kind(), o.code(), o.name(),
                         o.chooseSubjects(), o.countsByPick(), oSections, oBlocks));
@@ -138,16 +162,40 @@ public final class ExamStructureOps {
             return;
         }
         for (ExamPart part : doc.parts()) {
+            if (part == null) {
+                continue;
+            }
             for (ExamSection s : part.sections()) {
-                sections.put(s.id(), s);
-                s.blocks().forEach(b -> blocks.put(b.id(), b));
+                if (s == null) {
+                    continue;
+                }
+                sections.putIfAbsent(s.id(), s);
+                s.blocks().forEach(b -> {
+                    if (b != null) {
+                        blocks.putIfAbsent(b.id(), b);
+                    }
+                });
             }
             for (ExamPartOption o : part.options()) {
-                for (ExamSection s : o.sections()) {
-                    sections.put(s.id(), s);
-                    s.blocks().forEach(b -> blocks.put(b.id(), b));
+                if (o == null) {
+                    continue;
                 }
-                o.blocks().forEach(b -> blocks.put(b.id(), b));
+                for (ExamSection s : o.sections()) {
+                    if (s == null) {
+                        continue;
+                    }
+                    sections.putIfAbsent(s.id(), s);
+                    s.blocks().forEach(b -> {
+                        if (b != null) {
+                            blocks.putIfAbsent(b.id(), b);
+                        }
+                    });
+                }
+                o.blocks().forEach(b -> {
+                    if (b != null) {
+                        blocks.putIfAbsent(b.id(), b);
+                    }
+                });
             }
         }
     }
@@ -185,7 +233,7 @@ public final class ExamStructureOps {
         GroupOrder groupOrder = stored != null ? stored.groupOrder() : s.groupOrder();
         List<QuestionBlock> blocks = new ArrayList<>();
         for (QuestionBlock b : s.blocks()) {
-            blocks.add(restoreBlock(b, storedBlocks, templateGroups));
+            blocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateGroups));
         }
         return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
                 s.answerQuotas(), s.matrix(), groupOrder, s.choiceGroup(), blocks);
@@ -193,6 +241,9 @@ public final class ExamStructureOps {
 
     private static QuestionBlock restoreBlock(QuestionBlock b, Map<String, QuestionBlock> storedBlocks,
             Map<String, QuestionBlock> templateGroups) {
+        if (b == null) {
+            return null;
+        }
         QuestionBlock stored = b.id() == null ? null : storedBlocks.get(b.id());
         if (stored != null) {
             return new QuestionBlock(b.id(), b.name(), b.questionType(), b.questionCount(),

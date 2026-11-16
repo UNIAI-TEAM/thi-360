@@ -21,6 +21,7 @@ import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.catalog.spi.CatalogStatus;
 import vn.unicom.thi360.exam.api.CreateExamRequest;
 import vn.unicom.thi360.exam.api.DuplicateExamRequest;
 import vn.unicom.thi360.exam.api.ExamCheckSummary;
@@ -36,10 +37,13 @@ import vn.unicom.thi360.exam.api.UpdateExamInfoRequest;
 import vn.unicom.thi360.exam.api.UpdateExamStructureRequest;
 import vn.unicom.thi360.exam.application.ExamBlockRefProjector.CodeResolver;
 import vn.unicom.thi360.exam.application.ExamBlockRefProjector.ExamStructureSummary;
+import vn.unicom.thi360.exam.domain.BlockMatrix;
 import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamCheckStatus;
 import vn.unicom.thi360.exam.domain.ExamKindProfile;
 import vn.unicom.thi360.exam.domain.ExamPart;
+import vn.unicom.thi360.exam.domain.ExamPartOption;
+import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.ExamStatus;
 import vn.unicom.thi360.exam.domain.ExamStructure;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
@@ -47,6 +51,9 @@ import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.ExamStructureOps;
 import vn.unicom.thi360.exam.domain.ExamStructureValidator;
 import vn.unicom.thi360.exam.domain.ExamTemplate;
+import vn.unicom.thi360.exam.domain.KnowledgeScope;
+import vn.unicom.thi360.exam.domain.OptionKind;
+import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.infrastructure.ExamBlockRefRepository;
 import vn.unicom.thi360.exam.infrastructure.ExamKindProfileRepository;
 import vn.unicom.thi360.exam.infrastructure.ExamRepository;
@@ -576,6 +583,7 @@ public class ExamService {
         ExamStructureDocument doc = ExamStructureOps.restoreTemplateOwned(incoming, storedDoc,
                 templateDoc);
         ExamStructureValidator.validate(doc);
+        validateStructureReferences(doc);
         writeStructure(exam, doc, true, actor, now);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.STRUCTURE_UPDATE")
@@ -680,6 +688,72 @@ public class ExamService {
                 code -> catalogLookup.findActiveItem("COMPETENCY", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("SUBJECT_COMBINATION", code)
                         .map(CatalogItemView::id).orElse(null));
+    }
+
+    private void validateStructureReferences(ExamStructureDocument doc) {
+        for (ExamPart part : doc.parts()) {
+            for (ExamSection section : part.sections()) {
+                validateSectionReferences(section);
+            }
+            for (ExamPartOption option : part.options()) {
+                if (option.kind() == OptionKind.SUBJECT) {
+                    requireActiveReference(SUBJECT_GROUP, option.code());
+                } else if (option.kind() == OptionKind.COMBINATION) {
+                    requireActiveReference("SUBJECT_COMBINATION", option.code());
+                }
+                option.sections().forEach(this::validateSectionReferences);
+                option.blocks().forEach(this::validateBlockReferences);
+            }
+        }
+    }
+
+    private void validateSectionReferences(ExamSection section) {
+        requireActiveReference(SUBJECT_GROUP, section.subjectCode());
+        validateScopeReferences(section.knowledgeScope());
+        validateMatrixReferences(section.matrix());
+        section.blocks().forEach(this::validateBlockReferences);
+    }
+
+    private void validateBlockReferences(QuestionBlock block) {
+        if (block.taskTypeCode() != null) {
+            requireActiveReference("TASK_TYPE", block.taskTypeCode());
+        }
+        validateScopeReferences(block.knowledgeScope());
+        validateMatrixReferences(block.matrix());
+    }
+
+    private void validateScopeReferences(KnowledgeScope scope) {
+        if (scope == null) {
+            return;
+        }
+        for (UUID nodeId : scope.nodeIds()) {
+            if (catalogLookup.findItem(nodeId).filter(item -> "KNOWLEDGE".equals(item.groupCode())
+                    && item.effectiveStatus() == CatalogStatus.ACTIVE).isEmpty()) {
+                throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+            }
+        }
+        for (String competency : scope.competencyCodes()) {
+            requireActiveReference("COMPETENCY", competency);
+        }
+    }
+
+    private void validateMatrixReferences(BlockMatrix matrix) {
+        if (matrix == null) {
+            return;
+        }
+        matrix.cells().forEach(cell -> {
+            requireActiveReference("GRADE", cell.gradeCode());
+            requireActiveReference("QUESTION_LEVEL", cell.difficultyCode());
+        });
+        matrix.byGrade().forEach(value -> requireActiveReference("GRADE", value.code()));
+        matrix.byDifficulty().forEach(value -> requireActiveReference("QUESTION_LEVEL", value.code()));
+        matrix.byCompetency().forEach(value -> requireActiveReference("COMPETENCY", value.code()));
+    }
+
+    private void requireActiveReference(String group, String code) {
+        if (code == null || code.isBlank() || catalogLookup.findActiveItem(group, code).isEmpty()) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
     }
 
     private String hash(ExamStructureDocument doc) {

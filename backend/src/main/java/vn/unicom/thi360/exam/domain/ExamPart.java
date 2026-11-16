@@ -18,7 +18,7 @@ public record ExamPart(
         List<ExamSection> sections,
         List<ExamPartOption> options) {
     public ExamPart {
-        sections = sections == null ? List.of() : List.copyOf(sections);
-        options = options == null ? List.of() : List.copyOf(options);
+        sections = sections == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(sections));
+        options = options == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(options));
     }
 }

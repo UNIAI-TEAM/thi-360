@@ -10,9 +10,9 @@ public record BlockMatrix(
         List<MatrixDimensionValue> byDifficulty,
         List<MatrixDimensionValue> byCompetency) {
     public BlockMatrix {
-        cells = cells == null ? List.of() : List.copyOf(cells);
-        byGrade = byGrade == null ? List.of() : List.copyOf(byGrade);
-        byDifficulty = byDifficulty == null ? List.of() : List.copyOf(byDifficulty);
-        byCompetency = byCompetency == null ? List.of() : List.copyOf(byCompetency);
+        cells = cells == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(cells));
+        byGrade = byGrade == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(byGrade));
+        byDifficulty = byDifficulty == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(byDifficulty));
+        byCompetency = byCompetency == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(byCompetency));
     }
 }

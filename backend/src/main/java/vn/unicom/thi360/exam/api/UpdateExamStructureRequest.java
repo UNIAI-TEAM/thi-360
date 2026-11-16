@@ -18,6 +18,6 @@ public record UpdateExamStructureRequest(
         Long expectedRevision
 ) {
     public UpdateExamStructureRequest {
-        parts = parts == null ? null : List.copyOf(parts);
+        parts = parts == null ? null : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(parts));
     }
 }
