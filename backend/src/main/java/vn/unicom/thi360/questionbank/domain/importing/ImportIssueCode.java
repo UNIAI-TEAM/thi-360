@@ -43,6 +43,8 @@ public enum ImportIssueCode {
     SET_CODE_REPEATED,
     SET_CHILD_INVALID,
     CHILD_TYPE_NOT_ALLOWED,
+    UNSAFE_CONTENT,
+    SAVE_VALIDATION,
 
     // Thiếu dữ liệu: dòng vẫn nhập ở Nháp (spec 4.5)
     ANSWER_MISSING,
