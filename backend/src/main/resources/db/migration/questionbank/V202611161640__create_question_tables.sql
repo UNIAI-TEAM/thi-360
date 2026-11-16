@@ -4,6 +4,8 @@
 -- chiếu bằng id câu con (D22, sửa theo chỉ đạo của lead 2026-11-16).
 -- `question_asset*` và `question_import*` do BE-2b / BE-3 tạo.
 
+CREATE SCHEMA IF NOT EXISTS questionbank;
+
 CREATE TABLE questionbank.question (
     id uuid PRIMARY KEY,
     code text NOT NULL,
