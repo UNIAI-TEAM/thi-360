@@ -127,6 +127,27 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void changingToKindWithActiveTemplateAppliesItsProfile() throws Exception {
+        String url = "/api/v1/admin/exams/00000000-0000-7000-8700-000000000001";
+        var before = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String revision = before.path("revision").asText();
+        mockMvc.perform(patch(url).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("VACT"))
+                .andExpect(jsonPath("$.templateCode").value("VACT_FULL"))
+                .andExpect(jsonPath("$.referenceMax").value(1200))
+                .andExpect(jsonPath("$.practiceScoring").value("LINEAR"));
+        mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.templateCode").value("VACT_FULL"))
+                .andExpect(jsonPath("$.referenceMax").value(1200))
+                .andExpect(jsonPath("$.practiceScoring").value("LINEAR"));
+    }
+
+    @Test
     void partCodeFromTemplateCreates() throws Exception {
         String code = "HSA-P-" + UUID.randomUUID().toString().substring(0, 8);
         mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))

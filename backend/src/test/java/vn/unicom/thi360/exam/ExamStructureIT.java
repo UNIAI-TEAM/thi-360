@@ -402,6 +402,34 @@ class ExamStructureIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void countsByPickNullElementRejectedButMissingListAllowed() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = before.path("parts").deepCopy();
+        var option = (com.fasterxml.jackson.databind.node.ObjectNode)
+                parts.get(2).path("options").get(0);
+        ((com.fasterxml.jackson.databind.node.ArrayNode) option.putArray("countsByPick"))
+                .add(17).addNull().add(16);
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", before.path("revision").asLong());
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        JsonNode unchanged = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(unchanged).isEqualTo(before);
+
+        option.remove("countsByPick");
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void pathLimitRejectsPutWithoutMutation() throws Exception {
         JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
                         .with(asUser(Permissions.EXAM_VIEW)))

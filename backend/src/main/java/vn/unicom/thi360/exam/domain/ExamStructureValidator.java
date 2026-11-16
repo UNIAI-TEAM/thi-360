@@ -120,6 +120,9 @@ public final class ExamStructureValidator {
         }
         if (option.countsByPick() != null) {
             for (Integer count : option.countsByPick()) {
+                if (count == null) {
+                    invalid("options.countsByPick", "countsByPick elements must not be null");
+                }
                 nonNegative(count, "options.countsByPick");
             }
         }

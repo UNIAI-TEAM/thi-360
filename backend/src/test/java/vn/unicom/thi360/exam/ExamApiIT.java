@@ -103,6 +103,28 @@ class ExamApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void instructionsNonImageViolationRejectedOnCreateAndPatch() throws Exception {
+        String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
+        String body = "{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"" + code
+                + "\",\"instructions\":\"<p onclick=\\\"alert(1)\\\">Doc ky</p>\"}";
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_INSTRUCTIONS_UNSAFE"));
+        long revision = mapper.readTree(mockMvc.perform(get(EXAM)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .path("revision").asLong();
+        mockMvc.perform(patch(EXAM).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"instructions\":\"<p>Ok</p><script>alert(1)</script>\","
+                                + "\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_INSTRUCTIONS_UNSAFE"));
+    }
+
+    @Test
     void safeInstructionsAreStoredCleaned() throws Exception {
         String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
         String html = "<P><STRONG>Doc ky</STRONG> <EM>de bai</EM></P><UL><LI>70 phut</LI></UL>";

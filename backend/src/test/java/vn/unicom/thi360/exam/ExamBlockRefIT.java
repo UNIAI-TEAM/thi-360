@@ -88,4 +88,31 @@ class ExamBlockRefIT extends AbstractIntegrationTest {
         assertThat(secondScope.matches(Set.of(UUID.fromString(secondLesson)))).isFalse();
         assertThat(secondScope.matches(Set.of(UUID.fromString(firstLeaf)))).isFalse();
     }
+
+    @Test
+    void anyMatchAcrossTwoRootsMatchesEitherSubtree() throws Exception {
+        String rootA = "00000000-0000-7000-8200-000000001001";
+        String rootB = "00000000-0000-7000-8200-000000001002";
+        String leafA = "00000000-0000-7000-8200-000000001201";
+        String lessonB = "00000000-0000-7000-8200-000000001104";
+        String outside = "00000000-0000-7000-8200-000000001106";
+        var before = mapper.readTree(mockMvc.perform(get(URL).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = before.path("parts");
+        ObjectNode section = (ObjectNode) parts.get(0).path("sections").get(0);
+        String blockId = section.path("blocks").get(0).path("id").asText();
+        section.set("knowledgeScope", mapper.readTree(
+                "{\"nodeIds\":[\"" + rootA + "\",\"" + rootB + "\"],\"match\":\"ANY\"}"));
+        ObjectNode request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", before.path("revision").asLong());
+        mockMvc.perform(put(URL).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        var scope = knowledgeScopes.findDraftScopes(UUID.fromString(ID)).stream()
+                .filter(s -> s.blockId().equals(blockId)).findFirst().orElseThrow();
+        assertThat(scope.matches(Set.of(UUID.fromString(leafA)))).isTrue();
+        assertThat(scope.matches(Set.of(UUID.fromString(lessonB)))).isTrue();
+        assertThat(scope.matches(Set.of(UUID.fromString(outside)))).isFalse();
+    }
 }
