@@ -1,18 +1,56 @@
 package vn.unicom.thi360.exam;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
+@Transactional
 class ExamApiIT extends AbstractIntegrationTest {
     private static final String EXAM = "/api/v1/admin/exams/00000000-0000-7000-8700-000000000001";
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private ObjectMapper mapper;
+
+    @Test
+    void createChecksPermissionConflictValidationAndAudit() throws Exception {
+        String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
+        String body = "{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"" + code + "\"}";
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_VIEW))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        String result = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(result).path("id").asText();
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM shared.outbox_event WHERE topic='audit' "
+                        + "AND payload->>'module'='EXAM' AND payload->>'action'='EXAM.CREATE' "
+                        + "AND payload->>'targetId'=?", Long.class, id)).isEqualTo(1L);
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_CODE_TAKEN"));
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body.replace("\"FULL\"", "\"SUBJECT\"").replace(code, code + "X")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_SCOPE_NOT_ALLOWED"));
+    }
 
     @Test
     void permissionsAndMissingExam() throws Exception {
