@@ -3,14 +3,17 @@ import { questionStore } from "@/features/questions/mock/store";
 import { MockApiError } from "@/lib/mock/content-mock";
 import { examStore } from "../mock/store";
 import { reviewStore } from "../mock/review-store";
+import { DEEP_CHECK_POLLS_UNTIL_DONE } from "../review-api.mock";
 import {
   discontinueExam,
   generatePreview,
+  getCheckRun,
   getExamCheck,
   getExamVersion,
   listExamVersions,
   publishExam,
   runExamCheck,
+  startDeepCheck,
 } from "../review-api";
 
 const HSA = "ex-hsa-f-001";
@@ -242,5 +245,37 @@ describe("discontinueExam", () => {
       code: "EXAM_REVISION_CONFLICT",
     });
     expect(examStore.require("ex-qda-f-001").status).toBe("PUBLISHED");
+  });
+});
+
+describe("startDeepCheck / getCheckRun", () => {
+  it("RUNNING hai lần rồi DONE ghi kết quả vào bài, lần hỏi sau trả cùng kết quả", async () => {
+    const { runId } = await startDeepCheck(HSA);
+    for (let poll = 1; poll < DEEP_CHECK_POLLS_UNTIL_DONE; poll += 1) {
+      await expect(getCheckRun(HSA, runId)).resolves.toMatchObject({ runId, state: "RUNNING", result: null, errorCode: null });
+    }
+    const done = await getCheckRun(HSA, runId);
+    expect(done.state).toBe("DONE");
+    expect(done.errorCode).toBeNull();
+    const result = done.result;
+    expect(result).not.toBeNull();
+    expect(result!.examId).toBe(HSA);
+
+    // Kết quả kiểm tra kỹ ghi vào bài như runExamCheck (thời gian xử lý dài hơn).
+    const exam = examStore.require(HSA);
+    expect(exam.check).toMatchObject({ status: result!.status, issueCount: result!.issueCount, checkedAt: result!.checkedAt });
+    expect(reviewStore.getCheck(HSA)).toEqual(result);
+
+    // Hỏi lại sau DONE: cùng runId trả cùng kết quả và checkedAt đã lưu, không tính lại.
+    const again = await getCheckRun(HSA, runId);
+    expect(again.state).toBe("DONE");
+    expect(again.result).toEqual(result);
+    expect(again.result!.checkedAt).toBe(result!.checkedAt);
+  });
+
+  it("bài thi khác hoặc runId không tồn tại báo 404 CHECK_RUN_NOT_FOUND", async () => {
+    const { runId } = await startDeepCheck(HSA);
+    await expect(getCheckRun("ex-qda-f-001", runId)).rejects.toMatchObject({ status: 404, code: "CHECK_RUN_NOT_FOUND" });
+    await expect(getCheckRun(HSA, "run-mock-999")).rejects.toMatchObject({ status: 404, code: "CHECK_RUN_NOT_FOUND" });
   });
 });

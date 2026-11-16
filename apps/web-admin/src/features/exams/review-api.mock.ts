@@ -102,6 +102,7 @@ export const DEEP_CHECK_POLLS_UNTIL_DONE = 3;
 interface DeepCheckRun {
   examId: string;
   polls: number;
+  result: ExamCheckResult | null;
 }
 
 const deepCheckRuns = new Map<string, DeepCheckRun>();
@@ -117,7 +118,7 @@ export async function startDeepCheck(examId: string): Promise<StartDeepCheckResp
       examStore.require(examId);
       deepCheckSequence += 1;
       const runId = `run-mock-${deepCheckSequence}`;
-      deepCheckRuns.set(runId, { examId, polls: 0 });
+      deepCheckRuns.set(runId, { examId, polls: 0, result: null });
       return { runId };
     },
     { ignoreScenario: true },
@@ -130,10 +131,12 @@ export async function getCheckRun(examId: string, runId: string): Promise<ExamCh
     () => {
       const run = deepCheckRuns.get(runId);
       if (!run || run.examId !== examId) throw new MockApiError(404, "CHECK_RUN_NOT_FOUND");
+      if (run.result) return { runId, state: "DONE", result: run.result, errorCode: null };
       run.polls += 1;
       if (run.polls < DEEP_CHECK_POLLS_UNTIL_DONE) return { runId, state: "RUNNING", result: null, errorCode: null };
       const exam = examStore.require(examId);
       const result = computeCheck(exam, EXTENDED_CHECK_TIME_LIMIT_SECONDS, nowIso());
+      run.result = result;
       reviewStore.setCheck(result);
       examStore.update(examId, (current) => ({
         ...current,
