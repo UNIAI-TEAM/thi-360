@@ -10,6 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,14 +20,28 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.exam.application.ExamCheckFingerprint;
+import vn.unicom.thi360.exam.application.ExamCheckResultStore;
+import vn.unicom.thi360.exam.domain.Exam;
+import vn.unicom.thi360.exam.infrastructure.ExamKindProfileRepository;
+import vn.unicom.thi360.exam.infrastructure.ExamRepository;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 @Transactional
 class ExamApiIT extends AbstractIntegrationTest {
     private static final String EXAM = "/api/v1/admin/exams/00000000-0000-7000-8700-000000000001";
+    private static final UUID EXAM_ID = UUID.fromString("00000000-0000-7000-8700-000000000001");
+    private static final UUID SUBJECT_ID = UUID.fromString("00000000-0000-7000-8200-000000000201");
     @Autowired private JdbcTemplate jdbc;
     @Autowired private EntityManager entityManager;
     @Autowired private ObjectMapper mapper;
+    @Autowired private ExamRepository exams;
+    @Autowired private ExamKindProfileRepository profiles;
+    @Autowired private ExamCheckResultStore results;
+    @Autowired private QuestionSourcePort source;
+    @Autowired private CatalogLookup catalog;
 
     @Test
     void createChecksPermissionConflictValidationAndAudit() throws Exception {
@@ -183,5 +200,70 @@ class ExamApiIT extends AbstractIntegrationTest {
                 .isNotBlank().isNotEqualTo(structureAudit.path("before").path("structureHash").asText());
         assertThat(structureAudit.path("before").path("changedPartIds").toString()).contains(partId);
         assertThat(structureAudit.path("after").path("changedPartIds").toString()).contains(partId);
+    }
+
+    @Test
+    void listReturnsDetailFieldsAndFiltersServerSide() throws Exception {
+        // Bản tóm tắt mang đủ trường của chi tiết (FE-2:2).
+        String page = mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].timing").value("PER_PART"))
+                .andExpect(jsonPath("$.items[0].practiceScoring").value("RAW"))
+                .andExpect(jsonPath("$.items[0].revision").isNumber())
+                .andReturn().getResponse().getContentAsString();
+        var item = mapper.readTree(page).path("items").get(0);
+        assertThat(item.path("partCode").isNull()).isTrue();
+        assertThat(item.path("subjectCode").isNull()).isTrue();
+        assertThat(item.path("referenceMax").isNull()).isTrue();
+        assertThat(item.path("revision").asLong()).isPositive();
+
+        // hasUnpublishedChanges lọc ở máy chủ: bài dev đang true nên false rỗng.
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .param("hasUnpublishedChanges", "false").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = false WHERE id = ?", EXAM_ID);
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .param("hasUnpublishedChanges", "false").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].code").value("HSA-F-DEV-001"));
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .param("hasUnpublishedChanges", "true").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", EXAM_ID);
+
+        // checkStatus lọc theo trạng thái hiệu lực (đánh giá lại), không theo cột đã lưu.
+        Exam exam = exams.findById(EXAM_ID).orElseThrow();
+        Long profileRevision = profiles.findById(exam.getKindItemId()).orElseThrow().getRevision();
+        String structureHash = jdbc.queryForObject(
+                "SELECT structure_hash FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM_ID);
+        Map<UUID, Long> revisions = source.sourceRevisions(List.of(SUBJECT_ID));
+        assertThat(results.save(new ExamCheckResultStore.Input(EXAM_ID, exam.getRevision(), structureHash,
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), profileRevision,
+                catalog.revision(), "fingerprint", mapper.valueToTree(revisions)),
+                "VALID", 0, Instant.now(), 1,
+                mapper.createObjectNode().put("status", "VALID"), mapper.createObjectNode())).isTrue();
+
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .param("checkStatus", "VALID").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].check.status").value("VALID"));
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .param("checkStatus", "NEEDS_RECHECK").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+
+        jdbc.update("INSERT INTO questionbank.question_source_revision (subject_item_id, revision)"
+                        + " VALUES (?, 1) ON CONFLICT (subject_item_id) DO UPDATE SET revision"
+                        + " = questionbank.question_source_revision.revision + 1", SUBJECT_ID);
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .param("checkStatus", "NEEDS_RECHECK").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].check.status").value("NEEDS_RECHECK"));
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .param("checkStatus", "VALID").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
     }
 }

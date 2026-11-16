@@ -19,6 +19,10 @@ public record ExamSummaryResponse(
         String kindName,
         @Schema(description = "FULL | PART | SUBJECT", requiredMode = Schema.RequiredMode.REQUIRED)
         String scope,
+        @Schema(description = "Mã phần khi scope = PART")
+        String partCode,
+        @Schema(description = "Mã môn khi bài theo môn")
+        String subjectCode,
         @Schema(description = "DRAFT | PUBLISHED | DISCONTINUED",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         String status,
@@ -34,10 +38,16 @@ public record ExamSummaryResponse(
         boolean hasEnglishOption,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int combinationCount,
+        @Schema(description = "PER_PART | SHARED", requiredMode = Schema.RequiredMode.REQUIRED)
+        String timing,
         @Schema(description = "Thời lượng chung (SHARED); PER_PART thì tính từ các phần ở client")
         Integer durationMinutes,
         @Schema(description = "Thang điểm")
         BigDecimal maxScore,
+        @Schema(description = "Thang điểm quy chiếu (V-ACT)")
+        BigDecimal referenceMax,
+        @Schema(description = "Mặc định chấm luyện tập", requiredMode = Schema.RequiredMode.REQUIRED)
+        String practiceScoring,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         ExamCheckSummary check,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
@@ -45,6 +55,9 @@ public record ExamSummaryResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Instant updatedAt,
         @Schema(description = "Người cập nhật gần nhất")
-        PersonRef updatedBy
+        PersonRef updatedBy,
+        @Schema(description = "Revision hiện tại của bài thi — gửi lại trong expectedRevision",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        long revision
 ) {
 }

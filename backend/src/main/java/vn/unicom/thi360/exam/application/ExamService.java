@@ -145,7 +145,7 @@ public class ExamService {
     @Transactional(readOnly = true)
     public PageResponse<ExamSummaryResponse> listExams(String q, String kind, String subject,
             String scope, String status, Boolean hasEssay, Boolean hasEnglishOption,
-            PageQuery pageQuery) {
+            String checkStatus, Boolean hasUnpublishedChanges, PageQuery pageQuery) {
         StringBuilder where = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
         if (q != null && !q.isBlank()) {
@@ -178,10 +178,28 @@ public class ExamService {
             where.append(" AND e.has_english_option = ?");
             params.add(hasEnglishOption);
         }
+        if (hasUnpublishedChanges != null) {
+            where.append(" AND e.has_unpublished_changes = ?");
+            params.add(hasUnpublishedChanges);
+        }
 
-        String base = " FROM exam.exam e"
+        String joins = " FROM exam.exam e"
                 + " LEFT JOIN catalog.catalog_item k ON k.id = e.kind_item_id"
-                + " LEFT JOIN catalog.catalog_item s ON s.id = e.subject_item_id" + where;
+                + " LEFT JOIN catalog.catalog_item s ON s.id = e.subject_item_id";
+        if (checkStatus != null && !checkStatus.isBlank()) {
+            String wanted = checkStatus.trim().toUpperCase(Locale.ROOT);
+            List<UUID> candidates = jdbcTemplate.queryForList(
+                    "SELECT e.id" + joins + where, UUID.class, params.toArray());
+            Map<UUID, String> statuses = checkValidity.statuses(candidates);
+            candidates = candidates.stream()
+                    .filter(id -> wanted.equals(statuses.get(id))).toList();
+            where.append(" AND ").append(candidates.isEmpty() ? "1=0"
+                    : "e.id IN (" + String.join(",",
+                            java.util.Collections.nCopies(candidates.size(), "?")) + ")");
+            params.addAll(candidates);
+        }
+
+        String base = joins + where;
         Long total = jdbcTemplate.queryForObject("SELECT COUNT(*)" + base, Long.class,
                 params.toArray());
         String orderBy = orderClause(pageQuery);
@@ -193,7 +211,9 @@ public class ExamService {
                         + " e.has_unpublished_changes, e.question_count, e.has_essay,"
                         + " e.has_english_option, e.combination_count, e.duration_minutes,"
                         + " e.max_score, e.check_status, e.check_issue_count, e.checked_at,"
-                        + " e.updated_at, e.updated_by, k.code AS kind_code,"
+                        + " e.updated_at, e.updated_by, e.part_code, s.code AS subject_code,"
+                        + " e.timing, e.reference_max, e.practice_scoring, e.revision,"
+                        + " k.code AS kind_code,"
                         + " k.name_vi AS kind_vi, k.name_en AS kind_en" + base + orderBy
                         + " LIMIT ? OFFSET ?",
                 dataParams.toArray());
@@ -264,6 +284,8 @@ public class ExamService {
                 (String) r.get("kind_code"),
                 kindName,
                 (String) r.get("scope"),
+                (String) r.get("part_code"),
+                (String) r.get("subject_code"),
                 (String) r.get("status"),
                 (Integer) r.get("serving_version"),
                 Boolean.TRUE.equals(r.get("has_unpublished_changes")),
@@ -271,14 +293,18 @@ public class ExamService {
                 Boolean.TRUE.equals(r.get("has_essay")),
                 Boolean.TRUE.equals(r.get("has_english_option")),
                 ((Number) r.get("combination_count")).intValue(),
+                (String) r.get("timing"),
                 (Integer) r.get("duration_minutes"),
                 (BigDecimal) r.get("max_score"),
+                (BigDecimal) r.get("reference_max"),
+                (String) r.get("practice_scoring"),
                 new ExamCheckSummary(checkStatus,
                         ((Number) r.get("check_issue_count")).intValue(),
                         toInstant(r.get("checked_at"))),
                 0,
                 toInstant(r.get("updated_at")),
-                people.get(updatedBy));
+                people.get(updatedBy),
+                ((Number) r.get("revision")).longValue());
     }
 
     private static Instant toInstant(Object value) {
