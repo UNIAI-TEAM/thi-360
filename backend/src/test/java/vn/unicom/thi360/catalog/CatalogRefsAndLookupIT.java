@@ -307,7 +307,10 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "TASK_TYPE").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].code", containsInAnyOrder("SINGLE", "CLUSTER")));
+                .andExpect(jsonPath("$[*].code", org.hamcrest.Matchers.hasItems("SINGLE", "CLUSTER")))
+                .andExpect(jsonPath("$[*].code", org.hamcrest.Matchers.hasItems("SYNONYM", "ANTONYM",
+                        "DIALOGUE_COMPLETION", "READING_COMPREHENSION", "WORD_USAGE_ERROR",
+                        "PASSAGE_READING")));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "SUBJECT_COMBINATION").with(asStudent()))
                 .andExpect(status().isOk())
