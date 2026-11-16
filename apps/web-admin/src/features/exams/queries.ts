@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
+import { useTemplateLabel } from "./template-name";
 import { defaultExamsApiDeps, EXAMS_QUERY_KEYS, type ExamsApiDeps } from "./api";
 import type {
   ApplyExamTemplateRequest,
@@ -17,7 +18,7 @@ import type {
 export function useExamList(query: ListExamsQuery, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.list(query),
-    queryFn: () => deps.listExams(query),
+    queryFn: ({ signal }) => deps.listExams(query, signal),
     placeholderData: keepPreviousWhileSameScope(EXAMS_QUERY_KEYS.list(query)),
   });
 }
@@ -29,11 +30,15 @@ export function useExam(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
   });
 }
 
+/** Mẫu cấu trúc; mẫu chưa có tên (API thật) lấy tên theo ngôn ngữ giao diện (`useTemplateLabel`), đổi ngôn ngữ thì đổi ngay. */
 export function useExamTemplates(deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const label = useTemplateLabel();
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.templates(),
     queryFn: () => deps.listExamTemplates(),
     staleTime: 5 * 60_000,
+    select: (templates) =>
+      templates.map((template) => (template.name ? template : { ...template, name: label(template) })),
   });
 }
 
@@ -88,7 +93,8 @@ export function useCreateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({
     mutationFn: (request: CreateExamRequest) => deps.createExam(request),
-    onSuccess: () => invalidate(),
+    // Cũng khi lỗi: bài có thể đã tạo xong rồi mới lỗi ở bước lưu cấu trúc (`ExamStructureSaveError`).
+    onSettled: () => invalidate(),
   });
 }
 
@@ -127,8 +133,9 @@ export function useDuplicateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
 export function useDiscontinueExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({
-    mutationFn: ({ id, expectedRevision }: { id: string; expectedRevision: number }) =>
-      deps.discontinueExam(id, expectedRevision),
+    // `expectedRevision` chỉ có khi nơi gọi nắm revision của bản đang xem; dòng danh sách không gửi (client đọc lại).
+    mutationFn: ({ id, expectedRevision, idempotencyKey }: { id: string; expectedRevision?: number; idempotencyKey?: string }) =>
+      deps.discontinueExam(id, expectedRevision, idempotencyKey),
     onSuccess: () => invalidate(),
   });
 }

@@ -1,23 +1,28 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
-import { MockApiError } from "@/lib/mock/content-mock";
 import { renderWithProviders } from "@/test/render";
 import { getExam } from "../api";
 import { ExamReviewCheck } from "../components/exam-review-check";
-import { reviewStore } from "../mock/review-store";
-import { examStore } from "../mock/store";
-import { defaultExamReviewApiDeps, type ExamReviewApiDeps, getExamCheck } from "../review-api";
+import { defaultExamReviewApiDeps, ExamsApiError, type ExamReviewApiDeps, getExamCheck } from "../review-api";
 import type { ExamCheckResult, ExamCheckRun } from "../review-types";
+import { ExamsBackend } from "./fake-exams-backend";
+import { HSA_001_CHECK } from "./review-fixtures";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const HSA = "ex-hsa-f-001";
 const POLL_MS = 2000;
 
 beforeEach(() => {
-  examStore.reset();
-  questionStore.reset();
-  reviewStore.reset();
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+  // Kết quả kiểm tra gần nhất của HSA-F-001 (có cách chọn môn chưa xác nhận được, cần Kiểm tra kỹ).
+  new ExamsBackend().seedCheck(HSA, HSA_001_CHECK).install();
 });
 
 afterEach(() => {
@@ -54,7 +59,7 @@ async function setup({
   const getCheckRun = vi.fn(async (_examId: string, runId: string): Promise<ExamCheckRun> => ({ ...running, runId }));
   let started = 0;
   const startDeepCheck = vi.fn(async () => {
-    if (startFails) throw new MockApiError(503, "UNAVAILABLE");
+    if (startFails) throw new ExamsApiError(503, "", "UNAVAILABLE");
     started += 1;
     return { runId: `run-${started}` };
   });
@@ -190,7 +195,7 @@ describe("Kiểm tra kỹ", () => {
 
   it("hỏi kết quả lỗi thì dừng chu kỳ, báo lỗi kèm Thử lại bắt đầu lần chạy mới", async () => {
     const { user, getCheckRun, startDeepCheck, initial } = await setup();
-    getCheckRun.mockRejectedValue(new MockApiError(503, "UNAVAILABLE"));
+    getCheckRun.mockRejectedValue(new ExamsApiError(503, "", "UNAVAILABLE"));
 
     await startFromTopCard(user);
     await waitFor(() => expect(getCheckRun).toHaveBeenCalledTimes(1));

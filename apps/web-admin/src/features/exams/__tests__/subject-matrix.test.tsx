@@ -1,20 +1,31 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import reference from "@/features/content/mock/reference.json";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { examStore } from "../mock/store";
 import { remainderGroupCount, resolveQuotaCounts, sectionCaseCounts, subjectAllocation } from "../subject-matrix";
 import en from "../../../messages/en.json";
 import vi_ from "../../../messages/vi.json";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-afterEach(() => {
-  examStore.reset();
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 function openStructure(examId: string, search = "") {
@@ -29,7 +40,7 @@ const AXES = {
 
 /** Môn Toán HSA (ex-hsa-f-001): 50 câu, chỉ tiêu dạng trả lời Một đáp án 35 + Trả lời ngắn 15, một nhóm câu đơn mở và một nhóm chùm. */
 function mathSection() {
-  return examStore.require("ex-hsa-f-001").parts[0]!.sections[0]!;
+  return backend.app("ex-hsa-f-001").parts[0]!.sections[0]!;
 }
 
 function tableRow(table: HTMLElement, name: string | RegExp) {
@@ -69,7 +80,7 @@ describe("số đã phân bổ và còn thiếu của môn", () => {
   it("quy chỉ tiêu theo tỷ lệ ra số câu bằng phần dư lớn nhất; môn Khoa học có hai trường hợp 16 và 17 câu", () => {
     expect(resolveQuotaCounts("PERCENT", [70, 30], 17)).toEqual([12, 5]);
     expect(resolveQuotaCounts("COUNT", [35, 15], 50)).toEqual([35, 15]);
-    const science = examStore.require("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
+    const science = backend.app("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
     expect(sectionCaseCounts(science.sections[0]!, science)).toEqual([16, 17]);
     // Nhóm "lấy phần còn lại" nhận phần còn lại của môn: Lịch sử có 10 câu cố định.
     const history = science.sections.find((section) => section.subjectCode === "HISTORY")!;
@@ -78,7 +89,7 @@ describe("số đã phân bổ và còn thiếu của môn", () => {
   });
 
   it("hai nhóm lấy phần còn lại: không nhóm nào nhận, môn báo còn thiếu như REMAINDER_GROUP_INVALID của kiểm tra (R1-5)", () => {
-    const science = examStore.require("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
+    const science = backend.app("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
     const history = science.sections.find((section) => section.subjectCode === "HISTORY")!;
     expect(remainderGroupCount(history.blocks)).toBe(1);
     const doubled = { ...history, blocks: history.blocks.map((block) => ({ ...block, questionCount: null })) };
@@ -125,7 +136,7 @@ describe("màn môn (Toán HSA)", () => {
     expect(screen.queryByText(/Bao gồm MAPID cấp dưới/)).not.toBeInTheDocument();
     expect(screen.queryByRole("switch", { name: /cấp dưới/ })).not.toBeInTheDocument();
     // Ngữ văn: nhóm Trắc nghiệm có dạng trả lời điền sẵn.
-    const locked = examStore.require("ex-hsa-f-001").parts[1]!.sections[0]!.blocks.find((block) => block.id === "blk-27")!;
+    const locked = backend.app("ex-hsa-f-001").parts[1]!.sections[0]!.blocks.find((block) => block.id === "blk-27")!;
     expect(locked.answerTypeLocked).toBe(true);
     expect(screen.getByRole("textbox", { name: /Dạng trả lời/ })).toHaveAttribute("readonly");
     expect(screen.getByText("Ma trận lớp và độ khó riêng của nhóm").closest("details")).not.toHaveAttribute("open");
@@ -164,7 +175,9 @@ describe("màn môn (Toán HSA)", () => {
   }, 20_000);
 
   it("nhóm dùng dạng chưa khai chỉ tiêu: bảng hiện hàng riêng, đã phân bổ 10, thiếu -10 (R1-6)", async () => {
-    mathSection().blocks.find((block) => block.questionType === "QUESTION_SET")!.childAnswerType = "MULTIPLE_CHOICE";
+    backend.mutate("ex-hsa-f-001", (exam) => {
+      exam.parts[0]!.sections![0]!.blocks!.find((block) => block.questionType === "QUESTION_SET")!.childAnswerType = "MULTIPLE_CHOICE";
+    });
     openStructure("ex-hsa-f-001");
     const quota = await screen.findByRole("region", { name: "Dạng trả lời" });
     const extra = tableRow(quota, /^Nhiều đáp án/);
@@ -174,7 +187,9 @@ describe("màn môn (Toán HSA)", () => {
   }, 20_000);
 
   it("nhóm chưa đặt tên: nút mở nhóm có tên 'Mở nhóm Chưa đặt tên' (R1-9)", async () => {
-    mathSection().blocks[0]!.name = "";
+    backend.mutate("ex-hsa-f-001", (exam) => {
+      exam.parts[0]!.sections![0]!.blocks![0]!.name = "";
+    });
     openStructure("ex-hsa-f-001");
     const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
     expect(within(groups).getByRole("button", { name: "Mở nhóm Chưa đặt tên" })).toBeInTheDocument();
@@ -205,8 +220,10 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
     const { unmount } = openStructure("ex-hsa-f-001", "?part=part-33");
     expect(await screen.findByRole("textbox", { name: "Số phương án phải chọn" })).toHaveValue("1");
     unmount();
-    const part = examStore.require("ex-hsa-f-001").parts[2]!;
-    part.options = part.options.filter((option) => option.kind === "SUBJECT_CHOICE");
+    backend.mutate("ex-hsa-f-001", (exam) => {
+      const part = exam.parts[2]!;
+      part.options = part.options!.filter((option) => option.kind === "SUBJECT_CHOICE");
+    });
     openStructure("ex-hsa-f-001", "?part=part-33");
     expect(await screen.findByRole("heading", { name: "Quy tắc tham gia" })).toBeInTheDocument();
     expect(screen.getByText("Học viên làm phương án chọn môn bên dưới.")).toBeInTheDocument();
@@ -217,7 +234,7 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
 
   it("mở một môn: số câu 16 hoặc 17 theo lựa chọn, nhóm 'phần còn lại' nhận 6 hoặc 7 câu", async () => {
     const user = userEvent.setup();
-    const history = examStore.require("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!.sections.find((section) => section.subjectCode === "HISTORY")!;
+    const history = backend.app("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!.sections.find((section) => section.subjectCode === "HISTORY")!;
     openStructure("ex-hsa-f-001", `?section=${history.id}`);
     expect(await screen.findByRole("heading", { name: /Môn Lịch sử/ })).toBeInTheDocument();
     expect(screen.getByText("Môn xã hội")).toBeInTheDocument();
@@ -242,9 +259,10 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
   }, 20_000);
 
   it("nhóm trùng 'phần còn lại' do dữ liệu: màn môn báo lỗi và không nhóm nào nhận phần còn lại (R1-5)", async () => {
-    const history = examStore.require("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!.sections.find((section) => section.subjectCode === "HISTORY")!;
-    history.blocks.forEach((block) => {
-      block.questionCount = null;
+    const history = backend.app("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!.sections.find((section) => section.subjectCode === "HISTORY")!;
+    backend.mutate("ex-hsa-f-001", (exam) => {
+      const choice = exam.parts[2]!.options!.find((option) => option.kind === "SUBJECT_CHOICE")!;
+      for (const block of choice.sections!.find((section) => section.subjectCode === "HISTORY")!.blocks!) delete block.questionCount;
     });
     openStructure("ex-hsa-f-001", `?section=${history.id}`);
     const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
@@ -260,9 +278,10 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
 });
 
 describe("khóa dịch", () => {
-  it("không còn chữ 'Bao gồm MAPID cấp dưới' và 'Quy tắc đảo' trong vi.json, en.json", () => {
+  it("màn Cấu trúc không còn chữ 'Bao gồm MAPID cấp dưới' và 'Quy tắc đảo' trong vi.json, en.json", () => {
+    // Chỉ xét màn soạn cấu trúc: "Quy tắc đảo câu" còn là tên trường trong dòng thay đổi ở tab Phiên bản (change-where).
     for (const messages of [vi_, en]) {
-      const text = JSON.stringify(messages);
+      const text = JSON.stringify(messages.exams.structure);
       expect(text).not.toContain("Bao gồm MAPID cấp dưới");
       expect(text).not.toContain("Quy tắc đảo");
       expect(text).not.toMatch(/Include (sub-?levels|descendants|child)/i);

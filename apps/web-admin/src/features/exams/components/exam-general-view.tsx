@@ -27,6 +27,17 @@ import {
 import { ExamInfoFields, TemplatePreview, useExamInfoSchema, usePartNames } from "./create-exam-fields";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
+import { ExamsApiError } from "../review-api";
+
+/** Trường của máy chủ (`fieldErrors[].field`) tới ô nhập của biểu mẫu Thông tin chung. */
+const FORM_FIELD_OF: Record<string, keyof ExamInfoFormValues> = {
+  name: "name",
+  code: "code",
+  maxScore: "maxScore",
+  durationMinutes: "sharedDuration",
+  description: "description",
+  instructions: "instructions",
+};
 
 interface PendingInfoSave {
   request: UpdateExamInfoRequest;
@@ -191,6 +202,15 @@ function ExamGeneralForm({
         const status = getErrorStatus(error);
         if (status === 409 && !lockScope) {
           setError("code", { message: tExams("create.errors.codeTaken") }, { shouldFocus: true });
+        } else if (status === 412) {
+          setSubmitError(t("saveConflict"));
+        } else if (status === 422) {
+          // Lỗi theo trường gắn vào ô nhập tương ứng; không gắn được thì báo chung (không in chữ của máy chủ).
+          const fields = (error instanceof ExamsApiError ? error.fieldErrors : []).flatMap(
+            (item) => FORM_FIELD_OF[item.field ?? ""] ?? [],
+          );
+          if (fields.length === 0) setSubmitError(t("saveInvalid"));
+          fields.forEach((field, index) => setError(field, { message: t("fieldInvalid") }, { shouldFocus: index === 0 }));
         } else {
           setSubmitError(t("saveError"));
         }

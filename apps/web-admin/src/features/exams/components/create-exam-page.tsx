@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, get, useForm, useWatch } from "react-hook-form";
 import { RichTextEditor } from "@/components/rich-text";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -55,6 +55,7 @@ import {
 } from "../create-exam-schema";
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
+import { ExamStructureSaveError } from "../review-api";
 import type { ExamTemplate } from "../types";
 import { CreateExamCover, type CoverImage } from "./create-exam-cover";
 import {
@@ -139,7 +140,7 @@ export function CreateExamPage() {
         </Link>
         <PageHeader title={t("title")} description={t("description")} />
       </div>
-      <MockDataBanner />
+      <ContentMockBanner />
       {body}
     </div>
   );
@@ -467,7 +468,10 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
 
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
-    createExam.mutate(toCreateExamRequest(submitted), {
+    // Cấu trúc chưa sửa so với mẫu thì không gửi: máy chủ nạp mẫu, giữ nguyên các trường của mẫu.
+    const request = toCreateExamRequest(submitted);
+    if (!partsEdited(submitted.parts, baseline)) delete request.parts;
+    createExam.mutate(request, {
       onSuccess: (exam) => {
         const message = t("success", { code: exam.code });
         notify.success(message);
@@ -475,6 +479,14 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
         router.push(examTabHref(exam.id, "structure"));
       },
       onError: (error) => {
+        if (error instanceof ExamStructureSaveError) {
+          // Bài đã được tạo: không POST lại (trùng mã). Chuyển sang bài để sửa lại cấu trúc ở tab Cấu trúc.
+          const message = t("errors.structureNotSaved", { code: error.exam.code });
+          notify.error(message);
+          setLiveMessage(message);
+          router.push(examTabHref(error.exam.id, "structure"));
+          return;
+        }
         const status = getErrorStatus(error);
         if (status === 409) {
           const code = submitted.code.trim().toUpperCase();

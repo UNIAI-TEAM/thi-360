@@ -1,15 +1,25 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { createExam } from "../api";
 import { ExamListView } from "../components/exam-list-view";
-import { examStore } from "../mock/store";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
 beforeEach(async () => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+  routerMock.push.mockReset();
+  new ExamsBackend().install();
   window.history.replaceState(null, "", "/exams");
   await createExam({
     name: "BCA thu",
@@ -28,11 +38,6 @@ beforeEach(async () => {
   });
 });
 
-afterEach(() => {
-  examStore.reset();
-  routerMock.push.mockReset();
-});
-
 function rowOf(table: HTMLElement, name: string) {
   const row = within(table).getByRole("link", { name }).closest("tr");
   if (!row) throw new Error(`khong thay dong ${name}`);
@@ -49,12 +54,13 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     const bca = rowOf(table, "BCA thu");
     expect(bca.getByText("BCA")).toBeInTheDocument();
     expect(bca.getByText("4 tổ hợp")).toBeInTheDocument();
-    expect(bca.getByText("81 câu · 180 phút chung")).toBeInTheDocument();
+    // Danh sách của máy chủ không cho biết cách tính thời gian: thời lượng trung tính, không ghi "chung".
+    expect(bca.getByText("81 câu · 180 phút")).toBeInTheDocument();
     expect(bca.getByText("Có tự luận")).toBeInTheDocument();
 
     const informatics = rowOf(table, "THPTQG Tin hoc thu");
-    expect(informatics.getByText("Tin học · 2 nhánh")).toBeInTheDocument();
-    expect(informatics.getByText("28 câu · 50 phút chung")).toBeInTheDocument();
+    // Danh sách của máy chủ không có môn và số nhánh của bài: cột Lựa chọn để trống.
+    expect(informatics.getByText("28 câu · 50 phút")).toBeInTheDocument();
 
     const hsa = rowOf(table, "HSA FULL · Đề luyện số 1");
     expect(hsa.getByText("Tiếng Anh")).toBeInTheDocument();

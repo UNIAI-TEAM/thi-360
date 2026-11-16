@@ -7,6 +7,7 @@ import type {
   QuestionType,
   TrueFalseMethod,
 } from "@/features/content/types";
+import type { MockPage } from "@/lib/mock/content-mock";
 
 export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
@@ -57,6 +58,11 @@ export interface ExamSummary {
   subjectCode: string | null;
   /** `SHARED`: `durationMinutes` là thời lượng chung, các phần không có thời lượng riêng (BCA, V-ACT). */
   timing: ExamTiming;
+  /**
+   * `true`: danh sách của máy chủ không trả cách tính thời gian nên `timing` không có nghĩa; màn chỉ ghi thời lượng
+   * trung tính, không nói "chung" hay "theo phần". Bỏ trống: `timing` đã biết.
+   */
+  timingUnknown?: boolean;
   /** Thang điểm thô; `null` khi chưa đặt (V-ACT đặt thang luyện tập lúc thiết lập). */
   maxScore: number | null;
   /** Thang tham chiếu hiển thị (V-ACT 1.200); `null` khi không có (D11). */
@@ -224,6 +230,11 @@ export interface ExamPartOption {
    * hình nhắc trước khi công bố; bỏ trống: không cần xác nhận. Phương án `SUBJECT_CHOICE` không dùng cờ này.
    */
   expertConfirmed?: boolean;
+  /**
+   * Khối gợi ý của lựa chọn không có môn riêng (tổ hợp một môn CA1–CA4, nhánh Tin học) khi máy chủ lưu khối ở lựa chọn;
+   * bỏ trống: lựa chọn chỉ có khối trong `sections`.
+   */
+  blocks?: QuestionBlock[];
 }
 
 /** Quy tắc tham gia của phần: làm tất cả (`ALL`), hoặc chọn `choose` trong các phương án (`CHOICE`). */
@@ -297,6 +308,11 @@ export interface ListExamsQuery {
   page?: number;
   size?: number;
   sort?: string;
+}
+
+/** Trang danh sách bài thi. `incomplete`: lọc phía máy khách đã dừng ở số trang tối đa nên kết quả có thể chưa đủ. */
+export interface ExamListPage extends MockPage<ExamSummary> {
+  incomplete?: boolean;
 }
 
 /**

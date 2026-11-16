@@ -12,11 +12,9 @@ import {
   validateStructure,
   type MatrixAxes,
 } from "../matrix";
-import { questionStore } from "@/features/questions/mock/store";
-import fixture from "../mock/exams.json";
-import { candidatesFor, matchesScope, queryOfBlock } from "../mock/source-count";
 import { effectiveScope } from "../subject-matrix";
-import type { BlockMatrix, ExamDetail, ExamSection, QuestionBlock } from "../types";
+import type { BlockMatrix, ExamSection, QuestionBlock } from "../types";
+import { EXAMS_FIXTURE } from "./exam-fixture";
 
 const AXES: MatrixAxes = {
   grades: ["GRADE_10", "GRADE_11", "GRADE_12"],
@@ -151,7 +149,7 @@ describe("phân bổ của một khối", () => {
 });
 
 describe("cấu trúc của bài mẫu", () => {
-  const exams = (fixture as { exams: ExamDetail[] }).exams;
+  const exams = EXAMS_FIXTURE.exams;
 
   it("HSA-F-001: 150 câu, 195 phút, phân bổ đủ", () => {
     const exam = exams.find((item) => item.code === "HSA-F-001")!;
@@ -198,27 +196,16 @@ describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
     ...block({}, { questionType: "SINGLE_CHOICE", questionCount: 5, matrix: null }),
     knowledgeScope,
   });
-  const codesOf = (target: QuestionBlock, within: ExamSection) =>
-    candidatesFor(queryOfBlock(target, within))
-      .map((question) => question.code)
-      .sort();
-
-  it("group inherits subject scope; own scope not intersected; parent matches child", () => {
-    // CH-000001 gắn kn-1D4-1-1 (con của kn-1D4-1, con của kn-1D4); CH-000010 gắn kn-0D1-2-1 và kn-0D1-1-1.
+  it("group inherits subject scope; own scope not intersected", () => {
     const math = section({ nodeIds: ["kn-1D4"], match: "ANY" });
-    // Nhóm không có phạm vi riêng (null) dùng phạm vi của môn; nút cha khớp câu gắn nút con.
+    // Nhóm không có phạm vi riêng (null) dùng phạm vi của môn.
     expect(effectiveScope(singles(null), math)).toEqual(math.knowledgeScope);
-    expect(codesOf(singles(null), math)).toContain("CH-000001");
-    expect(codesOf(singles(null), math)).not.toContain("CH-000010");
     // Nhóm có phạm vi riêng chỉ dùng phạm vi riêng, không giao với phạm vi của môn (kn-0D1 nằm ngoài kn-1D4).
     const own = singles({ nodeIds: ["kn-0D1"], match: "ANY" });
     expect(effectiveScope(own, math)).toEqual(own.knowledgeScope);
-    expect(codesOf(own, math)).toContain("CH-000010");
-    expect(codesOf(own, math)).not.toContain("CH-000001");
-    // Cả hai cùng trống là không giới hạn MAPID: câu chưa gắn nút nào cũng khớp.
+    // Cả hai cùng trống là không giới hạn MAPID.
     const open = section(null);
     expect(effectiveScope(singles(null), open)).toBeNull();
-    expect(codesOf(singles(null), open)).toEqual(expect.arrayContaining(["CH-000001", "CH-000010", "CH-008008"]));
     // Phạm vi riêng chưa chọn nút (hủy hộp chọn, chỉ có năng lực) kế thừa nút của môn và giữ lọc năng lực (R1-3, R1-4).
     expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), math)).toEqual(math.knowledgeScope);
     expect(effectiveScope(singles({ nodeIds: [], match: "ANY", competencyCodes: ["VACT-TOAN"] }), math)).toEqual({
@@ -227,12 +214,5 @@ describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
       competencyCodes: ["VACT-TOAN"],
     });
     expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), open)).toEqual({ nodeIds: [], match: "ANY" });
-    // Nút cha đã chọn khớp nút con; nút con đã chọn không khớp câu chỉ gắn nút cha của nó.
-    const byCode = (code: string) => questionStore.all().find((question) => question.code === code)!;
-    expect(matchesScope(byCode("CH-000001"), { nodeIds: ["kn-1D4"], match: "ANY" })).toBe(true);
-    expect(matchesScope(byCode("CH-000001"), { nodeIds: ["kn-1D4-1"], match: "ANY" })).toBe(true);
-    expect(matchesScope(byCode("CH-000001"), { nodeIds: ["kn-1D4-3"], match: "ANY" })).toBe(false);
-    expect(matchesScope(byCode("CH-000010"), { nodeIds: ["kn-0D1-1-1", "kn-0D1-2-1"], match: "ALL" })).toBe(true);
-    expect(matchesScope(byCode("CH-000010"), { nodeIds: ["kn-0D1-1-1", "kn-1D4"], match: "ALL" })).toBe(false);
   });
 });

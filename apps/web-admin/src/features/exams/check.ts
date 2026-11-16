@@ -339,8 +339,12 @@ const GROUP_OF: Record<CheckIssueCode, CheckGroup> = {
   ANSWER_TYPE_SHORTAGE: "SOURCE",
   SUBJECT_QUOTA_INFEASIBLE: "SOURCE",
   PREVIEW_SUBJECTS_INVALID: "STRUCTURE",
+  MATRIX_NON_INTEGER: "MATRIX",
+  MATRIX_INCOMPLETE: "MATRIX",
+  PART_EMPTY: "STRUCTURE",
+  SHARED_PART_DURATION: "STRUCTURE",
+  ANSWER_QUOTA_DUPLICATE: "MATRIX",
 };
-
 /** Mức của từng mã: chưa xác nhận được (giới hạn xử lý), cảnh báo không chặn công bố; còn lại là lỗi. */
 const SEVERITY_OF: Partial<Record<CheckIssueCode, CheckIssue["severity"]>> = {
   OVERLAP_UNCONFIRMED: "UNCONFIRMED",

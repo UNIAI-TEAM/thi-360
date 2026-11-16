@@ -34,12 +34,12 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { useExam } from "../queries";
-import { useDiscontinueExam, useExamVersions } from "../review-queries";
+import { useDiscontinueExam, useExamVersions, useIdempotencyKey } from "../review-queries";
 import type { ExamChange, ExamChangeKind, ExamVersionList, ExamVersionRow } from "../review-types";
 import { EXAM_CHECK_TONE } from "../status";
 import type { ExamDetail } from "../types";
 import { ExamVersionDetailDialog } from "./exam-versions-detail-dialog";
-import { IconLink, pathLabelCodes, reviewHref, structureHref } from "./exam-review-shared";
+import { IconLink, pathLabelCodes, reviewHref, structureHref, useChangeWhere } from "./exam-review-shared";
 import { PublishExamDialog } from "./publish-exam-dialog";
 
 const CHANGE_ICON: Record<ExamChangeKind, typeof Plus> = {
@@ -50,6 +50,7 @@ const CHANGE_ICON: Record<ExamChangeKind, typeof Plus> = {
   BLOCK_CHANGED: Pencil,
   MATRIX_CHANGED: Pencil,
   ORDER_RULE_CHANGED: ArrowLeftRight,
+  ORDER_CHANGED: ArrowLeftRight,
   QUESTIONS_REPLACED: Replace,
 };
 
@@ -62,6 +63,7 @@ export function ExamVersionsView({ examId }: { examId: string }) {
   const examQuery = useExam(examId);
   const versionsQuery = useExamVersions(examId);
   const discontinue = useDiscontinueExam(examId);
+  const discontinueKey = useIdempotencyKey();
   const [publishOpen, setPublishOpen] = useState(false);
   const [viewVersion, setViewVersion] = useState<number | null>(null);
   const [discontinueOpen, setDiscontinueOpen] = useState(false);
@@ -143,18 +145,23 @@ export function ExamVersionsView({ examId }: { examId: string }) {
         loading={discontinue.isPending}
         error={discontinueError}
         onConfirm={() =>
-          discontinue.mutate({ expectedRevision: exam.revision }, {
-            onSuccess: () => {
-              setDiscontinueOpen(false);
-              notify.success(t("discontinue.done", { code: exam.code }));
+          // Thử lại sau lỗi mạng giữ khóa; đổi bản sửa (`revision`) thì khóa mới.
+          discontinue.mutate(
+            { expectedRevision: exam.revision, idempotencyKey: discontinueKey.keyFor(String(exam.revision)) },
+            {
+              onSuccess: () => {
+                discontinueKey.release();
+                setDiscontinueOpen(false);
+                notify.success(t("discontinue.done", { code: exam.code }));
+              },
+              onError: (error) => {
+                const status = getErrorStatus(error);
+                setDiscontinueError(
+                  status === 409 || status === 412 ? t("discontinue.conflict") : t("discontinue.error"),
+                );
+              },
             },
-            onError: (error) => {
-              const status = getErrorStatus(error);
-              setDiscontinueError(
-                status === 409 || status === 412 ? t("discontinue.conflict") : t("discontinue.error"),
-              );
-            },
-          })
+          )
         }
       />
     </div>
@@ -252,6 +259,7 @@ function WorkingCopySection({
 function ChangesSection({ exam, data }: { exam: ExamDetail; data: ExamVersionList }) {
   const t = useTranslations("exams.versions");
   const base = data.workingCopy?.baseVersion ?? null;
+  const whereLabel = useChangeWhere(exam);
   return (
     <section aria-labelledby="versions-changes-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -262,14 +270,14 @@ function ChangesSection({ exam, data }: { exam: ExamDetail; data: ExamVersionLis
       </div>
       <ul className="flex flex-col gap-3">
         {data.changes.map((change) => (
-          <ChangeItem key={change.id} exam={exam} change={change} base={base} />
+          <ChangeItem key={change.id} exam={exam} change={change} where={whereLabel(change.where)} base={base} />
         ))}
       </ul>
     </section>
   );
 }
 
-function ChangeItem({ exam, change, base }: { exam: ExamDetail; change: ExamChange; base: number | null }) {
+function ChangeItem({ exam, change, where, base }: { exam: ExamDetail; change: ExamChange; where: string; base: number | null }) {
   const t = useTranslations("exams.versions.changes");
   const Icon = CHANGE_ICON[change.kind];
   return (
@@ -280,7 +288,7 @@ function ChangeItem({ exam, change, base }: { exam: ExamDetail; change: ExamChan
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-text">{t(`kind.${change.kind}`)}</span>
-          <span className="text-body text-text-secondary">{change.where}</span>
+          <span className="text-body text-text-secondary">{where}</span>
           {change.warning && (
             <StatusChip tone={change.warning === "INVALID" ? "danger" : "warning"}>
               {t(`warning.${change.warning}`)}
@@ -306,7 +314,7 @@ function ChangeItem({ exam, change, base }: { exam: ExamDetail; change: ExamChan
       </div>
       <IconLink
         href={structureHref(exam.id, change.blockId)}
-        label={t("openAria", { where: change.where })}
+        label={t("openAria", { where })}
         tooltip={t("openTooltip")}
         icon={<ArrowRight />}
       />

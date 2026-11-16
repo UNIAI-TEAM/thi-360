@@ -11,7 +11,6 @@ import {
   createExamInfoSchema,
   EXAM_CODE_MAX,
   EXAM_DESCRIPTION_MAX,
-  EXAM_INSTRUCTIONS_MAX,
   EXAM_NAME_MAX,
   type CreateExamSchemaMessages,
   type ExamInfoFormValues,
@@ -45,7 +44,6 @@ export function useExamInfoMessages(): ExamInfoSchemaMessages {
     maxScoreRequired: t("maxScoreRequired"),
     maxScorePositive: t("maxScorePositive"),
     descriptionMax: t("descriptionMax", { max: EXAM_DESCRIPTION_MAX }),
-    instructionsMax: t("instructionsMax", { max: EXAM_INSTRUCTIONS_MAX }),
   };
 }
 

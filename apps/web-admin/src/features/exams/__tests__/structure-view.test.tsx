@@ -1,17 +1,28 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { ExamGeneralView } from "../components/exam-general-view";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { examStore } from "../mock/store";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-afterEach(() => {
-  examStore.reset();
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 function openStructure(examId: string, search = "") {
@@ -29,8 +40,8 @@ describe("Cấu trúc và ma trận", () => {
     await user.type(duration, "85");
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(examStore.get("ex-qda-f-001")?.check.status).toBe("NEEDS_RECHECK"));
-    expect(examStore.get("ex-qda-f-001")).toMatchObject({ hasUnpublishedChanges: true, durationMinutes: 200 });
+    await waitFor(() => expect(backend.app("ex-qda-f-001").check.status).toBe("NEEDS_RECHECK"));
+    expect(backend.app("ex-qda-f-001")).toMatchObject({ hasUnpublishedChanges: true, durationMinutes: 200 });
   });
 
   it("khối theo %: quy đổi phần dư lớn nhất hiện phần nguyên và phần dư", async () => {
@@ -54,11 +65,18 @@ describe("Cấu trúc và ma trận", () => {
     expect(screen.getAllByText(/QD04/).length).toBeGreaterThan(0);
   });
 
-  it("trạng thái rỗng và lỗi theo ?mockState", async () => {
-    const { unmount } = openStructure("ex-hsa-f-002", "?mockState=empty");
+  it("trạng thái rỗng và lỗi theo phản hồi của máy chủ", async () => {
+    const path = "/api/v1/admin/exams/ex-hsa-f-002/structure";
+    const empty = new ExamsBackend();
+    empty.server.on("GET", path, { status: 200, body: { examId: "ex-hsa-f-002", revision: 1, parts: [] } });
+    empty.install();
+    const { unmount } = openStructure("ex-hsa-f-002");
     expect(await screen.findByRole("heading", { name: "Bài thi chưa có phần thi" })).toBeInTheDocument();
     unmount();
-    openStructure("ex-hsa-f-002", "?mockState=error");
+    const failing = new ExamsBackend();
+    failing.server.on("GET", path, { status: 500, body: { code: "INTERNAL_ERROR", message: "boom" } });
+    failing.install();
+    openStructure("ex-hsa-f-002");
     expect(await screen.findByRole("heading", { name: "Không tải được cấu trúc bài thi" })).toBeInTheDocument();
   });
 });
@@ -74,7 +92,7 @@ describe("Thông tin chung", () => {
     await user.clear(name);
     await user.type(name, "QDA FULL · Đề luyện 1 (sửa)");
     await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
-    await waitFor(() => expect(examStore.get("ex-qda-f-001")?.name).toBe("QDA FULL · Đề luyện 1 (sửa)"));
+    await waitFor(() => expect(backend.app("ex-qda-f-001").name).toBe("QDA FULL · Đề luyện 1 (sửa)"));
     const facts = screen.getByRole("heading", { name: "Tình trạng" }).closest("div")!;
     expect(within(facts).getByText("Có bản sửa chưa công bố")).toBeInTheDocument();
   });

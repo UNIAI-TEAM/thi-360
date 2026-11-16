@@ -39,7 +39,14 @@ describe("cờ dữ liệu mẫu của đợt 2 (plan B7)", () => {
 
     get.mockResolvedValueOnce({ data: undefined, error: { code: "UNAVAILABLE" }, response: { ok: false, status: 503 } });
     await expect(listQuestions({})).rejects.toMatchObject({ status: 503, code: "UNAVAILABLE" });
-    await expect(listExams({})).rejects.toThrow(NOT_WIRED);
+    // Bài thi đã nối API (UNI-2620): cờ tắt thì gọi máy chủ, không còn NOT_WIRED và không đọc dữ liệu mẫu.
+    get.mockResolvedValueOnce({
+      data: { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 },
+      error: undefined,
+      response: { ok: true, status: 200 },
+    });
+    await expect(listExams({})).resolves.toMatchObject({ content: [], totalElements: 0 });
+    expect(get).toHaveBeenCalledWith("/api/v1/admin/exams", expect.anything());
 
     // Danh sách chờ chấm, bộ lọc và màn chấm đọc đề từ kho câu hỏi mẫu (`questionStore`) nên vẫn chạy.
     const page = await listGradingAttempts({});

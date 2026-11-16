@@ -3642,6 +3642,7 @@
       "hint": "Editing a serving exam creates a working copy; the published version keeps serving until a new one is published.",
       "tableAriaLabel": "Exam list",
       "resultCount": "{count, plural, one {# exam matches} other {# exams match}} the filters",
+      "incomplete": "Results may be incomplete: only the first 1,000 exams were read to filter by check or working copy. Narrow the list with search or exam type.",
       "loadingCount": "Loading the list…",
       "errorCount": "Could not load the list",
       "errorTitle": "Could not load exams",
@@ -3701,6 +3702,7 @@
       "discontinueConflict": "The exam is no longer serving. Reload the list and try again.",
       "discontinueError": "Could not stop selling the exam. Try again later.",
       "structureValueShared": "{questions, plural, one {# question} other {# questions}} · {minutes, number} min shared",
+      "structureValueNoDuration": "{questions, plural, one {# question} other {# questions}} · —",
       "essay": "Has essay",
       "choice": {
         "english": "English",
@@ -3717,6 +3719,9 @@
       "discard": "Undo changes",
       "saved": "General information saved.",
       "saveError": "Could not save the general information. Try again later.",
+      "saveConflict": "Someone else just changed this exam. Reload the page to see the latest version; your unsaved changes are still on screen.",
+      "saveInvalid": "The exam information has an invalid value. Check the fields and save again.",
+      "fieldInvalid": "Invalid value.",
       "scopeLocked": "This exam has been published, so its exam type, scope, part and subject cannot change: scope changes must respect access already sold (UniNote 11.2).",
       "replaceTitle": "Reload the structure from the new template?",
       "replaceDescription": "Changing the exam type, scope, part or subject replaces the current structure with that of the latest template, with the parts below. Configured blocks and matrices will be lost.",
@@ -3778,6 +3783,8 @@
       "saved": "Structure and matrix saved.",
       "savedRecheck": "Structure and matrix saved. The exam needs to be checked again before publishing.",
       "saveError": "Could not save the structure. Your changes are still on screen; try again later.",
+      "saveConflict": "Someone else just changed this exam. Reload the page to see the latest version; your unsaved changes are still on screen.",
+      "saveInvalid": "The structure has an invalid value (questions, duration or points). Fix it and save again.",
       "workingNote": "Saving updates the working copy; version v{version} keeps serving learners until a new version is published.",
       "draftNote": "This exam has not been published. Save often and check the configuration before publishing.",
       "version": {
@@ -3913,7 +3920,7 @@
         "setWholeNote": "Sets are always drawn whole; the group's count is sets × sub-questions per set.",
         "points": "Required points per question",
         "pointsOpenHint": "Optional. Leave empty to accept any question; points come from the question version.",
-        "pointsTotal": "Only questions worth exactly {points, number} points enter the source; the group is worth {total, number} points.",
+        "pointsTotal": "Only questions worth exactly {points, plural, one {# point} other {# points}} enter the source; the group is worth {total, plural, one {# point} other {# points}}.",
         "taskType": "Task type",
         "taskTypeSet": "Task type or passage",
         "taskTypeSetHint": "Limit the source by task type; set the passage scope with MAPID below.",
@@ -4090,6 +4097,11 @@
       "toPreview": "Generate preview paper",
       "lastRun": "Checked at {time} against the current question source · took {seconds, number} s · processing limit {limit, number} s",
       "stale": "The question source or the configuration changed after this check. Check again before publishing.",
+      "staleReason": {
+        "STRUCTURE_CHANGED": "The exam structure changed after this check. Check again before publishing.",
+        "CONFIG_CHANGED": "The exam configuration changed after this check. Check again before publishing.",
+        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing."
+      },
       "runError": "The check could not run. Try again.",
       "live": {
         "running": "Checking the configuration",
@@ -4097,6 +4109,7 @@
       },
       "deep": {
         "start": "Deep check",
+        "runningLabel": "Deep check running…",
         "hint": "Some results could not be confirmed within the processing limit. Deep check gives the solver up to {seconds, number} seconds and runs in the background.",
         "live": {
           "running": "Deep check is running. The new result appears when it finishes.",
@@ -4141,7 +4154,7 @@
         "UNCONFIRMED": "Unconfirmed"
       },
       "noIssue": "None",
-      "moreIssues": "and {count, plural, one {# more issue} other {# more issues}}",
+      "moreIssues": "And {count, plural, one {# more issue} other {# more issues}}.",
       "issueWithPath": "{path}: {issue}",
       "paths": {
         "title": "Results by choice path",
@@ -4246,8 +4259,8 @@
         "MATRIX_NEGATIVE": "Block {block} has a negative quota.",
         "PERCENT_TOTAL_INVALID": "Block {block}: the percentages {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} COMPETENCY {by competency} other {of the matrix}} add up to {available, number}%; they must add up to 100%.",
         "SET_SIZE_MISMATCH": "Block {block}: sets × questions per set is {available, number}; the block needs {required, number} questions.",
-        "CELL_SHORTAGE": "Block {block} needs {required, number} questions at {grade}/{difficulty}; {available, number} matching questions are available.",
-        "DIMENSION_SHORTAGE": "Block {block} needs {required, number} questions at {level}; {available, number} matching questions are available.",
+        "CELL_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "DIMENSION_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
         "MATRIX_INFEASIBLE": "Block {block}: each dimension has enough source questions, but no selection of {required, number} questions meets grade and difficulty together.",
         "SET_SHORTAGE": "Block {block} requires {required, number} sets; only {available, number} valid sets are available.",
         "OVERLAP_UNCONFIRMED": "Block {block}: {available, number} questions are shared between knowledge groups; no solution was found within the processing limit ({seconds, number} seconds, sample). This does not mean the bank lacks questions.",
@@ -4265,7 +4278,12 @@
         "REMAINDER_GROUP_INVALID": "Subject {subject} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed {required, number} questions (found {available, number}).",
         "SUBJECT_QUOTA_COUNT_VARIES": "Subject {subject} receives {required, number} to {available, number} questions: subject quotas must be set as percentages, not as question counts.",
         "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: the {answerType} quota needs {required, number} questions; {available, number} matching questions are available.",
-        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: not enough source for the subject quota; it needs {required, number} questions at {dimension, select, GRADE {{level}} DIFFICULTY {{level}} other {{grade}/{difficulty}}}; {available, number} matching questions are available.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: not enough source for the subject quota; it needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "MATRIX_NON_INTEGER": "Block {block} has a quota that is not a whole number.",
+        "MATRIX_INCOMPLETE": "Block {block} has not chosen how its matrix applies (combined or separate).",
+        "PART_EMPTY": "{part} has no questions yet.",
+        "SHARED_PART_DURATION": "{part}: the exam uses a shared timer, so a part must not set its own duration.",
+        "ANSWER_QUOTA_DUPLICATE": "Subject {subject}: the {answerType} answer type appears twice in the answer-type quotas.",
         "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
       }
     },
@@ -4302,6 +4320,7 @@
           "BLOCK_CHANGED": "Block changed",
           "MATRIX_CHANGED": "Matrix changed",
           "ORDER_RULE_CHANGED": "Shuffle rule changed",
+          "ORDER_CHANGED": "Order changed",
           "QUESTIONS_REPLACED": "Questions replaced"
         },
         "warning": {
@@ -4312,7 +4331,55 @@
         "beforeFirst": "Before",
         "after": "After (working copy)",
         "openAria": "Open the change in {where}",
-        "openTooltip": "Open the change"
+        "openTooltip": "Open the change",
+        "where": {
+          "all": {
+            "block": "Blocks",
+            "option": "Options",
+            "part": "Parts",
+            "section": "Subjects"
+          },
+          "config": "Exam settings",
+          "field": {
+            "answerQuotas": "Answer-type targets",
+            "childAnswerType": "Sub-question type",
+            "choiceGroup": "Subject group",
+            "chooseSubjects": "Subjects to choose",
+            "description": "Description",
+            "durationMinutes": "Duration",
+            "groupOrder": "Group order",
+            "instructions": "Instructions",
+            "knowledgeScope": "Knowledge scope",
+            "matrix": "Matrix",
+            "maxPoints": "Part maximum points",
+            "maxScore": "Maximum score",
+            "mode": "Part mode",
+            "name": "Name",
+            "order": "Order",
+            "participation": "Participation rule",
+            "practiceScoring": "Practice scoring",
+            "questionCount": "Questions",
+            "questionCountOnPaper": "Questions on the paper",
+            "questionCountRequired": "Questions to answer",
+            "questionType": "Answer type",
+            "referenceMax": "Reference scale",
+            "requiredPointsPerQuestion": "Points per question",
+            "setCount": "Number of sets",
+            "setSize": "Questions per set",
+            "shuffle": "Shuffle rule",
+            "subjectCode": "Subject",
+            "tagCodes": "Tags",
+            "taskTypeCode": "Task type",
+            "timing": "Timing"
+          },
+          "item": {
+            "block": "Block",
+            "option": "Option",
+            "part": "Part",
+            "section": "Subject"
+          },
+          "structure": "Structure"
+        }
       },
       "history": {
         "title": "Publishing history",
@@ -4565,7 +4632,16 @@
       },
       "errors": {
         "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
-        "CHECK_REQUIRED": "The configuration must be checked again before publishing.",
+        "checkRequired": {
+          "NO_CHECK": "The exam has not been checked yet. Check the configuration, then publish.",
+          "STRUCTURE_CHANGED": "The exam structure changed after the last check. Check again, then publish.",
+          "CONFIG_CHANGED": "The exam configuration changed after the last check. Check again, then publish.",
+          "SOURCE_CHANGED": "The question source changed after the last check. Check again, then publish.",
+          "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
+          "UNKNOWN": "The configuration must be checked again before publishing."
+        },
+        "recheck": "Check again",
+        "revisionConflict": "The exam was just edited elsewhere. Close this dialog, reload the page, then publish again.",
         "NOTHING_TO_PUBLISH": "There is no working copy to publish.",
         "generic": "Could not publish. Try again."
       },
@@ -4771,7 +4847,8 @@
       "errors": {
         "codeTaken": "This exam code is already used. Enter another code.",
         "generic": "Could not create the exam. Try again later.",
-        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again."
+        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again.",
+        "structureNotSaved": "Exam {code} was created with the template structure, but the structure you edited could not be saved. Redo your edits in the Structure and matrix tab."
       },
       "validation": {
         "nameRequired": "Enter the exam name.",
@@ -4782,7 +4859,6 @@
         "codeTaken": "This exam code is already used. Enter another code.",
         "subjectRequired": "Choose the part of the by-part exam.",
         "descriptionMax": "The description can have at most {max} characters.",
-        "instructionsMax": "The instructions can have at most {max} characters.",
         "partNameRequired": "Enter the part name.",
         "partNameMax": "The part name can have at most {max} characters.",
         "partSubjectRequired": "Choose the part's subject.",
@@ -4963,6 +5039,12 @@
       "actions": "Actions",
       "edit": "Edit subject",
       "editSubject": "Edit subject {subject}"
+    },
+    "templateName": {
+      "full": "{kind} · Whole exam",
+      "part": "{kind} · By part {scope}",
+      "subject": "{kind} · {subject}",
+      "withYear": "{name} · {year}"
     },
     "combinations": {
       "title": "Paths learners choose",

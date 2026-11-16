@@ -90,37 +90,45 @@ export const CHECK_GROUPS = [
 ] as const;
 export type CheckGroup = (typeof CHECK_GROUPS)[number];
 
-export type CheckIssueCode =
-  | "INFO_MISSING"
-  | "OPTION_EMPTY"
-  | "PATH_TOTAL_MISMATCH"
-  | "PART_TOTAL_MISMATCH"
-  | "SECTION_TOTAL_MISMATCH"
-  | "MATRIX_TOTAL_MISMATCH"
-  | "MATRIX_NEGATIVE"
-  | "PERCENT_TOTAL_INVALID"
-  | "SET_SIZE_MISMATCH"
-  | "CELL_SHORTAGE"
-  | "DIMENSION_SHORTAGE"
-  | "MATRIX_INFEASIBLE"
-  | "SET_SHORTAGE"
-  | "OVERLAP_UNCONFIRMED"
-  | "YEARS_UNCONFIRMED"
-  | "OPTION_UNCONFIRMED"
-  | "PART_POINTS_MISMATCH"
-  | "POINTS_TOTAL_MISMATCH"
-  | "COMPETENCY_SHORTAGE"
-  | "RUBRIC_MISSING"
-  | "SCORING_MISMATCH"
-  | "ANSWER_QUOTA_TOTAL_MISMATCH"
-  | "SUBJECT_MATRIX_TOTAL_MISMATCH"
-  | "GROUP_ANSWER_TYPE_MISSING"
-  | "SUBJECT_CHOICE_COUNTS_INVALID"
-  | "REMAINDER_GROUP_INVALID"
-  | "SUBJECT_QUOTA_COUNT_VARIES"
-  | "ANSWER_TYPE_SHORTAGE"
-  | "SUBJECT_QUOTA_INFEASIBLE"
-  | "PREVIEW_SUBJECTS_INVALID";
+/** Mã vấn đề của kiểm tra cấu hình và xem trước. Mã do backend thêm (BE-5b:13, BE-5b:17) nằm cuối danh sách. */
+export const CHECK_ISSUE_CODES = [
+  "INFO_MISSING",
+  "OPTION_EMPTY",
+  "PATH_TOTAL_MISMATCH",
+  "PART_TOTAL_MISMATCH",
+  "SECTION_TOTAL_MISMATCH",
+  "MATRIX_TOTAL_MISMATCH",
+  "MATRIX_NEGATIVE",
+  "PERCENT_TOTAL_INVALID",
+  "SET_SIZE_MISMATCH",
+  "CELL_SHORTAGE",
+  "DIMENSION_SHORTAGE",
+  "MATRIX_INFEASIBLE",
+  "SET_SHORTAGE",
+  "OVERLAP_UNCONFIRMED",
+  "YEARS_UNCONFIRMED",
+  "OPTION_UNCONFIRMED",
+  "PART_POINTS_MISMATCH",
+  "POINTS_TOTAL_MISMATCH",
+  "COMPETENCY_SHORTAGE",
+  "RUBRIC_MISSING",
+  "SCORING_MISMATCH",
+  "ANSWER_QUOTA_TOTAL_MISMATCH",
+  "SUBJECT_MATRIX_TOTAL_MISMATCH",
+  "GROUP_ANSWER_TYPE_MISSING",
+  "SUBJECT_CHOICE_COUNTS_INVALID",
+  "REMAINDER_GROUP_INVALID",
+  "SUBJECT_QUOTA_COUNT_VARIES",
+  "ANSWER_TYPE_SHORTAGE",
+  "SUBJECT_QUOTA_INFEASIBLE",
+  "PREVIEW_SUBJECTS_INVALID",
+  "MATRIX_NON_INTEGER",
+  "MATRIX_INCOMPLETE",
+  "PART_EMPTY",
+  "SHARED_PART_DURATION",
+  "ANSWER_QUOTA_DUPLICATE",
+] as const;
+export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
 /**
  * Mức của vấn đề. `ERROR`: lỗi xác định (Không hợp lệ). `UNCONFIRMED`: chưa tìm được phương án trong giới hạn xử lý.
@@ -457,6 +465,7 @@ export type ExamChangeKind =
   | "BLOCK_CHANGED"
   | "MATRIX_CHANGED"
   | "ORDER_RULE_CHANGED"
+  | "ORDER_CHANGED"
   | "QUESTIONS_REPLACED";
 
 /** Một thay đổi của bản làm việc so với bản đang phục vụ. `where`, `before`, `after` là chữ dữ liệu. */
@@ -519,6 +528,8 @@ export interface PublishExamRequest {
   note: string | null;
   /** `revision` của bài lúc mở màn (D13); lệch thì 412 `EXAM_REVISION_CONFLICT`. */
   expectedRevision: number;
+  /** Khóa idempotency của lần bấm Công bố (spec 7.1); thử lại lần đó giữ cùng khóa. Bỏ trống: client tự sinh. */
+  idempotencyKey?: string;
 }
 
 export interface PublishExamResponse {
@@ -527,4 +538,12 @@ export interface PublishExamResponse {
   publishedPathIds: string[];
   /** Đường không công bố lần này, lượt thi mới vẫn dùng phiên bản cũ (số phiên bản cũ). */
   keptPaths: Array<{ pathId: string; version: number }>;
+}
+
+export interface DiscontinueExamRequest {
+  examId: string;
+  /** `revision` của bài lúc mở màn (D13); lệch thì 412 `EXAM_REVISION_CONFLICT`. */
+  expectedRevision: number;
+  /** Khóa idempotency của lần xác nhận ngừng bán (spec 7.1); thử lại lần đó giữ cùng khóa. */
+  idempotencyKey?: string;
 }

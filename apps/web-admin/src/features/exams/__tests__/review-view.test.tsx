@@ -1,13 +1,19 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
 import { getExam } from "../api";
 import { ExamReviewCheck } from "../components/exam-review-check";
 import { ExamReviewView } from "../components/exam-review-view";
-import { reviewStore } from "../mock/review-store";
-import { examStore } from "../mock/store";
+import { ExamsBackend } from "./fake-exams-backend";
+import { HSA_001_CHECK, HSA_002_RUN, PREVIEW_HSA_001_EN, PREVIEW_HSA_001_SCIENCE_INVALID } from "./review-fixtures";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const navigation = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({
@@ -18,12 +24,19 @@ vi.mock("next/navigation", () => ({
 
 const HSA = "ex-hsa-f-001";
 
+let backend: ExamsBackend;
+
 beforeEach(() => {
-  examStore.reset();
-  questionStore.reset();
-  reviewStore.reset();
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   navigation.search = "";
   window.history.replaceState(null, "", "/");
+  backend = new ExamsBackend();
+  // Kết quả kiểm tra gần nhất của HSA-F-001; HSA-F-002 chưa kiểm tra, bấm "Kiểm tra cấu hình" thì máy chủ trả kết quả.
+  backend.seedCheck(HSA, HSA_001_CHECK).seedRunResult("ex-hsa-f-002", HSA_002_RUN);
+  backend
+    .seedPreview(HSA, "opt-30", { status: 200, body: PREVIEW_HSA_001_EN })
+    .seedPreview(HSA, "opt-sci-1", { status: 200, body: PREVIEW_HSA_001_SCIENCE_INVALID });
+  backend.install();
 });
 
 afterEach(() => {
@@ -54,7 +67,7 @@ describe("ExamReviewView", () => {
     expect(await screen.findByRole("heading", { name: "Chưa kiểm tra cấu hình" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Kiểm tra cấu hình" }));
     expect(await screen.findByRole("heading", { name: "Kết quả theo đường lựa chọn" })).toBeInTheDocument();
-    expect(examStore.require("ex-hsa-f-002").check.status).not.toBe("UNCHECKED");
+    expect(backend.app("ex-hsa-f-002").check.status).not.toBe("UNCHECKED");
     await waitFor(() =>
       expect(screen.getAllByRole("status").some((node) => /Đã kiểm tra:/.test(node.textContent ?? ""))).toBe(true),
     );
@@ -109,7 +122,9 @@ describe("ExamReviewView", () => {
 describe("ExamReviewCheck", () => {
   it("hien trang thai loi khi khong tai duoc ket qua kiem tra", async () => {
     const exam = await getExam(HSA);
-    window.history.replaceState(null, "", "/?mockState=error");
+    const failing = new ExamsBackend();
+    failing.server.on("GET", `/api/v1/admin/exams/${HSA}/check`, { status: 500, body: { code: "INTERNAL_ERROR", message: "boom" } });
+    failing.install();
     renderWithProviders(<ExamReviewCheck exam={exam} onPreview={() => {}} />);
     expect(await screen.findByText("Không tải được kết quả kiểm tra")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();

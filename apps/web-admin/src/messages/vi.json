@@ -3642,6 +3642,7 @@
       "hint": "Sửa bài đang phục vụ tạo bản làm việc; bản công bố cũ vẫn phục vụ tới khi công bố bản mới.",
       "tableAriaLabel": "Danh sách bài thi",
       "resultCount": "{count, number} bài thi khớp bộ lọc",
+      "incomplete": "Kết quả có thể chưa đủ: chỉ đọc 1.000 bài đầu để lọc theo kiểm tra hoặc bản sửa. Thu hẹp bằng ô tìm kiếm hoặc kỳ thi.",
       "loadingCount": "Đang tải danh sách…",
       "errorCount": "Không tải được danh sách",
       "errorTitle": "Không tải được danh sách bài thi",
@@ -3701,6 +3702,7 @@
       "discontinueConflict": "Bài thi không còn ở trạng thái Đang phục vụ. Tải lại danh sách rồi thử lại.",
       "discontinueError": "Không ngừng bán được bài thi. Thử lại sau.",
       "structureValueShared": "{questions, number} câu · {minutes, number} phút chung",
+      "structureValueNoDuration": "{questions, number} câu · —",
       "essay": "Có tự luận",
       "choice": {
         "english": "Tiếng Anh",
@@ -3717,6 +3719,9 @@
       "discard": "Hoàn tác",
       "saved": "Đã lưu thông tin chung.",
       "saveError": "Không lưu được thông tin chung. Thử lại sau.",
+      "saveConflict": "Bài thi vừa được người khác sửa. Tải lại trang để xem bản mới nhất; thay đổi chưa lưu của bạn vẫn còn trên màn hình.",
+      "saveInvalid": "Thông tin bài thi có giá trị không hợp lệ. Kiểm tra lại các ô rồi lưu.",
+      "fieldInvalid": "Giá trị không hợp lệ.",
       "scopeLocked": "Bài đã công bố nên không đổi được kỳ thi, phạm vi, phần và môn: thay đổi phạm vi phải xử lý theo quyền đã bán (UniNote mục 11.2).",
       "replaceTitle": "Nạp lại cấu trúc theo mẫu mới?",
       "replaceDescription": "Đổi kỳ thi, phạm vi, phần hoặc môn sẽ thay cấu trúc hiện tại bằng cấu trúc của mẫu mới nhất, gồm các phần dưới đây. Các khối và ma trận đã khai báo sẽ mất.",
@@ -3778,6 +3783,8 @@
       "saved": "Đã lưu cấu trúc và ma trận.",
       "savedRecheck": "Đã lưu cấu trúc và ma trận. Bài thi cần kiểm tra lại trước khi công bố.",
       "saveError": "Không lưu được cấu trúc. Thay đổi vẫn còn trên màn hình; thử lại sau.",
+      "saveConflict": "Bài thi vừa được người khác sửa. Tải lại trang để xem bản mới nhất; thay đổi chưa lưu của bạn vẫn còn trên màn hình.",
+      "saveInvalid": "Cấu trúc có giá trị không hợp lệ (số câu, thời lượng hoặc điểm). Sửa lại rồi lưu.",
       "workingNote": "Lưu tạo bản làm việc; phiên bản v{version} vẫn phục vụ học viên tới khi công bố bản mới.",
       "draftNote": "Bài chưa công bố. Lưu thường xuyên; kiểm tra cấu hình trước khi công bố.",
       "version": {
@@ -4090,6 +4097,11 @@
       "toPreview": "Sinh đề xem trước",
       "lastRun": "Kiểm tra lúc {time} trên nguồn câu hỏi hiện tại · mất {seconds, number} giây · giới hạn xử lý {limit, number} giây",
       "stale": "Nguồn câu hỏi hoặc cấu hình đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+      "staleReason": {
+        "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố."
+      },
       "runError": "Không chạy được kiểm tra. Thử lại.",
       "live": {
         "running": "Đang kiểm tra cấu hình",
@@ -4097,6 +4109,7 @@
       },
       "deep": {
         "start": "Kiểm tra kỹ",
+        "runningLabel": "Đang kiểm tra kỹ…",
         "hint": "Có kết quả chưa xác nhận được trong giới hạn xử lý. Kiểm tra kỹ cho bộ giải tới {seconds, number} giây và chạy nền.",
         "live": {
           "running": "Đang kiểm tra kỹ. Kết quả mới hiện khi xong.",
@@ -4141,7 +4154,7 @@
         "UNCONFIRMED": "Chưa xác nhận được"
       },
       "noIssue": "Không có",
-      "moreIssues": "và {count, number} vấn đề khác",
+      "moreIssues": "Và {count, number} vấn đề khác.",
       "issueWithPath": "{path}: {issue}",
       "paths": {
         "title": "Kết quả theo đường lựa chọn",
@@ -4246,8 +4259,8 @@
         "MATRIX_NEGATIVE": "Khối {block} có chỉ tiêu âm.",
         "PERCENT_TOTAL_INVALID": "Khối {block}: tổng tỷ lệ {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} COMPETENCY {theo năng lực} other {của ma trận}} là {available, number}%, phải bằng 100%.",
         "SET_SIZE_MISMATCH": "Khối {block}: số bộ × số câu mỗi bộ là {available, number}, khối cần {required, number} câu.",
-        "CELL_SHORTAGE": "Khối {block} cần {required, number} câu {grade}/{difficulty}, hiện có {available, number} câu phù hợp.",
-        "DIMENSION_SHORTAGE": "Khối {block} cần {required, number} câu {level}, hiện có {available, number} câu phù hợp.",
+        "CELL_SHORTAGE": "Khối {block} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
+        "DIMENSION_SHORTAGE": "Khối {block} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
         "MATRIX_INFEASIBLE": "Khối {block}: đủ nguồn từng chiều nhưng chưa có cách chọn {required, number} câu thỏa đồng thời khối lớp và độ khó.",
         "SET_SHORTAGE": "Khối {block} yêu cầu {required, number} bộ, nguồn hiện chỉ có {available, number} bộ hợp lệ.",
         "OVERLAP_UNCONFIRMED": "Khối {block}: {available, number} câu dùng chung giữa các nhóm kiến thức; chưa tìm được phương án trong giới hạn xử lý ({seconds, number} giây, mẫu). Không kết luận là ngân hàng thiếu câu.",
@@ -4265,7 +4278,12 @@
         "REMAINDER_GROUP_INVALID": "Môn {subject} có số câu thay đổi: cần đúng một nhóm câu đơn lấy phần còn lại, và tổng các nhóm cố định không vượt {required, number} câu (hiện {available, number}).",
         "SUBJECT_QUOTA_COUNT_VARIES": "Môn {subject} nhận từ {required, number} đến {available, number} câu: chỉ tiêu cấp môn phải khai theo tỉ lệ, không khai theo số câu.",
         "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: chỉ tiêu dạng {answerType} cần {required, number} câu, hiện có {available, number} câu phù hợp.",
-        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: không đủ nguồn cho chỉ tiêu cấp môn, cần {required, number} câu {dimension, select, GRADE {{level}} DIFFICULTY {{level}} other {{grade}/{difficulty}}}, hiện có {available, number} câu phù hợp.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: không đủ nguồn cho chỉ tiêu cấp môn, cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
+        "MATRIX_NON_INTEGER": "Khối {block} có chỉ tiêu không phải số nguyên.",
+        "MATRIX_INCOMPLETE": "Khối {block} chưa chọn cách áp dụng ma trận (chung hay riêng).",
+        "PART_EMPTY": "{part} chưa có câu hỏi nào.",
+        "SHARED_PART_DURATION": "{part}: bài thi tính thời gian chung nên phần thi không đặt thời lượng riêng.",
+        "ANSWER_QUOTA_DUPLICATE": "Môn {subject}: dạng {answerType} bị khai hai lần trong chỉ tiêu dạng trả lời.",
         "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
       }
     },
@@ -4302,6 +4320,7 @@
           "BLOCK_CHANGED": "Sửa khối",
           "MATRIX_CHANGED": "Sửa ma trận",
           "ORDER_RULE_CHANGED": "Đổi quy tắc đảo",
+          "ORDER_CHANGED": "Đổi thứ tự",
           "QUESTIONS_REPLACED": "Thay câu hỏi"
         },
         "warning": {
@@ -4312,7 +4331,55 @@
         "beforeFirst": "Trước",
         "after": "Sau (bản sửa)",
         "openAria": "Mở chỗ thay đổi {where}",
-        "openTooltip": "Mở chỗ thay đổi"
+        "openTooltip": "Mở chỗ thay đổi",
+        "where": {
+          "all": {
+            "block": "Các khối",
+            "option": "Các lựa chọn",
+            "part": "Các phần",
+            "section": "Các môn"
+          },
+          "config": "Cấu hình bài thi",
+          "field": {
+            "answerQuotas": "Chỉ tiêu dạng trả lời",
+            "childAnswerType": "Dạng câu con",
+            "choiceGroup": "Nhóm môn",
+            "chooseSubjects": "Số môn được chọn",
+            "description": "Mô tả",
+            "durationMinutes": "Thời lượng",
+            "groupOrder": "Thứ tự nhóm",
+            "instructions": "Hướng dẫn làm bài",
+            "knowledgeScope": "Phạm vi kiến thức",
+            "matrix": "Ma trận",
+            "maxPoints": "Điểm tối đa của phần",
+            "maxScore": "Thang điểm",
+            "mode": "Kiểu phần",
+            "name": "Tên",
+            "order": "Thứ tự",
+            "participation": "Quy tắc tham gia",
+            "practiceScoring": "Cách chấm luyện tập",
+            "questionCount": "Số câu",
+            "questionCountOnPaper": "Số câu in trên đề",
+            "questionCountRequired": "Số câu phải làm",
+            "questionType": "Dạng trả lời",
+            "referenceMax": "Thang tham chiếu",
+            "requiredPointsPerQuestion": "Điểm mỗi câu",
+            "setCount": "Số bộ",
+            "setSize": "Số câu mỗi bộ",
+            "shuffle": "Quy tắc đảo câu",
+            "subjectCode": "Môn",
+            "tagCodes": "Nhãn",
+            "taskTypeCode": "Dạng bài",
+            "timing": "Cách tính thời gian"
+          },
+          "item": {
+            "block": "Khối",
+            "option": "Lựa chọn",
+            "part": "Phần",
+            "section": "Môn"
+          },
+          "structure": "Cấu trúc"
+        }
       },
       "history": {
         "title": "Lịch sử công bố",
@@ -4565,7 +4632,16 @@
       },
       "errors": {
         "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
-        "CHECK_REQUIRED": "Cấu hình cần được kiểm tra lại trước khi công bố.",
+        "checkRequired": {
+          "NO_CHECK": "Bài thi chưa được kiểm tra. Kiểm tra cấu hình rồi công bố.",
+          "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
+          "UNKNOWN": "Cấu hình cần được kiểm tra lại trước khi công bố."
+        },
+        "recheck": "Kiểm tra lại",
+        "revisionConflict": "Bài thi vừa được sửa ở nơi khác. Đóng hộp thoại, tải lại trang rồi công bố lại.",
         "NOTHING_TO_PUBLISH": "Không có bản sửa nào để công bố.",
         "generic": "Không công bố được. Thử lại."
       },
@@ -4771,7 +4847,8 @@
       "errors": {
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
         "generic": "Không tạo được bài thi. Thử lại sau.",
-        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại."
+        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại.",
+        "structureNotSaved": "Đã tạo bài thi {code} với cấu trúc của mẫu, nhưng chưa lưu được cấu trúc bạn đã sửa. Sửa lại ở tab Cấu trúc và ma trận."
       },
       "validation": {
         "nameRequired": "Nhập tên bài thi.",
@@ -4782,7 +4859,6 @@
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
         "subjectRequired": "Chọn phần của bài Theo phần.",
         "descriptionMax": "Mô tả tối đa {max} ký tự.",
-        "instructionsMax": "Hướng dẫn làm bài tối đa {max} ký tự.",
         "partNameRequired": "Nhập tên phần.",
         "partNameMax": "Tên phần tối đa {max} ký tự.",
         "partSubjectRequired": "Chọn môn của phần.",
@@ -4963,6 +5039,12 @@
       "actions": "Thao tác",
       "edit": "Soạn môn",
       "editSubject": "Soạn môn {subject}"
+    },
+    "templateName": {
+      "full": "{kind} · Toàn bài",
+      "part": "{kind} · Theo phần {scope}",
+      "subject": "{kind} · {subject}",
+      "withYear": "{name} · {year}"
     },
     "combinations": {
       "title": "Nhánh học viên chọn",

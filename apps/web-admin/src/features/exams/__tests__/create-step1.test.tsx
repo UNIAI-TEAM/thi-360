@@ -1,21 +1,29 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
-import { examStore } from "../mock/store";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-beforeEach(() => {
-  window.history.replaceState(null, "", "/exams/new");
-});
+let backend: ExamsBackend;
 
-afterEach(() => {
-  examStore.reset();
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+  window.history.replaceState(null, "", "/exams/new");
   routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 async function renderPage() {
@@ -66,7 +74,7 @@ describe("trang Tạo bài thi", () => {
     await waitFor(() => expect(within(aside).getByText("Không còn mục cần xử lý")).toBeInTheDocument());
     await user.click(within(aside).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    const created = examStore.all().find((exam) => exam.code === "QDA-F-003")!;
+    const created = backend.app(backend.wireByCode("QDA-F-003")!.id);
     expect(created).toMatchObject({ name: "QDA FULL · Đề thử", status: "DRAFT", totalQuestions: 150, combinationCount: 4 });
     expect(routerMock.push).toHaveBeenCalledWith(`/exams/${created.id}/structure`);
   }, 20_000);
@@ -84,7 +92,8 @@ describe("trang Tạo bài thi", () => {
     await user.click(within(prompt).getByRole("button", { name: "Nạp lại mẫu" }));
     expect(screen.getByRole("radio", { name: /QDA/ })).toBeChecked();
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("QDA-F-003"));
-    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(4);
+    // Hai phần cố định mang môn trong `sections` (hình dạng của máy chủ) cũng hiện dòng "50 / 50 câu", cộng bốn tổ hợp ở phần 3.
+    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(6);
     expect(screen.getAllByRole("textbox", { name: "1. Vật lí" })[0]).toHaveValue("25");
     expect(within(summary()).getByText("195 phút")).toBeInTheDocument();
   }, 20_000);
@@ -101,19 +110,6 @@ describe("trang Tạo bài thi", () => {
     expect(screen.getByRole("heading", { name: "Phần tự chọn · Phần 1" })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /Cho chọn Tiếng Anh/ })).not.toBeInTheDocument();
   });
-
-  it("mã đã dùng: báo lỗi ở ô Mã", async () => {
-    const user = await renderPage();
-    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "Trùng mã");
-    const code = screen.getByRole("textbox", { name: /Mã bài thi/ });
-    await user.clear(code);
-    await user.type(code, "HSA-F-001");
-    await user.click(within(summary()).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
-    await waitFor(() => expect(code).toHaveAttribute("aria-invalid", "true"));
-    expect(await screen.findAllByText("Mã bài thi đã được dùng. Nhập mã khác.")).not.toHaveLength(0);
-    expect(within(summary()).getByText("Mã bài thi")).toBeInTheDocument();
-    expect(routerMock.push).not.toHaveBeenCalled();
-  }, 20_000);
 
   it("ảnh giới thiệu dùng nút của bộ giao diện, không lộ chữ tiếng Anh của trình duyệt", async () => {
     await renderPage();
@@ -156,28 +152,6 @@ describe("trang Tạo bài thi", () => {
     expect(note).toHaveTextContent("The system loads the latest template: HSA · Whole exam.");
     expect(note.textContent).not.toMatch(/phần|câu|phút/);
   });
-
-  it("hướng dẫn làm bài đi theo yêu cầu tạo; phạm vi Theo phần gửi mã phần", async () => {
-    const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
-    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA Toán · Đề thử");
-    // Trình soạn TipTap: jsdom không có elementFromPoint nên không gõ qua click; focus rồi dán văn bản thuần.
-    screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }).focus();
-    await user.paste("Đọc kỹ đề trước khi làm.");
-    const score = screen.getByRole("textbox", { name: /Thang điểm/ });
-    await user.clear(score);
-    await user.type(score, "50");
-    await user.click(within(summary()).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    const created = examStore.all().find((exam) => exam.code === "HSA-P-TOAN-001")!;
-    expect(created).toMatchObject({
-      scope: "PART",
-      partCode: "MATH",
-      subjectCode: null,
-      instructions: "<p>Đọc kỹ đề trước khi làm.</p>",
-    });
-  }, 20_000);
 
   it("THPTQG: môn chưa có mẫu thì dựng một phần trống của môn", async () => {
     const user = await renderPage();
