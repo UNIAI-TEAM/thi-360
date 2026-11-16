@@ -6,10 +6,6 @@ import jakarta.validation.constraints.Size;
 
 @Schema(description = "Nhân bản bài thi thành bản Nháp mới (POST /exams/{id}/duplicate, spec 5.2)")
 public record DuplicateExamRequest(
-        @Schema(description = "Mã bài mới (duy nhất)", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank
-        @Size(max = 30)
-        String code,
         @Schema(description = "Tên bài mới", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank
         @Size(max = 200)

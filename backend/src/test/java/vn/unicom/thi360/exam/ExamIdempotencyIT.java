@@ -42,4 +42,31 @@ class ExamIdempotencyIT extends AbstractIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
     }
+
+    @Test
+    void duplicateGeneratesCodeAndReplays() throws Exception {
+        UUID actor = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+        String url = "/api/v1/admin/exams/00000000-0000-7000-8700-000000000001/duplicate";
+        String first = mockMvc.perform(post(url)
+                        .with(asUser(actor, "creator", Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Copy\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.matchesPattern("HSA-F-[0-9]{3,}")))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andReturn().getResponse().getContentAsString();
+        String replay = mockMvc.perform(post(url)
+                        .with(asUser(actor, "creator", Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Copy\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(replay).path("id").asText())
+                .isEqualTo(mapper.readTree(first).path("id").asText());
+        mockMvc.perform(post(url).with(asUser(actor, "creator", Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Different\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+    }
 }

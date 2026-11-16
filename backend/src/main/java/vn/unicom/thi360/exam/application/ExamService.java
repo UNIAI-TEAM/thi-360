@@ -608,7 +608,11 @@ public class ExamService {
         Exam source = examRepository.findById(examId).orElseThrow(() -> examNotFound(examId));
         Instant now = Instant.now();
         UUID actor = actorId();
-        String code = requireCode(request.code());
+        String kindCode = catalogLookup.findItem(source.getKindItemId())
+                .map(CatalogItemView::code)
+                .orElseThrow(() -> new BusinessRuleException(ExamErrorCodes.KIND_UNKNOWN));
+        String code = requireCode(suggestExamCode(kindCode, source.getScope(), source.getPartCode(),
+                subjectCodeOf(source.getSubjectItemId())).code());
 
         Exam copy = new Exam(Ids.newId(), code, request.name().trim(), source.getKindItemId(),
                 source.getScope(), source.getTiming(), source.getDurationMinutes(),
