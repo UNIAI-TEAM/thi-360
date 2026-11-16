@@ -175,6 +175,161 @@ class PaperSolverOracleTest {
                                 new QuestionPick("q1", 1), new QuestionPick("q3", 1)))))));
         assertThat(codes(validator.validate(wrongType, wide)))
                 .contains(ViolationCode.SUBJECT_ANSWER_QUOTA);
+
+        // lặp định danh ngay trong một ứng viên (R2-18): ứng viên 3 đơn vị có hai câu con cùng id
+        PathCandidate dup = new PathCandidate("dup", 1, "dup", null, null, List.of(
+                new CountingUnit("c0", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
+                        java.math.BigDecimal.ONE),
+                new CountingUnit("c1", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
+                        java.math.BigDecimal.ONE),
+                new CountingUnit("c1", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
+                        java.math.BigDecimal.ONE)));
+        PathCandidate alias = new PathCandidate("al", 1, "al", null, null, List.of(
+                new CountingUnit("al", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
+                        java.math.BigDecimal.ONE),
+                new CountingUnit("c2", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
+                        java.math.BigDecimal.ONE),
+                new CountingUnit("c3", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
+                        java.math.BigDecimal.ONE)));
+        SectionOnPath sec3 = new SectionOnPath("MATH", "sec3", 3, SubjectQuota.NONE,
+                List.of(GroupQuota.single("g3", 3)));
+        SolvePath path3 = SolvePath.of(0, List.of(sec3));
+        CandidateSource dupSource = group -> List.of(dup, alias,
+                standalone("qx", "SINGLE_CHOICE"));
+        PathResult dupPick = PathResult.valid(path3,
+                List.of(new SubjectWitness("MATH", 3,
+                        List.of(new GroupWitness("g3", List.of(new QuestionPick("dup", 1)))))));
+        assertThat(codes(validator.validate(dupPick, dupSource)))
+                .contains(ViolationCode.INTERNAL_ID_REUSED)
+                .doesNotContain(ViolationCode.ID_REUSED);
+        PathResult aliasPick = PathResult.valid(path3,
+                List.of(new SubjectWitness("MATH", 3,
+                        List.of(new GroupWitness("g3", List.of(new QuestionPick("al", 1)))))));
+        assertThat(codes(validator.validate(aliasPick, dupSource)))
+                .contains(ViolationCode.INTERNAL_ID_REUSED);
+
+        // mục không có nhóm nào mà đòi 2 câu: mọi đề chứng minh thiếu đúng 2 đơn vị (R2-21)
+        SectionOnPath full = new SectionOnPath("MATH", "sec-f", 3, SubjectQuota.NONE,
+                List.of(GroupQuota.single("g4", 3)));
+        SectionOnPath emptySec = new SectionOnPath("MATH", "sec-e", 2, SubjectQuota.NONE,
+                List.of());
+        SolvePath merged = SolvePath.of(0, List.of(full, emptySec));
+        PathCandidate a1 = standalone("a1", "SINGLE_CHOICE");
+        PathCandidate a2 = standalone("a2", "SINGLE_CHOICE");
+        PathCandidate a3 = standalone("a3", "SINGLE_CHOICE");
+        CandidateSource aSource = group -> List.of(a1, a2, a3);
+        PathResult covered = PathResult.valid(merged,
+                List.of(new SubjectWitness("MATH", 5,
+                        List.of(new GroupWitness("g4", List.of(new QuestionPick("a1", 1),
+                                new QuestionPick("a2", 1), new QuestionPick("a3", 1)))))));
+        assertThat(codes(validator.validate(covered, aSource)))
+                .contains(ViolationCode.SECTION_TOTAL_MISMATCH);
+
+        // đề chứng minh thừa câu so với số câu mục cũng bị bắt
+        PathResult excess = PathResult.valid(path3,
+                List.of(new SubjectWitness("MATH", 3,
+                        List.of(new GroupWitness("g3", List.of(new QuestionPick("a1", 1),
+                                new QuestionPick("a2", 1), new QuestionPick("a3", 1),
+                                new QuestionPick("qx", 1)))))));
+        assertThat(codes(validator.validate(excess, dupSource)))
+                .contains(ViolationCode.GROUP_COUNT_MISMATCH,
+                        ViolationCode.SECTION_TOTAL_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("R2-9: witness khóa theo bài toán con đầy đủ (môn + số câu + tập nhóm), không theo môn/số câu")
+    void validatorKeysWitnessBySubproblem() {
+        // một SUBJECT_CHOICE sinh hai bài toán con MATH cùng số câu nhưng khác nhóm
+        GroupQuota m1 = GroupQuota.single("g-m1", 1);
+        GroupQuota m2 = GroupQuota.single("g-m2", 1);
+        GroupQuota a = GroupQuota.single("g-a", 1);
+        GroupQuota b = GroupQuota.single("g-b", 1);
+        List<SectionOnPath> sections = List.of(
+                new SectionOnPath("MATH", "m1", null, SubjectQuota.NONE, List.of(m1)),
+                new SectionOnPath("MATH", "m2", null, SubjectQuota.NONE, List.of(m2)),
+                new SectionOnPath("A", "a", null, SubjectQuota.NONE, List.of(a)),
+                new SectionOnPath("B", "b", null, SubjectQuota.NONE, List.of(b)));
+        SubjectChoice choice = new SubjectChoice("opt", sections, 2, List.of(1, 1));
+        SubjectPick pickMA = new SubjectPick("opt",
+                List.of(sections.get(0), sections.get(2)), List.of(1, 1));
+        SubjectPick pickMB = new SubjectPick("opt",
+                List.of(sections.get(1), sections.get(3)), List.of(1, 1));
+        SolvePath path = new SolvePath(0, List.of(new ChosenOption("p1", "opt")), List.of(),
+                List.of(choice), List.of(List.of(pickMA, pickMB)));
+        PathCandidate cm1 = standalone("cm1", "SINGLE_CHOICE");
+        PathCandidate cm2 = standalone("cm2", "SINGLE_CHOICE");
+        PathCandidate ca = standalone("ca", "SINGLE_CHOICE");
+        PathCandidate cb = standalone("cb", "SINGLE_CHOICE");
+        CandidateSource source = g -> g == m1 ? List.of(cm1)
+                : g == m2 ? List.of(cm2) : g == a ? List.of(ca) : List.of(cb);
+
+        // witness đầy đủ bốn bài toán con → không vi phạm
+        PathResult good = PathResult.valid(path, List.of(
+                new SubjectWitness("MATH", 1,
+                        List.of(new GroupWitness("g-m1", List.of(new QuestionPick("cm1", 1))))),
+                new SubjectWitness("MATH", 1,
+                        List.of(new GroupWitness("g-m2", List.of(new QuestionPick("cm2", 1))))),
+                new SubjectWitness("A", 1,
+                        List.of(new GroupWitness("g-a", List.of(new QuestionPick("ca", 1))))),
+                new SubjectWitness("B", 1,
+                        List.of(new GroupWitness("g-b", List.of(new QuestionPick("cb", 1)))))));
+        assertThat(validator.validate(good, source)).isEmpty();
+
+        // witness của bài toán con {g-m1} nhặt ứng viên của m2 (ngoài nguồn của g-m1)
+        // và bài toán con {g-m2} không có witness → báo riêng từng lỗi
+        PathResult misplaced = PathResult.valid(path, List.of(
+                new SubjectWitness("MATH", 1,
+                        List.of(new GroupWitness("g-m1", List.of(new QuestionPick("cm2", 1))))),
+                new SubjectWitness("A", 1,
+                        List.of(new GroupWitness("g-a", List.of(new QuestionPick("ca", 1))))),
+                new SubjectWitness("B", 1,
+                        List.of(new GroupWitness("g-b", List.of(new QuestionPick("cb", 1)))))));
+        assertThat(codes(validator.validate(misplaced, source)))
+                .contains(ViolationCode.NOT_IN_SOURCE, ViolationCode.MISSING_WITNESS);
+    }
+
+    @Test
+    @DisplayName("oracle: hai mục cùng môn giữ chỉ tiêu và phần còn lại của riêng mình (R2-3/R2-4)")
+    void oracleSeparateSectionQuotas() {
+        // mục A: chỉ tiêu SINGLE_CHOICE=1, nhóm ra; mục B: chỉ tiêu SINGLE_CHOICE=1, nhóm rb —
+        // mỗi nhóm một nguồn riêng; VALID khi mỗi mục tự thỏa
+        SubjectQuota sc = new SubjectQuota(new SubjectQuota.AnswerQuotas(
+                List.of(new DimensionQuota("SINGLE_CHOICE", 1)), QuotaUnit.COUNT), null);
+        SectionOnPath secA = new SectionOnPath("MATH", "sec-a", 1, sc,
+                List.of(GroupQuota.remainder("ra")));
+        SectionOnPath secB = new SectionOnPath("MATH", "sec-b", 1, sc,
+                List.of(GroupQuota.remainder("rb")));
+        CandidateSource ok = g -> "ra".equals(g.groupId())
+                ? List.of(standalone("ra1", "SINGLE_CHOICE"), standalone("ra2", "SINGLE_CHOICE"))
+                : List.of(standalone("rb1", "SINGLE_CHOICE"), standalone("rb2", "SINGLE_CHOICE"));
+        assertThat(oracle.solveSubpath(List.of(secA, secB), ok)).isTrue();
+
+        // mục B chỉ có câu sai dạng so với chỉ tiêu riêng của nó → INVALID
+        CandidateSource bad = g -> "ra".equals(g.groupId())
+                ? List.of(standalone("ra1", "SINGLE_CHOICE"), standalone("ra2", "SINGLE_CHOICE"))
+                : List.of(standalone("rb1", "SHORT_ANSWER"));
+        assertThat(oracle.solveSubpath(List.of(secA, secB), bad)).isFalse();
+
+        // chỉ tiêu của mục A không được trừ vào nhóm của mục B: mục A thiếu dạng khai,
+        // mục B dư đúng dạng đó — vẫn INVALID dù tổng môn nhìn như đủ
+        SubjectQuota scB = new SubjectQuota(new SubjectQuota.AnswerQuotas(
+                List.of(new DimensionQuota("SHORT_ANSWER", 1)), QuotaUnit.COUNT), null);
+        SectionOnPath secB2 = new SectionOnPath("MATH", "sec-b2", 1, scB,
+                List.of(GroupQuota.remainder("rb")));
+        CandidateSource swapped = g -> "ra".equals(g.groupId())
+                ? List.of(standalone("ra1", "SHORT_ANSWER"))
+                : List.of(standalone("rb1", "SHORT_ANSWER"));
+        assertThat(oracle.solveSubpath(List.of(secA, secB2), swapped)).isFalse();
+
+        // đường có mục khai ít hơn số câu mục (2 câu, một nhóm cố định 1) → INVALID cấu trúc
+        SectionOnPath short_ = new SectionOnPath("MATH", "sec-short", 2, SubjectQuota.NONE,
+                List.of(GroupQuota.single("g1", 1)));
+        assertThat(oracle.solveSubpath(List.of(short_),
+                g -> List.of(standalone("x1", "SINGLE_CHOICE"),
+                        standalone("x2", "SINGLE_CHOICE")))).isFalse();
+        SectionOnPath emptySec = new SectionOnPath("MATH", "sec-empty", 2, SubjectQuota.NONE,
+                List.of());
+        assertThat(oracle.solveSubpath(List.of(emptySec), g -> List.of())).isFalse();
     }
 
     @Test
@@ -256,8 +411,11 @@ class PaperSolverOracleTest {
     private static final class ViolationCode {
         static final String NOT_IN_SOURCE = "NOT_IN_SOURCE";
         static final String ID_REUSED = "ID_REUSED";
+        static final String INTERNAL_ID_REUSED = "INTERNAL_ID_REUSED";
         static final String GROUP_COUNT_MISMATCH = "GROUP_COUNT_MISMATCH";
+        static final String SECTION_TOTAL_MISMATCH = "SECTION_TOTAL_MISMATCH";
         static final String MISSING_WITNESS = "MISSING_WITNESS";
+        static final String UNKNOWN_GROUP = "UNKNOWN_GROUP";
         static final String SUBJECT_ANSWER_QUOTA = "SUBJECT_ANSWER_QUOTA";
     }
 }
