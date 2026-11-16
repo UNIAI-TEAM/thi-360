@@ -85,7 +85,7 @@ function attributeViolation(tag: string, name: string, value: string): SanitizeV
  * (giữ phần tử con hợp lệ như jsoup Cleaner) và bỏ cả nhánh của các thẻ mang nội dung nguy hiểm.
  * `img` còn lại phải mang `data-asset-id` là UUID — tương đương `rewriteImages` của backend.
  */
-function visit(element: Element, allowedTags: Set<string>, allowImages: boolean, violations: SanitizeViolation[]) {
+function visit(element: Node, allowedTags: Set<string>, allowImages: boolean, violations: SanitizeViolation[]) {
   for (const child of [...element.childNodes]) {
     if (child.nodeType === Node.COMMENT_NODE) {
       child.remove();
@@ -128,8 +128,22 @@ function visit(element: Element, allowedTags: Set<string>, allowImages: boolean,
   }
 }
 
-function parseDocument(html: string): Document {
-  return new DOMParser().parseFromString(html ?? "", "text/html");
+/**
+ * Parse đầu vào như `Jsoup.parseBodyFragment`: nội dung đi vào `template.content` nên các thẻ
+ * bình thường của `<head>` (`script`, `style`, `title`…) ở đầu chuỗi không bị đẩy khỏi body như
+ * khi parse tài liệu đầy đủ, và hàng/cell bảng lẻ giữ nguyên vị trí (ngữ cảnh lồng của template).
+ */
+function parseFragment(html: string): DocumentFragment {
+  const template = document.createElement("template");
+  template.innerHTML = html ?? "";
+  return template.content;
+}
+
+/** Chữ HTML của fragment — gồm cả thẻ ở mọi mức lồng (innerHTML của DocumentFragment). */
+function fragmentHtml(fragment: DocumentFragment): string {
+  const host = document.createElement("div");
+  host.append(fragment.cloneNode(true));
+  return host.innerHTML;
 }
 
 /**
@@ -137,11 +151,13 @@ function parseDocument(html: string): Document {
  * `QuestionHtmlSanitizer.clean(html, false)`, dùng cho nội dung chỉ chữ như hướng dẫn làm bài).
  */
 export function sanitizeQuestionHtml(html: string, { allowImages = true }: { allowImages?: boolean } = {}): SanitizeResult {
-  const document = parseDocument(html);
+  const fragment = parseFragment(html);
   const violations: SanitizeViolation[] = [];
 
-  // Thuộc tính trên html/head/body bị loại giống backend (phần tử vỏ không mang vào kết quả).
-  for (const shell of [document.documentElement, document.head, document.body]) {
+  // Thuộc tính trên html/head/body bị loại giống backend (phần tử vỏ không mang vào kết quả):
+  // parse tài liệu đầy đủ một lần nữa chỉ để đọc thuộc tính vỏ — backend báo chúng là vi phạm.
+  const document_ = new DOMParser().parseFromString(html ?? "", "text/html");
+  for (const shell of [document_.documentElement, document_.head, document_.body]) {
     if (!shell) continue;
     for (const attribute of [...shell.attributes]) {
       violations.push(attributeViolation(shell.tagName.toLowerCase(), attribute.name.toLowerCase(), attribute.value));
@@ -149,17 +165,20 @@ export function sanitizeQuestionHtml(html: string, { allowImages = true }: { all
   }
 
   const allowedTags = allowImages ? ALLOWED_TAGS : ALLOWED_TAGS_NO_IMG;
-  visit(document.body, allowedTags, allowImages, violations);
-  return { html: document.body.innerHTML, violations };
+  visit(fragment, allowedTags, allowImages, violations);
+  return { html: fragmentHtml(fragment), violations };
 }
 
 /** Chữ thuần của một đoạn HTML, mirror `QuestionHtmlSanitizer.textOf`. */
 export function questionHtmlText(html: string): string {
   if (!html) return "";
-  const document = parseDocument(html);
-  for (const el of [...document.querySelectorAll("script, style, template")]) el.remove();
-  return document.body.textContent ?? "";
+  const fragment = parseFragment(html);
+  for (const el of [...fragment.querySelectorAll("script, style, template")]) el.remove();
+  const host = document.createElement("div");
+  host.append(fragment);
+  return host.textContent ?? "";
 }
+
 
 /**
  * Kiểm tra cặp dấu `\( … \)` và `\[ … \]` trong chữ thuần của HTML — mirror `balanced` của

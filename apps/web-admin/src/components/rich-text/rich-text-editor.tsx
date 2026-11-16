@@ -4,7 +4,7 @@ import { uploadQuestionAsset } from "@/features/questions/api";
 import { Button, cn, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, IconButton, Input } from "@thi360/ui";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
 import { Subscript } from "@tiptap/extension-subscript";
@@ -27,12 +27,12 @@ import {
   Underline,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useRef, useState, type AriaAttributes } from "react";
 import { HtmlSanitize, MathBlock, MathCommands, MathInline } from "./extensions";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "./sanitize";
 import "./rich-text.css";
 
-export interface RichTextEditorProps {
+export interface RichTextEditorProps extends AriaAttributes {
   /** HTML nội dung (đã lọc theo spec 4.2 khi lưu); component giữ đồng bộ hai chiều. */
   value: string;
   /** Gọi với HTML đã lọc ở mọi thay đổi — luôn an toàn đưa thẳng lên request lưu. */
@@ -49,10 +49,6 @@ export interface RichTextEditorProps {
   onImageUploadError?: (error: unknown) => void;
 }
 
-type AriaProps = Pick<
-  ComponentProps<"div">,
-  "aria-label" | "aria-labelledby" | "aria-describedby" | "aria-required"
->;
 
 const MATH_NODE_NAMES = new Set(["mathInline", "mathBlock"]);
 
@@ -93,22 +89,27 @@ export function RichTextEditor({
   className,
   onImageUploadError,
   ...ariaProps
-}: RichTextEditorProps & AriaProps) {
+}: RichTextEditorProps) {
   const t = useTranslations("richText");
-  const [mathWarning, setMathWarning] = useState(false);
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [formulaLatex, setFormulaLatex] = useState("");
   const [formulaDisplay, setFormulaDisplay] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const mathWarning = typeof document !== "undefined" && hasUnbalancedMath(value ?? "");
+
   // Refs cho các handler mà TipTap chụp lúc tạo editor (extensions chỉ dựng một lần).
   const onChangeRef = useRef(onChange);
   const allowImagesRef = useRef(allowImages);
   const uploadErrorRef = useRef(onImageUploadError);
-  onChangeRef.current = onChange;
-  allowImagesRef.current = allowImages;
-  uploadErrorRef.current = onImageUploadError;
+  // HTML đã phát qua onChange: lọc lặp phát hiện (vòng đồng bộ, khởi tạo rỗng → "<p></p>").
+  const lastEmittedRef = useRef<string | null>(null);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    allowImagesRef.current = allowImages;
+    uploadErrorRef.current = onImageUploadError;
+  });
 
   const editor = useEditor(
     {
@@ -145,16 +146,16 @@ export function RichTextEditor({
         MathCommands,
         HtmlSanitize.configure({ allowImages }),
       ],
-      content: sanitizeQuestionHtml(value ?? "", { allowImages }).html,
+      content: typeof document === "undefined" ? "" : sanitizeQuestionHtml(value ?? "", { allowImages }).html,
       editable: !disabled,
       editorProps: {
         attributes: Object.fromEntries(
           [
             ["class", "rich-text-editor-content"],
             ["id", id],
-            ["aria-invalid", invalid ? "true" : undefined],
             ...Object.entries(ariaProps),
-          ].filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+            ["aria-invalid", invalid || ariaProps["aria-invalid"] ? "true" : undefined],
+          ].filter((entry) => entry[1] !== undefined).map(([key, val]) => [key, String(val)]),
         ),
         handlePaste: (view: EditorView, event: ClipboardEvent) => {
           const files = imageFilesOf(event.clipboardData);
@@ -173,10 +174,13 @@ export function RichTextEditor({
         },
       },
       onUpdate: ({ editor: current }) => {
-        const html = sanitizeQuestionHtml(current.getHTML(), {
+        let html = sanitizeQuestionHtml(current.getHTML(), {
           allowImages: allowImagesRef.current,
         }).html;
-        setMathWarning(hasUnbalancedMath(html));
+        // Tài liệu rỗng của TipTap tuần tự hóa thành "<p></p>": đưa về "" cho hợp đồng nội dung.
+        if (html === "<p></p>") html = "";
+        if (html === lastEmittedRef.current) return;
+        lastEmittedRef.current = html;
         onChangeRef.current(html);
       },
     },
@@ -187,16 +191,17 @@ export function RichTextEditor({
   // Đồng bộ giá trị điều khiển: chỉ setContent khi `value` ngoài lệch HTML hiện có.
   useEffect(() => {
     if (!editor) return;
-    const incoming = sanitizeQuestionHtml(value ?? "", { allowImages }).html;
-    const current = sanitizeQuestionHtml(editor.getHTML(), { allowImages }).html;
+    const normalize = (html: string) => (html === "<p></p>" ? "" : html);
+    const incoming = normalize(sanitizeQuestionHtml(value ?? "", { allowImages }).html);
+    const current = normalize(sanitizeQuestionHtml(editor.getHTML(), { allowImages }).html);
     if (incoming !== current) {
       editor.commands.setContent(incoming, { emitUpdate: false });
-      setMathWarning(hasUnbalancedMath(incoming));
+      lastEmittedRef.current = incoming;
     }
   }, [editor, value, allowImages]);
 
   useEffect(() => {
-    editor?.setEditable(!disabled);
+    editor?.setEditable(!disabled, false);
   }, [editor, disabled]);
 
   // Ảnh thả/dán: tải lên rồi chèn `img` kèm `data-asset-id` (backend viết lại `src` từ id này).

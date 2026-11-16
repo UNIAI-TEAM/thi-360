@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
@@ -17,6 +18,18 @@ function renderEditor(props: Partial<Parameters<typeof RichTextEditor>[0]> = {})
 }
 
 const editable = () => document.querySelector<HTMLElement>(".ProseMirror");
+
+/** Dán HTML thật vào soạn (clipboardData.text/html) — `user.paste` chỉ gửi text/plain. */
+function pasteHtml(html: string) {
+  fireEvent.paste(editable()!, {
+    clipboardData: {
+      getData: (format: string) => (format === "text/html" ? html : ""),
+      types: ["text/html"],
+      files: [],
+      items: [],
+    },
+  });
+}
 
 describe("RichTextEditor", () => {
   it("inserts a formula chip from the toolbar dialog and emits span.math-inline", async () => {
@@ -41,7 +54,7 @@ describe("RichTextEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "Insert formula" }));
     await user.click(screen.getByRole("radio", { name: "Block" }));
-    await user.type(screen.getByLabelText("LaTeX code"), "\\sum_{i=1}^n i");
+    fireEvent.change(screen.getByLabelText("LaTeX code"), { target: { value: "\\sum_{i=1}^n i" } });
     await user.click(screen.getByRole("button", { name: "Insert formula" }));
 
     await waitFor(() => {
@@ -67,13 +80,12 @@ describe("RichTextEditor", () => {
   });
 
   it("drops disallowed tags and attributes from pasted HTML", async () => {
-    const user = userEvent.setup();
     const { onChange } = renderEditor();
 
     editable()!.focus();
-    const dirty =
-      '<p onclick="x()">ok</p><script>alert(1)</script><iframe src="https://evil"></iframe><a href="https://evil">link</a><div>wrapped</div>';
-    await user.paste(dirty);
+    pasteHtml(
+      '<p onclick="x()">ok</p><script>alert(1)</script><iframe src="https://evil"></iframe><a href="https://evil">link</a><div>wrapped</div>',
+    );
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const html = onChange.mock.lastCall?.[0] as string;
@@ -87,26 +99,29 @@ describe("RichTextEditor", () => {
   });
 
   it("blocks image paste and shows no image button when allowImages=false", async () => {
-    const user = userEvent.setup();
     const { onChange } = renderEditor({ allowImages: false });
 
     expect(screen.queryByRole("button", { name: "Insert image" })).toBeNull();
 
     editable()!.focus();
-    await user.paste('<img src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" alt="x">after');
+    pasteHtml(
+      '<img src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" alt="x"><p>after</p>',
+    );
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const html = onChange.mock.lastCall?.[0] as string;
     expect(html).not.toContain("<img");
     expect(html).toContain("after");
   });
-
   it("shows the unbalanced-delimiter warning (NO_GAPS wording) while editing", async () => {
-    const user = userEvent.setup();
-    renderEditor();
+    function Harness() {
+      const [html, setHtml] = useState("");
+      return <RichTextEditor value={html} onChange={setHtml} />;
+    }
+    renderWithProviders(<Harness />, { locale: "en", messages: en });
 
     editable()!.focus();
-    await user.paste("formula \\( x^2 open");
+    pasteHtml("<p>formula \\( x^2 open</p>");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Math delimiters are unbalanced");
   });
@@ -115,20 +130,24 @@ describe("RichTextEditor", () => {
 describe("RichTextView", () => {
   it("renders formulas with KaTeX inside math spans", () => {
     const { container } = render(
-      <RichTextView html={'<p>Cho <span class="math-inline">\\(x^2\\)</span> và <span class="math-block">\\[\\int_0^1 x\\]</span></p>'} />,
+      <RichTextView
+        html={'<p>Cho <span class="math-inline">\\(x^2\\)</span> và <span class="math-block">\\[\\int_0^1 x\\]</span></p>'}
+      />,
     );
     expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
     expect(container.querySelector(".katex-display")).toBeTruthy();
   });
 
   it("renders plain-text delimiters with KaTeX too", () => {
-    const { container } = render(<RichTextView html="<p>Tính \\(1+1\\)</p>" />);
+    const { container } = render(<RichTextView html={"<p>Tính \\(1+1\\)</p>"} />);
     expect(container.querySelector(".katex")).toBeTruthy();
   });
 
   it("strips disallowed tags and attributes before rendering", () => {
     const { container } = render(
-      <RichTextView html={'<p>ok</p><script>alert(1)</script><a href="https://e">x</a><p style="color:red">y</p>'} />,
+      <RichTextView
+        html={'<p>ok</p><script>alert(1)</script><a href="https://e">x</a><p style="color:red">y</p>'}
+      />,
     );
     expect(container.innerHTML).not.toContain("script");
     expect(container.innerHTML).not.toContain("<a");
@@ -137,7 +156,10 @@ describe("RichTextView", () => {
 
   it("drops images when allowImages=false", () => {
     const { container } = render(
-      <RichTextView allowImages={false} html={'<p>before<img src="/x.png" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" alt="a">after</p>'} />,
+      <RichTextView
+        allowImages={false}
+        html={'<p>before<img src="/x.png" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" alt="a">after</p>'}
+      />,
     );
     expect(container.querySelector("img")).toBeNull();
     expect(container.textContent).toContain("before");
