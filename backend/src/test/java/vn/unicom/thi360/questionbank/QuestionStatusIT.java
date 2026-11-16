@@ -279,6 +279,63 @@ class QuestionStatusIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void childCodesStayStableAcrossInsertionSwapAndPublication() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode initial = read(created);
+        UUID id = UUID.fromString(initial.at("/summary/id").asText());
+        var children = (com.fasterxml.jackson.databind.node.ArrayNode) initial.at("/body/children").deepCopy();
+        UUID first = UUID.fromString(children.get(0).get("id").asText());
+        UUID second = UUID.fromString(children.get(1).get("id").asText());
+        String firstCode = jdbcTemplate.queryForObject(
+                "SELECT code FROM questionbank.question WHERE id = ?", String.class, first);
+        String secondCode = jdbcTemplate.queryForObject(
+                "SELECT code FROM questionbank.question WHERE id = ?", String.class, second);
+        var newChild = (com.fasterxml.jackson.databind.node.ObjectNode) children.get(1).deepCopy();
+        newChild.remove("id");
+        children.insert(0, newChild);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).set("children", children);
+        request.put("expectedRevision", currentRevision(id));
+        var updated = mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andReturn();
+        children = (com.fasterxml.jackson.databind.node.ArrayNode) read(updated).at("/question/body/children").deepCopy();
+        JsonNode moved = children.remove(2);
+        children.insert(1, moved);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).set("children", children);
+        request.put("expectedRevision", currentRevision(id));
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        transition(id, "ready");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT code, position, status, current_version_no FROM questionbank.question WHERE id = ?", first))
+                .containsEntry("code", firstCode).containsEntry("position", 2)
+                .containsEntry("status", "READY").containsEntry("current_version_no", 1);
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT code, position, status, current_version_no FROM questionbank.question WHERE id = ?", second))
+                .containsEntry("code", secondCode).containsEntry("position", 1)
+                .containsEntry("status", "READY").containsEntry("current_version_no", 1);
+        // Republish another reordered working version through restoreChildren.
+        children = (com.fasterxml.jackson.databind.node.ArrayNode) children.deepCopy();
+        moved = children.remove(2);
+        children.insert(0, moved);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).set("children", children);
+        request.put("expectedRevision", currentRevision(id));
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        transition(id, "ready");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT code, position, current_version_no FROM questionbank.question WHERE id = ?", first))
+                .containsEntry("code", firstCode).containsEntry("position", 0).containsEntry("current_version_no", 2);
+    }
+
+    @Test
     void newWorkingChildAppearsInEditorBeforeItHasServingRow() throws Exception {
         var request = (com.fasterxml.jackson.databind.node.ObjectNode)
                 objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());

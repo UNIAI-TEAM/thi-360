@@ -677,6 +677,8 @@ public class QuestionService {
         for (Question row : questionRepository.findAllByParentId(parent.getId())) {
             existing.put(row.getId(), row);
         }
+        Set<String> usedCodes = new HashSet<>();
+        existing.values().forEach(row -> usedCodes.add(row.getCode()));
         List<UUID> kept = new ArrayList<>(children.size());
         List<UUID> parentKnowledgeIds = parentKnowledge.stream().map(KnowledgeResolved::itemId).toList();
 
@@ -687,7 +689,7 @@ public class QuestionService {
             Question row = existing.get(childId);
             if (row == null) {
                 row = Question.create(
-                        childId, parent.getCode() + "." + (i + 1), child.type(),
+                        childId, nextChildCode(parent, usedCodes), child.type(),
                         parent.getId(), i, now, actorId);
             } else {
                 if (row.getType() != child.type()) {
@@ -697,7 +699,6 @@ public class QuestionService {
                 }
                 row.setDeletedAt(null);
                 row.setPosition(i);
-                row.setCode(parent.getCode() + "." + (i + 1));
             }
             UUID effectiveGrade = child.gradeItemId() != null
                     ? child.gradeItemId()
@@ -749,6 +750,8 @@ public class QuestionService {
         for (Question row : questionRepository.findAllByParentId(parent.getId())) {
             existing.put(row.getId(), row);
         }
+        Set<String> usedCodes = new HashSet<>();
+        existing.values().forEach(row -> usedCodes.add(row.getCode()));
         List<UUID> parentKnowledgeIds = parentSnapshot.knowledge().stream()
                 .map(QuestionSnapshot.KnowledgeRef::itemId).toList();
         List<UUID> kept = new ArrayList<>(setBody.children().size());
@@ -760,12 +763,11 @@ public class QuestionService {
             boolean isNew = row == null;
             if (isNew) {
                 row = Question.create(
-                        childId, parent.getCode() + "." + (i + 1), child.type(),
+                        childId, nextChildCode(parent, usedCodes), child.type(),
                         parent.getId(), i, now, actorId);
             } else {
                 row.setDeletedAt(null);
                 row.setPosition(i);
-                row.setCode(parent.getCode() + "." + (i + 1));
                 row.setType(child.type());
             }
             UUID effectiveGrade = child.gradeItemId() == null ? parentSnapshot.gradeItemId() : child.gradeItemId();
@@ -796,6 +798,15 @@ public class QuestionService {
                 leftover.touch(now, actorId);
             }
         }
+    }
+
+    private String nextChildCode(Question parent, Set<String> usedCodes) {
+        int suffix = 1;
+        String code;
+        do {
+            code = parent.getCode() + "." + suffix++;
+        } while (!usedCodes.add(code));
+        return code;
     }
 
     private void applyChildRow(
