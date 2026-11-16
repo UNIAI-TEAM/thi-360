@@ -90,6 +90,15 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
             throw new IllegalStateException("Sensitive SQL detail that must not leak");
         }
 
+        @GetMapping("/422")
+        void businessRule() {
+            throw new BusinessRuleException(
+                    "TEST_RULE_VIOLATED",
+                    "Quy tắc mẫu bị vi phạm",
+                    List.of(new FieldError("code", "TEST_RULE_VIOLATED", "Mã bị trùng theo luật"),
+                            new FieldError("points", "TEST_RULE_VIOLATED", "Điểm phải dương")));
+        }
+
         @GetMapping("/500-illegal-arg")
         void internalIllegalArgument() {
             throw new IllegalArgumentException("Internal serialization defect that must not be 400");
@@ -181,6 +190,22 @@ class GlobalExceptionHandlerTests extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.message").isNotEmpty())
                 .andExpect(jsonPath("$.fieldErrors").isEmpty())
                 .andExpect(jsonPath("$.traceId").value("req-412"));
+    }
+
+    @Test
+    void returns422UnprocessableEntity_withFieldErrors_andTraceId() throws Exception {
+        mockMvc.perform(get("/api/v1/test-errors/422")
+                        .with(asStudent())
+                        .header(TraceIdFilter.REQUEST_ID_HEADER, "req-422"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(header().string(TraceIdFilter.REQUEST_ID_HEADER, "req-422"))
+                .andExpect(jsonPath("$.code").value("TEST_RULE_VIOLATED"))
+                .andExpect(jsonPath("$.message").value("Quy tắc mẫu bị vi phạm"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("code"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("TEST_RULE_VIOLATED"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Mã bị trùng theo luật"))
+                .andExpect(jsonPath("$.fieldErrors[1].field").value("points"))
+                .andExpect(jsonPath("$.traceId").value("req-422"));
     }
 
     @Test
