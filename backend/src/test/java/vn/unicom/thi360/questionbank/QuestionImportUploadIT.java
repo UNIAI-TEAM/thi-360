@@ -2,6 +2,7 @@ package vn.unicom.thi360.questionbank;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,8 +18,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
+import vn.unicom.thi360.shared.security.SecurityProperties;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 
 class QuestionImportUploadIT extends AbstractIntegrationTest {
@@ -26,6 +31,8 @@ class QuestionImportUploadIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectStorage storage;
+    @Autowired private SecurityProperties securityProperties;
+    @Autowired private StringRedisTemplate redisTemplate;
 
     @Test
     void uploadCsvStoresSourceAndSuggestions() throws Exception {
@@ -124,5 +131,55 @@ class QuestionImportUploadIT extends AbstractIntegrationTest {
                         .file(new MockMultipartFile("file", "test.csv", "text/csv", new byte[] {1}))
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void uploadRateLimitReturns429AndIsolatesClients() throws Exception {
+        // Chính sách upload theo IP của shared RateLimitFilter cũng áp cho endpoint này
+        // (R1-8): vượt hạn mức -> 429 + Retry-After; client khác giữ nguyên quota.
+        String clientA = "203.0.113.111";
+        String clientB = "203.0.113.112";
+        redisTemplate.delete(java.util.List.of(
+                RateLimitFilter.UPLOAD_KEY_PREFIX + clientA,
+                RateLimitFilter.UPLOAD_KEY_PREFIX + clientB));
+        try {
+            int limit = securityProperties.rateLimit().uploadPerIpLimit();
+            byte[] csv = "type,content\nSHORT_ANSWER,q\n".getBytes(StandardCharsets.UTF_8);
+            for (int i = 0; i < limit; i++) {
+                mockMvc.perform(multipart(URL)
+                                .file(new MockMultipartFile("file", "rl-" + i + ".csv", "text/csv", csv))
+                                .with(req -> {
+                                    req.setRemoteAddr("127.0.0.1");
+                                    return req;
+                                })
+                                .header(ClientIpResolver.X_FORWARDED_FOR, clientA)
+                                .with(asUser(Permissions.QUESTION_MODIFY)))
+                        .andExpect(status().isOk());
+            }
+            mockMvc.perform(multipart(URL)
+                            .file(new MockMultipartFile("file", "rl-blocked.csv", "text/csv", csv))
+                            .with(req -> {
+                                req.setRemoteAddr("127.0.0.1");
+                                return req;
+                            })
+                            .header(ClientIpResolver.X_FORWARDED_FOR, clientA)
+                            .with(asUser(Permissions.QUESTION_MODIFY)))
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(header().exists("Retry-After"))
+                    .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+            mockMvc.perform(multipart(URL)
+                            .file(new MockMultipartFile("file", "rl-b.csv", "text/csv", csv))
+                            .with(req -> {
+                                req.setRemoteAddr("127.0.0.1");
+                                return req;
+                            })
+                            .header(ClientIpResolver.X_FORWARDED_FOR, clientB)
+                            .with(asUser(Permissions.QUESTION_MODIFY)))
+                    .andExpect(status().isOk());
+        } finally {
+            redisTemplate.delete(java.util.List.of(
+                    RateLimitFilter.UPLOAD_KEY_PREFIX + clientA,
+                    RateLimitFilter.UPLOAD_KEY_PREFIX + clientB));
+        }
     }
 }
