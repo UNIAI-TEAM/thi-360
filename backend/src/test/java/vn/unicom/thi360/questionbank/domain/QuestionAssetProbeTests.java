@@ -17,7 +17,7 @@ import vn.unicom.thi360.questionbank.domain.QuestionAssetSignature.AttachmentSig
  * Test đơn vị của dò chữ ký byte ({@link QuestionAssetSignature}) và đọc kích thước từ
  * header ({@link QuestionAssetProbe}) — spec 4.2 + quyết định lane 8.5/8.7.
  */
-class QuestionAssetProbeTests {
+public class QuestionAssetProbeTests {
 
     private final QuestionAssetProbe probe = new QuestionAssetProbe();
 
@@ -115,7 +115,7 @@ class QuestionAssetProbeTests {
     // ------------------------------------------------------------- dữ liệu mẫu
 
     /** Ảnh thật (encode đầy đủ) theo định dạng yêu cầu. */
-    static byte[] imageBytes(String format, int width, int height) throws IOException {
+    public static byte[] imageBytes(String format, int width, int height) throws IOException {
         if ("WEBP".equals(format)) {
             // imageio-webp chỉ đọc, không ghi: dựng tối thiểu RIFF + chunk VP8X
             // (10 byte payload) — đủ để probe đọc kích thước từ header.
@@ -130,10 +130,10 @@ class QuestionAssetProbeTests {
     }
 
     /** WebP VP8X header-only (extended): đủ đọc kích thước, không chứa dữ liệu ảnh con. */
-    static byte[] webpVp8xHeader(int width, int height) throws IOException {
+    public static byte[] webpVp8xHeader(int width, int height) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write("RIFF".getBytes());
-        writeLE32(out, 18); // 4 ("WEBP") + 8 (chunk header) + 10 (payload) - trừ phần đã ghi
+        writeLE32(out, 22); // "WEBP" + chunk header + payload
         out.write("WEBP".getBytes());
         out.write("VP8X".getBytes());
         writeLE32(out, 10);
@@ -160,7 +160,7 @@ class QuestionAssetProbeTests {
      * PNG header-only: signature + chunk IHDR (13 byte) + CRC, không có IDAT.
      * Dùng kiểm việc đọc kích thước không cần giải mã toàn bộ (spec 4.2).
      */
-    static byte[] pngHeaderOnly(int width, int height) throws IOException {
+    public static byte[] pngHeaderOnly(int width, int height) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A});
         ByteArrayOutputStream ihdr = new ByteArrayOutputStream();
