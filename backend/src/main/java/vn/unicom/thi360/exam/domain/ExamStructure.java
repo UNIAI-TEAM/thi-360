@@ -23,6 +23,8 @@ public class ExamStructure {
     private String structureHash;
     @Column(name = "base_version")
     private Integer baseVersion;
+    @Column(name = "edited", nullable = false)
+    private boolean edited;
     @Column(name = "updated_by")
     private UUID updatedBy;
     @Column(name = "updated_at", nullable = false)
@@ -32,11 +34,12 @@ public class ExamStructure {
     }
 
     public ExamStructure(UUID examId, JsonNode parts, String structureHash, Integer baseVersion,
-            UUID updatedBy, Instant updatedAt) {
+            boolean edited, UUID updatedBy, Instant updatedAt) {
         this.examId = examId;
         this.parts = parts;
         this.structureHash = structureHash;
         this.baseVersion = baseVersion;
+        this.edited = edited;
         this.updatedBy = updatedBy;
         this.updatedAt = updatedAt;
     }
@@ -46,5 +49,14 @@ public class ExamStructure {
     public String getStructureHash() { return structureHash; }
     public Integer getBaseVersion() { return baseVersion; }
     public UUID getUpdatedBy() { return updatedBy; }
-    public Instant getUpdatedAt() { return updatedAt; }
+    public boolean isEdited() { return edited; }
+
+    /** Thay toàn bộ tài liệu cấu trúc; {@code edited} đánh dấu đã sửa kể từ lần nạp mẫu gần nhất (spec 5.2). */
+    public void replace(JsonNode newParts, String newHash, boolean edited, UUID actorId, Instant now) {
+        this.parts = newParts;
+        this.structureHash = newHash;
+        this.edited = edited;
+        this.updatedBy = actorId;
+        this.updatedAt = now;
+    }
 }

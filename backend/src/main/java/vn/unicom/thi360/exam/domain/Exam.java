@@ -140,4 +140,106 @@ public class Exam {
     public Instant getUpdatedAt() { return updatedAt; }
     public UUID getUpdatedBy() { return updatedBy; }
     public Long getRevision() { return revision; }
+
+    // Setter dạng PATCH: dịch vụ tính giá trị hiệu lực (kể cả xóa về null); entity chỉ gán + touch.
+    public void updateInfo(String code, String name, String description, String instructions,
+            Integer durationMinutes, BigDecimal maxScore, UUID actorId, Instant now) {
+        this.code = code;
+        this.codeNormalized = code == null ? null : code.trim().toLowerCase(java.util.Locale.ROOT);
+        this.name = name;
+        this.description = description;
+        this.instructions = instructions;
+        this.durationMinutes = durationMinutes;
+        this.maxScore = maxScore;
+        touch(actorId, now);
+    }
+
+    /** Đổi phạm vi (kỳ thi/phạm vi/phần/môn/năm) sau khi dịch vụ đã nạp lại mẫu tương ứng. */
+    public void changeScope(UUID kindItemId, String scope, String partCode, UUID subjectItemId,
+            Integer structureYear, Integer matrixYear, boolean yearsConfirmed,
+            String templateCode, String timing, Integer durationMinutes, BigDecimal maxScore,
+            UUID actorId, Instant now) {
+        this.kindItemId = kindItemId;
+        this.scope = scope;
+        this.partCode = partCode;
+        this.subjectItemId = subjectItemId;
+        this.structureYear = structureYear;
+        this.matrixYear = matrixYear;
+        this.yearsConfirmed = yearsConfirmed;
+        this.templateCode = templateCode;
+        this.timing = timing;
+        this.durationMinutes = durationMinutes;
+        this.maxScore = maxScore;
+        touch(actorId, now);
+    }
+
+    /** Sao chép toàn bộ nội dung từ bài nguồn (nhân bản); id/code/name/status/timestamps giữ của bản này. */
+    public void copyDetailsFrom(Exam source) {
+        this.description = source.description;
+        this.instructions = source.instructions;
+        this.kindItemId = source.kindItemId;
+        this.scope = source.scope;
+        this.partCode = source.partCode;
+        this.subjectItemId = source.subjectItemId;
+        this.templateCode = source.templateCode;
+        this.structureYear = source.structureYear;
+        this.matrixYear = source.matrixYear;
+        this.yearsConfirmed = source.yearsConfirmed;
+        this.timing = source.timing;
+        this.durationMinutes = source.durationMinutes;
+        this.maxScore = source.maxScore;
+        this.referenceMax = source.referenceMax;
+        this.practiceScoring = source.practiceScoring;
+        this.questionCount = source.questionCount;
+        this.hasEssay = source.hasEssay;
+        this.hasEnglishOption = source.hasEnglishOption;
+        this.combinationCount = source.combinationCount;
+        this.hasUnpublishedChanges = true;
+    }
+
+    /** Ghi nhận mẫu vừa nạp: mã mẫu, năm cấu trúc/ma trận, timing và (nếu mẫu khai báo) thời lượng + thang điểm. */
+    public void applyTemplate(String templateCode, Integer structureYear, Integer matrixYear,
+            String timing, Integer durationMinutes, BigDecimal maxScore, UUID actorId, Instant now) {
+        this.templateCode = templateCode;
+        this.structureYear = structureYear;
+        this.matrixYear = matrixYear;
+        this.yearsConfirmed = structureYear == null || structureYear.equals(matrixYear);
+        if (timing != null) {
+            this.timing = timing;
+        }
+        if (durationMinutes != null) {
+            this.durationMinutes = durationMinutes;
+        }
+        if (maxScore != null) {
+            this.maxScore = maxScore;
+        }
+        touch(actorId, now);
+    }
+
+    public void setYearsConfirmed(boolean confirmed) {
+        this.yearsConfirmed = confirmed;
+    }
+
+    /** Cấu trúc thay đổi sau lần kiểm tra gần nhất → cần kiểm lại (spec 11.3), trừ khi chưa từng kiểm. */
+    public void markStructureChanged(UUID actorId, Instant now) {
+        this.hasUnpublishedChanges = true;
+        if (!ExamCheckStatus.UNCHECKED.name().equals(this.checkStatus)) {
+            this.checkStatus = ExamCheckStatus.NEEDS_RECHECK.name();
+        }
+        touch(actorId, now);
+    }
+
+    /** Tính lại các cột tổng hợp cho danh sách/thẻ bài thi sau khi cấu trúc đổi. */
+    public void applyStructureSummary(int newQuestionCount, boolean newHasEssay,
+            boolean newHasEnglishOption, int newCombinationCount) {
+        this.questionCount = newQuestionCount;
+        this.hasEssay = newHasEssay;
+        this.hasEnglishOption = newHasEnglishOption;
+        this.combinationCount = newCombinationCount;
+    }
+
+    private void touch(UUID actorId, Instant now) {
+        this.updatedBy = actorId;
+        this.updatedAt = now;
+    }
 }

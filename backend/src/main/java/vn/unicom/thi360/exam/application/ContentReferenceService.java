@@ -341,6 +341,14 @@ public class ContentReferenceService {
         }
     }
 
+    public void evictCache() {
+        try {
+            redisTemplate.delete(CACHE_KEY);
+        } catch (RuntimeException ex) {
+            log.atWarn().setCause(ex).log("Failed to evict exam content-reference cache");
+        }
+    }
+
     public record NamePair(String code, String vi, String en) {
         String pick(boolean english) {
             return ContentReferenceService.pick(vi, en, english);

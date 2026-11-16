@@ -92,6 +92,24 @@ public class ExamKindProfile {
     public String getPracticeScoring() { return practiceScoring; }
     public JsonNode getTfScoring() { return tfScoring; }
     public String getMultipleChoiceRule() { return multipleChoiceRule; }
+    public String getTemplateBy() { return templateBy; }
+
+    /** PUT thay thế toàn bộ hồ sơ (spec 6); revision tăng nhờ @Version. */
+    public void replace(List<String> newScopes, String newTemplateBy, String newTiming,
+            BigDecimal newMaxScore, BigDecimal newReferenceMax, String newPracticeScoring,
+            JsonNode newTfScoring, String newMultipleChoiceRule, Instant now, UUID actorId) {
+        this.scopes = newScopes == null ? new String[0] : newScopes.toArray(String[]::new);
+        this.templateBy = newTemplateBy;
+        this.timing = newTiming;
+        this.maxScore = newMaxScore;
+        this.referenceMax = newReferenceMax;
+        this.practiceScoring = newPracticeScoring;
+        this.tfScoring = newTfScoring;
+        this.multipleChoiceRule = newMultipleChoiceRule;
+        this.updatedAt = now;
+        this.updatedBy = actorId;
+    }
+
     public Instant getCreatedAt() { return createdAt; }
     public UUID getCreatedBy() { return createdBy; }
     public Instant getUpdatedAt() { return updatedAt; }
