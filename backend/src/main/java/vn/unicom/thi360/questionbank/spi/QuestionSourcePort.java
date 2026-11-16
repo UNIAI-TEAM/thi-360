@@ -40,21 +40,35 @@ public interface QuestionSourcePort {
 
     record Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                 String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
-                BigDecimal points, ScoringDetails scoring) {
+                BigDecimal points, ScoringDetails scoring, String code) {
+        public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
+                    String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
+                    BigDecimal points, ScoringDetails scoring) {
+            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes,
+                    points, scoring, null);
+        }
+
         public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                     String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes, BigDecimal points) {
-            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes, points, null);
+            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes, points, null, null);
         }
     }
     record Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
                      String taskTypeCode, String scoringRule, String trueFalseMethod,
-                     List<BigDecimal> trueFalseTable, String multipleChoiceRule) {
+                     List<BigDecimal> trueFalseTable, String multipleChoiceRule, String code) {
         public Candidate {
             trueFalseTable = trueFalseTable == null ? null : List.copyOf(trueFalseTable);
         }
         public Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
+                         String taskTypeCode, String scoringRule, String trueFalseMethod,
+                         List<BigDecimal> trueFalseTable, String multipleChoiceRule) {
+            this(questionId, versionNo, setId, units, taskTypeCode, scoringRule, trueFalseMethod,
+                    trueFalseTable, multipleChoiceRule, null);
+        }
+
+        public Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
                          String taskTypeCode, String scoringRule) {
-            this(questionId, versionNo, setId, units, taskTypeCode, scoringRule, null, null, null);
+            this(questionId, versionNo, setId, units, taskTypeCode, scoringRule, null, null, null, null);
         }
     }
     record VersionKey(UUID questionId, int versionNo) {}

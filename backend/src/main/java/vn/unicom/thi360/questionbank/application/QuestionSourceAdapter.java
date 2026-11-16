@@ -82,7 +82,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         if (limit <= 0) return List.of();
         var params = new MapSqlParameterSource();
         String sql = roots(List.of(filter), params, limit) + units() + """
-                select units.*, r.task_type_item_id,
+                select units.*, r.task_type_item_id, r.code root_code, unit_question.code unit_code,
                        coalesce(r.snapshot #>> '{body,scoringRule}', r.snapshot #>> '{body,scoringMethod}') scoring_rule,
                        r.snapshot #>> '{body,scoringMethod}' root_tf_method,
                        (r.snapshot #> '{body,scoreTable}')::text root_tf_table,
@@ -93,6 +93,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                        array(select knowledge_item_id from questionbank.question_knowledge k
                              where k.question_id = units.unit_id order by knowledge_item_id) mapids
                 from units join roots r on r.id = units.root_id
+                join questionbank.question unit_question on unit_question.id = units.unit_id
                 left join questionbank.question_version child
                   on child.question_id = units.unit_id and child.version_no = r.current_version_no
                      and units.unit_id <> r.id
@@ -118,7 +119,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                     codes.get(rs.getObject("grade_id", UUID.class)),
                     codes.get(rs.getObject("level_id", UUID.class)), ids,
                     competency == null ? List.of() : List.of(competency), rs.getBigDecimal("points"),
-                    scoringByUnit.get(unitId));
+                    scoringByUnit.get(unitId), rs.getString("unit_code"));
             grouped.computeIfAbsent(root, ignored -> new ArrayList<>()).add(unit);
             if (!candidates.containsKey(root)) {
                 String type = rs.getString("root_type");
@@ -129,12 +130,12 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                         grouped.get(root), codes.get(rs.getObject("task_type_item_id", UUID.class)),
                         rs.getString("scoring_rule"), rootScoring == null ? null : rootScoring.trueFalseMethod(),
                         rootScoring == null ? null : rootScoring.trueFalseTable(),
-                        rootScoring == null ? null : rootScoring.multipleChoiceRule()));
+                        rootScoring == null ? null : rootScoring.multipleChoiceRule(), rs.getString("root_code")));
             }
         });
         return candidates.values().stream().map(c -> new Candidate(c.questionId(), c.versionNo(), c.setId(),
                 List.copyOf(c.units()), c.taskTypeCode(), c.scoringRule(), c.trueFalseMethod(),
-                c.trueFalseTable(), c.multipleChoiceRule())).toList();
+                c.trueFalseTable(), c.multipleChoiceRule(), c.code())).toList();
     }
 
     private ScoringDetails scoring(String method, String tableJson, String multipleChoiceRule) throws SQLException {

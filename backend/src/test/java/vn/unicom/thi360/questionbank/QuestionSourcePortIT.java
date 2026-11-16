@@ -127,6 +127,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         var trueFalse = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
                 QuestionType.TRUE_FALSE, null, null, List.of(), List.of(), null);
         assertThat(source.findCandidates(trueFalse, 10)).singleElement().satisfies(candidate -> {
+            assertThat(candidate.code()).isEqualTo("TEST-" + root);
+            assertThat(candidate.units().getFirst().code()).isEqualTo("TEST-" + root);
             assertThat(candidate.trueFalseMethod()).isEqualTo("COUNT_TABLE");
             assertThat(candidate.trueFalseTable()).containsExactly(
                     new BigDecimal("0.1"), new BigDecimal("0.25"), new BigDecimal("0.5"), BigDecimal.ONE);
@@ -161,9 +163,11 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         var sets = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null);
         assertThat(source.findCandidates(sets, 10)).singleElement().satisfies(candidate -> {
+            assertThat(candidate.code()).isEqualTo("SET-" + set);
             assertThat(candidate.trueFalseMethod()).isNull();
             assertThat(candidate.units()).singleElement().satisfies(unit -> {
                 assertThat(unit.questionId()).isEqualTo(child);
+                assertThat(unit.code()).isEqualTo("CHILD-" + child);
                 assertThat(unit.scoring().trueFalseMethod()).isEqualTo("COUNT_TABLE");
                 assertThat(unit.scoring().trueFalseTable()).containsExactly(new BigDecimal("0.25"), BigDecimal.ONE);
             });
