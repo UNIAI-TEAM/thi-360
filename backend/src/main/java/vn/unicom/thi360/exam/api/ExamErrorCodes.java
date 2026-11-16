@@ -26,4 +26,9 @@ public final class ExamErrorCodes {
     public static final String REPLACE_CONFIRM = "EXAM_STRUCTURE_REPLACE_CONFIRM";
     /** 412 — expectedRevision lệch revision hiện tại. */
     public static final String REVISION_CONFLICT = "EXAM_REVISION_CONFLICT";
+    public static final String CHECK_REQUIRED = "CHECK_REQUIRED";
+    public static final String NOTHING_TO_PUBLISH = "NOTHING_TO_PUBLISH";
+    public static final String NO_PATH_SELECTED = "NO_PATH_SELECTED";
+    public static final String PATH_NOT_VALID = "PATH_NOT_VALID";
+    public static final String VERSION_NOT_FOUND = "VERSION_NOT_FOUND";
 }

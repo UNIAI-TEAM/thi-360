@@ -932,7 +932,7 @@ public class ExamService {
                         .map(u -> new PersonRef(u.id(), u.displayName()))
                         .orElseGet(() -> new PersonRef(exam.getUpdatedBy(), null));
         List<ExamVersionResponse> versions = new ArrayList<>();
-        versions.add(new ExamVersionResponse(null, "WORKING", null, null, 0, null));
+        versions.add(new ExamVersionResponse(null, "WORKING", null, null, 0, null, List.of(), List.of()));
         return new ExamDetailResponse(
                 exam.getId(),
                 exam.getCode(),

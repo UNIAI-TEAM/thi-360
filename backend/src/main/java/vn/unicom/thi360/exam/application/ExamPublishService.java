@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.exam.api.ExamErrorCodes;
 import vn.unicom.thi360.exam.api.ExamPublishRequest;
 import vn.unicom.thi360.exam.api.ExamPublishResponse;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
@@ -62,11 +63,11 @@ public class ExamPublishService {
                 (rs, n) -> new ExamRow(rs.getLong(1), rs.getBoolean(2), rs.getString(3)), examId);
         if (rows.isEmpty()) throw new NotFoundException("Exam not found");
         ExamRow exam = rows.getFirst();
-        if (exam.revision() != request.expectedRevision()) throw new VersionConflictException("EXAM_REVISION_CONFLICT", null);
-        if (!exam.changed()) throw new ConflictException("NOTHING_TO_PUBLISH");
+        if (exam.revision() != request.expectedRevision()) throw new VersionConflictException(ExamErrorCodes.REVISION_CONFLICT, null);
+        if (!exam.changed()) throw new ConflictException(ExamErrorCodes.NOTHING_TO_PUBLISH);
         Set<String> selected = new LinkedHashSet<>(request.pathIds());
-        if (selected.isEmpty()) throw new BusinessRuleException("NO_PATH_SELECTED", null);
-        if (selected.contains(null) || selected.contains("")) throw new BusinessRuleException("PATH_NOT_VALID", null);
+        if (selected.isEmpty()) throw new BusinessRuleException(ExamErrorCodes.NO_PATH_SELECTED, null);
+        if (selected.contains(null) || selected.contains("")) throw new BusinessRuleException(ExamErrorCodes.PATH_NOT_VALID, null);
         var checks = jdbc.query("SELECT id, result::text, witness::text FROM exam.exam_check_run WHERE exam_id = ?",
                 (rs, n) -> new CheckRow(rs.getObject(1, UUID.class), json(rs.getString(2)), json(rs.getString(3))), examId);
         if (checks.isEmpty()) throw checkRequired("NO_CHECK");
@@ -82,7 +83,7 @@ public class ExamPublishService {
             allPaths.add(id);
             if ("VALID".equals(path.path("result").asText())) valid.add(id);
         }
-        if (!valid.containsAll(selected)) throw new BusinessRuleException("PATH_NOT_VALID", null);
+        if (!valid.containsAll(selected)) throw new BusinessRuleException(ExamErrorCodes.PATH_NOT_VALID, null);
         List<QuestionSourcePort.VersionKey> picks = new ArrayList<>();
         Set<String> witnessed = new LinkedHashSet<>();
         for (JsonNode path : check.witness()) {
@@ -118,7 +119,7 @@ public class ExamPublishService {
         String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
         String quotas = new ExamVersionSnapshot(mapper).resolvedQuotas(json(structure)).toString();
         String sql = "INSERT INTO exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by, note) "
-                + "SELECT ?, e.id, ?, jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'resolvedQuotas', ?::jsonb), s.parts, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id WHERE e.id = ?";
+                + "SELECT ?, e.id, ?, jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), 'resolvedQuotas', ?::jsonb), s.parts, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id WHERE e.id = ?";
         Instant now = Instant.now();
         int inserted = jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql);
@@ -151,7 +152,7 @@ public class ExamPublishService {
     }
 
     private static ConflictException checkRequired(String reason) {
-        return new ConflictException("CHECK_REQUIRED", null, List.of(new FieldError("reason", reason, reason)));
+        return new ConflictException(ExamErrorCodes.CHECK_REQUIRED, null, List.of(new FieldError("reason", reason, reason)));
     }
 
     private JsonNode json(String value) {
