@@ -4,8 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.application.ContentReferenceService;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -33,9 +34,14 @@ class ContentReferenceIT extends AbstractIntegrationTest {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+    @Autowired
+    private CatalogLookup catalogLookup;
+
     @AfterEach
     void clearCache() {
-        redisTemplate.delete(ContentReferenceService.CACHE_KEY);
+        // Khóa legacy "exam:content-reference" (trước hậu tố :v2) bị code hiện tại bỏ qua;
+        // vẫn dọn để test seed payload cũ không rò rỉ sang test khác.
+        redisTemplate.delete(List.of(ContentReferenceService.CACHE_KEY, "exam:content-reference"));
     }
 
     @Test
@@ -160,6 +166,59 @@ class ContentReferenceIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$..children[?(@.code=='0D1-1-1' && @.name=='Khái niệm mệnh đề (đổi tên mẫu)')]").value(org.hamcrest.Matchers.hasSize(1)));
     }
+
+    @Test
+    void legacyCacheKeyIsIgnoredAfterKeyVersioning() throws Exception {
+        // R2-1/R2-2: cache mà instance trước-khóa-v2 để lại nằm dưới "exam:content-reference"
+        // với cùng hình dạng JSON. Payload giả này mô phỏng output builder cũ (Chương nằm
+        // ở gốc, nút sâu 3 là LESSON) nhưng mang revision danh mục HIỆN TẠI — code cũ sẽ phục
+        // vụ nó nguyên văn, code mới phải bỏ qua và dựng lại cây đúng.
+        long revision = catalogLookup.revision();
+        String legacyPayload = """
+                {
+                  "catalogRevision": %d,
+                  "subjects": [{"code":"TOAN","vi":"Toán","en":"Math"}],
+                  "grades": [], "difficulties": [], "tags": [], "examKinds": [],
+                  "combinations": [], "competencies": [],
+                  "knowledgeTree": [{
+                    "id": "00000000-0000-7000-8200-000000001001",
+                    "code": "0D1",
+                    "name": {"code": "0D1", "vi": "Mệnh đề", "en": "Propositions"},
+                    "level": "CHAPTER",
+                    "subjectCode": "TOAN",
+                    "gradeCode": "G10",
+                    "children": [{
+                      "id": "00000000-0000-7000-8200-000000001101",
+                      "code": "0D1-1",
+                      "name": {"code": "0D1-1", "vi": "Mệnh đề", "en": null},
+                      "level": "LESSON",
+                      "subjectCode": "TOAN",
+                      "gradeCode": "G10",
+                      "children": [{
+                        "id": "00000000-0000-7000-8200-000000001201",
+                        "code": "0D1-1-1",
+                        "name": {"code": "0D1-1-1", "vi": "Khái niệm mệnh đề", "en": null},
+                        "level": "LESSON",
+                        "subjectCode": "TOAN",
+                        "gradeCode": "G10",
+                        "children": []
+                      }]
+                    }]
+                  }],
+                  "taskTypes": [],
+                  "questionTypes": [{"code":"ESSAY","nameVi":"Tự luận","nameEn":"Essay","active":true}]
+                }
+                """.formatted(revision);
+        redisTemplate.opsForValue().set("exam:content-reference", legacyPayload);
+
+        mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.knowledgeTree[?(@.code=='0D1')]").isEmpty())
+                .andExpect(jsonPath("$.knowledgeTree[?(@.level=='SUBJECT' && @.code=='TOAN')]").value(org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.knowledgeTree[?(@.code=='TOAN')].children[?(@.code=='0D1' && @.level=='CHAPTER')]").value(org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$..children[?(@.code=='0D1-1-1' && @.level=='KNOWLEDGE')]").value(org.hamcrest.Matchers.hasSize(1)));
+    }
+
 
     private long readItemVersion(String itemId) throws Exception {
         MvcResult item = mockMvc.perform(get("/api/v1/admin/catalog/items/" + itemId)

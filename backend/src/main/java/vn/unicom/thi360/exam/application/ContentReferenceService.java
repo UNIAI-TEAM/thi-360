@@ -33,7 +33,7 @@ import vn.unicom.thi360.shared.web.LocaleConfig;
  * QUESTION_TAG, SUBJECT_COMBINATION, COMPETENCY, KNOWLEDGE, TASK_TYPE), tám dạng câu cố định và
  * hồ sơ kỳ thi (để rỗng tới BE-4).
  *
- * <p>Cache Redis {@code exam:content-reference} chứa bản song ngữ (nameVi + nameEn) kèm revision
+ * <p>Cache Redis chứa bản song ngữ (nameVi + nameEn) kèm revision
  * danh mục ({@link CatalogLookup#revision()}): mỗi request so revision hiện tại, khớp thì trả
  * bản đã lưu — cách này tự xóa cache khi danh mục đổi mà không cần hook từ module catalog.
  * Khi hồ sơ kỳ thi ra đời (BE-4), cần xóa khóa này hoặc cộng thêm revision hồ sơ vào key.
@@ -41,7 +41,9 @@ import vn.unicom.thi360.shared.web.LocaleConfig;
 @Service
 public class ContentReferenceService {
 
-    public static final String CACHE_KEY = "exam:content-reference";
+    // Khóa có hậu tố phiên bản: đổi hậu tố mỗi khi hình dạng payload hoặc logic dựng cache
+    // thay đổi — bản cache của builder cũ không được code mới phục vụ (R2-1).
+    public static final String CACHE_KEY = "exam:content-reference:v2";
     private static final long CACHE_TTL_SECONDS = 6 * 3600L;
     private static final String SUBJECT_GROUP = "SUBJECT";
     private static final String EXAM_GROUP = "EXAM";
