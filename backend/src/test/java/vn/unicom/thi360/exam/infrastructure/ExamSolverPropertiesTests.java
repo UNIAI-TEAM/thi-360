@@ -20,13 +20,13 @@ class ExamSolverPropertiesTests {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(ConfigurationPropertiesAutoConfiguration.class))
-            .withUserConfiguration(TestConfig.class);
+            .withUserConfiguration(TestConfig.class, ExamSolverConfiguration.class);
 
     @Test
     void defaultsMatchSolverLimits() {
         runner.run(context -> {
             assertThat(context).hasNotFailed();
-            assertThat(context.getBean(ExamSolverProperties.class).toLimits()).isEqualTo(SolverLimits.defaults());
+            assertThat(context.getBean(SolverLimits.class)).isEqualTo(SolverLimits.defaults());
         });
     }
 
@@ -39,7 +39,7 @@ class ExamSolverPropertiesTests {
                 "thi360.exam.solver.max-choice-subjects=4")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    assertThat(context.getBean(ExamSolverProperties.class).toLimits())
+                    assertThat(context.getBean(SolverLimits.class))
                             .isEqualTo(new SolverLimits(12, 345, Duration.ofMinutes(2), 4));
                 });
     }
