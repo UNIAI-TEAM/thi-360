@@ -3771,7 +3771,7 @@
         "RUBRIC_MISSING": "Block {block}: {available, plural, one {# essay source question has} other {# essay source questions have}} no rubric ({codes}).",
         "SCORING_MISMATCH": "Block {block}: {available, plural, one {# source question uses} other {# source questions use}} a scoring rule different from the block's expected rule ({codes}). Warning only; publishing is not blocked.",
         "ANSWER_QUOTA_TOTAL_MISMATCH": "Subject {subject}: the answer-type quotas add up to {available, number} questions; they must add up to the subject's {required, number}.",
-        "SUBJECT_MATRIX_TOTAL_MISMATCH": "Subject {subject}: the {dimension, select, GRADE {grade} DIFFICULTY {difficulty} other {grade and difficulty}} quotas add up to {available, number} questions; they must add up to the subject's {required, number}.",
+        "SUBJECT_MATRIX_TOTAL_MISMATCH": "Subject {subject}: the quotas {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} other {by grade and difficulty}} add up to {available, number} questions; they must add up to the subject's {required, number}.",
         "GROUP_ANSWER_TYPE_MISSING": "Group {block} has no answer type, and subject {subject} sets no answer-type quota.",
         "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: the per-subject counts of the subject choice are invalid (need {required, number}, found {available, number}). There must be one value per chosen subject, adding up to the option's question count.",
         "REMAINDER_GROUP_INVALID": "Subject {subject} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed {required, number} questions (found {available, number}).",
