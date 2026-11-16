@@ -223,7 +223,8 @@ describe("sao chép và ngừng bán", () => {
     const published = await getExam("ex-qda-f-001");
     await rejectsWith(discontinueExam(published.id, published.revision + 4), 412, "EXAM_REVISION_CONFLICT");
     expect((await discontinueExam(published.id, published.revision)).status).toBe("DISCONTINUED");
-    await rejectsWith(discontinueExam("ex-hsa-f-002"), 409, "EXAM_NOT_PUBLISHED");
+    const draft = await getExam("ex-hsa-f-002");
+    await rejectsWith(discontinueExam(draft.id, draft.revision), 409, "EXAM_NOT_PUBLISHED");
   });
 });
 

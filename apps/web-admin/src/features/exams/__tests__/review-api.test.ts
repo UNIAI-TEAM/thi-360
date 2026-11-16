@@ -228,8 +228,19 @@ describe("publishExam", () => {
 
 describe("discontinueExam", () => {
   it("ngừng bán bài đang phục vụ, bài chưa công bố thì báo 409", async () => {
-    await discontinueExam({ examId: "ex-qda-f-001" });
+    const updated = await discontinueExam({ examId: "ex-qda-f-001", expectedRevision: rev("ex-qda-f-001") });
+    expect(updated.status).toBe("DISCONTINUED");
     expect(examStore.require("ex-qda-f-001").status).toBe("DISCONTINUED");
-    await expect(discontinueExam({ examId: "ex-hsa-f-002" })).rejects.toMatchObject({ status: 409, code: "NOT_PUBLISHED" });
+    await expect(
+      discontinueExam({ examId: "ex-hsa-f-002", expectedRevision: rev("ex-hsa-f-002") }),
+    ).rejects.toMatchObject({ status: 409, code: "EXAM_NOT_PUBLISHED" });
+  });
+
+  it("revision cũ báo 412 EXAM_REVISION_CONFLICT", async () => {
+    await expect(discontinueExam({ examId: "ex-qda-f-001", expectedRevision: rev("ex-qda-f-001") + 3 })).rejects.toMatchObject({
+      status: 412,
+      code: "EXAM_REVISION_CONFLICT",
+    });
+    expect(examStore.require("ex-qda-f-001").status).toBe("PUBLISHED");
   });
 });

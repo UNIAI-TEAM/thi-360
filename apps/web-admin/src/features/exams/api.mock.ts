@@ -785,23 +785,21 @@ export async function duplicateExam(id: string, request: DuplicateExamRequest): 
 }
 
 /** Ngừng bán: không bán thêm, học viên đã mua vẫn làm được phiên bản đang phục vụ. */
-export async function discontinueExam(id: string, expectedRevision?: number): Promise<ExamDetail> {
-  return mockRequest(
-    () => {
-      const current = examStore.require(id);
-      assertExamRevision(current, expectedRevision);
-      if (current.status !== "PUBLISHED") throw new MockApiError(409, "EXAM_NOT_PUBLISHED");
-      return examStore.update(id, (exam) => ({
-        ...exam,
-        revision: exam.revision + 1,
-        status: "DISCONTINUED",
-        updatedAt: nowIso(),
-        updatedBy: MOCK_CURRENT_AUTHOR,
-      }));
-    },
-    { ignoreScenario: true },
-  );
-}
+export async function discontinueExam(id: string, expectedRevision: number): Promise<ExamDetail> { return mockRequest(
+  () => {
+    const current = examStore.require(id);
+    assertExamRevision(current, expectedRevision);
+    if (current.status !== "PUBLISHED") throw new MockApiError(409, "EXAM_NOT_PUBLISHED");
+    return examStore.update(id, (exam) => ({
+      ...exam,
+      revision: exam.revision + 1,
+      status: "DISCONTINUED",
+      updatedAt: nowIso(),
+      updatedBy: MOCK_CURRENT_AUTHOR,
+    }));
+  },
+  { ignoreScenario: true },
+); }
 
 // ---------------------------------------------------------------- nguồn câu hỏi
 

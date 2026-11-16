@@ -3860,7 +3860,8 @@
         "confirm": "Discontinue",
         "cancel": "Cancel",
         "done": "{code} is discontinued.",
-        "error": "Could not discontinue the exam. Try again."
+        "error": "Could not discontinue the exam. Try again.",
+        "conflict": "The exam is no longer serving or has changed. Reload the page and try again."
       },
       "detail": {
         "close": "Close",

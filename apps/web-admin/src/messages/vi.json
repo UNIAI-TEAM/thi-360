@@ -3860,7 +3860,8 @@
         "confirm": "Ngừng bán",
         "cancel": "Hủy",
         "done": "Đã ngừng bán {code}.",
-        "error": "Không ngừng bán được bài thi. Thử lại."
+        "error": "Không ngừng bán được bài thi. Thử lại.",
+        "conflict": "Bài thi không còn ở trạng thái Đang phục vụ hoặc đã thay đổi. Tải lại trang rồi thử lại."
       },
       "detail": {
         "close": "Đóng",

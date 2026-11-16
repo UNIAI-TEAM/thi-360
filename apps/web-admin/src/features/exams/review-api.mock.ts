@@ -1,7 +1,7 @@
 import { MOCK_CURRENT_AUTHOR } from "@/features/questions/mock/store";
 import { MockApiError, mockRequest } from "@/lib/mock/content-mock";
 import { checkExam, CHECK_TIME_LIMIT_SECONDS, enumeratePaths, EXTENDED_CHECK_TIME_LIMIT_SECONDS } from "./check";
-import { assertExamRevision } from "./api.mock";
+import { assertExamRevision, discontinueExam as discontinueExamBase } from "./api.mock";
 import { examStore } from "./mock/store";
 import {
   mockAvailability,
@@ -362,26 +362,6 @@ export async function publishExam({ examId, pathIds, note, expectedRevision }: P
 }
 
 /** Ngừng bán: không mở bán cho lượt mua mới; học viên đã mua vẫn làm được theo phiên bản đang phục vụ. */
-export async function discontinueExam({
-  examId,
-  expectedRevision,
-}: {
-  examId: string;
-  expectedRevision?: number;
-}): Promise<{ examId: string }> {
-  return mockRequest(
-    () => {
-      const exam = examStore.require(examId);
-      assertExamRevision(exam, expectedRevision);
-      if (exam.status !== "PUBLISHED") throw new MockApiError(409, "NOT_PUBLISHED");
-      examStore.update(examId, (current) => ({
-        ...current,
-        revision: current.revision + 1,
-        status: "DISCONTINUED",
-        updatedAt: nowIso(),
-      }));
-      return { examId };
-    },
-    { ignoreScenario: true },
-  );
+export async function discontinueExam({ examId, expectedRevision }: { examId: string; expectedRevision: number }): Promise<ExamDetail> {
+  return discontinueExamBase(examId, expectedRevision);
 }
