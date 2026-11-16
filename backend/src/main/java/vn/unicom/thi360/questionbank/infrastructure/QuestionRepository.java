@@ -23,8 +23,14 @@ public interface QuestionRepository extends JpaRepository<Question, UUID> {
     /** Câu con của một bộ, theo thứ tự trong bộ. */
     List<Question> findByParentIdAndDeletedAtIsNullOrderByPosition(UUID parentId);
 
+    @Query(value = """
+            SELECT q.* FROM questionbank.question q
+            JOIN questionbank.question_source_code_claim c ON c.question_id = q.id
+            WHERE c.source_code_normalized = :sourceCodeNormalized
+              AND q.parent_id IS NULL AND q.deleted_at IS NULL
+            """, nativeQuery = true)
     Optional<Question> findBySourceCodeNormalizedAndParentIdIsNullAndDeletedAtIsNull(
-            String sourceCodeNormalized);
+            @Param("sourceCodeNormalized") String sourceCodeNormalized);
 
     /** Khóa hàng loạt (SELECT … FOR UPDATE) cho lệnh ghi loạt (spec 4.5). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

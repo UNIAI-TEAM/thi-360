@@ -217,6 +217,7 @@ public class QuestionService {
             throw bodyInvalid(errors);
         }
 
+        QuestionVersion previousWorking = workingVersion(question);
         boolean versionCreated = false;
         Integer targetVersion;
         if (question.getWorkingVersionNo() != null) {
@@ -228,11 +229,12 @@ public class QuestionService {
         }
 
         QuestionBody snapshotBody = sanitized.body();
-        // Câu con của bộ: đồng bộ dòng trước để bản chụp của bộ mang id câu con.
+        // Khi đã có bản phục vụ, chỉ cấp id trong snapshot; không sửa projection đang phục vụ.
         if (type == QuestionType.QUESTION_SET
                 && sanitized.body() instanceof QuestionBody.QuestionSetBody setBody) {
-            List<UUID> children = syncChildren(question, setBody, classification, knowledge,
-                    targetVersion, now, actorId);
+            List<UUID> children = question.getCurrentVersionNo() == null
+                    ? syncChildren(question, setBody, classification, knowledge, targetVersion, now, actorId)
+                    : prepareChildIds(question, setBody);
             List<QuestionBody.ChildQuestion> withIds = new ArrayList<>(children.size());
             for (int i = 0; i < children.size(); i++) {
                 QuestionBody.ChildQuestion child = setBody.children().get(i);
@@ -249,28 +251,20 @@ public class QuestionService {
                 classification.competencyItemId(), input.points(),
                 toSnapshotKnowledge(knowledge), tagItemIds,
                 sanitized.content(), sanitized.solution(), sanitized.commonMistakes(),
-                sanitized.attachmentIds(), snapshotBody);
+                sanitized.attachmentIds(), snapshotBody,
+                request.sourceCode() != null ? request.sourceCode()
+                        : previousWorking != null && previousWorking.getSnapshot().sourceCode() != null
+                                ? previousWorking.getSnapshot().sourceCode() : question.getSourceCode());
+        entityManager.flush();
+        supportDao.reserveSourceCodes(question.getId(),
+                question.getCurrentVersionNo() == null ? null : question.getSourceCode(), snapshot.sourceCode());
         upsertVersion(question.getId(), targetVersion, snapshot, actorId, now);
 
-        question.setSubjectItemId(classification.subjectItemId());
-        question.setGradeItemId(classification.gradeItemId());
-        question.setLevelItemId(classification.levelItemId());
-        question.setTaskTypeItemId(classification.taskTypeItemId());
-        question.setCompetencyItemId(classification.competencyItemId());
-        question.setPoints(input.points());
-        question.setContentText(QuestionSearchNormalizer.contentText(sanitized.content(), sanitized.body()));
-        question.setSearchText(QuestionSearchNormalizer.searchText(
-                question.getCode(), sanitized.content(), sanitized.body()));
-        question.setHasSolution(sanitized.solution() != null && !sanitized.solution().isBlank());
-        setSourceCode(question, request == null ? null : request.sourceCode());
-        question.setWorkingVersionNo(targetVersion);
-        question.touch(now, actorId);
-
-        knowledgeRepository.deleteByQuestionId(question.getId());
-        saveKnowledgeRows(question.getId(), knowledge);
-        tagRepository.deleteByQuestionId(question.getId());
-        for (UUID tagItemId : tagItemIds) {
-            tagRepository.save(new QuestionTag(question.getId(), tagItemId));
+        if (question.getCurrentVersionNo() == null) {
+            projectRow(question, snapshot, targetVersion, now, actorId);
+        } else {
+            question.setWorkingVersionNo(targetVersion);
+            question.touch(now, actorId);
         }
         return versionCreated;
     }
@@ -298,6 +292,9 @@ public class QuestionService {
 
         Instant now = Instant.now();
         UUID actorId = currentUserProvider.requireCurrentUser().id();
+        if (question.getWorkingVersionNo() != null) {
+            projectSnapshot(question, working.getSnapshot(), working.getVersionNo(), now, actorId);
+        }
         working.setReadyAt(now);
         versionRepository.save(working);
         for (Question child : questionRepository.findByParentIdAndDeletedAtIsNullOrderByPosition(id)) {
@@ -317,6 +314,7 @@ public class QuestionService {
         question.setStatus(QuestionStatus.READY);
         question.touch(now, actorId);
         questionRepository.save(question);
+        supportDao.reserveSourceCodes(id, question.getSourceCode(), null);
         supportDao.bumpSourceRevision(question.getSubjectItemId());
         if (oldSubject != null && !Objects.equals(oldSubject, question.getSubjectItemId())) {
             supportDao.bumpSourceRevision(oldSubject);
@@ -408,12 +406,16 @@ public class QuestionService {
                 }
                 Instant now = Instant.now();
                 UUID actorId = currentUserProvider.requireCurrentUser().id();
+                if (question.getWorkingVersionNo() != null) {
+                    projectSnapshot(question, working.getSnapshot(), working.getVersionNo(), now, actorId);
+                }
                 working.setReadyAt(now);
                 versionRepository.save(working);
                 applyReadyToChildren(question, working.getVersionNo(), now, actorId);
                 question.setCurrentVersionNo(working.getVersionNo());
                 question.setWorkingVersionNo(null);
                 question.setStatus(QuestionStatus.READY);
+                supportDao.reserveSourceCodes(id, question.getSourceCode(), null);
                 question.touch(now, actorId);
             } else {
                 Instant now = Instant.now();
@@ -481,7 +483,11 @@ public class QuestionService {
         Question copy = Question.create(
                 UUID.randomUUID(), supportDao.nextQuestionCode(), source.getType(),
                 null, null, now, actorId);
-        QuestionSnapshot copySnapshot = snapshot;
+        QuestionSnapshot copySnapshot = new QuestionSnapshot(
+                snapshot.subjectItemId(), snapshot.gradeItemId(), snapshot.levelItemId(),
+                snapshot.taskTypeItemId(), snapshot.competencyItemId(), snapshot.points(),
+                snapshot.knowledge(), snapshot.tagItemIds(), snapshot.content(), snapshot.solution(),
+                snapshot.commonMistakes(), snapshot.attachmentIds(), snapshot.body(), null);
         if (snapshot.body() instanceof QuestionBody.QuestionSetBody setBody) {
             List<QuestionBody.ChildQuestion> copyChildren = new ArrayList<>(setBody.children().size());
             for (QuestionBody.ChildQuestion child : setBody.children()) {
@@ -496,7 +502,7 @@ public class QuestionService {
                     snapshot.knowledge(), snapshot.tagItemIds(), snapshot.content(),
                     snapshot.solution(), snapshot.commonMistakes(), snapshot.attachmentIds(),
                     new QuestionBody.QuestionSetBody(
-                            QuestionType.QUESTION_SET, setBody.passage(), copyChildren));
+                            QuestionType.QUESTION_SET, setBody.passage(), copyChildren), null);
         }
 
         questionRepository.save(copy);
@@ -564,6 +570,7 @@ public class QuestionService {
             child.touch(now, actorId);
         }
         questionRepository.save(question);
+        supportDao.releaseSourceCodes(id);
         if (wasReady) {
             supportDao.bumpSourceRevision(question.getSubjectItemId());
         }
@@ -599,17 +606,15 @@ public class QuestionService {
             targetVersion = (max == null ? 0 : max) + 1;
             versionCreated = true;
         }
+        supportDao.reserveSourceCodes(id, question.getCurrentVersionNo() == null ? null : question.getSourceCode(),
+                snapshot.sourceCode() == null ? question.getSourceCode() : snapshot.sourceCode());
         upsertVersion(id, targetVersion, snapshot, actorId, now);
 
-        applyRowFields(question, snapshot, null, targetVersion, now, actorId);
-        knowledgeRepository.deleteByQuestionId(id);
-        saveKnowledgeRows(id, fromSnapshotKnowledge(snapshot.knowledge()));
-        tagRepository.deleteByQuestionId(id);
-        for (UUID tagItemId : snapshot.tagItemIds()) {
-            tagRepository.save(new QuestionTag(id, tagItemId));
-        }
-        if (snapshot.body() instanceof QuestionBody.QuestionSetBody setBody) {
-            restoreChildren(question, setBody, snapshot, targetVersion, now, actorId);
+        if (question.getCurrentVersionNo() == null) {
+            projectSnapshot(question, snapshot, targetVersion, now, actorId);
+        } else {
+            question.setWorkingVersionNo(targetVersion);
+            question.touch(now, actorId);
         }
         questionRepository.save(question);
         audit("QUESTION.RESTORE", question, before, auditState(question));
@@ -619,6 +624,26 @@ public class QuestionService {
 
     // ---------------------------------------------------------------- câu con
 
+
+    private List<UUID> prepareChildIds(Question parent, QuestionBody.QuestionSetBody body) {
+        Set<UUID> seen = new HashSet<>();
+        List<UUID> ids = new ArrayList<>(body.children().size());
+        for (QuestionBody.ChildQuestion child : body.children()) {
+            UUID id = child.id() == null ? UUID.randomUUID() : child.id();
+            if (!seen.add(id)) {
+                throw new BusinessRuleException(ERR_BODY_INVALID, null,
+                        List.of(new FieldError("body.children", ERR_DUPLICATE_ID, null)));
+            }
+            questionRepository.findById(id).ifPresent(existing -> {
+                if (!Objects.equals(existing.getParentId(), parent.getId()) || existing.getType() != child.type()) {
+                    throw new BusinessRuleException(ERR_BODY_INVALID, null,
+                            List.of(new FieldError("body.children", ERR_TYPE_IMMUTABLE, null)));
+                }
+            });
+            ids.add(id);
+        }
+        return ids;
+    }
 
     /**
      * Đồng bộ dòng câu con với {@code children[]} của thân: tạo câu con mới (id do máy chủ
@@ -687,7 +712,7 @@ public class QuestionService {
                     effectiveKnowledge.stream()
                             .map(k -> new QuestionSnapshot.KnowledgeRef(k, false)).toList(),
                     List.of(), child.content(), child.solution(),
-                    List.of(), List.of(), child.body());
+                    List.of(), List.of(), child.body(), null);
 
             applyChildRow(row, child, childSnapshot, targetVersion,
                     parentClassification.subjectItemId(), now, actorId);
@@ -753,7 +778,7 @@ public class QuestionService {
                     effectiveKnowledge.stream()
                             .map(k -> new QuestionSnapshot.KnowledgeRef(k, false)).toList(),
                     List.of(), child.content(), child.solution(),
-                    List.of(), List.of(), child.body());
+                    List.of(), List.of(), child.body(), null);
             applyChildRow(row, child, childSnapshot, targetVersion,
                     parentSnapshot.subjectItemId(), now, actorId);
             questionRepository.save(row);
@@ -811,7 +836,7 @@ public class QuestionService {
                 parent.taskTypeItemId(), parent.competencyItemId(),
                 child.points() != null ? child.points() : BigDecimal.ONE,
                 knowledgeIds.stream().map(k -> new QuestionSnapshot.KnowledgeRef(k, false)).toList(),
-                List.of(), child.content(), child.solution(), List.of(), List.of(), child.body());
+                List.of(), child.content(), child.solution(), List.of(), List.of(), child.body(), null);
     }
 
     // ---------------------------------------------------------------- lọc & kiểm tra
@@ -1118,6 +1143,25 @@ public class QuestionService {
             version.setSnapshot(snapshot);
             version.setReadyAt(null);
             versionRepository.save(version);
+        }
+    }
+
+    private void projectSnapshot(Question question, QuestionSnapshot snapshot, int versionNo,
+            Instant now, UUID actorId) {
+        projectRow(question, snapshot, versionNo, now, actorId);
+        if (snapshot.body() instanceof QuestionBody.QuestionSetBody body) {
+            restoreChildren(question, body, snapshot, versionNo, now, actorId);
+        }
+    }
+
+    private void projectRow(Question question, QuestionSnapshot snapshot, int versionNo,
+            Instant now, UUID actorId) {
+        applyRowFields(question, snapshot, snapshot.sourceCode(), versionNo, now, actorId);
+        knowledgeRepository.deleteByQuestionId(question.getId());
+        saveKnowledgeRows(question.getId(), fromSnapshotKnowledge(snapshot.knowledge()));
+        tagRepository.deleteByQuestionId(question.getId());
+        for (UUID tagItemId : snapshot.tagItemIds()) {
+            tagRepository.save(new QuestionTag(question.getId(), tagItemId));
         }
     }
 

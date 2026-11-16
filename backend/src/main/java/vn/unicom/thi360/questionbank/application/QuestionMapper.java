@@ -1,5 +1,6 @@
 package vn.unicom.thi360.questionbank.application;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,7 +20,9 @@ import vn.unicom.thi360.questionbank.api.QuestionUsage;
 import vn.unicom.thi360.questionbank.api.QuestionVersionItem;
 import vn.unicom.thi360.questionbank.application.QuestionSearchDao.QuestionRow;
 import vn.unicom.thi360.questionbank.domain.Question;
+import vn.unicom.thi360.questionbank.domain.QuestionBody;
 import vn.unicom.thi360.questionbank.domain.QuestionKnowledge;
+import vn.unicom.thi360.questionbank.domain.QuestionSearchNormalizer;
 import vn.unicom.thi360.questionbank.domain.QuestionSnapshot;
 import vn.unicom.thi360.questionbank.domain.QuestionStatus;
 import vn.unicom.thi360.questionbank.domain.QuestionTag;
@@ -195,18 +198,35 @@ public class QuestionMapper {
     }
 
     private QuestionDetail toDetail(Question question, QuestionVersion version, Batch batch) {
-        QuestionSummary summary = toSummary(question, version, batch);
         QuestionSnapshot snapshot = version == null ? null : version.getSnapshot();
+        QuestionSummary summary = snapshot == null
+                ? toSummary(question, version, batch) : snapshotSummary(question, snapshot, batch);
         List<QuestionDetail> children = List.of();
-        if (question.getType()
-                == vn.unicom.thi360.questionbank.spi.QuestionType.QUESTION_SET) {
-            Integer childVersionNo = question.getWorkingVersionNo() != null
-                    ? question.getWorkingVersionNo()
-                    : question.getCurrentVersionNo();
-            children = questionRepository
-                    .findByParentIdAndDeletedAtIsNullOrderByPosition(question.getId()).stream()
-                    .map(child -> toDetail(child, versionOf(child.getId(), childVersionNo), batch))
-                    .toList();
+        if (snapshot != null && snapshot.body() instanceof QuestionBody.QuestionSetBody set) {
+            children = new ArrayList<>(set.children().size());
+            for (int i = 0; i < set.children().size(); i++) {
+                QuestionBody.ChildQuestion child = set.children().get(i);
+                UUID childId = child.id();
+                if (childId == null) {
+                    continue;
+                }
+                Question row = questionRepository.findById(childId).orElseGet(() ->
+                        Question.create(childId, question.getCode() + ".draft", child.type(),
+                                question.getId(), null, question.getCreatedAt(), question.getCreatedBy()));
+                List<UUID> ids = child.knowledgeItemIds() == null
+                        ? snapshot.knowledge().stream().map(QuestionSnapshot.KnowledgeRef::itemId).toList()
+                        : child.knowledgeItemIds();
+                QuestionSnapshot childSnapshot = new QuestionSnapshot(snapshot.subjectItemId(),
+                        child.gradeItemId() == null ? snapshot.gradeItemId() : child.gradeItemId(),
+                        child.levelItemId() == null ? snapshot.levelItemId() : child.levelItemId(),
+                        snapshot.taskTypeItemId(), snapshot.competencyItemId(),
+                        child.points() == null ? BigDecimal.ONE : child.points(),
+                        ids.stream().map(id -> new QuestionSnapshot.KnowledgeRef(id, false)).toList(),
+                        List.of(), child.content(), child.solution(), List.of(), List.of(), child.body(), null);
+                QuestionVersion childVersion = new QuestionVersion(childId, version.getVersionNo(),
+                        childSnapshot, version.getSavedBy(), version.getSavedAt());
+                children.add(toDetail(row, childVersion, batch));
+            }
         }
         return new QuestionDetail(
                 summary,
@@ -216,7 +236,29 @@ public class QuestionMapper {
                 snapshot == null ? List.of() : snapshot.attachmentIds(),
                 snapshot == null ? null : snapshot.body(),
                 children,
-                snapshot);
+                snapshot,
+                version == null ? null : version.getVersionNo(),
+                question.getWorkingVersionNo() != null);
+    }
+
+    private QuestionSummary snapshotSummary(Question question, QuestionSnapshot snapshot, Batch batch) {
+        List<KnowledgeRef> knowledge = snapshot.knowledge().stream().map(k -> {
+            CatalogItemView item = batch.item(k.itemId());
+            return new KnowledgeRef(k.itemId(), item == null ? null : item.code(),
+                    item == null ? null : item.nameVi(), k.primary());
+        }).toList();
+        return new QuestionSummary(question.getId(), question.getCode(), question.getType(),
+                question.getStatus(), question.getParentId(),
+                preview(QuestionSearchNormalizer.contentText(snapshot.content(), snapshot.body())),
+                codeOf(batch.item(snapshot.subjectItemId())), codeOf(batch.item(snapshot.gradeItemId())),
+                codeOf(batch.item(snapshot.levelItemId())), codeOf(batch.item(snapshot.taskTypeItemId())),
+                codeOf(batch.item(snapshot.competencyItemId())), snapshot.points(), knowledge,
+                tagCodes(snapshot.tagItemIds(), batch), snapshot.solution() != null && !snapshot.solution().isBlank(),
+                question.getCurrentVersionNo() == null ? 0 : question.getCurrentVersionNo(),
+                question.getWorkingVersionNo(), ledgerRepository.countDistinctExamsByQuestionId(question.getId()),
+                snapshot.sourceCode() == null ? question.getSourceCode() : snapshot.sourceCode(),
+                question.getRevision(), personOf(question.getCreatedBy(), batch),
+                question.getCreatedAt(), question.getUpdatedAt());
     }
 
     /** Phiên bản đang hiển thị của câu (working nếu có, không current, không thì mới nhất). */

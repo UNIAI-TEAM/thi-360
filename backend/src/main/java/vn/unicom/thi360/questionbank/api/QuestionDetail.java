@@ -17,4 +17,6 @@ public record QuestionDetail(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) QuestionBody body,
         @Schema(description = "Câu con của bộ (rỗng với dạng khác)",
                 requiredMode = Schema.RequiredMode.REQUIRED) List<QuestionDetail> children,
-        @Schema(description = "Bản chụp đầy đủ của phiên bản đang xem") QuestionSnapshot snapshot) {}
+        @Schema(description = "Bản chụp đầy đủ của phiên bản đang xem") QuestionSnapshot snapshot,
+        @Schema(description = "Số phiên bản đang hiển thị") Integer displayedVersionNo,
+        @Schema(description = "Có phiên bản nháp đang làm việc") boolean hasDraft) {}

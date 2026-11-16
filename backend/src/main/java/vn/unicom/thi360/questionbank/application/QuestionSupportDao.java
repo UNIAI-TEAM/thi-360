@@ -3,9 +3,11 @@ package vn.unicom.thi360.questionbank.application;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import vn.unicom.thi360.shared.api.ConflictException;
 
 /**
  * Truy vấn thuần SQL của module câu hỏi (plan B: JdbcTemplate cho DAO thô): cấp mã
@@ -26,6 +28,36 @@ public class QuestionSupportDao {
         Long next = jdbcTemplate.queryForObject(
                 "SELECT nextval('questionbank.question_code_seq')", Long.class);
         return "CH-" + String.format("%06d", next == null ? 0L : next);
+    }
+
+    /** Claim both serving and working codes before publishing either one. */
+    public void reserveSourceCodes(UUID questionId, String servingCode, String workingCode) {
+        String serving = normalized(servingCode);
+        String working = normalized(workingCode);
+        for (String code : java.util.stream.Stream.of(serving, working).filter(java.util.Objects::nonNull).distinct().sorted().toList()) {
+            int inserted = jdbcTemplate.update("""
+                    INSERT INTO questionbank.question_source_code_claim (source_code_normalized, question_id)
+                    VALUES (?, ?) ON CONFLICT (source_code_normalized)
+                    DO UPDATE SET question_id = EXCLUDED.question_id
+                    WHERE questionbank.question_source_code_claim.question_id = EXCLUDED.question_id
+                    """, code, questionId);
+            if (inserted == 0) {
+                throw new ConflictException("QUESTION_SOURCE_CODE_DUPLICATE");
+            }
+        }
+        jdbcTemplate.update("""
+                DELETE FROM questionbank.question_source_code_claim
+                WHERE question_id = ? AND source_code_normalized <> COALESCE(?, '')
+                  AND source_code_normalized <> COALESCE(?, '')
+                """, questionId, serving, working);
+    }
+
+    public void releaseSourceCodes(UUID questionId) {
+        jdbcTemplate.update("DELETE FROM questionbank.question_source_code_claim WHERE question_id = ?", questionId);
+    }
+
+    private static String normalized(String code) {
+        return code == null || code.isBlank() ? null : code.trim().toUpperCase(Locale.ROOT);
     }
 
     /**

@@ -225,6 +225,92 @@ class QuestionStatusIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void readySetEditKeepsServingRowsUntilNewVersionIsReady() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        var originalChildren = (com.fasterxml.jackson.databind.node.ArrayNode) request.at("/body/children");
+        originalChildren.add(originalChildren.get(1).deepCopy());
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode initial = read(created);
+        UUID id = UUID.fromString(initial.at("/summary/id").asText());
+        transition(id, "ready");
+        long before = sourceRevision();
+        var original = jdbcTemplate.queryForMap(
+                "SELECT grade_item_id, search_text FROM questionbank.question WHERE id = ?", id);
+        var children = (com.fasterxml.jackson.databind.node.ArrayNode) initial.at("/body/children").deepCopy();
+        children.remove(2);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).set("children", children);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).put("passage", "<p>New passage</p>");
+        request.put("gradeCode", "G11");
+        request.put("expectedRevision", currentRevision(id));
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.summary.gradeCode").value("G11"))
+                .andExpect(jsonPath("$.question.displayedVersionNo").value(2))
+                .andExpect(jsonPath("$.question.hasDraft").value(true))
+                .andExpect(jsonPath("$.question.children", hasSize(2)));
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT grade_item_id, search_text FROM questionbank.question WHERE id = ?", id))
+                .isEqualTo(original);
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL",
+                Integer.class, id)).isEqualTo(3);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, before);
+        transition(id, "ready");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT grade_item_id, search_text FROM questionbank.question WHERE id = ?", id))
+                .isNotEqualTo(original)
+                .extractingByKey("search_text").asString().contains("new passage");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL",
+                Integer.class, id)).isEqualTo(2);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, before + 1);
+    }
+
+    @Test
+    void currentAndWorkingSourceCodesRemainReservedUntilPublication() throws Exception {
+        String oldCode = "old-" + UUID.randomUUID();
+        String newCode = "new-" + UUID.randomUUID();
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        request.put("sourceCode", oldCode);
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        transition(id, "ready");
+        request.put("expectedRevision", currentRevision(id));
+        request.put("sourceCode", newCode);
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.summary.sourceCode").value(newCode));
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT source_code FROM questionbank.question WHERE id = ?", String.class, id))
+                .isEqualTo(oldCode);
+        request.remove("expectedRevision");
+        for (String code : new String[] {oldCode, newCode}) {
+            request.put("sourceCode", " " + code.toUpperCase() + " ");
+            mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("QUESTION_SOURCE_CODE_DUPLICATE"));
+        }
+        transition(id, "ready");
+        request.put("sourceCode", oldCode);
+        mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void retiredEditStaysRetiredAndCanBeReactivated() throws Exception {
         UUID id = createQuestion();
         transition(id, "ready");

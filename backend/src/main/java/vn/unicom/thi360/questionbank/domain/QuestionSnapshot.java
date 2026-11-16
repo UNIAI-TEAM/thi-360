@@ -27,7 +27,8 @@ public record QuestionSnapshot(
     String solution,
     List<String> commonMistakes,
     List<UUID> attachmentIds,
-    QuestionBody body) {
+    QuestionBody body,
+    String sourceCode) {
 
     public QuestionSnapshot {
         knowledge = knowledge == null ? List.of() : List.copyOf(knowledge);
