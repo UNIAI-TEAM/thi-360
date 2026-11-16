@@ -72,8 +72,8 @@ public class CatalogLookupImpl implements CatalogLookup {
         }
         String sql =
                 """
-                SELECT n.id, n.code, n.value, n.name_vi, n.name_en, n.status, n.is_system,
-                       n.parent_id, n.depth, n.path
+                SELECT n.id, n.code, n.code_normalized, n.value, n.name_vi, n.name_en, n.status,
+                       n.is_system, n.parent_id, n.depth, n.path
                 FROM catalog.catalog_item n
                 WHERE n.group_id = ?
                   AND\s"""
@@ -86,6 +86,7 @@ public class CatalogLookupImpl implements CatalogLookup {
                         group.getId(),
                         group.getCode(),
                         rs.getString("code"),
+                        rs.getString("code_normalized"),
                         rs.getInt("value"),
                         rs.getString("name_vi"),
                         rs.getString("name_en"),
@@ -111,8 +112,8 @@ public class CatalogLookupImpl implements CatalogLookup {
         }
         String sql =
                 """
-                SELECT n.id, n.code, n.value, n.name_vi, n.name_en, n.status, n.is_system,
-                       n.parent_id, n.depth, n.path,
+                SELECT n.id, n.code, n.code_normalized, n.value, n.name_vi, n.name_en, n.status,
+                       n.is_system, n.parent_id, n.depth, n.path,
                        CASE WHEN n.status = 1 AND NOT EXISTS (
                            SELECT 1 FROM catalog.catalog_item anc
                            WHERE anc.group_id = n.group_id
@@ -129,6 +130,7 @@ public class CatalogLookupImpl implements CatalogLookup {
                         group.getId(),
                         group.getCode(),
                         rs.getString("code"),
+                        rs.getString("code_normalized"),
                         rs.getInt("value"),
                         rs.getString("name_vi"),
                         rs.getString("name_en"),
@@ -325,6 +327,7 @@ public class CatalogLookupImpl implements CatalogLookup {
                 item.getGroupId(),
                 group.getCode(),
                 item.getCode(),
+                item.getCodeNormalized(),
                 item.getValue(),
                 item.getNameVi(),
                 item.getNameEn(),

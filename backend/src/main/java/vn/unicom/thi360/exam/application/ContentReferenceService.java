@@ -82,13 +82,15 @@ public class ContentReferenceService {
         List<NamePair> tags = namesOf(catalogLookup.listActiveGroupItems("QUESTION_TAG"));
         List<NamePair> taskTypes = namesOf(catalogLookup.listActiveGroupItems("TASK_TYPE"));
 
+        // Định danh danh mục là code_normalized: mã lưu có thể lẫn hoa/thường nên so theo
+        // dạng chuẩn hóa; mã trả về vẫn là enum cố định (D1).
         Map<String, CatalogItemView> formatsByCode = new LinkedHashMap<>();
         for (CatalogItemView item : catalogLookup.listGroupItems("QUESTION_FORMAT")) {
-            formatsByCode.put(item.code(), item);
+            formatsByCode.putIfAbsent(item.codeNormalized(), item);
         }
         List<CachedQuestionType> questionTypes = new ArrayList<>(QuestionType.values().length);
         for (QuestionType type : QuestionType.values()) {
-            CatalogItemView item = formatsByCode.get(type.code());
+            CatalogItemView item = formatsByCode.get(type.code().toLowerCase(Locale.ROOT));
             if (item == null) {
                 questionTypes.add(new CachedQuestionType(
                         type.code(), type.defaultNameVi(), type.defaultNameEn(), true));

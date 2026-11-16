@@ -1,14 +1,18 @@
 package vn.unicom.thi360.exam;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.exam.application.ContentReferenceService;
 import vn.unicom.thi360.identity.spi.Permissions;
@@ -114,4 +118,46 @@ class ContentReferenceIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.knowledgeTree[?(@.code=='TOAN')].children[?(@.code=='0D1')].children[?(@.code=='0D1-1')].children[?(@.code=='0D1-1-1' && @.level=='KNOWLEDGE' && @.subjectCode=='TOAN' && @.gradeCode=='G10' && @.active==true && @.id=='00000000-0000-7000-8200-000000001201')]").value(org.hamcrest.Matchers.hasSize(1)));
     }
 
+    @Test
+    void mixedCaseQuestionFormatStillResolvesByNormalizedCode() throws Exception {
+        // R1-2: mã lưu lẫn hoa/thường vẫn khớp enum theo code_normalized (định danh danh mục).
+        String essayId = "00000000-0000-7000-8400-000000000508";
+        long version = readItemVersion(essayId);
+
+        patchItem(essayId, "{\"code\":\"eSsAy\",\"nameVi\":\"Bài tự luận mẫu\",\"version\":" + version + "}");
+        version++;
+
+        mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionTypes[?(@.code=='ESSAY' && @.active==true && @.name=='Bài tự luận mẫu')]").value(org.hamcrest.Matchers.hasSize(1)));
+
+        // Ngừng giá trị bắt buộc kèm lý do; mã lưu lẫn hoa/thường vẫn phải chặn đúng dạng.
+        patchItem(essayId, "{\"status\":\"INACTIVE\",\"reason\":\"test ngừng dạng\",\"version\":" + version + "}");
+
+        mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionTypes.length()").value(8))
+                .andExpect(jsonPath("$.questionTypes[?(@.code=='ESSAY' && @.active==false)]").value(org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.questionTypes[?(@.code=='MATCHING' && @.active==true)]").exists());
+    }
+
+    private long readItemVersion(String itemId) throws Exception {
+        MvcResult item = mockMvc.perform(get("/api/v1/admin/catalog/items/" + itemId)
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode node = objectMapper.readTree(item.getResponse().getContentAsString());
+        return node.get("version").asLong();
+    }
+
+    private void patchItem(String itemId, String body) throws Exception {
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/" + itemId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+    }
+
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 }
