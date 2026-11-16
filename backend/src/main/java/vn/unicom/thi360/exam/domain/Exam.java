@@ -154,6 +154,11 @@ public class Exam {
         touch(actorId, now);
     }
 
+    public void applyScoringProfile(BigDecimal referenceMax, String practiceScoring) {
+        this.referenceMax = referenceMax;
+        this.practiceScoring = practiceScoring;
+    }
+
     /** Đổi phạm vi (kỳ thi/phạm vi/phần/môn/năm) sau khi dịch vụ đã nạp lại mẫu tương ứng. */
     public void changeScope(UUID kindItemId, String scope, String partCode, UUID subjectItemId,
             Integer structureYear, Integer matrixYear, boolean yearsConfirmed,

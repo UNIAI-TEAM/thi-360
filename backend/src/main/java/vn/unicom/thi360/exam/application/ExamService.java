@@ -79,7 +79,6 @@ public class ExamService {
 
     private static final String EXAM_GROUP = "EXAM";
     private static final String SUBJECT_GROUP = "SUBJECT";
-    private static final String PART_GROUP = "EXAM_PART";
     private static final Set<String> SCOPES = Set.of("FULL", "PART", "SUBJECT");
     private static final Set<String> ALLOWED_SORT = Set.of(
             "code", "name", "status", "question_count", "duration_minutes", "max_score",
@@ -396,6 +395,7 @@ public class ExamService {
         Exam exam = new Exam(Ids.newId(), code, request.name().trim(), kindItem.id(),
                 scopeChoice.scope(), timing, duration, maxScore,
                 profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
+        exam.applyScoringProfile(profile.getReferenceMax(), profile.getPracticeScoring());
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
                 duration, maxScore, actor, now);
@@ -476,6 +476,15 @@ public class ExamService {
                         ? ExamStructureOps.assignMissingIds(codec().read(template.getStructure()))
                         : new ExamStructureDocument(List.of());
                 ExamStructureValidator.validate(doc);
+                String timing = template != null && template.getTiming() != null
+                        ? template.getTiming() : profile.getTiming();
+                Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                        : template != null && template.getDurationMinutes() != null
+                                ? template.getDurationMinutes() : null;
+                BigDecimal maxScore = template != null && template.getMaxScore() != null
+                        ? template.getMaxScore() : profile.getMaxScore();
+                requireSharedDuration(timing, duration);
+                exam.applyScoringProfile(profile.getReferenceMax(), profile.getPracticeScoring());
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
                         template != null ? template.getStructureYear() : structureYear,
@@ -483,12 +492,7 @@ public class ExamService {
                         template == null || template.getStructureYear() == null
                                 || template.getStructureYear().equals(template.getMatrixYear()),
                         template != null ? template.getCode() : null,
-                        template != null && template.getTiming() != null ? template.getTiming()
-                                : exam.getTiming(),
-                        template != null && template.getDurationMinutes() != null
-                                ? template.getDurationMinutes() : exam.getDurationMinutes(),
-                        template != null && template.getMaxScore() != null ? template.getMaxScore()
-                                : exam.getMaxScore(),
+                        timing, duration, maxScore,
                         actor, now);
                 writeStructure(exam, doc, false, actor, now);
             }
@@ -829,10 +833,7 @@ public class ExamService {
             UUID subjectItemId) {
     }
 
-    /**
-     * Kiểm phạm vi theo hồ sơ kỳ thi: scope ∈ scopes, PART cần partCode (giá trị nhóm EXAM_PART),
-     * SUBJECT hoặc mẫu theo môn cần subjectCode (giá trị nhóm SUBJECT đang hoạt động).
-     */
+    /** Validates the scope and resolves its active part or subject. */
     private ScopeChoice resolveScope(CatalogItemView kindItem, ExamKindProfile profile,
             String rawScope, String partCode, String subjectCode) {
         if (profile == null || profile.getScopes().isEmpty()) {
@@ -851,6 +852,10 @@ public class ExamService {
                         messages.get(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED));
             }
             part = partCode.trim();
+            if (templateService.findBestMatch(kindItem.code(), "PART", part, null, null) == null) {
+                throw new BusinessRuleException(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED,
+                        messages.get(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED));
+            }
         }
         String subject = null;
         UUID subjectItemId = null;
