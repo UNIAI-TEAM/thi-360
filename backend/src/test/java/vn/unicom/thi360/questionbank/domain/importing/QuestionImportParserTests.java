@@ -168,19 +168,26 @@ class QuestionImportParserTests {
     }
 
     @Test
-    void rubricReadsColonDescriptionAndRejectsZeroPoints() throws Exception {
+    void rubricKeepsSemicolonInDescriptionAndReadsNewlineItems() throws Exception {
+        // Spec 4.6: một tiêu chí mỗi dòng; dấu ; thuộc nội dung mô tả (R1-4).
         var result = parse(List.of(
             List.of("type", "content", "subject", "grade", "difficulty", "rubric"),
             List.of("ESSAY", "Bài 1", "MATH", "GRADE_11", "RECOGNITION", "Ý 1: nêu luận điểm: 0,5"),
             List.of("ESSAY", "Bài 2", "MATH", "GRADE_11", "RECOGNITION", "Ý 1: 0"),
-            List.of("ESSAY", "Bài 3", "MATH", "GRADE_11", "RECOGNITION", "Mở bài; Thân bài: 1")));
+            List.of("ESSAY", "Bài 3", "MATH", "GRADE_11", "RECOGNITION",
+                "Mở bài; nêu vấn đề: 0,5\nThân bài (0,5)")));
         var body = (QuestionBody.EssayBody) result.rows().get(0).draft().body();
         assertEquals("Ý 1: nêu luận điểm", body.rubric().getFirst().description());
         assertEquals(new BigDecimal("0.5"), body.rubric().getFirst().points());
         assertTrue(result.rows().get(1).issues().stream()
             .anyMatch(i -> i.code() == ImportIssueCode.RUBRIC_INVALID && i.blocking()));
-        assertTrue(result.rows().get(2).issues().stream()
-            .anyMatch(i -> i.code() == ImportIssueCode.RUBRIC_INVALID && i.blocking()));
+        var semicolonBody = (QuestionBody.EssayBody) result.rows().get(2).draft().body();
+        assertFalse(result.rows().get(2).hasErrors(),
+            () -> result.rows().get(2).issues().toString());
+        assertEquals(List.of("Mở bài; nêu vấn đề", "Thân bài"),
+            semicolonBody.rubric().stream().map(QuestionBody.EssayCriterion::description).toList());
+        assertEquals(List.of(new BigDecimal("0.5"), new BigDecimal("0.5")),
+            semicolonBody.rubric().stream().map(QuestionBody.EssayCriterion::points).toList());
     }
 
     @Test

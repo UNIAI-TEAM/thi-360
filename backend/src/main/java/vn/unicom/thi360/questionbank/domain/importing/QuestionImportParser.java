@@ -1020,19 +1020,14 @@ public final class QuestionImportParser {
         Pattern.compile("^(.+?)\\s*(?:[:=]\\s*(\\d+(?:[.,]\\d+)?)|\\(\\s*(\\d+(?:[.,]\\d+)?)\\s*\\))\\s*$");
 
     /**
-     * Cột Tiêu chí chấm: mỗi tiêu chí "Mô tả: 0,5" / "Mô tả = 0,5" / "Mô tả (0,5)", cách nhau
-     * {@code ;} hoặc xuống dòng (mirror {@code parseRubric} của web). Phần thiếu điểm hoặc
-     * điểm không lớn hơn 0 là phần đầu tiên bị trả về trong {@code invalid}.
+     * Cột Tiêu chí chấm: mỗi tiêu chí "Mô tả: 0,5" / "Mô tả = 0,5" / "Mô tả (0,5)", một tiêu
+     * chí mỗi dòng — không tách tại {@code ;} vì mô tả có thể chứa dấu chấm phẩy (spec 4.6).
+     * Phần thiếu điểm hoặc điểm không lớn hơn 0 là phần đầu tiên bị trả về trong
+     * {@code invalid}.
      */
     static RubricParse parseRubric(String value) {
         List<QuestionBody.EssayCriterion> criteria = new ArrayList<>();
-        List<String> parts = new ArrayList<>();
-        for (String part : value.split("[;\n]")) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                parts.add(trimmed);
-            }
-        }
+        List<String> parts = ImportCellSyntax.lines(value);
         int i = 0;
         for (String part : parts) {
             Matcher matcher = CRITERION_RE.matcher(part);

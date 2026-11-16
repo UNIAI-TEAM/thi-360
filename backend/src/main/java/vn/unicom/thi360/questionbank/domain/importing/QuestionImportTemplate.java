@@ -49,7 +49,7 @@ public final class QuestionImportTemplate {
                 "options", "1. Một\n2. Hai", "matchRight", "A. One\nB. Two", "correctAnswer", "1 = A\n2 = B",
                 "subject", "TOAN", "grade", "G11", "difficulty", "NB"),
             Map.of("sourceCode", "EX-8", "type", "ESSAY", "content", "Viết một đoạn văn.",
-                "gradingGuide", "Nêu rõ luận điểm.", "rubric", "Mở bài: 0,25; Thân bài: 0,5; Kết bài: 0,25",
+                "gradingGuide", "Nêu rõ luận điểm.", "rubric", "Mở bài: 0,25\nThân bài: 0,5\nKết bài: 0,25",
                 "subject", "VAN", "grade", "G12", "difficulty", "TH"));
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Câu hỏi");
