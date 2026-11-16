@@ -99,7 +99,6 @@ public class QuestionImportValidationService {
             if (!row.hasErrors() && !row.dropped() && row.draft() != null && row.draft().type() != null) {
                 var mapped = mapper.map(row.draft(), catalog);
                 safety.validate(mapped.request()).stream()
-                        .filter(error -> !"QUESTION_CONTENT_UNSAFE".equals(error.code()))
                         .filter(error -> !row.isSetPassage() || !error.path().startsWith("body.children["))
                         .forEach(error -> list.add(new Issue("SAVE_VALIDATION", "error", error.path(), null,
                                 error.code(), null, row.draft().type().name(), row.draft().subjectCode())));

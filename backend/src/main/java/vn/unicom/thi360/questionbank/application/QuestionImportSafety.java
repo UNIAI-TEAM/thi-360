@@ -37,13 +37,6 @@ public class QuestionImportSafety {
     }
 
     public List<QuestionFieldError> validate(SaveQuestionRequest request) {
-        List<QuestionFieldError> errors = new ArrayList<>();
-        html(request.content(), "content", errors);
-        html(request.solution(), "solution", errors);
-        for (int i = 0; i < request.commonMistakes().size(); i++) {
-            html(request.commonMistakes().get(i), "commonMistakes[" + i + "]", errors);
-        }
-        body(request.body(), "body", errors);
         BigDecimal points = switch (request.body()) {
             case QuestionBody.ClozeBody b -> b.blanks().stream()
                     .map(blank -> blank.points() == null ? BigDecimal.ONE : blank.points())
@@ -53,9 +46,8 @@ public class QuestionImportSafety {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             case null, default -> request.points() == null ? BigDecimal.ONE : request.points();
         };
-        errors.addAll(QuestionBodyValidator.validateSave(new QuestionInput(request.type(), request.body(), points,
-                request.content(), request.solution(), request.commonMistakes(), request.attachmentIds()), assets));
-        return List.copyOf(errors);
+        return QuestionBodyValidator.validateSave(new QuestionInput(request.type(), request.body(), points,
+                request.content(), request.solution(), request.commonMistakes(), request.attachmentIds()), assets);
     }
 
     private void html(String text, String path, List<QuestionFieldError> errors) {
