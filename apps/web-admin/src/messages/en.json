@@ -4030,6 +4030,40 @@
         "matchAll": "The generated paper matches every matrix quota.",
         "mismatch": "The generated paper misses {count, plural, one {# matrix quota} other {# matrix quotas}}."
       },
+      "subjects": {
+        "legend": "Pick {count, plural, one {# subject} other {# subjects}} to preview",
+        "group": {
+          "NATURAL": "Natural",
+          "SOCIAL": "Social"
+        },
+        "remaining": "{picked, number} of {choose, number} subjects picked. Pick all {choose, number} to generate a paper.",
+        "split": "Questions per subject: {list}.",
+        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Regenerate to try another split.",
+        "full": "All {choose, number} subjects picked. Clear one to switch to another subject."
+      },
+      "subjectQuotas": {
+        "title": "Subject quotas",
+        "tableLabel": "Subject quotas compared with the generated paper",
+        "empty": "This paper sets no subject quotas",
+        "noneNote": "The subjects on this paper declare no answer type, grade or difficulty quota at subject level.",
+        "matchAll": "The generated paper matches every subject quota.",
+        "mismatchAll": "The generated paper misses {count, plural, one {# subject quota} other {# subject quotas}}.",
+        "questionCount": "{count, plural, one {# question} other {# questions}} on the paper",
+        "match": "Match",
+        "mismatch": "Mismatch",
+        "kind": {
+          "ANSWER_TYPE": "Answer type: {name}",
+          "GRADE": "Grade: {name}",
+          "DIFFICULTY": "Difficulty: {name}"
+        },
+        "columns": {
+          "subject": "Subject",
+          "quota": "Quota",
+          "required": "Required",
+          "generated": "Generated",
+          "result": "Result"
+        }
+      },
       "checks": {
         "title": "Checks on the generated paper",
         "name": {

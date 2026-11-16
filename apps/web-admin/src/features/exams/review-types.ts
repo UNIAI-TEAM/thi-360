@@ -394,6 +394,23 @@ export interface PreviewKnowledgeStat {
   count: number;
 }
 
+/** Một chỉ tiêu cấp môn trên đề đã sinh: số câu yêu cầu và số câu đề sinh ra. `code`: dạng trả lời, mã khối lớp hoặc mã độ khó. */
+export interface PreviewSubjectQuota {
+  kind: "ANSWER_TYPE" | "GRADE" | "DIFFICULTY";
+  code: string;
+  required: number;
+  generated: number;
+}
+
+/** Một môn trên đề đã sinh. Phương án `SUBJECT_CHOICE` chỉ có các môn đã chọn, `questionCount` theo B10 (16 hoặc 17 câu). */
+export interface PreviewSubject {
+  sectionId: string;
+  subjectCode: string;
+  questionCount: number;
+  /** Chỉ tiêu cấp môn của môn; rỗng khi môn không khai chỉ tiêu (mẫu cũ). */
+  quotas: PreviewSubjectQuota[];
+}
+
 export interface PreviewPaper {
   totalQuestions: number;
   totalPoints: number;
@@ -404,6 +421,7 @@ export interface PreviewPaper {
   /** Có khối Tự luận: điểm phần tự luận có sau khi chấm tay. */
   hasManualGrading: boolean;
   parts: PreviewPart[];
+  subjects: PreviewSubject[];
   checks: PreviewCheck[];
   knowledgeStats: PreviewKnowledgeStat[];
 }

@@ -4030,6 +4030,40 @@
         "matchAll": "Đề sinh khớp mọi chỉ tiêu của ma trận.",
         "mismatch": "Đề sinh lệch ma trận ở {count, number} chỉ tiêu."
       },
+      "subjects": {
+        "legend": "Chọn {count, number} môn để xem trước",
+        "group": {
+          "NATURAL": "Tự nhiên",
+          "SOCIAL": "Xã hội"
+        },
+        "remaining": "Đã chọn {picked, number} / {choose, number} môn. Chọn đủ {choose, number} môn để sinh đề.",
+        "split": "Số câu từng môn: {list}.",
+        "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh lại để thử cách chia khác.",
+        "full": "Đã chọn đủ {choose, number} môn. Bỏ chọn một môn để đổi sang môn khác."
+      },
+      "subjectQuotas": {
+        "title": "Chỉ tiêu cấp môn",
+        "tableLabel": "Đối chiếu chỉ tiêu cấp môn với đề đã sinh",
+        "empty": "Đề này không đặt chỉ tiêu cấp môn",
+        "noneNote": "Các môn trên đề không khai chỉ tiêu dạng trả lời, khối lớp hay độ khó ở cấp môn.",
+        "matchAll": "Đề sinh khớp mọi chỉ tiêu cấp môn.",
+        "mismatchAll": "Đề sinh lệch {count, number} chỉ tiêu cấp môn.",
+        "questionCount": "{count, number} câu trên đề",
+        "match": "Khớp",
+        "mismatch": "Lệch",
+        "kind": {
+          "ANSWER_TYPE": "Dạng trả lời: {name}",
+          "GRADE": "Khối lớp: {name}",
+          "DIFFICULTY": "Độ khó: {name}"
+        },
+        "columns": {
+          "subject": "Môn",
+          "quota": "Chỉ tiêu",
+          "required": "Yêu cầu",
+          "generated": "Đề sinh",
+          "result": "Kết quả"
+        }
+      },
       "checks": {
         "title": "Kiểm tra trên đề đã sinh",
         "name": {
