@@ -78,9 +78,16 @@ export function useDeepCheck(
   const run = useQuery({
     queryKey: EXAM_REVIEW_QUERY_KEYS.checkRun(examId, runId ?? ""),
     queryFn: () => deps.getCheckRun(examId, runId!),
-    enabled: runId !== null && active,
+    // Hết chạy (DONE/FAILED) thì tắt hẳn: lần chạy chỉ giữ 24 giờ, hỏi lại sau đó là 404 lên banner lỗi.
+    enabled: (query) =>
+      runId !== null && active && query.state.data?.state !== "DONE" && query.state.data?.state !== "FAILED",
+    // Truy vấn lỗi thì dừng chu kỳ hỏi: TanStack vẫn giữ interval khi `status` là "error", thử lại bằng `start()`.
     refetchInterval: (query) =>
-      query.state.data === undefined || query.state.data.state === "RUNNING" ? DEEP_CHECK_POLL_MS : false,
+      query.state.status === "error"
+        ? false
+        : query.state.data === undefined || query.state.data.state === "RUNNING"
+          ? DEEP_CHECK_POLL_MS
+          : false,
     retry: 2,
     retryDelay: DEEP_CHECK_POLL_MS,
   });
