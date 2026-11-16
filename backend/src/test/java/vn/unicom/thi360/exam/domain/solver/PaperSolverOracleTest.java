@@ -372,7 +372,9 @@ class PaperSolverOracleTest {
         CandidateSource source = g -> sources.getOrDefault(g, List.of());
 
         Map<String, BruteForceOracle.Eval> evals = oracle.evaluateAll(List.of(part), source);
-        // 3 cách chọn: (CS0,CS1) 3+2 OK; (CS0,CS2) CS2=2 thiếu; (CS1,CS2) CS2=3 thiếu
+        // nhóm null tính một nhóm chung: mỗi bộ môn có 2 phân bổ đối xứng (môn i nhận lo=2).
+        // (CS0,CS1): cả hai phân bổ đều đủ nguồn → 2 VALID; hai bộ chứa CS2 — CS2 chỉ có
+        // 1 câu nên mọi phân bổ đều thiếu → 4 INVALID.
         Map<String, SolveStatus> byPick = new LinkedHashMap<>();
         for (Map.Entry<String, BruteForceOracle.Eval> e : evals.entrySet()) {
             if (e.getKey().contains("=")) {
@@ -380,6 +382,7 @@ class PaperSolverOracleTest {
             }
         }
         assertThat(byPick.values()).containsExactlyInAnyOrder(SolveStatus.VALID,
+                SolveStatus.VALID, SolveStatus.INVALID, SolveStatus.INVALID,
                 SolveStatus.INVALID, SolveStatus.INVALID);
     }
 

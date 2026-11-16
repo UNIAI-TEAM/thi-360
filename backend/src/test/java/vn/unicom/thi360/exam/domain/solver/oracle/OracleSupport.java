@@ -303,70 +303,73 @@ final class OracleSupport {
     }
 
     /**
-     * Các phân bổ số câu cho một cách chọn môn, cài đặt độc lập từ B10/D25 (không dùng bộ gán
-     * của bộ giải):
+     * Các phân bổ số câu cho một cách chọn môn, cài đặt độc lập từ B10/D25 và quyết định
+     * "nhóm null tính một nhóm chung" (STATUS BE-5a:23), không dùng bộ gán của bộ giải:
      *
      * <ul>
-     *   <li>mọi môn được chọn có {@code choiceGroup} và cách chọn đúng 3 môn: {@code hi} = max
-     *       của {@code countsByPick}, {@code lo} = min. Bộ 2-1 nhóm: hai môn của nhóm đôi nhận
-     *       {@code hi}, môn của nhóm lẻ nhận {@code lo} (D25: "nhóm nhiều hơn nhận 17" — với bộ
-     *       ba, 2-1 là dạng duy nhất có nhóm đông hơn). Bộ đồng nhóm: {@code choose} phương án
-     *       đối xứng, mỗi môn lần lượt nhận {@code lo}, còn lại {@code hi};
-     *   <li>có môn không gắn {@code choiceGroup} hoặc cách chọn khác 3 môn: môn thứ i theo thứ
-     *       tự cấu trúc nhận {@code countsByPick[i]} (quy tắc trước B10).
+     *   <li>{@code hi} = max của {@code countsByPick}, {@code lo} = min;
+     *   <li>mọi môn được chọn thuộc một nhóm chung (toàn NATURAL, toàn SOCIAL, hoặc toàn
+     *       null): {@code choose} phương án đối xứng với k bất kỳ — mỗi môn lần lượt nhận
+     *       {@code lo}, còn lại {@code hi};
+     *   <li>trộn NATURAL/SOCIAL: chia B10 — nhóm đông (nhiều môn được chọn hơn) nhận
+     *       {@code hi} mỗi môn, nhóm lẻ nhận {@code lo}; hai nhóm ngang nhau thì không có
+     *       nhóm đông, đầu vào vô nghĩa theo B10;
+     *   <li>trộn null với non-null, hoặc tên nhóm ngoài miền spec (NATURAL/SOCIAL/null):
+     *       đầu vào không hợp lệ → {@link IllegalArgumentException}.
      * </ul>
      */
     static List<List<Integer>> allocationsOf(SubjectChoice choice, List<SectionOnPath> picked) {
         int k = picked.size();
-        boolean allGrouped = true;
+        int hi = Integer.MIN_VALUE;
+        int lo = Integer.MAX_VALUE;
+        for (int v : choice.countsByPick()) {
+            hi = Math.max(hi, v);
+            lo = Math.min(lo, v);
+        }
+        long nulls = 0;
+        Map<String, Integer> groupCounts = new LinkedHashMap<>();
         for (SectionOnPath s : picked) {
-            if (s.choiceGroup() == null) {
-                allGrouped = false;
-                break;
+            String g = s.choiceGroup();
+            if (g == null) {
+                nulls++;
+            } else if (!"NATURAL".equals(g) && !"SOCIAL".equals(g)) {
+                throw new IllegalArgumentException("choiceGroup must be NATURAL or SOCIAL");
+            } else {
+                groupCounts.merge(g, 1, Integer::sum);
             }
         }
-        if (allGrouped && k == 3) {
-            int hi = Integer.MIN_VALUE;
-            int lo = Integer.MAX_VALUE;
-            for (int v : choice.countsByPick()) {
-                hi = Math.max(hi, v);
-                lo = Math.min(lo, v);
+        if (nulls > 0 && nulls < k) {
+            throw new IllegalArgumentException("choiceGroup must not mix null and non-null");
+        }
+        if (groupCounts.size() == 2) {
+            // trộn hai nhóm: chia B10 — nhóm lẻ nhận lo, nhóm đông nhận hi
+            String minority = null;
+            int minSize = Integer.MAX_VALUE;
+            for (Map.Entry<String, Integer> e : groupCounts.entrySet()) {
+                if (e.getValue() < minSize) {
+                    minSize = e.getValue();
+                    minority = e.getKey();
+                }
             }
-            Map<String, Integer> groupCounts = new LinkedHashMap<>();
+            if (minSize * 2 == k) {
+                throw new IllegalArgumentException("equal-size groups: no majority per B10");
+            }
+            List<Integer> counts = new ArrayList<>(k);
             for (SectionOnPath s : picked) {
-                groupCounts.merge(s.choiceGroup(), 1, Integer::sum);
+                counts.add(s.choiceGroup().equals(minority) ? lo : hi);
             }
-            if (groupCounts.size() == 2) {
-                // nhóm lẻ (1 môn) nhận lo, nhóm đôi nhận hi
-                String singleton = null;
-                for (Map.Entry<String, Integer> e : groupCounts.entrySet()) {
-                    if (e.getValue() == 1) {
-                        singleton = e.getKey();
-                    }
-                }
-                List<Integer> counts = new ArrayList<>(k);
-                for (SectionOnPath s : picked) {
-                    counts.add(s.choiceGroup().equals(singleton) ? lo : hi);
-                }
-                return List.of(counts);
-            }
-            // mọi môn cùng một nhóm: chọn môn nhận lo, còn lại nhận hi (k phương án)
-            List<List<Integer>> out = new ArrayList<>(k);
-            for (int low = 0; low < k; low++) {
-                List<Integer> counts = new ArrayList<>(k);
-                for (int i = 0; i < k; i++) {
-                    counts.add(i == low ? lo : hi);
-                }
-                out.add(counts);
-            }
-            return out;
+            return List.of(counts);
         }
-        // không gắn nhóm đủ (hoặc cách chọn khác 3 môn): thứ tự cấu trúc
-        List<Integer> counts = new ArrayList<>(k);
-        for (int i = 0; i < k; i++) {
-            counts.add(choice.countsByPick().get(i));
+        // một nhóm chung (toàn NATURAL, toàn SOCIAL, hoặc toàn null): mỗi môn một lượt nhận lo
+        List<List<Integer>> out = new ArrayList<>(k);
+        for (int low = 0; low < k; low++) {
+            List<Integer> counts = new ArrayList<>(k);
+            for (int i = 0; i < k; i++) {
+                counts.add(i == low ? lo : hi);
+            }
+            out.add(counts);
         }
-        return List.of(counts);
+        return out;
     }
 
     /**

@@ -292,10 +292,12 @@ public final class RandomCaseGenerator {
     }
 
     /**
-     * {@code SUBJECT_CHOICE} 3 môn chọn 2, countsByPick bằng nhau hoặc lệch (3,2); các môn có
-     * nhóm câu đơn (đôi khi có chùm) và có thể kèm chỉ tiêu cấp môn theo tỉ lệ.
-     * Khoảng 1/3 ca là dạng B10: 5 môn chọn 3 gắn {@code choiceGroup} (NATURAL/SOCIAL) —
-     * phân bổ số câu theo nhóm, kể cả ca mọi môn cùng một nhóm (3 phương án).
+     * {@code SUBJECT_CHOICE} 3 môn chọn 2 không gắn {@code choiceGroup} — null tính một nhóm
+     * chung nên mỗi cách chọn có 2 phân bổ đối xứng (môn i nhận lo, môn kia nhận hi);
+     * countsByPick bằng nhau hoặc lệch (3,2); các môn có nhóm câu đơn (đôi khi có chùm) và có
+     * thể kèm chỉ tiêu cấp môn theo tỉ lệ. Khoảng 1/3 ca là dạng B10: 5 môn chọn 3 gắn
+     * {@code choiceGroup} (NATURAL/SOCIAL) — phân bổ số câu theo nhóm, kể cả ca mọi môn cùng
+     * một nhóm (3 phương án). Không bao giờ sinh ca trộn null với non-null (đầu vào vô nghĩa).
      */
     private OracleCase subjectChoice() {
         if (random.nextInt(3) == 0) {
