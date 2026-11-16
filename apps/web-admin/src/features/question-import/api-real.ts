@@ -1,5 +1,6 @@
-import type { ApiError, components, FieldError } from "@thi360/api-client";
+import type { components } from "@thi360/api-client";
 import { extractFilenameFromDisposition } from "@/features/bulk-import/api";
+import { ContentApiError, toContentApiError } from "@/features/content/api-error";
 import { QUESTION_TYPES, type MultipleChoiceRule, type QuestionType } from "@/features/content/types";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
@@ -62,32 +63,6 @@ interface DraftBodyShape {
 export interface DownloadedFile {
   blob: Blob;
   filename: string;
-}
-
-/** Lỗi của lời gọi nhập câu hỏi: trạng thái HTTP, mã nghiệp vụ (`IMPORT_EMPTY_FILE`…) và lỗi theo trường. */
-export class QuestionImportApiError extends ApiStatusError {
-  readonly code?: string;
-  readonly fieldErrors: readonly FieldError[];
-
-  constructor(status: number, message = "", code?: string, fieldErrors: readonly FieldError[] = []) {
-    super(status, message);
-    this.name = "QuestionImportApiError";
-    this.code = code;
-    this.fieldErrors = fieldErrors;
-  }
-}
-
-function toImportApiError(status: number, error: unknown): QuestionImportApiError {
-  if (typeof error === "object" && error !== null) {
-    const body: Partial<ApiError> = error;
-    return new QuestionImportApiError(
-      status,
-      typeof body.message === "string" ? body.message : "",
-      typeof body.code === "string" ? body.code : undefined,
-      Array.isArray(body.fieldErrors) ? body.fieldErrors : [],
-    );
-  }
-  return new QuestionImportApiError(status);
 }
 
 const COLUMN_TARGETS: readonly string[] = [...IMPORT_FIELDS, IGNORE_COLUMN, UNMAPPED_COLUMN];
@@ -262,7 +237,7 @@ function mapUpload(upload: ApiUpload, file: File): ImportUpload {
 export async function downloadQuestionTemplate(): Promise<DownloadedFile> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/question-imports/template", { parseAs: "blob" });
-  if (!response.ok || !data) throw toImportApiError(response.status, error);
+  if (!response.ok || !data) throw toContentApiError(response.status, error);
   return {
     blob: data,
     filename: extractFilenameFromDisposition(response.headers.get("content-disposition"), "question-import-template.xlsx"),
@@ -280,9 +255,9 @@ export async function uploadQuestionFile(file: File): Promise<ImportUpload> {
     },
   });
   if (!response.ok || !data?.id) {
-    const failure = toImportApiError(response.status, error);
+    const failure = toContentApiError(response.status, error);
     // Tầng web có thể chặn 413 trước khi tới dịch vụ nhập (không có thân lỗi): vẫn báo đúng lỗi của tệp.
-    if (response.status === 413 && !failure.code) throw new QuestionImportApiError(413, failure.message, "IMPORT_FILE_TOO_LARGE");
+    if (response.status === 413 && !failure.code) throw new ContentApiError(413, failure.message, "IMPORT_FILE_TOO_LARGE");
     throw failure;
   }
   return mapUpload(data, file);
@@ -294,7 +269,7 @@ export async function validateImport({ uploadId, mapping }: ValidateImportParams
     params: { path: { id: uploadId } },
     body: { uploadId, mapping },
   });
-  if (!response.ok || !data) throw toImportApiError(response.status, error);
+  if (!response.ok || !data) throw toContentApiError(response.status, error);
   const summary = data.summary ?? {};
   return {
     uploadId: data.uploadId ?? uploadId,
@@ -342,7 +317,7 @@ export async function commitImport(params: CommitImportParams): Promise<ImportHi
         skipErrors: params.skipErrors,
       },
     });
-    if (!response.ok || !data) throw toImportApiError(response.status, error);
+    if (!response.ok || !data) throw toContentApiError(response.status, error);
     pendingCommitKeys.delete(signature);
     return mapHistoryEntry(data);
   } catch (failure) {
@@ -354,6 +329,6 @@ export async function commitImport(params: CommitImportParams): Promise<ImportHi
 export async function listImportHistory(): Promise<ImportHistoryEntry[]> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/question-imports");
-  if (!response.ok || !data) throw toImportApiError(response.status, error);
+  if (!response.ok || !data) throw toContentApiError(response.status, error);
   return data.map(mapHistoryEntry);
 }

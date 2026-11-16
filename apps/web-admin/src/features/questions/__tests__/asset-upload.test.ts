@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import en from "@/messages/en.json";
 import vi from "@/messages/vi.json";
+import { ContentApiError } from "@/features/content/api-error";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import {
-  QuestionAssetApiError,
   questionAssetErrorMessageKey,
   questionAssetErrorReason,
   uploadQuestionAsset,
@@ -47,7 +47,7 @@ describe("tải tài nguyên câu hỏi (nhánh thật, client giả)", () => {
     for (const { response, reason, image, attachment } of cases) {
       fakeApi.post(ASSETS, response);
       const failure = await uploadQuestionAsset(png(), "IMAGE").catch((error: unknown) => error);
-      expect(failure).toBeInstanceOf(QuestionAssetApiError);
+      expect(failure).toBeInstanceOf(ContentApiError);
       expect(questionAssetErrorReason(failure)).toBe(reason);
       expect(questionAssetErrorMessageKey(failure, "IMAGE")).toBe(image);
       expect(questionAssetErrorMessageKey(failure, "ATTACHMENT")).toBe(attachment);

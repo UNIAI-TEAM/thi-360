@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ContentApiError } from "@/features/content/api-error";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import {
   commitImport,
@@ -8,7 +9,6 @@ import {
   uploadQuestionFile,
   validateImport,
 } from "../api";
-import { QuestionImportApiError } from "../api-real";
 import { buildErrorReportTable, errorReportFileName } from "../error-report";
 import { checkImportFile, parseCsv, readFileText, sheetFromTable } from "../files";
 import type { ColumnMapping } from "../types";
@@ -126,7 +126,7 @@ describe("API nhập câu hỏi (nhánh thật, client giả)", () => {
   it("tải tệp: lỗi 422 giữ mã nghiệp vụ, 413 không có thân lỗi thành IMPORT_FILE_TOO_LARGE", async () => {
     fakeApi.post(`${BASE}/uploads`, fail(422, { code: "IMPORT_INVALID_FILE" }));
     const rejected = uploadQuestionFile(file("a.pdf"));
-    await expect(rejected).rejects.toBeInstanceOf(QuestionImportApiError);
+    await expect(rejected).rejects.toBeInstanceOf(ContentApiError);
     await expect(rejected).rejects.toMatchObject({ status: 422, code: "IMPORT_INVALID_FILE" });
     await expect(importApiErrorCode(await rejected.catch((error: unknown) => error))).toBe("IMPORT_INVALID_FILE");
 

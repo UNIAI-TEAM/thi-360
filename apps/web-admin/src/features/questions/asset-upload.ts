@@ -1,4 +1,4 @@
-import type { ApiError, FieldError } from "@thi360/api-client";
+import { toContentApiError } from "@/features/content/api-error";
 import { selectApi } from "@/features/content/api-switch";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
@@ -13,32 +13,6 @@ import type { QuestionAsset, QuestionAssetKind } from "./api.mock";
  * Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy bản mẫu của `api.mock.ts`; tắt thì gọi API thật.
  */
 
-/** Lỗi của lời gọi tải tài nguyên: trạng thái HTTP, mã nghiệp vụ (`ASSET_TOO_LARGE`…) nếu có. */
-export class QuestionAssetApiError extends ApiStatusError {
-  readonly code?: string;
-  readonly fieldErrors: readonly FieldError[];
-
-  constructor(status: number, message = "", code?: string, fieldErrors: readonly FieldError[] = []) {
-    super(status, message);
-    this.name = "QuestionAssetApiError";
-    this.code = code;
-    this.fieldErrors = fieldErrors;
-  }
-}
-
-function toQuestionAssetApiError(status: number, error: unknown): QuestionAssetApiError {
-  if (typeof error === "object" && error !== null) {
-    const body: Partial<ApiError> = error;
-    return new QuestionAssetApiError(
-      status,
-      typeof body.message === "string" ? body.message : "",
-      typeof body.code === "string" ? body.code : undefined,
-      Array.isArray(body.fieldErrors) ? body.fieldErrors : [],
-    );
-  }
-  return new QuestionAssetApiError(status);
-}
-
 async function uploadQuestionAssetReal(file: File, kind: QuestionAssetKind): Promise<QuestionAsset> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/question-assets", {
@@ -50,7 +24,7 @@ async function uploadQuestionAssetReal(file: File, kind: QuestionAssetKind): Pro
       return formData;
     },
   });
-  if (!response.ok || !data?.id) throw toQuestionAssetApiError(response.status, error);
+  if (!response.ok || !data?.id) throw toContentApiError(response.status, error);
   return {
     id: data.id,
     url: data.url ?? `/api/v1/admin/question-assets/${data.id}`,
