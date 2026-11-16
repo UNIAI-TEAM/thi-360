@@ -34,7 +34,7 @@ public interface QuestionRepository extends JpaRepository<Question, UUID> {
 
     /** Khóa hàng loạt (SELECT … FOR UPDATE) cho lệnh ghi loạt (spec 4.5). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select q from Question q where q.id in :ids")
+    @Query("select q from Question q where q.id in :ids order by q.id")
     List<Question> findAllByIdInForUpdate(@Param("ids") Collection<UUID> ids);
 
     /** Mọi câu con của một bộ, kể cả đã xóa mềm (dùng khi khôi phục phiên bản). */

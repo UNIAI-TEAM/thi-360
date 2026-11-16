@@ -288,6 +288,7 @@ public class QuestionService {
             throw new ConflictException(ERR_NOT_READY);
         }
         readinessOrThrow(question, working.getSnapshot());
+        Map<String, Object> before = auditState(question);
         UUID oldSubject = question.getStatus() == QuestionStatus.READY ? servingSubject(question) : null;
 
         Instant now = Instant.now();
@@ -319,7 +320,7 @@ public class QuestionService {
         if (oldSubject != null && !Objects.equals(oldSubject, question.getSubjectItemId())) {
             supportDao.bumpSourceRevision(oldSubject);
         }
-        audit("QUESTION.READY", question, null, auditState(question));
+        audit("QUESTION.READY", question, before, auditState(question));
         entityManager.flush();
         return mapper.toSummary(question, working, mapper.batch());
     }
@@ -332,6 +333,7 @@ public class QuestionService {
         if (question.getStatus() == QuestionStatus.RETIRED) {
             throw new ConflictException(ERR_ALREADY_RETIRED);
         }
+        Map<String, Object> before = auditState(question);
         boolean wasReady = question.getStatus() == QuestionStatus.READY;
         UUID oldSubject = wasReady ? servingSubject(question) : null;
         Instant now = Instant.now();
@@ -346,7 +348,7 @@ public class QuestionService {
         if (wasReady) {
             supportDao.bumpSourceRevision(oldSubject);
         }
-        audit("QUESTION.RETIRE", question, null, auditState(question));
+        audit("QUESTION.RETIRE", question, before, auditState(question));
         entityManager.flush();
         return mapper.toSummary(question, mapper.displayedVersion(question), mapper.batch());
     }
@@ -388,6 +390,7 @@ public class QuestionService {
                 skipped.add(new BulkQuestionStatusResult.Skipped(id, "ALREADY_IN_STATUS", null));
                 continue;
             }
+            Map<String, Object> before = auditState(question);
             boolean wasReady = question.getStatus() == QuestionStatus.READY;
             UUID oldSubject = wasReady ? servingSubject(question) : null;
             if (target == QuestionStatus.READY) {
@@ -433,7 +436,7 @@ public class QuestionService {
                 supportDao.bumpSourceRevision(oldSubject);
             }
             audit(target == QuestionStatus.READY ? "QUESTION.READY" : "QUESTION.RETIRE",
-                    question, null, auditState(question));
+                    question, before, auditState(question));
             entityManager.flush();
             updated.add(mapper.toSummary(question, mapper.displayedVersion(question), mapper.batch()));
         }
@@ -531,7 +534,7 @@ public class QuestionService {
     /** Xóa mềm câu độc lập; câu đã dùng (sổ hoặc nguồn bài) bị chặn 409 (spec 4.5). */
     @Transactional
     public void delete(UUID id, String idempotencyKey, Long expectedRevision) {
-        idempotentCommand.execute(idempotencyKey, "question.delete", id, null, Void.class,
+        idempotentCommand.execute(idempotencyKey, "question.delete", id, expectedRevision, Void.class,
                 () -> {
                     doDelete(id, expectedRevision);
                     return null;

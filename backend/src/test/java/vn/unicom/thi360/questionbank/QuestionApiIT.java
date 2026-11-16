@@ -260,6 +260,27 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void statusWritesAuditBeforeAndAfter() throws Exception {
+        UUID id = createQuestion();
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(BASE + "/{id}/retire", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+        verify(auditRecorder).record(argThat((AuditEvent e) ->
+                "QUESTION.READY".equals(e.action()) && id.toString().equals(e.targetId())
+                        && "DRAFT".equals(e.before().get("status"))
+                        && "READY".equals(e.after().get("status"))));
+        verify(auditRecorder).record(argThat((AuditEvent e) ->
+                "QUESTION.RETIRE".equals(e.action()) && id.toString().equals(e.targetId())
+                        && "READY".equals(e.before().get("status"))
+                        && "RETIRED".equals(e.after().get("status"))));
+    }
+
+    @Test
     void duplicateCopiesAsNewDraftWithNewCode() throws Exception {
         UUID id = createQuestion();
         String originalCode = jdbcTemplate.queryForObject(
