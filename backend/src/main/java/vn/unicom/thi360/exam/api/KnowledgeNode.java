@@ -1,5 +1,6 @@
 package vn.unicom.thi360.exam.api;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +22,11 @@ public record KnowledgeNode(
         String gradeCode,
         @Schema(description = "Nút đang có hiệu lực", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean active,
-        @Schema(description = "Các nút con trực tiếp", requiredMode = Schema.RequiredMode.REQUIRED)
+        // Đệ quy: implementation= làm springdoc mở rộng vô hạn (StackOverflow khi sinh
+        // /v3/api-docs); items trỏ thẳng tới chính schema KnowledgeNode.
+        @ArraySchema(schema = @Schema(ref = "#/components/schemas/KnowledgeNode"),
+                arraySchema = @Schema(description = "Các nút con trực tiếp",
+                        requiredMode = Schema.RequiredMode.REQUIRED))
         List<KnowledgeNode> children
 ) {
     public KnowledgeNode {

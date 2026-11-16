@@ -2311,7 +2311,10 @@
             "type" : "boolean"
           },
           "children" : {
-            "description" : "Các nút con trực tiếp"
+            "items" : {
+              "$ref" : "#/components/schemas/KnowledgeNode"
+            },
+            "type" : "array"
           },
           "code" : {
             "description" : "Mã nút (MAPID)",
@@ -2340,7 +2343,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "active", "children", "code", "id", "level", "name" ],
+        "required" : [ "active", "code", "id", "level", "name" ],
         "type" : "object"
       },
       "LoginRequest" : {
