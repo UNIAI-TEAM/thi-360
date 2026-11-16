@@ -25,7 +25,7 @@ import {
   validateStructure,
   type MatrixAxes,
 } from "../matrix";
-import fixture from "./fixtures/exams.json";
+import fixture from "../mock/exams.json";
 import type { BlockMatrix, ExamDetail, ExamPart, ExamTemplate, QuestionBlock } from "../types";
 
 const reference = referenceFixture as ContentReference;

@@ -28,15 +28,14 @@ import type {
   QuestionBlock,
 } from "../types";
 import type { ExamCheckResult } from "../review-types";
-import examsFixture from "./fixtures/exams.json";
+import examsFixture from "../mock/exams.json";
 import { FakeServer, type Handler, type Recorded, type Reply } from "./fake-exams-server";
 
 /**
  * Máy chủ giả có trạng thái cho nhánh API thật của Bài thi (`CONTENT_MOCK` tắt): giữ bài thi dưới dạng wire
  * (`ExamDetailResponse`) và trả lời mọi đường `/api/v1/admin/exams/**` mà client thật gọi, gồm viết (tạo, sửa,
  * nạp lại mẫu, sao chép, ngừng bán, công bố). Phản hồi đi qua `createApiClient` và các hàm chuyển đổi của sản
- * phẩm như nhánh thật; dữ liệu dựng lại chính xác từ `fixtures/exams.json` (bản sao của kho mẫu trước đây, đã chuyển
- * vào `__tests__` để các test không chết cùng `api.mock.ts` khi lớp mẫu bị xóa).
+ * phẩm như nhánh thật; dữ liệu dựng lại chính xác từ `mock/exams.json` (dùng chung fixture với nhánh mẫu; QA xóa mẫu thì test đổi import sang fixture riêng).
  *
  * Không mô phỏng phần "nghiệp vụ" máy chủ mà client không kiểm (sinh đề xem trước, đếm nguồn, giải kiểm tra):
  * các đường đó nhận đáp số xếp sẵn (`seedCheck`, `queueRun`, `checkReplies`, `versionsList`, `counts`) hoặc lộ

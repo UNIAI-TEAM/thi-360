@@ -12,7 +12,7 @@ import {
 } from "./create-exam-schema";
 import { partsFromInput } from "./create-parts";
 import { countOf, sum } from "./matrix";
-import examsFixture from "./__tests__/fixtures/exams.json";
+import examsFixture from "./mock/exams.json";
 import { toExamSummary } from "./exam-summary";
 import { examStore, MOCK_EXAM_TEMPLATES, structureEdited } from "./mock/store";
 import { countForQuery, countForSubject } from "./mock/source-count";
