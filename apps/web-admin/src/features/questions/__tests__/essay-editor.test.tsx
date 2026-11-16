@@ -60,7 +60,7 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="create" type="TRUE_FALSE" />);
     const table = await screen.findByRole("group", { name: "Score by number of correct statements" });
-    expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual(["0,5", "1"]);
+    expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual(["0.5", "1"]);
 
     await user.click(within(table).getByRole("button", { name: "From exam template…" }));
     expect(await screen.findByRole("menuitem", { name: /THPTQG/ })).toHaveAttribute("aria-disabled", "true");

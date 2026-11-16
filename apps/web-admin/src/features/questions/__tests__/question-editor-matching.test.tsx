@@ -134,7 +134,7 @@ describe("trinh soan Ghep doi", () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="create" type="MATCHING" />);
     expect(await screen.findByText("Left column: 2 items; right column: 2 choices (0 spare).")).toBeInTheDocument();
-    expect(pairPoints()).toEqual(["0,5", "0,5"]);
+    expect(pairPoints()).toEqual(["0.5", "0.5"]);
     await user.click(screen.getByRole("button", { name: "Save draft" }));
     expect(await screen.findAllByText("Enter the left column item.")).toHaveLength(2);
     expect(screen.getAllByText("Enter the choice text or delete the choice.")).toHaveLength(2);
