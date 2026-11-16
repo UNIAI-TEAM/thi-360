@@ -55,12 +55,19 @@ describe("Cấu trúc: phiên bản năm", () => {
     expect(examStore.get(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
   }, 20_000);
 
-  it("chỉ một phiên bản thì ô bị khóa; không có mẫu khớp (HSA Theo phần) thì không hiện ô", async () => {
+  it("chỉ một phiên bản thì ô bị khóa; HSA Theo phần Toán có ô phiên bản, phần chưa có mẫu thì không hiện ô", async () => {
     const { unmount } = openStructure("ex-qda-f-001");
     expect(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ })).toBeDisabled();
     unmount();
-    const part = await createExam({ name: "HSA Toán", code: "HSA-P-902", kind: "HSA", scope: "PART", partCode: "MATH", maxScore: 50, description: null });
-    openStructure(part.id, `?part=${examStore.require(part.id).parts[0]!.id}`);
+    const math = await createExam({ name: "HSA Toán", code: "HSA-P-902", kind: "HSA", scope: "PART", partCode: "MATH", maxScore: 50, description: null });
+    expect(math.templateCode).toBe("HSA_SINGLE");
+    const view = openStructure(math.id, `?part=${examStore.require(math.id).parts[0]!.id}`);
+    const picker = await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ });
+    expect(picker).toBeDisabled();
+    expect(picker).toHaveTextContent("HSA Theo phần · Toán · 50 câu · 75 phút");
+    view.unmount();
+    const literature = await createExam({ name: "HSA Văn", code: "HSA-P-903", kind: "HSA", scope: "PART", partCode: "LITERATURE", maxScore: 50, description: null });
+    openStructure(literature.id, `?part=${examStore.require(literature.id).parts[0]!.id}`);
     await screen.findByRole("textbox", { name: /Số câu phải làm/ });
     expect(screen.queryByRole("combobox", { name: /Phiên bản cấu trúc/ })).not.toBeInTheDocument();
   });

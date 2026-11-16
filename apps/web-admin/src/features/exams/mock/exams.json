@@ -6524,17 +6524,18 @@
       "code": "HSA_SINGLE",
       "kind": "HSA",
       "scope": "PART",
-      "name": "HSA bài lẻ · 1 môn · 50 câu",
+      "name": "HSA Theo phần · Toán · 50 câu · 75 phút",
+      "partCode": "MATH",
       "timing": "PER_PART",
       "durationMinutes": 75,
       "maxScore": 50,
       "parts": [
         {
-          "name": "Bài lẻ",
+          "name": "Toán",
           "questionCount": 50,
           "durationMinutes": 75,
           "mode": "FIXED",
-          "subjectCode": null
+          "subjectCode": "MATH"
         }
       ]
     },
