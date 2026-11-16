@@ -5,7 +5,7 @@ import reference from "@/features/content/mock/reference.json";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { examStore } from "../mock/store";
-import { resolveQuotaCounts, sectionCaseCounts, subjectAllocation } from "../subject-matrix";
+import { remainderGroupCount, resolveQuotaCounts, sectionCaseCounts, subjectAllocation } from "../subject-matrix";
 import en from "../../../messages/en.json";
 import vi_ from "../../../messages/vi.json";
 
@@ -75,6 +75,15 @@ describe("số đã phân bổ và còn thiếu của môn", () => {
     const history = science.sections.find((section) => section.subjectCode === "HISTORY")!;
     expect(subjectAllocation(history, AXES, 16)).toMatchObject({ fixedTotal: 10, remainder: 6, allocated: 16, missing: 0 });
     expect(subjectAllocation(history, AXES, 17)).toMatchObject({ remainder: 7, allocated: 17, missing: 0 });
+  });
+
+  it("hai nhóm lấy phần còn lại: không nhóm nào nhận, môn báo còn thiếu như REMAINDER_GROUP_INVALID của kiểm tra (R1-5)", () => {
+    const science = examStore.require("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
+    const history = science.sections.find((section) => section.subjectCode === "HISTORY")!;
+    expect(remainderGroupCount(history.blocks)).toBe(1);
+    const doubled = { ...history, blocks: history.blocks.map((block) => ({ ...block, questionCount: null })) };
+    expect(remainderGroupCount(doubled.blocks)).toBe(2);
+    expect(subjectAllocation(doubled, AXES, 16)).toMatchObject({ fixedTotal: 0, allocated: 0, missing: 16 });
   });
 });
 
@@ -187,6 +196,31 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
     await user.click(screen.getByRole("radio", { name: "17 câu" }));
     expect(within(groups).getByText("Phần còn lại (7 câu)")).toBeInTheDocument();
   });
+
+  it("môn đã có nhóm lấy phần còn lại: ô 'Lấy phần còn lại' của nhóm khác bị khóa; nhóm đang giữ vẫn bỏ chọn được (R1-5)", async () => {
+    const user = userEvent.setup();
+    openStructure("ex-hsa-f-001", "?block=blk-sci-1-4-a");
+    const fixed = await screen.findByRole("checkbox", { name: "Lấy phần còn lại của môn" });
+    expect(fixed).toBeDisabled();
+    expect(screen.getByText("Môn đã có nhóm lấy phần còn lại khác; bỏ chọn ở nhóm đó trước.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Về màn môn" }));
+    await user.click(await screen.findByRole("button", { name: "Mở nhóm Phần còn lại" }));
+    const holder = await screen.findByRole("checkbox", { name: "Lấy phần còn lại của môn" });
+    expect(holder).toBeChecked();
+    expect(holder).toBeEnabled();
+  }, 20_000);
+
+  it("nhóm trùng 'phần còn lại' do dữ liệu: màn môn báo lỗi và không nhóm nào nhận phần còn lại (R1-5)", async () => {
+    const history = examStore.require("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!.sections.find((section) => section.subjectCode === "HISTORY")!;
+    history.blocks.forEach((block) => {
+      block.questionCount = null;
+    });
+    openStructure("ex-hsa-f-001", `?section=${history.id}`);
+    const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
+    expect(screen.getByText(/Môn có 2 nhóm lấy phần còn lại, chỉ được một nhóm/)).toBeInTheDocument();
+    expect(within(groups).getAllByText("Phần còn lại (chưa chia được)")).toHaveLength(2);
+    expect(screen.getByText("Còn thiếu 16 câu")).toBeInTheDocument();
+  }, 20_000);
 
   it("đường dẫn ?section= mở lại đúng môn; tải lại không mất vị trí", async () => {
     openStructure("ex-hsa-f-001", `?section=${mathSection().id}`);

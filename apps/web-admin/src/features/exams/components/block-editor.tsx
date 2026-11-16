@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, Checkbox, ConfirmDialog, FormField, IconButton, Input, Select } from "@thi360/ui";
+import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select } from "@thi360/ui";
 import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
@@ -82,6 +82,8 @@ export function BlockEditor({
 
   const isSet = isSetBlock(block);
   const remainder = block.questionCount === null;
+  // Môn chỉ có một nhóm lấy phần còn lại (R1-5): nhóm khác đã giữ thì ô này khóa, trừ khi chính nhóm này đang giữ.
+  const remainderTaken = !remainder && section.blocks.some((other) => other.id !== block.id && other.questionCount === null);
   const questionCount = block.questionCount ?? 0;
   const matrix = block.matrix ?? emptyMatrix();
   const editableMatrix = { ...block, matrix, questionCount };
@@ -271,7 +273,7 @@ export function BlockEditor({
           <FormField
             label={t("questionCount")}
             required={!remainder}
-            hint={remainder ? t("remainderHint") : t("questionCountHint")}
+            hint={remainder ? t("remainderHint") : remainderTaken ? t("remainderTaken") : t("questionCountHint")}
             error={countError}
           >
             {(controlProps) => (
@@ -286,9 +288,10 @@ export function BlockEditor({
                   <Checkbox
                     id={`${titleId}-remainder`}
                     checked={remainder}
+                    disabled={remainderTaken}
                     onCheckedChange={(checked) => update({ questionCount: checked === true ? null : 1 })}
                   />
-                  <label htmlFor={`${titleId}-remainder`} className="cursor-pointer text-body text-text">
+                  <label htmlFor={`${titleId}-remainder`} className={cn("text-body text-text", remainderTaken ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
                     {t("remainder")}
                   </label>
                 </div>

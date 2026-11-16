@@ -70,10 +70,18 @@ export interface SubjectAllocation {
   difficulties: QuotaRow[] | null;
 }
 
-/** Số câu của từng nhóm: nhóm có số câu cố định giữ nguyên; nhóm "lấy phần còn lại" đầu tiên nhận phần còn lại của môn. */
+/**
+ * Số câu của từng nhóm: nhóm có số câu cố định giữ nguyên; nhóm "lấy phần còn lại" duy nhất nhận phần còn lại của môn.
+ * Hơn một nhóm như vậy là sai cấu hình: không nhóm nào nhận (cùng quy tắc `REMAINDER_GROUP_INVALID` của kiểm tra, R1-5).
+ */
 function blockUnits(blocks: readonly QuestionBlock[], remainder: number | null): number[] {
-  const first = blocks.findIndex((block) => block.questionCount === null);
-  return blocks.map((block, index) => block.questionCount ?? (index === first ? (remainder ?? 0) : 0));
+  const single = remainderGroupCount(blocks) === 1;
+  return blocks.map((block) => block.questionCount ?? (single ? (remainder ?? 0) : 0));
+}
+
+/** Số nhóm "lấy phần còn lại" của môn; tối đa một (spec 5.2, `REMAINDER_GROUP_INVALID`). */
+export function remainderGroupCount(blocks: readonly QuestionBlock[]): number {
+  return blocks.filter((block) => block.questionCount === null).length;
 }
 
 export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count: number | null): SubjectAllocation {

@@ -7,7 +7,7 @@ import { useId, useState } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
 import { apportionByPercent, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
-import { effectiveScope, effectiveScopeSource, groupAnswerType, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
+import { effectiveScope, effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
 import type { AnswerQuotas, AvailableQuestionsQuery, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
@@ -383,8 +383,9 @@ function GroupList({
     }
     return typeLabel(block.questionType);
   };
+  const remainderGroups = remainderGroupCount(section.blocks);
   const countText = (block: QuestionBlock) => {
-    if (block.questionCount === null) return t("countRemainder", { count: allocationRemainder ?? 0 });
+    if (block.questionCount === null) return remainderGroups > 1 ? t("countRemainderInvalid") : t("countRemainder", { count: allocationRemainder ?? 0 });
     if (isSetBlock(block) && block.setCount && block.setSize) {
       return t("countSets", { sets: block.setCount, size: block.setSize, total: block.questionCount });
     }
@@ -405,6 +406,7 @@ function GroupList({
           <span>{t("add")}</span>
         </Button>
       </div>
+      {remainderGroups > 1 && <p className="text-caption text-danger">{t("remainderConflict", { count: remainderGroups })}</p>}
       {section.blocks.length === 0 ? (
         <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
