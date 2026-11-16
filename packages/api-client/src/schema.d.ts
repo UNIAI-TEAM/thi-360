@@ -1323,10 +1323,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Nơi đang dùng câu: khối bài thi lấy câu làm nguồn + sổ đã dùng
-         * @description sourceBlocks rỗng tới khi BE-6 cung cấp QuestionUsageProvider.
-         */
+        /** Nơi đang dùng câu: khối bài thi lấy câu làm nguồn + sổ đã dùng */
         get: operations["usage"];
         put?: never;
         post?: never;
@@ -4085,7 +4082,7 @@ export interface components {
             config?: components["schemas"]["JsonNode"];
             /** Format: uuid */
             examId?: string;
-            parts?: components["schemas"]["JsonNode"];
+            parts?: components["schemas"]["ExamPart"][];
             row?: components["schemas"]["ExamVersionResponse"];
         };
         ExamVersionList: {

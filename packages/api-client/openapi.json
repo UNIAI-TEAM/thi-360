@@ -4407,7 +4407,10 @@
             "type" : "string"
           },
           "parts" : {
-            "$ref" : "#/components/schemas/JsonNode"
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPart"
+            },
+            "type" : "array"
           },
           "row" : {
             "$ref" : "#/components/schemas/ExamVersionResponse"
@@ -22628,7 +22631,6 @@
     },
     "/api/v1/admin/questions/{id}/usage" : {
       "get" : {
-        "description" : "sourceBlocks rỗng tới khi BE-6 cung cấp QuestionUsageProvider.",
         "operationId" : "usage",
         "parameters" : [ {
           "in" : "path",
