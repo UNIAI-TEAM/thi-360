@@ -294,7 +294,7 @@ public final class QuestionBodyValidator {
         }
         for (int i = 0; i < attachmentIds.size(); i++) {
             java.util.UUID id = attachmentIds.get(i);
-            if (id == null || assets.servingPath(id).isEmpty()) {
+            if (id == null || assets.servingPath(id, QuestionAssetKind.ATTACHMENT).isEmpty()) {
                 errors.add(QuestionFieldError.of("QUESTION_ATTACHMENT_UNKNOWN", "attachmentIds[" + i + "]"));
             }
         }
@@ -628,8 +628,15 @@ public final class QuestionBodyValidator {
 
     // ---------------------------------------------------------------- tiện ích
 
+    /**
+     * Rỗng = không có chữ <b>và</b> không có {@code img} (P1-22, quyết định lane 8.8): một
+     * {@code img} mang {@code data-asset-id} hợp lệ làm nội dung không rỗng ở mọi trường HTML
+     * của danh sách "Áp cho" (spec 4.2) — đầu vào luôn là HTML đã qua lọc nên img còn sót là
+     * img có id tra được. Tệp đính kèm không tính là nội dung (quyết định 8.3).
+     */
     static boolean isBlankHtml(String html) {
-        return html == null || QuestionHtmlSanitizer.textOf(html).isBlank();
+        return html == null
+                || (QuestionHtmlSanitizer.textOf(html).isBlank() && !QuestionHtmlSanitizer.containsImg(html));
     }
 
     private static void checkDuplicateIds(List<String> ids, String path, List<QuestionFieldError> errors) {

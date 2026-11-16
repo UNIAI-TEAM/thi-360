@@ -34,6 +34,8 @@ import vn.unicom.thi360.questionbank.api.UpdateQuestionResponse;
 import vn.unicom.thi360.questionbank.domain.Question;
 import vn.unicom.thi360.questionbank.domain.QuestionBody;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator;
+import vn.unicom.thi360.questionbank.domain.QuestionAssetRef;
+import vn.unicom.thi360.questionbank.domain.QuestionAssetRefCollector;
 import vn.unicom.thi360.questionbank.domain.QuestionFieldError;
 import vn.unicom.thi360.questionbank.spi.HtmlContentSanitizer;
 import vn.unicom.thi360.questionbank.domain.QuestionInput;
@@ -48,6 +50,7 @@ import vn.unicom.thi360.questionbank.infrastructure.QuestionRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionTagRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionUsageLedgerRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionVersionRepository;
+import vn.unicom.thi360.questionbank.infrastructure.QuestionAssetRefRepository;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageProvider;
@@ -97,6 +100,7 @@ public class QuestionService {
     private final QuestionKnowledgeRepository knowledgeRepository;
     private final QuestionTagRepository tagRepository;
     private final QuestionUsageLedgerRepository ledgerRepository;
+    private final QuestionAssetRefRepository assetRefRepository;
     private final QuestionSupportDao supportDao;
     private final HtmlContentSanitizer sanitizer;
     private final QuestionAssetResolver assetResolver;
@@ -117,6 +121,7 @@ public class QuestionService {
             QuestionTagRepository tagRepository,
             QuestionUsageLedgerRepository ledgerRepository,
             QuestionSupportDao supportDao,
+            QuestionAssetRefRepository assetRefRepository,
             HtmlContentSanitizer sanitizer,
             QuestionAssetResolver assetResolver,
             CatalogLookup catalogLookup,
@@ -134,6 +139,7 @@ public class QuestionService {
         this.tagRepository = tagRepository;
         this.ledgerRepository = ledgerRepository;
         this.supportDao = supportDao;
+        this.assetRefRepository = assetRefRepository;
         this.sanitizer = sanitizer;
         this.assetResolver = assetResolver;
         this.catalogLookup = catalogLookup;
@@ -541,6 +547,7 @@ public class QuestionService {
         questionRepository.save(copy);
         applyRowFields(copy, copySnapshot, null, 1, now, actorId);
         versionRepository.save(new QuestionVersion(copy.getId(), 1, copySnapshot, actorId, now));
+        writeAssetRefs(copy.getId(), 1, copySnapshot);
         saveKnowledgeRows(copy.getId(), fromSnapshotKnowledge(copySnapshot.knowledge()));
         for (UUID tagItemId : copySnapshot.tagItemIds()) {
             tagRepository.save(new QuestionTag(copy.getId(), tagItemId));
@@ -869,6 +876,7 @@ public class QuestionService {
             Question row, QuestionSnapshot snapshot, int versionNo, Instant now, UUID actorId) {
         questionRepository.save(row);
         versionRepository.save(new QuestionVersion(row.getId(), versionNo, snapshot, actorId, now));
+        writeAssetRefs(row.getId(), versionNo, snapshot);
         saveKnowledgeIds(row.getId(),
                 snapshot.knowledge().stream().map(QuestionSnapshot.KnowledgeRef::itemId).toList());
     }
@@ -1234,6 +1242,12 @@ public class QuestionService {
                 .orElse(null);
     }
 
+    /**
+     * Ghi/ghi đè một phiên bản câu (model note 3): lưu tại chỗ thay thế chỉ các ref của
+     * chính phiên bản đó; phiên bản mới thêm dòng. Tài nguyên dùng bởi phiên bản đọc từ
+     * HTML đã lọc của snapshot + {@code attachmentIds} — cùng transaction, cùng dòng câu
+     * dùng tài nguyên (quyết định lane 8.4).
+     */
     private void upsertVersion(
             UUID questionId, int versionNo, QuestionSnapshot snapshot, UUID actorId, Instant now) {
         QuestionVersion version = versionRepository
@@ -1246,6 +1260,14 @@ public class QuestionService {
             version.setSnapshot(snapshot);
             version.setReadyAt(null);
             versionRepository.save(version);
+        }
+        writeAssetRefs(questionId, versionNo, snapshot);
+    }
+
+    private void writeAssetRefs(UUID questionId, int versionNo, QuestionSnapshot snapshot) {
+        assetRefRepository.deleteByQuestionIdAndVersionNo(questionId, versionNo);
+        for (UUID assetId : QuestionAssetRefCollector.assetIdsOf(snapshot)) {
+            assetRefRepository.save(new QuestionAssetRef(assetId, questionId, versionNo));
         }
     }
 
