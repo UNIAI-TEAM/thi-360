@@ -74,17 +74,23 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 /**
  * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, không theo bề rộng màn hình vì
- * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước, rồi tới Vai trò, để cột Trạng thái còn nằm
- * trong khung ở cửa sổ 1024–1366px; tiếp theo là Email. Khung hẹp hơn 40rem thì bảng thành danh sách thẻ
+ * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước, rồi tới Lớp, Vai trò, để cột Trạng thái còn
+ * nằm trong khung ở cửa sổ 1024–1366px; tiếp theo là Email. Khung hẹp hơn 40rem thì bảng thành danh sách thẻ
  * (`cards` của `Table`), thẻ có đủ các thông tin này. Ô tiêu đề và ô dữ liệu của cột được nhận ra qua `data-col`
  * đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
   "@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden",
+  "@max-[63rem]:[&_:is(th,td):has([data-col=classes])]:hidden",
   "@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden",
   "@max-3xl:[&_:is(th,td):has([data-col=email])]:hidden",
 ].join(" ");
+
+/** Mã các lớp hiện tại của tài khoản, cách nhau bằng dấu phẩy; không có lớp thì "—". */
+function formatClassCodes(classes: UserSummary["classes"]): string {
+  return classes.length > 0 ? classes.map((c) => c.code).join(", ") : "—";
+}
 
 /** Cột sắp xếp được và khóa nhãn của nó, dùng cho câu thông báo sau khi đổi sắp xếp. */
 const SORTABLE_COLUMN_LABEL_KEYS = {
@@ -361,6 +367,16 @@ function UsersListContent({
         },
       },
       {
+        id: "classes",
+        header: () => <span data-col="classes">{t("table.classes")}</span>,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span data-col="classes" className="line-clamp-2 min-w-16 text-text">
+            {formatClassCodes(row.original.classes)}
+          </span>
+        ),
+      },
+      {
         id: "source",
         header: () => <span data-col="source">{t("table.source")}</span>,
         enableSorting: false,
@@ -426,7 +442,10 @@ function UsersListContent({
                 <ListCardTag>{t(`sources.${item.source}`)}</ListCardTag>
               </>
             }
-            meta={[Boolean(item.email) && { label: t("table.email"), value: item.email }]}
+            meta={[
+              Boolean(item.email) && { label: t("table.email"), value: item.email },
+              item.classes.length > 0 && { label: t("table.classes"), value: formatClassCodes(item.classes) },
+            ]}
           />
         );
       },

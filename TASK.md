@@ -40,6 +40,7 @@ Không thuộc điểm của plan đợt 1; mỗi việc một issue con của U
 | UNI-2577 | Lỗi · Danh sách bị nhảy khi đổi bộ lọc | #28 | in_review |
 | UNI-2578 | Hộp thoại Tạo tài khoản: bố cục hai cột, hiện đủ trong một khung | #27 | in_review |
 | UNI-2576 | Đổi đường dẫn trang của hai web sang tiếng Anh (chồng lên ba PR trên) | #29 | in_review |
+| UNI-2598 | Danh sách tài khoản: thêm cột Lớp theo bản vẽ | — | in_progress |
 
 ## Đợt 2 — Mockup web admin PBI-03 + PBI-04 (dữ liệu mẫu)
 

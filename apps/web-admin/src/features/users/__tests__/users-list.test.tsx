@@ -30,6 +30,10 @@ const SAMPLE_USERS: UserSummary[] = [
     mustChangePassword: false,
     lastLoginAt: "2026-11-12T10:00:00Z",
     roles: [{ id: "r-student", code: "STUDENT", name: "Học viên", access: "EXAM" }],
+    classes: [
+      { id: "00000000-0000-4000-8000-000000000301", code: "LOP-A", name: "Lớp A" },
+      { id: "00000000-0000-4000-8000-000000000303", code: "LOP-C", name: "Lớp C" },
+    ],
     version: 0,
     createdAt: "2026-11-10T08:00:00Z",
     updatedAt: "2026-11-12T10:00:00Z",
@@ -43,6 +47,7 @@ const SAMPLE_USERS: UserSummary[] = [
     status: "ACTIVE",
     mustChangePassword: false,
     roles: [{ id: "r-student", code: "STUDENT", name: "Học viên", access: "EXAM" }],
+    classes: [],
     version: 0,
     createdAt: "2026-11-10T08:00:00Z",
     updatedAt: "2026-11-10T08:00:00Z",
@@ -58,6 +63,7 @@ const SAMPLE_USERS: UserSummary[] = [
     mustChangePassword: false,
     lastLoginAt: "2026-11-05T10:00:00Z",
     roles: [{ id: "r-student", code: "STUDENT", name: "Học viên", access: "EXAM" }],
+    classes: [],
     version: 1,
     createdAt: "2026-11-01T08:00:00Z",
     updatedAt: "2026-11-06T08:00:00Z",
@@ -72,6 +78,7 @@ const SAMPLE_USERS: UserSummary[] = [
     mustChangePassword: false,
     deletedAt: "2026-11-11T09:00:00Z",
     roles: [{ id: "r-student", code: "STUDENT", name: "Học viên", access: "EXAM" }],
+    classes: [],
     version: 2,
     createdAt: "2026-11-01T08:00:00Z",
     updatedAt: "2026-11-11T09:00:00Z",
@@ -130,6 +137,7 @@ function makeDeps(overrides: Partial<UsersApiDeps> = {}): Partial<UsersApiDeps> 
       status: "ACTIVE",
       mustChangePassword: body.mustChangePassword ?? false,
       roles: [{ id: "r-student", code: "STUDENT", name: "Học viên", access: "EXAM" }],
+      classes: [],
       version: 0,
       createdAt: "2026-11-14T00:00:00Z",
       updatedAt: "2026-11-14T00:00:00Z",
@@ -775,6 +783,25 @@ describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => 
       expect(cell).not.toHaveAttribute("title");
       expect(cell.className).not.toMatch(/\bmax-w-/);
     }
+  });
+
+  it("cột Lớp ghi mã các lớp hiện tại theo thứ tự trả về, tài khoản không có lớp hiện dấu gạch (UNI-2598)", async () => {
+    renderUsersView(makeDeps());
+
+    const table = await screen.findByRole("table", { name: "Danh sách tài khoản" });
+    await within(table).findByText("student01");
+
+    const header = within(table).getByRole("columnheader", { name: "Lớp" });
+    expect(header.querySelector("[data-col='classes']")).not.toBeNull();
+    const cells = [...table.querySelectorAll("tbody [data-col='classes']")].map((cell) => cell.textContent);
+    expect(cells).toEqual(["LOP-A, LOP-C", "—", "—", "—"]);
+    // Cột Lớp đứng giữa Vai trò và Nguồn như bản vẽ.
+    const headers = within(table).getAllByRole("columnheader").map((th) => th.textContent?.trim());
+    expect(headers.indexOf("Lớp")).toBe(headers.indexOf("Vai trò") + 1);
+    expect(headers.indexOf("Nguồn")).toBe(headers.indexOf("Lớp") + 1);
+    // Ẩn sau cột Nguồn, trước cột Vai trò khi khung hẹp lại.
+    const container = table.closest(".\\@container");
+    expect(container!.className).toContain("@max-[63rem]:[&_:is(th,td):has([data-col=classes])]:hidden");
   });
 
   it("cột Nguồn và Vai trò được đánh dấu để ẩn theo bề rộng khung chứa bảng; cột đầu và cột Thao tác được ghim", async () => {
