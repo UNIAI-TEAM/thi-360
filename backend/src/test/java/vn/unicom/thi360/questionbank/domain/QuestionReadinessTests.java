@@ -71,4 +71,14 @@ class QuestionReadinessTests {
         assertTrue(result.ready(), () -> "errors: " + result.errors());
         assertTrue(result.warnings().stream().anyMatch(e -> e.code().equals("PRIMARY_KNOWLEDGE_MISSING")));
     }
+    @Test
+    void imageOnlyContentNotEmpty() {
+        String image = "<img data-asset-id='00000000-0000-0000-0000-000000000001'>";
+        QuestionInput input = new QuestionInput(QuestionType.SINGLE_CHOICE,
+            QuestionBodyValidationTests.singleChoiceBody(), BigDecimal.ONE, image, null, List.of(), List.of());
+        ReadinessResult result = QuestionBodyValidator.validateReady(input, FULL, true, null);
+        assertTrue(result.ready(), () -> "errors: " + result.errors());
+        assertFalse(QuestionBodyValidator.isBlankHtml(image));
+        assertTrue(QuestionBodyValidator.isBlankHtml("<p> </p>"));
+    }
 }

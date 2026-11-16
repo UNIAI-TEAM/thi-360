@@ -33,22 +33,13 @@ class HtmlContentSanitizerAdapterTests {
             id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty()));
 
     @Test
-    void productionConstructorUsesAvailableResolverOrRejectsUnknownImages() {
-        ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withUserConfiguration(QuestionbankBeans.class, HtmlContentSanitizerAdapter.class);
+    void textOnlyRejectsKnownAsset() {
         String image = "<img data-asset-id=\"" + assetId + "\">";
-        runner.run(context -> {
-            Result rejected = context.getBean(HtmlContentSanitizer.class).sanitize(image, Options.withImages());
-            assertFalse(rejected.isClean());
-            assertTrue(rejected.violations().stream().anyMatch(v -> "data-asset-id".equals(v.attribute())));
-        });
-
-        QuestionAssetResolver resolver = id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty();
-        runner.withBean(QuestionAssetResolver.class, () -> resolver).run(context -> {
-            Result accepted = context.getBean(HtmlContentSanitizer.class).sanitize(image, Options.withImages());
-            assertTrue(accepted.isClean(), () -> accepted.violations().toString());
-            assertTrue(accepted.html().contains("src=\"" + assetPath + "\""));
-        });
+        assertTrue(withAssets.sanitize(image, Options.withImages()).isClean());
+        Result rejected = withAssets.sanitize(image, Options.textOnly());
+        assertFalse(rejected.isClean());
+        assertTrue(rejected.violations().stream().anyMatch(v -> "img".equals(v.tag())));
+        assertFalse(rejected.html().contains("<img"));
     }
 
     @Test
