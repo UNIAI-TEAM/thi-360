@@ -127,7 +127,7 @@ public class QuestionHtmlSanitizer {
         // A second parse preserves those input tokens for violation reporting.
         Document document = Jsoup.parse(html, "", Parser.htmlParser().setTrackPosition(true));
         List<Violation> violations = new ArrayList<>();
-        if (document.head().sourceRange().isTracked()) {
+        if (document.head().sourceRange().isTracked() && !document.head().sourceRange().isImplicit()) {
             violations.add(Violation.tag("head"));
         }
         for (Element shell : List.of(document.children().first(), document.head(), document.body())) {
