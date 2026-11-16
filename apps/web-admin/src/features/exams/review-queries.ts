@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { getErrorStatus } from "@/lib/api/query-client";
 import { EXAMS_QUERY_KEYS } from "./api";
 import { defaultExamReviewApiDeps, EXAM_REVIEW_QUERY_KEYS, type ExamReviewApiDeps } from "./review-api";
 import type {
@@ -112,7 +113,8 @@ export function useDeepCheck(
         : query.state.data === undefined || query.state.data.state === "RUNNING"
           ? DEEP_CHECK_POLL_MS
           : false,
-    retry: 2,
+    // Lần chạy hết hạn (404) không đổi khi thử lại: báo lỗi ngay; mất kết nối và 5xx thì thử lại hai lần.
+    retry: (failureCount, error) => getErrorStatus(error) !== 404 && failureCount < 2,
     retryDelay: DEEP_CHECK_POLL_MS,
   });
 

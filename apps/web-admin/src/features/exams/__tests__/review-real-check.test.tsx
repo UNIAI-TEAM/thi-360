@@ -89,6 +89,29 @@ describe("kiểm tra kỹ, nhánh thật", () => {
     expect(runPolls()).toBe(polls);
   });
 
+  it("lần chạy hết hạn (404) báo lỗi ngay, không thử lại", async () => {
+    server.on("GET", RUN_PATH, running, { status: 404, body: { code: "CHECK_RUN_NOT_FOUND" } });
+    await startDeepCheck();
+
+    await tick();
+    expect(await screen.findByText("Kiểm tra kỹ không hoàn tất")).toBeInTheDocument();
+    await tick(POLL_MS * 3);
+    // Một lần hỏi đầu (RUNNING) và một lần 404: không còn lần hỏi lại nào.
+    expect(runPolls()).toBe(2);
+  });
+
+  it("lỗi máy chủ 5xx khi hỏi lần chạy được thử lại hai lần rồi mới báo lỗi", async () => {
+    server.on("GET", RUN_PATH, running, { status: 503, body: { code: "UNAVAILABLE" } });
+    await startDeepCheck();
+
+    await tick();
+    await tick();
+    await tick();
+    expect(await screen.findByText("Kiểm tra kỹ không hoàn tất")).toBeInTheDocument();
+    // 1 lần RUNNING + 1 lần 503 + 2 lần thử lại.
+    expect(runPolls()).toBe(4);
+  });
+
   it("gỡ màn khỏi cây thì dừng hỏi dù lần chạy chưa xong", async () => {
     server.on("GET", RUN_PATH, running);
     const view = await startDeepCheck();
