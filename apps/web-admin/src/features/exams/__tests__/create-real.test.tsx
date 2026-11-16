@@ -83,3 +83,70 @@ describe("trang Tạo bài thi, nhánh thật", () => {
     expect(await screen.findByText(/Đã tạo bài thi HSA-F-001 với cấu trúc của mẫu/)).toBeInTheDocument();
   });
 });
+
+const MATH_PART_TEMPLATE = { ...TEMPLATE, code: "HSA_PART_MATH_2025", scope: "PART", partCode: "MATH" };
+
+function createServer() {
+  return new FakeServer()
+    .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [TEMPLATE, MATH_PART_TEMPLATE] })
+    .on("GET", `${EXAMS_PATH}/suggested-code`, (request) => ({
+      status: 200,
+      body: { code: request.url.searchParams.get("scope") === "PART" ? "HSA-P-TOAN-001" : "HSA-F-001" },
+    }));
+}
+
+async function renderPage() {
+  const user = userEvent.setup();
+  renderWithProviders(<CreateExamPage />);
+  await screen.findByRole("form", { name: "Tạo bài thi" });
+  await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-F-001"));
+  return user;
+}
+
+function submit() {
+  return screen.getAllByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" })[0]!;
+}
+
+describe("trang Tạo bài thi, nhánh thật: gửi và lỗi", () => {
+  it("409 EXAM_CODE_TAKEN: báo lỗi ở ô Mã, ở lại trang", async () => {
+    createServer().on("POST", EXAMS_PATH, { status: 409, body: { code: "EXAM_CODE_TAKEN" } }).install();
+    const user = await renderPage();
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "Trùng mã");
+    const code = screen.getByRole("textbox", { name: /Mã bài thi/ });
+    await user.clear(code);
+    await user.type(code, "HSA-F-009");
+
+    await user.click(submit());
+
+    await waitFor(() => expect(code).toHaveAttribute("aria-invalid", "true"));
+    expect(await screen.findAllByText("Mã bài thi đã được dùng. Nhập mã khác.")).not.toHaveLength(0);
+    expect(routerMock.push).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it("phạm vi Theo phần gửi mã phần và hướng dẫn làm bài; cấu trúc chưa sửa thì không PUT", async () => {
+    const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA Toán · Đề thử");
+    // Trình soạn TipTap: jsdom không có elementFromPoint nên không gõ qua click; focus rồi dán văn bản thuần.
+    screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }).focus();
+    await user.paste("Đọc kỹ đề trước khi làm.");
+    const score = screen.getByRole("textbox", { name: /Thang điểm/ });
+    await user.clear(score);
+    await user.type(score, "50");
+
+    await user.click(submit());
+
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
+    expect(server.calls("POST", EXAMS_PATH)).toHaveLength(1);
+    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({
+      code: "HSA-P-TOAN-001",
+      scope: "PART",
+      partCode: "MATH",
+      maxScore: 50,
+      instructions: "<p>Đọc kỹ đề trước khi làm.</p>",
+    });
+    expect(server.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
+  }, 20_000);
+});

@@ -105,19 +105,6 @@ describe("trang Tạo bài thi", () => {
     expect(screen.queryByRole("checkbox", { name: /Cho chọn Tiếng Anh/ })).not.toBeInTheDocument();
   });
 
-  it("mã đã dùng: báo lỗi ở ô Mã", async () => {
-    const user = await renderPage();
-    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "Trùng mã");
-    const code = screen.getByRole("textbox", { name: /Mã bài thi/ });
-    await user.clear(code);
-    await user.type(code, "HSA-F-001");
-    await user.click(within(summary()).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
-    await waitFor(() => expect(code).toHaveAttribute("aria-invalid", "true"));
-    expect(await screen.findAllByText("Mã bài thi đã được dùng. Nhập mã khác.")).not.toHaveLength(0);
-    expect(within(summary()).getByText("Mã bài thi")).toBeInTheDocument();
-    expect(routerMock.push).not.toHaveBeenCalled();
-  }, 20_000);
-
   it("ảnh giới thiệu dùng nút của bộ giao diện, không lộ chữ tiếng Anh của trình duyệt", async () => {
     await renderPage();
     expect(screen.getByText("Chọn ảnh")).toBeInTheDocument();
@@ -159,28 +146,6 @@ describe("trang Tạo bài thi", () => {
     expect(note).toHaveTextContent("The system loads the latest template: HSA · Whole exam.");
     expect(note.textContent).not.toMatch(/phần|câu|phút/);
   });
-
-  it("hướng dẫn làm bài đi theo yêu cầu tạo; phạm vi Theo phần gửi mã phần", async () => {
-    const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
-    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA Toán · Đề thử");
-    // Trình soạn TipTap: jsdom không có elementFromPoint nên không gõ qua click; focus rồi dán văn bản thuần.
-    screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }).focus();
-    await user.paste("Đọc kỹ đề trước khi làm.");
-    const score = screen.getByRole("textbox", { name: /Thang điểm/ });
-    await user.clear(score);
-    await user.type(score, "50");
-    await user.click(within(summary()).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    const created = examStore.all().find((exam) => exam.code === "HSA-P-TOAN-001")!;
-    expect(created).toMatchObject({
-      scope: "PART",
-      partCode: "MATH",
-      subjectCode: null,
-      instructions: "<p>Đọc kỹ đề trước khi làm.</p>",
-    });
-  }, 20_000);
 
   it("THPTQG: môn chưa có mẫu thì dựng một phần trống của môn", async () => {
     const user = await renderPage();
