@@ -102,7 +102,7 @@ describe("trinh soan Dien khuyet", () => {
     const id = await seedCloze();
     renderEn(<QuestionEditorView mode="edit" questionId={id} />);
     const text = await screen.findByRole("textbox", { name: /^Question text/ });
-    rich(text).placeCaretAfter("Hà Nội ");
+    await rich(text).placeCaretAfter("Hà Nội ");
 
     await user.click(screen.getByRole("button", { name: "Add blank" }));
 

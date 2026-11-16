@@ -1,5 +1,5 @@
-import { act } from "@testing-library/react";
-import { vi } from "vitest";
+import { act, waitFor } from "@testing-library/react";
+import { expect, vi } from "vitest";
 import type { Editor } from "@tiptap/react";
 import type { ReactElement } from "react";
 import type { QuestionType } from "@/features/content/types";
@@ -63,8 +63,12 @@ export function rich(element: HTMLElement) {
         editor.commands.setContent(html, { emitUpdate: true });
       });
     },
-    /** Đặt con trỏ ngay sau đoạn chữ `fragment` (như người dùng bấm vào đó), kèm focus của vùng soạn. */
-    placeCaretAfter(fragment: string) {
+    /**
+     * Đặt con trỏ ngay sau đoạn chữ `fragment` (như người dùng bấm vào đó), kèm focus của vùng soạn.
+     * `chain().focus()` của TipTap gọi `view.focus()` trong requestAnimationFrame nên sự kiện focus (mà `RichTextEditor`
+     * dùng để biết "đã có con trỏ người dùng") đến muộn; chờ nó, nếu không nút bấm ngay sau đó rơi vào nhánh "chưa từng focus".
+     */
+    async placeCaretAfter(fragment: string) {
       let position = -1;
       editor.state.doc.descendants((node, offset) => {
         const index = position === -1 && node.isText ? (node.text ?? "").indexOf(fragment) : -1;
@@ -74,6 +78,7 @@ export function rich(element: HTMLElement) {
       act(() => {
         editor.chain().focus().setTextSelection(position).run();
       });
+      await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
     },
   };
 }
