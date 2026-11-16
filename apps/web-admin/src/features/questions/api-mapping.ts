@@ -31,6 +31,7 @@ export function fromApiSummary(summary: ApiSummary): QuestionSummary {
     type: summary.type,
     status: summary.status,
     contentPreview: plainQuestionPreview(summary.contentPreview),
+    subjectCode: summary.subjectCode ?? "",
     gradeCode: summary.gradeCode ?? "",
     difficultyCode: summary.difficultyCode ?? "",
     points: summary.points,

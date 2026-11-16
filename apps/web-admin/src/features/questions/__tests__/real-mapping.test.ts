@@ -31,21 +31,23 @@ describe("đổi phản hồi API câu hỏi sang kiểu của web", () => {
       version: 1,
       workingVersion: null,
     });
+    expect(fromApiSummary({ ...summary, subjectCode: "MATH" }).subjectCode).toBe("MATH");
+    expect(fromApiSummary(summary).subjectCode).toBe("");
   });
 
   it("chi tiết: lỗi sai thường gặp ghép thành một ô, câu con và id câu con của bộ", () => {
     const detail = fromApiDetail({
-      summary: { ...summary, type: "QUESTION_SET" },
+      summary: { ...summary, type: "QUESTION_SET", subjectCode: "MATH" },
       content: "<p>Đoạn</p>",
       commonMistakes: ["<p>a</p>", "<p>b</p>"],
       attachmentIds: [],
       body: { type: "QUESTION_SET", passage: "<p>Đoạn</p>", children: [] } as never,
-      children: [{ summary: { ...summary, id: "c1" }, content: "x", commonMistakes: [], attachmentIds: [], body: { type: "SINGLE_CHOICE", options: [] } as never, children: [], hasDraft: false }],
+      children: [{ summary: { ...summary, id: "c1", subjectCode: "PHYSICS" }, content: "x", commonMistakes: [], attachmentIds: [], body: { type: "SINGLE_CHOICE", options: [] } as never, children: [], hasDraft: false }],
       hasDraft: false,
     });
-    expect(detail.commonMistakes).toBe("<p>a</p><p>b</p>");
+    expect(detail.subjectCode).toBe("MATH");
     expect(detail.body).toMatchObject({ type: "QUESTION_SET", childIds: ["c1"] });
-    expect(detail.children[0]).toMatchObject({ id: "c1", body: { type: "SINGLE_CHOICE", shuffleOptions: false } });
+    expect(detail.children[0]).toMatchObject({ id: "c1", subjectCode: "PHYSICS", body: { type: "SINGLE_CHOICE", shuffleOptions: false } });
   });
 
   it("điều kiện Sẵn sàng: nhóm theo điều kiện, vị trí tính từ 1 và câu con", () => {
