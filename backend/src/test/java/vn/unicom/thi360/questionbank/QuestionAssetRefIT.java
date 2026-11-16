@@ -247,9 +247,25 @@ class QuestionAssetRefIT extends AbstractIntegrationTest {
                         QuestionTestSupport.GRADE_G10, QuestionTestSupport.LEVEL_NB,
                         passageAsset, c1, a1b, QuestionTestSupport.singleChoiceBody(),
                         a3, QuestionTestSupport.shortAnswerBody());
-        update(setId, update);
-
+        // First save includes c2 in the working version; the next save removes it.
+        var firstUpdate = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(update);
+        var children = (com.fasterxml.jackson.databind.node.ArrayNode) firstUpdate.at("/body/children");
+        var retained = mapper.createObjectNode();
+        retained.put("id", c2.toString());
+        retained.put("type", "SHORT_ANSWER");
+        retained.put("content", imgHtml(a2));
+        retained.set("body", mapper.readTree(QuestionTestSupport.shortAnswerBody()));
+        children.add(retained);
+        update(setId, mapper.writeValueAsString(firstUpdate));
+        assertThat(refsOf(c2, 2)).containsExactly(a2);
         UUID c3 = onlyChild(setId, c1);
+        entityManager.flush();
+        entityManager.clear();
+        var finalUpdate = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(update);
+        finalUpdate.put("expectedRevision", revision(setId));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) finalUpdate.at("/body/children/1"))
+                .put("id", c3.toString());
+        update(setId, mapper.writeValueAsString(finalUpdate));
         // Ref v1 (phục vụ) và hàng phục vụ giữ nguyên — kể cả câu con bị bỏ khỏi bản làm việc.
         assertThat(refsOf(setId, 1)).containsExactly(passageAsset);
         assertThat(refsOf(c1, 1)).containsExactly(a1);
