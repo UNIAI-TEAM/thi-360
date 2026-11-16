@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { withIdempotencyKey, resetIdempotencyKeys } from "@/features/content/idempotency";
 import { fromApiDetail, fromApiSummary } from "../api-mapping";
-import { toFormPath } from "../editor-field-errors";
+import { resolveFormPath, toFormPath } from "../editor-field-errors";
 import { formatPoints } from "../editor-form";
 import { fromApiReadiness } from "../readiness-mapping";
 
@@ -76,6 +76,35 @@ describe("lỗi 422 theo trường", () => {
     expect(toFormPath("body.children[0].content")).toBe("children.0.content");
     expect(toFormPath("commonMistakes[0]")).toBe("commonMistakes");
     expect(toFormPath("body.type")).toBe("body");
+  });
+});
+
+describe("lỗi 422: đường dẫn có chỗ hiện trên biểu mẫu", () => {
+  const values: Record<string, unknown> = {
+    type: "MATCHING",
+    "body.left": [{ rightId: "" }, { rightId: "r2" }, { rightId: "r3" }],
+    "children.0.type": "CLOZE",
+  };
+  const get = (path: string) => values[path];
+
+  it("body.pairs[n] chỉ đếm các mục trái đã chọn đáp án nên đổi về dòng trái tương ứng", () => {
+    expect(resolveFormPath("body.pairs[0].rightId", get)).toBe("body.left.1.rightId");
+    expect(resolveFormPath("body.pairs[1].leftId", get)).toBe("body.left.2.rightId");
+    expect(resolveFormPath("body.pairs[1].points", get)).toBe("body.left.2.points");
+    expect(resolveFormPath("body.pairs", get)).toBe("body.left");
+  });
+
+  it("đường dẫn không có ô hay dòng lỗi (sai dạng câu, trường không vẽ) trả null", () => {
+    expect(resolveFormPath("body.options[0].content", get)).toBeNull();
+    expect(resolveFormPath("body.type", get)).toBeNull();
+    expect(resolveFormPath("competencyCode", get)).toBeNull();
+    expect(resolveFormPath("body.children[0].body.left[0].content", get)).toBeNull();
+  });
+
+  it("đoạn dẫn, đáp án ngắn và kiến thức đổi về ô của biểu mẫu", () => {
+    expect(resolveFormPath("body.children[0].body.passage", get)).toBe("children.0.content");
+    expect(resolveFormPath("knowledge[0].nodeId", get)).toBe("knowledge");
+    expect(resolveFormPath("content", get)).toBe("content");
   });
 });
 

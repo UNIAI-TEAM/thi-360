@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, fakeApi } from "@/test/fake-api";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { questionStore, renderEn, rich } from "./editor-test-kit";
+import { questionStore, renderEn, rich, seedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -112,5 +112,61 @@ describe("lưu câu hỏi: lỗi 422 theo trường", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("The question could not be saved. Try again in a moment."),
     );
+  });
+});
+
+describe("lưu câu hỏi: lỗi 422 không có ô trên biểu mẫu", () => {
+  it("đường dẫn không thuộc biểu mẫu thì không báo 'ô đánh dấu bên dưới' mà ghi lỗi theo mã vào dải thông báo", async () => {
+    const user = userEvent.setup();
+    // Câu chọn một không có cặp ghép: `body.pairs[0].rightId` không có ô nào hiện lỗi.
+    fakeApi.put(
+      PUT,
+      fail(422, {
+        code: "VALIDATION_FAILED",
+        message: "Validation failed",
+        fieldErrors: [{ code: "QUESTION_PAIR_UNKNOWN_RIGHT", field: "body.pairs[0].rightId", message: "x" }] as never,
+      }),
+    );
+    renderEn(<QuestionEditorView mode="edit" questionId="q-0001" />);
+    rich(await questionText()).set("<p>Sửa</p>");
+    await user.click(screen.getByRole("button", { name: "Save question" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("A pair points to a right choice that does not exist.");
+    expect(alert).not.toHaveTextContent("Fix the fields marked below");
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull();
+  });
+
+  it("lỗi của cặp ghép (body.pairs[n]) hiện ở đúng thẻ cặp của biểu mẫu", async () => {
+    const user = userEvent.setup();
+    const id = await seedQuestion("MATCHING", (values) => {
+      values.points = "1";
+      values.body.left = [
+        { id: "l1", content: "Việt Nam", rightId: "r1", points: "0,5" },
+        { id: "l2", content: "Nhật Bản", rightId: "r2", points: "0,5" },
+      ];
+      values.body.right = [
+        { id: "r1", content: "Hà Nội" },
+        { id: "r2", content: "Tokyo" },
+      ];
+    });
+    fakeApi.put(
+      PUT,
+      fail(422, {
+        code: "VALIDATION_FAILED",
+        message: "Validation failed",
+        fieldErrors: [{ code: "QUESTION_PAIR_UNKNOWN_RIGHT", field: "body.pairs[1].rightId", message: "x" }] as never,
+      }),
+    );
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    await screen.findAllByRole("textbox", { name: "Pair points" });
+    await user.click(screen.getByRole("button", { name: "Save question" }));
+
+    await screen.findByText("Not saved: the server rejected some fields. Fix the fields marked below.");
+    const error = await screen.findByText("A pair points to a right choice that does not exist.");
+    // Dòng lỗi nằm ở thẻ của cặp thứ hai (mục "Nhật Bản"), không phải cặp thứ nhất.
+    const card = error.closest("li");
+    expect(card).toHaveTextContent("Nhật Bản");
+    expect(card).not.toHaveTextContent("Việt Nam");
   });
 });
