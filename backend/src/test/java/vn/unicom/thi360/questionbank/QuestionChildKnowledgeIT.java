@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -139,6 +140,12 @@ class QuestionChildKnowledgeIT extends AbstractIntegrationTest {
         UUID parent = UUID.fromString(mapper.readTree(created.getResponse().getContentAsString())
                 .at("/summary/id").asText());
         jdbc.update("UPDATE catalog.catalog_item SET status = 2 WHERE id = ?", grade);
+        mockMvc.perform(get("/api/v1/admin/questions/{id}/readiness", parent)
+                        .with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ready").value(false))
+                .andExpect(jsonPath("$.errors[?(@.path == 'body.children[0].gradeItemId'"
+                        + " && @.code == 'CATALOG_VALUE_UNKNOWN')]").exists());
         long revision = jdbc.queryForObject("SELECT revision FROM questionbank.question WHERE id = ?", Long.class, parent);
         mockMvc.perform(post("/api/v1/admin/questions/{id}/ready", parent).with(asUser(Permissions.QUESTION_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"expectedRevision\":" + revision + "}"))

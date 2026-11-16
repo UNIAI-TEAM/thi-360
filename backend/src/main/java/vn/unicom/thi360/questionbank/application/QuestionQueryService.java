@@ -195,7 +195,10 @@ public class QuestionQueryService {
                 .anyMatch(QuestionSnapshot.KnowledgeRef::primary);
         var result = QuestionBodyValidator.validateReady(
                 input, classification, hasPrimary, assetResolver);
-        return new QuestionReadiness(result.errors().isEmpty(), result.errors(), result.warnings());
+        List<QuestionFieldError> errors = new ArrayList<>(
+                QuestionService.childOverrideErrors(snapshot.body(), catalogLookup));
+        errors.addAll(result.errors());
+        return new QuestionReadiness(errors.isEmpty(), errors, result.warnings());
     }
 
     /** Lịch sử phiên bản, mới nhất trước (spec 4.5). */
