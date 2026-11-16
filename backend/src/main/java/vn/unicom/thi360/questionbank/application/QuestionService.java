@@ -274,6 +274,9 @@ public class QuestionService {
         supportDao.reserveSourceCodes(question.getId(),
                 question.getCurrentVersionNo() == null ? null : question.getSourceCode(), snapshot.sourceCode());
         upsertVersion(question.getId(), targetVersion, snapshot, actorId, now);
+        if (question.getCurrentVersionNo() != null && snapshot.body() instanceof QuestionBody.QuestionSetBody) {
+            saveWorkingChildren(question, snapshot, targetVersion, now, actorId);
+        }
 
         if (question.getCurrentVersionNo() == null) {
             projectRow(question, snapshot, targetVersion, now, actorId);
@@ -650,6 +653,9 @@ public class QuestionService {
         supportDao.reserveSourceCodes(id, question.getCurrentVersionNo() == null ? null : question.getSourceCode(),
                 snapshot.sourceCode() == null ? question.getSourceCode() : snapshot.sourceCode());
         upsertVersion(id, targetVersion, snapshot, actorId, now);
+        if (question.getCurrentVersionNo() != null && snapshot.body() instanceof QuestionBody.QuestionSetBody) {
+            saveWorkingChildren(question, snapshot, targetVersion, now, actorId);
+        }
 
         if (question.getCurrentVersionNo() == null) {
             projectSnapshot(question, snapshot, targetVersion, now, actorId);
@@ -685,6 +691,37 @@ public class QuestionService {
         }
         return ids;
     }
+    /** Save child-version refs without modifying the serving projection. */
+    private void saveWorkingChildren(Question parent, QuestionSnapshot snapshot, int versionNo,
+            Instant now, UUID actorId) {
+        QuestionBody.QuestionSetBody body = (QuestionBody.QuestionSetBody) snapshot.body();
+        List<Question> existing = questionRepository.findAllByParentId(parent.getId());
+        Map<UUID, Question> byId = new HashMap<>();
+        Set<String> codes = new HashSet<>();
+        for (Question row : existing) {
+            byId.put(row.getId(), row);
+            codes.add(row.getCode());
+        }
+        Set<UUID> kept = new HashSet<>();
+        for (int i = 0; i < body.children().size(); i++) {
+            QuestionBody.ChildQuestion child = body.children().get(i);
+            UUID childId = child.id();
+            kept.add(childId);
+            if (!byId.containsKey(childId)) {
+                Question row = Question.create(childId, nextChildCode(parent, codes), child.type(),
+                        parent.getId(), i, now, actorId);
+                row.setDeletedAt(now);
+                questionRepository.save(row);
+            }
+            upsertVersion(childId, versionNo, childSnapshot(child, snapshot, snapshot.points()), actorId, now);
+        }
+        for (Question row : existing) {
+            if (!kept.contains(row.getId())) {
+                assetRefRepository.deleteByQuestionIdAndVersionNo(row.getId(), versionNo);
+            }
+        }
+    }
+
 
     /**
      * Đồng bộ dòng câu con với {@code children[]} của thân: tạo câu con mới (id do máy chủ

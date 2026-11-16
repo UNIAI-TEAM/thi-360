@@ -22,11 +22,9 @@ import vn.unicom.thi360.shared.storage.ObjectStorage;
  * {@code question_asset_ref}; tài nguyên của phiên bản cũ luôn còn ref nên không bị đụng
  * (kể cả câu xóa mềm — quyết định lane 8.9).
  *
- * <p>Chống đua với lần lưu phiên bản (model note 3): delete là <b>một câu lệnh</b>
- * {@code DELETE ... WHERE NOT EXISTS (ref)} — ref ghi sau thời điểm quét vẫn chặn xóa nhờ
- * khóa hàng FK của Postgres (insert ref lấy {@code FOR KEY SHARE} trên dòng asset, đụng với
- * {@code FOR NO KEY UPDATE} của delete). Xóa object storage <b>sau khi</b> DB commit
- * (plan B4) qua {@link TransactionSynchronization#afterCommit}.
+ * <p>Khóa các ứng viên bằng {@code FOR UPDATE SKIP LOCKED} trong cùng câu lệnh xóa.
+ * Một lần lưu đang giữ khóa FK sẽ khiến asset bị bỏ qua; nếu cleanup khóa trước,
+ * FK ngăn lưu ref tới asset đã xóa. Xóa object storage sau khi DB commit (plan B4).
  */
 @Component
 public class QuestionAssetCleanupJob {
@@ -37,8 +35,12 @@ public class QuestionAssetCleanupJob {
             WHERE a.id IN (
                   SELECT c.id FROM questionbank.question_asset c
                   WHERE c.created_at < ?
+                    AND NOT EXISTS (
+                        SELECT 1 FROM questionbank.question_asset_ref r
+                        WHERE r.asset_id = c.id)
                   ORDER BY c.created_at
-                  LIMIT ?)
+                  LIMIT ?
+                  FOR UPDATE SKIP LOCKED)
               AND NOT EXISTS (
                   SELECT 1 FROM questionbank.question_asset_ref r
                   WHERE r.asset_id = a.id)
@@ -66,7 +68,7 @@ public class QuestionAssetCleanupJob {
                 DELETE_ORPHANS_SQL,
                 (rs, row) -> new DeletedAsset(
                         rs.getObject("id", UUID.class), rs.getString("object_key")),
-                cutoff,
+                java.sql.Timestamp.from(cutoff),
                 Math.max(1, properties.batchSize()));
         if (deleted.isEmpty()) {
             return 0;
