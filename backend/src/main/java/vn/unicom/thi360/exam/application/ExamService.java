@@ -99,6 +99,7 @@ public class ExamService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final AppMessages messages;
+    private final ExamCheckValidity checkValidity;
 
     public ExamService(
             ExamRepository examRepository,
@@ -115,7 +116,8 @@ public class ExamService {
             CurrentUserProvider currentUserProvider,
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
-            AppMessages messages) {
+            AppMessages messages,
+            ExamCheckValidity checkValidity) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -131,6 +133,7 @@ public class ExamService {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.messages = messages;
+        this.checkValidity = checkValidity;
     }
 
     private ExamStructureCodec codec() {
@@ -196,9 +199,11 @@ public class ExamService {
                 dataParams.toArray());
 
         Map<UUID, PersonRef> people = peopleOf(rows);
+        Map<UUID, String> checkStatuses = checkValidity.statuses(
+                rows.stream().map(r -> (UUID) r.get("id")).toList());
         boolean english = isEnglish();
         List<ExamSummaryResponse> items = rows.stream()
-                .map(r -> toSummary(r, people, english))
+                .map(r -> toSummary(r, people, english, checkStatuses.get((UUID) r.get("id"))))
                 .toList();
         int totalPages = total == null || total == 0 ? 0
                 : (int) ((total + pageQuery.size() - 1) / pageQuery.size());
@@ -248,7 +253,7 @@ public class ExamService {
     }
 
     private ExamSummaryResponse toSummary(Map<String, Object> r, Map<UUID, PersonRef> people,
-            boolean english) {
+            boolean english, String checkStatus) {
         String kindName = english && r.get("kind_en") != null && !((String) r.get("kind_en")).isBlank()
                 ? (String) r.get("kind_en") : (String) r.get("kind_vi");
         UUID updatedBy = (UUID) r.get("updated_by");
@@ -268,7 +273,7 @@ public class ExamService {
                 ((Number) r.get("combination_count")).intValue(),
                 (Integer) r.get("duration_minutes"),
                 (BigDecimal) r.get("max_score"),
-                new ExamCheckSummary((String) r.get("check_status"),
+                new ExamCheckSummary(checkStatus,
                         ((Number) r.get("check_issue_count")).intValue(),
                         toInstant(r.get("checked_at"))),
                 0,
