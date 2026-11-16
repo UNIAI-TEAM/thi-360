@@ -368,6 +368,41 @@ class QuestionBodyValidationTests {
     }
 
     @Test
+    void missingComponentScoresAreDraftOnly() {
+        QuestionBody statements = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
+            new TrueFalseStatement("s1", "a", true, null),
+            new TrueFalseStatement("s2", "b", false, BigDecimal.ONE)),
+            QuestionBody.TrueFalseScoringMethod.PER_STATEMENT, List.of());
+        QuestionBody allMissing = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
+            new TrueFalseStatement("s1", "a", true, null),
+            new TrueFalseStatement("s2", "b", false, null)),
+            QuestionBody.TrueFalseScoringMethod.PER_STATEMENT, List.of());
+        QuestionBody pairs = new QuestionBody.MatchingBody(QuestionType.MATCHING,
+            List.of(new MatchingSide("l1", "a"), new MatchingSide("l2", "b")),
+            List.of(new MatchingSide("r1", "x"), new MatchingSide("r2", "y")),
+            List.of(new MatchingPair("l1", "r1", BigDecimal.ONE), new MatchingPair("l2", "r2", null)),
+            false, false, false);
+        QuestionBody rubric = new QuestionBody.EssayBody(QuestionType.ESSAY, "guide",
+            List.of(new EssayCriterion("c1", "criterion", null)), null, null);
+        for (QuestionBody body : List.of(statements, allMissing, pairs, rubric)) {
+            QuestionInput draft = input(body.type(), body);
+            assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+            List<QuestionFieldError> errors = readyErrors(draft);
+            String expected = switch (body.type()) {
+                case TRUE_FALSE -> "body.statements[0].points";
+                case MATCHING -> "body.pairs[1].points";
+                case ESSAY -> "body.rubric[0].points";
+                default -> throw new AssertionError(body.type());
+            };
+            assertTrue(errors.stream().anyMatch(e -> e.code().equals("POINTS_REQUIRED")
+                && e.path().equals(expected)), errors.toString());
+            if (body == allMissing) {
+                assertTrue(errors.stream().anyMatch(e -> e.path().equals("body.statements[1].points")));
+            }
+        }
+    }
+
+    @Test
     void trueFalsePerStatementTotalMustEqualPoints() {
         QuestionBody body = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
             new TrueFalseStatement("s1", "a", true, new BigDecimal("0.4")),

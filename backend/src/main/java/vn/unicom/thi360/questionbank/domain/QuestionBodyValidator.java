@@ -396,6 +396,11 @@ public final class QuestionBodyValidator {
                     }
                 }
                 if (b.scoringMethod() == QuestionBody.TrueFalseScoringMethod.PER_STATEMENT) {
+                    for (int i = 0; i < b.statements().size(); i++) {
+                        if (b.statements().get(i).points() == null) {
+                            errors.add(QuestionFieldError.of("POINTS_REQUIRED", "body.statements[" + i + "].points"));
+                        }
+                    }
                     boolean allPoints = b.statements().stream().allMatch(s -> s.points() != null);
                     if (allPoints && !b.statements().isEmpty()) {
                         BigDecimal total = b.statements().stream()
@@ -416,6 +421,11 @@ public final class QuestionBodyValidator {
                 Set<String> rightIds = idsOfSides(b.right());
                 Map<String, Integer> rightUse = new HashMap<>();
                 Set<String> pairedLeft = new HashSet<>();
+                for (int i = 0; i < b.pairs().size(); i++) {
+                    if (b.pairs().get(i).points() == null) {
+                        errors.add(QuestionFieldError.of("POINTS_REQUIRED", "body.pairs[" + i + "].points"));
+                    }
+                }
                 for (QuestionBody.MatchingPair pair : b.pairs()) {
                     if (pair.leftId() != null && leftIds.contains(pair.leftId())) {
                         pairedLeft.add(pair.leftId());
@@ -453,6 +463,9 @@ public final class QuestionBodyValidator {
                 for (int i = 0; i < b.rubric().size(); i++) {
                     if (isBlankHtml(b.rubric().get(i).description())) {
                         errors.add(QuestionFieldError.of("CRITERION_EMPTY", "body.rubric[" + i + "].description"));
+                    }
+                    if (b.rubric().get(i).points() == null) {
+                        errors.add(QuestionFieldError.of("POINTS_REQUIRED", "body.rubric[" + i + "].points"));
                     }
                 }
                 if (!b.rubric().isEmpty() && points != null) {
