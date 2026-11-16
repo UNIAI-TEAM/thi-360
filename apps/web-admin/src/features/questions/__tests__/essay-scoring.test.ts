@@ -60,7 +60,7 @@ function essay(points: string, rubric: Array<[string, string]>): QuestionEditorV
 function trueFalse(points: string, table: string[]): QuestionEditorValues {
   const values = classified("TRUE_FALSE");
   values.points = points;
-  values.body.statements = table.map((_, index) => ({ id: `s${index}`, content: `Y ${index + 1}`, answer: "TRUE" }));
+  values.body.statements = table.map((_, index) => ({ id: `s${index}`, content: `Y ${index + 1}`, answer: "TRUE", points: "" }));
   values.body.scoreTable = table;
   return values;
 }

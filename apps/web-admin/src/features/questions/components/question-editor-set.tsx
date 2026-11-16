@@ -5,10 +5,12 @@ import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
 import { get, useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
+import type { ContentReference } from "@/features/content/types";
 import { emptyChild, questionSetPoints, type EditorChild, type QuestionEditorValues } from "../editor-form";
 import { CHILD_QUESTION_TYPES, type ChildQuestionType } from "../editor-types";
 import { CONTENT_MAX, SOLUTION_MAX } from "../editor-schema";
 import { QuestionBodyEditor } from "./question-editor-body";
+import { ChildClassification } from "./question-editor-child-classification";
 import { FieldErrorText, GroupError, optionLetter, RowActions, statementLetter, useAnnounce, useEditorError } from "./question-editor-shared";
 
 /**
@@ -16,7 +18,7 @@ import { FieldErrorText, GroupError, optionLetter, RowActions, statementLetter, 
  * cha, điểm riêng (mặc định 1); điểm câu chùm là tổng điểm câu con (UniNote PBI-03 mục 4.2). Câu con đã có thu gọn
  * thành dòng tóm tắt; câu con có lỗi tự mở ra để sửa.
  */
-export function QuestionSetEditor() {
+export function QuestionSetEditor({ reference }: { reference: ContentReference }) {
   const t = useTranslations("questions.editor.set");
   const tType = useTranslations("content.questionType");
   const announce = useAnnounce();
@@ -55,6 +57,7 @@ export function QuestionSetEditor() {
           <ChildCard
             key={field.rowKey}
             index={index}
+            reference={reference}
             count={fields.length}
             child={children[index] ?? field}
             expanded={expanded.has(field.key)}
@@ -92,6 +95,7 @@ function ChildCard({
   index,
   count,
   child,
+  reference,
   expanded,
   onToggle,
   onMove,
@@ -100,6 +104,7 @@ function ChildCard({
   index: number;
   count: number;
   child: EditorChild;
+  reference: ContentReference;
   expanded: boolean;
   onToggle: () => void;
   onMove: (from: number, to: number) => void;
@@ -201,6 +206,7 @@ function ChildCard({
                 )}
               </FormField>
             </div>
+            <ChildClassification index={index} reference={reference} />
           </>
         )}
       </div>
@@ -228,8 +234,11 @@ function answerSummary(child: EditorChild, t: ReturnType<typeof useTranslations>
       return answers.length ? answers.join(" / ") : t("noAnswer");
     }
     case "MATCHING": {
-      const items = body.zones.map((zone) => zone.itemContent.trim()).filter(Boolean);
-      return items.length ? items.join("; ") : t("noAnswer");
+      const pairs = body.left.map((item, position) => {
+        const rightIndex = body.right.findIndex((right) => right.id === item.rightId);
+        return `${position + 1}-${rightIndex === -1 ? "?" : optionLetter(rightIndex)}`;
+      });
+      return pairs.length ? pairs.join(", ") : t("noAnswer");
     }
     case "ESSAY": {
       const guide = body.gradingGuide.trim();

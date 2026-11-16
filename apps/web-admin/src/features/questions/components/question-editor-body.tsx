@@ -3,8 +3,8 @@
 import type { QuestionType } from "@/features/content/types";
 import { BlanksEditor } from "./question-editor-blanks";
 import { ChoiceOptionsEditor } from "./question-editor-choice";
-import { DragDropEditor } from "./question-editor-drag";
 import { EssayEditor } from "./question-editor-essay";
+import { MatchingEditor } from "./question-editor-matching";
 import { ShortAnswerEditor } from "./question-editor-short-answer";
 import type { BodyPath, ContentPath } from "./question-editor-shared";
 import { StatementsEditor } from "./question-editor-statements";
@@ -33,7 +33,7 @@ export function QuestionBodyEditor({
     case "CLOZE":
       return <BlanksEditor prefix={prefix} contentPath={contentPath} contentFieldId={contentFieldId} />;
     case "MATCHING":
-      return <DragDropEditor prefix={prefix} />;
+      return <MatchingEditor prefix={prefix} />;
     case "ESSAY":
       return <EssayEditor prefix={prefix} />;
     case "QUESTION_SET":

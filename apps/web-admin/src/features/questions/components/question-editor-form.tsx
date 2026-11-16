@@ -18,6 +18,7 @@ import { editCreatesNewVersion } from "../editor-versioning";
 import type { QuestionDetail } from "../types";
 import { QuestionBodyEditor } from "./question-editor-body";
 import { ClassificationSection } from "./question-editor-classification";
+import { AttachmentsSection, CommonMistakesSection } from "./question-editor-extras";
 import { QuestionSetEditor } from "./question-editor-set";
 import { EditorAnnounceProvider, EditorSection, FieldErrorText, useEditorError } from "./question-editor-shared";
 
@@ -31,8 +32,20 @@ const BODY_TITLE_KEY: Record<QuestionType, string> = {
   TRUE_FALSE: "statements",
   SHORT_ANSWER: "shortAnswer",
   CLOZE: "blanks",
-  MATCHING: "dragDrop",
+  MATCHING: "matching",
   QUESTION_SET: "children",
+  ESSAY: "essay",
+};
+
+/** Dòng gợi ý dưới ô Đề bài theo dạng câu (`questions.editor.contentHint.*`). */
+const CONTENT_HINT_KEY: Record<QuestionType, string> = {
+  SINGLE_CHOICE: "default",
+  MULTIPLE_CHOICE: "default",
+  TRUE_FALSE: "trueFalse",
+  SHORT_ANSWER: "shortAnswer",
+  CLOZE: "fillIn",
+  MATCHING: "matching",
+  QUESTION_SET: "passage",
   ESSAY: "essay",
 };
 
@@ -167,7 +180,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
             <ClassificationSection reference={props.reference} />
             <ContentSection formId={formId} type={type} />
             {type === "QUESTION_SET" ? (
-              <ChildrenSection formId={formId} />
+              <ChildrenSection formId={formId} reference={props.reference} />
             ) : (
               <EditorSection title={t(`bodyTitle.${BODY_TITLE_KEY[type]}`)} titleId={`${formId}-body`}>
                 <QuestionBodyEditor
@@ -179,6 +192,8 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
               </EditorSection>
             )}
             {type !== "QUESTION_SET" && <SolutionSection formId={formId} />}
+            {type !== "QUESTION_SET" && <CommonMistakesSection formId={formId} />}
+            <AttachmentsSection formId={formId} />
           </form>
           <LiveStatus message={liveMessage} />
           <ConfirmDialog
@@ -204,16 +219,7 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
   const { register } = useFormContext<QuestionEditorValues>();
   const error = useEditorError("content");
   const key = type === "QUESTION_SET" ? "passage" : type === "TRUE_FALSE" ? "sharedContent" : "content";
-  const hintKey =
-    type === "CLOZE"
-      ? "fillIn"
-      : type === "TRUE_FALSE"
-        ? "trueFalse"
-        : type === "QUESTION_SET"
-          ? "passage"
-          : type === "ESSAY"
-            ? "essay"
-            : "default";
+  const hintKey = CONTENT_HINT_KEY[type];
   const titleId = `${formId}-content-title`;
   return (
     <EditorSection title={t(`contentTitle.${key}`)} titleId={titleId} required>
@@ -239,7 +245,7 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
   );
 }
 
-function ChildrenSection({ formId }: { formId: string }) {
+function ChildrenSection({ formId, reference }: { formId: string; reference: ContentReference }) {
   const t = useTranslations("questions.editor");
   const { control } = useFormContext<QuestionEditorValues>();
   const children = useWatch({ control, name: "children" }) ?? [];
@@ -249,7 +255,7 @@ function ChildrenSection({ formId }: { formId: string }) {
       titleId={`${formId}-children`}
       badge={<span className="text-caption text-text-muted">{t("childCount", { count: children.length })}</span>}
     >
-      <QuestionSetEditor />
+      <QuestionSetEditor reference={reference} />
     </EditorSection>
   );
 }
