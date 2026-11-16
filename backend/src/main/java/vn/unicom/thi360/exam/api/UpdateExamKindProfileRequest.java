@@ -28,12 +28,12 @@ public record UpdateExamKindProfileRequest(
         @Schema(description = "Thang điểm quy chiếu (V-ACT)")
         @Positive
         BigDecimal referenceMax,
-        @Schema(description = "IMMEDIATE | AFTER_EXAM", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "RAW | LINEAR", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank
         String practiceScoring,
         @Schema(description = "Bảng điểm Đúng/Sai nhiều ý; null khi kỳ thi không dùng")
         JsonNode trueFalseScoring,
-        @Schema(description = "ALL_OR_NOTHING | PARTIAL | PENALTY; null khi không dùng")
+        @Schema(description = "ALL_OR_NOTHING | PARTIAL; null khi không dùng")
         @Size(max = 30)
         String multipleChoiceRule,
         @Schema(description = "Revision đang xem; lệch → 412 EXAM_REVISION_CONFLICT",

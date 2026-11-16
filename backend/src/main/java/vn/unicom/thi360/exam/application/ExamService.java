@@ -396,7 +396,7 @@ public class ExamService {
 
         Exam exam = new Exam(Ids.newId(), code, request.name().trim(), kindItem.id(),
                 scopeChoice.scope(), timing, duration, maxScore,
-                profile != null ? profile.getPracticeScoring() : "IMMEDIATE", now, actor);
+                profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
                 duration, maxScore, actor, now);

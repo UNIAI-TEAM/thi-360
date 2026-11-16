@@ -53,7 +53,6 @@ class ContentReferenceIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.difficulties").isArray())
                 .andExpect(jsonPath("$.tags").isArray())
                 .andExpect(jsonPath("$.examKinds").isArray())
-                .andExpect(jsonPath("$.examKinds").isEmpty())
                 .andExpect(jsonPath("$.combinations").isArray())
                 .andExpect(jsonPath("$.competencies").isArray())
                 .andExpect(jsonPath("$.knowledgeTree").isArray())

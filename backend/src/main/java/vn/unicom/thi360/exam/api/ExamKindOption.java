@@ -25,12 +25,12 @@ public record ExamKindOption(
         BigDecimal maxScore,
         @Schema(description = "Thang điểm quy chiếu (V-ACT)")
         BigDecimal referenceMax,
-        @Schema(description = "Mặc định chấm luyện tập: IMMEDIATE | AFTER_EXAM",
+        @Schema(description = "Cách tính điểm luyện tập: RAW | LINEAR",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         String practiceScoring,
         @Schema(description = "Bảng điểm Đúng/Sai nhiều ý (số điểm theo số ý đúng)")
         JsonNode trueFalseScoring,
-        @Schema(description = "Quy tắc đa lựa chọn: ALL_OR_NOTHING | PARTIAL | PENALTY")
+        @Schema(description = "Quy tắc đa lựa chọn: ALL_OR_NOTHING | PARTIAL")
         String multipleChoiceRule,
         @Schema(description = "Đã có hồ sơ (PUT) hay chưa", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean profileSet

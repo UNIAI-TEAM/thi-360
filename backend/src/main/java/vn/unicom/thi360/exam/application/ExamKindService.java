@@ -35,8 +35,8 @@ public class ExamKindService {
     private static final Set<String> SCOPES = Set.of("FULL", "PART", "SUBJECT");
     private static final Set<String> TEMPLATE_BY = Set.of("KIND", "SUBJECT");
     private static final Set<String> TIMINGS = Set.of("PER_PART", "SHARED");
-    private static final Set<String> PRACTICE_SCORING = Set.of("IMMEDIATE", "AFTER_EXAM");
-    private static final Set<String> MC_RULES = Set.of("ALL_OR_NOTHING", "PARTIAL", "PENALTY");
+    private static final Set<String> PRACTICE_SCORING = Set.of("RAW", "LINEAR");
+    private static final Set<String> MC_RULES = Set.of("ALL_OR_NOTHING", "PARTIAL");
 
     private final ExamKindProfileRepository profileRepository;
     private final CatalogLookup catalogLookup;
@@ -159,24 +159,24 @@ public class ExamKindService {
             errors.add(field("scopes", messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED)));
         } else {
             for (String s : r.scopes()) {
-                if (s == null || !SCOPES.contains(s.trim().toUpperCase(java.util.Locale.ROOT))) {
+                if (s == null || !SCOPES.contains(s)) {
                     errors.add(field("scopes", messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED)));
                     break;
                 }
             }
         }
-        if (r.templateBy() == null || !TEMPLATE_BY.contains(r.templateBy().trim().toUpperCase(java.util.Locale.ROOT))) {
+        if (r.templateBy() == null || !TEMPLATE_BY.contains(r.templateBy())) {
             errors.add(field("templateBy", messages.get("validation.exam.templateBy.invalid")));
         }
-        if (r.timing() == null || !TIMINGS.contains(r.timing().trim().toUpperCase(java.util.Locale.ROOT))) {
+        if (r.timing() == null || !TIMINGS.contains(r.timing())) {
             errors.add(field("timing", messages.get("validation.exam.timing.invalid")));
         }
         if (r.practiceScoring() == null
-                || !PRACTICE_SCORING.contains(r.practiceScoring().trim().toUpperCase(java.util.Locale.ROOT))) {
+                || !PRACTICE_SCORING.contains(r.practiceScoring())) {
             errors.add(field("practiceScoring", messages.get("validation.exam.practiceScoring.invalid")));
         }
         if (r.multipleChoiceRule() != null
-                && !MC_RULES.contains(r.multipleChoiceRule().trim().toUpperCase(java.util.Locale.ROOT))) {
+                && !MC_RULES.contains(r.multipleChoiceRule())) {
             errors.add(field("multipleChoiceRule", messages.get("validation.exam.multipleChoiceRule.invalid")));
         }
         if (r.maxScore() != null && r.maxScore().signum() <= 0) {
