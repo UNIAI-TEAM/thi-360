@@ -2377,14 +2377,16 @@
         "fillIn": "Type ___ (three underscores) where the answer goes, or place the cursor and press “Add blank”.",
         "trueFalse": "Shared by every statement: given data, figures, tables.",
         "passage": "Reading text, data table or figure shared by all sub-questions.",
-        "essay": "The essay prompt and its requirements, such as the expected length. Learners write an answer; a grader scores it by hand against the rubric."
+        "essay": "The essay prompt and its requirements, such as the expected length. Learners write an answer; a grader scores it by hand against the rubric.",
+        "matching": "The shared stem of the matching question, such as the instruction or context. Enter the items and choices below.",
+        "shortAnswer": "The question learners answer with a final answer only, not a worked solution. Enter the standard answer below."
       },
       "bodyTitle": {
         "options": "Options",
         "statements": "Statements",
         "shortAnswer": "Answer",
         "blanks": "Answers for each blank",
-        "dragDrop": "Drop zones and cards",
+        "matching": "Matching pairs",
         "children": "Sub-questions",
         "essay": "Grading guide"
       },
@@ -2421,12 +2423,12 @@
         "descriptions": {
           "SINGLE_CHOICE": "Several options, exactly one is correct.",
           "MULTIPLE_CHOICE": "Several options, more than one may be correct.",
-          "TRUE_FALSE": "One stem; each statement is True or False.",
-          "SHORT_ANSWER": "Learners type a number or a short phrase; it must match the standard or an accepted answer exactly.",
-          "CLOZE": "A passage with several blanks, one answer per blank.",
-          "MATCHING": "Learners match each item on the left with one choice on the right.",
+          "TRUE_FALSE": "One stem; each statement is True or False; scored per statement or by the number of correct statements.",
+          "SHORT_ANSWER": "Learners type the final answer; it must match the standard or an accepted answer exactly.",
+          "CLOZE": "A passage with several blanks, each with its own answer and points.",
+          "MATCHING": "Learners match each item in the left column with one choice in the right column; the columns may differ in length.",
           "QUESTION_SET": "One shared passage for several sub-questions.",
-          "ESSAY": "A written answer, graded by hand against the rubric."
+          "ESSAY": "A written answer, graded by hand against a mandatory grading guide."
         },
         "cancel": "Cancel",
         "continue": "Continue"
@@ -2441,6 +2443,7 @@
         "pointsHint": "Default 1, greater than 0.",
         "pointsTotal": "Points (calculated)",
         "pointsTotalHint": "Sum of the sub-question points.",
+        "pointsTotalClozeHint": "Sum of the blank points.",
         "knowledge": "Knowledge",
         "primary": "Primary",
         "noKnowledge": "No knowledge selected.",
@@ -2457,7 +2460,10 @@
         "tagRemoved": "Removed tag {name}.",
         "competency": "Competency",
         "competencyNone": "None",
-        "competencyHint": "Used by exams whose matrix is split by competency (V-ACT). Optional."
+        "competencyHint": "Used by exams whose matrix is split by competency (V-ACT). Optional.",
+        "taskType": "Task type",
+        "taskTypeHint": "Pick it when the exam matrix allocates by task type. Optional.",
+        "taskTypeNone": "None"
       },
       "rows": {
         "moveUp": "Move {name} up",
@@ -2493,7 +2499,21 @@
         "add": "Add statement",
         "added": "Added statement {letter}.",
         "removed": "Deleted statement {letter}.",
-        "moved": "Moved statement {letter} to position {position}."
+        "moved": "Moved statement {letter} to position {position}.",
+        "methodLegend": "Scoring method",
+        "method": {
+          "COUNT_TABLE": {
+            "label": "By number of correct statements",
+            "description": "Look up the points table by how many statements the learner answers correctly (for example THPTQG 0.1 / 0.25 / 0.5 / 1)."
+          },
+          "PER_STATEMENT": {
+            "label": "Points per statement",
+            "description": "Each correct statement earns the points set for it; the statement points add up to the question points."
+          }
+        },
+        "methodChosen": "Scoring method set to: {method}.",
+        "pointsLabel": "Statement {letter} points",
+        "pointsReflowed": "Statement points were split evenly again across {count, plural, one {# statement} other {# statements}}."
       },
       "blanks": {
         "hint": "Each blank may accept several answers; matching any of them is correct. Deleting a blank also removes its gap from the text.",
@@ -2507,27 +2527,38 @@
         "remove": "Delete blank {number}",
         "add": "Add blank",
         "added": "Added blank {number} and its gap in the text.",
-        "removed": "Deleted blank {number} and its gap in the text."
+        "removed": "Deleted blank {number} and its gap in the text.",
+        "pointsLabel": "Points",
+        "pointsAria": "Points of blank {number}"
       },
-      "dragDrop": {
-        "summary": "During the exam, learners see {total, plural, one {# card} other {# cards}}: {correct, number} correct and {distractors, number} distractors.",
-        "zoneTitle": "Drop zone {number}",
-        "zoneName": "drop zone {number}",
-        "zoneLabel": "Text before the drop zone",
-        "zoneLabelHint": "The part of the sentence learners read before dropping a card.",
-        "zoneItem": "Correct card",
-        "addZone": "Add drop zone",
-        "zoneAdded": "Added drop zone {number}.",
-        "zoneRemoved": "Deleted drop zone {number}.",
-        "zoneMoved": "Moved drop zone {number} to position {position}.",
-        "distractorsLegend": "Distractor cards",
-        "distractorsHint": "Cards that belong to no drop zone, so learners must choose.",
-        "noDistractors": "No distractor cards.",
-        "distractorLabel": "Distractor {number}",
-        "removeDistractor": "Delete distractor {number}",
-        "addDistractor": "Add distractor",
-        "distractorAdded": "Added distractor {number}.",
-        "distractorRemoved": "Deleted distractor {number}."
+      "matching": {
+        "hint": "Enter the items in the left column and the choices in the right column, then pick the correct choice and the points for each pair. The right column may have more choices than the left; a choice that belongs to no pair is a spare.",
+        "summary": "Left column: {left, plural, one {# item} other {# items}}; right column: {right, plural, one {# choice} other {# choices}} ({spare, plural, one {# spare} other {# spare}}).",
+        "pairTitle": "Pair {number}",
+        "pairName": "pair {number}",
+        "leftLabel": "Left column item",
+        "answerLabel": "Correct choice",
+        "answerPlaceholder": "Select",
+        "pointsLabel": "Pair points",
+        "addPair": "Add pair",
+        "pairAdded": "Added pair {number}.",
+        "pairRemoved": "Deleted pair {number}.",
+        "pairMoved": "Moved pair {number} to position {position}.",
+        "reflowed": "The question points were split evenly across {count, plural, one {# pair} other {# pairs}}.",
+        "rightLegend": "Right column choices",
+        "rightHint": "Each left item picks its correct choice from this list. Deleting a choice means the items using it must be set again.",
+        "rightLabel": "Choice {letter}",
+        "rightName": "choice {letter}",
+        "addRight": "Add choice",
+        "rightAdded": "Added choice {letter}.",
+        "rightRemoved": "Deleted choice {letter}.",
+        "rightMoved": "Moved choice {letter} to position {position}.",
+        "emptyOption": "(empty)",
+        "optionsLegend": "Options",
+        "reuseRight": "A choice can be used for several items",
+        "reuseRightHint": "Off: each choice can be assigned to at most one left item.",
+        "shuffleLeft": "Shuffle the left column during the exam",
+        "shuffleRight": "Shuffle the right column during the exam"
       },
       "set": {
         "hint": "Each sub-question is a full question with its own type, classified like the set. At least 2 sub-questions.",
@@ -2550,7 +2581,24 @@
         "addLegend": "Add sub-question",
         "added": "Added sub-question {number}: {type}.",
         "removed": "Deleted sub-question {number}.",
-        "moved": "Moved sub-question {number} to position {position}."
+        "moved": "Moved sub-question {number} to position {position}.",
+        "classification": {
+          "legend": "Sub-question classification",
+          "hint": "Follows the question set by default. Pick another value to override it for this sub-question; the matrix counts the sub-question by its own classification.",
+          "grade": "Grade",
+          "difficulty": "Difficulty",
+          "inherit": "Same as the set: {value}",
+          "notChosen": "not selected",
+          "knowledge": "Knowledge",
+          "inherited": "Same as the set",
+          "own": "Own",
+          "noKnowledge": "No knowledge yet.",
+          "override": "Choose own knowledge",
+          "change": "Change own knowledge",
+          "backToInherit": "Use the set's knowledge",
+          "inheritedAnnounce": "The sub-question uses the set's knowledge again.",
+          "knowledgeApplied": "{count, plural, one {# own knowledge item} other {# own knowledge items}} selected."
+        }
       },
       "errors": {
         "subjectRequired": "Select a subject.",
@@ -2574,10 +2622,18 @@
         "blankAnswerRequired": "Enter at least one accepted answer.",
         "answerMax": "The answer is too long.",
         "blankCountMismatch": "The number of ___ gaps in the text must equal the number of answer blanks.",
-        "zonesMin": "At least one drop zone is required.",
-        "zoneLabelRequired": "Enter the text before the drop zone.",
-        "zoneItemRequired": "Enter the correct card for the drop zone.",
-        "distractorRequired": "Enter the distractor text or delete it.",
+        "matchLeftMin": "At least one matching pair is required.",
+        "matchLeftRequired": "Enter the left column item.",
+        "matchRightRequired": "Enter the choice text or delete the choice.",
+        "matchAnswerRequired": "Choose the correct choice for this item.",
+        "matchRightReused": "This choice is already assigned to another item. Turn on “A choice can be used for several items” or pick another choice.",
+        "pairPointsInvalid": "Pair points must be a number greater than 0.",
+        "pairPointsMismatch": "The pair points must add up to the question points.",
+        "blankPointsInvalid": "Blank points must be a number greater than 0.",
+        "statementPointsInvalid": "Statement points must be a number greater than 0.",
+        "statementPointsMismatch": "The statement points must add up to the question points.",
+        "childKnowledgeRequired": "Choose at least one own knowledge item or use the set's knowledge.",
+        "commonMistakesMax": "The common mistakes text is too long.",
         "childrenMin": "A question set needs at least 2 sub-questions.",
         "childContentRequired": "Enter the sub-question text.",
         "scoreValueInvalid": "Points must be a number of 0 or more.",
@@ -2590,6 +2646,32 @@
         "rubricTotalMismatch": "The criteria must add up to the question points.",
         "sampleAnswerMax": "The sample answer is too long.",
         "wordLimitInvalid": "The length must be a whole number greater than 0."
+      },
+      "pointsTotal": {
+        "matches": "Points total: {total, number} / {points, number}",
+        "differs": "Points total: {total, number} / {points, number}, does not match the question points yet",
+        "totalOnly": "Points total: {total, number}. Enter valid question points to compare.",
+        "even": "Split evenly"
+      },
+      "commonMistakes": {
+        "title": "Common mistakes",
+        "hint": "Misunderstandings or slips learners often make. Used as reference data for AI explanations; never shown to learners during the exam."
+      },
+      "attachments": {
+        "title": "Attachments",
+        "none": "No attachments.",
+        "choose": "Choose files",
+        "input": "Choose attachments",
+        "hint": "PDF, DOCX, XLSX, PNG, JPEG, WebP or MP3, up to 20 MB per file.",
+        "size": "{kb} KB",
+        "remove": "Remove file {name}",
+        "added": "{count, plural, one {# attachment} other {# attachments}} added.",
+        "removed": "Removed file {name}.",
+        "rejected": {
+          "TOO_LARGE": "{name}: the file is larger than 20 MB.",
+          "UNSUPPORTED_TYPE": "{name}: this file type is not supported.",
+          "FAILED": "{name}: the upload failed."
+        }
       },
       "scoreTable": {
         "legend": "Score by number of correct statements",
