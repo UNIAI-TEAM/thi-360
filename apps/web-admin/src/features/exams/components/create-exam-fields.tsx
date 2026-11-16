@@ -463,11 +463,14 @@ export function ScopeFields({
  */
 export function TemplateNotes({
   template,
+  name,
   yearsConfirmed = false,
   onYearsConfirmedChange,
   disabled,
 }: {
   template: ExamTemplate | undefined;
+  /** Tên đã dịch của mẫu; thiếu thì dùng `template.name` của dữ liệu. */
+  name?: string;
   yearsConfirmed?: boolean;
   onYearsConfirmedChange?: (confirmed: boolean) => void;
   disabled?: boolean;
@@ -483,7 +486,7 @@ export function TemplateNotes({
       <p className="flex items-start gap-2 text-body text-text-secondary">
         <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
         <span>
-          {t("loaded", { name: template.name })} {t("changeInStructure")}
+          {t("loaded", { name: name ?? template.name })} {t("changeInStructure")}
         </span>
       </p>
       {hasYears && (

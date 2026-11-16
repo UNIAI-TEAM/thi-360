@@ -577,7 +577,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
               </div>
             )}
 
-            <TemplateNotes template={currentTemplate} />
+            <TemplateNotes template={currentTemplate} name={templateName(currentScope())} />
 
             <div data-field="description">
               <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
