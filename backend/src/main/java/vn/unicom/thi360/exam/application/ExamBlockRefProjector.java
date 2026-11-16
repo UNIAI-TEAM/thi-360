@@ -33,7 +33,6 @@ public class ExamBlockRefProjector {
     /** Resolver code → id giá trị danh mục (theo nhóm), null khi không có. */
     public record CodeResolver(Function<String, UUID> subjectByCode,
                                Function<String, UUID> taskTypeByCode,
-                               Function<UUID, List<UUID>> knowledgeLeaves,
                                Function<String, UUID> competencyByCode,
                                Function<String, UUID> combinationByCode) {
     }
@@ -119,7 +118,7 @@ public class ExamBlockRefProjector {
                 block.questionType() != null ? block.questionType().name() : null,
                 answerTypes(block, section),
                 resolve(resolver.taskTypeByCode(), block.taskTypeCode()),
-                knowledgeItemIds(scope, resolver),
+                knowledgeItemIds(scope),
                 knowledgeMode(scope),
                 inherited,
                 null,
@@ -147,26 +146,11 @@ public class ExamBlockRefProjector {
         return List.copyOf(types);
     }
 
-    private static List<UUID> knowledgeItemIds(KnowledgeScope scope, CodeResolver resolver) {
+    private static List<UUID> knowledgeItemIds(KnowledgeScope scope) {
         if (scope == null || scope.nodeIds() == null || scope.nodeIds().isEmpty()) {
             return null;
         }
-        Set<UUID> ids = new LinkedHashSet<>();
-        boolean expand = Boolean.TRUE.equals(scope.includeDescendants());
-        for (UUID nodeId : scope.nodeIds()) {
-            if (nodeId == null) {
-                continue;
-            }
-            if (expand && resolver.knowledgeLeaves() != null) {
-                List<UUID> leaves = resolver.knowledgeLeaves().apply(nodeId);
-                if (leaves != null && !leaves.isEmpty()) {
-                    ids.addAll(leaves);
-                    continue;
-                }
-            }
-            ids.add(nodeId);
-        }
-        return ids.isEmpty() ? null : List.copyOf(ids);
+        return List.copyOf(new LinkedHashSet<>(scope.nodeIds()));
     }
 
     private static String knowledgeMode(KnowledgeScope scope) {

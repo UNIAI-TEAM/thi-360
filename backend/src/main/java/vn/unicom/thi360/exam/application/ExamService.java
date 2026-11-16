@@ -700,7 +700,6 @@ public class ExamService {
         return new CodeResolver(
                 code -> catalogLookup.findActiveItem(SUBJECT_GROUP, code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("TASK_TYPE", code).map(CatalogItemView::id).orElse(null),
-                nodeId -> catalogLookup.findLeafIdsUnder(nodeId),
                 code -> catalogLookup.findActiveItem("COMPETENCY", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("SUBJECT_COMBINATION", code)
                         .map(CatalogItemView::id).orElse(null));
