@@ -2787,6 +2787,10 @@
         "NESTED_SET": "A question set cannot contain another question set or a cloze question.",
         "CRITERION_EMPTY": "Rubric criterion {position, number} has no description.",
         "SCORE_TABLE_INVALID": "The score table is not valid (one cell per statement, never decreasing, last cell equal to the question points).",
+        "STATEMENT_POINTS_MISMATCH": "The statement points do not add up to the question points.",
+        "BLANK_MARKER_MISMATCH": "The blank markers in the passage do not match the list of blanks: each marker needs exactly one blank and the other way round.",
+        "PAIR_INVALID": "A pair points to a missing item, a left item is matched twice, or a choice is reused although each choice may be used only once.",
+        "PAIR_POINTS_MISMATCH": "The pair points do not add up to the question points.",
         "NO_GRADING_GUIDE": "The essay question has no grading guide.",
         "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points."
       },

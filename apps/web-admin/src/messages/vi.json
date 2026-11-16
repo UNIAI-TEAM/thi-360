@@ -2787,6 +2787,10 @@
         "NESTED_SET": "Bộ câu hỏi không được chứa Bộ câu hỏi hoặc Điền khuyết.",
         "CRITERION_EMPTY": "Tiêu chí chấm {position, number} chưa có mô tả.",
         "SCORE_TABLE_INVALID": "Bảng điểm theo số ý đúng chưa hợp lệ (đủ số ý, không giảm, ô cuối bằng điểm của câu).",
+        "STATEMENT_POINTS_MISMATCH": "Tổng điểm các ý chưa bằng điểm của câu.",
+        "BLANK_MARKER_MISMATCH": "Các dấu ô trống trong ngữ liệu chưa khớp danh sách ô: mỗi dấu cần đúng một ô và ngược lại.",
+        "PAIR_INVALID": "Có cặp ghép trỏ tới mục không có, mục bên trái ghép hai lần, hoặc một lựa chọn bị dùng lại khi chỉ được dùng một lần.",
+        "PAIR_POINTS_MISMATCH": "Tổng điểm các cặp ghép chưa bằng điểm của câu.",
         "NO_GRADING_GUIDE": "Câu tự luận chưa có hướng dẫn chấm.",
         "RUBRIC_TOTAL_MISMATCH": "Tổng điểm tiêu chí chấm chưa bằng điểm của câu."
       },

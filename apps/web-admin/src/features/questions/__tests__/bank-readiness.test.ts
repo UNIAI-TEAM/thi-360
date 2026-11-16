@@ -127,4 +127,62 @@ describe("evaluateReadiness (UniNote PBI-03 muc 7.2)", () => {
   it("lien ket sua tro toi khoi tuong ung tren trang soan", () => {
     expect(readinessFixHref("q-0001", "knowledge")).toBe("/questions/q-0001/edit#question-knowledge");
   });
+
+  it("Đúng/Sai cộng điểm từng ý: tổng điểm các ý phải bằng điểm của câu, không đòi bảng điểm", () => {
+    const question = sample("TRUE_FALSE");
+    question.points = 1;
+    question.body = {
+      type: "TRUE_FALSE",
+      scoringMethod: "PER_STATEMENT",
+      scoreTable: [],
+      statements: [
+        { id: "s1", content: "a", answer: true, points: 0.5 },
+        { id: "s2", content: "b", answer: false, points: 0.5 },
+      ],
+    };
+    expect(failed(question)).toEqual([]);
+    question.body.statements[1]!.points = 0.25;
+    expect(evaluateReadiness(question, { reference }).rules[1]!.issues.map((issue) => issue.code)).toEqual([
+      "STATEMENT_POINTS_MISMATCH",
+    ]);
+  });
+
+  it("Điền khuyết: mỗi dấu [[id]] có đúng một ô và ngược lại", () => {
+    const question = sample("SHORT_ANSWER");
+    question.type = "CLOZE";
+    question.content = "";
+    question.points = 2;
+    question.body = {
+      type: "CLOZE",
+      passage: "A [[b1]] B [[b2]]",
+      blanks: [
+        { id: "b1", answers: ["x"], points: 1 },
+        { id: "b2", answers: ["y"], points: 1 },
+      ],
+    };
+    question.content = "A [[b1]] B [[b2]]";
+    const codesOf = () => evaluateReadiness(question, { reference }).rules[1]!.issues.map((issue) => issue.code);
+    expect(codesOf()).toEqual([]);
+    question.body.passage = "A [[b1]] B [[b2]] C [[b3]]";
+    expect(codesOf()).toEqual(["BLANK_MARKER_MISMATCH"]);
+    question.body.passage = "A [[b1]] B [[b1]]";
+    expect(codesOf()).toEqual(["BLANK_MARKER_MISMATCH"]);
+  });
+
+  it("Ghép đôi: cặp trỏ tới mục có thật, lựa chọn dùng một lần khi reuseRight = false, tổng điểm cặp bằng điểm câu", () => {
+    const question = sample("MATCHING");
+    const codesOf = () => evaluateReadiness(question, { reference }).rules[1]!.issues.map((issue) => issue.code);
+    expect(codesOf()).toEqual([]);
+    if (question.body.type !== "MATCHING") throw new Error("not matching");
+    const body = question.body;
+    body.pairs[1]!.rightId = body.pairs[0]!.rightId;
+    expect(codesOf()).toEqual(["PAIR_INVALID"]);
+    body.reuseRight = true;
+    expect(codesOf()).toEqual([]);
+    body.pairs[2]!.rightId = "missing";
+    expect(codesOf()).toEqual(["PAIR_INVALID"]);
+    body.pairs[2]!.rightId = body.pairs[0]!.rightId;
+    body.pairs[2]!.points = 0.1;
+    expect(codesOf()).toEqual(["PAIR_POINTS_MISMATCH"]);
+  });
 });
