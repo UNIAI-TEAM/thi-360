@@ -38,6 +38,14 @@ class QuotaApportionerTest {
     }
 
     @Test
+    @DisplayName("R2-1: hòa phần dư 0,3 không biểu diễn chính xác nhị phân → theo thứ tự khai báo")
+    void nonBinaryExactTieBreaksByDeclarationOrder() {
+        // 3%, 13%, 23% × 10 câu đều cho phần dư lý thuyết 0,3 — ba số khác biểu diễn nhị phân
+        assertThat(apportioner.apportion(percents(3, 13, 23, 61), 10))
+                .containsExactly(1, 1, 2, 6);
+    }
+
+    @Test
     @DisplayName("chia đều 50 câu cho 3 môn: 17-17-16 (HSA Khoa học)")
     void splitFiftyThreeWays() {
         // splitEvenly(50, 3) của web = apportionByPercent([100/3]*3, 50)
