@@ -2,6 +2,7 @@ package vn.unicom.thi360.questionbank.application;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -12,7 +13,7 @@ import vn.unicom.thi360.questionbank.infrastructure.QuestionImportUpload;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionImportUploadRepository;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 
-/** Removes expired uncommitted uploads without racing a commit holding the upload row lock. */
+/** Removes expired uploads without racing a commit holding the upload row lock. */
 @Component
 @ConditionalOnProperty(name = "thi360.questionbank.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class QuestionImportCleanupJob {
@@ -33,10 +34,11 @@ public class QuestionImportCleanupJob {
     @Scheduled(fixedDelayString = "${thi360.questionbank.import.cleanup-delay:PT1H}")
     public void cleanup() {
         Instant now = clock.instant();
-        var candidates = uploads.findByStatusAndExpiresAtBefore(QuestionImportUpload.Status.UPLOADED, now);
+        var candidates = uploads.findByStatusInAndExpiresAtBefore(
+                List.of(QuestionImportUpload.Status.UPLOADED, QuestionImportUpload.Status.COMMITTED), now);
         for (var candidate : candidates) {
             String key = transactions.execute(status -> uploads.findByIdForUpdate(candidate.getId())
-                    .filter(row -> row.getStatus() == QuestionImportUpload.Status.UPLOADED
+                    .filter(row -> row.getStatus() != QuestionImportUpload.Status.COMMITTING
                             && !row.getExpiresAt().isAfter(now))
                     .map(row -> {
                         uploads.delete(row);

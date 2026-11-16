@@ -2,6 +2,7 @@ package vn.unicom.thi360.questionbank.infrastructure;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,7 +21,7 @@ public interface QuestionImportUploadRepository extends JpaRepository<QuestionIm
     @Query("select u from QuestionImportUpload u where u.id = :id")
     Optional<QuestionImportUpload> findByIdForUpdate(@Param("id") UUID id);
 
-    /** Các tệp còn chờ nhập đã quá hạn (job dọn định kỳ). */
-    List<QuestionImportUpload> findByStatusAndExpiresAtBefore(
-            QuestionImportUpload.Status status, Instant expiredBefore);
+    /** Tệp hết hạn ở trạng thái không còn được commit. */
+    List<QuestionImportUpload> findByStatusInAndExpiresAtBefore(
+            Collection<QuestionImportUpload.Status> statuses, Instant expiredBefore);
 }

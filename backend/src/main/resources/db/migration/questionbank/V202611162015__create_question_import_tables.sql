@@ -2,7 +2,7 @@
 -- `question_import` = lịch sử nhập (một dòng mỗi lần commit thành công, kiểu ImportHistoryEntry);
 -- `question_import_upload` = tệp tải lên chờ nhập, giữ 24 h, trạng thái
 -- UPLOADED -> COMMITTING -> COMMITTED (spec 4.5). Tệp trên MinIO bị xóa sau khi commit;
--- dòng upload giữ lại để replay và truy vết.
+-- dòng upload giữ lại tới khi hết hạn.
 
 CREATE TABLE questionbank.question_import (
     id uuid PRIMARY KEY,
@@ -42,7 +42,6 @@ CREATE TABLE questionbank.question_import_upload (
     committed_at timestamptz
 );
 
--- Job dọn tệp hết hạn: chỉ quét các dòng còn chờ nhập (COMMITTING quá hạn tồn tại duy nhất
--- trong một transaction commit đang chạy; COMMITTED giữ lại để truy vết).
+-- Job dọn tệp hết hạn bỏ qua các dòng COMMITTING đang được khóa bởi transaction commit.
 CREATE INDEX idx_question_import_upload_cleanup
-    ON questionbank.question_import_upload (expires_at) WHERE status = 'UPLOADED';
+    ON questionbank.question_import_upload (expires_at);

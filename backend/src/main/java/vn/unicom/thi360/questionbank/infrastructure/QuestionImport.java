@@ -51,7 +51,7 @@ public class QuestionImport {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
-    private List<ImportErrorLine> errors = List.of();
+    private List<QuestionImportErrorLine> errors = List.of();
 
     @Column(name = "duration_ms", nullable = false)
     private long durationMs;
@@ -75,7 +75,7 @@ public class QuestionImport {
             int newVersionCount,
             int errorRowCount,
             int missingKnowledgeCount,
-            List<ImportErrorLine> errors,
+            List<QuestionImportErrorLine> errors,
             long durationMs,
             UUID importedBy,
             Instant importedAt) {
@@ -105,7 +105,7 @@ public class QuestionImport {
     public int getNewVersionCount() { return newVersionCount; }
     public int getErrorRowCount() { return errorRowCount; }
     public int getMissingKnowledgeCount() { return missingKnowledgeCount; }
-    public List<ImportErrorLine> getErrors() { return errors; }
+    public List<QuestionImportErrorLine> getErrors() { return errors; }
     public long getDurationMs() { return durationMs; }
     public UUID getImportedBy() { return importedBy; }
     public Instant getImportedAt() { return importedAt; }
