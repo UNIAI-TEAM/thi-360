@@ -301,6 +301,58 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void duplicateSetProjectsEveryChildBeforeAndAfterReady() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        request.putArray("knowledge").addObject().put("nodeId", QuestionTestSupport.KNOWLEDGE_LEAF_ID.toString())
+                .put("primary", true);
+        var child = (com.fasterxml.jackson.databind.node.ObjectNode) request.at("/body/children/0");
+        child.put("gradeItemId", QuestionTestSupport.GRADE_G10_ID.toString());
+        child.put("levelItemId", "00000000-0000-7000-8200-000000000401");
+        var source = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        UUID sourceId = UUID.fromString(read(source).at("/summary/id").asText());
+        var copied = mockMvc.perform(post(BASE + "/{id}/duplicate", sourceId)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isCreated()).andReturn();
+        UUID copyId = UUID.fromString(read(copied).at("/summary/id").asText());
+        String fields = "position, subject_item_id, grade_item_id, level_item_id, points,"
+                + " content_text, has_solution";
+        var expected = jdbcTemplate.queryForList("SELECT " + fields
+                + " FROM questionbank.question WHERE parent_id = ? ORDER BY position", sourceId);
+        org.assertj.core.api.Assertions.assertThat(expected).hasSize(2);
+        assertCopiedChildren(copyId, fields, expected, "DRAFT", null);
+        mockMvc.perform(post(BASE + "/{id}/ready", copyId).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(copyId) + "}"))
+                .andExpect(status().isOk());
+        assertCopiedChildren(copyId, fields, expected, "READY", 1);
+    }
+
+    private void assertCopiedChildren(UUID parent, String fields,
+            java.util.List<java.util.Map<String, Object>> expected, String status, Integer currentVersion) {
+        var rows = jdbcTemplate.queryForList("SELECT " + fields
+                + " FROM questionbank.question WHERE parent_id = ? ORDER BY position", parent);
+        org.assertj.core.api.Assertions.assertThat(rows).isEqualTo(expected);
+        var states = jdbcTemplate.queryForList("SELECT status, current_version_no, working_version_no, search_text"
+                + " FROM questionbank.question WHERE parent_id = ? ORDER BY position", parent);
+        org.assertj.core.api.Assertions.assertThat(states).hasSize(2);
+        for (var state : states) {
+            org.assertj.core.api.Assertions.assertThat(state).containsEntry("status", status)
+                    .containsEntry("current_version_no", currentVersion).containsEntry("working_version_no", null);
+            org.assertj.core.api.Assertions.assertThat(state.get("search_text").toString()).contains("cau con");
+        }
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM questionbank.question_knowledge k JOIN questionbank.question q"
+                        + " ON q.id = k.question_id WHERE q.parent_id = ? AND k.knowledge_item_id = ?",
+                Integer.class, parent, QuestionTestSupport.KNOWLEDGE_LEAF_ID)).isEqualTo(2);
+    }
+
+    @Test
     void restoreVersionOverwritesWorkingContent() throws Exception {
         UUID id = createQuestion();
         long revision = currentRevision(id);

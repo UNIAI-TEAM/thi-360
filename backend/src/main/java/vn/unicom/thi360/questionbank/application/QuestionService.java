@@ -523,6 +523,7 @@ public class QuestionService {
                         copy.getId(), i, now, actorId);
                 QuestionSnapshot childSnapshot = childSnapshot(
                         child, copySnapshot, copy.getPoints());
+                applyChildRow(row, child, childSnapshot, 1, copySnapshot.subjectItemId(), now, actorId);
                 persistChild(row, childSnapshot, 1, now, actorId);
             }
         }
