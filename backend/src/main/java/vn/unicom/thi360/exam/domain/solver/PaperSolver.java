@@ -97,11 +97,12 @@ public final class PaperSolver {
         Runnable check = deadlineCheck(deadline);
         long[] solved = {0};
         long[] memoHit = {0};
+        long weighted = 0;
         try {
             check.run();
             validateChoiceSubjectLimits(parts);
             PathEnumerator enumerator = new PathEnumerator(parts, allocator, check);
-            long weighted = enumerator.total();
+            weighted = enumerator.total();
             long combos = enumerator.combos();
             if (combos == 0) {
                 return new SolveOutcome(SolveStatus.INVALID, null, List.of(),
@@ -123,13 +124,10 @@ public final class PaperSolver {
                     new SolveStats(weighted, solved[0], memoHit[0]));
         } catch (DeadlineHit e) {
             return new SolveOutcome(SolveStatus.UNCONFIRMED, SolveReason.DEADLINE_EXCEEDED,
-                    List.of(), new SolveStats(0, solved[0], memoHit[0]));
+                    List.of(), new SolveStats(weighted, solved[0], memoHit[0]));
         } catch (ChoiceLimitHit e) {
             return new SolveOutcome(SolveStatus.INVALID,
                     SolveReason.CHOICE_SUBJECT_LIMIT_EXCEEDED, List.of(), SolveStats.EMPTY);
-        } catch (DuplicateGroupHit e) {
-            return new SolveOutcome(SolveStatus.INVALID, SolveReason.DUPLICATE_GROUP_ID,
-                    List.of(), SolveStats.EMPTY);
         }
     }
 
@@ -148,10 +146,9 @@ public final class PaperSolver {
                     new long[1], new long[1]);
         } catch (DeadlineHit e) {
             return PathResult.unconfirmed(path, SolveReason.DEADLINE_EXCEEDED, null, null);
-        } catch (DuplicateGroupHit e) {
-            return PathResult.invalid(path, SolveReason.DUPLICATE_GROUP_ID, null, e.getMessage());
         }
     }
+
     /**
      * Chế độ xem trước: giải đúng một cách chọn môn của một {@link SubjectChoice} — các môn trong
      * {@code subjectCodes} (tập con đúng {@code choice.choose} môn, số câu gán theo
@@ -358,28 +355,6 @@ public final class PaperSolver {
             pools.add(raw);
         }
         return pools;
-    }
-    /**
-     * Hai nhóm trên đường trùng groupId → lỗi cấu hình (R1-3). Nhóm của một môn SUBJECT_CHOICE chỉ
-     * nằm trên đường khi môn đó được chọn: kiểm trên {@code sections} cố định + môn chung + các
-     * môn đã quyết của mọi cách chọn môn (môn không được chọn trong cách nào thì không nằm trên
-     * đường).
-     */
-    private void validateDistinctGroups(SolvePath path) {
-        Set<String> seen = new HashSet<>();
-        List<SectionOnPath> all = new ArrayList<>(path.sections());
-        for (List<SubjectPick> picks : path.picks()) {
-            for (SubjectPick p : picks) {
-                all.addAll(p.resolvedSections());
-            }
-        }
-        for (SectionOnPath s : all) {
-            for (GroupQuota g : s.groups()) {
-                if (!seen.add(g.groupId())) {
-                    throw new DuplicateGroupHit(g.groupId());
-                }
-            }
-        }
     }
 
     /** Phương án SUBJECT_CHOICE có nhiều hơn {@code maxChoiceSubjects} môn → ném lỗi nghiệp vụ. */
