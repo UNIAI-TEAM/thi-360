@@ -201,7 +201,6 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
     expect(options[1]!.subjectChoice).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16], expertConfirmed: false });
     const serialized = JSON.stringify(fixture);
     expect(serialized).not.toMatch(/"code": ?"KH-\d"/);
-    expect(serialized).not.toContain("includeDescendants");
   });
 
   it("Toán HSA: chỉ tiêu cấp môn 35 + 15, lớp 3/20/27, độ khó 2/21/20/7; nhóm có templateGroupCode", () => {

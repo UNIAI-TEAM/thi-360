@@ -264,7 +264,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     const firstNumber = number;
     const pool = shuffle(candidates(block, section), random).filter((question) => !used.has(question.id));
     const items: PreviewItem[] = [];
-    const useQuota = (type: QuestionType) => quotas.set(type, (quotas.get(type) ?? 0) - 1);
+    const spendQuota = (type: QuestionType) => quotas.set(type, (quotas.get(type) ?? 0) - 1);
 
     if (isSetBlock(block)) {
       hasSet = true;
@@ -293,7 +293,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       for (const set of shuffle(sets, random)) {
         if (set) {
           take(set.id);
-          for (const child of set.children) useQuota(child.type);
+          for (const child of set.children) spendQuota(child.type);
           items.push({
             kind: "SET",
             setId: set.id,
@@ -316,7 +316,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
             passage: null,
             children: slots.splice(0, setSize).map((slot) => {
               const type = block.childAnswerType ?? nextQuotaType(quotas) ?? "SINGLE_CHOICE";
-              useQuota(type);
+              spendQuota(type);
               return simulated(slot, block, section, type);
             }),
           });
@@ -341,7 +341,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       }
       for (const entry of shuffle(chosen, random)) {
         const type = entry.question?.type ?? block.questionType ?? nextQuotaType(quotas) ?? "SINGLE_CHOICE";
-        useQuota(type);
+        spendQuota(type);
         const question = entry.question ? fromStore(entry.question, block) : simulated(entry.slot, block, section, type);
         items.push({ kind: "QUESTION", question });
       }
