@@ -150,4 +150,49 @@ class SolverLimitDeadlineRegressionTest {
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
         assertThat(calls.get()).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("R3-1: môn đầu vượt giới hạn ứng viên, môn sau không có nguồn → INVALID thắng")
+    void candidateLimitDoesNotMaskLaterInvalid() {
+        // môn A có 3 ứng viên > giới hạn 2 (UNCONFIRMED); môn B không có nguồn (INVALID) —
+        // INVALID đã chứng minh phải thắng bất kể thứ tự section trên đường
+        SectionOnPath secA = SolverTestFixtures.section("AAA", 1, GroupQuota.single("ga", 1));
+        SectionOnPath secB = SolverTestFixtures.section("BBB", 1, GroupQuota.single("gb", 1));
+        PaperSolver solver = new PaperSolver(
+                new SolverLimits(200, 2, Duration.ofSeconds(30), 8), Clock.systemUTC());
+        CandidateSource source = g -> g.groupId().equals("ga")
+                ? List.of(cand("q1"), cand("q2"), cand("q3"))
+                : List.of();
+
+        PathResult limitFirst = solver.solvePath(
+                SolverTestFixtures.path(secA, secB), source, SolveMode.check());
+        assertThat(limitFirst.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(limitFirst.reason()).isEqualTo(SolveReason.INSUFFICIENT_SOURCE);
+        assertThat(limitFirst.subjectCode()).isEqualTo("BBB");
+
+        PathResult emptyFirst = solver.solvePath(
+                SolverTestFixtures.path(secB, secA), source, SolveMode.check());
+        assertThat(emptyFirst.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(emptyFirst.reason()).isEqualTo(SolveReason.INSUFFICIENT_SOURCE);
+        assertThat(emptyFirst.subjectCode()).isEqualTo("BBB");
+    }
+
+    @Test
+    @DisplayName("R3-1: giới hạn ứng viên khi môn còn lại khả thi → vẫn UNCONFIRMED")
+    void candidateLimitStaysUnconfirmedWhenRestFeasible() {
+        SectionOnPath secA = SolverTestFixtures.section("AAA", 1, GroupQuota.single("ga", 1));
+        SectionOnPath secB = SolverTestFixtures.section("BBB", 1, GroupQuota.single("gb", 1));
+        PaperSolver solver = new PaperSolver(
+                new SolverLimits(200, 2, Duration.ofSeconds(30), 8), Clock.systemUTC());
+        CandidateSource source = g -> g.groupId().equals("ga")
+                ? List.of(cand("q1"), cand("q2"), cand("q3"))
+                : List.of(cand("qb"));
+
+        PathResult result = solver.solvePath(
+                SolverTestFixtures.path(secA, secB), source, SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
+        assertThat(result.reason()).isEqualTo(SolveReason.CANDIDATE_LIMIT_EXCEEDED);
+        assertThat(result.subjectCode()).isEqualTo("AAA");
+        assertThat(result.groupId()).isEqualTo("ga");
+    }
 }

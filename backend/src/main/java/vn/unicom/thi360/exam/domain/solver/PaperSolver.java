@@ -351,6 +351,11 @@ public final class PaperSolver {
         Random rng = (mode instanceof SolveMode.Generate g) ? new Random(g.seed()) : null;
         SubproblemSolver solver = new SubproblemSolver(check);
         List<SubjectWitness> witnesses = new ArrayList<>(bySubject.size());
+        // R3-1: bài toán con UNCONFIRMED (giới hạn ứng viên) không được che INVALID đã chứng minh
+        // của môn sau: vẫn kiểm các bài toán con độc lập còn lại, giữ chẩn đoán không chắc đầu tiên
+        SolveReason unconfirmedReason = null;
+        String unconfirmedSubject = null;
+        String unconfirmedGroup = null;
         for (Map.Entry<String, List<SectionOnPath>> e : bySubject.entrySet()) {
             check.run();
             List<SectionOnPath> sub = e.getValue();
@@ -377,15 +382,22 @@ public final class PaperSolver {
                 }
                 memo.put(key, outcome);
             }
-            if (outcome.status() != SolveStatus.VALID) {
-                if (outcome.status() == SolveStatus.INVALID) {
-                    return PathResult.invalid(path, outcome.reason(), e.getKey(),
-                            outcome.groupId(), outcome.failingQuota());
-                }
-                return PathResult.unconfirmed(path, outcome.reason(), e.getKey(),
-                        outcome.groupId());
+            if (outcome.status() == SolveStatus.INVALID) {
+                return PathResult.invalid(path, outcome.reason(), e.getKey(),
+                        outcome.groupId(), outcome.failingQuota());
             }
-            witnesses.add(new SubjectWitness(e.getKey(), count, outcome.witness()));
+            if (outcome.status() == SolveStatus.UNCONFIRMED && unconfirmedReason == null) {
+                unconfirmedReason = outcome.reason();
+                unconfirmedSubject = e.getKey();
+                unconfirmedGroup = outcome.groupId();
+            }
+            if (outcome.status() == SolveStatus.VALID) {
+                witnesses.add(new SubjectWitness(e.getKey(), count, outcome.witness()));
+            }
+        }
+        if (unconfirmedReason != null) {
+            return PathResult.unconfirmed(path, unconfirmedReason, unconfirmedSubject,
+                    unconfirmedGroup);
         }
         return PathResult.valid(path, witnesses);
     }
