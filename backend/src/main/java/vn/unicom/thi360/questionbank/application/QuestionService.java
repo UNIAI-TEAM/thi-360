@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank.application;
 
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,7 +30,7 @@ import vn.unicom.thi360.questionbank.domain.Question;
 import vn.unicom.thi360.questionbank.domain.QuestionBody;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator;
 import vn.unicom.thi360.questionbank.domain.QuestionFieldError;
-import vn.unicom.thi360.questionbank.domain.QuestionHtmlSanitizer;
+import vn.unicom.thi360.questionbank.spi.HtmlContentSanitizer;
 import vn.unicom.thi360.questionbank.domain.QuestionInput;
 import vn.unicom.thi360.questionbank.domain.QuestionKnowledge;
 import vn.unicom.thi360.questionbank.domain.QuestionSearchNormalizer;
@@ -92,7 +93,7 @@ public class QuestionService {
     private final QuestionTagRepository tagRepository;
     private final QuestionUsageLedgerRepository ledgerRepository;
     private final QuestionSupportDao supportDao;
-    private final QuestionHtmlSanitizer sanitizer;
+    private final HtmlContentSanitizer sanitizer;
     private final QuestionAssetResolver assetResolver;
     private final CatalogLookup catalogLookup;
     private final AuditRecorder auditRecorder;
@@ -101,6 +102,7 @@ public class QuestionService {
     private final QuestionUsageProvider usageProvider;
     private final QuestionMapper mapper;
     private final AppMessages messages;
+    private final EntityManager entityManager;
 
     public QuestionService(
             QuestionRepository questionRepository,
@@ -109,7 +111,7 @@ public class QuestionService {
             QuestionTagRepository tagRepository,
             QuestionUsageLedgerRepository ledgerRepository,
             QuestionSupportDao supportDao,
-            QuestionHtmlSanitizer sanitizer,
+            HtmlContentSanitizer sanitizer,
             QuestionAssetResolver assetResolver,
             CatalogLookup catalogLookup,
             AuditRecorder auditRecorder,
@@ -117,7 +119,8 @@ public class QuestionService {
             IdempotentCommand idempotentCommand,
             QuestionUsageProvider usageProvider,
             QuestionMapper mapper,
-            AppMessages messages) {
+            AppMessages messages,
+            EntityManager entityManager) {
         this.questionRepository = questionRepository;
         this.versionRepository = versionRepository;
         this.knowledgeRepository = knowledgeRepository;
@@ -133,6 +136,7 @@ public class QuestionService {
         this.usageProvider = usageProvider;
         this.mapper = mapper;
         this.messages = messages;
+        this.entityManager = entityManager;
     }
 
     // ---------------------------------------------------------------- tạo / sửa
@@ -156,9 +160,11 @@ public class QuestionService {
                 UUID.randomUUID(), supportDao.nextQuestionCode(),
                 request.type(), null, null, now, actorId);
         Map<String, Object> before = Map.of();
+        questionRepository.save(question); // dòng cha phải tồn tại trước khi ghi phiên bản (FK)
         applySave(question, request, now, actorId);
         questionRepository.save(question);
         audit("QUESTION.CREATE", question, before, auditState(question));
+        entityManager.flush();
         return mapper.toDetail(question, mapper.batch());
     }
 
@@ -177,6 +183,7 @@ public class QuestionService {
         }
         boolean versionCreated = applySave(question, toSaveRequest(request), Instant.now(), actorId);
         audit("QUESTION.UPDATE", question, before, auditState(question));
+        entityManager.flush();
         return new UpdateQuestionResponse(mapper.toDetail(question, mapper.batch()), versionCreated);
     }
 
@@ -301,6 +308,7 @@ public class QuestionService {
         questionRepository.save(question);
         supportDao.bumpSourceRevision(question.getSubjectItemId());
         audit("QUESTION.READY", question, null, auditState(question));
+        entityManager.flush();
         return mapper.toSummary(question, working, mapper.batch());
     }
 
@@ -330,6 +338,7 @@ public class QuestionService {
         questionRepository.save(question);
         supportDao.bumpSourceRevision(question.getSubjectItemId());
         audit("QUESTION.RETIRE", question, null, auditState(question));
+        entityManager.flush();
         return mapper.toSummary(question, mapper.displayedVersion(question), mapper.batch());
     }
 
@@ -412,6 +421,7 @@ public class QuestionService {
             supportDao.bumpSourceRevision(question.getSubjectItemId());
             audit(target == QuestionStatus.READY ? "QUESTION.READY" : "QUESTION.RETIRE",
                     question, null, auditState(question));
+            entityManager.flush();
             updated.add(mapper.toSummary(question, mapper.displayedVersion(question), mapper.batch()));
         }
         return new BulkQuestionStatusResult(updated, skipped);
@@ -497,6 +507,7 @@ public class QuestionService {
             }
         }
         audit("QUESTION.DUPLICATE", copy, null, auditState(copy));
+        entityManager.flush();
         return mapper.toDetail(copy, mapper.batch());
     }
 
@@ -591,6 +602,7 @@ public class QuestionService {
         }
         questionRepository.save(question);
         audit("QUESTION.RESTORE", question, before, auditState(question));
+        entityManager.flush();
         return new UpdateQuestionResponse(mapper.toDetail(question, mapper.batch()), versionCreated);
     }
 
@@ -671,8 +683,8 @@ public class QuestionService {
 
             applyChildRow(row, child, childSnapshot, isNew ? 1 : targetVersion,
                     parentClassification.subjectItemId(), now, actorId);
-            upsertVersion(childId, isNew ? 1 : targetVersion, childSnapshot, actorId, now);
             questionRepository.save(row);
+            upsertVersion(childId, isNew ? 1 : targetVersion, childSnapshot, actorId, now);
             knowledgeRepository.deleteByQuestionId(childId);
             saveKnowledgeIds(childId, effectiveKnowledge);
             persisted.add(new ChildPersisted(row, childSnapshot));
@@ -747,8 +759,8 @@ public class QuestionService {
                             child.points(), gradeOverride, levelOverride, knowledgeOverride, childId),
                     childSnapshot, isNew ? 1 : targetVersion,
                     parentSnapshot.subjectItemId(), now, actorId);
-            upsertVersion(childId, isNew ? 1 : targetVersion, childSnapshot, actorId, now);
             questionRepository.save(row);
+            upsertVersion(childId, isNew ? 1 : targetVersion, childSnapshot, actorId, now);
             knowledgeRepository.deleteByQuestionId(childId);
             saveKnowledgeIds(childId, effectiveKnowledge);
         }
@@ -834,8 +846,9 @@ public class QuestionService {
         if (html == null) {
             return null;
         }
-        QuestionHtmlSanitizer.Result result = sanitizer.clean(html);
-        for (QuestionHtmlSanitizer.Violation v : result.violations()) {
+        HtmlContentSanitizer.Result result =
+                sanitizer.sanitize(html, HtmlContentSanitizer.Options.withImages());
+        for (HtmlContentSanitizer.Violation v : result.violations()) {
             errors.add(new FieldError(path, ERR_UNSAFE, translated(ERR_UNSAFE) + " — " + describe(v)));
         }
         return result.html();
@@ -941,7 +954,7 @@ public class QuestionService {
         return cleaned;
     }
 
-    private static String describe(QuestionHtmlSanitizer.Violation v) {
+    private static String describe(HtmlContentSanitizer.Violation v) {
         if (v.attribute() == null) {
             return "removed tag <" + v.tag() + ">";
         }
