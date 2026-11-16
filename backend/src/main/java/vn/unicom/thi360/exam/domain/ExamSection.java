@@ -12,6 +12,7 @@ public record ExamSection(
         AnswerQuotas answerQuotas,
         BlockMatrix matrix,
         GroupOrder groupOrder,
+        ChoiceGroup choiceGroup,
         List<QuestionBlock> blocks) {
     public ExamSection {
         blocks = blocks == null ? List.of() : List.copyOf(blocks);

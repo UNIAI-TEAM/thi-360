@@ -11,7 +11,6 @@ public record ExamPartOption(
         String name,
         Integer chooseSubjects,
         List<Integer> countsByPick,
-        Boolean expertConfirmed,
         List<ExamSection> sections,
         List<QuestionBlock> blocks) {
     public ExamPartOption {
