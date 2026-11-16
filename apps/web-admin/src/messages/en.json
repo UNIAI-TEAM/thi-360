@@ -3134,6 +3134,17 @@
       "errorTitle": "Could not load where this question is used",
       "errorDescription": "Try again in a moment.",
       "retry": "Try again"
+    },
+    "assets": {
+      "errors": {
+        "imageTooLarge": "The image is larger than 5 MB.",
+        "attachmentTooLarge": "The file is larger than 20 MB.",
+        "imageTypeNotAllowed": "Only PNG, JPEG or WebP images are accepted.",
+        "attachmentTypeNotAllowed": "This file type is not accepted.",
+        "rateLimited": "You uploaded too many files in a short time (up to 60 files per 10 minutes). Try again later.",
+        "forbidden": "You do not have permission to upload files for questions.",
+        "uploadFailed": "The file could not be uploaded. Try again."
+      }
     }
   },
   "questionImport": {
@@ -3247,7 +3258,8 @@
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
         "setCode": "A Question set row and its child questions share the same set code."
       },
-      "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2."
+      "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2.",
+      "colFileHeader": "Header in file"
     },
     "fileErrors": {
       "IMPORT_INVALID_FILE": "Only .xlsx or .csv files are accepted.",
@@ -3255,7 +3267,8 @@
       "IMPORT_EMPTY_FILE": "The file has no data rows.",
       "IMPORT_FILE_TOO_LARGE": "The file is larger than 5 MB.",
       "IMPORT_ROW_LIMIT_EXCEEDED": "The file has more than 2,000 data rows. Split it into several files.",
-      "IMPORT_INVALID_HEADER": "The first row of the file must hold the column names."
+      "IMPORT_INVALID_HEADER": "The first row of the file must hold the column names.",
+      "IMPORT_FORMULA_NOT_ALLOWED": "The file contains Excel formula cells. Convert them to values and choose the file again."
     },
     "mapping": {
       "heading": "Map columns",
@@ -3514,6 +3527,54 @@
       "ENTRY_DUPLICATE": {
         "message": "“{value}” is repeated in the {column} column",
         "fix": "Write each label or blank code once per column; delete the repeated line or change the label."
+      },
+      "OPTIONS_MISSING": {
+        "message": "No option has any content",
+        "fix": "Fill the Options column, one option per line like “A. text”."
+      },
+      "KNOWLEDGE_AMBIGUOUS": {
+        "message": "Knowledge code {value} matches several nodes in the {subject} knowledge structure",
+        "fix": "Use the full code so it matches exactly one node."
+      },
+      "CELL_SYNTAX": {
+        "message": "The cell in column {column} has invalid syntax",
+        "fix": "Write the cell following the rules of this column in the template columns table."
+      },
+      "CLOZE_MARKER_MISMATCH": {
+        "message": "The blank markers in the content do not match the answers",
+        "fix": "Each [[b1]] marker in the content needs exactly one “b1 = answer” line and the other way round."
+      },
+      "BLANK_UNKNOWN": {
+        "message": "Blank {value} is not in the content",
+        "fix": "Use a blank code that appears in the content, like [[b1]]."
+      },
+      "SET_CHILD_INVALID": {
+        "message": "The set has an invalid child question, so the whole set is not imported",
+        "fix": "Fix the failing child rows that share this set code."
+      },
+      "CHILD_TYPE_NOT_ALLOWED": {
+        "message": "This question type cannot be a child question",
+        "fix": "A child question cannot be a Question set or Fill in the blanks."
+      },
+      "UNSAFE_CONTENT": {
+        "message": "The content in column {column} has elements that are not allowed",
+        "fix": "Remove unusual tags, attributes or links; keep only basic formatting and formulas."
+      },
+      "SAVE_VALIDATION": {
+        "message": "This row failed the checks made when saving",
+        "fix": "Review the content, answers and points of the row; if it still fails, contact support with the row number."
+      },
+      "IMPORT_SOURCE_TYPE_MISMATCH": {
+        "message": "Source code {value} already belongs to a question of another type",
+        "fix": "Change the source code, or use the type of the existing question."
+      },
+      "CHILD_FIELD_IGNORED": {
+        "message": "Column {column} of a child question is ignored",
+        "fix": "Leave this cell empty on child rows; the child follows the set row."
+      },
+      "CHILD_SOURCE_CODE_IGNORED": {
+        "message": "The child question source code is ignored",
+        "fix": "Only the set row carries a source code; leave it empty on child rows."
       }
     },
     "errorReport": {

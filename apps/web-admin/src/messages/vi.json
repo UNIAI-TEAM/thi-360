@@ -3134,6 +3134,17 @@
       "errorTitle": "Không tải được nơi đang dùng",
       "errorDescription": "Thử lại sau giây lát.",
       "retry": "Thử lại"
+    },
+    "assets": {
+      "errors": {
+        "imageTooLarge": "Ảnh lớn hơn 5 MB.",
+        "attachmentTooLarge": "Tệp lớn hơn 20 MB.",
+        "imageTypeNotAllowed": "Chỉ nhận ảnh PNG, JPEG hoặc WebP.",
+        "attachmentTypeNotAllowed": "Loại tệp này không được nhận.",
+        "rateLimited": "Bạn tải lên quá nhiều tệp trong thời gian ngắn (tối đa 60 tệp mỗi 10 phút). Thử lại sau.",
+        "forbidden": "Bạn không có quyền tải tệp lên cho câu hỏi.",
+        "uploadFailed": "Không tải được tệp lên. Hãy thử lại."
+      }
     }
   },
   "questionImport": {
@@ -3247,7 +3258,8 @@
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
         "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm."
       },
-      "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2."
+      "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2.",
+      "colFileHeader": "Tên cột trong tệp"
     },
     "fileErrors": {
       "IMPORT_INVALID_FILE": "Chỉ nhận tệp .xlsx hoặc .csv.",
@@ -3255,7 +3267,8 @@
       "IMPORT_EMPTY_FILE": "Tệp không có dòng dữ liệu nào.",
       "IMPORT_FILE_TOO_LARGE": "Tệp lớn hơn 5 MB.",
       "IMPORT_ROW_LIMIT_EXCEEDED": "Tệp có hơn 2.000 dòng dữ liệu. Chia thành nhiều tệp.",
-      "IMPORT_INVALID_HEADER": "Dòng đầu của tệp phải là tên cột."
+      "IMPORT_INVALID_HEADER": "Dòng đầu của tệp phải là tên cột.",
+      "IMPORT_FORMULA_NOT_ALLOWED": "Tệp có ô công thức Excel. Chuyển thành giá trị rồi chọn lại."
     },
     "mapping": {
       "heading": "Ánh xạ cột",
@@ -3514,6 +3527,54 @@
       "ENTRY_DUPLICATE": {
         "message": "“{value}” bị lặp ở cột {column}",
         "fix": "Mỗi nhãn hoặc mã ô chỉ ghi một lần trong cột; xóa dòng lặp hoặc đổi nhãn."
+      },
+      "OPTIONS_MISSING": {
+        "message": "Chưa có phương án nào có nội dung",
+        "fix": "Điền cột Lựa chọn, mỗi dòng một phương án dạng “A. nội dung”."
+      },
+      "KNOWLEDGE_AMBIGUOUS": {
+        "message": "Mã kiến thức {value} khớp nhiều nút trong Cấu trúc kiến thức {subject}",
+        "fix": "Ghi mã đầy đủ để chỉ đúng một nút."
+      },
+      "CELL_SYNTAX": {
+        "message": "Ô ở cột {column} sai cú pháp",
+        "fix": "Viết ô theo quy tắc của cột này trong bảng cột của tệp mẫu."
+      },
+      "CLOZE_MARKER_MISMATCH": {
+        "message": "Dấu ô trống trong nội dung không khớp các đáp án",
+        "fix": "Mỗi dấu [[b1]] trong nội dung cần đúng một dòng “b1 = đáp án” và ngược lại."
+      },
+      "BLANK_UNKNOWN": {
+        "message": "Ô trống {value} không có trong nội dung",
+        "fix": "Dùng mã ô có trong nội dung, dạng [[b1]]."
+      },
+      "SET_CHILD_INVALID": {
+        "message": "Câu chùm có câu con không hợp lệ nên cả chùm không được nhập",
+        "fix": "Sửa các dòng câu con bị lỗi có cùng Mã chùm."
+      },
+      "CHILD_TYPE_NOT_ALLOWED": {
+        "message": "Dạng câu này không dùng được cho câu con",
+        "fix": "Câu con không được là Câu chùm hoặc Điền khuyết."
+      },
+      "UNSAFE_CONTENT": {
+        "message": "Nội dung ở cột {column} có thành phần không được phép",
+        "fix": "Bỏ thẻ, thuộc tính hoặc đường dẫn lạ; chỉ giữ định dạng cơ bản và công thức."
+      },
+      "SAVE_VALIDATION": {
+        "message": "Nội dung dòng này chưa qua kiểm tra khi lưu",
+        "fix": "Xem lại nội dung, đáp án và điểm của dòng; nếu vẫn lỗi, báo hỗ trợ kèm số dòng."
+      },
+      "IMPORT_SOURCE_TYPE_MISMATCH": {
+        "message": "Mã nguồn {value} đã dùng cho câu hỏi khác dạng",
+        "fix": "Đổi Mã nguồn, hoặc dùng đúng dạng câu của câu đã có."
+      },
+      "CHILD_FIELD_IGNORED": {
+        "message": "Cột {column} của câu con được bỏ qua",
+        "fix": "Để trống ô này ở dòng câu con; câu con lấy theo dòng Câu chùm."
+      },
+      "CHILD_SOURCE_CODE_IGNORED": {
+        "message": "Mã nguồn của câu con được bỏ qua",
+        "fix": "Chỉ dòng Câu chùm mang Mã nguồn; để trống ở câu con."
       }
     },
     "errorReport": {
