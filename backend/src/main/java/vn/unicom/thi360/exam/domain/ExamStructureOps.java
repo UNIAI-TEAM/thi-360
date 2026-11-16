@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -99,12 +98,15 @@ public final class ExamStructureOps {
                 b.requiredPointsPerQuestion(), b.shuffle());
     }
 
-    /** Restore template-owned fields from the corresponding server-side template nodes. */
+    /**
+     * Khôi phục các trường thuộc mẫu theo định danh nút: nút giữ được id của bản lưu thì nhận
+     * lại đúng giá trị mẫu của chính nó (bản lưu đã mang nguồn mẫu), kể cả khi anh em bị xóa
+     * hoặc xếp lại thứ tự; nút mới (id không có trong bản lưu) không nhận giá trị mẫu nào khi
+     * đề có mẫu, còn đề không mẫu thì giữ nguyên giá trị client gửi.
+     */
     public static ExamStructureDocument restoreTemplateOwned(ExamStructureDocument incoming,
             ExamStructureDocument stored, ExamStructureDocument templateDoc) {
-        if (templateDoc != null) {
-            return restoreTemplated(incoming, templateDoc);
-        }
+        boolean templateOwned = templateDoc != null;
         Map<String, ExamSection> storedSections = new HashMap<>();
         Map<String, QuestionBlock> storedBlocks = new HashMap<>();
         index(stored, storedSections, storedBlocks);
@@ -118,7 +120,7 @@ public final class ExamStructureOps {
             List<ExamSection> sections = new ArrayList<>();
             for (ExamSection s : part.sections()) {
                 sections.add(s == null ? null
-                        : restoreSection(s, storedSections, storedBlocks));
+                        : restoreSection(s, storedSections, storedBlocks, templateOwned));
             }
             List<ExamPartOption> options = new ArrayList<>();
             for (ExamPartOption o : part.options()) {
@@ -129,11 +131,11 @@ public final class ExamStructureOps {
                 List<ExamSection> oSections = new ArrayList<>();
                 for (ExamSection s : o.sections()) {
                     oSections.add(s == null ? null
-                            : restoreSection(s, storedSections, storedBlocks));
+                            : restoreSection(s, storedSections, storedBlocks, templateOwned));
                 }
                 List<QuestionBlock> oBlocks = new ArrayList<>();
                 for (QuestionBlock b : o.blocks()) {
-                    oBlocks.add(b == null ? null : restoreBlock(b, storedBlocks));
+                    oBlocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateOwned));
                 }
                 options.add(new ExamPartOption(o.id(), o.kind(), o.code(), o.name(),
                         o.chooseSubjects(), o.countsByPick(), oSections, oBlocks));
@@ -189,111 +191,32 @@ public final class ExamStructureOps {
         }
     }
 
-    private static ExamStructureDocument restoreTemplated(ExamStructureDocument incoming,
-            ExamStructureDocument template) {
-        List<ExamPart> parts = new ArrayList<>();
-        for (int i = 0; i < incoming.parts().size(); i++) {
-            ExamPart part = incoming.parts().get(i);
-            if (part == null) {
-                parts.add(null);
-                continue;
-            }
-            ExamPart source = at(template.parts(), i);
-            List<ExamSection> sections = restoreSections(part.sections(),
-                    source == null ? List.of() : source.sections());
-            List<ExamPartOption> options = new ArrayList<>();
-            for (int j = 0; j < part.options().size(); j++) {
-                ExamPartOption option = part.options().get(j);
-                if (option == null) {
-                    options.add(null);
-                    continue;
-                }
-                ExamPartOption match = source == null ? null : at(source.options(), j);
-                if (match != null && (match.kind() != option.kind()
-                        || !Objects.equals(match.code(), option.code()))) {
-                    match = null;
-                }
-                options.add(new ExamPartOption(option.id(), option.kind(), option.code(), option.name(),
-                        option.chooseSubjects(), option.countsByPick(),
-                        restoreSections(option.sections(), match == null ? List.of() : match.sections()),
-                        restoreBlocks(option.blocks(), match == null ? List.of() : match.blocks())));
-            }
-            parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(),
-                    part.questionCount(), part.questionCountOnPaper(), part.questionCountRequired(),
-                    part.participation(), part.maxPoints(), sections, options));
-        }
-        return new ExamStructureDocument(parts);
-    }
-
-    private static List<ExamSection> restoreSections(List<ExamSection> sections,
-            List<ExamSection> templateSections) {
-        List<ExamSection> result = new ArrayList<>();
-        for (int i = 0; i < sections.size(); i++) {
-            ExamSection section = sections.get(i);
-            if (section == null) {
-                result.add(null);
-                continue;
-            }
-            ExamSection source = at(templateSections, i);
-            if (source != null && !Objects.equals(source.subjectCode(), section.subjectCode())) {
-                source = null;
-            }
-            result.add(new ExamSection(section.id(), section.subjectCode(), section.questionCount(),
-                    section.knowledgeScope(), section.answerQuotas(), section.matrix(),
-                    source == null ? null : source.groupOrder(), section.choiceGroup(),
-                    restoreBlocks(section.blocks(), source == null ? List.of() : source.blocks())));
-        }
-        return result;
-    }
-
-    private static List<QuestionBlock> restoreBlocks(List<QuestionBlock> blocks,
-            List<QuestionBlock> templateBlocks) {
-        List<QuestionBlock> result = new ArrayList<>();
-        for (int i = 0; i < blocks.size(); i++) {
-            QuestionBlock block = blocks.get(i);
-            if (block == null) {
-                result.add(null);
-                continue;
-            }
-            QuestionBlock source = at(templateBlocks, i);
-            result.add(new QuestionBlock(block.id(), block.name(), block.questionType(), block.questionCount(),
-                    block.setCount(), block.setSize(), block.knowledgeScope(), block.matrix(),
-                    block.taskTypeCode(), block.childAnswerType(),
-                    source == null ? null : source.templateGroupCode(),
-                    source == null ? false : source.answerTypeLocked(),
-                    block.requiredPointsPerQuestion(), source == null ? null : source.shuffle()));
-        }
-        return result;
-    }
-
-    private static <T> T at(List<T> values, int index) {
-        return index < values.size() ? values.get(index) : null;
-    }
-
-
     private static ExamSection restoreSection(ExamSection s, Map<String, ExamSection> storedSections,
-            Map<String, QuestionBlock> storedBlocks) {
+            Map<String, QuestionBlock> storedBlocks, boolean templateOwned) {
         ExamSection stored = s.id() == null ? null : storedSections.get(s.id());
-        GroupOrder groupOrder = stored != null ? stored.groupOrder() : s.groupOrder();
+        GroupOrder groupOrder = stored != null ? stored.groupOrder()
+                : templateOwned ? null : s.groupOrder();
         List<QuestionBlock> blocks = new ArrayList<>();
         for (QuestionBlock b : s.blocks()) {
-            blocks.add(b == null ? null : restoreBlock(b, storedBlocks));
+            blocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateOwned));
         }
         return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
                 s.answerQuotas(), s.matrix(), groupOrder, s.choiceGroup(), blocks);
     }
 
-    private static QuestionBlock restoreBlock(QuestionBlock b, Map<String, QuestionBlock> storedBlocks) {
+    private static QuestionBlock restoreBlock(QuestionBlock b, Map<String, QuestionBlock> storedBlocks,
+            boolean templateOwned) {
         if (b == null) {
             return null;
         }
         QuestionBlock stored = b.id() == null ? null : storedBlocks.get(b.id());
-        if (stored != null) {
-            return new QuestionBlock(b.id(), b.name(), b.questionType(), b.questionCount(),
-                    b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(), b.taskTypeCode(),
-                    b.childAnswerType(), stored.templateGroupCode(), stored.answerTypeLocked(),
-                    b.requiredPointsPerQuestion(), stored.shuffle());
+        if (stored == null && !templateOwned) {
+            return b;
         }
-        return b;
+        return new QuestionBlock(b.id(), b.name(), b.questionType(), b.questionCount(),
+                b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(), b.taskTypeCode(),
+                b.childAnswerType(), stored == null ? null : stored.templateGroupCode(),
+                stored != null && stored.answerTypeLocked(), b.requiredPointsPerQuestion(),
+                stored == null ? null : stored.shuffle());
     }
 }
