@@ -2253,7 +2253,8 @@
         "moreAria": "Thao tác khác với câu hỏi {code}",
         "moreTooltip": "Thao tác khác",
         "markReady": "Chuyển sang Sẵn sàng",
-        "retire": "Ngừng sử dụng"
+        "retire": "Ngừng sử dụng",
+        "preview": "Xem trước"
       }
     },
     "detail": {
@@ -2270,6 +2271,7 @@
       "tabsLabel": "Thông tin câu hỏi",
       "tabs": {
         "content": "Nội dung",
+        "preview": "Xem trước",
         "usage": "Nơi đang dùng",
         "versions": "Lịch sử phiên bản"
       },
@@ -2329,7 +2331,7 @@
           "ALL_OR_NOTHING": "Đúng hết mới có điểm",
           "PARTIAL": "Chấm từng phần (theo tỉ lệ; chọn sai một phương án thì 0 điểm)"
         },
-        "essayMaxPoints": "Điểm tối đa {points}",
+        "essayMaxPoints": "Điểm tối đa {points, number}",
         "wordLimit": "khoảng {count, number} chữ",
         "rubricTitle": "Tiêu chí chấm",
         "gradingGuideTitle": "Hướng dẫn chấm",
@@ -2377,14 +2379,16 @@
         "fillIn": "Ghi ___ (ba dấu gạch dưới) ở chỗ cần điền, hoặc đặt con trỏ rồi bấm “Thêm ô trống”.",
         "trueFalse": "Phần dùng chung cho mọi ý: dữ kiện, hình vẽ, bảng số liệu.",
         "passage": "Bài đọc, bảng số liệu hoặc hình dùng chung cho mọi câu con.",
-        "essay": "Đề bài và yêu cầu của câu tự luận, ví dụ độ dài bài viết. Học viên viết câu trả lời, người chấm chấm tay theo tiêu chí."
+        "essay": "Đề bài và yêu cầu của câu tự luận, ví dụ độ dài bài viết. Học viên viết câu trả lời, người chấm chấm tay theo tiêu chí.",
+        "matching": "Phần dẫn chung của câu ghép đôi, ví dụ yêu cầu ghép hoặc ngữ cảnh. Các mục và lựa chọn nhập ở phần bên dưới.",
+        "shortAnswer": "Câu hỏi học viên trả lời bằng đáp án cuối cùng, không nhập bài giải. Đáp án chuẩn nhập ở phần bên dưới."
       },
       "bodyTitle": {
         "options": "Phương án",
         "statements": "Các ý",
         "shortAnswer": "Đáp án",
         "blanks": "Đáp án từng ô trống",
-        "dragDrop": "Ô thả và thẻ",
+        "matching": "Các cặp ghép",
         "children": "Câu con",
         "essay": "Hướng dẫn chấm"
       },
@@ -2421,12 +2425,12 @@
         "descriptions": {
           "SINGLE_CHOICE": "Nhiều phương án, chỉ một phương án đúng.",
           "MULTIPLE_CHOICE": "Nhiều phương án, có thể đúng nhiều hơn một.",
-          "TRUE_FALSE": "Một đề bài, mỗi ý chọn Đúng hoặc Sai.",
-          "SHORT_ANSWER": "Học viên gõ một số hoặc một cụm chữ ngắn; khớp đúng với đáp án chuẩn hoặc đáp án được chấp nhận.",
-          "CLOZE": "Một đoạn văn có nhiều chỗ trống, mỗi chỗ trống một đáp án.",
-          "MATCHING": "Học viên ghép mỗi mục bên trái với một lựa chọn bên phải.",
+          "TRUE_FALSE": "Một phần dẫn, mỗi ý chọn Đúng hoặc Sai; chấm cộng điểm từng ý hoặc theo số ý đúng.",
+          "SHORT_ANSWER": "Học viên nhập đáp án cuối cùng; khớp đúng với đáp án chuẩn hoặc đáp án được chấp nhận.",
+          "CLOZE": "Một ngữ liệu có nhiều chỗ trống, mỗi chỗ trống có đáp án và điểm riêng.",
+          "MATCHING": "Học viên ghép mỗi mục ở cột trái với một lựa chọn ở cột phải; hai cột có thể khác số mục.",
           "QUESTION_SET": "Một ngữ liệu chung cho nhiều câu con.",
-          "ESSAY": "Câu trả lời viết, chấm tay theo tiêu chí chấm."
+          "ESSAY": "Câu trả lời viết, chấm tay theo hướng dẫn chấm bắt buộc."
         },
         "cancel": "Hủy",
         "continue": "Tiếp tục"
@@ -2441,6 +2445,7 @@
         "pointsHint": "Mặc định 1, lớn hơn 0.",
         "pointsTotal": "Điểm (tự tính)",
         "pointsTotalHint": "Tổng điểm các câu con.",
+        "pointsTotalClozeHint": "Tổng điểm các ô trống.",
         "knowledge": "Kiến thức",
         "primary": "Chính",
         "noKnowledge": "Chưa chọn kiến thức.",
@@ -2457,7 +2462,10 @@
         "tagRemoved": "Đã bỏ nhãn {name}.",
         "competency": "Năng lực",
         "competencyNone": "Không gắn",
-        "competencyHint": "Dùng cho bài thi chia ma trận theo năng lực (V-ACT). Không bắt buộc."
+        "competencyHint": "Dùng cho bài thi chia ma trận theo năng lực (V-ACT). Không bắt buộc.",
+        "taskType": "Dạng bài",
+        "taskTypeHint": "Chọn khi ma trận đề phân bổ theo dạng bài. Không bắt buộc.",
+        "taskTypeNone": "Không gắn"
       },
       "rows": {
         "moveUp": "Đưa {name} lên",
@@ -2493,7 +2501,21 @@
         "add": "Thêm ý",
         "added": "Đã thêm ý {letter}.",
         "removed": "Đã xóa ý {letter}.",
-        "moved": "Đã chuyển ý {letter} tới vị trí {position}."
+        "moved": "Đã chuyển ý {letter} tới vị trí {position}.",
+        "methodLegend": "Cách chấm",
+        "method": {
+          "COUNT_TABLE": {
+            "label": "Theo số ý đúng",
+            "description": "Tra bảng điểm theo số ý học viên trả lời đúng (ví dụ THPTQG 0,1 / 0,25 / 0,5 / 1)."
+          },
+          "PER_STATEMENT": {
+            "label": "Cộng điểm từng ý",
+            "description": "Mỗi ý đúng được số điểm đã đặt cho ý đó; tổng điểm các ý bằng điểm của câu."
+          }
+        },
+        "methodChosen": "Đã chọn cách chấm: {method}.",
+        "pointsLabel": "Điểm ý {letter}",
+        "pointsReflowed": "Điểm từng ý đã chia đều lại cho {count, number} ý."
       },
       "blanks": {
         "hint": "Mỗi ô có thể có nhiều đáp án chấp nhận. Học viên gõ trùng một trong số đó là đúng. Xóa ô thì chỗ trống tương ứng trong đề bài cũng mất.",
@@ -2507,27 +2529,38 @@
         "remove": "Xóa ô {number}",
         "add": "Thêm ô trống",
         "added": "Đã thêm ô {number} và chỗ trống trong đề bài.",
-        "removed": "Đã xóa ô {number} và chỗ trống trong đề bài."
+        "removed": "Đã xóa ô {number} và chỗ trống trong đề bài.",
+        "pointsLabel": "Điểm",
+        "pointsAria": "Điểm của ô {number}"
       },
-      "dragDrop": {
-        "summary": "Khi thi, học viên thấy {total, number} thẻ: {correct, number} thẻ đúng và {distractors, number} thẻ nhiễu.",
-        "zoneTitle": "Ô thả {number}",
-        "zoneName": "ô thả {number}",
-        "zoneLabel": "Nội dung trước ô thả",
-        "zoneLabelHint": "Phần câu học viên đọc trước khi thả thẻ.",
-        "zoneItem": "Thẻ đúng",
-        "addZone": "Thêm ô thả",
-        "zoneAdded": "Đã thêm ô thả {number}.",
-        "zoneRemoved": "Đã xóa ô thả {number}.",
-        "zoneMoved": "Đã chuyển ô thả {number} tới vị trí {position}.",
-        "distractorsLegend": "Thẻ nhiễu",
-        "distractorsHint": "Thẻ không thuộc ô thả nào, để học viên phải chọn.",
-        "noDistractors": "Chưa có thẻ nhiễu.",
-        "distractorLabel": "Thẻ nhiễu {number}",
-        "removeDistractor": "Xóa thẻ nhiễu {number}",
-        "addDistractor": "Thêm thẻ nhiễu",
-        "distractorAdded": "Đã thêm thẻ nhiễu {number}.",
-        "distractorRemoved": "Đã xóa thẻ nhiễu {number}."
+      "matching": {
+        "hint": "Nhập các mục ở cột trái và các lựa chọn ở cột phải, rồi chọn lựa chọn đúng và điểm cho từng cặp. Cột phải được nhiều lựa chọn hơn cột trái; lựa chọn không thuộc cặp nào là phương án dư.",
+        "summary": "Cột trái {left, number} mục, cột phải {right, number} lựa chọn ({spare, number} lựa chọn dư).",
+        "pairTitle": "Cặp {number}",
+        "pairName": "cặp {number}",
+        "leftLabel": "Mục cột trái",
+        "answerLabel": "Lựa chọn đúng",
+        "answerPlaceholder": "Chọn",
+        "pointsLabel": "Điểm cặp",
+        "addPair": "Thêm cặp",
+        "pairAdded": "Đã thêm cặp {number}.",
+        "pairRemoved": "Đã xóa cặp {number}.",
+        "pairMoved": "Đã chuyển cặp {number} tới vị trí {position}.",
+        "reflowed": "Điểm của câu đã chia đều cho {count, number} cặp.",
+        "rightLegend": "Lựa chọn ở cột phải",
+        "rightHint": "Mỗi mục trái chọn một lựa chọn đúng trong danh sách này. Xóa một lựa chọn thì các mục đang dùng nó phải chọn lại.",
+        "rightLabel": "Lựa chọn {letter}",
+        "rightName": "lựa chọn {letter}",
+        "addRight": "Thêm lựa chọn",
+        "rightAdded": "Đã thêm lựa chọn {letter}.",
+        "rightRemoved": "Đã xóa lựa chọn {letter}.",
+        "rightMoved": "Đã chuyển lựa chọn {letter} tới vị trí {position}.",
+        "emptyOption": "(chưa nhập)",
+        "optionsLegend": "Tùy chọn",
+        "reuseRight": "Một lựa chọn dùng được cho nhiều mục",
+        "reuseRightHint": "Tắt: mỗi lựa chọn chỉ gắn cho tối đa một mục trái.",
+        "shuffleLeft": "Đảo thứ tự cột trái khi thi",
+        "shuffleRight": "Đảo thứ tự cột phải khi thi"
       },
       "set": {
         "hint": "Mỗi câu con là một câu đầy đủ với dạng riêng, phân loại theo câu chùm. Cần ít nhất 2 câu con.",
@@ -2550,7 +2583,24 @@
         "addLegend": "Thêm câu con",
         "added": "Đã thêm câu con {number}: {type}.",
         "removed": "Đã xóa câu con {number}.",
-        "moved": "Đã chuyển câu con {number} tới vị trí {position}."
+        "moved": "Đã chuyển câu con {number} tới vị trí {position}.",
+        "classification": {
+          "legend": "Phân loại riêng của câu con",
+          "hint": "Mặc định theo bộ câu hỏi. Chọn giá trị khác để ghi đè riêng cho câu con này; câu con tính vào ma trận theo phân loại riêng.",
+          "grade": "Khối lớp",
+          "difficulty": "Mức độ",
+          "inherit": "Theo bộ: {value}",
+          "notChosen": "chưa chọn",
+          "knowledge": "Kiến thức",
+          "inherited": "Theo bộ",
+          "own": "Riêng",
+          "noKnowledge": "Chưa có kiến thức.",
+          "override": "Chọn kiến thức riêng",
+          "change": "Đổi kiến thức riêng",
+          "backToInherit": "Dùng kiến thức của bộ",
+          "inheritedAnnounce": "Câu con dùng lại kiến thức của bộ.",
+          "knowledgeApplied": "Đã chọn {count, number} kiến thức riêng."
+        }
       },
       "errors": {
         "subjectRequired": "Chọn môn học.",
@@ -2574,10 +2624,18 @@
         "blankAnswerRequired": "Nhập ít nhất một đáp án chấp nhận.",
         "answerMax": "Đáp án quá dài.",
         "blankCountMismatch": "Số chỗ trống ___ trong đề bài phải bằng số ô đáp án.",
-        "zonesMin": "Cần ít nhất một ô thả.",
-        "zoneLabelRequired": "Nhập nội dung trước ô thả.",
-        "zoneItemRequired": "Nhập thẻ đúng của ô thả.",
-        "distractorRequired": "Nhập nội dung thẻ nhiễu hoặc xóa thẻ.",
+        "matchLeftMin": "Cần ít nhất một cặp ghép.",
+        "matchLeftRequired": "Nhập nội dung mục cột trái.",
+        "matchRightRequired": "Nhập nội dung lựa chọn hoặc xóa lựa chọn.",
+        "matchAnswerRequired": "Chọn lựa chọn đúng cho mục này.",
+        "matchRightReused": "Lựa chọn này đã gắn cho mục khác. Bật “Một lựa chọn dùng được cho nhiều mục” hoặc chọn lựa chọn khác.",
+        "pairPointsInvalid": "Điểm cặp phải là số lớn hơn 0.",
+        "pairPointsMismatch": "Tổng điểm các cặp phải bằng điểm của câu.",
+        "blankPointsInvalid": "Điểm của ô phải là số lớn hơn 0.",
+        "statementPointsInvalid": "Điểm của ý phải là số lớn hơn 0.",
+        "statementPointsMismatch": "Tổng điểm các ý phải bằng điểm của câu.",
+        "childKnowledgeRequired": "Chọn ít nhất một kiến thức riêng hoặc dùng kiến thức của bộ.",
+        "commonMistakesMax": "Lỗi sai thường gặp quá dài.",
         "childrenMin": "Câu chùm cần ít nhất 2 câu con.",
         "childContentRequired": "Nhập đề bài câu con.",
         "scoreValueInvalid": "Điểm phải là số không âm.",
@@ -2590,6 +2648,32 @@
         "rubricTotalMismatch": "Tổng điểm các tiêu chí phải bằng điểm của câu.",
         "sampleAnswerMax": "Bài làm mẫu quá dài.",
         "wordLimitInvalid": "Số chữ phải là số nguyên lớn hơn 0."
+      },
+      "pointsTotal": {
+        "matches": "Tổng điểm: {total, number} / {points, number}",
+        "differs": "Tổng điểm: {total, number} / {points, number}, chưa khớp điểm của câu",
+        "totalOnly": "Tổng điểm: {total, number}. Nhập điểm hợp lệ cho câu để so sánh.",
+        "even": "Chia đều"
+      },
+      "commonMistakes": {
+        "title": "Lỗi sai thường gặp",
+        "hint": "Cách hiểu sai hoặc nhầm lẫn học viên hay mắc. Làm dữ liệu tham khảo cho AI giải thích; không hiện cho học viên trong lúc thi."
+      },
+      "attachments": {
+        "title": "Tệp đính kèm",
+        "none": "Chưa có tệp đính kèm.",
+        "choose": "Chọn tệp",
+        "input": "Chọn tệp đính kèm",
+        "hint": "PDF, DOCX, XLSX, PNG, JPEG, WebP hoặc MP3, tối đa 20 MB mỗi tệp.",
+        "size": "{kb} KB",
+        "remove": "Bỏ tệp {name}",
+        "added": "Đã thêm {count, number} tệp đính kèm.",
+        "removed": "Đã bỏ tệp {name}.",
+        "rejected": {
+          "TOO_LARGE": "{name}: tệp lớn hơn 20 MB.",
+          "UNSUPPORTED_TYPE": "{name}: loại tệp không được hỗ trợ.",
+          "FAILED": "{name}: không tải lên được."
+        }
       },
       "scoreTable": {
         "legend": "Bảng điểm theo số ý đúng",
@@ -2631,7 +2715,7 @@
         "manualGrading": "Chấm tay",
         "gradingGuide": "Hướng dẫn chấm",
         "gradingGuideHint": "Bắt buộc. Người chấm xem khi chấm; học viên không thấy.",
-        "maxPoints": "Điểm tối đa {points} (ô Điểm của câu).",
+        "maxPoints": "Điểm tối đa {points, number} (ô Điểm của câu).",
         "maxPointsUnknown": "Điểm tối đa lấy theo ô Điểm của câu.",
         "rubricLegend": "Tiêu chí chấm (không bắt buộc)",
         "rubricHint": "Mỗi tiêu chí có mô tả và điểm tối đa. Có tiêu chí thì tổng điểm các tiêu chí phải bằng điểm của câu.",
@@ -2703,6 +2787,10 @@
         "NESTED_SET": "Bộ câu hỏi không được chứa Bộ câu hỏi hoặc Điền khuyết.",
         "CRITERION_EMPTY": "Tiêu chí chấm {position, number} chưa có mô tả.",
         "SCORE_TABLE_INVALID": "Bảng điểm theo số ý đúng chưa hợp lệ (đủ số ý, không giảm, ô cuối bằng điểm của câu).",
+        "STATEMENT_POINTS_MISMATCH": "Tổng điểm các ý chưa bằng điểm của câu.",
+        "BLANK_MARKER_MISMATCH": "Các dấu ô trống trong ngữ liệu chưa khớp danh sách ô: mỗi dấu cần đúng một ô và ngược lại.",
+        "PAIR_INVALID": "Có cặp ghép trỏ tới mục không có, mục bên trái ghép hai lần, hoặc một lựa chọn bị dùng lại khi chỉ được dùng một lần.",
+        "PAIR_POINTS_MISMATCH": "Tổng điểm các cặp ghép chưa bằng điểm của câu.",
         "NO_GRADING_GUIDE": "Câu tự luận chưa có hướng dẫn chấm.",
         "RUBRIC_TOTAL_MISMATCH": "Tổng điểm tiêu chí chấm chưa bằng điểm của câu."
       },
@@ -2791,7 +2879,8 @@
       "chipCreatedTo": "Ngày tạo đến {value}",
       "remove": "Bỏ lọc {label}",
       "clearAll": "Xóa tất cả bộ lọc",
-      "competency": "Năng lực"
+      "competency": "Năng lực",
+      "taskType": "Dạng bài"
     },
     "bulk": {
       "groupLabel": "Thao tác hàng loạt",
@@ -2920,6 +3009,79 @@
         }
       }
     },
+    "preview": {
+      "noContent": "Chưa có đề bài.",
+      "attachments": "{count, number} tệp đính kèm",
+      "hintSingle": "Chọn một đáp án.",
+      "hintMultiple": "Chọn một hoặc nhiều đáp án.",
+      "shortAnswerLabel": "Câu trả lời",
+      "blankLabel": "Ô {number}",
+      "blankPlaceholder": "({number})",
+      "statementLegend": "Ý {letter}",
+      "true": "Đúng",
+      "false": "Sai",
+      "matchReuse": "Một lựa chọn được dùng cho nhiều mục.",
+      "matchOnce": "Mỗi lựa chọn chỉ dùng một lần.",
+      "matchPlaceholder": "Chưa chọn",
+      "matchItem": "Mục {number}",
+      "matchSelectLabel": "Lựa chọn ghép với mục {number}",
+      "childTitle": "Câu {number}",
+      "points": "{points, number} điểm",
+      "essayLabel": "Bài làm",
+      "essayWords": "{count, plural, other {# chữ}}",
+      "essayWordsLimit": "{count, number} chữ, giới hạn {limit} chữ",
+      "deviceLabel": "Khung hiển thị",
+      "device": {
+        "web": "Web",
+        "phone": "Điện thoại"
+      },
+      "frame": {
+        "web": "Xem trước trên trình duyệt máy tính",
+        "phone": "Xem trước trên màn hình điện thoại"
+      },
+      "actions": {
+        "fillCorrect": "Điền đáp án đúng",
+        "reset": "Làm lại",
+        "grade": "Chấm thử"
+      },
+      "essay": {
+        "title": "Đối chiếu với hướng dẫn chấm",
+        "yourAnswer": "Bài làm thử",
+        "sampleAnswer": "Bài làm mẫu",
+        "noAnswer": "Chưa có bài làm.",
+        "noSample": "Câu chưa có bài làm mẫu.",
+        "guide": "Hướng dẫn chấm",
+        "noGuide": "Câu chưa có hướng dẫn chấm.",
+        "criterionPoints": "{points, number} điểm"
+      },
+      "result": {
+        "title": "Kết quả chấm thử",
+        "idle": "Chọn, đổi hoặc bỏ trống đáp án rồi bấm Chấm thử để xem điểm từng ý và cả câu.",
+        "score": "{earned} / {max, number} điểm",
+        "manualPending": "Chờ chấm: phần Tự luận do người chấm cho điểm, chưa tính vào điểm này.",
+        "correct": "Đúng",
+        "wrong": "Sai",
+        "blank": "Bỏ trống",
+        "partPoints": "{earned}/{max, number} điểm",
+        "correctOption": "Đáp án đúng",
+        "wrongPick": "Bạn chọn sai",
+        "standardAnswer": "Đáp án chuẩn: {answer}",
+        "statementKey": "Đáp án: {answer}",
+        "matchKey": "Ghép đúng với: {answer}",
+        "state": {
+          "correct": "Đúng hết",
+          "partial": "Đúng một phần",
+          "wrong": "Sai",
+          "blank": "Bỏ trống",
+          "manual": "Chờ chấm"
+        },
+        "rowChild": "Câu {number}",
+        "rowBlank": "Ô {number}",
+        "rowPair": "Mục {number}",
+        "rowStatement": "Ý {letter}",
+        "childPoints": "{earned}/{max, number} điểm"
+      }
+    },
     "usage": {
       "title": "Nơi đang dùng",
       "description": "Bài thi có khối câu hỏi lấy được câu này, kèm số lượt thi đã dùng từng phiên bản.",
@@ -3000,36 +3162,56 @@
       "submit": "Đọc tệp",
       "uploadErrorFallback": "Không đọc được tệp. Thử lại sau.",
       "columnsHeading": "Các cột của tệp mẫu",
-      "columnsHint": "Dòng đầu là tên cột",
+      "columnsHint": "{count, number} cột, dòng đầu là tên cột",
       "colName": "Cột",
       "colRequired": "Bắt buộc",
       "colRules": "Quy tắc",
       "yes": "Có",
       "no": "Không",
       "optional": "Không bắt buộc",
-      "optionsRow": "A, B, C, D",
+      "headers": {
+        "sourceCode": "Mã nguồn",
+        "type": "Dạng câu",
+        "content": "Nội dung",
+        "points": "Điểm",
+        "options": "Lựa chọn",
+        "matchRight": "Lựa chọn phải",
+        "correctAnswer": "Đáp án",
+        "scoring": "Cách chấm",
+        "inputHint": "Hướng dẫn nhập",
+        "gradingGuide": "Hướng dẫn chấm",
+        "rubric": "Tiêu chí chấm",
+        "solution": "Lời giải",
+        "commonMistakes": "Lỗi sai thường gặp",
+        "subject": "Môn",
+        "grade": "Lớp",
+        "difficulty": "Mức độ",
+        "taskType": "Dạng bài",
+        "knowledge": "Kiến thức (MAPID)",
+        "tags": "Nhãn",
+        "setCode": "Mã chùm"
+      },
       "rules": {
         "sourceCode": "Dùng để nhận ra câu đã nhập trước đó; không lặp trong tệp.",
-        "type": "Trắc nghiệm 1 đáp án, Trắc nghiệm nhiều đáp án, Đúng / Sai, Điền đáp án, Tự luận hoặc Câu chùm.",
-        "content": "Đề bài; với dòng Câu chùm là ngữ liệu chung. Công thức viết bằng LaTeX.",
-        "options": "Phương án trắc nghiệm, hoặc các ý của câu Đúng / Sai. Trắc nghiệm cần ít nhất 2 phương án.",
-        "correctAnswer": "Chữ cái phương án đúng (A); nhiều đáp án cách nhau dấu phẩy (A, C); Đúng / Sai ghi Đ hoặc S cho từng ý; Điền đáp án ghi các đáp án chấp nhận, cách nhau dấu |; Tự luận ghi bài làm mẫu (không bắt buộc). Dòng Câu chùm để trống.",
+        "type": "Trắc nghiệm 1 đáp án, Trắc nghiệm nhiều đáp án, Trả lời ngắn, Điền khuyết, Đúng / Sai, Ghép đôi, Tự luận hoặc Câu chùm.",
+        "content": "Đề bài; dòng Câu chùm là ngữ liệu chung; câu Điền khuyết đặt ô trống dạng [[b1]], [[b2]]. Công thức viết bằng LaTeX.",
+        "points": "Điểm của câu, số lớn hơn 0 (0,75 hoặc 0.75). Để trống thì mặc định 1; Điền khuyết lấy tổng điểm các ô, Đúng / Sai lấy theo Cách chấm.",
+        "options": "Mỗi mục một dòng trong ô, dạng “A. nội dung”: phương án Trắc nghiệm (tối đa 10), ý của câu Đúng / Sai (a., b., … tối đa 8) hoặc các mục bên trái của câu Ghép đôi (1., 2., …).",
+        "matchRight": "Chỉ cho câu Ghép đôi: các lựa chọn bên phải, mỗi mục một dòng (A. …); có thể nhiều hơn số mục bên trái.",
+        "correctAnswer": "Trắc nghiệm: chữ cái đáp án đúng (A; nhiều đáp án A, C). Trả lời ngắn: mỗi dòng một đáp án chấp nhận, dòng đầu là đáp án chuẩn. Điền khuyết: mỗi dòng “b1 = đáp án 1 | đáp án 2”. Đúng / Sai: Đ hoặc S cho từng ý (Đ, S, Đ). Ghép đôi: mỗi dòng “1 = A”. Tự luận: bài làm mẫu (không bắt buộc). Dòng Câu chùm để trống.",
+        "scoring": "Nhiều đáp án: ALL_OR_NOTHING hoặc PARTIAL. Đúng / Sai: PER_STATEMENT: 0,25 / 0,25 hoặc COUNT_TABLE: 0,1 / 0,25 / 0,5 / 1. Điền khuyết: mỗi dòng “b1 = 1” (điểm từng ô). Ghép đôi: ONCE (mỗi lựa chọn dùng một lần) hoặc REUSE (dùng lại được).",
+        "inputHint": "Trả lời ngắn: hướng dẫn nhập hiển thị cho học viên, không bắt buộc.",
+        "gradingGuide": "Tự luận: hướng dẫn chấm. Để trống thì câu ở Nháp tới khi bổ sung.",
+        "rubric": "Chỉ cho câu Tự luận, không bắt buộc: mỗi tiêu chí ghi “Mô tả: điểm”, cách nhau dấu ; hoặc xuống dòng (ví dụ Mở bài: 0,25; Thân bài: 1). Có tiêu chí thì điểm của câu bằng tổng điểm tiêu chí.",
         "solution": "Lời giải hoặc hướng dẫn giải.",
+        "commonMistakes": "Lỗi sai thường gặp, không bắt buộc.",
         "subject": "Tên hoặc mã môn trong danh mục. Câu con để trống thì lấy theo dòng Câu chùm.",
         "grade": "Số lớp (10, 11, 12) hoặc tên khối.",
         "difficulty": "Nhận biết, Thông hiểu, Vận dụng hoặc Vận dụng cao.",
+        "taskType": "Tên hoặc mã dạng bài trong danh mục.",
         "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống thì phải bổ sung trước khi chuyển Sẵn sàng.",
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
-        "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm.",
-        "rubric": "Chỉ cho câu Tự luận, không bắt buộc: mỗi tiêu chí ghi “Mô tả: điểm”, cách nhau dấu ; (ví dụ Mở bài: 0,25; Thân bài: 1). Có tiêu chí thì điểm của câu bằng tổng điểm tiêu chí.",
-        "points": "Điểm của câu, số lớn hơn 0 (0,75 hoặc 0.75). Để trống thì mặc định 1.",
-        "options": "Các lựa chọn của câu; mỗi mục một dòng trong ô.",
-        "matchRight": "Ghép đôi: các lựa chọn bên phải, mỗi mục một dòng trong ô.",
-        "scoring": "Cách chấm của câu (Nhiều đáp án, Đúng/Sai, Ghép đôi, Điền khuyết).",
-        "inputHint": "Trả lời ngắn: hướng dẫn nhập cho học viên.",
-        "gradingGuide": "Tự luận: hướng dẫn chấm. Để trống thì câu ở Nháp tới khi bổ sung.",
-        "commonMistakes": "Lỗi sai thường gặp, không bắt buộc.",
-        "taskType": "Tên hoặc mã dạng bài trong danh mục."
+        "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm."
       },
       "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2."
     },
@@ -3168,7 +3350,27 @@
       "rubric": "Tiêu chí chấm",
       "noRubric": "Chưa có tiêu chí chấm; câu sẽ ở Nháp tới khi bổ sung.",
       "criterionPoints": "{points, number} điểm",
-      "sampleAnswer": "Bài làm mẫu"
+      "sampleAnswer": "Bài làm mẫu",
+      "scoringLabel": "Cách chấm",
+      "scoringRules": {
+        "ALL_OR_NOTHING": "Đúng hết mới có điểm",
+        "PARTIAL": "Chấm từng phần"
+      },
+      "trueFalseScoring": {
+        "PER_STATEMENT": "Cộng điểm từng ý: {points}",
+        "COUNT_TABLE": "Bảng theo số ý đúng: {points}",
+        "EVEN": "Bảng chia đều theo điểm của câu"
+      },
+      "blanksLabel": "Các ô trống",
+      "pairsLabel": "Các cặp ghép",
+      "pairWith": "ghép với {key}. {content}",
+      "rightChoices": "Lựa chọn bên phải: {items}",
+      "matchReuse": "Một lựa chọn dùng cho nhiều mục",
+      "matchOnce": "Mỗi lựa chọn dùng một lần",
+      "points": "Điểm",
+      "pointsDefault": "1 (mặc định)",
+      "taskType": "Dạng bài",
+      "commonMistakes": "Lỗi sai thường gặp"
     },
     "issues": {
       "REQUIRED": {
@@ -3178,10 +3380,6 @@
       "TYPE_UNKNOWN": {
         "message": "Dạng câu “{value}” chưa được hỗ trợ",
         "fix": "Dùng một trong: Một đáp án, Nhiều đáp án, Trả lời ngắn, Điền khuyết, Bộ câu hỏi, Đúng/Sai, Ghép đôi, Tự luận."
-      },
-      "TYPE_NOT_IMPORTABLE": {
-        "message": "Dạng “{value}” chưa nhập được từ tệp",
-        "fix": "Soạn câu Ghép đôi, Điền khuyết trên màn Thêm câu hỏi."
       },
       "SUBJECT_UNKNOWN": {
         "message": "Môn học “{value}” không có trong danh mục",
@@ -3204,12 +3402,16 @@
         "fix": "Câu hỏi chỉ gắn với nút cấp Kiến thức, cấp cuối của cây."
       },
       "OPTIONS_TOO_FEW": {
-        "message": "Cần ít nhất {min, number} phương án",
-        "fix": "Điền nội dung vào các cột phương án A, B, C, D."
+        "message": "{type, select, MATCHING {Cần ít nhất {min, number} mục ở mỗi cột} other {Cần ít nhất {min, number} phương án}}",
+        "fix": "{type, select, MATCHING {Điền cột Lựa chọn (mục bên trái) và cột Lựa chọn phải, mỗi dòng một mục dạng “1. nội dung” và “A. nội dung”.} other {Điền cột Lựa chọn, mỗi dòng một phương án dạng “A. nội dung”; hoặc các cột phương án A, B, C, D của tệp cũ.}}"
+      },
+      "OPTIONS_TOO_MANY": {
+        "message": "Tối đa {max, number} mục",
+        "fix": "Bớt mục thừa ở cột {column}."
       },
       "ANSWER_INVALID": {
-        "message": "Đáp án đúng “{value}” không khớp các phương án",
-        "fix": "{type, select, MULTIPLE_CHOICE {Ghi chữ cái của các phương án đúng, cách nhau dấu phẩy, ví dụ A, C.} TRUE_FALSE {Ghi Đ hoặc S cho từng ý có nội dung, cách nhau dấu phẩy, ví dụ Đ, S, Đ.} other {Ghi một trong A, B, C, D của phương án có nội dung.}}"
+        "message": "{type, select, CLOZE {Đáp án “{value}” không khớp ô nào trong nội dung} MATCHING {Cặp ghép “{value}” không hợp lệ} SHORT_ANSWER {Có quá 20 đáp án} other {Đáp án đúng “{value}” không khớp các phương án}}",
+        "fix": "{type, select, MULTIPLE_CHOICE {Ghi chữ cái của các phương án đúng, cách nhau dấu phẩy, ví dụ A, C.} TRUE_FALSE {Ghi Đ hoặc S cho từng ý có nội dung, cách nhau dấu phẩy, ví dụ Đ, S, Đ.} CLOZE {Mỗi dòng “b1 = đáp án 1 | đáp án 2”, mã ô phải có trong nội dung dạng [[b1]].} MATCHING {Mỗi dòng “1 = A” nối mục bên trái với lựa chọn bên phải có thật; mỗi mục trái một cặp, mỗi lựa chọn chỉ dùng một lần trừ khi Cách chấm là REUSE.} SHORT_ANSWER {Tối đa 20 đáp án, mỗi dòng một đáp án.} other {Ghi một chữ cái từ A tới J của phương án có nội dung.}}"
       },
       "FORMULA_INVALID": {
         "message": "Công thức ở cột {column} không đọc được (thiếu dấu ngoặc nhọn)",
@@ -3254,6 +3456,30 @@
       "POINTS_INVALID": {
         "message": "Điểm “{value}” không hợp lệ",
         "fix": "Ghi điểm là số lớn hơn 0, ví dụ 1 hoặc 0,75."
+      },
+      "TASK_TYPE_UNKNOWN": {
+        "message": "Dạng bài “{value}” không có trong danh mục",
+        "fix": "Dùng tên hoặc mã của một Dạng bài đang hoạt động, hoặc để trống."
+      },
+      "SCORING_INVALID": {
+        "message": "Cách chấm “{value}” không hợp lệ",
+        "fix": "{type, select, MULTIPLE_CHOICE {Ghi ALL_OR_NOTHING hoặc PARTIAL.} TRUE_FALSE {Ghi “PER_STATEMENT: 0,25 / 0,25” (cộng đúng điểm của câu) hoặc “COUNT_TABLE: 0,1 / 0,25 / 0,5 / 1” (không giảm, số cuối bằng điểm của câu), đủ một số cho mỗi ý.} CLOZE {Mỗi dòng “b1 = 0,5” với mã ô có trong nội dung và điểm lớn hơn 0.} MATCHING {Ghi REUSE hoặc ONCE.} other {Kiểm tra lại cột Cách chấm.}}"
+      },
+      "ANSWER_MISSING": {
+        "message": "Chưa đủ đáp án",
+        "fix": "Câu vẫn được nhập ở trạng thái Nháp; bổ sung đáp án trước khi chuyển Sẵn sàng."
+      },
+      "CLOZE_MARKER_INVALID": {
+        "message": "Dấu vị trí trong nội dung bị lặp hoặc quá {max, number} ô",
+        "fix": "Mỗi ô một mã riêng, ví dụ [[b1]], [[b2]]; tối đa 30 ô."
+      },
+      "SET_CHILD_TYPE_INVALID": {
+        "message": "Dạng “{value}” không làm được câu con của Bộ câu hỏi",
+        "fix": "Nhập Điền khuyết thành câu riêng, không ghi Mã chùm."
+      },
+      "ENTRY_DUPLICATE": {
+        "message": "“{value}” bị lặp ở cột {column}",
+        "fix": "Mỗi nhãn hoặc mã ô chỉ ghi một lần trong cột; xóa dòng lặp hoặc đổi nhãn."
       }
     },
     "errorReport": {
@@ -4710,7 +4936,7 @@
   },
   "grading": {
     "status": {
-      "GRADING": "Đang chấm",
+      "GRADING": "Chờ chấm",
       "SCORED": "Đã có điểm"
     },
     "filters": {
@@ -4859,7 +5085,7 @@
         "save": "Lưu nháp",
         "saved": "Đã lưu nháp điểm chấm.",
         "unsaved": "Có điểm chưa lưu.",
-        "hint": "Lưu nháp để chấm tiếp sau; lượt thi vẫn ở trạng thái Đang chấm."
+        "hint": "Lưu nháp để chấm tiếp sau; lượt thi vẫn ở trạng thái Chờ chấm."
       },
       "finish": {
         "action": "Hoàn tất chấm",

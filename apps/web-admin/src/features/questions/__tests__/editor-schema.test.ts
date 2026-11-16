@@ -92,21 +92,23 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
     const values = classified(emptyEditorValues("CLOZE"));
     values.content = "Thủ đô của Việt Nam là ___ .";
     expect(messages(values)).toContain("blanksMin");
-    values.body.blanks = [{ id: "b1", answers: [{ id: "a1", value: "Hà Nội" }] }];
+    values.body.blanks = [{ id: "b1", answers: [{ id: "a1", value: "Hà Nội" }], points: "1" }];
     expect(messages(values)).toEqual([]);
     values.content = "Không có chỗ trống.";
     expect(messages(values)).toContain("blankCountMismatch");
     values.content = "___ và ___";
-    values.body.blanks.push({ id: "b2", answers: [{ id: "a2", value: " " }] });
+    values.body.blanks.push({ id: "b2", answers: [{ id: "a2", value: " " }], points: "1" });
     expect(messages(values)).toEqual(["blankAnswerRequired"]);
   });
 
-  it("ghép đôi: ô ghép cần nội dung và thẻ đúng, thẻ nhiễu không được trống", () => {
+  it("ghép đôi: mục trái cần nội dung và lựa chọn đúng, lựa chọn không được trống", () => {
     const values = classified(emptyEditorValues("MATCHING"));
-    expect(messages(values)).toEqual(expect.arrayContaining(["zoneLabelRequired", "zoneItemRequired"]));
-    values.body.zones = values.body.zones.map((zone, index) => ({ ...zone, label: `Ô ${index}`, itemContent: `Thẻ ${index}` }));
-    values.body.distractors = [{ id: "d1", content: "" }];
-    expect(messages(values)).toEqual(["distractorRequired"]);
+    expect(messages(values)).toEqual(expect.arrayContaining(["matchLeftRequired", "matchRightRequired"]));
+    values.body.left = values.body.left.map((item, index) => ({ ...item, content: `Mục ${index}` }));
+    values.body.right = values.body.right.map((item, index) => ({ ...item, content: `Lựa chọn ${index}` }));
+    expect(messages(values)).toEqual([]);
+    values.body.right = [...values.body.right, { id: "spare", content: "" }];
+    expect(messages(values)).toEqual(["matchRightRequired"]);
   });
 
   it("câu chùm: cần đoạn dẫn và ít nhất 2 câu con hợp lệ", () => {

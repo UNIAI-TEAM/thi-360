@@ -112,7 +112,6 @@ export function ManualGradingBadge() {
 
 export function AnswersView({ body, points }: { body: QuestionBody; points?: number }) {
   const t = useTranslations("questions.detail.body");
-  const format = useFormatter();
   switch (body.type) {
     case "SINGLE_CHOICE":
     case "MULTIPLE_CHOICE":
@@ -169,7 +168,7 @@ export function AnswersView({ body, points }: { body: QuestionBody; points?: num
           <div className="flex flex-wrap items-center gap-2">
             <ManualGradingBadge />
             <span className="text-caption text-text-secondary">
-              {points !== undefined && t("essayMaxPoints", { points: format.number(points) })}
+              {points !== undefined && t("essayMaxPoints", { points })}
               {body.wordLimit !== null && ` · ${t("wordLimit", { count: body.wordLimit })}`}
             </span>
           </div>

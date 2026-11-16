@@ -47,7 +47,7 @@ describe("GradingListView", () => {
 
     const statusGroup = screen.getByRole("group", { name: "Trạng thái" });
     await waitFor(() => expect(within(statusGroup).getByRole("radio", { name: /Tất cả\s*11/ })).toBeChecked());
-    expect(within(statusGroup).getByRole("radio", { name: /Đang chấm\s*7/ })).toBeInTheDocument();
+    expect(within(statusGroup).getByRole("radio", { name: /Chờ chấm\s*7/ })).toBeInTheDocument();
     expect(within(statusGroup).getByRole("radio", { name: /Đã có điểm\s*4/ })).toBeInTheDocument();
 
     // Luot da co diem: tong = trac nghiem + tu luan; luot dang cham: chua co diem tu luan.

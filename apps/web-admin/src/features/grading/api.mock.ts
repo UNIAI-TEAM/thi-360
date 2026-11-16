@@ -267,7 +267,7 @@ function applyGrades(record: AttemptRecord, request: SaveGradingRequest, require
   return { ...record, essays, grader: record.grader ?? MOCK_CURRENT_GRADER };
 }
 
-/** Lưu nháp: giữ điểm đã nhập (được để trống), lượt vẫn "Đang chấm". Người chấm chưa có thì nhận lượt. */
+/** Lưu nháp: giữ điểm đã nhập (được để trống), lượt vẫn "Chờ chấm". Người chấm chưa có thì nhận lượt. */
 export async function saveGradingDraft(request: SaveGradingRequest): Promise<GradingAttemptDetail> {
   return mockRequest(
     () => {
