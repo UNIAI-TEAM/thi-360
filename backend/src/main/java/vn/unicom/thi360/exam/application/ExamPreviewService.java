@@ -2,6 +2,7 @@ package vn.unicom.thi360.exam.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -21,7 +22,6 @@ import vn.unicom.thi360.exam.domain.*;
 import vn.unicom.thi360.exam.domain.solver.*;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
-import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
 
 /** Seeded generation for one requested path, using serving question snapshots only. */
@@ -59,16 +59,8 @@ public class ExamPreviewService {
                 request.subjectCodes(), request.seed(), solver.allocator());
         PathResult result = solver.solvePath(resolved.path(), input.candidates(), SolveMode.generate(request.seed()));
         if (result.status() != SolveStatus.VALID) {
-            List<FieldError> details = new ArrayList<>();
-            if (result.reason() != null) details.add(new FieldError("reason", result.reason().name(), result.reason().name()));
-            if (result.subjectCode() != null) details.add(new FieldError("subjectCode", result.subjectCode(), result.subjectCode()));
-            if (result.groupId() != null) details.add(new FieldError("groupId", result.groupId(), result.groupId()));
-            if (result.failingQuota() != null) {
-                QuotaRef quota = result.failingQuota();
-                details.add(new FieldError("quota", quota.kind(), quota.key()));
-                details.add(new FieldError("sectionId", quota.sectionId(), quota.sectionId()));
-            }
-            throw new BusinessRuleException("PREVIEW_GENERATION_FAILED", null, details);
+            return new PreviewResult(id, resolved.pathRef(), null, request.seed(), Instant.now(clock),
+                    "FAILED", null, result.status().name(), issues(result, document));
         }
         Map<String, GroupWitness> groups = new HashMap<>();
         List<QuestionSourcePort.VersionKey> keys = new ArrayList<>();
@@ -108,6 +100,30 @@ public class ExamPreviewService {
 
     private static QuestionSourcePort.VersionKey key(QuestionPick pick) {
         return new QuestionSourcePort.VersionKey(UUID.fromString(pick.questionId()), pick.versionNo());
+    }
+
+    /**
+     * Typed issues of a FAILED preview (spec 5.3: "đường không hợp lệ thì trả FAILED kèm lỗi"):
+     * one issue per failed subject-choice selection, else one for the path-level reason; the
+     * mapping matches {@link ExamCheckSolverIssues} so the web panel renders them like check issues.
+     */
+    private List<PreviewIssue> issues(PathResult result, ExamStructureDocument document) {
+        var solverIssues = new ExamCheckSolverIssues(new ExamCheckIssues(mapper), document,
+                limits.timeout().toSeconds());
+        Map<String, ObjectNode> found = new LinkedHashMap<>();
+        for (SelectionResult selection : result.selections()) {
+            if (selection.status() != SolveStatus.VALID) {
+                ObjectNode issue = solverIssues.failure(selection.reason(), selection.subjectCode(),
+                        selection.groupId(), selection.failingQuota(), selection.picks());
+                found.putIfAbsent(issue.path("key").asText(), issue);
+            }
+        }
+        if (found.isEmpty() && result.reason() != null) {
+            ObjectNode issue = solverIssues.failure(result.reason(), result.subjectCode(),
+                    result.groupId(), result.failingQuota(), result.failingSelections());
+            found.putIfAbsent(issue.path("key").asText(), issue);
+        }
+        return found.values().stream().map(node -> mapper.convertValue(node, PreviewIssue.class)).toList();
     }
 
     private static final class PaperBuilder {

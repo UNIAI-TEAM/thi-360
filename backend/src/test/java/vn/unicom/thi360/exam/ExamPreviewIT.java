@@ -199,10 +199,12 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/v1/admin/exams/" + examId + "/preview")
                         .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pathId\":\"default\",\"seed\":1}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("PREVIEW_GENERATION_FAILED"))
-                .andExpect(jsonPath("$.fieldErrors[?(@.field == 'reason')]").isNotEmpty())
-                .andExpect(jsonPath("$.fieldErrors[?(@.field == 'subjectCode')]").isNotEmpty());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.reason").value("INVALID"))
+                .andExpect(jsonPath("$.issues[0].code").isString())
+                .andExpect(jsonPath("$.issues[?(@.group == 'SOURCE')]").isNotEmpty())
+                .andExpect(jsonPath("$.paper").doesNotExist());
         assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=?",
                 Integer.class, examId)).isZero();
     }
