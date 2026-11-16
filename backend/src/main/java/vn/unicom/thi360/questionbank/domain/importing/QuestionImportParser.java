@@ -108,7 +108,8 @@ public final class QuestionImportParser {
                 repeatedPassage.put(i, first);
             }
         }
-        Map<Integer, Integer> parentIndex = new HashMap<>();
+        // LinkedHashMap: thứ tự duyệt = thứ tự dòng tệp, giữ đúng vị trí câu con trong bộ.
+        Map<Integer, Integer> parentIndex = new LinkedHashMap<>();
         for (int i = 0; i < raws.size(); i++) {
             String setCode = raws.get(i).get(ImportField.SET_CODE);
             if (types.get(i) == QuestionType.QUESTION_SET || setCode.isBlank()) {

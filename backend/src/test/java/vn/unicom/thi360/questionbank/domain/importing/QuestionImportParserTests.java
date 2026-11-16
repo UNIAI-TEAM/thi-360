@@ -273,6 +273,24 @@ class QuestionImportParserTests {
     }
 
     @Test
+    void setChildrenKeepFileOrderAcrossStandaloneRows() throws Exception {
+        // Câu con ở dòng thô 1 và 16 (cách nhau bởi câu đơn): LinkedHashMap giữ đúng thứ tự
+        // dòng tệp; HashMap duyệt theo bucket nên 16 đứng trước 1 (R1-3).
+        var header = List.of("type", "content", "subject", "grade", "difficulty", "setCode", "correctAnswer");
+        var rows = new java.util.ArrayList<>(List.of(header,
+            List.of("QUESTION_SET", "Ngữ liệu", "MATH", "GRADE_11", "RECOGNITION", "S", ""),
+            List.of("SHORT_ANSWER", "Câu con 01", "", "", "", "S", "1")));
+        for (int i = 0; i < 14; i++) {
+            rows.add(List.of("SHORT_ANSWER", "Câu đơn " + i, "MATH", "GRADE_11", "RECOGNITION", "", "1"));
+        }
+        rows.add(List.of("SHORT_ANSWER", "Câu con 16", "", "", "", "S", "1"));
+        var result = parse(rows);
+        var setDraft = result.rows().getFirst().draft();
+        assertEquals(List.of("Câu con 01", "Câu con 16"),
+            setDraft.children().stream().map(ImportQuestionDraft::content).toList());
+    }
+
+    @Test
     void knowledgeNodeMatchesAnyOfItsSubjects() throws Exception {
         var node = new ImportKnowledgeNode(
             UUID.randomUUID(), "0D1", List.of("TOAN", "ANH"), true, true);
