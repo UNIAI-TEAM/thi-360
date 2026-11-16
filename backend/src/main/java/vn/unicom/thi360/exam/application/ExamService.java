@@ -578,6 +578,10 @@ public class ExamService {
                 : codec().read(stored.getParts());
         ExamTemplate template = exam.getTemplateCode() == null ? null
                 : templateService.findActive(exam.getTemplateCode());
+        if (exam.getTemplateCode() != null && template == null) {
+            throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
+                    messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
+        }
         ExamStructureDocument templateDoc = template == null ? null
                 : codec().read(template.getStructure());
         ExamStructureDocument doc = ExamStructureOps.restoreTemplateOwned(incoming, storedDoc,

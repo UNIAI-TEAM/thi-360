@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -231,5 +232,53 @@ class ExamStructureIT extends AbstractIntegrationTest {
             assertThat(after.path("parts")).isEqualTo(saved.path("parts"));
             assertThat(after.path("revision")).isEqualTo(saved.path("revision"));
         }
+    }
+
+    @Test
+    void templateOwnedFieldsCannotBeForgedWithoutIds() throws Exception {
+        String key = java.util.UUID.randomUUID().toString();
+        String create = "{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"Draft\","
+                + "\"code\":\"HSA-F-" + key.substring(0, 8) + "\"}";
+        JsonNode exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON).content(create))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String url = "/api/v1/admin/exams/" + exam.path("id").asText() + "/structure";
+        JsonNode before = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = before.path("parts").deepCopy();
+        var section = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0);
+        var block = (com.fasterxml.jackson.databind.node.ObjectNode) section.path("blocks").get(0);
+        JsonNode expectedOrder = section.path("groupOrder").deepCopy();
+        JsonNode expectedGroup = block.path("templateGroupCode").deepCopy();
+        JsonNode expectedLocked = block.path("answerTypeLocked").deepCopy();
+        JsonNode expectedShuffle = block.path("shuffle").deepCopy();
+        section.remove("id");
+        section.put("groupOrder", "SHUFFLE");
+        block.remove("id");
+        block.put("templateGroupCode", "FORGED");
+        block.put("answerTypeLocked", !expectedLocked.asBoolean());
+        block.put("shuffle", "SHUFFLE");
+        var extra = ((com.fasterxml.jackson.databind.node.ArrayNode) section.path("blocks")).addObject();
+        extra.put("name", "Additional block");
+        extra.put("templateGroupCode", "FORGED");
+        extra.put("answerTypeLocked", true);
+        extra.put("shuffle", "SHUFFLE");
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", before.path("revision").asLong());
+        JsonNode saved = mapper.readTree(mockMvc.perform(put(url).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode savedSection = saved.path("parts").get(0).path("sections").get(0);
+        JsonNode savedBlock = savedSection.path("blocks").get(0);
+        assertThat(savedSection.path("groupOrder")).isEqualTo(expectedOrder);
+        assertThat(savedBlock.path("templateGroupCode")).isEqualTo(expectedGroup);
+        assertThat(savedBlock.path("answerTypeLocked")).isEqualTo(expectedLocked);
+        assertThat(savedBlock.path("shuffle")).isEqualTo(expectedShuffle);
+        JsonNode savedExtra = savedSection.path("blocks").get(2);
+        assertThat(savedExtra.path("templateGroupCode").isMissingNode()).isTrue();
+        assertThat(savedExtra.path("answerTypeLocked").asBoolean()).isFalse();
+        assertThat(savedExtra.path("shuffle").isMissingNode()).isTrue();
     }
 }
