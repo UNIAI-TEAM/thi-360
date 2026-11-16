@@ -182,14 +182,11 @@ class SubjectMatrixCasesTest {
                 List.of(SolvePart.Choice.of("p1", List.of(choice))), source,
                 SolveMode.check());
         assertThat(outcome.status()).isEqualTo(SolveStatus.INVALID);
-        // ca lỗi = mọi ca CHEM nhận 17:
-        //   {PHYS,CHEM,HIS}=17-17-16, {PHYS,CHEM,GEO}=17-17-16, {CHEM,BIO,HIS}=17-17-16,
-        //   {CHEM,BIO,GEO}=17-17-16, {CHEM,HIS,GEO}=17-16-17,
-        //   và 2/3 phương án của bộ toàn NATURAL có CHEM ở nhịp 17.
+        // ca lỗi = mọi ca CHEM nhận 17: bốn bộ 2-1 có CHEM thuộc nhóm đôi, cộng 2/3 phương án
+        // của bộ toàn NATURAL có CHEM ở nhịp 17. Bộ {CHEM,HIS,GEO} hợp lệ: CHEM là nhóm lẻ → 16.
         Set<String> expectedFailing = Set.of(
                 "PHYS=17+CHEM=17+HIS=16", "PHYS=17+CHEM=17+GEO=16",
                 "CHEM=17+BIO=17+HIS=16", "CHEM=17+BIO=17+GEO=16",
-                "CHEM=17+HIS=17+GEO=16",
                 "PHYS=17+CHEM=17+BIO=16", "PHYS=16+CHEM=17+BIO=17");
         Set<String> actualFailing = new HashSet<>();
         Set<String> allResults = new HashSet<>();

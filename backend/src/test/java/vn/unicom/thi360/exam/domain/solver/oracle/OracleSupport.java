@@ -307,18 +307,17 @@ final class OracleSupport {
      * của bộ giải):
      *
      * <ul>
-     *   <li>mọi môn được chọn có {@code choiceGroup}: {@code countsByPick} phải gồm đúng hai giá
-     *       trị với giá trị cao hơn lặp {@code choose - 1} lần (mẫu 17/17/16). Mỗi môn của nhóm
-     *       có nhiều môn hơn nhận giá trị cao; môn của nhóm thiểu số nhận giá trị thấp. Khi mọi
-     *       môn cùng một nhóm (không có nhóm nhiều hơn), phân bổ đối xứng {@code choose} phương
-     *       án: mỗi môn lần lượt nhận giá trị thấp, các môn còn lại giá trị cao. Hai nhóm bằng
-     *       số môn (chỉ xảy ra khi {@code choose} chẵn): spec không quy định → phân bổ theo thứ
-     *       tự cấu trúc như trường hợp không gắn nhóm;
-     *   <li>có môn không gắn {@code choiceGroup}: môn thứ i theo thứ tự cấu trúc nhận
-     *       {@code countsByPick[i]} (quy tắc trước B10).
+     *   <li>mọi môn được chọn có {@code choiceGroup} và cách chọn đúng 3 môn: {@code hi} = max
+     *       của {@code countsByPick}, {@code lo} = min. Bộ 2-1 nhóm: hai môn của nhóm đôi nhận
+     *       {@code hi}, môn của nhóm lẻ nhận {@code lo} (D25: "nhóm nhiều hơn nhận 17" — với bộ
+     *       ba, 2-1 là dạng duy nhất có nhóm đông hơn). Bộ đồng nhóm: {@code choose} phương án
+     *       đối xứng, mỗi môn lần lượt nhận {@code lo}, còn lại {@code hi};
+     *   <li>có môn không gắn {@code choiceGroup} hoặc cách chọn khác 3 môn: môn thứ i theo thứ
+     *       tự cấu trúc nhận {@code countsByPick[i]} (quy tắc trước B10).
      * </ul>
      */
     static List<List<Integer>> allocationsOf(SubjectChoice choice, List<SectionOnPath> picked) {
+        int k = picked.size();
         boolean allGrouped = true;
         for (SectionOnPath s : picked) {
             if (s.choiceGroup() == null) {
@@ -326,53 +325,43 @@ final class OracleSupport {
                 break;
             }
         }
-        int k = picked.size();
-        int hi = Integer.MIN_VALUE;
-        int lo = Integer.MAX_VALUE;
-        for (int v : choice.countsByPick()) {
-            hi = Math.max(hi, v);
-            lo = Math.min(lo, v);
-        }
-        int hiCount = 0;
-        for (int v : choice.countsByPick()) {
-            if (v == hi) {
-                hiCount++;
+        if (allGrouped && k == 3) {
+            int hi = Integer.MIN_VALUE;
+            int lo = Integer.MAX_VALUE;
+            for (int v : choice.countsByPick()) {
+                hi = Math.max(hi, v);
+                lo = Math.min(lo, v);
             }
-        }
-        boolean twoValueShape = hi > lo && hiCount == k - 1 && k >= 2;
-        Map<String, Integer> groupCounts = new LinkedHashMap<>();
-        if (allGrouped && twoValueShape) {
+            Map<String, Integer> groupCounts = new LinkedHashMap<>();
             for (SectionOnPath s : picked) {
                 groupCounts.merge(s.choiceGroup(), 1, Integer::sum);
             }
-            String majority = null;
-            for (Map.Entry<String, Integer> e : groupCounts.entrySet()) {
-                if (majority == null || e.getValue() > groupCounts.get(majority)) {
-                    majority = e.getKey();
+            if (groupCounts.size() == 2) {
+                // nhóm lẻ (1 môn) nhận lo, nhóm đôi nhận hi
+                String singleton = null;
+                for (Map.Entry<String, Integer> e : groupCounts.entrySet()) {
+                    if (e.getValue() == 1) {
+                        singleton = e.getKey();
+                    }
                 }
-            }
-            if (groupCounts.get(majority) > k - groupCounts.get(majority)) {
-                // có đúng một nhóm đông hơn: các môn của nó nhận hi, nhóm còn lại nhận lo
                 List<Integer> counts = new ArrayList<>(k);
                 for (SectionOnPath s : picked) {
-                    counts.add(s.choiceGroup().equals(majority) ? hi : lo);
+                    counts.add(s.choiceGroup().equals(singleton) ? lo : hi);
                 }
                 return List.of(counts);
             }
-            if (groupCounts.size() == 1) {
-                // mọi môn cùng một nhóm: chọn môn nhận lo, còn lại nhận hi (k phương án)
-                List<List<Integer>> out = new ArrayList<>(k);
-                for (int low = 0; low < k; low++) {
-                    List<Integer> counts = new ArrayList<>(k);
-                    for (int i = 0; i < k; i++) {
-                        counts.add(i == low ? lo : hi);
-                    }
-                    out.add(counts);
+            // mọi môn cùng một nhóm: chọn môn nhận lo, còn lại nhận hi (k phương án)
+            List<List<Integer>> out = new ArrayList<>(k);
+            for (int low = 0; low < k; low++) {
+                List<Integer> counts = new ArrayList<>(k);
+                for (int i = 0; i < k; i++) {
+                    counts.add(i == low ? lo : hi);
                 }
-                return out;
+                out.add(counts);
             }
+            return out;
         }
-        // không gắn nhóm (hoặc dạng countsByPick ngoài quy tắc): thứ tự cấu trúc
+        // không gắn nhóm đủ (hoặc cách chọn khác 3 môn): thứ tự cấu trúc
         List<Integer> counts = new ArrayList<>(k);
         for (int i = 0; i < k; i++) {
             counts.add(choice.countsByPick().get(i));
