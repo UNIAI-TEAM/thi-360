@@ -74,14 +74,15 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 /**
  * Cột ưu tiên thấp tự ẩn theo bề rộng của khung chứa bảng (container query, không theo bề rộng màn hình vì
- * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước, rồi tới Lớp, Vai trò, để cột Trạng thái còn
- * nằm trong khung ở cửa sổ 1024–1366px; tiếp theo là Email. Khung hẹp hơn 40rem thì bảng thành danh sách thẻ
+ * vùng nội dung hẹp hơn màn hình một sidebar): Nguồn ẩn trước (khung dưới 74rem, tức cửa sổ dưới khoảng 1500px,
+ * để Email không bị ép xuống dòng giữa chữ), rồi tới Lớp, Vai trò, để cột Trạng thái còn nằm trong khung ở cửa sổ
+ * 1024–1440px; tiếp theo là Email. Khung hẹp hơn 40rem thì bảng thành danh sách thẻ
  * (`cards` của `Table`), thẻ có đủ các thông tin này. Ô tiêu đề và ô dữ liệu của cột được nhận ra qua `data-col`
  * đặt trên nội dung do màn này vẽ, không phụ thuộc thứ tự cột.
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
-  "@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden",
+  "@max-[74rem]:[&_:is(th,td):has([data-col=source])]:hidden",
   "@max-[63rem]:[&_:is(th,td):has([data-col=classes])]:hidden",
   "@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden",
   "@max-3xl:[&_:is(th,td):has([data-col=email])]:hidden",
