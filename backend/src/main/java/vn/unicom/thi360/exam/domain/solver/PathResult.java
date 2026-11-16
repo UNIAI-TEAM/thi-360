@@ -18,6 +18,7 @@ import java.util.List;
  *                          (môn, số câu) trên đường); rỗng khi INVALID / UNCONFIRMED
  * @param failingSelections các cách chọn môn ({@link SubjectPick}) không giải được của một đường có
  *                          {@link SubjectChoice}; chỉ khác rỗng khi INVALID do cách chọn lỗi
+ * @param failingQuota      chỉ tiêu cấp môn thiếu nguồn, hoặc null khi không xác định được
  */
 public record PathResult(
         SolvePath path,

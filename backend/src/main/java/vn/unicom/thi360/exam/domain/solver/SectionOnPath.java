@@ -20,6 +20,7 @@ import java.util.Objects;
  * @param questionCount số câu của môn; null chỉ khi môn thuộc {@link SubjectChoice}
  * @param subjectQuota  chỉ tiêu cấp môn; {@link SubjectQuota#NONE} khi môn không khai chỉ tiêu
  * @param groups        các nhóm lấy câu của môn, theo thứ tự cấu trúc
+ * @param choiceGroup   nhóm NATURAL hoặc SOCIAL của môn trong lựa chọn HSA; null với môn khác
  */
 public record SectionOnPath(
         String subjectCode,

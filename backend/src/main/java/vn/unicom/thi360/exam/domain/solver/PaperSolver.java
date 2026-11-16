@@ -179,9 +179,9 @@ public final class PaperSolver {
 
     /**
      * Chế độ xem trước: giải đúng một cách chọn môn của một {@link SubjectChoice} — các môn trong
-     * {@code subjectCodes} (tập con đúng {@code choice.choose} môn, số câu gán theo
-     * {@link SubjectCountAllocator} theo thứ tự cấu trúc, không theo thứ tự bấm chọn) — với hạt
-     * giống {@code seed}: cùng hạt giống và cùng đầu vào cho cùng một đề (spec 5.4, D25).
+     * {@code subjectCodes} (tập con đúng {@code choice.choose} môn). Số câu theo nhóm môn B10;
+     * khi có nhiều cách phân bổ, {@code seed} chọn một cách trước khi lấy câu. Cùng hạt giống
+     * và cùng đầu vào cho cùng một đề (spec 5.4, D25).
      *
      * @return kết quả của đường con (một SubjectPick); INVALID khi không xếp được
      */
@@ -259,6 +259,8 @@ public final class PaperSolver {
             combinations *= triples;
             expanded.add(picks);
         }
+        path = new SolvePath(path.pathIndex(), path.chosen(), path.sections(), path.choices(),
+                expanded);
         List<List<SubjectPick>> tuples = new ArrayList<>();
         product(expanded, 0, new SubjectPick[expanded.size()], tuples, check);
         SolveStatus worst = SolveStatus.VALID;

@@ -110,6 +110,27 @@ class SolverLimitDeadlineRegressionTest {
     }
 
     @Test
+    void choiceDeadlineKeepsOnlyCompletedInvalidSelections() {
+        SectionOnPath bad = new SectionOnPath("BAD", "bad", null, SubjectQuota.NONE,
+                List.of(GroupQuota.remainder("bad")));
+        SectionOnPath slow = new SectionOnPath("SLOW", "slow", null, SubjectQuota.NONE,
+                List.of(GroupQuota.remainder("slow")));
+        SubjectChoice choice = new SubjectChoice("choice", List.of(bad, slow), 1, List.of(1));
+        SolvePath path = new SolvePath(0, List.of(), List.of(), List.of(choice), List.of());
+        AdvanceableClock clock = new AdvanceableClock();
+        PathResult result = new PaperSolver(SolverLimits.defaults(), clock).solvePath(path, g -> {
+            if (g.groupId().equals("slow")) {
+                clock.advance(Duration.ofDays(1));
+                return List.of(cand("q"));
+            }
+            return List.of();
+        }, SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(result.failingSelections()).hasSize(1);
+        assertThat(result.failingSelections().get(0).subjectCodes()).containsExactly("BAD");
+    }
+
+    @Test
     @DisplayName("R2-8: lần gọi nguồn đầu vượt hạn → không gọi nguồn của nhóm còn lại")
     void noFurtherSourceCallAfterDeadline() {
         GroupQuota g1 = GroupQuota.single("g1", 1);

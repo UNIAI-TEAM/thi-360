@@ -46,6 +46,27 @@ class QuotaApportionerTest {
     }
 
     @Test
+    void decimalTieAllowsExactlyAllocatedSource() {
+        SubjectQuota quota = new SubjectQuota(new SubjectQuota.AnswerQuotas(List.of(
+                new DimensionQuota("A", 3), new DimensionQuota("B", 13),
+                new DimensionQuota("C", 23), new DimensionQuota("D", 61)), QuotaUnit.PERCENT), null);
+        GroupQuota group = GroupQuota.single("g", 10);
+        SectionOnPath section = new SectionOnPath("M", "s", 10, quota, List.of(group));
+        List<PathCandidate> pool = new java.util.ArrayList<>();
+        String[] codes = {"A", "B", "C", "D"};
+        int[] amounts = {1, 1, 2, 6};
+        for (int c = 0; c < codes.length; c++) {
+            for (int i = 0; i < amounts[c]; i++) {
+                pool.add(PathCandidate.standalone(codes[c] + i, 1, codes[c], "G", "D", null));
+            }
+        }
+        PathResult result = new PaperSolver().solvePath(SolvePath.of(0, List.of(section)),
+                g -> pool, SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(result.witness().get(0).groups().get(0).picks()).hasSize(10);
+    }
+
+    @Test
     @DisplayName("chia đều 50 câu cho 3 môn: 17-17-16 (HSA Khoa học)")
     void splitFiftyThreeWays() {
         // splitEvenly(50, 3) của web = apportionByPercent([100/3]*3, 50)

@@ -112,6 +112,20 @@ class PaperSolverPerfTest {
             }
         }
         assertThat(out.results().get(0).path().picks().get(0)).hasSize(12);
+        PathResult scienceResult = out.results().get(0);
+        for (SubjectPick pick : scienceResult.path().picks().get(0)) {
+            int paperUnits = 100;
+            for (int i = 0; i < pick.sections().size(); i++) {
+                String subject = pick.sections().get(i).subjectCode();
+                int count = pick.counts().get(i);
+                assertThat(scienceResult.witness().stream().anyMatch(
+                        w -> w.subjectCode().equals(subject) && w.resolvedCount() == count)).isTrue();
+                paperUnits += count;
+            }
+            assertThat(paperUnits).isEqualTo(150);
+        }
+        assertThat(out.results().get(1).witness().stream()
+                .mapToInt(SubjectWitness::resolvedCount).sum()).isEqualTo(150);
         assertThat(ms).isLessThan(10_000);
     }
 

@@ -52,6 +52,22 @@ class MergedSectionRegressionTest {
     }
 
     @Test
+    void eachSectionUsesItsOwnPercentQuota() {
+        GroupQuota a = GroupQuota.single("a", 1);
+        GroupQuota b = GroupQuota.single("b", 1);
+        SubjectQuota sc = new SubjectQuota(new SubjectQuota.AnswerQuotas(
+                List.of(new DimensionQuota("SC", 100)), QuotaUnit.PERCENT), null);
+        SubjectQuota sa = new SubjectQuota(new SubjectQuota.AnswerQuotas(
+                List.of(new DimensionQuota("SA", 100)), QuotaUnit.PERCENT), null);
+        SectionOnPath first = new SectionOnPath("M", "first", 1, sc, List.of(a));
+        SectionOnPath second = new SectionOnPath("M", "second", 1, sa, List.of(b));
+        PathResult result = solver.solvePath(SolvePath.of(0, List.of(first, second)),
+                g -> List.of(cand(g.groupId(), g == a ? "SC" : "SA")), SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(totalPicks(result)).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("R2-3: section sau vi phạm chỉ tiêu của chính nó → INVALID")
     void laterSectionQuotaViolation() {
         GroupQuota g1 = GroupQuota.single("g1", 1);
