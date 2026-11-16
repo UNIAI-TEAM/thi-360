@@ -95,7 +95,11 @@ public record GroupQuota(
         competencies = competencies == null ? List.of() : List.copyOf(competencies);
         mapidGroups = mapidGroups == null ? List.of() : List.copyOf(mapidGroups);
         Set<String> seen = new HashSet<>();
+        QuotaUnit competencyUnit = competencies.isEmpty() ? null : competencies.getFirst().unit();
         for (CompetencyQuota c : competencies) {
+            if (c.unit() != competencyUnit) {
+                throw new IllegalArgumentException("competency quotas must use the same unit");
+            }
             if (!seen.add("C" + c.competencyCode())) {
                 throw new IllegalArgumentException("duplicate competency quota " + c.competencyCode());
             }

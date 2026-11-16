@@ -84,7 +84,7 @@ public final class ExamStructureOps {
             blocks.add(mapBlock(b, regenerate));
         }
         return new ExamPartOption(id(o.id(), regenerate), o.kind(), o.code(), o.name(),
-                o.chooseSubjects(), o.countsByPick(), sections, blocks);
+                o.chooseSubjects(), o.countsByPick(), sections, blocks, o.expertConfirmed());
     }
 
 
@@ -95,7 +95,7 @@ public final class ExamStructureOps {
         return new QuestionBlock(id(b.id(), regenerate), b.name(), b.questionType(),
                 b.questionCount(), b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(),
                 b.taskTypeCode(), b.childAnswerType(), b.templateGroupCode(), b.answerTypeLocked(),
-                b.requiredPointsPerQuestion(), b.shuffle());
+                b.requiredPointsPerQuestion(), b.shuffle(), b.tagCodes(), b.expectedScoring());
     }
 
     /**
@@ -138,7 +138,7 @@ public final class ExamStructureOps {
                     oBlocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateOwned));
                 }
                 options.add(new ExamPartOption(o.id(), o.kind(), o.code(), o.name(),
-                        o.chooseSubjects(), o.countsByPick(), oSections, oBlocks));
+                        o.chooseSubjects(), o.countsByPick(), oSections, oBlocks, o.expertConfirmed()));
             }
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(),
                     part.questionCount(), part.questionCountOnPaper(), part.questionCountRequired(),
@@ -217,6 +217,6 @@ public final class ExamStructureOps {
                 b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(), b.taskTypeCode(),
                 b.childAnswerType(), stored == null ? null : stored.templateGroupCode(),
                 stored != null && Boolean.TRUE.equals(stored.answerTypeLocked()), b.requiredPointsPerQuestion(),
-                stored == null ? null : stored.shuffle());
+                stored == null ? null : stored.shuffle(), b.tagCodes(), b.expectedScoring());
     }
 }

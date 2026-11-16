@@ -12,7 +12,8 @@ public record ExamPartOption(
         Integer chooseSubjects,
         List<Integer> countsByPick,
         List<ExamSection> sections,
-        List<QuestionBlock> blocks) {
+        List<QuestionBlock> blocks,
+        Boolean expertConfirmed) {
     public ExamPartOption {
         countsByPick = countsByPick == null ? null : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(countsByPick));
         sections = sections == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(sections));

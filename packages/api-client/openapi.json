@@ -265,6 +265,174 @@
         "required" : [ "action", "actorRoles", "actorType", "id", "module", "occurredAt", "outcome" ],
         "type" : "object"
       },
+      "AvailableQuestionsAnswerType" : {
+        "properties" : {
+          "answerType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
+          "value" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AvailableQuestionsCell" : {
+        "properties" : {
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "value" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AvailableQuestionsCompetency" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "value" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AvailableQuestionsKnowledgeScope" : {
+        "description" : "Phạm vi kiến thức có hiệu lực của nhóm",
+        "properties" : {
+          "competencyCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "match" : {
+            "type" : "string"
+          },
+          "nodeIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AvailableQuestionsQuery" : {
+        "description" : "Bộ lọc nguồn câu hỏi của một nhóm",
+        "properties" : {
+          "answerTypes" : {
+            "items" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "childAnswerType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
+          "competencyCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "knowledgeScope" : {
+            "$ref" : "#/components/schemas/AvailableQuestionsKnowledgeScope"
+          },
+          "questionType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
+          "requiredPointsPerQuestion" : {
+            "type" : "number"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          },
+          "tagCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "taskTypeCode" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "subjectCode" ],
+        "type" : "object"
+      },
+      "AvailableQuestionsResponse" : {
+        "properties" : {
+          "byAnswerType" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AvailableQuestionsAnswerType"
+            },
+            "type" : "array"
+          },
+          "byCompetency" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AvailableQuestionsCompetency"
+            },
+            "type" : "array"
+          },
+          "cells" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AvailableQuestionsCell"
+            },
+            "type" : "array"
+          },
+          "total" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AvailableQuestionsSubjectQuery" : {
+        "description" : "Các nhóm nguồn của một môn",
+        "properties" : {
+          "groups" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AvailableQuestionsQuery"
+            },
+            "type" : "array"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "groups", "subjectCode" ],
+        "type" : "object"
+      },
+      "BlockExpectedScoring" : {
+        "properties" : {
+          "multipleChoiceRule" : {
+            "type" : "string"
+          },
+          "trueFalseMethod" : {
+            "type" : "string"
+          },
+          "trueFalseTable" : {
+            "items" : {
+              "type" : "number"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "BlockMatrix" : {
         "properties" : {
           "byCompetency" : {
@@ -2503,6 +2671,480 @@
         },
         "type" : "object"
       },
+      "ExamCheckAnswerQuota" : {
+        "properties" : {
+          "achieved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "answerType" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckBlock" : {
+        "properties" : {
+          "available" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "availableSets" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "blockId" : {
+            "type" : "string"
+          },
+          "blockName" : {
+            "type" : "string"
+          },
+          "issues" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckIssue"
+            },
+            "type" : "array"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "partOrder" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questionType" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requirement" : {
+            "$ref" : "#/components/schemas/ExamCheckRequirement"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "setCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "setSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckCell" : {
+        "properties" : {
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckChoice" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckDimension" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckGroup" : {
+        "properties" : {
+          "group" : {
+            "type" : "string"
+          },
+          "issues" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckIssue"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckIssue" : {
+        "properties" : {
+          "answerType" : {
+            "type" : "string"
+          },
+          "available" : {
+            "type" : "number"
+          },
+          "blockId" : {
+            "type" : "string"
+          },
+          "blockName" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "competencyCode" : {
+            "type" : "string"
+          },
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "dimension" : {
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "group" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "questionCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "required" : {
+            "type" : "number"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          },
+          "subjectCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "timeLimitSeconds" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckPath" : {
+        "properties" : {
+          "blocks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckBlock"
+            },
+            "type" : "array"
+          },
+          "choices" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckChoice"
+            },
+            "type" : "array"
+          },
+          "issues" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckIssue"
+            },
+            "type" : "array"
+          },
+          "partIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "pathId" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "selections" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckSelection"
+            },
+            "type" : "array"
+          },
+          "subjects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckSubject"
+            },
+            "type" : "array"
+          },
+          "totalMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalPoints" : {
+            "type" : "number"
+          },
+          "totalQuestions" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckRequirement" : {
+        "properties" : {
+          "byCompetency" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckDimension"
+            },
+            "type" : "array"
+          },
+          "byDifficulty" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckDimension"
+            },
+            "type" : "array"
+          },
+          "byGrade" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckDimension"
+            },
+            "type" : "array"
+          },
+          "cells" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckCell"
+            },
+            "type" : "array"
+          },
+          "mode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckResult" : {
+        "properties" : {
+          "checkedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "durationSeconds" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "groups" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckGroup"
+            },
+            "type" : "array"
+          },
+          "invalidReason" : {
+            "type" : "string"
+          },
+          "issueCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxScore" : {
+            "type" : "number"
+          },
+          "partCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "paths" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckPath"
+            },
+            "type" : "array"
+          },
+          "printedQuestions" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "stale" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "timeLimitSeconds" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPoints" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckRun" : {
+        "properties" : {
+          "errorCode" : {
+            "type" : "string"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/ExamCheckResult"
+          },
+          "runId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckSelection" : {
+        "properties" : {
+          "counts" : {
+            "items" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "issues" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckIssue"
+            },
+            "type" : "array"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckStarted" : {
+        "properties" : {
+          "runId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckSubject" : {
+        "properties" : {
+          "answerQuotas" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckAnswerQuota"
+            },
+            "type" : "array"
+          },
+          "byDifficulty" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckSubjectDimension"
+            },
+            "type" : "array"
+          },
+          "byGrade" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamCheckSubjectDimension"
+            },
+            "type" : "array"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamCheckSubjectDimension" : {
+        "properties" : {
+          "achieved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "ExamCheckSummary" : {
         "description" : "Kết quả kiểm tra cấu hình gần nhất của bài thi",
         "properties" : {
@@ -2798,6 +3440,9 @@
             },
             "type" : "array"
           },
+          "expertConfirmed" : {
+            "type" : "boolean"
+          },
           "id" : {
             "type" : "string"
           },
@@ -2813,6 +3458,643 @@
               "$ref" : "#/components/schemas/ExamSection"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewAllocationCell" : {
+        "properties" : {
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "generated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewBlock" : {
+        "properties" : {
+          "allocation" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewAllocationCell"
+            },
+            "type" : "array"
+          },
+          "blockId" : {
+            "type" : "string"
+          },
+          "blockName" : {
+            "type" : "string"
+          },
+          "firstNumber" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewItem"
+            },
+            "type" : "array"
+          },
+          "lastNumber" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "manualGrading" : {
+            "type" : "boolean"
+          },
+          "pointsEach" : {
+            "type" : "number"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questionType" : {
+            "type" : "string"
+          },
+          "requirement" : {
+            "$ref" : "#/components/schemas/ExamPreviewBlockRequirement"
+          },
+          "setCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "setSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewBlockRequirement" : {
+        "properties" : {
+          "byCompetency" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewRequirementDimension"
+            },
+            "type" : "array"
+          },
+          "byDifficulty" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewRequirementDimension"
+            },
+            "type" : "array"
+          },
+          "byGrade" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewRequirementDimension"
+            },
+            "type" : "array"
+          },
+          "cells" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewRequirementCell"
+            },
+            "type" : "array"
+          },
+          "mode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewCheck" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewIssue" : {
+        "properties" : {
+          "answerType" : {
+            "type" : "string"
+          },
+          "available" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "blockId" : {
+            "type" : "string"
+          },
+          "blockName" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "competencyCode" : {
+            "type" : "string"
+          },
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "dimension" : {
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "group" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "questionCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          },
+          "subjectCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "timeLimitSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewItem" : {
+        "properties" : {
+          "children" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewQuestion"
+            },
+            "type" : "array"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "passage" : {
+            "type" : "string"
+          },
+          "question" : {
+            "$ref" : "#/components/schemas/ExamPreviewQuestion"
+          },
+          "setId" : {
+            "type" : "string"
+          },
+          "simulated" : {
+            "type" : "boolean"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewKnowledgeRef" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nodeId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewKnowledgeStat" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nodeId" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewOption" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "correct" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewPaper" : {
+        "properties" : {
+          "checks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewCheck"
+            },
+            "type" : "array"
+          },
+          "hasManualGrading" : {
+            "type" : "boolean"
+          },
+          "knowledgeStats" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewKnowledgeStat"
+            },
+            "type" : "array"
+          },
+          "parts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewPart"
+            },
+            "type" : "array"
+          },
+          "sharedDuration" : {
+            "type" : "boolean"
+          },
+          "subjects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewSubjectAllocation"
+            },
+            "type" : "array"
+          },
+          "totalMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalPoints" : {
+            "type" : "number"
+          },
+          "totalQuestions" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewPart" : {
+        "properties" : {
+          "blocks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewBlock"
+            },
+            "type" : "array"
+          },
+          "durationMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "firstNumber" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lastNumber" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "order" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewPathChoice" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewPathRef" : {
+        "properties" : {
+          "choices" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewPathChoice"
+            },
+            "type" : "array"
+          },
+          "pathId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewQuestion" : {
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "body" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "knowledge" : {
+            "$ref" : "#/components/schemas/ExamPreviewKnowledgeRef"
+          },
+          "number" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewOption"
+            },
+            "type" : "array"
+          },
+          "points" : {
+            "type" : "number"
+          },
+          "questionId" : {
+            "type" : "string"
+          },
+          "rubric" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewRubricItem"
+            },
+            "type" : "array"
+          },
+          "simulated" : {
+            "type" : "boolean"
+          },
+          "solution" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewRequest" : {
+        "properties" : {
+          "pathId" : {
+            "type" : "string"
+          },
+          "seed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "subjectCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "pathId", "seed" ],
+        "type" : "object"
+      },
+      "ExamPreviewRequirementCell" : {
+        "properties" : {
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewRequirementDimension" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewResult" : {
+        "properties" : {
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "generatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "issues" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewIssue"
+            },
+            "type" : "array"
+          },
+          "paper" : {
+            "$ref" : "#/components/schemas/ExamPreviewPaper"
+          },
+          "path" : {
+            "$ref" : "#/components/schemas/ExamPreviewPathRef"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "seed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewRubricItem" : {
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewSubjectAllocation" : {
+        "properties" : {
+          "answerQuotas" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewSubjectQuotaRow"
+            },
+            "type" : "array"
+          },
+          "byDifficulty" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewSubjectDimensionRow"
+            },
+            "type" : "array"
+          },
+          "byGrade" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewSubjectDimensionRow"
+            },
+            "type" : "array"
+          },
+          "cells" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewAllocationCell"
+            },
+            "type" : "array"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewSubjectDimensionRow" : {
+        "properties" : {
+          "achieved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewSubjectQuotaRow" : {
+        "properties" : {
+          "achieved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "answerType" : {
+            "type" : "string"
+          },
+          "required" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -4364,6 +5646,9 @@
             "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
             "type" : "string"
           },
+          "expectedScoring" : {
+            "$ref" : "#/components/schemas/BlockExpectedScoring"
+          },
           "id" : {
             "type" : "string"
           },
@@ -4398,6 +5683,12 @@
           "shuffle" : {
             "enum" : [ "SHUFFLE", "KEEP_ORDER" ],
             "type" : "string"
+          },
+          "tagCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "taskTypeCode" : {
             "type" : "string"
@@ -13725,6 +15016,284 @@
         "tags" : [ "Exam" ]
       }
     },
+    "/api/v1/admin/exams/available-questions/count" : {
+      "post" : {
+        "operationId" : "countAvailableQuestions",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AvailableQuestionsQuery"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AvailableQuestionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đếm nguồn câu hỏi của nhóm",
+        "tags" : [ "Exam" ]
+      }
+    },
+    "/api/v1/admin/exams/available-questions/count-subject" : {
+      "post" : {
+        "operationId" : "countSubjectAvailableQuestions",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AvailableQuestionsSubjectQuery"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AvailableQuestionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đếm hợp nguồn câu hỏi của môn",
+        "tags" : [ "Exam" ]
+      }
+    },
     "/api/v1/admin/exams/suggested-code" : {
       "get" : {
         "operationId" : "suggestCode",
@@ -13881,6 +15450,444 @@
         },
         "summary" : "Gợi ý mã bài thi",
         "tags" : [ "Exam" ]
+      }
+    },
+    "/api/v1/admin/exams/{examId}/check" : {
+      "get" : {
+        "operationId" : "getLatestExamCheck",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "examId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamCheckResult"
+                }
+              }
+            },
+            "description" : "Latest check, or null when not checked"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem kết quả kiểm tra gần nhất",
+        "tags" : [ "Kiểm tra cấu hình bài thi" ]
+      },
+      "post" : {
+        "operationId" : "checkExam",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "examId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "deep",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamCheckResult"
+                }
+              }
+            },
+            "description" : "Synchronous check"
+          },
+          "202" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamCheckStarted"
+                }
+              }
+            },
+            "description" : "Background check started or already running"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Kiểm tra cấu hình bài thi",
+        "tags" : [ "Kiểm tra cấu hình bài thi" ]
+      }
+    },
+    "/api/v1/admin/exams/{examId}/check/runs/{runId}" : {
+      "get" : {
+        "operationId" : "getExamCheckRun",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "examId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "runId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamCheckRun"
+                }
+              }
+            },
+            "description" : "Background check state"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem trạng thái kiểm tra kỹ",
+        "tags" : [ "Kiểm tra cấu hình bài thi" ]
       }
     },
     "/api/v1/admin/exams/{id}" : {
@@ -14319,6 +16326,154 @@
           }
         },
         "summary" : "Nhân bản bài thi",
+        "tags" : [ "Exam" ]
+      }
+    },
+    "/api/v1/admin/exams/{id}/preview" : {
+      "post" : {
+        "operationId" : "previewExam",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExamPreviewRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamPreviewResult"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Sinh đề xem trước một đường (có hạt giống)",
         "tags" : [ "Exam" ]
       }
     },

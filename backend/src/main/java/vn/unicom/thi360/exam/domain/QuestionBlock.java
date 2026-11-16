@@ -2,6 +2,7 @@ package vn.unicom.thi360.exam.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
+import java.util.List;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -19,5 +20,10 @@ public record QuestionBlock(
         String templateGroupCode,
         Boolean answerTypeLocked,
         BigDecimal requiredPointsPerQuestion,
-        BlockShuffleRule shuffle) {
+        BlockShuffleRule shuffle,
+        List<String> tagCodes,
+        BlockExpectedScoring expectedScoring) {
+    public QuestionBlock {
+        tagCodes = tagCodes == null ? List.of() : List.copyOf(tagCodes);
+    }
 }

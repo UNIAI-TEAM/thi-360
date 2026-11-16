@@ -100,6 +100,7 @@ public final class ExamStructureValidator {
                         || quota.value().signum() < 0) {
                     invalid("sections.answerQuotas", "quota must have a non-negative value and type");
                 }
+                requireInteger(quota.value(), "sections.answerQuotas");
             }
         }
         for (QuestionBlock block : section.blocks()) {
@@ -203,6 +204,13 @@ public final class ExamStructureValidator {
             if (unit == MatrixUnit.PERCENT && number.compareTo(ONE_HUNDRED) > 0) {
                 invalid(field, "percent matrix value must not exceed 100");
             }
+            requireInteger(number, field);
+        }
+    }
+
+    private static void requireInteger(BigDecimal value, String field) {
+        if (value.stripTrailingZeros().scale() > 0) {
+            invalid(field, "value must be an integer");
         }
     }
 
