@@ -14,14 +14,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 // q-0006 là câu Nháp chưa chọn đáp án đúng: máy chủ báo thiếu điều kiện ANSWER.
-const questionStore = withQuestionsServer({
+const fakeQuestions = withQuestionsServer({
   readiness: { "q-0006": apiReadiness(false, [{ code: "NO_CORRECT_OPTION", path: "body.options" }]) },
   usage: {
     "q-0003": { examIds: ["ex-1", "ex-2", "ex-3"], ledger: [{ examId: "ex-1", kind: "ATTEMPT", versionNo: 1 }] },
   },
 });
 
-const summary = (id: string) => toQuestionSummary(questionStore.require(id));
+const summary = (id: string) => toQuestionSummary(fakeQuestions.require(id));
 
 describe("MarkReadyDialog (canvas KiemTraSanSang)", () => {
   it("cau chua du dieu kien: liet ke dieu kien chua dat va lien ket den cho can sua", async () => {
@@ -41,7 +41,7 @@ describe("MarkReadyDialog (canvas KiemTraSanSang)", () => {
     );
     expect(within(dialog).queryByRole("button", { name: "Chuyển sang Sẵn sàng" })).not.toBeInTheDocument();
     expect(within(dialog).getByRole("link", { name: "Sửa câu hỏi" })).toHaveAttribute("href", "/questions/q-0006/edit");
-    expect(questionStore.require("q-0006").status).toBe("DRAFT");
+    expect(fakeQuestions.require("q-0006").status).toBe("DRAFT");
   });
 
   it("cau du dieu kien: xac nhan thi chuyen trang thai va bao cho ben goi", async () => {
@@ -80,7 +80,7 @@ describe("RetireQuestionDialog (canvas NgungCauHoi)", () => {
 
     await userEvent.click(within(dialog).getByRole("button", { name: "Ngừng sử dụng" }));
     await waitFor(() => expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ status: "RETIRED" })));
-    expect(questionStore.require("q-0003").status).toBe("RETIRED");
+    expect(fakeQuestions.require("q-0003").status).toBe("RETIRED");
   });
 
   it("cau chua dung o bai thi nao", async () => {

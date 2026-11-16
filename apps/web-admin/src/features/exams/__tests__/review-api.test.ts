@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { getExam } from "../api";
 import {
   discontinueExam,
@@ -16,7 +16,6 @@ import { ExamsBackend } from "./fake-exams-backend";
 let backend: ExamsBackend;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   backend = new ExamsBackend();
   backend.install();
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import referenceFixture from "@/features/content/mock/reference.json";
+import referenceFixture from "@/test/fixtures/content-reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { listQuestions } from "../api";
 import { updateQuestion } from "../editor-api";
@@ -28,7 +28,7 @@ import type { QuestionDetail } from "../types";
 const reference = referenceFixture as ContentReference;
 const KNOWLEDGE = [{ nodeId: "kn-2V1-1-1", code: "2V1-1-1", name: "Luan diem", primary: true }];
 
-const questionStore = withQuestionsServer();
+const fakeQuestions = withQuestionsServer();
 
 function classified(type: QuestionEditorValues["type"]): QuestionEditorValues {
   return {
@@ -122,7 +122,7 @@ describe("soan cau Tu luan", () => {
   });
 
   it("doc lai cau mau Tu luan vao bieu mau", () => {
-    const values = toEditorValues(questionStore.require("q-8001"));
+    const values = toEditorValues(fakeQuestions.require("q-8001"));
     expect(values.type).toBe("ESSAY");
     expect(values.body.rubric.map((criterion) => criterion.points)).toEqual(["0,25", "0,25", "1", "0,5"]);
     expect(values.body.wordLimit).toBe("200");
@@ -161,13 +161,13 @@ describe("dieu kien San sang cho quy tac cham", () => {
     evaluateReadiness(question, { reference }).rules.flatMap((rule) => rule.issues.map((issue) => issue.code));
 
   it("cau Tu luan mau: du tieu chi thi dat, tong diem lech thi chua dat", () => {
-    expect(evaluateReadiness(questionStore.require("q-8001"), { reference }).ready).toBe(true);
-    expect(ruleIssues(questionStore.require("q-8002"))).toEqual(["RUBRIC_TOTAL_MISMATCH"]);
-    expect(evaluateReadiness(questionStore.require("q-8003"), { reference }).ready).toBe(true);
+    expect(evaluateReadiness(fakeQuestions.require("q-8001"), { reference }).ready).toBe(true);
+    expect(ruleIssues(fakeQuestions.require("q-8002"))).toEqual(["RUBRIC_TOTAL_MISMATCH"]);
+    expect(evaluateReadiness(fakeQuestions.require("q-8003"), { reference }).ready).toBe(true);
   });
 
   it("Tu luan can huong dan cham; tieu chi tuy chon, tieu chi trong mo ta thi bao loi (D20)", () => {
-    const question = structuredClone(questionStore.require("q-8001"));
+    const question = structuredClone(fakeQuestions.require("q-8001"));
     if (question.body.type !== "ESSAY") throw new Error("not essay");
     question.body.rubric = [];
     expect(ruleIssues(question)).toEqual([]);
@@ -183,7 +183,7 @@ describe("dieu kien San sang cho quy tac cham", () => {
     expect(isValidScoreTable([0.3333, 0.6667, 1.0], 3, 1)).toBe(true);
     expect(isValidScoreTable([0.1, 0.25, 0.5], 4, 1)).toBe(false);
     expect(isValidScoreTable([0.5, 0.25, 0.5, 1], 4, 1)).toBe(false);
-    const question = structuredClone(questionStore.require("q-8004"));
+    const question = structuredClone(fakeQuestions.require("q-8004"));
     if (question.body.type !== "TRUE_FALSE") throw new Error("not true/false");
     question.body.scoreTable = [0.1, 0.25, 0.5, 0.75];
     expect(ruleIssues(question)).toEqual(["SCORE_TABLE_INVALID"]);
@@ -211,20 +211,20 @@ describe("loc nang luc va dang Tu luan", () => {
 
 describe("phien ban luu quy tac cham va nang luc", () => {
   it("doi tieu chi cham, bang diem, quy tac nhieu dap an hoac nang luc la thay doi noi dung", () => {
-    const essayBefore = toSnapshot(questionStore.require("q-8001"));
+    const essayBefore = toSnapshot(fakeQuestions.require("q-8001"));
     const essayAfter = structuredClone(essayBefore);
     if (essayAfter.body.type !== "ESSAY") throw new Error("not essay");
     essayAfter.body.rubric[0]!.points = 0.5;
     essayAfter.competencyCode = "VACT-NN-TV";
     expect(diffSnapshots(essayBefore, essayAfter).map((change) => change.field)).toEqual(["body", "competencyCode"]);
 
-    const choiceBefore = toSnapshot(questionStore.require("q-8006"));
+    const choiceBefore = toSnapshot(fakeQuestions.require("q-8006"));
     const choiceAfter = structuredClone(choiceBefore);
     if (choiceAfter.body.type !== "MULTIPLE_CHOICE") throw new Error("not multiple choice");
     choiceAfter.body.scoringRule = "ALL_OR_NOTHING";
     expect(diffSnapshots(choiceBefore, choiceAfter).map((change) => change.field)).toEqual(["body"]);
 
-    const tfBefore = toSnapshot(questionStore.require("q-8004"));
+    const tfBefore = toSnapshot(fakeQuestions.require("q-8004"));
     const tfAfter = structuredClone(tfBefore);
     if (tfAfter.body.type !== "TRUE_FALSE") throw new Error("not true/false");
     tfAfter.body.scoreTable = [0.25, 0.5, 0.75, 1];
@@ -232,7 +232,7 @@ describe("phien ban luu quy tac cham va nang luc", () => {
   });
 
   it("luu cau giu nang luc", async () => {
-    const question = questionStore.require("q-8007");
+    const question = fakeQuestions.require("q-8007");
     const values = toEditorValues(question);
     const { question: saved } = await updateQuestion(question.id, { ...toSaveRequest(values), expectedRevision: question.revision });
     expect(saved.competencyCode).toBe("VACT-NN-TA");

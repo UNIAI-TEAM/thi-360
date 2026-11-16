@@ -18,7 +18,6 @@ const SERVING_PATH = { pathId: "default", choices: [] };
 let server: FakeServer;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   window.history.replaceState(null, "", "/");
   server = new FakeServer()
     .on("GET", EXAM_PATH, {

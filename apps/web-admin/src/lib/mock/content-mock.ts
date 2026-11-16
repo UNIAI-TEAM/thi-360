@@ -1,14 +1,13 @@
 import { ApiStatusError } from "@/lib/api/query-client";
 
 /**
- * Lớp dữ liệu mẫu cho các màn đợt 2 (Ngân hàng câu hỏi, Bài thi) khi backend chưa có nghiệp vụ.
+ * Lớp dữ liệu mẫu còn lại của đợt 2: chỉ `/grading` (QA UNI-2621 gỡ mock của Ngân hàng câu hỏi, Nhập, Bài thi).
  *
  * Quy ước (DESIGN.md mục 5.14):
  * - Giao diện chỉ gọi hook TanStack Query trong `features/<x>/queries.ts`; hook gọi hàm trong `features/<x>/api.ts`.
- * - Hàm trong `api.mock.ts` gọi `mockRequest(...)` đọc dữ liệu từ `features/<x>/mock/*.json` (dữ liệu tiếng Việt nằm
+ * - Hàm của lớp dữ liệu mẫu grading gọi `mockRequest(...)` đọc dữ liệu từ `mock/*.json` (dữ liệu tiếng Việt nằm
  *   trong JSON vì test quét mã nguồn chặn chữ có dấu trong `.ts`/`.tsx`).
- * - `api.ts` chọn giữa `api.mock.ts` và API thật theo cờ ở `lib/mock/flags.ts`. Khi nối API thật (FE-1, FE-2): thay nhánh
- *   thật bằng lời gọi `@thi360/api-client`, giữ nguyên chữ ký; hook và giao diện không phải sửa.
+ * - `grading/api.ts` chọn giữa bản mẫu và `notWired` theo cờ ở `lib/mock/flags.ts` (nhánh thật chưa nối: đợt chấm).
  */
 
 export const MOCK_SCENARIOS = ["data", "empty", "error", "loading"] as const;

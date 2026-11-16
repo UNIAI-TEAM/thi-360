@@ -1,4 +1,4 @@
-/** Khóa truy vấn của Kiểm tra và Công bố bài thi: dùng chung bởi facade `review-api.ts` và bản mẫu `review-api.mock.ts`. */
+/** Khóa truy vấn của Kiểm tra và Công bố bài thi: dùng chung bởi facade `review-api.ts` (bản mẫu đã gỡ ở QA, UNI-2621). */
 export const EXAM_REVIEW_QUERY_KEYS = {
   all: ["exams", "review"] as const,
   check: (examId: string) => ["exams", "review", examId, "check"] as const,

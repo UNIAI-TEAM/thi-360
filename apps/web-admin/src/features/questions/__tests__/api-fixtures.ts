@@ -2,17 +2,17 @@ import type { components } from "@thi360/api-client";
 import { beforeEach } from "vitest";
 import { resetIdempotencyKeys } from "@/features/content/idempotency";
 import { resetCatalogLookup } from "@/features/content/catalog-lookup";
-import referenceFixture from "@/features/content/mock/reference.json";
+import referenceFixture from "@/test/fixtures/content-reference.json";
 import type { ContentReference, KnowledgeNode, QuestionStatus } from "@/features/content/types";
 import { fakeApi, ok, fail, withRealApi, type ApiCall, type ContentReferenceResponse } from "@/test/fake-api";
 import type { QuestionDetail, QuestionSummary } from "../types";
 import type { SaveChildQuestionRequest } from "../editor-types";
 import { asWireBody, fromWireBody, toWireBody, type ApiQuestionBody, type ChildClassificationIds } from "../wire-body";
-import questionsFixture from "../mock/questions.json";
+import questionsFixture from "@/features/grading/mock/questions.json";
 
 /**
  * Dữ liệu và "máy chủ giả" cho test của nhánh API thật (plan B7): test đưa vào bộ câu hỏi kiểu web
- * (lấy sẵn từ `mock/questions.json` — JSON, không phải `api.mock.ts`), bộ dựng đổi sang đúng hình
+ * (lấy sẵn từ `grading/mock/questions.json`, JSON thuần), bộ dựng đổi sang đúng hình
  * dạng phản hồi OpenAPI rồi đăng ký với `fakeApi`. Lệnh ghi cập nhật bản đồ nội bộ nên các lần đọc
  * sau nhìn thấy thay đổi như máy chủ thật.
  */
@@ -32,7 +32,7 @@ type ApiUpdateResponse = Schemas["UpdateQuestionResponse"];
 type ApiKnowledgeNode = Schemas["KnowledgeNode"];
 type ApiExamKind = Schemas["ExamKindOption"];
 
-/** Nguồn dữ liệu mẫu dạng web (đọc JSON, không gọi `api.mock.ts`/`questionStore`). */
+/** Nguồn dữ liệu mẫu dạng web (đọc JSON thuần). */
 export const fixtureQuestions = questionsFixture as { questions: QuestionDetail[] };
 
 export function fixtureQuestion(id: string): QuestionDetail {
@@ -611,6 +611,9 @@ export function installQuestionsApi(
     return ok(apiExam(found ?? { id, code: id, name: "" }));
   });
 
+  // `POST /question-assets`: trả id UUID; tên/dung lượng để trống để client rơi về `file.name`/`file.size`.
+  fakeApi.post("/api/v1/admin/question-assets", () => ok({ id: crypto.randomUUID() }, { status: 201 }));
+
   const versionSpecs = new Map<string, ApiVersionItem[]>();
   /** Nội dung đang phục vụ của câu đã có bản Nháp mới (bản chụp lấy trước khi sửa). */
   const servingSnapshots = new Map<string, ApiSnapshot>();
@@ -688,7 +691,7 @@ function localizeNames(value: unknown, locale: "vi" | "en"): unknown {
 }
 
 /**
- * `GET /content-reference` dựng từ `content/mock/reference.json` (JSON thuần, không phải `api.mock.ts`): cùng môn, khối,
+ * `GET /content-reference` dựng từ `src/test/fixtures/content-reference.json`: cùng môn, khối,
  * mức độ, nhãn, dạng bài và cây kiến thức (mã MAPID `1D4-…`) mà các câu mẫu tham chiếu.
  */
 export function apiReferenceFromFixture(locale: "vi" | "en" = "vi"): ContentReferenceResponse {

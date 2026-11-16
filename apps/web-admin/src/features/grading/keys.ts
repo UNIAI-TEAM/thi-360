@@ -1,6 +1,6 @@
 import type { ListGradingAttemptsQuery } from "./types";
 
-/** Khóa truy vấn, mã lỗi và trường sắp xếp của hàng chờ chấm: dùng chung bởi facade `api.ts` và bản mẫu `api.mock.ts`. */
+/** Khóa truy vấn, mã lỗi và trường sắp xếp của hàng chờ chấm: của hàng chờ chấm. */
 export const GRADING_QUERY_KEYS = {
   all: ["grading"] as const,
   list: (query: ListGradingAttemptsQuery) => ["grading", "list", query] as const,

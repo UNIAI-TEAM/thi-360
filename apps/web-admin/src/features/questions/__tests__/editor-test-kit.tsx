@@ -11,7 +11,7 @@ import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorVa
 import { apiReferenceFromFixture, stubContentReference, withQuestionsServer } from "./api-fixtures";
 
 /** Kho đọc/ghi vào "máy chủ" câu hỏi giả của file test (nạp lại bộ câu mẫu trước mỗi test). */
-export const questionStore = withQuestionsServer();
+export const fakeQuestions = withQuestionsServer();
 
 // Mỗi ô nội dung HTML là một trình soạn TipTap; biểu mẫu nhiều ô (phương án, cặp ghép, ý đúng/sai) dựng chậm trong jsdom.
 vi.setConfig({ testTimeout: 20_000 });
@@ -46,7 +46,7 @@ export async function seedQuestion(type: QuestionType, fill: (values: QuestionEd
 
 /** Câu đang lưu trong kho dữ liệu mẫu sau khi bấm Lưu. */
 export function storedQuestion(id: string) {
-  return questionStore.require(id);
+  return fakeQuestions.require(id);
 }
 
 /**

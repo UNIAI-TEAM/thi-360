@@ -10,7 +10,6 @@ vi.mock("@/features/content/api", () => ({ getContentReference: async () => ({ c
 let server: FakeServer;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   server = new FakeServer().install();
 });
 

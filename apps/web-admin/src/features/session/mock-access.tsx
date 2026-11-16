@@ -1,18 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { type MockFlag, isContentMockEnabled, isGradingMockEnabled } from "@/lib/mock/flags";
+import { isGradingMockEnabled } from "@/lib/mock/flags";
 import { ForbiddenView } from "./forbidden-view";
 import type { PermissionRequirement } from "./permissions";
 import { usePermissions } from "./session-provider";
 
-function flagOn(flag: MockFlag): boolean {
-  return flag === "content" ? isContentMockEnabled() : isGradingMockEnabled();
-}
-
 /**
- * Cổng của một mục chạy được trên dữ liệu mẫu: cho vào khi người dùng có `permission` hoặc cờ dữ liệu mẫu bật; còn lại
- * hiện trang 403. Chỉ để ẩn hiện cho tiện, máy chủ mới là nơi chặn (RULES mục 5).
+ * Cổng của một mục trong nhóm Nội dung: cho vào khi người dùng có `permission`; với `flag="grading"` (chỉ còn
+ * `/grading` sau QA UNI-2621) cũng cho vào khi cờ `GRADING_MOCK` bật. Còn lại hiện trang 403. Chỉ để ẩn hiện cho
+ * tiện, máy chủ mới là nơi chặn (RULES mục 5).
  */
 export function MockAccessGate({
   permission,
@@ -20,10 +17,10 @@ export function MockAccessGate({
   children,
 }: {
   permission: PermissionRequirement;
-  flag: MockFlag;
+  flag?: "grading";
   children: ReactNode;
 }) {
   const { isLoading, can } = usePermissions();
-  if (flagOn(flag) || can(permission)) return children;
+  if ((flag === "grading" && isGradingMockEnabled()) || can(permission)) return children;
   return isLoading ? null : <ForbiddenView />;
 }

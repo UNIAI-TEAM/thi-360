@@ -39,7 +39,6 @@ function pagedServer(total: number) {
 }
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
 });
 
 describe("danh sách lọc phía máy khách (checkStatus)", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import reference from "@/features/content/mock/reference.json";
+import reference from "@/test/fixtures/content-reference.json";
 import type { ContentReference } from "@/features/content/types";
 import {
   choicePathCount,

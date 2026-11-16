@@ -10,7 +10,6 @@ vi.mock("@/features/content/api", () => ({ getContentReference: async () => ({ c
 let backend: ExamsBackend;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   backend = new ExamsBackend();
   backend.install();
 });

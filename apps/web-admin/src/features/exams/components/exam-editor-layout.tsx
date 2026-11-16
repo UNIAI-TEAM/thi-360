@@ -6,7 +6,6 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { EXAM_EDITOR_TABS, examTabFromPathname, examTabHref } from "../editor-tabs";
 import { useExam } from "../queries";
@@ -63,7 +62,6 @@ export function ExamEditorLayout({ examId, children }: { examId: string; childre
   return (
     <div className="flex flex-col gap-5">
       <ExamEditorHeader exam={exam} />
-      <ContentMockBanner />
       <NavTabs aria-label={t("editor.tabsLabel")}>
         {EXAM_EDITOR_TABS.map((tab) => (
           <NavTab key={tab} asChild current={tab === activeTab}>

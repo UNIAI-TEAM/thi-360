@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getContentReference } from "@/features/content/api.mock";
+import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
 import { ExamListView } from "../components/exam-list-view";
 import { examDetailWire, FakeServer, type Recorded } from "./fake-exams-server";
@@ -56,7 +56,6 @@ function listServer() {
 }
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   window.history.replaceState(null, "", "/exams");
 });
 

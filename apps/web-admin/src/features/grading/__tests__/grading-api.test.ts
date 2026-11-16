@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
+import { questionStore } from "../mock/question-store";
 import type { QuestionDetail } from "@/features/questions/types";
 import { MockApiError } from "@/lib/mock/content-mock";
 import {

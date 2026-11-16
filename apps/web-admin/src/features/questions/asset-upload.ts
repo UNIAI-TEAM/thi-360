@@ -1,19 +1,24 @@
 import { toContentApiError } from "@/features/content/api-error";
-import { selectApi } from "@/features/content/api-switch";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
-import * as mock from "./api.mock";
-import type { QuestionAsset, QuestionAssetKind } from "./api.mock";
 
 /**
  * Tải tài nguyên câu hỏi (`POST /question-assets`, spec 4.5): `kind` là `IMAGE` cho ảnh chèn vào nội dung (PNG, JPEG,
  * WebP, tối đa 5 MB) hoặc `ATTACHMENT` cho tệp đính kèm (tối đa 20 MB). Máy chủ kiểm loại theo chữ ký byte, giới hạn
  * 60 tệp mỗi 10 phút mỗi người. Tải xuống là `GET /question-assets/{id}` (`QuestionAsset.url`).
- *
- * Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy bản mẫu của `api.mock.ts`; tắt thì gọi API thật.
+ * Bản mẫu và cờ `CONTENT_MOCK` đã gỡ ở QA (UNI-2621).
  */
 
-async function uploadQuestionAssetReal(file: File, kind: QuestionAssetKind): Promise<QuestionAsset> {
+export type QuestionAssetKind = "IMAGE" | "ATTACHMENT";
+
+export interface QuestionAsset {
+  id: string;
+  url: string;
+  fileName: string;
+  size: number;
+}
+
+export async function uploadQuestionAsset(file: File, kind: QuestionAssetKind): Promise<QuestionAsset> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/question-assets", {
     params: { query: { kind } },
@@ -32,8 +37,6 @@ async function uploadQuestionAssetReal(file: File, kind: QuestionAssetKind): Pro
     size: data.size ?? file.size,
   };
 }
-
-export const uploadQuestionAsset = selectApi(mock.uploadQuestionAsset, uploadQuestionAssetReal);
 
 function errorCode(error: unknown): string | undefined {
   if (typeof error === "object" && error !== null && "code" in error && typeof error.code === "string") {

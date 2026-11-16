@@ -12,7 +12,12 @@ import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
 
 vi.mock("@/features/questions/api", async (importOriginal) => {
   const actual = await importOriginal<typeof QuestionsApi>();
-  return { ...actual, uploadQuestionAsset: vi.fn(actual.uploadQuestionAsset) };
+  // Lớp mẫu đã gỡ: trả tài nguyên giả theo hợp đồng `uploadQuestionAsset` (QA UNI-2621).
+  const uploadQuestionAsset = vi.fn(async (file: File): Promise<QuestionsApi.QuestionAsset> => {
+    const id = crypto.randomUUID();
+    return { id, url: `/api/v1/admin/question-assets/${id}`, fileName: file.name, size: file.size };
+  });
+  return { ...actual, uploadQuestionAsset };
 });
 
 function renderEditor(props: Partial<Parameters<typeof RichTextEditor>[0]> = {}) {

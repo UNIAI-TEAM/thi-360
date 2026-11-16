@@ -45,7 +45,6 @@ function respondWith(...replies: Array<{ status: number; body?: unknown }>) {
 
 beforeEach(() => {
   requests = [];
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
 });
 
 afterEach(() => {

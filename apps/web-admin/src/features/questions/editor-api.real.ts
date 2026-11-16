@@ -18,7 +18,7 @@ import { loadQuestionUsage } from "./usage-real";
 import { fromApiVersions, loadSnapshotLookups } from "./versions-mapping";
 import { asApiBody, toWireBody, type ChildClassificationIds } from "./wire-body";
 
-/** Nhánh API thật của soạn câu hỏi, nhân bản, lịch sử phiên bản, nơi đang dùng; giữ chữ ký của `editor-api.mock.ts`. */
+/** Nhánh API thật của soạn câu hỏi, nhân bản, lịch sử phiên bản, nơi đang dùng (bản mẫu đã gỡ ở QA). */
 
 /** Phân loại riêng của câu con gửi bằng id giá trị danh mục; chỉ tải danh mục khi có câu con ghi đè. */
 async function childClassificationIds(request: SaveQuestionRequest): Promise<ChildClassificationIds> {

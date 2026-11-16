@@ -43,7 +43,6 @@ function change(id: string, where: string) {
 
 describe("màn Phiên bản: vị trí thay đổi", () => {
   beforeEach(() => {
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
     window.history.replaceState(null, "", "/");
     new FakeServer()
       .on("GET", EXAM_PATH, {
@@ -125,7 +124,6 @@ function issueOf(overrides: Partial<CheckIssue>): CheckIssue {
 
 describe("câu mô tả vấn đề thiếu nguồn", () => {
   beforeEach(() => {
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "true");
   });
 
   it("ô không có lớp lẫn độ khó thì bỏ cả cụm, không in dấu '/'", async () => {

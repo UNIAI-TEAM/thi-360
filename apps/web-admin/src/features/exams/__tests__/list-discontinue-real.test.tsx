@@ -29,7 +29,6 @@ const exam = mapExamSummary({
 } as Parameters<typeof mapExamSummary>[0]);
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
 });
 
 describe("ngừng bán từ danh sách, nhánh thật", () => {

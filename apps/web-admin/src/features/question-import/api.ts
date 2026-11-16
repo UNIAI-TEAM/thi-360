@@ -1,20 +1,18 @@
-import { selectApi } from "@/features/content/api-switch";
-import * as mock from "./api.mock";
 import * as real from "./api-real";
 
 /**
- * API nhập câu hỏi từ tệp. Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy dữ liệu mẫu (`api.mock.ts`); tắt thì gọi
- * API thật (`api-real.ts`: tải tệp, kiểm tra, nhập với `Idempotency-Key`, lịch sử). Cờ đọc mỗi lần gọi.
+ * API nhập câu hỏi từ tệp: gọi API thật (`api-real.ts`: tải tệp, kiểm tra, nhập với `Idempotency-Key`,
+ * lịch sử). Bản mẫu và cờ `CONTENT_MOCK` đã gỡ ở QA (UNI-2621).
  */
 
 export { QUESTION_IMPORT_QUERY_KEYS } from "./keys";
 export type { DownloadedFile } from "./api-real";
 
-export const downloadQuestionTemplate = selectApi(mock.downloadQuestionTemplate, real.downloadQuestionTemplate);
-export const uploadQuestionFile = selectApi(mock.uploadQuestionFile, real.uploadQuestionFile);
-export const validateImport = selectApi(mock.validateImport, real.validateImport);
-export const commitImport = selectApi(mock.commitImport, real.commitImport);
-export const listImportHistory = selectApi(mock.listImportHistory, real.listImportHistory);
+export const downloadQuestionTemplate = real.downloadQuestionTemplate;
+export const uploadQuestionFile = real.uploadQuestionFile;
+export const validateImport = real.validateImport;
+export const commitImport = real.commitImport;
+export const listImportHistory = real.listImportHistory;
 
 /** Mã lỗi nghiệp vụ của lời gọi API (ví dụ `IMPORT_EMPTY_FILE`), để màn hình dịch; không có thì `undefined`. */
 export function importApiErrorCode(error: unknown): string | undefined {

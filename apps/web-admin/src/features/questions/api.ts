@@ -1,10 +1,9 @@
-import { selectApi } from "@/features/content/api-switch";
-import * as mock from "./api.mock";
 import * as real from "./api.real";
 
 /**
- * API của Ngân hàng câu hỏi. Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy dữ liệu mẫu (`api.mock.ts`); tắt thì
- * `api.real.ts` gọi `/api/v1/admin/questions`. Chữ ký giữ nguyên để hook trong `queries.ts` và giao diện không đổi.
+ * API của Ngân hàng câu hỏi: `api.real.ts` gọi `/api/v1/admin/questions`. Lớp dữ liệu mẫu và cờ
+ * `NEXT_PUBLIC_THI360_CONTENT_MOCK` đã gỡ ở QA (UNI-2621). Chữ ký giữ nguyên để hook trong `queries.ts` và
+ * giao diện không đổi.
  */
 
 export { QUESTIONS_QUERY_KEYS } from "./keys";
@@ -21,18 +20,18 @@ export type QuestionStatusErrorCode = (typeof QUESTION_STATUS_ERROR_CODES)[numbe
 
 export { toQuestionSummary } from "./question-summary";
 
-export const listQuestions = selectApi(mock.listQuestions, real.listQuestions);
-export const getQuestionStatusCounts = selectApi(mock.getQuestionStatusCounts, real.getQuestionStatusCounts);
-export const listQuestionAuthors = selectApi(mock.listQuestionAuthors, real.listQuestionAuthors);
-export const getQuestion = selectApi(mock.getQuestion, real.getQuestion);
-export const getQuestionReadiness = selectApi(mock.getQuestionReadiness, real.getQuestionReadiness);
-export const markQuestionReady = selectApi(mock.markQuestionReady, real.markQuestionReady);
-export const retireQuestion = selectApi(mock.retireQuestion, real.retireQuestion);
-export const bulkMarkQuestionsReady = selectApi(mock.bulkMarkQuestionsReady, real.bulkMarkQuestionsReady);
-export const bulkRetireQuestions = selectApi(mock.bulkRetireQuestions, real.bulkRetireQuestions);
-export const getQuestionRetireImpact = selectApi(mock.getQuestionRetireImpact, real.getQuestionRetireImpact);
+export const listQuestions = real.listQuestions;
+export const getQuestionStatusCounts = real.getQuestionStatusCounts;
+export const listQuestionAuthors = real.listQuestionAuthors;
+export const getQuestion = real.getQuestion;
+export const getQuestionReadiness = real.getQuestionReadiness;
+export const markQuestionReady = real.markQuestionReady;
+export const retireQuestion = real.retireQuestion;
+export const bulkMarkQuestionsReady = real.bulkMarkQuestionsReady;
+export const bulkRetireQuestions = real.bulkRetireQuestions;
+export const getQuestionRetireImpact = real.getQuestionRetireImpact;
 
-export type { QuestionAsset, QuestionAssetKind } from "./api.mock";
+export type { QuestionAsset, QuestionAssetKind } from "./asset-upload";
 
 /**
  * Tải tài nguyên câu hỏi (`POST /question-assets`, spec 4.5): `kind` là `IMAGE` cho ảnh chèn vào

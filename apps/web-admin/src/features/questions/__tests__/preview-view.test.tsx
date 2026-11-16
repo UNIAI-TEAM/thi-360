@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
-const questionStore = withQuestionsServer();
+const fakeQuestions = withQuestionsServer();
 
 beforeEach(() => window.history.replaceState(null, "", "/"));
 
@@ -99,7 +99,7 @@ describe("xem trước câu hỏi", () => {
   });
 
   it("Điền khuyết: chấm từng ô theo đáp án của chính ô", async () => {
-    const base = questionStore.require("q-0004");
+    const base = fakeQuestions.require("q-0004");
     const cloze: QuestionDetail = {
       ...base,
       id: "q-cloze",
@@ -115,7 +115,7 @@ describe("xem trước câu hỏi", () => {
         ],
       },
     };
-    questionStore.insert(cloze);
+    fakeQuestions.insert(cloze);
     renderWithProviders(<QuestionPreviewView questionId="q-cloze" />);
     await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
 
@@ -131,14 +131,14 @@ describe("xem trước câu hỏi", () => {
 
   function insertCloze(passage: string, points: number): QuestionDetail {
     const cloze: QuestionDetail = {
-      ...questionStore.require("q-0004"),
+      ...fakeQuestions.require("q-0004"),
       id: "q-cloze-pad",
       type: "CLOZE",
       points,
       content: "",
       body: { type: "CLOZE", passage, blanks: [{ id: "b1", answers: ["Hà Nội"], points }] },
     };
-    questionStore.insert(cloze);
+    fakeQuestions.insert(cloze);
     return cloze;
   }
 
@@ -185,7 +185,7 @@ describe("xem trước câu hỏi", () => {
   });
 
   it("câu con của Bộ câu hỏi và tiêu chí chấm: điểm 0,125 hiện 0,13 (vi) và 0.13 (en)", async () => {
-    const essayBase = questionStore.require("q-8001");
+    const essayBase = fakeQuestions.require("q-8001");
     if (essayBase.body.type !== "ESSAY") throw new Error("fixture body type changed");
     const essay: QuestionDetail = {
       ...essayBase,
@@ -193,15 +193,15 @@ describe("xem trước câu hỏi", () => {
       points: 0.125,
       body: { ...essayBase.body, rubric: [{ id: "r1", description: "Mở bài", points: 0.125 }] },
     };
-    questionStore.insert(essay);
+    fakeQuestions.insert(essay);
     const set: QuestionDetail = {
-      ...questionStore.require("q-0027"),
+      ...fakeQuestions.require("q-0027"),
       id: "q-tiny-set",
       points: 0.125,
       body: { type: "QUESTION_SET", passage: "Đọc.", childIds: [essay.id] },
       children: [essay],
     };
-    questionStore.insert(set);
+    fakeQuestions.insert(set);
 
     const viewVi = renderWithProviders(<QuestionPreviewView questionId="q-tiny-set" />);
     await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
@@ -250,15 +250,15 @@ describe("xem trước câu hỏi", () => {
   });
 
   it("Bộ câu hỏi chỉ có câu Tự luận đã điền: chấm thử báo Chờ chấm, không báo Sai", async () => {
-    const essay = questionStore.require("q-8001");
+    const essay = fakeQuestions.require("q-8001");
     const set: QuestionDetail = {
-      ...questionStore.require("q-0027"),
+      ...fakeQuestions.require("q-0027"),
       id: "q-essay-set",
       points: essay.points,
       body: { type: "QUESTION_SET", passage: "Đọc đoạn trích.", childIds: [essay.id] },
       children: [essay],
     };
-    questionStore.insert(set);
+    fakeQuestions.insert(set);
     renderWithProviders(<QuestionPreviewView questionId="q-essay-set" />);
     await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
     await userEvent.type(screen.getByRole("textbox", { name: "Bài làm" }), "Lòng biết ơn");

@@ -6,7 +6,7 @@ import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout, questionTabFromPathname } from "../components/question-detail-layout";
 import { QuestionUsageView } from "../components/question-usage-view";
 import { QuestionVersionsView } from "../components/question-versions-view";
-import { questionStore, renderEn } from "./editor-test-kit";
+import { fakeQuestions, renderEn } from "./editor-test-kit";
 import { apiReferenceFromFixture } from "./api-fixtures";
 
 const navigation = vi.hoisted(() => ({ pathname: "/questions/q-0003", push: vi.fn() }));
@@ -21,7 +21,7 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/");
   navigation.pathname = "/questions/q-0003";
   navigation.push.mockReset();
-  questionStore.server().setUsage("q-0003", {
+  fakeQuestions.server().setUsage("q-0003", {
     examIds: ["ex-1", "ex-2", "ex-3"],
     ledger: [{ examId: "ex-1", kind: "ATTEMPT", versionNo: 1 }],
   });
@@ -119,7 +119,7 @@ describe("nơi đang dùng", () => {
   });
 
   it("hiện phần, lựa chọn, khối và trạng thái bài từ dòng nguồn", async () => {
-    questionStore.server().setUsage("q-0003", {
+    fakeQuestions.server().setUsage("q-0003", {
       examIds: [],
       blocks: [
         { examId: "ex-1", examCode: "HSA-01", examName: "HSA mẫu 1", examStatus: "PUBLISHED", partName: "Phần 3", optionName: "Tổ hợp A00", blockName: "Khối Lý" },
