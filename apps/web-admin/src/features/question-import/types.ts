@@ -123,6 +123,7 @@ export const IMPORT_ISSUE_CODES = [
   "ANSWER_MISSING",
   "CLOZE_MARKER_INVALID",
   "SET_CHILD_TYPE_INVALID",
+  "ENTRY_DUPLICATE",
 ] as const;
 export type ImportIssueCode = (typeof IMPORT_ISSUE_CODES)[number];
 

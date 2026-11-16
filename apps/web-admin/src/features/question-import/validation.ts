@@ -189,10 +189,12 @@ function trueFalseScoringValid(
 ): boolean {
   if (scoring.points.length !== statementCount) return false;
   if (scoring.method === "PER_STATEMENT") {
-    return points === null || closeTo(scoring.points.reduce((sum, value) => sum + value, 0), points);
+    const total = scoring.points.reduce((sum, value) => sum + value, 0);
+    return total > 0 && (points === null || closeTo(total, points));
   }
   const nonDecreasing = scoring.points.every((value, index) => index === 0 || value >= scoring.points[index - 1]!);
-  return nonDecreasing && (points === null || closeTo(scoring.points.at(-1) ?? 0, points));
+  const last = scoring.points.at(-1) ?? 0;
+  return nonDecreasing && last > 0 && (points === null || closeTo(last, points));
 }
 
 const CRITERION_RE = /^(.+?)\s*(?:[:=]\s*(\d+(?:[.,]\d+)?)|\(\s*(\d+(?:[.,]\d+)?)\s*\))\s*$/u;
@@ -463,17 +465,23 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
       if (answerLines.invalid !== null) {
         add("ANSWER_INVALID", "correctAnswer", { value: answerLines.invalid, questionType: type });
       }
+      const answerKeys = new Set<string>();
       for (const blank of answerLines.blanks) {
+        if (answerKeys.has(blank.id)) add("ENTRY_DUPLICATE", "correctAnswer", { value: blank.id });
+        answerKeys.add(blank.id);
         if (!ids.includes(blank.id)) add("ANSWER_INVALID", "correctAnswer", { value: blank.id, questionType: type });
       }
       const pointLines = raw.scoring ? parseKeyedLines(raw.scoring) : { entries: [], invalid: null };
       if (pointLines.invalid !== null) add("SCORING_INVALID", "scoring", { value: pointLines.invalid });
       const blankPoints = new Map<string, number>();
+      const pointKeys = new Set<string>();
       for (const entry of pointLines.entries) {
+        if (pointKeys.has(entry.key)) add("ENTRY_DUPLICATE", "scoring", { value: entry.key });
+        pointKeys.add(entry.key);
         const value = parseDecimal(entry.value);
         if (!ids.includes(entry.key) || value === null || !(value > 0)) {
           add("SCORING_INVALID", "scoring", { value: `${entry.key} = ${entry.value}` });
-        } else blankPoints.set(entry.key, value);
+        } else if (!blankPoints.has(entry.key)) blankPoints.set(entry.key, value);
       }
       draft.blanks = ids.map((id) => ({
         id,
@@ -488,6 +496,12 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
       const right = parseLabeledLines(raw.matchRight, "letter");
       if (left.length === 0) add("OPTIONS_TOO_FEW", "options", { min: 1, questionType: type });
       if (right.length === 0) add("OPTIONS_TOO_FEW", "matchRight", { min: 1, questionType: type });
+      const repeatedLeftLabel = left.find((item, position) => left.findIndex((other) => other.label === item.label) !== position);
+      if (repeatedLeftLabel) add("ENTRY_DUPLICATE", "options", { value: repeatedLeftLabel.label });
+      const repeatedRightLabel = right.find(
+        (item, position) => right.findIndex((other) => other.label === item.label) !== position,
+      );
+      if (repeatedRightLabel) add("ENTRY_DUPLICATE", "matchRight", { value: repeatedRightLabel.label });
       let reuseRight = false;
       if (raw.scoring) {
         const mode = raw.scoring.trim().toUpperCase();

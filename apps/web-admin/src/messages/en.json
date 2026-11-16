@@ -3454,6 +3454,10 @@
       "SET_CHILD_TYPE_INVALID": {
         "message": "The type “{value}” cannot be a child of a Question set",
         "fix": "Import Cloze as a standalone question, without a Set code."
+      },
+      "ENTRY_DUPLICATE": {
+        "message": "“{value}” is repeated in the {column} column",
+        "fix": "Write each label or blank code once per column; delete the repeated line or change the label."
       }
     },
     "errorReport": {

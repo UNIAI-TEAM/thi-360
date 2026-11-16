@@ -3454,6 +3454,10 @@
       "SET_CHILD_TYPE_INVALID": {
         "message": "Dạng “{value}” không làm được câu con của Bộ câu hỏi",
         "fix": "Nhập Điền khuyết thành câu riêng, không ghi Mã chùm."
+      },
+      "ENTRY_DUPLICATE": {
+        "message": "“{value}” bị lặp ở cột {column}",
+        "fix": "Mỗi nhãn hoặc mã ô chỉ ghi một lần trong cột; xóa dòng lặp hoặc đổi nhãn."
       }
     },
     "errorReport": {

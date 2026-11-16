@@ -437,6 +437,49 @@ describe("nhập 8 dạng câu theo cột của spec 4.6", () => {
     expect(row(results, 10).issues[0]).toMatchObject({ field: "matchRight" });
   });
 
+  it("Ghép đôi: nhãn lặp ở cột Lựa chọn hoặc Lựa chọn phải là lỗi, không để hai mục chung một khóa", () => {
+    const match = (cells: Record<string, string>) =>
+      line({ "Dạng câu": "Ghép đôi", "Nội dung": "Ghép", "Lựa chọn": "1. hai\n2. ba", "Lựa chọn phải": "A. x\nB. y", ...cells });
+    const results = check([
+      match({ "Đáp án": "1 = A\n2 = B" }),
+      match({ "Lựa chọn": "1. hai\n1. ba", "Đáp án": "1 = A" }),
+      match({ "Lựa chọn phải": "A. x\nA. y", "Đáp án": "1 = A\n2 = A", "Cách chấm": "REUSE" }),
+    ]);
+    expect(row(results, 2).status).toBe("VALID");
+    expect(codes(row(results, 3))).toEqual(["ENTRY_DUPLICATE"]);
+    expect(row(results, 3).issues[0]).toMatchObject({ field: "options", value: "1" });
+    expect(codes(row(results, 4))).toEqual(["ENTRY_DUPLICATE"]);
+    expect(row(results, 4).issues[0]).toMatchObject({ field: "matchRight", value: "A" });
+  });
+
+  it("Điền khuyết: mã ô lặp ở cột Đáp án hoặc Cách chấm là lỗi, không để giá trị nào âm thầm thắng", () => {
+    const cloze = (cells: Record<string, string>) => line({ "Dạng câu": "Điền khuyết", "Nội dung": "A [[b1]] B [[b2]]", ...cells });
+    const results = check([
+      cloze({ "Đáp án": "b1 = x\nb2 = y", "Cách chấm": "b1 = 1\nb2 = 1" }),
+      cloze({ "Đáp án": "b1 = x\nb1 = z\nb2 = y" }),
+      cloze({ "Đáp án": "b1 = x\nb2 = y", "Cách chấm": "b1 = 1\nb1 = 2\nb2 = 1" }),
+    ]);
+    expect(row(results, 2).status).toBe("VALID");
+    expect(codes(row(results, 3))).toEqual(["ENTRY_DUPLICATE"]);
+    expect(row(results, 3).issues[0]).toMatchObject({ field: "correctAnswer", value: "b1" });
+    expect(codes(row(results, 4))).toEqual(["ENTRY_DUPLICATE"]);
+    expect(row(results, 4).issues[0]).toMatchObject({ field: "scoring", value: "b1" });
+  });
+
+  it("Đúng/Sai: cách chấm toàn 0 khi cột Điểm trống không được tạo câu 0 điểm", () => {
+    const tf = (cells: Record<string, string>) =>
+      line({ "Dạng câu": "Đúng / Sai", "Nội dung": "q", "Lựa chọn": "a. một\nb. hai", "Đáp án": "Đ, S", ...cells });
+    const results = check([
+      tf({ "Cách chấm": "PER_STATEMENT: 0 / 0" }),
+      tf({ "Cách chấm": "COUNT_TABLE: 0 / 0" }),
+      tf({ "Cách chấm": "PER_STATEMENT: 0,5 / 0" }),
+    ]);
+    expect(codes(row(results, 2))).toEqual(["SCORING_INVALID"]);
+    expect(codes(row(results, 3))).toEqual(["SCORING_INVALID"]);
+    expect(row(results, 4).status).toBe("VALID");
+    expect(row(results, 4).draft.trueFalseScoring).toEqual({ method: "PER_STATEMENT", points: [0.5, 0] });
+  });
+
   it("Điểm, Dạng bài, công thức và số đáp án Trả lời ngắn", () => {
     const short = (cells: Record<string, string>) => line({ "Dạng câu": "Trả lời ngắn", "Nội dung": "q", ...cells });
     const twentyOne = Array.from({ length: 21 }, (_, index) => `đáp án ${index}`).join("\n");
