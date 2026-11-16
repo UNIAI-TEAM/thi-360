@@ -104,6 +104,19 @@ public class ExamPublishService {
         List<ExamPublishResponse.KeptPath> kept = new ArrayList<>();
         var versions = jdbc.query("SELECT version_no, serving_path_ids FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING' ORDER BY version_no",
                 (rs, n) -> new VersionPaths(rs.getInt(1), List.of((String[]) rs.getArray(2).getArray())), examId);
+        String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
+        String quotas = new ExamVersionSnapshot(mapper).resolvedQuotas(json(structure)).toString();
+        String configSql = "jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), 'resolvedQuotas', ?::jsonb)";
+        Set<Integer> matchingVersions = new LinkedHashSet<>(jdbc.queryForList(
+                "SELECT v.version_no FROM exam.exam_version v JOIN exam.exam e ON e.id = v.exam_id "
+                + "JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
+                + "WHERE v.config = " + configSql + " AND v.parts = s.parts AND e.id = ?",
+                Integer.class, quotas, examId));
+        Set<String> alreadyServing = new LinkedHashSet<>();
+        for (VersionPaths old : versions) {
+            if (matchingVersions.contains(old.version())) alreadyServing.addAll(old.paths());
+        }
+        if (alreadyServing.containsAll(selected)) throw new ConflictException(ExamErrorCodes.NOTHING_TO_PUBLISH);
         for (VersionPaths old : versions) {
             List<String> remaining = old.paths().stream().filter(path -> !selected.contains(path)).toList();
             for (String path : remaining) kept.add(new ExamPublishResponse.KeptPath(path, old.version()));
@@ -116,10 +129,8 @@ public class ExamPublishService {
                 return ps;
             });
         }
-        String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
-        String quotas = new ExamVersionSnapshot(mapper).resolvedQuotas(json(structure)).toString();
         String sql = "INSERT INTO exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by, note) "
-                + "SELECT ?, e.id, ?, jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), 'resolvedQuotas', ?::jsonb), s.parts, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id WHERE e.id = ?";
+                + "SELECT ?, e.id, ?, " + configSql + ", s.parts, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id WHERE e.id = ?";
         Instant now = Instant.now();
         int inserted = jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql);
@@ -140,7 +151,7 @@ public class ExamPublishService {
         jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, task_type_item_id, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id) "
                 + "SELECT gen_random_uuid(), exam_id, ?, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, task_type_item_id, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL", version, examId);
         Set<String> published = new LinkedHashSet<>(jdbc.queryForList(
-                "SELECT DISTINCT unnest(old.published_path_ids) FROM exam.exam_version old "
+                "SELECT DISTINCT unnest(old.serving_path_ids) FROM exam.exam_version old "
                 + "JOIN exam.exam_version current ON current.exam_id = old.exam_id AND current.version_no = ? "
                 + "WHERE old.exam_id = ? AND old.config = current.config AND old.parts = current.parts",
                 String.class, version, examId));

@@ -129,14 +129,43 @@ class ExamPublishIdempotencyIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void publishReplaysOriginalResultAndKeepsSnapshot() throws Exception {
+    void identicalServingSnapshotCannotBePublishedAgain() throws Exception {
         UUID question = UUID.randomUUID();
+        UUID actor = UUID.randomUUID();
         jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", question, "PUB-" + question, SUBJECT);
         jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", question);
         jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", EXAM);
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, EXAM);
+        saveCheck(EXAM, question, "VALID");
+        String body = "{\"pathIds\":[\"default\"],\"expectedRevision\":" + revision + "}";
+        mockMvc.perform(post(url()).with(asUser(actor, "publisher", Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+        entityManager.clear();
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", EXAM);
+        long current = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, EXAM);
+        saveCheck(EXAM, question, "VALID");
+        body = "{\"pathIds\":[\"default\"],\"expectedRevision\":" + current + "}";
+        mockMvc.perform(post(url()).with(asUser(actor, "publisher", Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOTHING_TO_PUBLISH"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, EXAM)).isEqualTo(1);
+    }
+
+    @Test
+    void publishReplaysOriginalResultAndKeepsSnapshot() throws Exception {
+        UUID question = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", question, "PUB-" + question, SUBJECT);
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", question);
+        UUID otherQuestion = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", otherQuestion, "PUB-" + otherQuestion, SUBJECT);
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", otherQuestion);
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", EXAM);
+        long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, EXAM);
         int duration = jdbc.queryForObject("SELECT duration_minutes FROM exam.exam WHERE id = ?", Integer.class, EXAM);
         saveCheck(EXAM, question, "VALID");
+        String selections = "[{\"witness\":[{\"groups\":[{\"picks\":[{\"questionId\":\"" + otherQuestion + "\",\"versionNo\":1}]}]}]}]";
+        jdbc.update("UPDATE exam.exam_check_run SET witness = jsonb_set(witness, '{0,selections}', ?::jsonb, true) WHERE exam_id = ?", selections, EXAM);
         UUID actor = UUID.randomUUID();
         String key = UUID.randomUUID().toString();
         String body = "{\"pathIds\":[\"default\"],\"note\":null,\"expectedRevision\":" + revision + "}";
@@ -153,6 +182,7 @@ class ExamPublishIdempotencyIT extends AbstractIntegrationTest {
         jdbc.update("UPDATE exam.exam SET duration_minutes = duration_minutes + 10 WHERE id = ?", EXAM);
         assertThat(jdbc.queryForObject("SELECT (config->>'durationMinutes')::integer FROM exam.exam_version WHERE exam_id = ? AND version_no = 1", Integer.class, EXAM)).isEqualTo(duration);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question_usage_ledger WHERE question_id = ? AND kind = 'PUBLISH_WITNESS' AND exam_id = ?", Long.class, question, EXAM)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question_usage_ledger WHERE question_id = ? AND kind = 'PUBLISH_WITNESS' AND exam_id = ?", Long.class, otherQuestion, EXAM)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM shared.outbox_event WHERE topic='audit' AND payload->>'action'='EXAM.PUBLISH' AND payload->>'targetId' = ?", Long.class, EXAM.toString())).isEqualTo(1);
     }
 
