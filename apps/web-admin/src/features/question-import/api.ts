@@ -7,7 +7,7 @@ import * as mock from "./api.mock";
  * API thật, chưa nối (FE-1).
  */
 
-export const QUESTION_IMPORT_QUERY_KEYS = mock.QUESTION_IMPORT_QUERY_KEYS;
+export { QUESTION_IMPORT_QUERY_KEYS } from "./keys";
 export type { DownloadedFile } from "./api.mock";
 
 export const downloadQuestionTemplate = contentApi(mock.downloadQuestionTemplate);

@@ -7,11 +7,13 @@ import * as mock from "./api.mock";
  */
 
 export type { PageResponseGradingAttempt } from "./api.mock";
-export const GRADING_QUERY_KEYS = mock.GRADING_QUERY_KEYS;
-export const GRADING_ERROR_CODES = mock.GRADING_ERROR_CODES;
-export type { GradingErrorCode } from "./api.mock";
-export const SORTABLE_GRADING_FIELDS = mock.SORTABLE_GRADING_FIELDS;
-export const DEFAULT_GRADING_SORT = mock.DEFAULT_GRADING_SORT;
+export {
+  DEFAULT_GRADING_SORT,
+  GRADING_ERROR_CODES,
+  GRADING_QUERY_KEYS,
+  SORTABLE_GRADING_FIELDS,
+  type GradingErrorCode,
+} from "./keys";
 
 export const listGradingAttempts = gradingApi(mock.listGradingAttempts);
 export const getGradingStatusCounts = gradingApi(mock.getGradingStatusCounts);

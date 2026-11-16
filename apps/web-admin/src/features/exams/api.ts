@@ -7,7 +7,7 @@ import * as mock from "./api.mock";
  * chưa nối (FE-2). Kiểm tra, xem trước, phiên bản và công bố nằm ở `review-api.ts`.
  */
 
-export const EXAMS_QUERY_KEYS = mock.EXAMS_QUERY_KEYS;
+export { EXAMS_QUERY_KEYS } from "./keys";
 export { toExamSummary } from "./exam-summary";
 
 export const listExams = contentApi(mock.listExams);

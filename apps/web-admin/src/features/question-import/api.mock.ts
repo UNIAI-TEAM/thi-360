@@ -45,10 +45,6 @@ import { summarizeImport, validateImportRows } from "./validation";
 const dictionary = dictionaryFixture as ImportDictionary;
 const reference = referenceFixture as ContentReference;
 
-export const QUESTION_IMPORT_QUERY_KEYS = {
-  all: ["questionImport"] as const,
-  history: () => ["questionImport", "history"] as const,
-};
 
 interface StoredSheet {
   upload: ImportUpload;

@@ -6,7 +6,7 @@ import * as mock from "./api.mock";
  * nhánh API thật, chưa nối (FE-1). Chữ ký giữ nguyên để hook trong `queries.ts` và giao diện không đổi.
  */
 
-export const QUESTIONS_QUERY_KEYS = mock.QUESTIONS_QUERY_KEYS;
+export { QUESTIONS_QUERY_KEYS } from "./keys";
 
 /** Mã lỗi nghiệp vụ của thao tác đổi trạng thái (`ApiStatusError.code`); chữ ở `questions.statusDialogs.errors`. */
 export const QUESTION_STATUS_ERROR_CODES = [

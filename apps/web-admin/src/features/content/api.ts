@@ -6,7 +6,7 @@ import * as mock from "./api.mock";
  * (`api.mock.ts`); hàng chờ chấm đọc cùng dữ liệu này nên cờ `NEXT_PUBLIC_THI360_GRADING_MOCK` cũng mở được. Cờ tắt:
  * nhánh API thật, chưa nối (FE-1, FE-2).
  */
-export { CONTENT_QUERY_KEYS } from "./api.mock";
+export { CONTENT_QUERY_KEYS } from "./keys";
 
 export const getContentReference = guardApi(
   () => isContentMockEnabled() || isGradingMockEnabled(),

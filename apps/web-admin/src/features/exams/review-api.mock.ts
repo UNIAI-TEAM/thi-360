@@ -39,12 +39,6 @@ import type { ExamDetail, ExamPart, ExamVersion } from "./types";
  * `@thi360/api-client`, giữ nguyên chữ ký; lỗi nghiệp vụ trả `MockApiError` cùng `status` và `code` như API thật.
  */
 
-export const EXAM_REVIEW_QUERY_KEYS = {
-  all: ["exams", "review"] as const,
-  check: (examId: string) => ["exams", "review", examId, "check"] as const,
-  versions: (examId: string) => ["exams", "review", examId, "versions"] as const,
-  version: (examId: string, version: number) => ["exams", "review", examId, "versions", version] as const,
-};
 
 function nowIso(): string {
   return new Date().toISOString();

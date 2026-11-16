@@ -6,7 +6,7 @@ import * as mock from "./review-api.mock";
  * `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy dữ liệu mẫu (`review-api.mock.ts`); tắt thì nhánh API thật, chưa nối (FE-2).
  */
 
-export const EXAM_REVIEW_QUERY_KEYS = mock.EXAM_REVIEW_QUERY_KEYS;
+export { EXAM_REVIEW_QUERY_KEYS } from "./review-keys";
 
 export const getExamCheck = contentApi(mock.getExamCheck);
 export const runExamCheck = contentApi(mock.runExamCheck);

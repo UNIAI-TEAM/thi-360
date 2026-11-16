@@ -58,16 +58,6 @@ import type {
 
 export type PageResponseExamSummary = MockPage<ExamSummary>;
 
-export const EXAMS_QUERY_KEYS = {
-  all: ["exams"] as const,
-  lists: () => ["exams", "list"] as const,
-  list: (query: ListExamsQuery) => ["exams", "list", query] as const,
-  detail: (id: string) => ["exams", "detail", id] as const,
-  structure: (id: string) => ["exams", "structure", id] as const,
-  templates: () => ["exams", "templates"] as const,
-  suggestedCode: (query: SuggestExamCodeQuery) => ["exams", "suggested-code", query] as const,
-  available: (query: AvailableQuestionsQuery) => ["exams", "available-questions", query] as const,
-};
 
 /** Lọc danh sách: chữ trong tên hoặc mã; kỳ thi; hình thức; môn của bài (môn theo mẫu hoặc môn của bài lẻ); trạng thái. */
 function matches(exam: ExamDetail, query: ListExamsQuery): boolean {

@@ -26,16 +26,6 @@ import type {
  * giữ nguyên chữ ký; hook trong `queries.ts` và giao diện không đổi.
  */
 
-export const QUESTIONS_QUERY_KEYS = {
-  all: ["questions"] as const,
-  lists: () => ["questions", "list"] as const,
-  list: (query: ListQuestionsQuery) => ["questions", "list", query] as const,
-  statusCounts: (query: ListQuestionsQuery) => ["questions", "status-counts", query] as const,
-  authors: () => ["questions", "authors"] as const,
-  detail: (id: string) => ["questions", "detail", id] as const,
-  readiness: (id: string) => ["questions", "readiness", id] as const,
-  retireImpact: (id: string) => ["questions", "retire-impact", id] as const,
-};
 
 const reference = referenceFixture as ContentReference;
 
