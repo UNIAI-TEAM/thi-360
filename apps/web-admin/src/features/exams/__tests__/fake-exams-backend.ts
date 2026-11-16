@@ -354,6 +354,14 @@ export class ExamsBackend {
     return [...this.exams.values()].find((exam) => exam.code === normalized);
   }
 
+  /** Sửa bài mẫu theo dạng wire trước khi dựng màn (dữ liệu xấu mà máy chủ không tự sinh). */
+  mutate(id: string, change: (exam: WireDetail) => void): this {
+    const exam = this.exams.get(id);
+    if (!exam) throw new Error(`khong co bai ${id}`);
+    change(exam);
+    return this;
+  }
+
   /** Bài mẫu sau ánh xạ của client (`mapExamDetail`), để soạn số liệu cần assert trong test. */
   app(id: string): ExamDetail {
     const wire = this.exams.get(id);

@@ -1,20 +1,28 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { createExam } from "../api";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { examStore } from "../mock/store";
-import { pinInMemoryBackend } from "./in-memory-backend";
+import { ExamsBackend } from "./fake-exams-backend";
 
-pinInMemoryBackend();
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-afterEach(() => {
-  examStore.reset();
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 function openStructure(examId: string, search = "") {
@@ -29,20 +37,21 @@ describe("Cấu trúc: phiên bản năm", () => {
     const user = userEvent.setup();
     openStructure(exam.id);
     const picker = await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ });
-    expect(picker).toHaveTextContent("SP2E 2026 · Toán · 40 câu");
+    // Máy chủ không trả tên mẫu: tên dựng từ kỳ thi, môn và năm cấu trúc.
+    expect(picker).toHaveTextContent("SP2E · Toán · 2026");
 
     await user.click(picker);
-    await user.click(await screen.findByRole("option", { name: /SP2E 2025 · Toán · 22 câu/ }));
-    const dialog = await screen.findByRole("dialog", { name: /Nạp lại cấu trúc theo SP2E 2025/ });
+    await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
+    const dialog = await screen.findByRole("dialog", { name: /Nạp lại cấu trúc theo SP2E · Toán · 2025/ });
     expect(within(dialog).getByText("Các phần sẽ được nạp lại (1)")).toBeInTheDocument();
     expect(within(dialog).getByText("1. Toán")).toBeInTheDocument();
     expect(within(dialog).getByText("22 câu · chưa có thời lượng")).toBeInTheDocument();
     // Chưa xác nhận: cấu trúc chưa đổi.
-    expect(examStore.get(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
 
     await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
-    await waitFor(() => expect(examStore.get(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
-    expect(examStore.get(exam.id)).toMatchObject({ totalQuestions: 22, structureYear: 2025 });
+    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
+    expect(backend.app(exam.id)).toMatchObject({ totalQuestions: 22, structureYear: 2025 });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   }, 20_000);
 
@@ -51,11 +60,11 @@ describe("Cấu trúc: phiên bản năm", () => {
     const user = userEvent.setup();
     openStructure(exam.id);
     await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
-    await user.click(await screen.findByRole("option", { name: /SP2E 2025/ }));
+    await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "Giữ cấu trúc hiện tại" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(examStore.get(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
   }, 20_000);
 
   it("chỉ một phiên bản thì ô bị khóa; HSA Theo phần Toán có ô phiên bản, phần chưa có mẫu thì không hiện ô", async () => {
@@ -64,13 +73,13 @@ describe("Cấu trúc: phiên bản năm", () => {
     unmount();
     const math = await createExam({ name: "HSA Toán", code: "HSA-P-902", kind: "HSA", scope: "PART", partCode: "MATH", maxScore: 50, description: null });
     expect(math.templateCode).toBe("HSA_SINGLE");
-    const view = openStructure(math.id, `?part=${examStore.require(math.id).parts[0]!.id}`);
+    const view = openStructure(math.id, `?part=${backend.app(math.id).parts[0]!.id}`);
     const picker = await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ });
     expect(picker).toBeDisabled();
-    expect(picker).toHaveTextContent("HSA Theo phần · Toán · 50 câu · 75 phút");
+    expect(picker).toHaveTextContent("HSA · Theo phần Toán");
     view.unmount();
     const literature = await createExam({ name: "HSA Văn", code: "HSA-P-903", kind: "HSA", scope: "PART", partCode: "LITERATURE", maxScore: 50, description: null });
-    openStructure(literature.id, `?part=${examStore.require(literature.id).parts[0]!.id}`);
+    openStructure(literature.id, `?part=${backend.app(literature.id).parts[0]!.id}`);
     await screen.findByRole("textbox", { name: /Số câu phải làm/ });
     expect(screen.queryByRole("combobox", { name: /Phiên bản cấu trúc/ })).not.toBeInTheDocument();
   });
@@ -107,12 +116,12 @@ describe("Cấu trúc: phần thi", () => {
     expect(points).toHaveValue("");
     await user.type(points, "50");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(examStore.get("ex-qda-f-001")?.parts.find((part) => part.id === "part-42")?.maxPoints).toBe(50));
+    await waitFor(() => expect(backend.app("ex-qda-f-001")?.parts.find((part) => part.id === "part-42")?.maxPoints).toBe(50));
   });
 
   it("Điểm mỗi câu yêu cầu của khối không bắt buộc: xóa ô thì lưu null", async () => {
     const user = userEvent.setup();
-    const blockId = examStore.require("ex-hsa-f-001").parts[0]!.sections[0]!.blocks[0]!.id;
+    const blockId = backend.app("ex-hsa-f-001").parts[0]!.sections[0]!.blocks[0]!.id;
     openStructure("ex-hsa-f-001", `?block=${blockId}`);
     const points = await screen.findByRole("textbox", { name: /Điểm mỗi câu yêu cầu/ });
     await user.clear(points);
@@ -120,7 +129,7 @@ describe("Cấu trúc: phần thi", () => {
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() =>
       expect(
-        examStore.get("ex-hsa-f-001")?.parts[0]?.sections[0]?.blocks.find((block) => block.id === blockId)?.requiredPointsPerQuestion,
+        backend.app("ex-hsa-f-001")?.parts[0]?.sections[0]?.blocks.find((block) => block.id === blockId)?.requiredPointsPerQuestion,
       ).toBeNull(),
     );
   });
