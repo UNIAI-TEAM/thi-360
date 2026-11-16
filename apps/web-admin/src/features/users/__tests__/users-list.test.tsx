@@ -821,7 +821,7 @@ describe("UsersListView: bảng vừa khung và chữ dài (U-02, U-12)", () => 
     // Khung chứa là query container và mang quy tắc ẩn cột Nguồn trước (ngưỡng rộng hơn), rồi Vai trò.
     const container = table.closest(".\\@container");
     expect(container).not.toBeNull();
-    expect(container!.className).toContain("@max-[68rem]:[&_:is(th,td):has([data-col=source])]:hidden");
+    expect(container!.className).toContain("@max-[74rem]:[&_:is(th,td):has([data-col=source])]:hidden");
     expect(container!.className).toContain("@max-[58rem]:[&_:is(th,td):has([data-col=roles])]:hidden");
   });
 });
