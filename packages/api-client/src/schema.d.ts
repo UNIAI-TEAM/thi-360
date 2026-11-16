@@ -2717,8 +2717,6 @@ export interface components {
         };
         /** @description Nhân bản bài thi thành bản Nháp mới (POST /exams/{id}/duplicate, spec 5.2) */
         DuplicateExamRequest: {
-            /** @description Mã bài mới (duy nhất) */
-            code: string;
             /** @description Tên bài mới */
             name: string;
         };

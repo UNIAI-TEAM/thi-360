@@ -2157,12 +2157,6 @@
       "DuplicateExamRequest" : {
         "description" : "Nhân bản bài thi thành bản Nháp mới (POST /exams/{id}/duplicate, spec 5.2)",
         "properties" : {
-          "code" : {
-            "description" : "Mã bài mới (duy nhất)",
-            "maxLength" : 30,
-            "minLength" : 0,
-            "type" : "string"
-          },
           "name" : {
             "description" : "Tên bài mới",
             "maxLength" : 200,
@@ -2170,7 +2164,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "code", "name" ],
+        "required" : [ "name" ],
         "type" : "object"
       },
       "EffectivePermissionItemResponse" : {
