@@ -33,6 +33,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
     private static final String LOGIN_PATH = "/api/v1/auth/login";
     private static final String IMPORT_UPLOAD_PATH = "/api/v1/admin/import-batches";
+    private static final String QUESTION_IMPORT_UPLOAD_PATH = "/api/v1/admin/question-imports/uploads";
     public static final String KEY_PREFIX = "rl:login:ip:";
     public static final String UPLOAD_KEY_PREFIX = "rl:upload:ip:";
 
@@ -161,7 +162,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     "rate_limit.login_ip_exceeded",
                     "Per-IP login rate limit exceeded");
         }
-        if (IMPORT_UPLOAD_PATH.equals(path) || (IMPORT_UPLOAD_PATH + "/").equals(path)) {
+        if (IMPORT_UPLOAD_PATH.equals(path) || (IMPORT_UPLOAD_PATH + "/").equals(path)
+                || QUESTION_IMPORT_UPLOAD_PATH.equals(path)
+                || (QUESTION_IMPORT_UPLOAD_PATH + "/").equals(path)) {
             return new RateLimitPolicy(
                     UPLOAD_KEY_PREFIX,
                     securityProperties.rateLimit().uploadPerIpLimit(),

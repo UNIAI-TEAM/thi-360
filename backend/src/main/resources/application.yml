@@ -122,8 +122,12 @@ thi360:
       lease-duration: PT5M
       retry-delay: PT5S
       max-attempts: 3
-
   questionbank:
+    import:
+      max-file-bytes: 5242880
+      max-rows: 2000
+    scheduling:
+      enabled: true
     assets:
       # BE-2b (spec 4.2, plan B5): cỡ tệp theo loại; multipart chung 21/22 MB vẫn chặn trước.
       max-image-size: ${THI360_QB_ASSET_IMAGE_MAX:5MB}
@@ -211,6 +215,8 @@ thi360:
   cookie:
     secure: ${THI360_COOKIE_SECURE:false}
   questionbank:
+    scheduling:
+      enabled: false
     assets:
       cleanup:
         scheduling:

@@ -81,7 +81,11 @@ public final class QuestionBodyValidator {
             errors.add(QuestionFieldError.of("QUESTION_BODY_INVALID", "body"));
             return errors;
         }
-        validatePointsField(input.points(), "points", errors);
+        boolean emptyCompositePoints = input.points() != null && input.points().signum() == 0
+                && (input.type() == QuestionType.QUESTION_SET || input.type() == QuestionType.CLOZE);
+        if (!emptyCompositePoints) {
+            validatePointsField(input.points(), "points", errors);
+        }
         if (input.type() == null) {
             errors.add(QuestionFieldError.of("QUESTION_TYPE_MISSING", "type"));
             return errors;

@@ -93,8 +93,6 @@ public class QuestionService {
     private static final String ERR_DUPLICATE_ID = "QUESTION_DUPLICATE_ID";
     private static final String ERR_CATALOG_UNKNOWN = "CATALOG_VALUE_UNKNOWN";
 
-    private static final int CHILD_MIN = 2;
-
     private final QuestionRepository questionRepository;
     private final QuestionVersionRepository versionRepository;
     private final QuestionKnowledgeRepository knowledgeRepository;
@@ -201,6 +199,38 @@ public class QuestionService {
         return new UpdateQuestionResponse(mapper.toDetail(question, mapper.batch()), versionCreated);
     }
 
+    /** Catalog references already validated from one batch snapshot for an import transaction. */
+    record ImportClassification(UUID subjectItemId, UUID gradeItemId, UUID levelItemId,
+            UUID taskTypeItemId, List<vn.unicom.thi360.questionbank.api.KnowledgeRef> knowledge,
+            List<UUID> tagItemIds) {}
+
+    /**
+     * Save one imported question through the normal version/projection path. The caller locks
+     * existing targets in id order, validates every catalog reference against its batch snapshot,
+     * and records the single batch audit event in the surrounding transaction.
+     */
+    void saveImported(Question existing, SaveQuestionRequest request, ImportClassification resolved) {
+        UUID actorId = currentUserProvider.requireCurrentUser().id();
+        Instant now = Instant.now();
+        Question question = existing;
+        if (question == null) {
+            question = Question.create(UUID.randomUUID(), supportDao.nextQuestionCode(),
+                    request.type(), null, null, now, actorId);
+            questionRepository.save(question);
+        } else if (question.getDeletedAt() != null || question.getParentId() != null
+                || question.getType() != request.type()) {
+            throw new BusinessRuleException("IMPORT_SOURCE_TYPE_MISMATCH");
+        }
+        ResolvedClassification classification = new ResolvedClassification(resolved.subjectItemId(),
+                resolved.gradeItemId(), resolved.levelItemId(), resolved.taskTypeItemId(), null);
+        List<KnowledgeResolved> knowledge = resolved.knowledge().stream()
+                .map(ref -> new KnowledgeResolved(ref.nodeId(), ref.primary())).toList();
+        applySaveResolved(question, request, now, actorId, classification, knowledge,
+                resolved.tagItemIds(), false);
+        questionRepository.save(question);
+    }
+
+
     private static SaveQuestionRequest toSaveRequest(UpdateQuestionRequest request) {
         return new SaveQuestionRequest(
                 request.type(), request.subjectCode(), request.gradeCode(), request.difficultyCode(),
@@ -221,9 +251,17 @@ public class QuestionService {
         ResolvedClassification classification = resolveClassification(request);
         List<KnowledgeResolved> knowledge = resolveKnowledge(request == null ? null : request.knowledge());
         List<UUID> tagItemIds = resolveTagIds(request == null ? null : request.tagCodes());
+        return applySaveResolved(question, request, now, actorId, classification, knowledge, tagItemIds, true);
+    }
 
+    private boolean applySaveResolved(Question question, SaveQuestionRequest request, Instant now, UUID actorId,
+            ResolvedClassification classification, List<KnowledgeResolved> knowledge,
+            List<UUID> tagItemIds, boolean validateChildCatalog) {
+        QuestionType type = question.getType();
         Sanitized sanitized = sanitize(request);
-        validateChildOverrides(sanitized.body());
+        if (validateChildCatalog) {
+            validateChildOverrides(sanitized.body());
+        }
         QuestionInput input = new QuestionInput(
                 type, sanitized.body(), effectivePoints(type, request == null ? null : request.points(), sanitized.body()),
                 sanitized.content(), sanitized.solution(), sanitized.commonMistakes(), sanitized.attachmentIds());
@@ -737,10 +775,6 @@ public class QuestionService {
             Instant now,
             UUID actorId) {
         List<QuestionBody.ChildQuestion> children = setBody.children();
-        if (children.size() < CHILD_MIN) {
-            throw new BusinessRuleException(ERR_BODY_INVALID, null,
-                    List.of(new FieldError("body.children", "QUESTION_SET_CHILDREN_MIN", null)));
-        }
         Set<UUID> ids = new HashSet<>();
         for (QuestionBody.ChildQuestion child : children) {
             if (child.id() != null && !ids.add(child.id())) {
