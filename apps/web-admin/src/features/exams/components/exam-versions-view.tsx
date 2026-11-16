@@ -34,7 +34,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { useExam } from "../queries";
-import { useDiscontinueExam, useExamVersions } from "../review-queries";
+import { useDiscontinueExam, useExamVersions, useIdempotencyKey } from "../review-queries";
 import type { ExamChange, ExamChangeKind, ExamVersionList, ExamVersionRow } from "../review-types";
 import { EXAM_CHECK_TONE } from "../status";
 import type { ExamDetail } from "../types";
@@ -50,6 +50,7 @@ const CHANGE_ICON: Record<ExamChangeKind, typeof Plus> = {
   BLOCK_CHANGED: Pencil,
   MATRIX_CHANGED: Pencil,
   ORDER_RULE_CHANGED: ArrowLeftRight,
+  ORDER_CHANGED: ArrowLeftRight,
   QUESTIONS_REPLACED: Replace,
 };
 
@@ -62,6 +63,7 @@ export function ExamVersionsView({ examId }: { examId: string }) {
   const examQuery = useExam(examId);
   const versionsQuery = useExamVersions(examId);
   const discontinue = useDiscontinueExam(examId);
+  const discontinueKey = useIdempotencyKey();
   const [publishOpen, setPublishOpen] = useState(false);
   const [viewVersion, setViewVersion] = useState<number | null>(null);
   const [discontinueOpen, setDiscontinueOpen] = useState(false);
@@ -143,18 +145,23 @@ export function ExamVersionsView({ examId }: { examId: string }) {
         loading={discontinue.isPending}
         error={discontinueError}
         onConfirm={() =>
-          discontinue.mutate({ expectedRevision: exam.revision }, {
-            onSuccess: () => {
-              setDiscontinueOpen(false);
-              notify.success(t("discontinue.done", { code: exam.code }));
+          // Thử lại sau lỗi mạng giữ khóa; đổi bản sửa (`revision`) thì khóa mới.
+          discontinue.mutate(
+            { expectedRevision: exam.revision, idempotencyKey: discontinueKey.keyFor(String(exam.revision)) },
+            {
+              onSuccess: () => {
+                discontinueKey.release();
+                setDiscontinueOpen(false);
+                notify.success(t("discontinue.done", { code: exam.code }));
+              },
+              onError: (error) => {
+                const status = getErrorStatus(error);
+                setDiscontinueError(
+                  status === 409 || status === 412 ? t("discontinue.conflict") : t("discontinue.error"),
+                );
+              },
             },
-            onError: (error) => {
-              const status = getErrorStatus(error);
-              setDiscontinueError(
-                status === 409 || status === 412 ? t("discontinue.conflict") : t("discontinue.error"),
-              );
-            },
-          })
+          )
         }
       />
     </div>

@@ -18,6 +18,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { enumeratePaths } from "../check";
+import { errorCodeOf } from "../review-api";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import type { ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult } from "../review-types";
 import type { ExamDetail, ExamPartOption } from "../types";
@@ -58,6 +59,7 @@ export function ExamPreviewPanel({
   onShowCheck,
 }: ExamPreviewPanelProps) {
   const t = useTranslations("exams.preview");
+  const tIssue = useTranslations("exams.review.issue");
   const format = useFormatter();
   const pathLabel = usePathLabel();
   const nameOf = useChoiceNameResolver();
@@ -96,6 +98,10 @@ export function ExamPreviewPanel({
     if (pickedSubjects?.optionId === option.id) return pickedSubjects.codes;
     return option.sections.slice(0, option.chooseSubjects ?? 0).map((section) => section.subjectCode);
   }
+  /** 422 `PREVIEW_SUBJECTS_INVALID` (spec 5.2): số môn gửi lên không khớp phương án; còn lại là lỗi chung. */
+  function generateErrorText(error: unknown): string {
+    return errorCodeOf(error) === "PREVIEW_SUBJECTS_INVALID" ? tIssue("PREVIEW_SUBJECTS_INVALID") : t("error");
+  }
   const subjectOption = subjectChoiceOf(pathId);
   const subjectCodes = subjectsOf(subjectOption);
   const subjectsIncomplete = subjectOption !== null && subjectCodes?.length !== subjectOption.chooseSubjects;
@@ -116,7 +122,7 @@ export function ExamPreviewPanel({
               : t("live.failed", { path: pathLabel(result.path) }),
           );
         },
-        onError: () => setLiveMessage(t("error")),
+        onError: (error) => setLiveMessage(generateErrorText(error)),
       },
     );
   }
@@ -174,7 +180,7 @@ export function ExamPreviewPanel({
           headingLevel={3}
           icon={<TriangleAlert />}
           title={t("errorTitle")}
-          description={t("error")}
+          description={generateErrorText(generate.error)}
           action={
             <Button variant="secondary" onClick={() => start()}>
               {t("retry")}

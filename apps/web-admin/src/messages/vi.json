@@ -4206,6 +4206,7 @@
           "BLOCK_CHANGED": "Sửa khối",
           "MATRIX_CHANGED": "Sửa ma trận",
           "ORDER_RULE_CHANGED": "Đổi quy tắc đảo",
+          "ORDER_CHANGED": "Đổi thứ tự",
           "QUESTIONS_REPLACED": "Thay câu hỏi"
         },
         "warning": {
@@ -4469,7 +4470,16 @@
       },
       "errors": {
         "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
-        "CHECK_REQUIRED": "Cấu hình cần được kiểm tra lại trước khi công bố.",
+        "checkRequired": {
+          "NO_CHECK": "Bài thi chưa được kiểm tra. Kiểm tra cấu hình rồi công bố.",
+          "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
+          "UNKNOWN": "Cấu hình cần được kiểm tra lại trước khi công bố."
+        },
+        "recheck": "Kiểm tra lại",
+        "revisionConflict": "Bài thi vừa được sửa ở nơi khác. Đóng hộp thoại, tải lại trang rồi công bố lại.",
         "NOTHING_TO_PUBLISH": "Không có bản sửa nào để công bố.",
         "generic": "Không công bố được. Thử lại."
       },

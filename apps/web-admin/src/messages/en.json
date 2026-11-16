@@ -4206,6 +4206,7 @@
           "BLOCK_CHANGED": "Block changed",
           "MATRIX_CHANGED": "Matrix changed",
           "ORDER_RULE_CHANGED": "Shuffle rule changed",
+          "ORDER_CHANGED": "Order changed",
           "QUESTIONS_REPLACED": "Questions replaced"
         },
         "warning": {
@@ -4469,7 +4470,16 @@
       },
       "errors": {
         "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
-        "CHECK_REQUIRED": "The configuration must be checked again before publishing.",
+        "checkRequired": {
+          "NO_CHECK": "The exam has not been checked yet. Check the configuration, then publish.",
+          "STRUCTURE_CHANGED": "The exam structure changed after the last check. Check again, then publish.",
+          "CONFIG_CHANGED": "The exam configuration changed after the last check. Check again, then publish.",
+          "SOURCE_CHANGED": "The question source changed after the last check. Check again, then publish.",
+          "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
+          "UNKNOWN": "The configuration must be checked again before publishing."
+        },
+        "recheck": "Check again",
+        "revisionConflict": "The exam was just edited elsewhere. Close this dialog, reload the page, then publish again.",
         "NOTHING_TO_PUBLISH": "There is no working copy to publish.",
         "generic": "Could not publish. Try again."
       },

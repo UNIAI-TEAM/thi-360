@@ -1,10 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { EXAMS_QUERY_KEYS } from "./api";
 import { defaultExamReviewApiDeps, EXAM_REVIEW_QUERY_KEYS, type ExamReviewApiDeps } from "./review-api";
-import type { ExamCheckResult, GeneratePreviewRequest, PublishExamRequest, RunExamCheckRequest } from "./review-types";
+import type {
+  DiscontinueExamRequest,
+  ExamCheckResult,
+  GeneratePreviewRequest,
+  PublishExamRequest,
+  RunExamCheckRequest,
+} from "./review-types";
 
 /** Sau thao tác ghi: bài thi (chip trạng thái, dải tóm tắt), danh sách bài thi và dữ liệu kiểm tra, phiên bản. */
 function useInvalidateExam(examId: string, { includeCheck = true }: { includeCheck?: boolean } = {}) {
@@ -36,6 +42,24 @@ export function useRunExamCheck(examId: string, deps: ExamReviewApiDeps = defaul
       await invalidate();
     },
   });
+}
+
+/**
+ * Khóa `Idempotency-Key` của một hành động ghi (spec 7.1): một khóa cho mỗi lần người dùng bấm, giữ nguyên khi thử lại
+ * cùng nội dung (mất mạng, 5xx) để máy chủ không làm hai lần. Đổi nội dung (`signature` khác) hoặc hành động xong
+ * (`release`) thì lần sau sinh khóa mới.
+ */
+export function useIdempotencyKey() {
+  const current = useRef<{ signature: string; key: string } | null>(null);
+  return {
+    keyFor(signature: string): string {
+      if (current.current?.signature !== signature) current.current = { signature, key: crypto.randomUUID() };
+      return current.current.key;
+    },
+    release() {
+      current.current = null;
+    },
+  };
 }
 
 /** Chu kỳ hỏi `getCheckRun` khi kiểm tra kỹ đang chạy nền (spec 5.4). */
@@ -156,8 +180,8 @@ export function usePublishExam(examId: string, deps: ExamReviewApiDeps = default
 export function useDiscontinueExam(examId: string, deps: ExamReviewApiDeps = defaultExamReviewApiDeps) {
   const invalidate = useInvalidateExam(examId);
   return useMutation({
-    mutationFn: ({ expectedRevision }: { expectedRevision: number }) =>
-      deps.discontinueExam({ examId, expectedRevision }),
+    mutationFn: (request: Omit<DiscontinueExamRequest, "examId">) =>
+      deps.discontinueExam({ examId, ...request }),
     onSuccess: () => invalidate(),
   });
 }
