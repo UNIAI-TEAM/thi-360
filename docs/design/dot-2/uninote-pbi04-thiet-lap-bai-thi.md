@@ -1,6 +1,6 @@
 # Thiết lập bài thi và ma trận đề
 
-Bản lưu UniNote của BA (Hưng Nguyễn Duy), cập nhật 2026-11-16 11:54, lấy về ngày 2026-11-16. Nguồn: uniworkos, thư mục "Tài liệu Thi 360". Chỉ đọc; bản gốc ở uniworkos.
+Bản lưu UniNote của BA (Hưng Nguyễn Duy), cập nhật 2026-11-16 16:23, lấy về ngày 2026-11-16. Nguồn: uniworkos, thư mục "Tài liệu Thi 360". Chỉ đọc; bản gốc ở uniworkos.
 
 ## 1. Thông tin chung
 
@@ -65,7 +65,7 @@ Trong màn hình tạo/chỉnh sửa bài thi, bố trí các khu vực:
 
 | Khu vực | Nội dung |
 |---|---|
-| Thông tin chung | Tên bài, kỳ thi, hình thức FULL/bài lẻ, mô tả |
+| Thông tin chung | Tên bài, kỳ thi, hình thức FULL/Từng phần, mô tả |
 | Cấu trúc và ma trận | Phần thi, môn/tổ hợp, khối câu hỏi, số câu và tiêu chí lựa chọn |
 | Kiểm tra và xem trước | Lỗi cấu hình, nguồn câu hỏi, kết quả sinh thử và thống kê phân bổ |
 | Phiên bản và công bố | Lưu cấu hình đang sửa, công bố và xem phiên bản |
