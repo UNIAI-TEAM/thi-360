@@ -114,7 +114,7 @@ describe("tạo bài thi", () => {
     ]);
   });
 
-  it("cấu trúc khởi tạo sai bị chặn 422", async () => {
+  it("cấu trúc khởi tạo sai bị chặn 422; mã tổ hợp lạ được giữ như phương án COMBINATION", async () => {
     const choice = {
       name: "Khoa học",
       questionCount: 50,
