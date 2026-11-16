@@ -15,6 +15,11 @@ public final class Permissions {
     public static final String CATALOG_MODIFY = "CATALOG.MODIFY";
     public static final String AUDIT_VIEW = "AUDIT.VIEW";
     public static final String APPEARANCE_MODIFY = "APPEARANCE.MODIFY";
+    public static final String QUESTION_VIEW = "QUESTION.VIEW";
+    public static final String QUESTION_MODIFY = "QUESTION.MODIFY";
+    public static final String EXAM_VIEW = "EXAM.VIEW";
+    public static final String EXAM_MODIFY = "EXAM.MODIFY";
+    public static final String EXAM_PUBLISH = "EXAM.PUBLISH";
 
     private Permissions() {
     }
