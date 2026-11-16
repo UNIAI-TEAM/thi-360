@@ -285,6 +285,7 @@ function CheckResultView({
       <PathsSection
         exam={exam}
         result={result}
+        checking={running}
         deep={deep}
         onPreview={onPreview}
         onShowOverlap={onShowOverlap}
@@ -489,6 +490,8 @@ function usePathSub() {
 interface PathActionsValue {
   examId: string;
   deep: DeepCheck;
+  /** `true` khi lần kiểm tra thường đang chạy: Kiểm tra kỹ tắt để hai lần chạy không ghi đè cùng khóa kết quả. */
+  checking: boolean;
   onPreview: (pathId: string | null) => void;
   onShowOverlap: (pathId: string) => void;
 }
@@ -501,7 +504,7 @@ function PathActions({ path }: { path: PathCheck }) {
   const pathLabel = usePathLabel();
   const context = useContext(PathActionsContext);
   if (!context) return null;
-  const { examId, deep, onPreview, onShowOverlap } = context;
+  const { examId, deep, checking, onPreview, onShowOverlap } = context;
   const label = pathLabel(path);
   if (path.result === "VALID") {
     return (
@@ -531,6 +534,7 @@ function PathActions({ path }: { path: PathCheck }) {
         size="sm"
         onClick={deep.start}
         loading={deep.phase === "running"}
+        disabled={checking}
         aria-label={t("paths.deepAria", { path: label })}
       >
         {t("deep.start")}
@@ -541,16 +545,17 @@ function PathActions({ path }: { path: PathCheck }) {
     </div>
   );
 }
-
 function PathsSection({
   exam,
   result,
+  checking,
   deep,
   onPreview,
   onShowOverlap,
 }: {
   exam: ExamDetail;
   result: ExamCheckResult;
+  checking: boolean;
   deep: DeepCheck;
   onPreview: (pathId: string | null) => void;
   onShowOverlap: (pathId: string) => void;
@@ -566,8 +571,8 @@ function PathsSection({
   // Thao tác đọc trạng thái chạy và các hàm gọi lại qua context, để cột của bảng giữ nguyên giữa các lần render:
   // bảng dựng lại ô mỗi khi định nghĩa cột đổi, nút đang được focus sẽ mất focus.
   const actionsValue = useMemo(
-    () => ({ examId: exam.id, deep, onPreview, onShowOverlap }),
-    [exam.id, deep, onPreview, onShowOverlap],
+    () => ({ examId: exam.id, deep, checking, onPreview, onShowOverlap }),
+    [exam.id, deep, checking, onPreview, onShowOverlap],
   );
 
   const { columns, cards } = useMemo(() => {

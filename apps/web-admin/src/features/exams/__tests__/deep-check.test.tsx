@@ -41,9 +41,13 @@ function confirmed(result: ExamCheckResult): ExamCheckResult {
 
 const running: ExamCheckRun = { runId: "run-1", state: "RUNNING", result: null, errorCode: null };
 
-async function setup({ startFails = false }: { startFails?: boolean } = {}) {
+async function setup({
+  startFails = false,
+  check,
+}: { startFails?: boolean; check?: (result: ExamCheckResult) => ExamCheckResult } = {}) {
   const exam = await getExam(HSA);
-  const initial = (await getExamCheck({ examId: HSA }))!;
+  const stored = (await getExamCheck({ examId: HSA }))!;
+  const initial = check ? check(stored) : stored;
   // `shouldAdvanceTime`: waitFor của Testing Library chạy trên đồng hồ thật; chu kỳ hỏi 2 giây do test tiến tay.
   vi.useFakeTimers({ shouldAdvanceTime: true });
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -64,7 +68,7 @@ async function setup({ startFails = false }: { startFails?: boolean } = {}) {
     <ExamReviewCheck exam={exam} onPreview={() => {}} deps={deps} active={active} />
   );
   const view = renderWithProviders(element());
-  return { user, getCheckRun, startDeepCheck, initial, view, element };
+  return { user, getCheckRun, startDeepCheck, initial, view, element, deps };
 }
 
 async function tick(ms = POLL_MS) {
@@ -182,5 +186,76 @@ describe("Kiểm tra kỹ", () => {
     view.unmount();
     await tick(POLL_MS * 3);
     expect(getCheckRun).toHaveBeenCalledTimes(4);
+  });
+
+  it("hỏi kết quả lỗi thì dừng chu kỳ, báo lỗi kèm Thử lại bắt đầu lần chạy mới", async () => {
+    const { user, getCheckRun, startDeepCheck, initial } = await setup();
+    getCheckRun.mockRejectedValue(new MockApiError(503, "UNAVAILABLE"));
+
+    await startFromTopCard(user);
+    await waitFor(() => expect(getCheckRun).toHaveBeenCalledTimes(1));
+    // Hai lần thử lại của truy vấn rồi mới lỗi; chu kỳ hỏi không tự chạy tiếp.
+    await tick();
+    expect(getCheckRun).toHaveBeenCalledTimes(2);
+    await tick();
+    expect(getCheckRun).toHaveBeenCalledTimes(3);
+
+    expect(await screen.findByText("Kiểm tra kỹ không hoàn tất")).toBeInTheDocument();
+    expect(screen.getByText(/Không lấy được kết quả của lần kiểm tra kỹ/)).toBeInTheDocument();
+    await tick(POLL_MS * 3);
+    expect(getCheckRun).toHaveBeenCalledTimes(3);
+
+    // Thử lại từ banner: lần chạy mới, hỏi tới khi xong.
+    getCheckRun.mockImplementation(async (_examId, runId) =>
+      runId === "run-2"
+        ? { runId, state: "DONE", result: confirmed(initial), errorCode: null }
+        : { ...running, runId },
+    );
+    const alert = screen.getByText("Kiểm tra kỹ không hoàn tất").closest("div[class*='border-danger']") as HTMLElement;
+    await user.click(within(alert).getByRole("button", { name: "Thử lại" }));
+    expect(startDeepCheck).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(getCheckRun).toHaveBeenLastCalledWith(HSA, "run-2"));
+    await waitFor(() => expect(screen.queryByText("Kiểm tra kỹ không hoàn tất")).not.toBeInTheDocument());
+    expect(screen.getByText(/giới hạn xử lý 120 giây/)).toBeInTheDocument();
+  });
+
+  it("xong rồi thì đổi tab ra vào không hỏi lại lần chạy đã kết thúc", async () => {
+    const { user, getCheckRun, initial, view, element } = await setup();
+    getCheckRun.mockImplementation(async (_examId, runId) => ({
+      runId,
+      state: "DONE",
+      result: confirmed(initial),
+      errorCode: null,
+    }));
+
+    await startFromTopCard(user);
+    await waitFor(() => expect(getCheckRun).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(/giới hạn xử lý 120 giây/)).toBeInTheDocument());
+
+    view.rerender(element(false));
+    view.rerender(element(true));
+    await tick(POLL_MS * 3);
+    expect(getCheckRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("đang kiểm tra thường thì nút Kiểm tra kỹ của từng đường cũng tắt", async () => {
+    const gate = Promise.withResolvers<ExamCheckResult>();
+    const { user, deps, initial } = await setup({
+      check: (result) => ({ ...result, paths: result.paths.map((path) => ({ ...path, result: "UNCONFIRMED" })) }),
+    });
+    deps.runExamCheck = vi.fn(async () => gate.promise);
+
+    const rowButtons = await screen.findAllByRole("button", { name: /Kiểm tra kỹ đường .+/ });
+    rowButtons.forEach((button) => expect(button).not.toHaveAttribute("aria-disabled"));
+    await user.click(screen.getAllByRole("button", { name: "Kiểm tra lại" })[0]!);
+
+    expect(deps.runExamCheck).toHaveBeenCalledTimes(1);
+    // Nút của dòng được bảng dựng lại sau khi trạng thái đổi: hỏi lại trong waitFor, không giữ tham chiếu cũ.
+    const rowButtonsAfter = () => screen.getAllByRole("button", { name: /Kiểm tra kỹ đường .+/ });
+    await waitFor(() =>
+      rowButtonsAfter().forEach((button) => expect(button).toHaveAttribute("aria-disabled", "true")),
+    );
+    gate.resolve(initial);
+    await waitFor(() => rowButtonsAfter().forEach((button) => expect(button).not.toHaveAttribute("aria-disabled")));
   });
 });
