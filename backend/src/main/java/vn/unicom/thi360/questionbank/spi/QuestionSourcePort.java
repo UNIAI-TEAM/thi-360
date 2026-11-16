@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Serving question source for exam checks, preview and publication. */
@@ -96,6 +97,9 @@ public interface QuestionSourcePort {
     Counts countUnion(List<Filter> filters);
 
     List<Candidate> findCandidates(Filter filter, int limit);
+
+    /** Requested root or child IDs belonging to candidates selected by the filter. */
+    Set<UUID> matching(Filter filter, Collection<UUID> questionIds);
 
     List<Version> loadVersions(List<VersionKey> versions);
 

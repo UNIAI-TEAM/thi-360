@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -171,6 +172,27 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 c.trueFalseTable(), c.multipleChoiceRule(), c.code())).toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Set<UUID> matching(Filter filter, Collection<UUID> questionIds) {
+        if (questionIds.isEmpty()) return Set.of();
+        var params = new MapSqlParameterSource("questionIds", questionIds);
+        String sql = roots(List.of(filter), params, null,
+                " and q.id in (select coalesce(parent_id, id) from questionbank.question where id in (:questionIds))")
+                + units()
+                + """
+                select distinct requested.id
+                from questionbank.question requested
+                join roots r on r.id = coalesce(requested.parent_id, requested.id)
+                where requested.id in (:questionIds) and requested.deleted_at is null
+                  and exists (select 1 from units u where u.root_id = r.id)
+                  and (requested.id = r.id or
+                       (r.type = 'QUESTION_SET' and exists
+                           (select 1 from units u where u.root_id = r.id and u.unit_id = requested.id)))
+                """;
+        return Set.copyOf(jdbc.queryForList(sql, params, UUID.class));
+    }
+
     private ScoringDetails scoring(String method, String tableJson, String multipleChoiceRule) throws SQLException {
         List<BigDecimal> table = null;
         if (tableJson != null) {
@@ -263,6 +285,10 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
     }
 
     private String roots(List<Filter> filters, MapSqlParameterSource params, Integer limit) {
+        return roots(filters, params, limit, "");
+    }
+
+    private String roots(List<Filter> filters, MapSqlParameterSource params, Integer limit, String restriction) {
         List<String> alternatives = new ArrayList<>();
         for (int i = 0; i < filters.size(); i++) alternatives.add(predicate(filters.get(i), i, params));
         String tail = "";
@@ -270,7 +296,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         return "with roots as (select q.*, v.snapshot from questionbank.question q "
                 + "join questionbank.question_version v on v.question_id=q.id and v.version_no=q.current_version_no "
                 + "where q.parent_id is null and q.deleted_at is null and q.status='READY' and ("
-                + String.join(" or ", alternatives) + ") order by q.id" + tail + "), ";
+                + String.join(" or ", alternatives) + ")" + restriction + " order by q.id" + tail + "), ";
     }
 
     private String predicate(Filter f, int index, MapSqlParameterSource params) {

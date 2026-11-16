@@ -138,4 +138,54 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         assertThat(descriptions.get(child).answerTypes()).containsExactly(QuestionType.SHORT_ANSWER);
         assertThat(descriptions.get(root).knowledgeIds()).containsExactly(node);
     }
+
+    @Test
+    void boundedMatchingAgreesWithCandidatesForRootAndChildFilters() {
+        UUID subject = UUID.randomUUID();
+        UUID root = UUID.randomUUID();
+        UUID child = UUID.randomUUID();
+        UUID missing = UUID.randomUUID();
+        UUID k1 = UUID.randomUUID();
+        UUID k2 = UUID.randomUUID();
+        UUID tag = UUID.randomUUID();
+        String tagCode = "USAGE_" + tag.toString().replace("-", "");
+        jdbc.update("insert into catalog.catalog_item(id,group_id,code,code_normalized,value,name_vi,display_order,status,is_system,depth,path) values (?, '00000000-0000-7000-8100-000000000008',?,?,1,'Usage tag',0,1,false,1,?)",
+                tag, tagCode, tagCode.toLowerCase(), "/" + tag + "/");
+        UUID task = catalog.findActiveItem("TASK_TYPE", "CLUSTER").orElseThrow().id();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,task_type_item_id) values (?,?,'QUESTION_SET','READY',?,1,?)",
+                root, "PARITY-" + root, subject, task);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", root);
+        jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?,'SHORT_ANSWER','READY',?,0,1)",
+                child, "PARITY-" + child, root);
+        jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", root, k1);
+        jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, k2);
+        jdbc.update("insert into questionbank.question_tag(question_id,tag_item_id) values (?,?)", root, tag);
+        var good = new QuestionSourcePort.Filter(subject, List.of(List.of(UUID.randomUUID(), k1), List.of(k2)),
+                QuestionSourcePort.Match.ALL, List.of(), QuestionType.QUESTION_SET, "CLUSTER",
+                QuestionType.SHORT_ANSWER, List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
+        var wrongPoints = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
+                List.of(tagCode), List.of(), java.math.BigDecimal.TEN);
+        var wrongSubject = new QuestionSourcePort.Filter(UUID.randomUUID(), good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
+        var wrongTag = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
+                List.of("MISSING"), List.of(), java.math.BigDecimal.ONE);
+        var wrongTask = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(), QuestionType.QUESTION_SET, "SINGLE", QuestionType.SHORT_ANSWER,
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
+        for (var filter : List.of(good, wrongPoints, wrongSubject, wrongTag, wrongTask)) {
+            var candidates = source.findCandidates(filter, 100);
+            var expected = new java.util.HashSet<UUID>();
+            for (var candidate : candidates) {
+                expected.add(candidate.questionId());
+                candidate.units().forEach(unit -> expected.add(unit.questionId()));
+            }
+            expected.retainAll(List.of(root, child, missing));
+            assertThat(source.matching(filter, List.of(root, child, missing))).isEqualTo(expected);
+        }
+        assertThat(source.matching(good, List.of(root, child, missing))).containsExactlyInAnyOrder(root, child);
+        assertThat(source.matching(good, List.of())).isEmpty();
+    }
 }

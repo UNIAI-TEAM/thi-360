@@ -154,9 +154,8 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, match, answers,
                 block.questionType(), block.taskTypeCode(), block.childAnswerType(), block.tagCodes(),
                 scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion());
-        boolean included = matches.computeIfAbsent(filter, key -> source.findCandidates(key, Integer.MAX_VALUE)
-                .stream().anyMatch(candidate -> candidate.questionId().equals(questionId)
-                        || candidate.units().stream().anyMatch(unit -> unit.questionId().equals(questionId))));
+        boolean included = matches.computeIfAbsent(filter,
+                key -> source.matching(key, List.of(questionId)).contains(questionId));
         if (included) {
             result.add(new ExamUsageRef(exam.getId(), exam.getCode(), exam.getName(), exam.getStatus(),
                     part.id(), part.name(), option == null ? null : option.id(),
