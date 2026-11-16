@@ -179,34 +179,68 @@ SELECT child_id, code || '-' || pos, 'SINGLE_CHOICE', subject_id, grade_id, leve
        task_type_id, 1, '<p>Reading child</p>', body, id, pos
 FROM children;
 
+-- Remaining formats and lifecycle examples, including a draft and a retired
+-- question for each format. READY rows use the same validation as real content.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-seed-extra-' || kind.type || '-' || n)::uuid,
+       'SEED-EXTRA-' || kind.type || '-' || n, kind.type,
+       subject.id, grade.id, level.id, NULL,
+       CASE WHEN kind.type IN ('CLOZE', 'MATCHING') THEN 2 ELSE 1 END,
+       '<p>Extra example ' || n || '</p>',
+       CASE kind.type
+           WHEN 'MULTIPLE_CHOICE' THEN jsonb_build_object('type', kind.type, 'shuffleOptions', false, 'scoringRule', 'ALL_OR_NOTHING',
+               'options', jsonb_build_array(
+                   jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                   jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', true),
+                   jsonb_build_object('id', 'c', 'content', '<p>Three</p>', 'correct', false)))
+           WHEN 'CLOZE' THEN jsonb_build_object('type', kind.type, 'passage', '<p>Text [[x]] [[y]]</p>',
+               'blanks', jsonb_build_array(jsonb_build_object('id', 'x', 'answers', jsonb_build_array('one'), 'points', 1),
+                                           jsonb_build_object('id', 'y', 'answers', jsonb_build_array('two'), 'points', 1)))
+           ELSE jsonb_build_object('type', kind.type, 'reuseRight', false, 'shuffleLeft', false, 'shuffleRight', false,
+               'left', jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>Left one</p>'),
+                                         jsonb_build_object('id', 'b', 'content', '<p>Left two</p>')),
+               'right', jsonb_build_array(jsonb_build_object('id', 'c', 'content', '<p>Right one</p>'),
+                                          jsonb_build_object('id', 'd', 'content', '<p>Right two</p>')),
+               'pairs', jsonb_build_array(jsonb_build_object('leftId', 'a', 'rightId', 'c', 'points', 1),
+                                          jsonb_build_object('leftId', 'b', 'rightId', 'd', 'points', 1))) END,
+       NULL, NULL
+FROM (VALUES ('MULTIPLE_CHOICE'), ('CLOZE'), ('MATCHING')) kind(type)
+CROSS JOIN generate_series(1, 3) n
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'TOAN'
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G10'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'NB';
+
 -- Parents must exist before their child rows satisfy the self-reference.
-WITH inserted AS (
+WITH prepared AS (
+    SELECT s.*,
+           CASE WHEN code LIKE 'SEED-EXTRA-%-2' THEN 'DRAFT'
+                WHEN code LIKE 'SEED-EXTRA-%-3' THEN 'RETIRED' ELSE 'READY' END AS seed_status,
+           CASE type
+               WHEN 'SINGLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two'
+               WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' 1'
+               WHEN 'MULTIPLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two Three'
+               WHEN 'CLOZE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Text [[x]] [[y]]'
+               WHEN 'MATCHING' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Left one Left two Right one Right two'
+               WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
+               WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
+               WHEN 'QUESTION_SET' THEN CASE WHEN code LIKE 'SEED-READING-%'
+                   THEN 'Reading set Reading context Reading child One Two Reading child One Two'
+                   ELSE 'Math set Math context Math child One Two Math child 1' END
+           END AS plain
+    FROM seed_question_rows s WHERE parent_id IS NULL
+), inserted AS (
     INSERT INTO questionbank.question
         (id, code, type, status, parent_id, position, subject_item_id, grade_item_id,
          level_item_id, task_type_item_id, points, current_version_no, working_version_no,
          content_text, search_text)
-    SELECT id, code, type, 'READY', NULL, NULL, subject_id, grade_id, level_id, task_type_id,
-           points, 1, NULL,
-           CASE type WHEN 'SINGLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two'
-                     WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' 1'
-                     WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
-                     WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
-                     WHEN 'QUESTION_SET' THEN CASE WHEN code LIKE 'SEED-READING-%' THEN 'Reading set Reading context Reading child One Two Reading child One Two'
-                                                   ELSE 'Math set Math context Math child One Two Math child 1' END
-                     ELSE 'Math set Math context Math child One Two Math child 1' END,
-           lower(code || ' ' ||
-               CASE type WHEN 'SINGLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two'
-                         WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' 1'
-                         WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
-                         WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
-                         WHEN 'QUESTION_SET' THEN CASE WHEN code LIKE 'SEED-READING-%' THEN 'Reading set Reading context Reading child One Two Reading child One Two'
-                                                       ELSE 'Math set Math context Math child One Two Math child 1' END
-                         ELSE 'Math set Math context Math child One Two Math child 1' END)
-    FROM seed_question_rows WHERE parent_id IS NULL
-    ON CONFLICT DO NOTHING RETURNING subject_item_id
+    SELECT id, code, type, seed_status, NULL, NULL, subject_id, grade_id, level_id, task_type_id,
+           points, CASE WHEN seed_status = 'DRAFT' THEN NULL ELSE 1 END,
+           CASE WHEN seed_status = 'DRAFT' THEN 1 ELSE NULL END, plain, lower(code || ' ' || plain)
+    FROM prepared
+    ON CONFLICT DO NOTHING RETURNING subject_item_id, status
 )
 INSERT INTO questionbank.question_source_revision (subject_item_id, revision)
-SELECT subject_item_id, count(*) FROM inserted GROUP BY subject_item_id
+SELECT subject_item_id, count(*) FROM inserted WHERE status = 'READY' GROUP BY subject_item_id
 ON CONFLICT (subject_item_id) DO UPDATE
 SET revision = questionbank.question_source_revision.revision + EXCLUDED.revision;
 
@@ -227,7 +261,8 @@ SELECT s.id, 1, jsonb_build_object(
     'subjectItemId', s.subject_id, 'gradeItemId', s.grade_id, 'levelItemId', s.level_id,
     'taskTypeItemId', s.task_type_id, 'competencyItemId', NULL, 'points', s.points,
     'knowledge', '[]'::jsonb, 'tagItemIds', '[]'::jsonb, 'content', s.content,
-    'solution', NULL, 'commonMistakes', '[]'::jsonb, 'attachmentIds', '[]'::jsonb, 'body', s.body), now()
+    'solution', NULL, 'commonMistakes', '[]'::jsonb, 'attachmentIds', '[]'::jsonb, 'body', s.body),
+    CASE WHEN q.status = 'DRAFT' THEN NULL ELSE now() END
 FROM seed_question_rows s
 JOIN questionbank.question q ON q.id = s.id
 ON CONFLICT DO NOTHING;
