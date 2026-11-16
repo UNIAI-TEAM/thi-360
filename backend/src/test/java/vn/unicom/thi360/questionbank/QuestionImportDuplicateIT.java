@@ -50,6 +50,49 @@ class QuestionImportDuplicateIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void newVersionOfReadySetKeepsServingChildrenAndRevision() throws Exception {
+        String source = code();
+        String createBody = QuestionTestSupport.createQuestionSetRequest()
+                .replaceFirst("\\{\"type\"", "{\"sourceCode\":\"" + source + "\",\"type\"");
+        var created = mockMvc.perform(post("/api/v1/admin/questions").with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+        var question = mapper.readTree(created.getResponse().getContentAsByteArray());
+        UUID questionId = UUID.fromString(question.at("/summary/id").asText());
+        long revision = question.at("/summary/revision").asLong();
+        mockMvc.perform(post("/api/v1/admin/questions/{id}/ready", questionId).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+        var childrenBefore = jdbc.queryForList("select id, content_text, position from questionbank.question where parent_id = ? and deleted_at is null order by position", questionId);
+        Long sourceRevision = jdbc.queryForObject("select revision from questionbank.question_source_revision where subject_item_id = ?",
+                Long.class, QuestionTestSupport.SUBJECT_TOAN_ID);
+        String csv = "sourceCode,type,content,subject,grade,difficulty,correctAnswer,setCode\n"
+                + source + ",QUESTION_SET,New passage,TOAN,G10,NB,,set\n"
+                + ",SHORT_ANSWER,New child one,,,,42,set\n"
+                + ",SHORT_ANSWER,New child two,,,,42,set\n";
+        var uploaded = mockMvc.perform(multipart("/api/v1/admin/question-imports/uploads")
+                        .file(new MockMultipartFile("file", "new-set.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8)))
+                        .with(asUser(Permissions.QUESTION_MODIFY))).andExpect(status().isOk()).andReturn();
+        String uploadId = mapper.readTree(uploaded.getResponse().getContentAsByteArray()).get("id").asText();
+        String body = """
+                {"uploadId":"%s","mapping":{"c0":"sourceCode","c1":"type","c2":"content","c3":"subject","c4":"grade","c5":"difficulty","c6":"correctAnswer","c7":"setCode"},"duplicatePolicy":"NEW_VERSION","skipErrors":false}
+                """.formatted(uploadId);
+        mockMvc.perform(post("/api/v1/admin/question-imports/uploads/{id}/commit", uploadId)
+                        .with(asUser(Permissions.QUESTION_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.newVersionCount").value(1));
+        assertThat(jdbc.queryForList("select id, content_text, position from questionbank.question where parent_id = ? and deleted_at is null order by position", questionId))
+                .isEqualTo(childrenBefore);
+        assertThat(jdbc.queryForObject("select revision from questionbank.question_source_revision where subject_item_id = ?",
+                Long.class, QuestionTestSupport.SUBJECT_TOAN_ID)).isEqualTo(sourceRevision);
+        var row = jdbc.queryForMap("select status, current_version_no, working_version_no from questionbank.question where id = ?", questionId);
+        assertThat(row.get("status")).isEqualTo("READY");
+        assertThat(row.get("working_version_no")).isNotNull();
+        assertThat(row.get("current_version_no")).isNotEqualTo(row.get("working_version_no"));
+    }
+
+    @Test
     void typeMismatchIsBlocking() throws Exception {
         String source = code();
         create(source);
