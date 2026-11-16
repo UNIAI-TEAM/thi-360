@@ -197,6 +197,9 @@ thi360:
     enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
   cookie:
     secure: ${THI360_COOKIE_SECURE:false}
+  exam:
+    scheduling:
+      enabled: false
 ---
 spring:
   config:
