@@ -2,12 +2,9 @@ package vn.unicom.thi360.exam.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
-import java.util.List;
-import vn.unicom.thi360.exam.domain.ExamPart;
 
 @Schema(description = "Tạo bài thi Nháp theo phạm vi (spec 5.2, 9.2)")
 public record CreateExamRequest(
@@ -34,13 +31,6 @@ public record CreateExamRequest(
         @NotBlank
         @Size(max = 200)
         String name,
-        @Schema(description = "Mã nguyên mẫu nạp cấu trúc; bỏ trống → cấu trúc rỗng")
-        @Size(max = 30)
-        String templateCode,
-        @Schema(description = "Cấu trúc khai báo sẵn thay vì nạp mẫu")
-        List<ExamPart> parts,
-        @Schema(description = "Xác nhận khi năm cấu trúc của mẫu khác năm ma trận")
-        Boolean yearsConfirmed,
         @Schema(description = "Thời lượng chung; bắt buộc khi timing = SHARED và mẫu không khai báo")
         @Positive
         Integer durationMinutes,
@@ -54,7 +44,4 @@ public record CreateExamRequest(
         @Size(max = 100000)
         String instructions
 ) {
-    public CreateExamRequest {
-        parts = parts == null ? null : List.copyOf(parts);
-    }
 }

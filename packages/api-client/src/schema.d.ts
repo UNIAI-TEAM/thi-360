@@ -2623,16 +2623,10 @@ export interface components {
             name: string;
             /** @description Mã phần; bắt buộc khi scope = PART */
             partCode?: string;
-            /** @description Cấu trúc khai báo sẵn thay vì nạp mẫu */
-            parts?: components["schemas"]["ExamPart"][];
             /** @description FULL | PART | SUBJECT; phải nằm trong scopes của hồ sơ kỳ thi */
             scope: string;
             /** @description Mã môn; bắt buộc khi kỳ thi mẫu theo môn (templateBy = SUBJECT) */
             subjectCode?: string;
-            /** @description Mã nguyên mẫu nạp cấu trúc; bỏ trống → cấu trúc rỗng */
-            templateCode?: string;
-            /** @description Xác nhận khi năm cấu trúc của mẫu khác năm ma trận */
-            yearsConfirmed?: boolean;
         };
         /** @description Yêu cầu tạo vai trò mới */
         CreateRoleRequest: {

@@ -356,25 +356,17 @@ public class ExamService {
         ScopeChoice scopeChoice = resolveScope(kindItem, profile, request.scope(),
                 request.partCode(), request.subjectCode());
 
-        ExamTemplate template = pickTemplate(request.templateCode(), kindItem.code(),
+        ExamTemplate template = pickTemplate(null, kindItem.code(),
                 scopeChoice.scope(), scopeChoice.partCode(), scopeChoice.subjectCode(), null);
 
         ExamStructureDocument doc;
-        boolean edited;
         String templateCode = null;
-        if (request.parts() != null && !request.parts().isEmpty()) {
-            doc = ExamStructureOps.assignMissingIds(new ExamStructureDocument(request.parts()));
-            ExamStructureValidator.validate(doc);
-            edited = true;
-            templateCode = template != null ? template.getCode() : null;
-        } else if (template != null) {
+        if (template != null) {
             doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
             ExamStructureValidator.validate(doc);
-            edited = false;
             templateCode = template.getCode();
         } else {
             doc = new ExamStructureDocument(List.of());
-            edited = false;
         }
 
         String timing = template != null && template.getTiming() != null
@@ -392,8 +384,7 @@ public class ExamService {
 
         Integer structureYear = template != null ? template.getStructureYear() : null;
         Integer matrixYear = template != null ? template.getMatrixYear() : null;
-        boolean yearsConfirmed = structureYear == null || structureYear.equals(matrixYear)
-                || Boolean.TRUE.equals(request.yearsConfirmed());
+        boolean yearsConfirmed = structureYear == null || structureYear.equals(matrixYear);
 
         Exam exam = new Exam(Ids.newId(), code, request.name().trim(), kindItem.id(),
                 scopeChoice.scope(), timing, duration, maxScore,
@@ -414,7 +405,7 @@ public class ExamService {
                 summary.hasEnglishOption(), summary.combinationCount());
 
         structureRepository.save(new ExamStructure(exam.getId(), codec().write(doc),
-                hash(doc), null, edited, actor, now));
+                hash(doc), null, false, actor, now));
         rewriteBlockRefs(exam.getId(), doc);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.CREATE")

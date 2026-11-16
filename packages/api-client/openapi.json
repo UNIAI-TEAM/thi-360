@@ -1977,13 +1977,6 @@
             "minLength" : 0,
             "type" : "string"
           },
-          "parts" : {
-            "description" : "Cấu trúc khai báo sẵn thay vì nạp mẫu",
-            "items" : {
-              "$ref" : "#/components/schemas/ExamPart"
-            },
-            "type" : "array"
-          },
           "scope" : {
             "description" : "FULL | PART | SUBJECT; phải nằm trong scopes của hồ sơ kỳ thi",
             "type" : "string"
@@ -1993,16 +1986,6 @@
             "maxLength" : 30,
             "minLength" : 0,
             "type" : "string"
-          },
-          "templateCode" : {
-            "description" : "Mã nguyên mẫu nạp cấu trúc; bỏ trống → cấu trúc rỗng",
-            "maxLength" : 30,
-            "minLength" : 0,
-            "type" : "string"
-          },
-          "yearsConfirmed" : {
-            "description" : "Xác nhận khi năm cấu trúc của mẫu khác năm ma trận",
-            "type" : "boolean"
           }
         },
         "required" : [ "code", "kind", "name", "scope" ],
