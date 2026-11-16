@@ -110,8 +110,8 @@ final class SubproblemSolver {
                 if (ctx.usable()[g][i]) {
                     units += ctx.units()[g][i];
                     int[] vec = ctx.contrib()[g][i];
-                    // chỉ tiêu của nhóm: chỉ tính trên ứng viên usable của chính nhóm
-                    for (int r = ctx.reqFrom()[g] + 1; r < ctx.reqTo()[g]; r++) {
+                    // chỉ tiêu của nhóm (kể cả TỔNG): chỉ tính trên ứng viên usable của chính nhóm
+                    for (int r = ctx.reqFrom()[g]; r < ctx.reqTo()[g]; r++) {
                         supply[r] += vec[r];
                     }
                     // chỉ tiêu phía môn: hợp nguồn của mọi nhóm, mỗi ứng viên (theo khóa) đếm một lần
