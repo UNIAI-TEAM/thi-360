@@ -177,15 +177,23 @@ public sealed interface QuestionBody {
     /**
      * Câu con của bộ câu hỏi: phần thân theo dạng (D19), phân loại kế thừa của bộ khi để trống
      * (spec 9.2 — {@code null} là kế thừa). {@code points} mặc định 1 khi trống.
+     *
+     * <p>Câu con là dòng {@code question} riêng (spec 4.1): {@code id} là id bản ghi đó, do máy
+     * chủ cấp khi lưu (câu con mới gửi lên có {@code id = null}); snapshot của câu con là một
+     * dòng {@code question_version} riêng có cùng {@code version_no} với bộ. Phân loại riêng của
+     * câu con nằm trên bản ghi của nó ({@code gradeItemId}/{@code levelItemId}/{@code
+     * knowledgeItemIds} ở đây chỉ giữ giá trị ghi đè mà request gửi lên).
      */
     record ChildQuestion(
         QuestionType type,
         String content,
         QuestionBody body,
+        String solution,
         BigDecimal points,
         UUID gradeItemId,
         UUID levelItemId,
-        List<UUID> knowledgeItemIds) {
+        List<UUID> knowledgeItemIds,
+        UUID id) {
 
         public ChildQuestion {
             knowledgeItemIds = knowledgeItemIds == null ? List.of() : List.copyOf(knowledgeItemIds);
