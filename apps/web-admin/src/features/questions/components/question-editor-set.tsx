@@ -8,6 +8,7 @@ import { useId, useRef, useState } from "react";
 import { get, useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
 import type { ContentReference } from "@/features/content/types";
 import { emptyChild, questionSetPoints, type EditorChild, type QuestionEditorValues } from "../editor-form";
+import { useUiLocale } from "../use-ui-locale";
 import { CHILD_QUESTION_TYPES, type ChildQuestionType } from "../editor-types";
 import { RichTextField } from "./question-editor-rich-field";
 import { QuestionBodyEditor } from "./question-editor-body";
@@ -26,6 +27,7 @@ export function QuestionSetEditor({ reference }: { reference: ContentReference }
   const groupId = useId();
   const addGroupRef = useRef<HTMLDivElement>(null);
   const { control } = useFormContext<QuestionEditorValues>();
+  const locale = useUiLocale();
   const { fields, append, remove, move } = useFieldArray({ control, name: "children", keyName: "rowKey" });
   const children = useWatch({ control, name: "children" }) ?? [];
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -40,7 +42,7 @@ export function QuestionSetEditor({ reference }: { reference: ContentReference }
     });
 
   const add = (type: ChildQuestionType) => {
-    const child = emptyChild(type);
+    const child = emptyChild(type, locale);
     setExpanded((current) => new Set(current).add(child.key));
     append(child, { shouldFocus: true, focusName: `children.${fields.length}.content` });
     announce(t("added", { number: fields.length + 1, type: tType(type) }));

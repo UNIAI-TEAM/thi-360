@@ -1,11 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderEn } from "./editor-test-kit";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { QuestionTypePicker } from "../components/question-type-picker";
-import { questionStore } from "../mock/store";
+import { questionStore, renderEn } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -15,11 +13,6 @@ vi.mock("next/navigation", () => ({
 
 beforeEach(() => {
   navigation.push.mockReset();
-});
-
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
 });
 
 describe("chọn dạng câu", () => {
@@ -70,7 +63,8 @@ describe("biểu mẫu soạn câu hỏi", () => {
     await user.type(content, " (edited)");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await vi.waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/questions/q-0003"));
-    expect(questionStore.require("q-0003")).toMatchObject({ version: 3, status: "DRAFT" });
+    // Câu đang phục vụ giữ trạng thái và bản phục vụ; bản Nháp mới là `workingVersion` (spec 9.2).
+    expect(questionStore.require("q-0003")).toMatchObject({ status: "READY", version: 2, workingVersion: 3 });
   });
 
   it("câu không tồn tại thì báo không tìm thấy", async () => {

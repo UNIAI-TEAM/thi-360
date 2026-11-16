@@ -170,7 +170,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
           </label>
         </div>
 
-        <p className="text-caption text-text-muted">{t("upload.mockHint")}</p>
+        <p className="text-caption text-text-muted">{t("upload.readNote")}</p>
 
         {selectedFile && (
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-subtle px-3.5 py-2.5">
@@ -234,7 +234,10 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
                         <StatusChip tone="neutral">{t("upload.optional")}</StatusChip>
                       )
                     }
-                    meta={[{ label: t("upload.colRules"), value: row.rules }]}
+                    meta={[
+                      { label: t("upload.colFileHeader"), value: row.key },
+                      { label: t("upload.colRules"), value: row.rules },
+                    ]}
                   />
                 </CardListItem>
               ))}
@@ -246,6 +249,9 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
                   <tr className="bg-table-head text-left text-field-label text-text-muted">
                     <th scope="col" className="px-4 py-3 font-semibold">
                       {t("upload.colName")}
+                    </th>
+                    <th scope="col" className="px-2 py-3 font-semibold whitespace-nowrap">
+                      {t("upload.colFileHeader")}
                     </th>
                     <th scope="col" className="px-2 py-3 font-semibold whitespace-nowrap">
                       {t("upload.colRequired")}
@@ -261,6 +267,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
                       <th scope="row" className="px-4 py-2.5 text-left align-top font-semibold whitespace-nowrap text-text">
                         {row.name}
                       </th>
+                      <td className="px-2 py-2.5 align-top font-mono text-text-secondary">{row.key}</td>
                       <td className="px-2 py-2.5 align-top text-text">
                         {row.required ? t("upload.yes") : t("upload.no")}
                       </td>

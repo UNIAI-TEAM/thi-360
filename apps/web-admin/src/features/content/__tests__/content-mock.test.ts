@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { indexKnowledge, filterKnowledgeTree, normalizePrimary } from "@/features/content/knowledge-tree";
 import { getContentReference } from "@/features/content/api";
 import { listQuestions, getQuestion } from "@/features/questions/api";
@@ -36,6 +36,13 @@ describe("lớp dữ liệu mẫu", () => {
 });
 
 describe("dữ liệu mẫu dùng chung", () => {
+  // Khối này kiểm bản thân kho dữ liệu mẫu (lọc môn/trạng thái nằm trong `api.mock.ts`, không tái tạo bằng một phản
+  // hồi tĩnh của client giả): bật lại cờ cục bộ — project fake-client tắt cờ ở `src/test/setup-fake-client.ts`.
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "true");
+    vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "true");
+  });
+
   it("mọi kiến thức gắn với câu hỏi có trong cây, mỗi câu có tối đa một kiến thức chính", async () => {
     const reference = await getContentReference();
     const index = indexKnowledge(reference.knowledgeTree);

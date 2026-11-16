@@ -1,9 +1,8 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import referenceFixture from "@/features/content/mock/reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { listQuestions } from "../api";
 import { updateQuestion } from "../editor-api";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import {
   emptyChild,
   emptyEditorValues,
@@ -15,7 +14,7 @@ import {
 } from "../editor-form";
 import { validateQuestionEditor } from "../editor-schema";
 import { diffSnapshots, toSnapshot } from "../editor-versioning";
-import { questionStore } from "../mock/store";
+import { withQuestionsServer } from "./api-fixtures";
 import { evaluateReadiness, isValidScoreTable } from "../readiness";
 import {
   parseQuestionFilters,
@@ -29,10 +28,7 @@ import type { QuestionDetail } from "../types";
 const reference = referenceFixture as ContentReference;
 const KNOWLEDGE = [{ nodeId: "kn-2V1-1-1", code: "2V1-1-1", name: "Luan diem", primary: true }];
 
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
-});
+const questionStore = withQuestionsServer();
 
 function classified(type: QuestionEditorValues["type"]): QuestionEditorValues {
   return {

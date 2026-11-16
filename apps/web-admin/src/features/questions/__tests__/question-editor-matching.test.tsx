@@ -1,9 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { questionStore } from "../mock/store";
 import { renderEn, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
@@ -14,11 +12,6 @@ vi.mock("next/navigation", () => ({
 
 beforeEach(() => {
   navigation.push.mockReset();
-});
-
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
 });
 
 /** 3 mục trái, 4 lựa chọn phải (một lựa chọn dư), điểm cặp 0,33 / 0,33 / 0,34 = 1. `rightOf` đổi lựa chọn đúng của từng mục. */
@@ -50,16 +43,16 @@ describe("trinh soan Ghep doi", () => {
 
     expect(await screen.findByText("Left column: 3 items; right column: 4 choices (1 spare).")).toBeInTheDocument();
     expect(screen.getByText("Points total: 1 / 1")).toBeInTheDocument();
-    expect(pairPoints()).toEqual(["0,33", "0,33", "0,34"]);
+    expect(pairPoints()).toEqual(["0.33", "0.33", "0.34"]);
 
     await user.click(screen.getByRole("button", { name: "Add pair" }));
-    expect(pairPoints()).toEqual(["0,25", "0,25", "0,25", "0,25"]);
+    expect(pairPoints()).toEqual(["0.25", "0.25", "0.25", "0.25"]);
     expect(screen.getByText("Points total: 1 / 1")).toBeInTheDocument();
     // Cặp mới chưa chọn lựa chọn đúng nên lựa chọn thứ tư vẫn dư.
     expect(screen.getByText("Left column: 4 items; right column: 4 choices (1 spare).")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Delete pair 4" }));
-    expect(pairPoints()).toEqual(["0,33", "0,33", "0,34"]);
+    expect(pairPoints()).toEqual(["0.33", "0.33", "0.34"]);
   });
 
   it("xoa lua chon dang la dap an thi muc do phai chon lai, luu khong duoc cho toi khi chon", async () => {
@@ -132,7 +125,7 @@ describe("trinh soan Ghep doi", () => {
     expect(navigation.push).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Split evenly" }));
-    expect(pairPoints()).toEqual(["0,33", "0,33", "0,34"]);
+    expect(pairPoints()).toEqual(["0.33", "0.33", "0.34"]);
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalled());
   });
@@ -141,7 +134,7 @@ describe("trinh soan Ghep doi", () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="create" type="MATCHING" />);
     expect(await screen.findByText("Left column: 2 items; right column: 2 choices (0 spare).")).toBeInTheDocument();
-    expect(pairPoints()).toEqual(["0,5", "0,5"]);
+    expect(pairPoints()).toEqual(["0.5", "0.5"]);
     await user.click(screen.getByRole("button", { name: "Save draft" }));
     expect(await screen.findAllByText("Enter the left column item.")).toHaveLength(2);
     expect(screen.getAllByText("Enter the choice text or delete the choice.")).toHaveLength(2);

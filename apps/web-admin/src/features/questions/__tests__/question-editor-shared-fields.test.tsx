@@ -1,11 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getQuestion } from "../api";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { emptyChild, toEditorValues, type EditorChild } from "../editor-form";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { questionStore } from "../mock/store";
 import { renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
@@ -16,11 +14,6 @@ vi.mock("next/navigation", () => ({
 
 beforeEach(() => {
   navigation.push.mockReset();
-});
-
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
 });
 
 function seedSingleChoice() {
@@ -49,7 +42,7 @@ describe("truong dung chung: dang bai, loi sai thuong gap", () => {
     expect(taskType).toHaveTextContent("None");
 
     await user.click(taskType);
-    await user.click(await screen.findByRole("option", { name: "Tính toán" }));
+    await user.click(await screen.findByRole("option", { name: "Calculation" }));
     rich(screen.getByRole("textbox", { name: /^Common mistakes/ })).set("<p>Nhầm dấu khi chuyển vế</p>");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
@@ -123,18 +116,18 @@ describe("cau con cua bo cau hoi sua phan loai rieng", () => {
     renderEn(<QuestionEditorView mode="edit" questionId={id} />);
 
     const first = await openChild(1);
-    expect(first.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Lớp 12");
-    expect(first.getByRole("combobox", { name: "Difficulty" })).toHaveTextContent("Same as the set: Nhận biết");
+    expect(first.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Grade 12");
+    expect(first.getByRole("combobox", { name: "Difficulty" })).toHaveTextContent("Same as the set: Recognition");
     expect(first.getByText("Own")).toBeInTheDocument();
     expect(first.getByText("Phương trình dao động", { exact: false })).toBeInTheDocument();
 
     const second = await openChild(2);
-    expect(second.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Same as the set: Lớp 11");
+    expect(second.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Same as the set: Grade 11");
     expect(second.getByText("Same as the set")).toBeInTheDocument();
     expect(second.getByText("Giới hạn hữu hạn của dãy số", { exact: false })).toBeInTheDocument();
 
     await user.click(second.getByRole("combobox", { name: "Difficulty" }));
-    await user.click(await screen.findByRole("option", { name: "Thông hiểu" }));
+    await user.click(await screen.findByRole("option", { name: "Comprehension" }));
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
 

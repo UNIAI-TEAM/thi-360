@@ -10,7 +10,7 @@ import {
   type QuestionEditorValues,
 } from "../editor-form";
 import { questionEditorSchema, validateQuestionEditor } from "../editor-schema";
-import { questionStore } from "../mock/store";
+import { fixtureAll } from "./api-fixtures";
 
 const KNOWLEDGE = [{ nodeId: "k-1", code: "MAP-1", name: "Ham so bac nhat", primary: true }];
 
@@ -161,7 +161,7 @@ describe("chỗ trống của câu Điền đáp án", () => {
 
 describe("chuyển đổi giữa câu hỏi và biểu mẫu", () => {
   it("mọi câu mẫu đi qua biểu mẫu rồi trở lại giữ nguyên phần thân, phân loại và điểm", () => {
-    for (const question of questionStore.all()) {
+    for (const question of fixtureAll()) {
       const values = toEditorValues(question);
       const request = toSaveRequest(values);
       expect(request.type, question.code).toBe(question.type);

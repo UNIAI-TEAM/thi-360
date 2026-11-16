@@ -1,11 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { toQuestionSummary } from "../api";
 import { MarkReadyDialog, RetireQuestionDialog } from "../components/question-status-dialogs";
-import { questionStore } from "../mock/store";
+import { apiReadiness, withQuestionsServer } from "./api-fixtures";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -13,7 +13,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-afterEach(() => questionStore.reset());
+// q-0006 là câu Nháp chưa chọn đáp án đúng: máy chủ báo thiếu điều kiện ANSWER.
+const questionStore = withQuestionsServer({
+  readiness: { "q-0006": apiReadiness(false, [{ code: "NO_CORRECT_OPTION", path: "body.options" }]) },
+  usage: {
+    "q-0003": { examIds: ["ex-1", "ex-2", "ex-3"], ledger: [{ examId: "ex-1", kind: "ATTEMPT", versionNo: 1 }] },
+  },
+});
 
 const summary = (id: string) => toQuestionSummary(questionStore.require(id));
 

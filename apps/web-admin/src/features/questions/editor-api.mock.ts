@@ -101,7 +101,8 @@ function nextQuestionCode(): string {
 }
 
 function previewOf(content: string): string {
-  const text = content.replace(/\s+/g, " ").trim();
+  // Nội dung là HTML: bản xem trước chỉ lấy chữ, như máy chủ.
+  const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   return text.length > 160 ? `${text.slice(0, 159)}…` : text;
 }
 

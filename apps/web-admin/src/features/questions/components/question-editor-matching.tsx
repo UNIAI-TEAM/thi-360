@@ -14,6 +14,7 @@ import {
   pointsTotal,
   type QuestionEditorValues,
 } from "../editor-form";
+import { useUiLocale } from "../use-ui-locale";
 import { PointsTotalLine } from "./question-editor-points-total";
 import { RichTextField } from "./question-editor-rich-field";
 import {
@@ -38,6 +39,7 @@ export function MatchingEditor({ prefix }: { prefix: BodyPath }) {
   const groupId = useId();
   const addPairRef = useRef<HTMLButtonElement>(null);
   const addRightRef = useRef<HTMLButtonElement>(null);
+  const locale = useUiLocale();
   const { control, getValues, setValue } = useFormContext<QuestionEditorValues>();
   const left = useFieldArray({ control, name: `${prefix}.left`, keyName: "rowKey" });
   const right = useFieldArray({ control, name: `${prefix}.right`, keyName: "rowKey" });
@@ -56,7 +58,7 @@ export function MatchingEditor({ prefix }: { prefix: BodyPath }) {
 
   /** Điểm của câu chia đều cho `count` cặp. */
   const reflowPoints = (count: number) => {
-    const share = evenSplitText(count, points > 0 ? points : DEFAULT_POINTS);
+    const share = evenSplitText(count, points > 0 ? points : DEFAULT_POINTS, locale);
     share.forEach((value, index) => setValue(`${prefix}.left.${index}.points`, value, { shouldDirty: true }));
     return t("reflowed", { count });
   };

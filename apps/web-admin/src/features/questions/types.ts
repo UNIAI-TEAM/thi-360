@@ -34,8 +34,10 @@ export interface QuestionSummary {
   taskTypeCode: string | null;
   tagCodes: string[];
   hasSolution: boolean;
-  /** Số phiên bản nội dung, tính từ 1. Không dùng làm khóa lạc quan: xem `revision`. */
+  /** Số phiên bản nội dung đang hiển thị, tính từ 1 (bản đang phục vụ; câu chưa từng Sẵn sàng: bản Nháp). Không dùng làm khóa lạc quan: xem `revision`. */
   version: number;
+  /** Số bản Nháp đang sửa của câu đã Sẵn sàng hoặc Ngừng sử dụng; `null`/bỏ trống: không có bản Nháp riêng. Lưu tiếp thì ghi đè bản này. */
+  workingVersion?: number | null;
   /** Khóa lạc quan (D13): tăng ở mọi lần ghi, kể cả đổi trạng thái. Mọi lệnh ghi gửi lại làm `expectedRevision`. */
   revision: number;
   /** Số bài thi (đã công bố hoặc đang soạn) đang dùng câu này; khác 0 thì không xóa hẳn được. */

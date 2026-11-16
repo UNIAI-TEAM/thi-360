@@ -1,8 +1,11 @@
 "use client";
 
 import { RichTextEditor, type RichTextEditorHandle } from "@/components/rich-text";
+import { notify } from "@thi360/ui";
+import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { Controller, useFormContext, type Path } from "react-hook-form";
+import { questionAssetErrorMessageKey } from "../asset-upload";
 import type { QuestionEditorValues } from "../editor-form";
 import { useRichEditorRegistry } from "./question-editor-shared";
 
@@ -50,6 +53,12 @@ export function RichTextField({
 }) {
   const { control } = useFormContext<QuestionEditorValues>();
   const registry = useRichEditorRegistry();
+  const tAssetErrors = useTranslations("questions.assets.errors");
+  // Ảnh dán/thả/chọn bị máy chủ từ chối (413, 422, 429...): trình soạn chỉ báo lỗi lên, nói cho người dùng ở đây.
+  const onImageUploadError = useCallback(
+    (error: unknown) => notify.error(tAssetErrors(questionAssetErrorMessageKey(error, "IMAGE"))),
+    [tAssetErrors],
+  );
   const registerHandle = useCallback(
     (handle: RichTextEditorHandle | null) => {
       if (!registry) return;
@@ -70,6 +79,7 @@ export function RichTextField({
             id={id}
             value={typeof field.value === "string" ? field.value : ""}
             onChange={field.onChange}
+            onImageUploadError={onImageUploadError}
             placeholder={placeholder}
             invalid={ariaInvalid === true}
             aria-label={ariaLabel}

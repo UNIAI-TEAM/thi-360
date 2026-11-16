@@ -2,183 +2,223 @@
   "subjects": [
     {
       "code": "MATH",
-      "name": "Toán"
+      "name": "Toán",
+      "nameEn": "Mathematics"
     },
     {
       "code": "LITERATURE",
-      "name": "Ngữ văn"
+      "name": "Ngữ văn",
+      "nameEn": "Literature"
     },
     {
       "code": "ENGLISH",
-      "name": "Tiếng Anh"
+      "name": "Tiếng Anh",
+      "nameEn": "English"
     },
     {
       "code": "PHYSICS",
-      "name": "Vật lí"
+      "name": "Vật lí",
+      "nameEn": "Physics"
     },
     {
       "code": "CHEMISTRY",
-      "name": "Hóa học"
+      "name": "Hóa học",
+      "nameEn": "Chemistry"
     },
     {
       "code": "BIOLOGY",
-      "name": "Sinh học"
+      "name": "Sinh học",
+      "nameEn": "Biology"
     },
     {
       "code": "HISTORY",
-      "name": "Lịch sử"
+      "name": "Lịch sử",
+      "nameEn": "History"
     },
     {
       "code": "GEOGRAPHY",
-      "name": "Địa lí"
+      "name": "Địa lí",
+      "nameEn": "Geography"
     },
     {
       "code": "VIETNAMESE",
-      "name": "Tiếng Việt"
+      "name": "Tiếng Việt",
+      "nameEn": "Vietnamese"
     },
     {
       "code": "ECON_LAW",
-      "name": "Giáo dục kinh tế và pháp luật"
+      "name": "Giáo dục kinh tế và pháp luật",
+      "nameEn": "Economics and Law Education"
     },
     {
       "code": "INFORMATICS",
-      "name": "Tin học"
+      "name": "Tin học",
+      "nameEn": "Informatics"
     },
     {
       "code": "TECH_INDUSTRY",
-      "name": "Công nghệ (định hướng công nghiệp)"
+      "name": "Công nghệ (định hướng công nghiệp)",
+      "nameEn": "Technology (industrial orientation)"
     },
     {
       "code": "TECH_AGRICULTURE",
-      "name": "Công nghệ (định hướng nông nghiệp)"
+      "name": "Công nghệ (định hướng nông nghiệp)",
+      "nameEn": "Technology (agricultural orientation)"
     },
     {
       "code": "SCIENTIFIC_THINKING",
-      "name": "Tư duy khoa học"
+      "name": "Tư duy khoa học",
+      "nameEn": "Scientific Thinking"
     }
   ],
   "grades": [
     {
       "code": "GRADE_10",
-      "name": "Lớp 10"
+      "name": "Lớp 10",
+      "nameEn": "Grade 10"
     },
     {
       "code": "GRADE_11",
-      "name": "Lớp 11"
+      "name": "Lớp 11",
+      "nameEn": "Grade 11"
     },
     {
       "code": "GRADE_12",
-      "name": "Lớp 12"
+      "name": "Lớp 12",
+      "nameEn": "Grade 12"
     },
     {
       "code": "GRADE_MIXED",
-      "name": "Liên lớp"
+      "name": "Liên lớp",
+      "nameEn": "Cross-grade"
     }
   ],
   "difficulties": [
     {
       "code": "RECOGNITION",
-      "name": "Nhận biết"
+      "name": "Nhận biết",
+      "nameEn": "Recognition"
     },
     {
       "code": "COMPREHENSION",
-      "name": "Thông hiểu"
+      "name": "Thông hiểu",
+      "nameEn": "Comprehension"
     },
     {
       "code": "APPLICATION",
-      "name": "Vận dụng"
+      "name": "Vận dụng",
+      "nameEn": "Application"
     },
     {
       "code": "HIGH_APPLICATION",
-      "name": "Vận dụng cao"
+      "name": "Vận dụng cao",
+      "nameEn": "High application"
     }
   ],
   "taskTypes": [
     {
       "code": "CALCULATION",
-      "name": "Tính toán"
+      "name": "Tính toán",
+      "nameEn": "Calculation"
     },
     {
       "code": "REASONING",
-      "name": "Lập luận"
+      "name": "Lập luận",
+      "nameEn": "Reasoning"
     },
     {
       "code": "READING",
-      "name": "Đọc hiểu"
+      "name": "Đọc hiểu",
+      "nameEn": "Reading comprehension"
     },
     {
       "code": "APPLICATION_PROBLEM",
-      "name": "Bài toán thực tế"
+      "name": "Bài toán thực tế",
+      "nameEn": "Real-world problem"
     }
   ],
   "questionTypes": [
     {
       "code": "SINGLE_CHOICE",
       "name": "Một đáp án",
+      "nameEn": "Single choice",
       "active": true
     },
     {
       "code": "MULTIPLE_CHOICE",
       "name": "Nhiều đáp án",
+      "nameEn": "Multiple choice",
       "active": true
     },
     {
       "code": "SHORT_ANSWER",
       "name": "Trả lời ngắn",
+      "nameEn": "Short answer",
       "active": true
     },
     {
       "code": "CLOZE",
       "name": "Điền khuyết",
+      "nameEn": "Fill in the blanks",
       "active": true
     },
     {
       "code": "QUESTION_SET",
       "name": "Bộ câu hỏi",
+      "nameEn": "Question set",
       "active": true
     },
     {
       "code": "TRUE_FALSE",
       "name": "Đúng/Sai",
+      "nameEn": "True/False",
       "active": true
     },
     {
       "code": "MATCHING",
       "name": "Ghép đôi",
+      "nameEn": "Matching",
       "active": true
     },
     {
       "code": "ESSAY",
       "name": "Tự luận",
+      "nameEn": "Essay",
       "active": true
     }
   ],
   "tags": [
     {
       "code": "HSA_2025",
-      "name": "Đề HSA 2025"
+      "name": "Đề HSA 2025",
+      "nameEn": "HSA 2025 paper"
     },
     {
       "code": "QDA_2025",
-      "name": "Đề QDA 2025"
+      "name": "Đề QDA 2025",
+      "nameEn": "QDA 2025 paper"
     },
     {
       "code": "TRAP",
-      "name": "Câu bẫy"
+      "name": "Câu bẫy",
+      "nameEn": "Trap question"
     },
     {
       "code": "GRAPH",
-      "name": "Có đồ thị"
+      "name": "Có đồ thị",
+      "nameEn": "Has graph"
     },
     {
       "code": "REVIEW",
-      "name": "Cần rà soát"
+      "name": "Cần rà soát",
+      "nameEn": "Needs review"
     }
   ],
   "examKinds": [
     {
       "code": "HSA",
       "name": "Đánh giá năng lực ĐHQG Hà Nội (HSA)",
+      "nameEn": "VNU Hanoi Competency Assessment (HSA)",
       "templateBy": "KIND",
       "timing": "PER_PART",
       "maxScore": 150,
@@ -200,6 +240,7 @@
     {
       "code": "QDA",
       "name": "Đánh giá năng lực Bộ Quốc phòng (QDA)",
+      "nameEn": "Ministry of Defence Competency Assessment (QDA)",
       "templateBy": "KIND",
       "timing": "PER_PART",
       "maxScore": 150,
@@ -221,6 +262,7 @@
     {
       "code": "BCA",
       "name": "Đánh giá tuyển sinh Công an nhân dân (BCA)",
+      "nameEn": "People's Public Security Admission Assessment (BCA)",
       "templateBy": "KIND",
       "timing": "SHARED",
       "maxScore": 100,
@@ -241,6 +283,7 @@
     {
       "code": "VACT",
       "name": "Đánh giá năng lực ĐHQG TP.HCM (V-ACT)",
+      "nameEn": "VNU-HCM Competency Assessment (V-ACT)",
       "templateBy": "KIND",
       "timing": "SHARED",
       "maxScore": 1200,
@@ -261,6 +304,7 @@
     {
       "code": "SPT",
       "name": "Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)",
+      "nameEn": "Hanoi National University of Education Assessment (SPT)",
       "templateBy": "SUBJECT",
       "timing": "PER_PART",
       "maxScore": 10,
@@ -286,6 +330,7 @@
     {
       "code": "SP2E",
       "name": "Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)",
+      "nameEn": "Hanoi Pedagogical University 2 Assessment (SP2E)",
       "templateBy": "SUBJECT",
       "timing": "PER_PART",
       "maxScore": 10,
@@ -311,6 +356,7 @@
     {
       "code": "THPTQG",
       "name": "Tốt nghiệp THPT (THPTQG)",
+      "nameEn": "National High School Graduation (THPTQG)",
       "templateBy": "SUBJECT",
       "timing": "PER_PART",
       "maxScore": 10,
@@ -338,6 +384,7 @@
     {
       "code": "KH-1",
       "name": "Vật lí – Hóa học – Sinh học",
+      "nameEn": "Physics – Chemistry – Biology",
       "subjectCodes": [
         "PHYSICS",
         "CHEMISTRY",
@@ -348,6 +395,7 @@
     {
       "code": "KH-2",
       "name": "Vật lí – Hóa học – Lịch sử",
+      "nameEn": "Physics – Chemistry – History",
       "subjectCodes": [
         "PHYSICS",
         "CHEMISTRY",
@@ -358,6 +406,7 @@
     {
       "code": "KH-3",
       "name": "Lịch sử – Địa lí – Sinh học",
+      "nameEn": "History – Geography – Biology",
       "subjectCodes": [
         "HISTORY",
         "GEOGRAPHY",
@@ -368,6 +417,7 @@
     {
       "code": "QD01",
       "name": "QĐ01 · Vật lí – Hóa học",
+      "nameEn": "QĐ01 · Physics – Chemistry",
       "subjectCodes": [
         "PHYSICS",
         "CHEMISTRY"
@@ -377,6 +427,7 @@
     {
       "code": "QD02",
       "name": "QĐ02 · Hóa học – Sinh học",
+      "nameEn": "QĐ02 · Chemistry – Biology",
       "subjectCodes": [
         "CHEMISTRY",
         "BIOLOGY"
@@ -386,6 +437,7 @@
     {
       "code": "QD03",
       "name": "QĐ03 · Vật lí – Sinh học",
+      "nameEn": "QĐ03 · Physics – Biology",
       "subjectCodes": [
         "PHYSICS",
         "BIOLOGY"
@@ -395,6 +447,7 @@
     {
       "code": "QD04",
       "name": "QĐ04 · Lịch sử – Địa lí",
+      "nameEn": "QĐ04 · History – Geography",
       "subjectCodes": [
         "HISTORY",
         "GEOGRAPHY"
@@ -404,6 +457,7 @@
     {
       "code": "CA1",
       "name": "CA1 · Vật lí",
+      "nameEn": "CA1 · Physics",
       "subjectCodes": [
         "PHYSICS"
       ],
@@ -412,6 +466,7 @@
     {
       "code": "CA2",
       "name": "CA2 · Hóa học",
+      "nameEn": "CA2 · Chemistry",
       "subjectCodes": [
         "CHEMISTRY"
       ],
@@ -420,6 +475,7 @@
     {
       "code": "CA3",
       "name": "CA3 · Sinh học",
+      "nameEn": "CA3 · Biology",
       "subjectCodes": [
         "BIOLOGY"
       ],
@@ -428,6 +484,7 @@
     {
       "code": "CA4",
       "name": "CA4 · Địa lí",
+      "nameEn": "CA4 · Geography",
       "subjectCodes": [
         "GEOGRAPHY"
       ],
@@ -438,6 +495,7 @@
     {
       "code": "VACT-NN-TV",
       "name": "Sử dụng ngôn ngữ · Tiếng Việt",
+      "nameEn": "Language use · Vietnamese",
       "subjectCode": "VIETNAMESE",
       "examKindCodes": [
         "VACT"
@@ -446,6 +504,7 @@
     {
       "code": "VACT-NN-TA",
       "name": "Sử dụng ngôn ngữ · Tiếng Anh",
+      "nameEn": "Language use · English",
       "subjectCode": "ENGLISH",
       "examKindCodes": [
         "VACT"
@@ -454,6 +513,7 @@
     {
       "code": "VACT-TOAN",
       "name": "Toán học",
+      "nameEn": "Mathematical competence",
       "subjectCode": "MATH",
       "examKindCodes": [
         "VACT"
@@ -462,6 +522,7 @@
     {
       "code": "VACT-TD-LOGIC",
       "name": "Tư duy khoa học · Logic, phân tích số liệu",
+      "nameEn": "Scientific thinking · Logic, data analysis",
       "subjectCode": "SCIENTIFIC_THINKING",
       "examKindCodes": [
         "VACT"
@@ -470,6 +531,7 @@
     {
       "code": "VACT-TD-SL",
       "name": "Tư duy khoa học · Suy luận khoa học",
+      "nameEn": "Scientific thinking · Scientific reasoning",
       "subjectCode": "SCIENTIFIC_THINKING",
       "examKindCodes": [
         "VACT"

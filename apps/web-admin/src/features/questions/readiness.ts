@@ -96,6 +96,14 @@ export type ReadinessIssueCode =
   | "TYPE_UNSUPPORTED"
   | "BODY_TYPE_MISMATCH"
   | "NESTED_SET"
+  // Mã riêng của máy chủ (spec 4.3) mà bộ kiểm tra tại chỗ không có
+  | "TOO_FEW_CORRECT_OPTIONS"
+  | "STATEMENT_ANSWER_REQUIRED"
+  | "POINTS_INVALID"
+  | "MATH_UNBALANCED"
+  | "CATALOG_VALUE_UNKNOWN"
+  /** Mã máy chủ chưa có chữ riêng: hiện kèm mã gốc ở `value`. */
+  | "READINESS_OTHER"
   // Cảnh báo (D20)
   | "PRIMARY_KNOWLEDGE_MISSING";
 

@@ -2399,11 +2399,18 @@
       },
       "saveErrors": {
         "generic": "Chưa lưu được câu hỏi. Thử lại sau giây lát.",
+        "fieldErrors": "Chưa lưu được: máy chủ không chấp nhận một số trường. Hãy sửa các trường được đánh dấu.",
+        "VALIDATION_FAILED": "Chưa lưu được: máy chủ không chấp nhận dữ liệu câu hỏi nhưng không chỉ rõ trường. Hãy rà soát lại câu hỏi rồi lưu.",
         "QUESTION_REVISION_CONFLICT": "Dữ liệu đã được người khác sửa. Tải lại trang để sửa trên bản mới nhất.",
         "QUESTION_TYPE_IMMUTABLE": "Không đổi được dạng của câu đã lưu. Hãy tạo câu mới với dạng khác.",
         "QUESTION_SET_CHILDREN_MIN": "Câu chùm cần ít nhất 2 câu con.",
         "QUESTION_BODY_TYPE_MISMATCH": "Phần đáp án không khớp dạng câu.",
         "NOT_FOUND": "Câu hỏi không còn tồn tại."
+      },
+      "conflict": {
+        "title": "Dữ liệu đã được người khác sửa",
+        "description": "Câu hỏi này vừa được lưu ở nơi khác nên lần lưu của bạn chưa được ghi. Tải lại bản mới nhất để sửa tiếp; phần bạn đang nhập sẽ không được giữ.",
+        "reload": "Tải lại bản mới nhất"
       },
       "leave": {
         "title": "Bỏ thay đổi chưa lưu?",
@@ -2610,11 +2617,8 @@
         "pointsInvalid": "Điểm phải là số lớn hơn 0.",
         "contentRequired": "Nhập đề bài.",
         "passageRequired": "Nhập đoạn dẫn chung.",
-        "contentMax": "Đề bài quá dài.",
-        "solutionMax": "Lời giải quá dài.",
         "optionsMin": "Cần ít nhất 2 phương án.",
         "optionRequired": "Nhập nội dung phương án.",
-        "optionMax": "Nội dung quá dài.",
         "singleCorrectRequired": "Chọn đúng một phương án đúng.",
         "multipleCorrectRequired": "Chọn ít nhất một phương án đúng.",
         "statementsMin": "Cần ít nhất 2 ý.",
@@ -2635,7 +2639,6 @@
         "statementPointsInvalid": "Điểm của ý phải là số lớn hơn 0.",
         "statementPointsMismatch": "Tổng điểm các ý phải bằng điểm của câu.",
         "childKnowledgeRequired": "Chọn ít nhất một kiến thức riêng hoặc dùng kiến thức của bộ.",
-        "commonMistakesMax": "Lỗi sai thường gặp quá dài.",
         "childrenMin": "Câu chùm cần ít nhất 2 câu con.",
         "childContentRequired": "Nhập đề bài câu con.",
         "scoreValueInvalid": "Điểm phải là số không âm.",
@@ -2643,11 +2646,37 @@
         "scoreLastMismatch": "Ô cuối phải bằng điểm của câu.",
         "gradingGuideRequired": "Nhập hướng dẫn chấm.",
         "criterionRequired": "Nhập mô tả tiêu chí.",
-        "criterionMax": "Mô tả quá dài.",
         "criterionPointsInvalid": "Điểm tiêu chí phải là số lớn hơn 0.",
         "rubricTotalMismatch": "Tổng điểm các tiêu chí phải bằng điểm của câu.",
-        "sampleAnswerMax": "Bài làm mẫu quá dài.",
-        "wordLimitInvalid": "Số chữ phải là số nguyên lớn hơn 0."
+        "wordLimitInvalid": "Số chữ phải là số nguyên lớn hơn 0.",
+        "server": {
+          "QUESTION_CONTENT_UNSAFE": "Nội dung có phần không được phép (định dạng hoặc ảnh ngoài danh sách cho phép). Hãy xóa phần đó rồi lưu lại.",
+          "QUESTION_BODY_INVALID": "Phần đáp án không hợp lệ.",
+          "QUESTION_BODY_TYPE_MISMATCH": "Phần đáp án không khớp dạng câu.",
+          "QUESTION_TYPE_MISSING": "Chưa chọn dạng câu.",
+          "QUESTION_DUPLICATE_ID": "Có mục bị trùng mã. Hãy tải lại trang rồi nhập lại.",
+          "QUESTION_OPTIONS_TOO_MANY": "Tối đa 10 phương án.",
+          "QUESTION_STATEMENTS_TOO_MANY": "Tối đa 8 ý.",
+          "QUESTION_BLANKS_TOO_MANY": "Tối đa 30 ô trống.",
+          "QUESTION_ANSWERS_TOO_MANY": "Tối đa 20 đáp án.",
+          "QUESTION_CHILDREN_TOO_MANY": "Tối đa 20 câu con.",
+          "QUESTION_CHILD_TYPE_NOT_ALLOWED": "Dạng này không dùng làm câu con của bộ câu hỏi.",
+          "QUESTION_BLANK_MARKER_MISMATCH": "Các dấu ô trống trong ngữ liệu chưa khớp danh sách ô.",
+          "QUESTION_PAIR_UNKNOWN_LEFT": "Cặp ghép trỏ tới mục bên trái không có.",
+          "QUESTION_PAIR_UNKNOWN_RIGHT": "Cặp ghép trỏ tới lựa chọn bên phải không có.",
+          "QUESTION_PAIR_DUPLICATE_LEFT": "Một mục bên trái đang được ghép hai lần.",
+          "QUESTION_ATTACHMENT_UNKNOWN": "Tệp đính kèm không còn tồn tại. Hãy tải lên lại.",
+          "QUESTION_WORD_LIMIT_INVALID": "Số chữ gợi ý phải lớn hơn 0.",
+          "QUESTION_SCORING_METHOD_MISSING": "Chưa chọn cách chấm.",
+          "QUESTION_SCORING_RULE_MISSING": "Chưa chọn quy tắc chấm.",
+          "POINTS_NOT_POSITIVE": "Điểm phải lớn hơn 0.",
+          "POINTS_TOO_MANY_DECIMALS": "Điểm tối đa 4 chữ số thập phân.",
+          "POINTS_TOO_LARGE": "Điểm quá lớn.",
+          "SCORE_TABLE_INVALID": "Bảng điểm chưa hợp lệ.",
+          "MATH_UNBALANCED": "Công thức chưa đóng đủ dấu.",
+          "CATALOG_VALUE_UNKNOWN": "Giá trị không có trong danh mục hoặc đã ngừng.",
+          "UNKNOWN": "Máy chủ không chấp nhận giá trị này."
+        }
       },
       "pointsTotal": {
         "matches": "Tổng điểm: {total, number} / {points, number}",
@@ -2792,7 +2821,13 @@
         "PAIR_INVALID": "Có cặp ghép trỏ tới mục không có, mục bên trái ghép hai lần, hoặc một lựa chọn bị dùng lại khi chỉ được dùng một lần.",
         "PAIR_POINTS_MISMATCH": "Tổng điểm các cặp ghép chưa bằng điểm của câu.",
         "NO_GRADING_GUIDE": "Câu tự luận chưa có hướng dẫn chấm.",
-        "RUBRIC_TOTAL_MISMATCH": "Tổng điểm tiêu chí chấm chưa bằng điểm của câu."
+        "RUBRIC_TOTAL_MISMATCH": "Tổng điểm tiêu chí chấm chưa bằng điểm của câu.",
+        "TOO_FEW_CORRECT_OPTIONS": "Câu nhiều đáp án cần ít nhất 2 phương án đúng.",
+        "STATEMENT_ANSWER_REQUIRED": "Ý {position, number} chưa chọn đúng hoặc sai.",
+        "POINTS_INVALID": "Điểm chưa hợp lệ: cần lớn hơn 0 và không quá 4 chữ số thập phân.",
+        "MATH_UNBALANCED": "Công thức chưa đóng đủ dấu.",
+        "CATALOG_VALUE_UNKNOWN": "Có giá trị phân loại không có trong danh mục hoặc đã ngừng.",
+        "READINESS_OTHER": "Chưa đạt điều kiện kiểm tra ({value})."
       },
       "childIssue": "Câu con {child, number}: {issue}",
       "moreIssues": "và {count, number} chỗ khác",
@@ -2958,7 +2993,7 @@
         "descriptionDraft": "Nội dung v{version} sẽ ghi đè bản nháp v{current}. Phiên bản cũ và lượt thi đã dùng nó giữ nguyên.",
         "confirm": "Khôi phục",
         "done": "Đã chép nội dung v{version} vào bản nháp v{current}.",
-        "conflict": "Câu hỏi vừa được lưu ở nơi khác. Tải lại trang rồi thử lại.",
+        "conflict": "Dữ liệu đã được người khác sửa. Đã tải lại bản mới nhất; hãy thử lại.",
         "failed": "Chưa khôi phục được. Thử lại sau giây lát."
       },
       "view": {
@@ -3100,6 +3135,17 @@
       "errorTitle": "Không tải được nơi đang dùng",
       "errorDescription": "Thử lại sau giây lát.",
       "retry": "Thử lại"
+    },
+    "assets": {
+      "errors": {
+        "imageTooLarge": "Ảnh lớn hơn 5 MB.",
+        "attachmentTooLarge": "Tệp lớn hơn 20 MB.",
+        "imageTypeNotAllowed": "Chỉ nhận ảnh PNG, JPEG hoặc WebP.",
+        "attachmentTypeNotAllowed": "Loại tệp này không được nhận.",
+        "rateLimited": "Bạn tải lên quá nhiều tệp trong thời gian ngắn (tối đa 60 tệp mỗi 10 phút). Thử lại sau.",
+        "forbidden": "Bạn không có quyền tải tệp lên cho câu hỏi.",
+        "uploadFailed": "Không tải được tệp lên. Hãy thử lại."
+      }
     }
   },
   "questionImport": {
@@ -3152,7 +3198,7 @@
       "heading": "Chọn tệp câu hỏi",
       "dropzoneTitle": "Kéo tệp vào đây hoặc bấm để chọn",
       "dropzoneHint": "Tệp .xlsx hoặc .csv, tối đa {maxRows, number} dòng, không quá {maxMb, number} MB",
-      "mockHint": "Bản mẫu: tệp .xlsx luôn được đọc thành một bảng mẫu có sẵn; tệp .csv (ví dụ tệp mẫu) được đọc thật.",
+      "readNote": "Đọc tệp chưa thêm câu nào vào ngân hàng: bạn kiểm tra và xem trước kết quả trước khi nhập.",
       "chooseFile": "Chọn tệp",
       "changeFile": "Chọn tệp khác",
       "selectedFileLabel": "Tệp đã chọn",
@@ -3213,7 +3259,8 @@
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
         "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm."
       },
-      "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2."
+      "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2.",
+      "colFileHeader": "Tên cột trong tệp"
     },
     "fileErrors": {
       "IMPORT_INVALID_FILE": "Chỉ nhận tệp .xlsx hoặc .csv.",
@@ -3221,7 +3268,8 @@
       "IMPORT_EMPTY_FILE": "Tệp không có dòng dữ liệu nào.",
       "IMPORT_FILE_TOO_LARGE": "Tệp lớn hơn 5 MB.",
       "IMPORT_ROW_LIMIT_EXCEEDED": "Tệp có hơn 2.000 dòng dữ liệu. Chia thành nhiều tệp.",
-      "IMPORT_INVALID_HEADER": "Dòng đầu của tệp phải là tên cột."
+      "IMPORT_INVALID_HEADER": "Dòng đầu của tệp phải là tên cột.",
+      "IMPORT_FORMULA_NOT_ALLOWED": "Tệp có ô công thức Excel. Chuyển thành giá trị rồi chọn lại."
     },
     "mapping": {
       "heading": "Ánh xạ cột",
@@ -3341,7 +3389,7 @@
       "issuesHeading": "Lỗi và cảnh báo",
       "errorLabel": "Lỗi",
       "warningLabel": "Cảnh báo",
-      "fixHint": "Sửa trong tệp rồi tải lại. Nội dung câu hỏi trong ví dụ là dữ liệu mẫu.",
+      "fixHint": "Sửa trong tệp rồi tải lại.",
       "status": {
         "VALID": "Hợp lệ",
         "ERROR": "Có lỗi",
@@ -3480,6 +3528,54 @@
       "ENTRY_DUPLICATE": {
         "message": "“{value}” bị lặp ở cột {column}",
         "fix": "Mỗi nhãn hoặc mã ô chỉ ghi một lần trong cột; xóa dòng lặp hoặc đổi nhãn."
+      },
+      "OPTIONS_MISSING": {
+        "message": "Chưa có phương án nào có nội dung",
+        "fix": "Điền cột Lựa chọn, mỗi dòng một phương án dạng “A. nội dung”."
+      },
+      "KNOWLEDGE_AMBIGUOUS": {
+        "message": "Mã kiến thức {value} khớp nhiều nút trong Cấu trúc kiến thức {subject}",
+        "fix": "Ghi mã đầy đủ để chỉ đúng một nút."
+      },
+      "CELL_SYNTAX": {
+        "message": "Ô ở cột {column} sai cú pháp",
+        "fix": "Viết ô theo quy tắc của cột này trong bảng cột của tệp mẫu."
+      },
+      "CLOZE_MARKER_MISMATCH": {
+        "message": "Dấu ô trống trong nội dung không khớp các đáp án",
+        "fix": "Mỗi dấu [[b1]] trong nội dung cần đúng một dòng “b1 = đáp án” và ngược lại."
+      },
+      "BLANK_UNKNOWN": {
+        "message": "Ô trống {value} không có trong nội dung",
+        "fix": "Dùng mã ô có trong nội dung, dạng [[b1]]."
+      },
+      "SET_CHILD_INVALID": {
+        "message": "Câu chùm có câu con không hợp lệ nên cả chùm không được nhập",
+        "fix": "Sửa các dòng câu con bị lỗi có cùng Mã chùm."
+      },
+      "CHILD_TYPE_NOT_ALLOWED": {
+        "message": "Dạng câu này không dùng được cho câu con",
+        "fix": "Câu con không được là Câu chùm hoặc Điền khuyết."
+      },
+      "UNSAFE_CONTENT": {
+        "message": "Nội dung ở cột {column} có thành phần không được phép",
+        "fix": "Bỏ thẻ, thuộc tính hoặc đường dẫn lạ; chỉ giữ định dạng cơ bản và công thức."
+      },
+      "SAVE_VALIDATION": {
+        "message": "Nội dung dòng này chưa qua kiểm tra khi lưu",
+        "fix": "Xem lại nội dung, đáp án và điểm của dòng; nếu vẫn lỗi, báo hỗ trợ kèm số dòng."
+      },
+      "IMPORT_SOURCE_TYPE_MISMATCH": {
+        "message": "Mã nguồn {value} đã dùng cho câu hỏi khác dạng",
+        "fix": "Đổi Mã nguồn, hoặc dùng đúng dạng câu của câu đã có."
+      },
+      "CHILD_FIELD_IGNORED": {
+        "message": "Cột {column} của câu con được bỏ qua",
+        "fix": "Để trống ô này ở dòng câu con; câu con lấy theo dòng Câu chùm."
+      },
+      "CHILD_SOURCE_CODE_IGNORED": {
+        "message": "Mã nguồn của câu con được bỏ qua",
+        "fix": "Chỉ dòng Câu chùm mang Mã nguồn; để trống ở câu con."
       }
     },
     "errorReport": {
