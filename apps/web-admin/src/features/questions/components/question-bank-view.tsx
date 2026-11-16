@@ -59,18 +59,22 @@ import { MarkReadyDialog, RetireQuestionDialog, useReadinessIssueText } from "./
  * Cột ưu tiên thấp tự ẩn theo bề rộng khung chứa bảng (DESIGN.md mục 5.9): Cập nhật ẩn trước, rồi Người tạo, Điểm
  * (đã có ở dòng phụ dưới nội dung), Dạng câu và Độ khó (hiện thành dòng tóm tắt dưới nội dung). Khung hẹp hơn 40rem
  * thì bảng thành danh sách thẻ.
+ *
+ * Mỗi ngưỡng xấp xỉ bề rộng tối thiểu của bảng khi còn cột đó cộng khoảng dư 3rem, để bảng vừa khung và cột Thao tác
+ * ghim không đè lên Cập nhật hay MAPID lúc mới mở. Đổi bề rộng tối thiểu của một cột (cột mới, `min-w-*`) thì phải
+ * đo lại các ngưỡng này trên trình duyệt ở các bề rộng 1440 và 1920.
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
-  "@max-[88rem]:[&_:is(th,td):has([data-col=updated])]:hidden",
-  "@max-[80rem]:[&_:is(th,td):has([data-col=author])]:hidden",
-  "@max-[72rem]:[&_:is(th,td):has([data-col=points])]:hidden",
-  "@max-[64rem]:[&_:is(th,td):has([data-col=type])]:hidden",
-  "@max-[64rem]:[&_:is(th,td):has([data-col=difficulty])]:hidden",
+  "@max-[111rem]:[&_:is(th,td):has([data-col=updated])]:hidden",
+  "@max-[103rem]:[&_:is(th,td):has([data-col=author])]:hidden",
+  "@max-[93rem]:[&_:is(th,td):has([data-col=points])]:hidden",
+  "@max-[87rem]:[&_:is(th,td):has([data-col=type])]:hidden",
+  "@max-[87rem]:[&_:is(th,td):has([data-col=difficulty])]:hidden",
 ].join(" ");
 
 /** Dòng tóm tắt dưới nội dung: chỉ hiện khi cột Dạng câu và Độ khó đã ẩn. */
-const NARROW_SUMMARY = "hidden @max-[64rem]:block";
+const NARROW_SUMMARY = "hidden @max-[87rem]:block";
 
 type DialogState = { kind: "ready" | "retire"; question: QuestionSummary } | null;
 
