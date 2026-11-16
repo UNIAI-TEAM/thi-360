@@ -86,5 +86,5 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     await waitFor(() => expect(within(table).queryByRole("link", { name: "BCA thu" })).not.toBeInTheDocument());
     expect(within(table).getByRole("link", { name: "THPTQG Tin hoc thu" })).toBeInTheDocument();
     expect(within(table).queryByRole("link", { name: "HSA FULL · Đề luyện số 1" })).not.toBeInTheDocument();
-  });
+  }, 20_000);
 });

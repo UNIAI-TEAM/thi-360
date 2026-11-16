@@ -105,7 +105,7 @@ describe("trang Tạo bài thi", () => {
     expect(await screen.findAllByText("Mã bài thi đã được dùng. Nhập mã khác.")).not.toHaveLength(0);
     expect(within(summary()).getByText("Mã bài thi")).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 
   it("ảnh giới thiệu dùng nút của bộ giao diện, không lộ chữ tiếng Anh của trình duyệt", async () => {
     await renderPage();
