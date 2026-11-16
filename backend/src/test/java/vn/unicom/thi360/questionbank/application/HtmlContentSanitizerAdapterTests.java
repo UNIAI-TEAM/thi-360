@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import vn.unicom.thi360.questionbank.domain.QuestionHtmlSanitizer;
 import vn.unicom.thi360.questionbank.spi.HtmlContentSanitizer;
@@ -30,6 +31,25 @@ class HtmlContentSanitizerAdapterTests {
     private final HtmlContentSanitizer withAssets = new HtmlContentSanitizerAdapter(
         new QuestionHtmlSanitizer(
             id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty()));
+
+    @Test
+    void productionConstructorUsesAvailableResolverOrRejectsUnknownImages() {
+        StaticListableBeanFactory factory = new StaticListableBeanFactory();
+        HtmlContentSanitizer absent = new HtmlContentSanitizerAdapter(
+            factory.getBeanProvider(QuestionAssetResolver.class));
+        String image = "<img data-asset-id=\"" + assetId + "\">";
+        Result rejected = absent.sanitize(image, Options.withImages());
+        assertFalse(rejected.isClean());
+        assertTrue(rejected.violations().stream().anyMatch(v -> "data-asset-id".equals(v.attribute())));
+
+        QuestionAssetResolver resolver = id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty();
+        factory.addBean("resolver", resolver);
+        HtmlContentSanitizer present = new HtmlContentSanitizerAdapter(
+            factory.getBeanProvider(QuestionAssetResolver.class));
+        Result accepted = present.sanitize(image, Options.withImages());
+        assertTrue(accepted.isClean(), () -> accepted.violations().toString());
+        assertTrue(accepted.html().contains("src=\"" + assetPath + "\""));
+    }
 
     @Test
     void documentShellAndHeadMatterAreReportedAndCleanedInBothModes() {
