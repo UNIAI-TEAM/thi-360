@@ -28,6 +28,10 @@ final class SubproblemSolver {
         static Outcome invalid(SolveReason reason, String groupId) {
             return new Outcome(SolveStatus.INVALID, reason, groupId, List.of());
         }
+
+        static Outcome unconfirmed(SolveReason reason, String groupId) {
+            return new Outcome(SolveStatus.UNCONFIRMED, reason, groupId, List.of());
+        }
     }
 
     /**

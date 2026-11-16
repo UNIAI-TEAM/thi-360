@@ -98,6 +98,8 @@ public final class PaperSolver {
         long[] solved = {0};
         long[] memoHit = {0};
         long weighted = 0;
+        // đường đã giải xong giữ nguyên khi đường sau hết hạn (R2-7: INVALID > UNCONFIRMED > VALID)
+        List<PathResult> results = new ArrayList<>();
         try {
             check.run();
             validateChoiceSubjectLimits(parts);
@@ -115,7 +117,6 @@ public final class PaperSolver {
             }
             CandidateSource memoSource = memoized(source);
             Map<SubproblemKey, SubproblemSolver.Outcome> memo = new HashMap<>();
-            List<PathResult> results = new ArrayList<>((int) Math.min(combos, 4096));
             for (long i = 0; i < combos; i++) {
                 SolvePath path = enumerator.pathAt(i);
                 results.add(solvePath(path, memoSource, mode, memo, check, solved, memoHit));
@@ -123,8 +124,11 @@ public final class PaperSolver {
             return new SolveOutcome(aggregate(results), null, results,
                     new SolveStats(weighted, solved[0], memoHit[0]));
         } catch (DeadlineHit e) {
-            return new SolveOutcome(SolveStatus.UNCONFIRMED, SolveReason.DEADLINE_EXCEEDED,
-                    List.of(), new SolveStats(weighted, solved[0], memoHit[0]));
+            // giữ kết quả các đường đã giải xong (R2-7): INVALID > UNCONFIRMED; đường đang giải
+            // dở không có trong results
+            return new SolveOutcome(aggregateAfterDeadline(results),
+                    SolveReason.DEADLINE_EXCEEDED, results,
+                    new SolveStats(weighted, solved[0], memoHit[0]));
         } catch (ChoiceLimitHit e) {
             return new SolveOutcome(SolveStatus.INVALID,
                     SolveReason.CHOICE_SUBJECT_LIMIT_EXCEEDED, List.of(), SolveStats.EMPTY);
@@ -305,10 +309,13 @@ public final class PaperSolver {
                 memoHit[0]++;
             } else {
                 solved[0]++;
-                List<List<PathCandidate>> pools = fetchPools(problem, source, rng, check);
+                String[] limitGroup = new String[1];
+                List<List<PathCandidate>> pools = fetchPools(problem, source, rng, check,
+                        limitGroup);
                 if (pools == null) {
-                    outcome = SubproblemSolver.Outcome.invalid(
-                            SolveReason.CANDIDATE_LIMIT_EXCEEDED, null);
+                    // vượt giới hạn ứng viên: nguồn cạn, không phải bất khả thi → UNCONFIRMED
+                    outcome = SubproblemSolver.Outcome.unconfirmed(
+                            SolveReason.CANDIDATE_LIMIT_EXCEEDED, limitGroup[0]);
                 } else {
                     outcome = solver.solve(problem, pools, apportioner);
                 }
@@ -329,10 +336,11 @@ public final class PaperSolver {
 
     /**
      * Nguồn của từng nhóm của bài toán con (đã nhớ theo {@link GroupQuota}), xáo theo hạt giống
-     * ở chế độ GENERATE. Trả null khi một nhóm vượt giới hạn ứng viên.
+     * ở chế độ GENERATE. Trả null khi một nhóm vượt giới hạn ứng viên (ghi {@code limitGroup[0]});
+     * kiểm hạn trước và ngay sau mỗi lần gọi nguồn để không truy vấn thêm khi đã hết hạn (R2-8).
      */
     private List<List<PathCandidate>> fetchPools(Prep.Subproblem problem, CandidateSource source,
-            Random rng, Runnable check) {
+            Random rng, Runnable check, String[] limitGroup) {
         List<GroupQuota> flat = new ArrayList<>();
         for (SectionOnPath s : problem.sections()) {
             flat.addAll(s.groups());
@@ -340,11 +348,14 @@ public final class PaperSolver {
         }
         List<List<PathCandidate>> pools = new ArrayList<>(flat.size());
         for (GroupQuota g : flat) {
+            check.run();
             List<PathCandidate> raw = source.candidatesFor(g);
+            check.run();
             if (raw == null) {
                 raw = List.of();
             }
             if (raw.size() > limits.maxCandidatesPerBlock()) {
+                limitGroup[0] = g.groupId();
                 return null;
             }
             if (rng != null) {
@@ -432,5 +443,19 @@ public final class PaperSolver {
             }
         }
         return worst;
+    }
+
+    /**
+     * Tổng hợp các đường đã giải xong trước khi hết hạn (R2-7): đường INVALID đã xác lập vẫn làm
+     * cả yêu cầu INVALID; còn lại UNCONFIRMED vì phần chưa giải (đường dang dở và các đường sau)
+     * không kết luận được.
+     */
+    private static SolveStatus aggregateAfterDeadline(List<PathResult> results) {
+        for (PathResult r : results) {
+            if (r.status() == SolveStatus.INVALID) {
+                return SolveStatus.INVALID;
+            }
+        }
+        return SolveStatus.UNCONFIRMED;
     }
 }
