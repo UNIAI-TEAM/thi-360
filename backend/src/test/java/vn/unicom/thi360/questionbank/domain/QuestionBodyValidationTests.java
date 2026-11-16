@@ -162,6 +162,21 @@ class QuestionBodyValidationTests {
             new BigDecimal("0.12345"), "<p>x</p>", null, List.of(), List.of());
         assertTrue(codes(QuestionBodyValidator.validateSave(input, null)).contains("POINTS_TOO_MANY_DECIMALS"));
     }
+    @Test
+    void pointsMustFitNumericColumnForParentAndComponents() {
+        QuestionInput max = new QuestionInput(QuestionType.SINGLE_CHOICE, singleChoiceBody(),
+            new BigDecimal("9999.9999"), "content", null, List.of(), List.of());
+        assertTrue(QuestionBodyValidator.validateSave(max, null).isEmpty());
+        QuestionInput overflow = new QuestionInput(QuestionType.ESSAY,
+            new QuestionBody.EssayBody(QuestionType.ESSAY, "guide",
+                List.of(new EssayCriterion("c", "criterion", new BigDecimal("10000"))), null, null),
+            new BigDecimal("10000"), "content", null, List.of(), List.of());
+        List<QuestionFieldError> errors = QuestionBodyValidator.validateSave(overflow, null);
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("POINTS_TOO_LARGE") && e.path().equals("points")));
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("POINTS_TOO_LARGE")
+            && e.path().equals("body.rubric[0].points")));
+    }
+
 
     @Test
     void blankPointsIsAllowedAtSave() {

@@ -46,6 +46,7 @@ public final class QuestionBodyValidator {
     static final int MIN_CHILDREN = 2;
     /** Thang của cột {@code points numeric(8,4)}: giá trị nhiều hơn 4 số thập phân không ghi được. */
     static final int POINTS_SCALE = 4;
+    private static final BigDecimal MAX_POINTS = new BigDecimal("9999.9999");
 
     /** Sai số so điểm tổng (bảng điểm, tiêu chí, cặp) so với điểm câu. */
     private static final BigDecimal SCORE_TOLERANCE = new BigDecimal("0.0005");
@@ -208,7 +209,8 @@ public final class QuestionBodyValidator {
                     }
                     for (int i = 0; i < b.scoreTable().size(); i++) {
                         BigDecimal cell = b.scoreTable().get(i);
-                        if (cell == null || cell.stripTrailingZeros().scale() > POINTS_SCALE) {
+                        if (cell == null || cell.stripTrailingZeros().scale() > POINTS_SCALE
+                            || cell.abs().compareTo(MAX_POINTS) > 0) {
                             errors.add(QuestionFieldError.of("SCORE_TABLE_INVALID", prefix + ".scoreTable[" + i + "]"));
                         }
                     }
@@ -312,6 +314,8 @@ public final class QuestionBodyValidator {
             errors.add(QuestionFieldError.of("POINTS_NOT_POSITIVE", path));
         } else if (points.stripTrailingZeros().scale() > POINTS_SCALE) {
             errors.add(QuestionFieldError.of("POINTS_TOO_MANY_DECIMALS", path));
+        } else if (points.compareTo(MAX_POINTS) > 0) {
+            errors.add(QuestionFieldError.of("POINTS_TOO_LARGE", path));
         }
     }
 
