@@ -162,6 +162,21 @@ class QuestionBodyValidationTests {
             new BigDecimal("0.12345"), "<p>x</p>", null, List.of(), List.of());
         assertTrue(codes(QuestionBodyValidator.validateSave(input, null)).contains("POINTS_TOO_MANY_DECIMALS"));
     }
+    @Test
+    void pointsMustFitNumericColumnForParentAndComponents() {
+        QuestionInput max = new QuestionInput(QuestionType.SINGLE_CHOICE, singleChoiceBody(),
+            new BigDecimal("9999.9999"), "content", null, List.of(), List.of());
+        assertTrue(QuestionBodyValidator.validateSave(max, null).isEmpty());
+        QuestionInput overflow = new QuestionInput(QuestionType.ESSAY,
+            new QuestionBody.EssayBody(QuestionType.ESSAY, "guide",
+                List.of(new EssayCriterion("c", "criterion", new BigDecimal("10000"))), null, null),
+            new BigDecimal("10000"), "content", null, List.of(), List.of());
+        List<QuestionFieldError> errors = QuestionBodyValidator.validateSave(overflow, null);
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("POINTS_TOO_LARGE") && e.path().equals("points")));
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("POINTS_TOO_LARGE")
+            && e.path().equals("body.rubric[0].points")));
+    }
+
 
     @Test
     void blankPointsIsAllowedAtSave() {
@@ -224,6 +239,20 @@ class QuestionBodyValidationTests {
             QuestionBodyValidator.validateSave(input(QuestionType.CLOZE, body), null);
         assertTrue(codes(errors).contains("QUESTION_BLANK_MARKER_MISMATCH"));
     }
+    @Test
+    void clozeBlankMayWaitForMarkerInDraft() {
+        QuestionBody body = new QuestionBody.ClozeBody(QuestionType.CLOZE, "<p>draft</p>",
+            List.of(new ClozeBlank("b1", List.of("answer"), BigDecimal.ONE)));
+        QuestionInput draft = input(QuestionType.CLOZE, body);
+        assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+        assertTrue(readyErrors(draft).stream().anyMatch(e ->
+            e.code().equals("QUESTION_BLANK_MARKER_MISMATCH") && e.path().equals("body.blanks")));
+        QuestionBody dangling = new QuestionBody.ClozeBody(QuestionType.CLOZE, "[[missing]]",
+            List.of(new ClozeBlank("b1", List.of("answer"), BigDecimal.ONE)));
+        assertTrue(QuestionBodyValidator.validateSave(input(QuestionType.CLOZE, dangling), null).stream()
+            .anyMatch(e -> e.code().equals("QUESTION_BLANK_MARKER_MISMATCH") && e.path().equals("body.passage")));
+    }
+
 
     @Test
     void clozeDuplicateMarkerRejected() {
@@ -368,6 +397,41 @@ class QuestionBodyValidationTests {
     }
 
     @Test
+    void missingComponentScoresAreDraftOnly() {
+        QuestionBody statements = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
+            new TrueFalseStatement("s1", "a", true, null),
+            new TrueFalseStatement("s2", "b", false, BigDecimal.ONE)),
+            QuestionBody.TrueFalseScoringMethod.PER_STATEMENT, List.of());
+        QuestionBody allMissing = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
+            new TrueFalseStatement("s1", "a", true, null),
+            new TrueFalseStatement("s2", "b", false, null)),
+            QuestionBody.TrueFalseScoringMethod.PER_STATEMENT, List.of());
+        QuestionBody pairs = new QuestionBody.MatchingBody(QuestionType.MATCHING,
+            List.of(new MatchingSide("l1", "a"), new MatchingSide("l2", "b")),
+            List.of(new MatchingSide("r1", "x"), new MatchingSide("r2", "y")),
+            List.of(new MatchingPair("l1", "r1", BigDecimal.ONE), new MatchingPair("l2", "r2", null)),
+            false, false, false);
+        QuestionBody rubric = new QuestionBody.EssayBody(QuestionType.ESSAY, "guide",
+            List.of(new EssayCriterion("c1", "criterion", null)), null, null);
+        for (QuestionBody body : List.of(statements, allMissing, pairs, rubric)) {
+            QuestionInput draft = input(body.type(), body);
+            assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+            List<QuestionFieldError> errors = readyErrors(draft);
+            String expected = switch (body.type()) {
+                case TRUE_FALSE -> "body.statements[0].points";
+                case MATCHING -> "body.pairs[1].points";
+                case ESSAY -> "body.rubric[0].points";
+                default -> throw new AssertionError(body.type());
+            };
+            assertTrue(errors.stream().anyMatch(e -> e.code().equals("POINTS_REQUIRED")
+                && e.path().equals(expected)), errors.toString());
+            if (body == allMissing) {
+                assertTrue(errors.stream().anyMatch(e -> e.path().equals("body.statements[1].points")));
+            }
+        }
+    }
+
+    @Test
     void trueFalsePerStatementTotalMustEqualPoints() {
         QuestionBody body = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
             new TrueFalseStatement("s1", "a", true, new BigDecimal("0.4")),
@@ -385,6 +449,25 @@ class QuestionBodyValidationTests {
             List.of(new BigDecimal("0.5"), new BigDecimal("0.25")));
         assertTrue(codes(readyErrors(input(QuestionType.TRUE_FALSE, decreasing))).contains("SCORE_TABLE_INVALID"));
     }
+    @Test
+    void missingParentPointsDefaultsToOneForScoreComparisons() {
+        QuestionBody body = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
+            new TrueFalseStatement("s1", "a", true, null), new TrueFalseStatement("s2", "b", false, null)),
+            QuestionBody.TrueFalseScoringMethod.COUNT_TABLE, List.of(BigDecimal.ONE, new BigDecimal("2")));
+        QuestionInput draft = new QuestionInput(QuestionType.TRUE_FALSE, body, null, "content", null, List.of(), List.of());
+        assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+        assertTrue(readyErrors(draft).stream().anyMatch(e ->
+            e.code().equals("SCORE_TABLE_INVALID") && e.path().equals("body.scoreTable")));
+    }
+    @Test
+    void exactToleranceBoundaryIsNotEqual() {
+        assertTrue(!QuestionBodyValidator.isValidScoreTable(
+            List.of(BigDecimal.ZERO, new BigDecimal("0.001")), 2, new BigDecimal("0.0005")));
+        assertTrue(QuestionBodyValidator.isValidScoreTable(
+            List.of(BigDecimal.ZERO, new BigDecimal("0.001")), 2, new BigDecimal("0.0006")));
+    }
+
+
 
     @Test
     void statementWithoutAnswerFailsReady() {
@@ -423,6 +506,24 @@ class QuestionBodyValidationTests {
         List<String> codes = codes(missing.errors());
         assertTrue(codes.containsAll(List.of("SUBJECT_MISSING", "GRADE_MISSING", "DIFFICULTY_MISSING")));
     }
+    @Test
+    void nullClassificationAndEmptyMatchingSidesBlockReady() {
+        QuestionInput choice = input(QuestionType.SINGLE_CHOICE, singleChoiceBody());
+        var classificationErrors = QuestionBodyValidator.validateReady(choice, null, true, null).errors();
+        assertTrue(codes(classificationErrors).containsAll(
+            List.of("SUBJECT_MISSING", "GRADE_MISSING", "DIFFICULTY_MISSING")));
+        QuestionBody matching = new QuestionBody.MatchingBody(QuestionType.MATCHING,
+            List.of(new MatchingSide("l", "<p> </p>")), List.of(new MatchingSide("r", "")),
+            List.of(new MatchingPair("l", "r", BigDecimal.ONE)), false, false, false);
+        QuestionInput draft = input(QuestionType.MATCHING, matching);
+        assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+        var errors = readyErrors(draft);
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("MATCHING_SIDE_EMPTY")
+            && e.path().equals("body.left[0].content")));
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("MATCHING_SIDE_EMPTY")
+            && e.path().equals("body.right[0].content")));
+    }
+
 
     @Test
     void unbalancedMathFailsReady() {
@@ -430,6 +531,29 @@ class QuestionBodyValidationTests {
             BigDecimal.ONE, "<p>Tính \\( x^2 + 1 </p>", null, List.of(), List.of());
         assertTrue(codes(readyErrors(input)).contains("MATH_UNBALANCED"));
     }
+    @Test
+    void mathIsCheckedInAllHtmlFieldsAndDelimiterOrder() {
+        String bad = "<p>\\( x \\[ y \\) z \\]</p>";
+        QuestionBody choice = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE,
+            List.of(new ChoiceOption("a", bad, true), new ChoiceOption("b", "B", false)), false);
+        QuestionInput question = new QuestionInput(QuestionType.SINGLE_CHOICE, choice, BigDecimal.ONE,
+            "<p>\\(x\\) and \\[y\\]</p>", bad, List.of(bad), List.of());
+        assertTrue(QuestionBodyValidator.validateSave(question, null).isEmpty());
+        var errors = readyErrors(question);
+        for (String path : List.of("body.options[0].content", "solution", "commonMistakes[0]")) {
+            assertTrue(errors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
+                && e.path().equals(path)), errors.toString());
+        }
+        assertTrue(errors.stream().noneMatch(e -> e.code().equals("MATH_UNBALANCED") && e.path().equals("content")));
+        QuestionBody essay = new QuestionBody.EssayBody(QuestionType.ESSAY, bad,
+            List.of(new EssayCriterion("c", bad, BigDecimal.ONE)), bad, null);
+        var essayErrors = readyErrors(input(QuestionType.ESSAY, essay));
+        for (String path : List.of("body.gradingGuide", "body.sampleAnswer", "body.rubric[0].description")) {
+            assertTrue(essayErrors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
+                && e.path().equals(path)), essayErrors.toString());
+        }
+    }
+
 
     private static List<QuestionFieldError> readyErrors(QuestionInput input) {
         return QuestionBodyValidator.validateReady(input, FULL, true, null).errors();

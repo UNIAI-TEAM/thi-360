@@ -1,6 +1,8 @@
 package vn.unicom.thi360.questionbank.domain;
 
 import java.math.BigDecimal;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,6 +48,7 @@ public final class QuestionBodyValidator {
     static final int MIN_CHILDREN = 2;
     /** Thang của cột {@code points numeric(8,4)}: giá trị nhiều hơn 4 số thập phân không ghi được. */
     static final int POINTS_SCALE = 4;
+    private static final BigDecimal MAX_POINTS = new BigDecimal("9999.9999");
 
     /** Sai số so điểm tổng (bảng điểm, tiêu chí, cặp) so với điểm câu. */
     private static final BigDecimal SCORE_TOLERANCE = new BigDecimal("0.0005");
@@ -122,16 +125,14 @@ public final class QuestionBodyValidator {
         if (isBlankHtml(input.content()) && !contentCarrierIsBody(input.body())) {
             errors.add(QuestionFieldError.of("CONTENT_EMPTY", "content"));
         }
-        if (classification != null) {
-            if (!classification.subjectPresent()) {
-                errors.add(QuestionFieldError.of("SUBJECT_MISSING", "subjectItemId"));
-            }
-            if (!classification.gradePresent()) {
-                errors.add(QuestionFieldError.of("GRADE_MISSING", "gradeItemId"));
-            }
-            if (!classification.levelPresent()) {
-                errors.add(QuestionFieldError.of("DIFFICULTY_MISSING", "levelItemId"));
-            }
+        if (classification == null || !classification.subjectPresent()) {
+            errors.add(QuestionFieldError.of("SUBJECT_MISSING", "subjectItemId"));
+        }
+        if (classification == null || !classification.gradePresent()) {
+            errors.add(QuestionFieldError.of("GRADE_MISSING", "gradeItemId"));
+        }
+        if (classification == null || !classification.levelPresent()) {
+            errors.add(QuestionFieldError.of("DIFFICULTY_MISSING", "levelItemId"));
         }
         List<QuestionFieldError> warnings = new ArrayList<>();
         if (!hasPrimaryKnowledge) {
@@ -208,7 +209,8 @@ public final class QuestionBodyValidator {
                     }
                     for (int i = 0; i < b.scoreTable().size(); i++) {
                         BigDecimal cell = b.scoreTable().get(i);
-                        if (cell == null || cell.stripTrailingZeros().scale() > POINTS_SCALE) {
+                        if (cell == null || cell.stripTrailingZeros().scale() > POINTS_SCALE
+                            || cell.abs().compareTo(MAX_POINTS) > 0) {
                             errors.add(QuestionFieldError.of("SCORE_TABLE_INVALID", prefix + ".scoreTable[" + i + "]"));
                         }
                     }
@@ -284,11 +286,6 @@ public final class QuestionBodyValidator {
                 errors.add(QuestionFieldError.of("QUESTION_BLANK_MARKER_MISMATCH", prefix + ".passage"));
             }
         }
-        for (String blankId : blankIds) {
-            if (!markerCounts.containsKey(blankId)) {
-                errors.add(QuestionFieldError.of("QUESTION_BLANK_MARKER_MISMATCH", prefix + ".blanks"));
-            }
-        }
     }
 
     private static void validateAttachments(List<java.util.UUID> attachmentIds, QuestionAssetResolver assets, List<QuestionFieldError> errors) {
@@ -312,13 +309,15 @@ public final class QuestionBodyValidator {
             errors.add(QuestionFieldError.of("POINTS_NOT_POSITIVE", path));
         } else if (points.stripTrailingZeros().scale() > POINTS_SCALE) {
             errors.add(QuestionFieldError.of("POINTS_TOO_MANY_DECIMALS", path));
+        } else if (points.compareTo(MAX_POINTS) > 0) {
+            errors.add(QuestionFieldError.of("POINTS_TOO_LARGE", path));
         }
     }
 
     // ---------------------------------------------------------------- mức Sẵn sàng
 
     private static void validateBodyReady(QuestionInput input, List<QuestionFieldError> errors) {
-        BigDecimal points = input.points();
+        BigDecimal points = input.points() == null ? BigDecimal.ONE : input.points();
         switch (input.body()) {
             case QuestionBody.SingleChoiceBody b -> {
                 if (b.options().size() < MIN_OPTIONS || b.options().size() > MAX_OPTIONS) {
@@ -363,6 +362,16 @@ public final class QuestionBodyValidator {
                 if (b.blanks().isEmpty()) {
                     errors.add(QuestionFieldError.of("NO_BLANKS", "body.blanks"));
                 }
+                Set<String> markers = new HashSet<>();
+                Matcher matcher = BLANK_MARKER.matcher(QuestionHtmlSanitizer.textOf(b.passage()));
+                while (matcher.find()) {
+                    markers.add(matcher.group(1).trim());
+                }
+                for (QuestionBody.ClozeBlank blank : b.blanks()) {
+                    if (!markers.contains(blank.id())) {
+                        errors.add(QuestionFieldError.of("QUESTION_BLANK_MARKER_MISMATCH", "body.blanks"));
+                    }
+                }
                 for (int i = 0; i < b.blanks().size(); i++) {
                     QuestionBody.ClozeBlank blank = b.blanks().get(i);
                     boolean any = blank.answers().stream().anyMatch(a -> a != null && !a.isBlank());
@@ -396,12 +405,17 @@ public final class QuestionBodyValidator {
                     }
                 }
                 if (b.scoringMethod() == QuestionBody.TrueFalseScoringMethod.PER_STATEMENT) {
+                    for (int i = 0; i < b.statements().size(); i++) {
+                        if (b.statements().get(i).points() == null) {
+                            errors.add(QuestionFieldError.of("POINTS_REQUIRED", "body.statements[" + i + "].points"));
+                        }
+                    }
                     boolean allPoints = b.statements().stream().allMatch(s -> s.points() != null);
                     if (allPoints && !b.statements().isEmpty()) {
                         BigDecimal total = b.statements().stream()
                             .map(QuestionBody.TrueFalseStatement::points)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-                        if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) > 0) {
+                        if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) >= 0) {
                             errors.add(QuestionFieldError.of("SCORE_TABLE_INVALID", "body.statements"));
                         }
                     }
@@ -416,12 +430,27 @@ public final class QuestionBodyValidator {
                 Set<String> rightIds = idsOfSides(b.right());
                 Map<String, Integer> rightUse = new HashMap<>();
                 Set<String> pairedLeft = new HashSet<>();
+                for (int i = 0; i < b.pairs().size(); i++) {
+                    if (b.pairs().get(i).points() == null) {
+                        errors.add(QuestionFieldError.of("POINTS_REQUIRED", "body.pairs[" + i + "].points"));
+                    }
+                }
                 for (QuestionBody.MatchingPair pair : b.pairs()) {
                     if (pair.leftId() != null && leftIds.contains(pair.leftId())) {
                         pairedLeft.add(pair.leftId());
                     }
                     if (pair.rightId() != null && rightIds.contains(pair.rightId())) {
                         rightUse.merge(pair.rightId(), 1, Integer::sum);
+                    }
+                }
+                for (int i = 0; i < b.left().size(); i++) {
+                    if (isBlankHtml(b.left().get(i).content())) {
+                        errors.add(QuestionFieldError.of("MATCHING_SIDE_EMPTY", "body.left[" + i + "].content"));
+                    }
+                }
+                for (int i = 0; i < b.right().size(); i++) {
+                    if (isBlankHtml(b.right().get(i).content())) {
+                        errors.add(QuestionFieldError.of("MATCHING_SIDE_EMPTY", "body.right[" + i + "].content"));
                     }
                 }
                 for (int i = 0; i < b.left().size(); i++) {
@@ -441,7 +470,7 @@ public final class QuestionBodyValidator {
                     .map(QuestionBody.MatchingPair::points)
                     .filter(p -> p != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-                if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) > 0) {
+                if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) >= 0) {
                     errors.add(QuestionFieldError.of("QUESTION_PAIR_POINTS_MISMATCH", "body.pairs"));
                 }
             }
@@ -454,6 +483,9 @@ public final class QuestionBodyValidator {
                     if (isBlankHtml(b.rubric().get(i).description())) {
                         errors.add(QuestionFieldError.of("CRITERION_EMPTY", "body.rubric[" + i + "].description"));
                     }
+                    if (b.rubric().get(i).points() == null) {
+                        errors.add(QuestionFieldError.of("POINTS_REQUIRED", "body.rubric[" + i + "].points"));
+                    }
                 }
                 if (!b.rubric().isEmpty() && points != null) {
                     boolean allPoints = b.rubric().stream().allMatch(c -> c.points() != null);
@@ -461,7 +493,7 @@ public final class QuestionBodyValidator {
                         BigDecimal total = b.rubric().stream()
                             .map(QuestionBody.EssayCriterion::points)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-                        if (total.subtract(points).abs().compareTo(SCORE_TOLERANCE) > 0) {
+                        if (total.subtract(points).abs().compareTo(SCORE_TOLERANCE) >= 0) {
                             errors.add(QuestionFieldError.of("RUBRIC_TOTAL_MISMATCH", "body.rubric"));
                         }
                     }
@@ -469,11 +501,44 @@ public final class QuestionBodyValidator {
             }
         }
         checkMathPairs(input.content(), "content", errors);
-        if (input.body() instanceof QuestionBody.ClozeBody cloze) {
-            checkMathPairs(cloze.passage(), "body.passage", errors);
+        checkMathPairs(input.solution(), "solution", errors);
+        for (int i = 0; i < input.commonMistakes().size(); i++) {
+            checkMathPairs(input.commonMistakes().get(i), "commonMistakes[" + i + "]", errors);
         }
-        if (input.body() instanceof QuestionBody.QuestionSetBody set) {
-            checkMathPairs(set.passage(), "body.passage", errors);
+        switch (input.body()) {
+            case QuestionBody.SingleChoiceBody b -> {
+                for (int i = 0; i < b.options().size(); i++) {
+                    checkMathPairs(b.options().get(i).content(), "body.options[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.MultipleChoiceBody b -> {
+                for (int i = 0; i < b.options().size(); i++) {
+                    checkMathPairs(b.options().get(i).content(), "body.options[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.TrueFalseBody b -> {
+                for (int i = 0; i < b.statements().size(); i++) {
+                    checkMathPairs(b.statements().get(i).content(), "body.statements[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.MatchingBody b -> {
+                for (int i = 0; i < b.left().size(); i++) {
+                    checkMathPairs(b.left().get(i).content(), "body.left[" + i + "].content", errors);
+                }
+                for (int i = 0; i < b.right().size(); i++) {
+                    checkMathPairs(b.right().get(i).content(), "body.right[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.EssayBody b -> {
+                checkMathPairs(b.gradingGuide(), "body.gradingGuide", errors);
+                checkMathPairs(b.sampleAnswer(), "body.sampleAnswer", errors);
+                for (int i = 0; i < b.rubric().size(); i++) {
+                    checkMathPairs(b.rubric().get(i).description(), "body.rubric[" + i + "].description", errors);
+                }
+            }
+            case QuestionBody.ClozeBody b -> checkMathPairs(b.passage(), "body.passage", errors);
+            case QuestionBody.QuestionSetBody b -> checkMathPairs(b.passage(), "body.passage", errors);
+            case QuestionBody.ShortAnswerBody b -> { }
         }
     }
 
@@ -520,9 +585,9 @@ public final class QuestionBodyValidator {
             }
         }
         if (points == null) {
-            return true;
+            points = BigDecimal.ONE;
         }
-        return table.get(table.size() - 1).subtract(points).abs().compareTo(SCORE_TOLERANCE) <= 0;
+        return table.get(table.size() - 1).subtract(points).abs().compareTo(SCORE_TOLERANCE) < 0;
     }
 
     /**
@@ -534,29 +599,30 @@ public final class QuestionBodyValidator {
         if (text.isEmpty()) {
             return;
         }
-        if (!balanced(text, "\\(", "\\)") || !balanced(text, "\\[", "\\]")) {
+        if (!balanced(text)) {
             errors.add(QuestionFieldError.of("MATH_UNBALANCED", path));
         }
     }
 
-    private static boolean balanced(String text, String open, String close) {
-        int depth = 0;
-        int i = 0;
-        while (i < text.length()) {
-            if (text.startsWith(open, i)) {
-                depth++;
-                i += open.length();
-            } else if (text.startsWith(close, i)) {
-                depth--;
-                if (depth < 0) {
+    private static boolean balanced(String text) {
+        Deque<Character> delimiters = new ArrayDeque<>();
+        for (int i = 0; i + 1 < text.length(); i++) {
+            if (text.charAt(i) != '\\') {
+                continue;
+            }
+            char delimiter = text.charAt(i + 1);
+            if (delimiter == '(' || delimiter == '[') {
+                delimiters.push(delimiter);
+                i++;
+            } else if (delimiter == ')' || delimiter == ']') {
+                if (delimiters.isEmpty()
+                    || delimiters.pop() != (delimiter == ')' ? '(' : '[')) {
                     return false;
                 }
-                i += close.length();
-            } else {
                 i++;
             }
         }
-        return depth == 0;
+        return delimiters.isEmpty();
     }
 
 

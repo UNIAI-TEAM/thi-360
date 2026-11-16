@@ -66,6 +66,14 @@ class QuestionSearchNormalizerTests {
         assertTrue(search.contains("doan van doc hieu"));
         assertTrue(search.contains("cau hoi con"));
     }
+    @Test
+    void shortAnswersRemainLiteralInSearchAndPreview() {
+        QuestionBody body = new QuestionBody.ShortAnswerBody(
+            QuestionType.SHORT_ANSWER, List.of("<strong>"), null);
+        assertTrue(QuestionSearchNormalizer.searchText(null, null, body).contains("<strong>"));
+        assertEquals("<strong>", QuestionSearchNormalizer.contentText(null, body));
+    }
+
 
     @Test
     void contentTextIsPlain() {

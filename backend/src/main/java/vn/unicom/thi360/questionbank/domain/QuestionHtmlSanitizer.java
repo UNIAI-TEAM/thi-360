@@ -61,7 +61,7 @@ public class QuestionHtmlSanitizer {
             violations = List.copyOf(violations);
         }
 
-        /** {@code true} khi nội dung an toàn nguyên trạng (spec: lưu như cũ). */
+        /** {@code true} khi không có vi phạm. */
         public boolean unchanged() {
             return violations.isEmpty();
         }
@@ -118,23 +118,29 @@ public class QuestionHtmlSanitizer {
      * nội dung chỉ chữ như hướng dẫn làm bài, spec 5.2); {@code true} giữ quy tắc câu hỏi.
      */
     public Result clean(String html, boolean allowImages) {
-        if (html == null || html.isBlank()) {
-            return new Result(html == null ? "" : html, List.of());
+        if (html == null) {
+            html = "";
         }
         Set<String> allowedTags = allowImages ? ALLOWED_TAGS : ALLOWED_TAGS_NO_IMG;
-        Document source = Jsoup.parse(html, "", Parser.htmlParser());
+        Document source = Jsoup.parseBodyFragment(html);
+        // Fragment parsing discards attributes on html/body and the head tag itself.
+        // A second parse preserves those input tokens for violation reporting.
+        Document document = Jsoup.parse(html, "", Parser.htmlParser().setTrackPosition(true));
         List<Violation> violations = new ArrayList<>();
+        if (document.head().sourceRange().isTracked() && !document.head().sourceRange().isImplicit()) {
+            violations.add(Violation.tag("head"));
+        }
+        for (Element shell : List.of(document.children().first(), document.head(), document.body())) {
+            for (Attribute attribute : shell.attributes()) {
+                violations.add(Violation.attribute(shell.tagName(), attribute.getKey(), attribute.getValue()));
+            }
+        }
         inspect(source.body(), violations, allowedTags);
         Document clean = new org.jsoup.safety.Cleaner(allowImages ? SAFELIST : SAFELIST_NO_IMG)
             .clean(source);
         clean.outputSettings(new Document.OutputSettings().prettyPrint(false));
         stripDisallowed(clean);
-        boolean[] modified = {false};
-        rewriteImages(clean, violations, modified);
-        if (violations.isEmpty() && !modified[0]) {
-            // Nội dung không đổi sau khi lọc: giữ nguyên chuỗi đầu vào (spec 4.2).
-            return new Result(html, violations);
-        }
+        rewriteImages(clean, violations);
         return new Result(clean.body().html(), violations);
     }
 
@@ -197,7 +203,7 @@ public class QuestionHtmlSanitizer {
      * {@code src} được viết lại bằng đường phục vụ thật. Thiếu id hoặc id không có là vi phạm;
      * {@code src} đầu vào khác đường thật cũng là vi phạm (bị viết lại).
      */
-    private void rewriteImages(Document clean, List<Violation> violations, boolean[] modified) {
+    private void rewriteImages(Document clean, List<Violation> violations) {
         for (Element img : clean.select("img")) {
             String rawId = img.attr("data-asset-id").trim();
             if (rawId.isEmpty()) {
@@ -223,7 +229,6 @@ public class QuestionHtmlSanitizer {
             }
             if (!previous.equals(path.get())) {
                 img.attr("src", path.get());
-                modified[0] = true;
             }
         }
     }

@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import vn.unicom.thi360.questionbank.domain.QuestionHtmlSanitizer;
 import vn.unicom.thi360.questionbank.spi.HtmlContentSanitizer;
@@ -30,6 +31,46 @@ class HtmlContentSanitizerAdapterTests {
     private final HtmlContentSanitizer withAssets = new HtmlContentSanitizerAdapter(
         new QuestionHtmlSanitizer(
             id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty()));
+
+    @Test
+    void productionConstructorUsesAvailableResolverOrRejectsUnknownImages() {
+        StaticListableBeanFactory factory = new StaticListableBeanFactory();
+        HtmlContentSanitizer absent = new HtmlContentSanitizerAdapter(
+            factory.getBeanProvider(QuestionAssetResolver.class));
+        String image = "<img data-asset-id=\"" + assetId + "\">";
+        Result rejected = absent.sanitize(image, Options.withImages());
+        assertFalse(rejected.isClean());
+        assertTrue(rejected.violations().stream().anyMatch(v -> "data-asset-id".equals(v.attribute())));
+
+        QuestionAssetResolver resolver = id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty();
+        factory.addBean("resolver", resolver);
+        HtmlContentSanitizer present = new HtmlContentSanitizerAdapter(
+            factory.getBeanProvider(QuestionAssetResolver.class));
+        Result accepted = present.sanitize(image, Options.withImages());
+        assertTrue(accepted.isClean(), () -> accepted.violations().toString());
+        assertTrue(accepted.html().contains("src=\"" + assetPath + "\""));
+    }
+
+    @Test
+    void documentShellAndHeadMatterAreReportedAndCleanedInBothModes() {
+        String[][] cases = {
+            {"<script>alert(1)</script><p>x</p>", "script"},
+            {"<html><head><style>p{display:none}</style></head><body><p>x</p></body></html>", "style"},
+            {"<body onload=alert(1)><p>x</p></body>", "onload"},
+            {"<title><img src=x onerror=alert(1)></title><p>x</p>", "title"}
+        };
+        for (Options options : new Options[] {Options.textOnly(), Options.withImages()}) {
+            for (String[] example : cases) {
+                Result result = textOnly.sanitize(example[0], options);
+                assertFalse(result.isClean(), example[0]);
+                assertTrue(result.violations().stream().anyMatch(v ->
+                    example[1].equals(v.tag()) || example[1].equals(v.attribute())), example[0]);
+                var output = org.jsoup.Jsoup.parseBodyFragment(result.html());
+                assertTrue(output.select("script, style, title, [onload], [onerror]").isEmpty(), result.html());
+                assertTrue(output.select("p").stream().anyMatch(p -> p.text().equals("x")));
+            }
+        }
+    }
 
     @Test
     void textOnlyRejectsImg() {
