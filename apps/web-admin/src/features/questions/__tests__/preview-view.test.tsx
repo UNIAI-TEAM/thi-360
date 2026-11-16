@@ -121,7 +121,7 @@ describe("xem trước câu hỏi", () => {
     renderWithProviders(<QuestionPreviewView questionId="q-cloze" />);
     await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Ô 1" }), "  hà   nội ");
+    await userEvent.type(await screen.findByRole("textbox", { name: "Ô 1" }), "  hà   nội ");
     await userEvent.type(screen.getByRole("textbox", { name: "Ô 2" }), "Lào");
     await userEvent.click(grade());
 
@@ -149,12 +149,25 @@ describe("xem trước câu hỏi", () => {
     renderWithProviders(<QuestionPreviewView questionId="q-cloze-pad" />);
     await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
 
-    const input = screen.getByRole("textbox", { name: "Ô 1" });
+    const input = await screen.findByRole("textbox", { name: "Ô 1" });
     expect(input).toBeEnabled();
     await userEvent.type(input, "Hà Nội");
     await userEvent.click(grade());
     const panel = screen.getByRole("heading", { name: "Kết quả chấm thử" }).closest("div")!;
     expect(within(panel).getByText("Đúng hết")).toBeInTheDocument();
+  });
+
+  it("nội dung HTML hiển thị có định dạng, không lộ thẻ; chỗ trống nằm giữa dòng chữ có định dạng", async () => {
+    insertCloze("<p>Thủ đô là <strong>[[b1]]</strong> của <em>Việt Nam</em>.</p>", 1);
+    const { container } = renderWithProviders(<QuestionPreviewView questionId="q-cloze-pad" />);
+    const input = await screen.findByRole("textbox", { name: "Ô 1" });
+
+    expect(container.textContent).not.toContain("<p>");
+    expect(container.querySelector("em")).toHaveTextContent("Việt Nam");
+    expect(container.querySelector("strong")).toContainElement(input);
+    await userEvent.type(input, "Hà Nội");
+    await userEvent.click(grade());
+    expect(within(screen.getByRole("heading", { name: "Kết quả chấm thử" }).closest("div")!).getByText("Đúng hết")).toBeInTheDocument();
   });
 
   it("điểm làm tròn nửa lên 2 chữ số: 1,125 hiện 1,13 (vi) và 1.13 (en)", async () => {

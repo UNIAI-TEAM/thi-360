@@ -3,6 +3,7 @@
 import { Card } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { RichTextView } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { QuestionVersion } from "../editor-types";
 import { diffSnapshots, SNAPSHOT_FIELDS, type QuestionVersionChange } from "../editor-versioning";
@@ -58,9 +59,9 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
       case "points":
         return String(change[side]);
       case "content":
-        return <span className="whitespace-pre-wrap">{change[side]}</span>;
+        return <RichTextView html={change[side]} />;
       case "solution":
-        return change[side] ? <span className="whitespace-pre-wrap">{change[side]}</span> : t("none");
+        return change[side] ? <RichTextView html={change[side]} /> : t("none");
       case "tagCodes":
         return change[side].length ? change[side].map(lookup.tag).join(", ") : t("none");
       case "knowledge":

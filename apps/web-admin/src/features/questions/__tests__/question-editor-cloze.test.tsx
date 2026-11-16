@@ -84,6 +84,19 @@ describe("trinh soan Dien khuyet", () => {
     expect(screen.getByRole("textbox", { name: /^Points \(calculated\)/ })).toHaveValue("2.5");
   });
 
+  it("đề bài là HTML: chỗ trống mới nằm trong đoạn văn cuối, không rơi ra ngoài thẻ", async () => {
+    const user = userEvent.setup();
+    const id = await seedCloze();
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+    rich(text).set("<p>Hà Nội là ___ của ___.</p>");
+
+    await user.click(screen.getByRole("button", { name: "Add blank" }));
+    expect(rich(text).text.split("___")).toHaveLength(4);
+    expect(rich(text).html).toMatch(/^<p>.*___\s*<\/p>$/);
+    expect(rich(text).html.match(/<p>/g)).toHaveLength(1);
+  });
+
   it("diem o khong hop le, thieu dap an hoac lech so cho trong thi chan luu va chi dung o loi", async () => {
     const user = userEvent.setup();
     const id = await seedCloze();
