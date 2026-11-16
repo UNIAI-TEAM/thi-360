@@ -21,6 +21,13 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class QuestionApiEdgesIT extends AbstractIntegrationTest {
     private static final String BASE = "/api/v1/admin/questions";
+    private final UUID actor = UUID.randomUUID();
+
+    @Override
+    protected org.springframework.test.web.servlet.request.RequestPostProcessor asUser(String... permissions) {
+        return asUser(actor, "edge-it", permissions);
+    }
+
     @Test
     void diacriticInsensitive() throws Exception {
         UUID actor = UUID.randomUUID();
@@ -87,6 +94,67 @@ class QuestionApiEdgesIT extends AbstractIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("QUESTION_IN_USE"));
+    }
+
+    @Test
+    void attachmentRejectedWithoutAssetResolver() throws Exception {
+        String body = "{\"type\":\"SINGLE_CHOICE\",\"attachmentIds\":[\"" + UUID.randomUUID()
+                + "\"],\"body\":" + QuestionTestSupport.singleChoiceBody() + "}";
+        create(body).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void staleRevisionRejectedByEveryRemainingWrite() throws Exception {
+        UUID id = createValid();
+        long stale = revision(id) + 1;
+        for (String suffix : new String[] {"/ready", "/retire", "/versions/1/restore"}) {
+            mockMvc.perform(post(BASE + "/{id}" + suffix, id).with(asUser(Permissions.QUESTION_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"expectedRevision\":" + stale + "}"))
+                    .andExpect(status().isPreconditionFailed())
+                    .andExpect(jsonPath("$.code").value("QUESTION_REVISION_CONFLICT"));
+        }
+        mockMvc.perform(delete(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .param("expectedRevision", Long.toString(stale)))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("QUESTION_REVISION_CONFLICT"));
+    }
+
+    @Test
+    void duplicateReplayReturnsSameCopy() throws Exception {
+        UUID id = createValid();
+        String key = UUID.randomUUID().toString();
+        var first = mockMvc.perform(post(BASE + "/{id}/duplicate", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", key))
+                .andExpect(status().isCreated()).andReturn();
+        var replay = mockMvc.perform(post(BASE + "/{id}/duplicate", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", key))
+                .andExpect(status().isCreated()).andReturn();
+        org.assertj.core.api.Assertions.assertThat(mapper.readTree(replay.getResponse().getContentAsString()))
+                .isEqualTo(mapper.readTree(first.getResponse().getContentAsString()));
+    }
+
+    @Test
+    void bulkCommandsReplayAndRejectChangedBody() throws Exception {
+        UUID id = createValid();
+        for (String action : new String[] {"ready", "retire"}) {
+            String key = UUID.randomUUID().toString();
+            String body = "{\"ids\":[\"" + id + "\"]}";
+            var first = mockMvc.perform(post(BASE + "/bulk/" + action).with(asUser(Permissions.QUESTION_MODIFY))
+                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isOk()).andReturn();
+            var replay = mockMvc.perform(post(BASE + "/bulk/" + action).with(asUser(Permissions.QUESTION_MODIFY))
+                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isOk()).andReturn();
+            org.assertj.core.api.Assertions.assertThat(mapper.readTree(replay.getResponse().getContentAsString()))
+                    .isEqualTo(mapper.readTree(first.getResponse().getContentAsString()));
+            mockMvc.perform(post(BASE + "/bulk/" + action).with(asUser(Permissions.QUESTION_MODIFY))
+                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"ids\":[\"" + UUID.randomUUID() + "\"]}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+        }
     }
 
     private org.springframework.test.web.servlet.ResultActions create(String body) throws Exception {
