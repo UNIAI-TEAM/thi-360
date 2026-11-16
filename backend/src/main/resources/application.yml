@@ -122,6 +122,12 @@ thi360:
       lease-duration: PT5M
       retry-delay: PT5S
       max-attempts: 3
+  questionbank:
+    import:
+      max-file-bytes: 5242880
+      max-rows: 2000
+    scheduling:
+      enabled: true
 
 ---
 spring:
@@ -197,6 +203,9 @@ thi360:
     enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
   cookie:
     secure: ${THI360_COOKIE_SECURE:false}
+  questionbank:
+    scheduling:
+      enabled: false
 ---
 spring:
   config:
