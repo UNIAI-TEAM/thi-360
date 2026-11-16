@@ -36,7 +36,16 @@ public interface QuestionSourcePort {
     record Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
                      String taskTypeCode, String scoringRule) {}
     record VersionKey(UUID questionId, int versionNo) {}
-    record Version(VersionKey key, JsonNode snapshot) {}
+    /** Snapshot and stable question codes, including children of a question set. */
+    record Version(VersionKey key, JsonNode snapshot, String code, Map<UUID, String> childCodes) {
+        public Version {
+            childCodes = childCodes == null ? Map.of() : Map.copyOf(childCodes);
+        }
+
+        public Version(VersionKey key, JsonNode snapshot) {
+            this(key, snapshot, null, Map.of());
+        }
+    }
 
     Counts count(Filter filter);
 

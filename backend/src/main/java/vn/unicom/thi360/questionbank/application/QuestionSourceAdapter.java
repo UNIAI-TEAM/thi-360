@@ -121,14 +121,25 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         List<String> clauses = new ArrayList<>();
         for (int i = 0; i < versions.size(); i++) {
             VersionKey key = versions.get(i);
-            clauses.add("(question_id = :id" + i + " and version_no = :v" + i + ")");
+            clauses.add("(v.question_id = :id" + i + " and v.version_no = :v" + i + ")");
             params.addValue("id" + i, key.questionId()).addValue("v" + i, key.versionNo());
         }
-        return jdbc.query("select question_id, version_no, snapshot::text snapshot from questionbank.question_version where "
-                + String.join(" or ", clauses), params, (rs, n) -> {
+        return jdbc.query("""
+                select v.question_id, v.version_no, v.snapshot::text snapshot, q.code,
+                       coalesce((select jsonb_object_agg(c.id::text, c.code)
+                                 from questionbank.question c where c.parent_id = q.id),
+                                '{}'::jsonb)::text child_codes
+                from questionbank.question_version v
+                join questionbank.question q on q.id = v.question_id
+                where
+                """ + String.join(" or ", clauses), params, (rs, n) -> {
                     try {
-                        return new Version(new VersionKey(rs.getObject("question_id", UUID.class), rs.getInt("version_no")),
-                                mapper.readTree(rs.getString("snapshot")));
+                        Map<UUID, String> children = new HashMap<>();
+                        mapper.readTree(rs.getString("child_codes")).fields().forEachRemaining(entry ->
+                                children.put(UUID.fromString(entry.getKey()), entry.getValue().asText()));
+                        return new Version(new VersionKey(rs.getObject("question_id", UUID.class),
+                                rs.getInt("version_no")), mapper.readTree(rs.getString("snapshot")),
+                                rs.getString("code"), children);
                     } catch (JsonProcessingException e) {
                         throw new SQLException("Invalid question snapshot", e);
                     }

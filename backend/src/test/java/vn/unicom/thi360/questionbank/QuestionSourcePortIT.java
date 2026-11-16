@@ -66,7 +66,11 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         assertThat(source.count(filter).total()).isEqualTo(1);
         assertThat(source.findCandidates(filter, 10)).extracting(QuestionSourcePort.Candidate::questionId).containsExactly(included);
         var snapshots = source.loadVersions(List.of(new QuestionSourcePort.VersionKey(included, 1)));
-        assertThat(snapshots).singleElement().satisfies(v -> assertThat(v.snapshot().get("marker").asText()).isEqualTo("serving"));
+        assertThat(snapshots).singleElement().satisfies(v -> {
+            assertThat(v.snapshot().get("marker").asText()).isEqualTo("serving");
+            assertThat(v.code()).isEqualTo("TEST-" + included);
+            assertThat(v.childCodes()).isEmpty();
+        });
     }
 
     @Test
@@ -131,6 +135,12 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
             assertThat(c.setId()).isEqualTo(set);
             assertThat(c.units()).extracting(QuestionSourcePort.Unit::questionId).containsExactly(first, second);
         });
+        assertThat(source.loadVersions(List.of(new QuestionSourcePort.VersionKey(set, 1))))
+                .singleElement().satisfies(v -> {
+                    assertThat(v.code()).isEqualTo("SET-" + set);
+                    assertThat(v.childCodes()).containsEntry(first, "C-" + first)
+                            .containsEntry(second, "C-" + second);
+                });
         var pointsFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of(), List.of(), BigDecimal.ONE);
         assertThat(source.count(pointsFilter).total()).isZero();
