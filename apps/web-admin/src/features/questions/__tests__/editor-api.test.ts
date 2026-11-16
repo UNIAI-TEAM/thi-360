@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ContentApiError } from "@/features/content/api-error";
-import { getQuestion } from "../api";
+import { fakeApi } from "@/test/fake-api";
+import { getQuestion, getQuestionRetireImpact } from "../api";
 import {
   createQuestion,
   duplicateQuestion,
@@ -14,7 +15,7 @@ import { deriveVersionStates, diffSnapshots, servingVersion, toSnapshot } from "
 import type { UpdateQuestionRequest } from "../editor-types";
 import { withQuestionsServer } from "./api-fixtures";
 
-withQuestionsServer({
+const store = withQuestionsServer({
   usage: {
     "q-0003": {
       examIds: ["ex-1", "ex-2", "ex-3"],
@@ -180,5 +181,64 @@ describe("API soạn câu hỏi (nhánh thật, client giả)", () => {
 
     const unused = await getQuestionUsage("q-0002");
     expect(unused.exams).toEqual([]);
+  });
+
+  it("nơi đang dùng lấy phần, lựa chọn, khối và trạng thái bài từ dòng nguồn, nhiều khối của một bài gộp một dòng", async () => {
+    store.server().setUsage("q-0003", {
+      examIds: [],
+      blocks: [
+        {
+          examId: "ex-1",
+          examCode: "HSA-01",
+          examName: "HSA mẫu 1",
+          examStatus: "PUBLISHED",
+          partName: "Phần 1",
+          blockName: "Khối Toán",
+        },
+        {
+          examId: "ex-1",
+          examCode: "HSA-01",
+          examName: "HSA mẫu 1",
+          examStatus: "PUBLISHED",
+          partName: "Phần 3",
+          optionCode: "A00",
+          optionName: "Tổ hợp A00",
+          blockName: "Khối Lý",
+        },
+        { examId: "ex-2", examCode: "HSA-02", examName: "HSA mẫu 2", examStatus: "DISCONTINUED", partName: "Phần 2" },
+      ],
+      ledger: [{ examId: "ex-1", kind: "ATTEMPT", versionNo: 2 }],
+    });
+    const calls = () => fakeApi.calls.filter((call) => call.path === "/api/v1/admin/exams/{id}");
+    const before = calls().length;
+    const usage = await getQuestionUsage("q-0003");
+    expect(calls().length).toBe(before);
+    expect(usage.examCount).toBe(2);
+    expect(usage.exams[0]).toMatchObject({
+      examId: "ex-1",
+      examCode: "HSA-01",
+      examName: "HSA mẫu 1",
+      examStatus: "PUBLISHED",
+      attemptsByVersion: [{ version: 2, attemptCount: 1 }],
+      blocks: [
+        { partName: "Phần 1", optionCode: null, optionName: "", blockName: "Khối Toán" },
+        { partName: "Phần 3", optionCode: "A00", optionName: "Tổ hợp A00", blockName: "Khối Lý" },
+      ],
+    });
+    expect(usage.exams[1]).toMatchObject({ examId: "ex-2", examStatus: "DISCONTINUED", partName: "Phần 2" });
+    expect(usage.attemptCount).toBe(1);
+  });
+
+  it("nơi đang dùng đọc chi tiết bài khi dòng nguồn thiếu thông tin, ngừng câu lấy mã lựa chọn từ dòng nguồn", async () => {
+    store.server().setUsage("q-0003", {
+      examIds: ["ex-9"],
+      blocks: [{ examId: "ex-9", optionCode: "B00", blockName: "Khối" }],
+      exams: [{ id: "ex-9", code: "THPT-09", name: "THPT 9", status: "PUBLISHED", servingVersion: 3 }],
+    });
+    const usage = await getQuestionUsage("q-0003");
+    expect(usage.exams[0]).toMatchObject({ examCode: "THPT-09", examName: "THPT 9", examStatus: "PUBLISHED" });
+
+    const impact = await getQuestionRetireImpact("q-0003");
+    expect(impact.exams[0]).toMatchObject({ examCode: "THPT-09", servingVersion: 3, optionCode: "B00" });
   });
 });

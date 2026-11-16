@@ -24,7 +24,8 @@ type ApiReadiness = Schemas["QuestionReadiness"];
 type ApiVersionItem = Schemas["QuestionVersionItem"];
 type ApiSnapshot = Schemas["QuestionSnapshot"];
 type ApiBulkResult = Schemas["BulkQuestionStatusResult"];
-type ApiUsage = Schemas["QuestionUsage"];
+type ApiUsage = Schemas["QuestionbankQuestionUsage"];
+type ApiSourceRef = Schemas["QuestionbankExamSourceRef"];
 type ApiRetireImpact = Schemas["QuestionRetireImpact"];
 type ApiExam = Schemas["ExamDetailResponse"];
 type ApiUpdateResponse = Schemas["UpdateQuestionResponse"];
@@ -257,6 +258,8 @@ interface ExamRef {
 export interface UsageSpec {
   /** Id bài thi đang lấy câu làm nguồn (`sourceBlocks`/`affectedBlocks`). */
   examIds: string[];
+  /** Dòng nguồn đầy đủ (mã/tên/trạng thái bài, phần, lựa chọn, khối); có thì thay cho `examIds`. */
+  blocks?: ApiSourceRef[];
   /** Dòng sổ đã dùng (kind ATTEMPT/PREVIEW/PUBLISH…) */
   ledger?: { examId: string; kind: string; versionNo: number }[];
   /** Thông tin bài thi theo id (thiếu thì dùng id làm mã). */
@@ -587,14 +590,15 @@ export function installQuestionsApi(
 
   const usageOf = (id: string, kind: "usage" | "retire-impact") => {
     const spec = usage[id] ?? { examIds: [], ledger: [] };
+    const refs: ApiSourceRef[] = spec.blocks ?? spec.examIds.map((examId) => ({ examId }));
     if (kind === "usage") {
       return {
-        sourceBlocks: spec.examIds.map((examId) => ({ examId })),
+        sourceBlocks: refs,
         usedIn: (spec.ledger ?? []).map((ref) => ({ examId: ref.examId, firstAt: "2026-11-01T00:00:00+07:00", kind: ref.kind, versionNo: ref.versionNo })),
       } satisfies ApiUsage;
     }
     return {
-      affectedBlocks: spec.examIds.map((examId) => ({ examId })),
+      affectedBlocks: refs,
       usedIn: (spec.ledger ?? []).map((ref) => ({ examId: ref.examId, firstAt: "2026-11-01T00:00:00+07:00", kind: ref.kind, versionNo: ref.versionNo })),
     } satisfies ApiRetireImpact;
   };

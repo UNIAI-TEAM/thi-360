@@ -98,6 +98,19 @@ describe("nơi đang dùng", () => {
     expect(within(table).getAllByRole("row").length).toBeGreaterThan(1);
   });
 
+  it("hiện phần, lựa chọn, khối và trạng thái bài từ dòng nguồn", async () => {
+    questionStore.server().setUsage("q-0003", {
+      examIds: [],
+      blocks: [
+        { examId: "ex-1", examCode: "HSA-01", examName: "HSA mẫu 1", examStatus: "PUBLISHED", partName: "Phần 3", optionName: "Tổ hợp A00", blockName: "Khối Lý" },
+      ],
+    });
+    renderEn(<QuestionUsageView questionId="q-0003" />);
+    expect(await screen.findByText("HSA mẫu 1")).toBeInTheDocument();
+    expect(screen.getByText(/Phần 3 › Tổ hợp A00 ›.*› Khối Lý/)).toBeInTheDocument();
+    expect(screen.getByText("HSA-01")).toBeInTheDocument();
+  });
+
   it("câu chưa dùng thì hiện trạng thái trống", async () => {
     renderEn(<QuestionUsageView questionId="q-0002" />);
     expect(await screen.findByText("Not used in any exam")).toBeInTheDocument();

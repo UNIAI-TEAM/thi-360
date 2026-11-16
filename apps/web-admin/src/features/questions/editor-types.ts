@@ -143,6 +143,14 @@ export interface QuestionUsageVersionAttempts {
   attemptCount: number;
 }
 
+/** Một vị trí lấy câu trong bài thi: phần, lựa chọn (tổ hợp, nếu có) và khối. Trường trống khi API không trả. */
+export interface QuestionUsageBlock {
+  partName: string;
+  optionCode: string | null;
+  optionName: string;
+  blockName: string;
+}
+
 /** Một bài thi có khối câu hỏi lấy được câu này. */
 export interface QuestionUsageExam {
   examId: string;
@@ -154,6 +162,8 @@ export interface QuestionUsageExam {
   subjectCode: string;
   /** Tên khối câu hỏi lấy được câu này. */
   blockName: string;
+  /** Mọi khối (phần, lựa chọn, khối) của bài lấy được câu này; thiếu khi dữ liệu không chia theo khối. */
+  blocks?: QuestionUsageBlock[];
   /** Số lượt thi đã dùng từng phiên bản của câu này trong bài thi, phiên bản mới trước. */
   attemptsByVersion: QuestionUsageVersionAttempts[];
 }
