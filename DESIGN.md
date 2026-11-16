@@ -353,7 +353,7 @@ Quy ước thêm ở đợt 7 kỳ thi và chấm tự luận (UNI-2599):
 
 Quy ước thêm ở ma trận theo môn và bước 1 theo phạm vi (UNI-2613):
 
-- **Bước 1 Tạo bài thi** chọn Phạm vi bài thi (Toàn bài, Theo phần, Theo môn; kỳ thi chỉ có một phạm vi thì hiện một dòng chữ thay nhóm radio), rồi Phần thi (Theo phần) hoặc Môn (Theo môn), có Hướng dẫn làm bài (ô chữ thuần tới khi FE-4 nối trình soạn, không nhận ảnh). Không có ô chọn mẫu hay năm: hệ thống nạp mẫu mới nhất và ghi chú mẫu (`TemplateNotes`) nói đổi phiên bản năm ở bước Cấu trúc.
+- **Bước 1 Tạo bài thi** chọn Phạm vi bài thi (Toàn bài, Theo phần, Theo môn; kỳ thi chỉ có một phạm vi thì hiện một dòng chữ thay nhóm radio), rồi Phần thi (Theo phần) hoặc Môn (Theo môn), có Hướng dẫn làm bài (trình soạn `RichTextEditor`, không nhận ảnh, mục 5.15). Không có ô chọn mẫu hay năm: hệ thống nạp mẫu mới nhất và ghi chú mẫu (`TemplateNotes`) nói đổi phiên bản năm ở bước Cấu trúc.
 - **Bước Cấu trúc:** ô "Phiên bản cấu trúc" (`StructureVersionPicker`) nằm trong thẻ tổng hợp, chỉ hiện khi có mẫu khớp bài; một phiên bản thì khóa ô. Mỗi phần có Quy tắc tham gia (làm tất cả, hoặc chọn k phương án), Số câu trên đề, Số câu phải làm (mặc định bằng số câu trên đề) và Điểm tối đa của phần để trống được.
 - **Soạn theo môn:** cột Cấu trúc đi phần → môn → nhóm; bấm môn mở màn môn (`ExamStructureSubjectPanel`) gồm khu **Chỉ tiêu cấp môn** (dạng trả lời, khối lớp và độ khó, MAPID) và danh sách nhóm lấy câu do mẫu khởi tạo; bấm nhóm mở màn nhóm, có nút "Về màn môn". Mặc định mở môn đầu tiên.
 - **Đã phân bổ và còn thiếu** đứng cạnh từng chỉ tiêu (cột "Đã phân bổ", "Còn thiếu"; thiếu hiện màu cảnh báo kèm số, không chỉ màu). Câu con của chùm trừ vào chỉ tiêu dạng trả lời theo dạng của câu con; nhóm chưa xác định dạng được ghi riêng ("nhóm chưa xác định dạng") và lấp phần chỉ tiêu còn thiếu. Môn có số câu thay đổi (Khoa học: 16 hoặc 17) có nút chọn trường hợp để xem số câu quy ra; chỉ tiêu của môn đó khai theo %.
@@ -366,6 +366,17 @@ Quy ước thêm ở FE-3b (giao diện ngân hàng câu hỏi theo UniNote 2026
 - **Xem trước câu hỏi** (`features/questions/preview`, tab Xem trước và mục "Xem trước" của menu dòng): câu hiện như học viên thấy trong **khung web** (cửa sổ trình duyệt, nội dung tối đa `max-w-3xl`) hoặc **khung điện thoại** (360px, `w-90`), chuyển bằng `Tabs` kiểu `segmented`. Bề rộng nội dung đo bằng container query của khung (`@container`), không theo cửa sổ admin. Phương án giữ thứ tự gốc (đảo thứ tự chỉ có ở lượt thi).
 - **Chấm thử:** nút "Chấm thử" mới hiện đáp án đúng và điểm; đổi đáp án sau khi chấm thì kết quả cũ ẩn tới lần chấm sau. Mỗi ý (ô trống, mệnh đề, cặp ghép, câu con) ghi Đúng, Sai hoặc Bỏ trống bằng chữ kèm icon, không chỉ màu; điểm hiển thị làm tròn nửa lên 2 chữ số ở bước cuối. Câu Tự luận không có điểm tự động: hiện "Chờ chấm" và bảng đối chiếu bài làm thử với hướng dẫn chấm, tiêu chí và bài mẫu.
 - **Cột nhiều dòng của tệp nhập** (Lựa chọn, Lựa chọn phải, Đáp án, Cách chấm, Tiêu chí chấm): mỗi mục một dòng trong ô; thiếu đáp án chỉ cảnh báo (câu vào Nháp), tham chiếu sai hoặc cách chấm sai là lỗi chặn dòng.
+
+### 5.15 Editor and preview (rich text)
+
+Trình soạn và khung xem nội dung HTML (UNI-2617): `RichTextEditor` và `RichTextView` ở `components/rich-text`, dùng cho Hướng dẫn làm bài của bài thi, nội dung, phương án và lời giải của câu hỏi.
+
+- **Thanh công cụ** nằm trên khung soạn (`role="toolbar"`, tên "Định dạng nội dung"), hàng nút icon lucide 16px kèm `aria-label`: Đậm, Nghiêng, Gạch chân, Gạch ngang, Chỉ số dưới, Chỉ số trên, Danh sách chấm, Danh sách số, Chèn bảng, Chèn công thức, Chèn ảnh. Chỉ có đúng các định dạng mà bộ lọc HTML của máy chủ cho phép; không thêm nút ngoài danh sách đó.
+- **Khung soạn** dùng token của ô nhập (mục 5.2): viền `border`, focus `primary-text`; có lỗi thì viền `danger` và `aria-invalid`, kèm dòng lỗi của `FormField`. Nhãn đi qua `aria-label` của vùng soạn vì `label for` không gắn được vào vùng `contenteditable`. Chiều cao tối thiểu 7rem, tối đa 28rem rồi cuộn trong khung.
+- **Công thức:** nút "Chèn công thức" mở hộp thoại nhập mã LaTeX, chọn "Cùng dòng" hoặc "Khối"; công thức nằm trong nội dung là **chip** đã dựng bằng KaTeX, viền `primary`, bấm chọn rồi mở lại để sửa. Lưu thành `span.math-inline` hoặc `span.math-block`.
+- **Cảnh báo công thức:** công thức có dấu mở hoặc đóng không khớp hiện dòng chữ màu `warning` ("Công thức có dấu mở hoặc đóng không khớp", `role="alert"`) ngay dưới khung soạn; chỉ cảnh báo, không chặn nhập hay lưu.
+- **Nút ảnh:** chỉ hiện khi `allowImages` bật (mặc định). `allowImages={false}` (Hướng dẫn làm bài của bài thi, spec 5.2) ẩn nút Chèn ảnh, chặn dán và thả ảnh; khung xem với `allowImages={false}` bỏ mọi `img`.
+- **Khung xem:** nơi chỉ đọc HTML (xem trước đề, chi tiết câu hỏi) dùng `RichTextView`, không bao giờ `dangerouslySetInnerHTML` trực tiếp; view lọc lại theo cùng danh sách cho phép rồi dựng công thức bằng KaTeX sau khi trang đã gắn vào trình duyệt. Xem trước đề của bài thi hiển thị đoạn dẫn của chùm, nội dung câu, phương án và lời giải bằng `RichTextView`; tiêu chí chấm, đáp án ngắn và các nhãn là chữ thuần nên giữ thẻ văn bản.
 
 ## 6. Icon và hình ảnh
 

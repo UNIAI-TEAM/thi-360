@@ -6,34 +6,27 @@ import { useTranslations } from "next-intl";
 import { useId, useRef } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
+  BLANK_MARKER,
   countBlankMarkers,
   draftRowId,
   emptyBlank,
-  insertBlankMarker,
   removeBlankMarker,
   type QuestionEditorValues,
 } from "../editor-form";
-import { FieldErrorText, GroupError, useAnnounce, useEditorError, type BodyPath, type ContentPath } from "./question-editor-shared";
+import { FieldErrorText, GroupError, useAnnounce, useEditorError, useRichEditorRegistry, type BodyPath, type ContentPath } from "./question-editor-shared";
 
 /**
  * Ô trống của câu Điền đáp án (canvas `CauHoiDienDapAnForm`). Chỗ trống là `___` trong đề bài: "Thêm ô trống" chèn
- * `___` tại con trỏ của ô Đề bài và thêm dòng đáp án đúng thứ tự; xóa dòng thì bỏ chỗ trống tương ứng. Mỗi ô có
- * thể có nhiều đáp án chấp nhận. Kiểu đáp án (Số / Văn bản) của bản vẽ chưa có trong mô hình dữ liệu.
+ * `___` đúng chỗ con trỏ trong ô Đề bài (cuối đề bài nếu ô chưa từng được focus) và thêm dòng đáp án đúng thứ tự; xóa
+ * dòng thì bỏ chỗ trống tương ứng. Mỗi ô có thể có nhiều đáp án chấp nhận. Kiểu đáp án (Số / Văn bản) của bản vẽ chưa
+ * có trong mô hình dữ liệu.
  */
-export function BlanksEditor({
-  prefix,
-  contentPath,
-  contentFieldId,
-}: {
-  prefix: BodyPath;
-  contentPath: ContentPath;
-  /** Id của ô Đề bài để đọc vị trí con trỏ. */
-  contentFieldId: string;
-}) {
+export function BlanksEditor({ prefix, contentPath }: { prefix: BodyPath; contentPath: ContentPath }) {
   const t = useTranslations("questions.editor.blanks");
   const announce = useAnnounce();
   const groupId = useId();
   const addRef = useRef<HTMLButtonElement>(null);
+  const registry = useRichEditorRegistry();
   const { control, getValues, setValue, formState, trigger } = useFormContext<QuestionEditorValues>();
   const { fields, insert, remove } = useFieldArray({ control, name: `${prefix}.blanks`, keyName: "rowKey" });
   const content = useWatch({ control, name: contentPath }) ?? "";
@@ -45,13 +38,16 @@ export function BlanksEditor({
   };
 
   const addBlank = () => {
-    const field = document.getElementById(contentFieldId) as HTMLTextAreaElement | null;
-    const current = getValues(contentPath);
-    // Ô nhập nhiều dòng giữ vị trí con trỏ sau khi mất focus, nên bấm nút vẫn chèn đúng chỗ vừa gõ.
-    const result = insertBlankMarker(current, field ? field.selectionStart : current.length);
-    setValue(contentPath, result.content, { shouldDirty: true });
-    insert(result.index, emptyBlank(), { shouldFocus: true, focusName: `${prefix}.blanks.${result.index}.answers.0.value` });
-    announce(t("added", { number: result.index + 1 }));
+    const editor = registry?.get(contentPath);
+    if (!editor) return;
+    // Chỗ trống mới vào đúng con trỏ trong ô Đề bài (cuối đề bài nếu ô chưa từng được focus).
+    const { before, after } = editor.getInsertionContext();
+    const spaceBefore = before.length > 0 && !/\s$/.test(before) ? " " : "";
+    const spaceAfter = after.length > 0 && !/^\s/.test(after) ? " " : "";
+    if (!editor.insertText(`${spaceBefore}${BLANK_MARKER}${spaceAfter}`)) return;
+    const index = countBlankMarkers(before);
+    insert(index, emptyBlank(), { shouldFocus: true, focusName: `${prefix}.blanks.${index}.answers.0.value` });
+    announce(t("added", { number: index + 1 }));
     revalidate();
   };
 

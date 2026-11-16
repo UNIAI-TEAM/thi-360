@@ -1,9 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/messages/en.json";
-import { renderWithProviders } from "@/test/render";
+import { renderEn } from "./editor-test-kit";
 import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { QuestionTypePicker } from "../components/question-type-picker";
@@ -14,10 +12,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/questions/new",
   useRouter: () => ({ push: navigation.push, replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
-
-function renderEn(ui: ReactElement) {
-  return renderWithProviders(ui, { locale: "en", messages: en });
-}
 
 beforeEach(() => {
   navigation.push.mockReset();

@@ -6,7 +6,7 @@ import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { emptyChild, toEditorValues, type EditorChild } from "../editor-form";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { questionStore } from "../mock/store";
-import { renderEn, seedQuestion, storedQuestion } from "./editor-test-kit";
+import { renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -50,10 +50,10 @@ describe("truong dung chung: dang bai, loi sai thuong gap", () => {
 
     await user.click(taskType);
     await user.click(await screen.findByRole("option", { name: "Tính toán" }));
-    await user.type(screen.getByRole("textbox", { name: /^Common mistakes/ }), "  Nhầm dấu khi chuyển vế  ");
+    rich(screen.getByRole("textbox", { name: /^Common mistakes/ })).set("<p>Nhầm dấu khi chuyển vế</p>");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
-    expect(storedQuestion(id)).toMatchObject({ taskTypeCode: "CALCULATION", commonMistakes: "Nhầm dấu khi chuyển vế" });
+    expect(storedQuestion(id)).toMatchObject({ taskTypeCode: "CALCULATION", commonMistakes: "<p>Nhầm dấu khi chuyển vế</p>" });
 
     // Chọn lại "None" bỏ dạng bài.
     await user.click(screen.getByRole("combobox", { name: "Task type" }));

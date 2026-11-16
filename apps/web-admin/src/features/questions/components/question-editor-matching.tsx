@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Checkbox, FormField, Input, Select } from "@thi360/ui";
+import { Button, Checkbox, FormField, Input, Label, Select } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef } from "react";
@@ -15,6 +15,7 @@ import {
   type QuestionEditorValues,
 } from "../editor-form";
 import { PointsTotalLine } from "./question-editor-points-total";
+import { RichTextField } from "./question-editor-rich-field";
 import {
   FieldErrorText,
   GroupError,
@@ -222,6 +223,7 @@ function PairRow({
   const tErrors = useTranslations("questions.editor.errors");
   const { control, register, formState, trigger } = useFormContext<QuestionEditorValues>();
   const number = index + 1;
+  const rowId = useId();
   const contentError = useEditorError(`${prefix}.left.${index}.content`);
   const pointsError = useEditorError(`${prefix}.left.${index}.points`);
   return (
@@ -231,11 +233,19 @@ function PairRow({
         <RowActions index={index} count={count} name={t("pairName", { number })} onMove={onMove} onRemove={onRemove} />
       </div>
       <div className="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem]">
-        <FormField label={t("leftLabel")} error={contentError}>
-          {(controlProps) => (
-            <Input {...controlProps} autoComplete="off" {...register(`${prefix}.left.${index}.content`)} />
-          )}
-        </FormField>
+        <div className="flex flex-col gap-1.5">
+          <Label id={`${rowId}-left-label`} htmlFor={`${rowId}-left`}>
+            {t("leftLabel")}
+          </Label>
+          <RichTextField
+            id={`${rowId}-left`}
+            aria-labelledby={`${rowId}-left-label`}
+            aria-invalid={contentError ? true : undefined}
+            aria-describedby={contentError ? `${rowId}-left-error` : undefined}
+            name={`${prefix}.left.${index}.content`}
+          />
+          <FieldErrorText id={`${rowId}-left-error`} message={contentError} />
+        </div>
         <Controller
           control={control}
           name={`${prefix}.left.${index}.rightId`}
@@ -281,7 +291,6 @@ function RightRow({
   onRemove: () => void;
 }) {
   const t = useTranslations("questions.editor.matching");
-  const { register } = useFormContext<QuestionEditorValues>();
   const inputId = useId();
   const letter = optionLetter(index);
   const error = useEditorError(`${prefix}.right.${index}.content`);
@@ -291,15 +300,15 @@ function RightRow({
         <span aria-hidden className="w-6 shrink-0 font-semibold text-text">
           {letter}.
         </span>
-        <Input
-          id={inputId}
-          aria-label={t("rightLabel", { letter })}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${inputId}-error` : undefined}
-          autoComplete="off"
-          className="min-w-0 flex-1 basis-48"
-          {...register(`${prefix}.right.${index}.content`)}
-        />
+        <div className="min-w-0 flex-1 basis-48">
+          <RichTextField
+            id={inputId}
+            aria-label={t("rightLabel", { letter })}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${inputId}-error` : undefined}
+            name={`${prefix}.right.${index}.content`}
+          />
+        </div>
         <RowActions index={index} count={count} name={t("rightName", { letter })} onMove={onMove} onRemove={onRemove} />
       </div>
       <FieldErrorText id={`${inputId}-error`} message={error} />

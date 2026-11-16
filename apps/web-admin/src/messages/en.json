@@ -2375,7 +2375,7 @@
         "passage": "Shared passage"
       },
       "contentHint": {
-        "default": "Plain multi-line text. The rich editor with formulas, images and tables comes later.",
+        "default": "Use the toolbar for text formatting, lists, tables, images and formulas (Σ button).",
         "fillIn": "Type ___ (three underscores) where the answer goes, or place the cursor and press “Add blank”.",
         "trueFalse": "Shared by every statement: given data, figures, tables.",
         "passage": "Reading text, data table or figure shared by all sub-questions.",
@@ -5109,6 +5109,36 @@
         "NOT_FOUND": "Attempt not found.",
         "generic": "Could not save the scores. Try again."
       }
+    }
+  },
+  "richText": {
+    "formula": {
+      "block": "Block",
+      "cancel": "Cancel",
+      "close": "Close",
+      "description": "Enter LaTeX code; the formula is shown rendered inside the content.",
+      "displayLabel": "Display style",
+      "inline": "Inline",
+      "insert": "Insert formula",
+      "latexLabel": "LaTeX code",
+      "latexPlaceholder": "x^2 + y^2 = z^2",
+      "title": "Insert formula"
+    },
+    "mathUnbalanced": "Math delimiters are unbalanced",
+    "toolbar": {
+      "bold": "Bold",
+      "bulletList": "Bullet list",
+      "formula": "Insert formula",
+      "image": "Insert image",
+      "imageUploading": "Uploading image",
+      "italic": "Italic",
+      "label": "Content formatting",
+      "orderedList": "Numbered list",
+      "strike": "Strikethrough",
+      "subscript": "Subscript",
+      "superscript": "Superscript",
+      "table": "Insert table",
+      "underline": "Underline"
     }
   }
 }

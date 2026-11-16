@@ -16,6 +16,7 @@ import {
   type QuestionEditorValues,
 } from "../editor-form";
 import { PointsTotalLine } from "./question-editor-points-total";
+import { RichTextField } from "./question-editor-rich-field";
 import { ScoreTableEditor } from "./question-editor-score-table";
 import {
   FieldErrorText,
@@ -195,15 +196,15 @@ function StatementRow({
         <span aria-hidden className="w-6 shrink-0 font-semibold text-text">
           {letter})
         </span>
-        <Input
-          id={inputId}
-          aria-label={t("contentLabel", { letter })}
-          aria-invalid={contentError ? true : undefined}
-          aria-describedby={contentError ? `${inputId}-error` : undefined}
-          autoComplete="off"
-          className="min-w-0 flex-1 basis-48"
-          {...register(`${prefix}.statements.${index}.content`)}
-        />
+        <div className="min-w-0 flex-1 basis-48">
+          <RichTextField
+            id={inputId}
+            aria-label={t("contentLabel", { letter })}
+            aria-invalid={contentError ? true : undefined}
+            aria-describedby={contentError ? `${inputId}-error` : undefined}
+            name={`${prefix}.statements.${index}.content`}
+          />
+        </div>
         <RowActions index={index} count={count} name={t("rowName", { letter })} onMove={onMove} onRemove={onRemove} />
       </div>
       <FieldErrorText id={`${inputId}-error`} message={contentError} />

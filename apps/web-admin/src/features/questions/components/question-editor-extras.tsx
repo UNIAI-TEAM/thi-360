@@ -1,12 +1,12 @@
 "use client";
 
-import { Button, IconButton, Textarea } from "@thi360/ui";
+import { Button, IconButton } from "@thi360/ui";
 import { Paperclip, Trash2, Upload } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useRef, useState, type ChangeEvent } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import type { QuestionEditorValues } from "../editor-form";
-import { SOLUTION_MAX } from "../editor-schema";
+import { RichTextField } from "./question-editor-rich-field";
 import { ATTACHMENT_ACCEPT, attachmentInfo, checkAttachment, uploadQuestionAttachment } from "../editor/attachments";
 import { EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
 
@@ -14,19 +14,16 @@ import { EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./qu
 export function CommonMistakesSection({ formId }: { formId: string }) {
   const t = useTranslations("questions.editor.commonMistakes");
   const tCommon = useTranslations("questions.editor");
-  const { register } = useFormContext<QuestionEditorValues>();
   const error = useEditorError("commonMistakes");
   const titleId = `${formId}-mistakes-title`;
   return (
     <EditorSection title={t("title")} titleId={titleId} optionalLabel={tCommon("optional")}>
       <div className="flex flex-col gap-1.5">
-        <Textarea
-          rows={3}
-          maxLength={SOLUTION_MAX}
+        <RichTextField
           aria-labelledby={titleId}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${formId}-mistakes-error` : `${formId}-mistakes-hint`}
-          {...register("commonMistakes")}
+          name="commonMistakes"
         />
         {!error && (
           <p id={`${formId}-mistakes-hint`} className="text-caption text-text-muted">

@@ -602,31 +602,6 @@ export function questionSetPoints(children: readonly Pick<EditorChild, "points">
   }, 0);
 }
 
-/**
- * Chèn chỗ trống `___` vào đề bài tại vị trí con trỏ (không cắt đôi một chỗ trống có sẵn). Trả về đề bài mới, thứ tự
- * của chỗ trống vừa chèn (để thêm dòng đáp án đúng vị trí) và vị trí con trỏ sau chỗ trống.
- */
-export function insertBlankMarker(
-  content: string,
-  position: number,
-): { content: string; index: number; caret: number } {
-  let at = Math.min(Math.max(position, 0), content.length);
-  // Con trỏ đang nằm giữa một `___` thì dời ra sau nó.
-  for (let start = content.indexOf(BLANK_MARKER); start !== -1; start = content.indexOf(BLANK_MARKER, start + BLANK_MARKER.length)) {
-    if (at > start && at < start + BLANK_MARKER.length) at = start + BLANK_MARKER.length;
-  }
-  const before = content.slice(0, at);
-  const after = content.slice(at);
-  const spaceBefore = before.length > 0 && !/\s$/.test(before) ? " " : "";
-  const spaceAfter = after.length > 0 && !/^\s/.test(after) ? " " : "";
-  const next = `${before}${spaceBefore}${BLANK_MARKER}${spaceAfter}${after}`;
-  return {
-    content: next,
-    index: countBlankMarkers(before),
-    caret: before.length + spaceBefore.length + BLANK_MARKER.length,
-  };
-}
-
 /** Bỏ chỗ trống thứ `index` (tính từ 0) khỏi đề bài; không có thì giữ nguyên. */
 export function removeBlankMarker(content: string, index: number): string {
   let start = -1;

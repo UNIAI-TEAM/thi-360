@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
 import { examStore } from "../mock/store";
@@ -142,19 +143,28 @@ describe("trang Tạo bài thi", () => {
     expect(screen.getByText("Kỳ thi này chỉ có phạm vi này")).toBeInTheDocument();
     // Không còn ô chọn mẫu theo năm; chỉ ghi chú mẫu mới nhất.
     expect(screen.queryByRole("radio", { name: /^Cấu trúc 20/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/Hệ thống nạp mẫu mới nhất: SP2E 2026 · Toán · 40 câu · 90 phút/)).toBeInTheDocument();
+    expect(screen.getByText(/Hệ thống nạp mẫu mới nhất: SP2E Toán 2026/)).toBeInTheDocument();
     expect(screen.getAllByText(/Cấu trúc 2026 dùng ma trận 2025/).length).toBeGreaterThan(0);
     expect(screen.queryByRole("checkbox", { name: /Chuyên gia đã xác nhận/ })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("SP2E-S-TOAN-001"));
     expect(within(summary()).getByText("90 phút")).toBeInTheDocument();
   }, 20_000);
 
+  it("en: câu nạp mẫu dùng tên đã dịch, không lẫn đơn vị tiếng Việt của tên mẫu", async () => {
+    renderWithProviders(<CreateExamPage />, { locale: "en", messages: en });
+    const note = await screen.findByText(/The system loads the latest template/);
+    expect(note).toHaveTextContent("The system loads the latest template: HSA · Whole exam.");
+    expect(note.textContent).not.toMatch(/phần|câu|phút/);
+  });
+
   it("hướng dẫn làm bài đi theo yêu cầu tạo; phạm vi Theo phần gửi mã phần", async () => {
     const user = await renderPage();
     await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
     await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA Toán · Đề thử");
-    await user.type(screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }), "Đọc kỹ đề trước khi làm.");
+    // Trình soạn TipTap: jsdom không có elementFromPoint nên không gõ qua click; focus rồi dán văn bản thuần.
+    screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }).focus();
+    await user.paste("Đọc kỹ đề trước khi làm.");
     const score = screen.getByRole("textbox", { name: /Thang điểm/ });
     await user.clear(score);
     await user.type(score, "50");
@@ -165,7 +175,7 @@ describe("trang Tạo bài thi", () => {
       scope: "PART",
       partCode: "MATH",
       subjectCode: null,
-      instructions: "Đọc kỹ đề trước khi làm.",
+      instructions: "<p>Đọc kỹ đề trước khi làm.</p>",
     });
   }, 20_000);
 

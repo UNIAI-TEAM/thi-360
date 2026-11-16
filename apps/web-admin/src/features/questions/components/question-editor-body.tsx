@@ -14,12 +14,10 @@ export function QuestionBodyEditor({
   type,
   prefix,
   contentPath,
-  contentFieldId,
 }: {
   type: QuestionType;
   prefix: BodyPath;
   contentPath: ContentPath;
-  contentFieldId: string;
 }) {
   switch (type) {
     case "SINGLE_CHOICE":
@@ -31,7 +29,7 @@ export function QuestionBodyEditor({
     case "SHORT_ANSWER":
       return <ShortAnswerEditor prefix={prefix} />;
     case "CLOZE":
-      return <BlanksEditor prefix={prefix} contentPath={contentPath} contentFieldId={contentFieldId} />;
+      return <BlanksEditor prefix={prefix} contentPath={contentPath} />;
     case "MATCHING":
       return <MatchingEditor prefix={prefix} />;
     case "ESSAY":

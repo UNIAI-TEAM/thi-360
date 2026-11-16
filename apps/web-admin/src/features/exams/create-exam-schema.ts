@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CatalogOption, CombinationOption, ExamKindOption } from "@/features/content/types";
+import { questionHtmlText } from "@/components/rich-text/sanitize";
 import { splitEvenly, sum } from "./matrix";
 import type {
   CreateExamPartInput,
@@ -797,7 +798,8 @@ export function toCreateExamRequest(values: CreateExamFormValues): CreateExamReq
     durationMinutes: shared ? values.sharedDuration : null,
     maxScore: values.maxScore,
     description: values.description.trim() || null,
-    instructions: values.instructions.trim() || null,
+    // Hướng dẫn là HTML: trình soạn rỗng cho `<p></p>`, nên coi là trống khi không còn chữ nào.
+    instructions: questionHtmlText(values.instructions).trim() ? values.instructions.trim() : null,
     parts: partInputsFromValues(values.parts, values),
   };
 }

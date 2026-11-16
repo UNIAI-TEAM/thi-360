@@ -172,6 +172,13 @@ describe("kiểm tra trang Tạo bài thi", () => {
     expect(request.parts?.[2]).toMatchObject({ mode: "CHOICE", subjectCode: null, englishOption: true });
   });
 
+  it("hướng dẫn HTML không còn chữ nào (đoạn rỗng, khoảng trắng) gửi thành null, có chữ thì giữ HTML", () => {
+    for (const blank of ["<p></p>", "<p></p><p></p>", "<p> </p>", "<p><br></p>", "  "]) {
+      expect(toCreateExamRequest(values({ instructions: blank })).instructions).toBeNull();
+    }
+    expect(toCreateExamRequest(values({ instructions: " <p>Đọc kỹ đề.</p> " })).instructions).toBe("<p>Đọc kỹ đề.</p>");
+  });
+
   it("mã trùng (đã biết từ máy chủ) bị báo, không phân biệt hoa thường", () => {
     expect(errors(values({ code: "hsa-f-001" }), new Set(["HSA-F-001"]))).toEqual({ code: "codeTaken" });
     expect(errors(values({ code: "HSA F 1" }))).toEqual({ code: "codeInvalid" });

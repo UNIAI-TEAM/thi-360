@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import type { CatalogOption, ExamKindOption } from "@/features/content/types";
+import { RichTextEditor } from "@/components/rich-text";
 import {
   createExamInfoSchema,
   EXAM_CODE_MAX,
@@ -462,11 +463,14 @@ export function ScopeFields({
  */
 export function TemplateNotes({
   template,
+  name,
   yearsConfirmed = false,
   onYearsConfirmedChange,
   disabled,
 }: {
   template: ExamTemplate | undefined;
+  /** Tên đã dịch của mẫu; thiếu thì dùng `template.name` của dữ liệu. */
+  name?: string;
   yearsConfirmed?: boolean;
   onYearsConfirmedChange?: (confirmed: boolean) => void;
   disabled?: boolean;
@@ -482,7 +486,7 @@ export function TemplateNotes({
       <p className="flex items-start gap-2 text-body text-text-secondary">
         <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
         <span>
-          {t("loaded", { name: template.name })} {t("changeInStructure")}
+          {t("loaded", { name: name ?? template.name })} {t("changeInStructure")}
         </span>
       </p>
       {hasYears && (
@@ -764,12 +768,20 @@ export function ExamInfoFields({
       </FormField>
       <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={errors.instructions?.message}>
         {(controlProps) => (
-          <Textarea
-            {...controlProps}
-            {...register("instructions")}
-            rows={4}
-            maxLength={EXAM_INSTRUCTIONS_MAX}
-            placeholder={t("instructionsPlaceholder")}
+          <Controller
+            control={control}
+            name="instructions"
+            render={({ field }) => (
+              <RichTextEditor
+                {...controlProps}
+                value={field.value}
+                onChange={field.onChange}
+                aria-label={t("instructionsLabel")}
+                allowImages={false}
+                invalid={Boolean(errors.instructions)}
+                placeholder={t("instructionsPlaceholder")}
+              />
+            )}
           />
         )}
       </FormField>

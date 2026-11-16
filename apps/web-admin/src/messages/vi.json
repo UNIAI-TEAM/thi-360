@@ -2375,7 +2375,7 @@
         "passage": "Đoạn dẫn chung"
       },
       "contentHint": {
-        "default": "Ô nhập nhiều dòng. Trình soạn thảo có công thức, hình và bảng sẽ có ở bản sau.",
+        "default": "Soạn bằng thanh công cụ: định dạng chữ, danh sách, bảng, hình và công thức (nút Σ).",
         "fillIn": "Ghi ___ (ba dấu gạch dưới) ở chỗ cần điền, hoặc đặt con trỏ rồi bấm “Thêm ô trống”.",
         "trueFalse": "Phần dùng chung cho mọi ý: dữ kiện, hình vẽ, bảng số liệu.",
         "passage": "Bài đọc, bảng số liệu hoặc hình dùng chung cho mọi câu con.",
@@ -5109,6 +5109,36 @@
         "NOT_FOUND": "Không tìm thấy lượt thi.",
         "generic": "Không lưu được điểm. Hãy thử lại."
       }
+    }
+  },
+  "richText": {
+    "formula": {
+      "block": "Khối",
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "description": "Nhập mã LaTeX; công thức hiển thị dưới dạng đã dựng trong nội dung.",
+      "displayLabel": "Kiểu hiển thị",
+      "inline": "Cùng dòng",
+      "insert": "Chèn công thức",
+      "latexLabel": "Mã LaTeX",
+      "latexPlaceholder": "x^2 + y^2 = z^2",
+      "title": "Chèn công thức"
+    },
+    "mathUnbalanced": "Công thức có dấu mở hoặc đóng không khớp",
+    "toolbar": {
+      "bold": "Đậm",
+      "bulletList": "Danh sách chấm",
+      "formula": "Chèn công thức",
+      "image": "Chèn ảnh",
+      "imageUploading": "Đang tải ảnh lên",
+      "italic": "Nghiêng",
+      "label": "Định dạng nội dung",
+      "orderedList": "Danh sách số",
+      "strike": "Gạch ngang",
+      "subscript": "Chỉ số dưới",
+      "superscript": "Chỉ số trên",
+      "table": "Chèn bảng",
+      "underline": "Gạch chân"
     }
   }
 }

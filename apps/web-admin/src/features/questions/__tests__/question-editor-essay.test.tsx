@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { questionStore } from "../mock/store";
-import { renderEn, seedQuestion, storedQuestion } from "./editor-test-kit";
+import { renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -52,11 +52,10 @@ describe("trinh soan Tu luan: huong dan cham bat buoc", () => {
     const id = await seedEssay("Cho diem theo y");
     renderEn(<QuestionEditorView mode="edit" questionId={id} />);
     const guide = await screen.findByRole("textbox", { name: /^Grading guide/ });
-    expect(guide).toHaveValue("Cho diem theo y");
-    expect(guide).toBeRequired();
+    expect(rich(guide).text).toBe("Cho diem theo y");
+    expect(guide).toHaveAttribute("aria-required", "true");
 
-    await user.clear(guide);
-    await user.type(guide, "   ");
+    rich(guide).set("<p>   </p>");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     expect(await screen.findByText("Enter the grading guide.")).toBeInTheDocument();
     expect(guide).toHaveAttribute("aria-invalid", "true");
@@ -64,14 +63,13 @@ describe("trinh soan Tu luan: huong dan cham bat buoc", () => {
     expect(navigation.push).not.toHaveBeenCalled();
     expect(storedQuestion(id).body).toMatchObject({ gradingGuide: "Cho diem theo y" });
 
-    await user.clear(guide);
-    await user.type(guide, "  Diem noi dung 1, trinh bay 1  ");
+    rich(guide).set("<p>Diem noi dung 1, trinh bay 1</p>");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
     // Tiêu chí chấm là tùy chọn (D20): không có tiêu chí vẫn lưu được; điểm tối đa là điểm của câu.
     expect(storedQuestion(id)).toMatchObject({
       points: 2,
-      body: { type: "ESSAY", gradingGuide: "Diem noi dung 1, trinh bay 1", rubric: [], wordLimit: null },
+      body: { type: "ESSAY", gradingGuide: "<p>Diem noi dung 1, trinh bay 1</p>", rubric: [], wordLimit: null },
     });
   });
 

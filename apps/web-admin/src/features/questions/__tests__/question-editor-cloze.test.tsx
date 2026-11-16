@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { questionStore } from "../mock/store";
-import { renderEn, seedQuestion, storedQuestion } from "./editor-test-kit";
+import { renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -74,7 +74,7 @@ describe("trinh soan Dien khuyet", () => {
 
     await user.click(within(section).getByRole("button", { name: "Add blank" }));
     expect(within(section).getByText("The text has 3 gaps ___ and 3 answer blanks.")).toBeInTheDocument();
-    expect((text as HTMLTextAreaElement).value.split("___")).toHaveLength(4);
+    expect(rich(text).text.split("___")).toHaveLength(4);
     // Ô mới mang điểm mặc định 1 và đã vào tổng điểm.
     expect(screen.getByRole("textbox", { name: "Points of blank 3" })).toHaveValue("1");
     expect(screen.getByRole("textbox", { name: /^Points \(calculated\)/ })).toHaveValue("3.5");
@@ -82,6 +82,45 @@ describe("trinh soan Dien khuyet", () => {
     await user.click(within(section).getByRole("button", { name: "Delete blank 1" }));
     expect(within(section).getByText("The text has 2 gaps ___ and 2 answer blanks.")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /^Points \(calculated\)/ })).toHaveValue("2.5");
+  });
+
+  it("đề bài là HTML: chỗ trống mới nằm trong đoạn văn cuối, không rơi ra ngoài thẻ", async () => {
+    const user = userEvent.setup();
+    const id = await seedCloze();
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+    rich(text).set("<p>Hà Nội là ___ của ___.</p>");
+
+    await user.click(screen.getByRole("button", { name: "Add blank" }));
+    expect(rich(text).text.split("___")).toHaveLength(4);
+    expect(rich(text).html).toMatch(/^<p>.*___\s*<\/p>$/);
+    expect(rich(text).html.match(/<p>/g)).toHaveLength(1);
+  });
+
+  it("chỗ trống mới chèn đúng chỗ con trỏ giữa câu và dòng đáp án mới nằm đúng thứ tự", async () => {
+    const user = userEvent.setup();
+    const id = await seedCloze();
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+    await rich(text).placeCaretAfter("Hà Nội ");
+
+    await user.click(screen.getByRole("button", { name: "Add blank" }));
+
+    expect(rich(text).text).toBe("Hà Nội ___ là ___ của ___.");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 1" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 2" })).toHaveValue("thủ đô");
+  });
+
+  it("chưa từng focus vào đề bài thì chỗ trống mới nối vào cuối", async () => {
+    const user = userEvent.setup();
+    const id = await seedCloze();
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+
+    await user.click(screen.getByRole("button", { name: "Add blank" }));
+
+    expect(rich(text).text).toBe("Hà Nội là ___ của ___. ___");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 3" })).toHaveValue("");
   });
 
   it("diem o khong hop le, thieu dap an hoac lech so cho trong thi chan luu va chi dung o loi", async () => {
@@ -104,8 +143,7 @@ describe("trinh soan Dien khuyet", () => {
     await user.type(first, "1");
     await user.type(screen.getByRole("textbox", { name: "Answer 1 for blank 1" }), "thủ đô");
     const text = screen.getByRole("textbox", { name: /^Question text/ });
-    await user.clear(text);
-    await user.type(text, "Chỉ còn một chỗ trống ___ thôi.");
+    rich(text).set("<p>Chỉ còn một chỗ trống ___ thôi.</p>");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     expect(
       await screen.findByText("The number of ___ gaps in the text must equal the number of answer blanks."),

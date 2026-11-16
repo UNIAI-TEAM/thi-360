@@ -31,6 +31,14 @@ export const bulkMarkQuestionsReady = contentApi(mock.bulkMarkQuestionsReady);
 export const bulkRetireQuestions = contentApi(mock.bulkRetireQuestions);
 export const getQuestionRetireImpact = contentApi(mock.getQuestionRetireImpact);
 
+export type { QuestionAsset, QuestionAssetKind } from "./api.mock";
+
+/**
+ * Tải tài nguyên câu hỏi (`POST /question-assets`, spec 4.5): `kind` là `IMAGE` cho ảnh chèn vào
+ * nội dung (PNG/JPEG/WebP, tối đa 5 MB) hoặc `ATTACHMENT` cho tệp đính kèm (tối đa 20 MB).
+ */
+export const uploadQuestionAsset = contentApi(mock.uploadQuestionAsset);
+
 export interface QuestionsApiDeps {
   listQuestions: typeof listQuestions;
   getQuestion: typeof getQuestion;
