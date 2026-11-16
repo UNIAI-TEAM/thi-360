@@ -162,6 +162,8 @@ export function RichTextEditor({
       editorProps: {
         attributes,
         handlePaste: (view: EditorView, event: ClipboardEvent) => {
+          // Word/Docs đưa kèm ảnh chụp của chính đoạn văn: có `text/html` thì để TipTap dán HTML, chỉ dán tệp ảnh thuần mới tải lên.
+          if (event.clipboardData?.getData("text/html")) return false;
           const files = imageFilesOf(event.clipboardData);
           if (files.length === 0) return false;
           if (!allowImagesRef.current) return true;

@@ -4,9 +4,16 @@ import { StrictMode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import type * as QuestionsApi from "@/features/questions/api";
+import { uploadQuestionAsset } from "@/features/questions/api";
 import { RichTextEditor } from "../rich-text-editor";
 import { RichTextView } from "../rich-text-view";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
+
+vi.mock("@/features/questions/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof QuestionsApi>();
+  return { ...actual, uploadQuestionAsset: vi.fn(actual.uploadQuestionAsset) };
+});
 
 function renderEditor(props: Partial<Parameters<typeof RichTextEditor>[0]> = {}) {
   const onChange = vi.fn();
@@ -27,6 +34,18 @@ function pasteHtml(html: string) {
       types: ["text/html"],
       files: [],
       items: [],
+    },
+  });
+}
+
+/** Dán clipboard có thể kèm tệp ảnh (Word/Docs gửi `text/html` cùng ảnh chụp đoạn văn). */
+function pasteClipboard({ html, files }: { html: string; files: File[] }) {
+  fireEvent.paste(editable()!, {
+    clipboardData: {
+      getData: (format: string) => (format === "text/html" ? html : ""),
+      types: html ? ["text/html", "Files"] : ["Files"],
+      files,
+      items: files.map((file) => ({ kind: "file", type: file.type, getAsFile: () => file })),
     },
   });
 }
@@ -142,6 +161,49 @@ describe("RichTextEditor", () => {
     const html = onChange.mock.lastCall?.[0] as string;
     expect(html).not.toContain("<img");
     expect(html).toContain("after");
+  });
+
+  describe("paste with an image file on the clipboard", () => {
+    const imageFile = () => new File(["png"], "shot.png", { type: "image/png" });
+
+    for (const allowImages of [true, false]) {
+      it(`keeps the pasted text when text/html is present (allowImages=${allowImages})`, async () => {
+        vi.mocked(uploadQuestionAsset).mockClear();
+        const { onChange } = renderEditor({ allowImages });
+
+        editable()!.focus();
+        pasteClipboard({ html: "<p>Word text</p>", files: [imageFile()] });
+
+        await waitFor(() => expect(onChange).toHaveBeenCalledWith(expect.stringContaining("Word text")));
+        expect(uploadQuestionAsset).not.toHaveBeenCalled();
+        expect(onChange.mock.lastCall?.[0]).not.toContain("<img");
+      });
+    }
+
+    it("uploads a bare image file when text/html is empty and allowImages=true", async () => {
+      vi.mocked(uploadQuestionAsset).mockClear();
+      const { onChange } = renderEditor();
+
+      editable()!.focus();
+      pasteClipboard({ html: "", files: [imageFile()] });
+
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith(expect.stringContaining("<img")));
+      expect(uploadQuestionAsset).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores a bare image file when text/html is empty and allowImages=false", async () => {
+      vi.mocked(uploadQuestionAsset).mockClear();
+      const { onChange } = renderEditor({ allowImages: false });
+
+      editable()!.focus();
+      pasteClipboard({ html: "", files: [imageFile()] });
+
+      const { promise: settled, resolve } = Promise.withResolvers<void>();
+      setTimeout(resolve, 50);
+      await settled;
+      expect(uploadQuestionAsset).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 
   it("updates aria-invalid, aria-label and aria-describedby on the editable after mount", async () => {
