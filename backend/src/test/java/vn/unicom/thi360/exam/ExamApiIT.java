@@ -103,7 +103,8 @@ class ExamApiIT extends AbstractIntegrationTest {
     @Test
     void safeInstructionsAreStoredCleaned() throws Exception {
         String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
-        String html = "<p><strong>Doc ky</strong> <em>de bai</em></p><ul><li>70 phut</li></ul>";
+        String html = "<P><STRONG>Doc ky</STRONG> <EM>de bai</EM></P><UL><LI>70 phut</LI></UL>";
+        String cleaned = "<p><strong>Doc ky</strong> <em>de bai</em></p><ul><li>70 phut</li></ul>";
         String result = mockMvc.perform(post("/api/v1/admin/exams")
                         .with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
@@ -115,6 +116,6 @@ class ExamApiIT extends AbstractIntegrationTest {
         String detail = mockMvc.perform(get("/api/v1/admin/exams/" + id)
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readTree(detail).path("instructions").asText()).isEqualTo(html);
+        assertThat(mapper.readTree(detail).path("instructions").asText()).isEqualTo(cleaned);
     }
 }
