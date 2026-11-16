@@ -206,4 +206,61 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=?",
                 Integer.class, examId)).isZero();
     }
+
+    /**
+     * R1-04: one path with two SUBJECT_CHOICE options (one per part); the flat subjectCodes
+     * request field is a union — each choice takes the codes that belong to its own sections.
+     */
+    @Test
+    void twoSubjectChoicesUseUnionSubjectCodes() throws Exception {
+        Subject a = subject();
+        Subject aa = subject();
+        Subject b = subject();
+        Subject bb = subject();
+        for (Subject subject : List.of(a, aa, b, bb)) {
+            question(subject, "SINGLE_CHOICE", "first", false);
+            question(subject, "SINGLE_CHOICE", "second", false);
+            question(subject, "SINGLE_CHOICE", "third", false);
+        }
+        String choice = """
+                {"id":"%s","kind":"SUBJECT_CHOICE","code":"%s","chooseSubjects":1,"countsByPick":[%d],
+                  "sections":[{"id":"%s-s1","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"%s-g1","name":"G1","questionType":"SINGLE_CHOICE"}]},
+                              {"id":"%s-s2","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"%s-g2","name":"G2","questionType":"SINGLE_CHOICE"}]}]}
+                """;
+        UUID examId = exam("""
+                [{"id":"p1","order":1,"name":"Part1","participation":{"mode":"CHOICE","choose":1},
+                  "questionCount":2,"sections":[],"options":[%s]},
+                 {"id":"p2","order":2,"name":"Part2","participation":{"mode":"CHOICE","choose":1},
+                  "questionCount":1,"sections":[],"options":[%s]}]
+                """.formatted(choice.formatted("comboA", "A", 2, "a", a.code(), "a", "a", aa.code(), "a"),
+                choice.formatted("comboB", "B", 1, "b", b.code(), "b", "b", bb.code(), "b")));
+        String path = "/api/v1/admin/exams/" + examId + "/preview";
+        JsonNode paper = preview(examId, "{\"pathId\":\"comboA+comboB\",\"seed\":7,\"subjectCodes\":[\""
+                + a.code() + "\",\"" + b.code() + "\"]}").path("paper");
+        assertThat(paper.path("totalQuestions").asInt()).isEqualTo(3);
+        assertThat(paper.path("subjects")).hasSize(2);
+        assertThat(paper.path("subjects").get(0).path("subjectCode").asText()).isEqualTo(a.code());
+        assertThat(paper.path("subjects").get(1).path("subjectCode").asText()).isEqualTo(b.code());
+
+        // Invalid splits: missing one choice's code, too many codes for one choice, and
+        // a code that belongs to no choice on the path all stay 422.
+        for (String codes : List.of("\"" + a.code() + "\"",
+                "\"" + a.code() + "\",\"" + aa.code() + "\",\"" + b.code() + "\"",
+                "\"" + a.code() + "\",\"NOT_A_SUBJECT\"")) {
+            mockMvc.perform(post(path).with(asUser(Permissions.EXAM_VIEW))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"pathId\":\"comboA+comboB\",\"seed\":7,\"subjectCodes\":[" + codes + "]}"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("PREVIEW_SUBJECTS_INVALID"));
+        }
+        // Codes on a path without any SUBJECT_CHOICE are invalid too.
+        UUID plain = exam(part(a.code(),
+                "[{\"id\":\"g\",\"name\":\"Group\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]", "null"));
+        mockMvc.perform(post("/api/v1/admin/exams/" + plain + "/preview")
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pathId\":\"default\",\"seed\":1,\"subjectCodes\":[\"" + a.code() + "\"]}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PREVIEW_SUBJECTS_INVALID"));
+    }
+
 }
