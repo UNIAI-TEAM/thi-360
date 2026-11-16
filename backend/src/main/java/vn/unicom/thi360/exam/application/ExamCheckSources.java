@@ -3,7 +3,6 @@ package vn.unicom.thi360.exam.application;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,11 +14,9 @@ import vn.unicom.thi360.exam.domain.BlockExpectedScoring;
 import vn.unicom.thi360.exam.domain.solver.CountingUnit;
 import vn.unicom.thi360.exam.domain.solver.GroupQuota;
 import vn.unicom.thi360.exam.domain.solver.PathCandidate;
-import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Candidate;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.ScoringDetails;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Unit;
-import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Version;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
@@ -37,17 +34,15 @@ final class ExamCheckSources {
     }
 
     private final SolverInputBuilder.SolverCandidates candidates;
-    private final QuestionSourcePort source;
     private final Clock clock;
     private final Instant deadline;
     private final int maxCandidates;
     private final Map<GroupQuota, Pool> pools = new LinkedHashMap<>();
     private Map<VersionKey, Candidate> loaded;
 
-    ExamCheckSources(SolverInputBuilder.SolverCandidates candidates, QuestionSourcePort source,
+    ExamCheckSources(SolverInputBuilder.SolverCandidates candidates,
                      Clock clock, Instant deadline, int maxCandidates) {
         this.candidates = candidates;
-        this.source = source;
         this.clock = clock;
         this.deadline = deadline;
         this.maxCandidates = maxCandidates;
@@ -80,39 +75,23 @@ final class ExamCheckSources {
         return groups.stream().allMatch(group -> pool(group).complete());
     }
 
-    /** Resolve only mismatched versions to stable question codes, in bounded batches. */
+    /** Read stable codes from the same compact serving projection as the scoring fields. */
     Mismatches mismatchedCodes(GroupQuota group, BlockExpectedScoring expected) {
         if (expected == null) return new Mismatches(List.of(), true);
         Pool pool = pool(group);
         if (!pool.complete()) return new Mismatches(List.of(), false);
         if (loaded == null) loaded = candidates.loadedCandidates();
-        Map<VersionKey, Set<UUID>> mismatches = new LinkedHashMap<>();
+        Set<String> codes = new LinkedHashSet<>();
         for (PathCandidate item : pool.candidates()) {
             VersionKey key = new VersionKey(UUID.fromString(item.questionId()), item.versionNo());
             Candidate candidate = loaded.get(key);
             if (candidate == null) throw new IllegalStateException("Missing loaded candidate " + key);
             for (Unit unit : candidate.units()) {
                 if (mismatch(expected, unit)) {
-                    mismatches.computeIfAbsent(key, ignored -> new LinkedHashSet<>()).add(unit.questionId());
+                    String code = unit.code() == null ? candidate.code() : unit.code();
+                    if (code == null) throw new IllegalStateException("Missing serving question code " + key);
+                    codes.add(code);
                 }
-            }
-        }
-        if (mismatches.isEmpty()) return new Mismatches(List.of(), true);
-        List<VersionKey> keys = new ArrayList<>(mismatches.keySet());
-        Map<VersionKey, Version> versions = new LinkedHashMap<>();
-        for (int start = 0; start < keys.size(); start += 200) {
-            if (!clock.instant().isBefore(deadline)) return new Mismatches(List.of(), false);
-            for (Version version : source.loadVersions(keys.subList(start, Math.min(start + 200, keys.size())))) {
-                versions.put(version.key(), version);
-            }
-        }
-        Set<String> codes = new LinkedHashSet<>();
-        for (var entry : mismatches.entrySet()) {
-            Version version = versions.get(entry.getKey());
-            if (version == null || version.code() == null) throw new IllegalStateException("Missing serving version " + entry.getKey());
-            for (UUID unitId : entry.getValue()) {
-                codes.add(Objects.equals(unitId, entry.getKey().questionId())
-                        ? version.code() : version.childCodes().getOrDefault(unitId, version.code()));
             }
         }
         return new Mismatches(List.copyOf(codes), clock.instant().isBefore(deadline));

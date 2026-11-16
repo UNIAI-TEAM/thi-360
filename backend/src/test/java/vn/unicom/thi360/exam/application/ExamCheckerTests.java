@@ -65,6 +65,30 @@ class ExamCheckerTests {
     }
 
     @Test
+    void scoringMismatchIsAWarningUsingCompactServingCodes() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 0);
+        UUID id = UUID.randomUUID();
+        var actual = new QuestionSourcePort.ScoringDetails("COUNT_TABLE",
+                List.of(new BigDecimal("0.5"), BigDecimal.ONE), null);
+        var unit = new Unit(id, null, QuestionType.TRUE_FALSE, "G", "D", List.of(), List.of(),
+                BigDecimal.ONE, actual, "Q-SERVING");
+        candidates.put(subjects.get("MATH"), List.of(new Candidate(id, 1, null, List.of(unit), null,
+                "COUNT_TABLE", "COUNT_TABLE", actual.trueFalseTable(), null, "Q-SERVING")));
+        String doc = """
+                {"parts":[{"id":"p","name":"Part","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":1,"blocks":[{"id":"b","questionType":"TRUE_FALSE","questionCount":1,
+                "expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.25,1]}}]}]}]}
+                """;
+        var result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        assertThat(issueCodes(result)).contains("SCORING_MISMATCH");
+        assertThat(result.path("paths").get(0).path("issues").findValues("questionCodes").getFirst().get(0).asText())
+                .isEqualTo("Q-SERVING");
+        verify(source, never()).loadVersions(any());
+    }
+
+    @Test
     void answerQuotaTotalIsDiagnosedSeparatelyFromSectionCount() throws Exception {
         Exam exam = exam(1, null, "RAW");
         subject("MATH", 1);
@@ -166,7 +190,7 @@ class ExamCheckerTests {
         doAnswer(invocation -> candidates.getOrDefault(
                 ((QuestionSourcePort.Filter) invocation.getArgument(0)).subjectId(), List.of()))
                 .when(source).findCandidates(any(), anyInt());
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), source, limits, clock, mapper);
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper);
         return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, null),
                 clock.instant().plusSeconds(30), Duration.ofSeconds(30));
     }

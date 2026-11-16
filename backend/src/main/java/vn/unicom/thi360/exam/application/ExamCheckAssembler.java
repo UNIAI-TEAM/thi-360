@@ -17,20 +17,17 @@ import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SolveOutcome;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
-import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Assembles the eight groups from deduplicated path and configuration issues. */
 final class ExamCheckAssembler {
     private final ObjectMapper mapper;
     private final Clock clock;
     private final SolverLimits limits;
-    private final QuestionSourcePort source;
 
-    ExamCheckAssembler(ObjectMapper mapper, Clock clock, SolverLimits limits, QuestionSourcePort source) {
+    ExamCheckAssembler(ObjectMapper mapper, Clock clock, SolverLimits limits) {
         this.mapper = mapper;
         this.clock = clock;
         this.limits = limits;
-        this.source = source;
     }
 
     ExamChecker.Evaluation assemble(Exam exam, ExamStructureDocument document,
@@ -49,7 +46,7 @@ final class ExamCheckAssembler {
         ArrayNode paths = result.putArray("paths");
         ArrayNode witnesses = mapper.createArrayNode();
         if (input != null) {
-            ExamCheckSources sources = new ExamCheckSources(input.candidates(), source, clock, deadline,
+            ExamCheckSources sources = new ExamCheckSources(input.candidates(), clock, deadline,
                     limits.maxCandidatesPerBlock());
             ExamCheckPathPresenter presenter = new ExamCheckPathPresenter(mapper, exam, document,
                     issueFactory, solverIssues, sources);

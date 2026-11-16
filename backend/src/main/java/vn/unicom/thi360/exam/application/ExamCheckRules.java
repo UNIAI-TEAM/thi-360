@@ -58,7 +58,8 @@ final class ExamCheckRules {
 
     List<ObjectNode> common() {
         List<ObjectNode> found = new ArrayList<>();
-        if (exam.getName() == null || exam.getName().isBlank() || exam.getCode() == null || exam.getCode().isBlank()
+        if (document.parts().isEmpty() || exam.getName() == null || exam.getName().isBlank()
+                || exam.getCode() == null || exam.getCode().isBlank()
                 || ("PART".equals(exam.getScope()) && (exam.getPartCode() == null || exam.getPartCode().isBlank()))) {
             found.add(issue("INFO_MISSING", "INFO", null, null, null));
         }

@@ -15,21 +15,18 @@ import vn.unicom.thi360.exam.domain.solver.SolveReason;
 import vn.unicom.thi360.exam.domain.solver.SolveStats;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
-import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Runs exact configuration checks and the shared solver without holding a database transaction. */
 @Service
 public class DefaultExamChecker implements ExamChecker {
     private final SolverInputBuilder builder;
-    private final QuestionSourcePort source;
     private final SolverLimits limits;
     private final Clock clock;
     private final ObjectMapper mapper;
 
-    public DefaultExamChecker(SolverInputBuilder builder, QuestionSourcePort source, SolverLimits limits,
+    public DefaultExamChecker(SolverInputBuilder builder, SolverLimits limits,
                               Clock clock, ObjectMapper mapper) {
         this.builder = builder;
-        this.source = source;
         this.limits = limits;
         this.clock = clock;
         this.mapper = mapper;
@@ -40,7 +37,7 @@ public class DefaultExamChecker implements ExamChecker {
         var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common());
         List<ObjectNode> invalid = rules.unrepresentable();
-        var assembler = new ExamCheckAssembler(mapper, clock, limits, source);
+        var assembler = new ExamCheckAssembler(mapper, clock, limits);
         if (!invalid.isEmpty()) {
             common.addAll(invalid);
             return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
