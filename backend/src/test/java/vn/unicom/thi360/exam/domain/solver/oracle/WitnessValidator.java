@@ -205,20 +205,14 @@ public final class WitnessValidator {
                 inst.quotas.add(OracleSupport.resolveSubjectQuota(s.subjectQuota(),
                         s.questionCount()));
                 int[] req = OracleSupport.groupUnitRequirements(s);
-                int sum = 0;
                 for (int i = 0; i < s.groups().size(); i++) {
-                    sum += req[i];
                     inst.groups.add(s.groups().get(i));
                     inst.required.add(req[i]);
                     inst.owner.add(s);
                 }
-                inst.sectionsExact.add(sum == s.questionCount());
             }
             return inst;
         }
-
-        /** Mục i có được nhóm của nó lấp đúng số câu không (cấu trúc, không phụ thuộc nguồn). */
-        final List<Boolean> sectionsExact = new ArrayList<>();
     }
 
     /** Mọi bài toán con (môn, số câu, các mục) mà các đường con của {@code path} sinh ra. */
