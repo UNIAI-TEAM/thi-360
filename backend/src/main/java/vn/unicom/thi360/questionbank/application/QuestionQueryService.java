@@ -213,7 +213,7 @@ public class QuestionQueryService {
         return new QuestionVersionList(items);
     }
 
-    /** Nơi đang dùng câu: khối bài thi (qua SPI, rỗng tới BE-6) + dòng sổ đã dùng. */
+    /** Nơi đang dùng câu: khối bài thi qua SPI và dòng sổ đã dùng. */
     public QuestionUsage usage(UUID id) {
         Question question = load(id);
         return new QuestionUsage(mapper.sourceBlocksOf(question.getId()), mapper.ledgerOf(question.getId()));

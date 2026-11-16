@@ -606,7 +606,7 @@ public class QuestionService {
         return mapper.toDetail(copy, mapper.batch());
     }
 
-    /** Xóa mềm câu độc lập; câu đã dùng (sổ hoặc nguồn bài) bị chặn 409 (spec 4.5). */
+    /** Xóa mềm câu độc lập; câu đã có trong sổ sử dụng bị chặn 409 (spec 4.5). */
     @Transactional
     public void delete(UUID id, String idempotencyKey, Long expectedRevision) {
         idempotentCommand.execute(idempotencyKey, "question.delete", id, expectedRevision, Void.class,
