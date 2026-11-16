@@ -260,7 +260,7 @@ class QuestionImportParserTests {
     @Test
     void childLeavesEmptyClassificationNullForInheritance() throws Exception {
         var nodes = List.of(
-            new ImportKnowledgeNode(UUID.randomUUID(), "1D4-3-1", List.of("MATH"), true, true));
+            new ImportKnowledgeNode(UUID.randomUUID(), "1D4-3-1", "Phép cộng", List.of("MATH"), true, true));
         var catalog = new ImportCatalog(CATALOG.subjects(), CATALOG.grades(), CATALOG.difficulties(),
             CATALOG.taskTypes(), CATALOG.tags(), nodes);
         var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(
@@ -300,7 +300,7 @@ class QuestionImportParserTests {
     @Test
     void knowledgeNodeMatchesAnyOfItsSubjects() throws Exception {
         var node = new ImportKnowledgeNode(
-            UUID.randomUUID(), "0D1", List.of("TOAN", "ANH"), true, true);
+            UUID.randomUUID(), "0D1", "Tia số", List.of("TOAN", "ANH"), true, true);
         var catalog = new ImportCatalog(
             List.of(option("ANH"), option("TOAN")), CATALOG.grades(), CATALOG.difficulties(),
             CATALOG.taskTypes(), CATALOG.tags(), List.of(node));
@@ -312,6 +312,71 @@ class QuestionImportParserTests {
         assertFalse(result.hasErrors(), () -> result.rows().getFirst().issues().toString());
         assertEquals(List.of(new ImportKnowledgeRef(node.nodeId(), "0D1", true)),
             result.rows().getFirst().draft().knowledge());
+    }
+
+    @Test
+    void knowledgeResolvesByNameAndAmbiguousNameBlocks() throws Exception {
+        var node = new ImportKnowledgeNode(
+            UUID.randomUUID(), "0D1", "Phân số thập phân", List.of("TOAN"), true, true);
+        var twin = new ImportKnowledgeNode(
+            UUID.randomUUID(), "0D2", "Tên trùng", List.of("TOAN"), true, true);
+        var twin2 = new ImportKnowledgeNode(
+            UUID.randomUUID(), "0D3", "Tên trùng", List.of("TOAN"), true, true);
+        var catalog = new ImportCatalog(
+            List.of(option("TOAN"), option("ANH")), CATALOG.grades(), CATALOG.difficulties(),
+            CATALOG.taskTypes(), CATALOG.tags(), List.of(node, twin, twin2));
+        var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "knowledge", "correctAnswer"),
+            List.of("SHORT_ANSWER", "Theo mã", "TOAN", "GRADE_11", "RECOGNITION", "0D1", "x"),
+            List.of("SHORT_ANSWER", "Theo tên", "TOAN", "GRADE_11", "RECOGNITION", " phân số thập phân ", "x"),
+            List.of("SHORT_ANSWER", "Tên trùng", "TOAN", "GRADE_11", "RECOGNITION", "Tên trùng", "x"),
+            List.of("SHORT_ANSWER", "Sai môn", "ANH", "GRADE_11", "RECOGNITION", "Phân số thập phân", "x")),
+            ImportLimits.DEFAULT);
+        var result = QuestionImportParser.parse(sheet,
+            ImportColumnMapper.suggestMapping(sheet.columns(), DICTIONARY), catalog, List.of(), DICTIONARY);
+        assertEquals(List.of(new ImportKnowledgeRef(node.nodeId(), "0D1", true)),
+            result.rows().get(0).draft().knowledge());
+        assertEquals(List.of(new ImportKnowledgeRef(node.nodeId(), "0D1", true)),
+            result.rows().get(1).draft().knowledge());
+        assertTrue(result.rows().get(2).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.KNOWLEDGE_AMBIGUOUS && i.blocking()),
+            () -> result.rows().get(2).issues().toString());
+        assertTrue(result.rows().get(3).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.KNOWLEDGE_UNKNOWN && i.blocking()));
+    }
+
+    @Test
+    void largeCatalogIndexesOncePerParse() throws Exception {
+        // Danh mục lớn + ô trống: chỉ mục dựng một lần trong Context, không dựng lại theo dòng
+        // (R1-6). 2.000 dòng × 10.000 nút, gồm cả ô trống và ô có mã.
+        var nodes = new java.util.ArrayList<ImportKnowledgeNode>(10_000);
+        for (int i = 0; i < 10_000; i++) {
+            nodes.add(new ImportKnowledgeNode(UUID.randomUUID(), "KN-" + i, "Nút " + i,
+                List.of("TOAN"), true, true));
+        }
+        var catalog = new ImportCatalog(
+            List.of(option("TOAN")), CATALOG.grades(), CATALOG.difficulties(),
+            CATALOG.taskTypes(), CATALOG.tags(), nodes);
+        var table = new java.util.ArrayList<>(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "knowledge", "correctAnswer")));
+        for (int i = 0; i < 2_000; i++) {
+            table.add(List.of("SHORT_ANSWER", "Câu " + i, "TOAN", "GRADE_11", "RECOGNITION",
+                i % 100 == 0 ? "KN-1" : "", "x"));
+        }
+        var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, table, ImportLimits.DEFAULT);
+        var bean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
+        long threadId = Thread.currentThread().threadId();
+        long allocatedBefore = bean.getThreadAllocatedBytes(threadId);
+        long start = System.nanoTime();
+        var result = QuestionImportParser.parse(sheet,
+            ImportColumnMapper.suggestMapping(sheet.columns(), DICTIONARY), catalog, List.of(), DICTIONARY);
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+        long allocatedBytes = bean.getThreadAllocatedBytes(threadId) - allocatedBefore;
+        System.out.println("knowledge parse elapsedMs=" + elapsedMs + " allocatedBytes=" + allocatedBytes);
+        assertFalse(result.hasErrors(), () -> result.rows().stream()
+            .filter(ImportRowResult::hasErrors).flatMap(r -> r.issues().stream()).toList().toString());
+        assertEquals(nodes.get(1).nodeId(), result.rows().getFirst().draft().knowledge().getFirst().nodeId());
+        assertTrue(result.rows().get(1).draft().knowledge().isEmpty());
     }
 
     @Test

@@ -76,9 +76,11 @@ class QuestionImportValidationIT extends AbstractIntegrationTest {
                 select chapter.id, subject.id from catalog.catalog_item chapter, catalog.catalog_item subject
                 where chapter.code = '0D1' and subject.code = 'ANH'
                 """);
+        String knowledgeName = "Kiến thức nhập " + java.util.UUID.randomUUID();
+        jdbc.update("update catalog.catalog_item set name_vi = ? where code = '0D1-1-1'", knowledgeName);
         byte[] csv = ("type,content,subject,grade,difficulty,knowledge\n"
                 + "SHORT_ANSWER,Mathematics,TOAN,G10,NB,0D1-1-1\n"
-                + "SHORT_ANSWER,English,ANH,G10,NB,0D1-1-1\n").getBytes(StandardCharsets.UTF_8);
+                + "SHORT_ANSWER,English,ANH,G10,NB," + knowledgeName + "\n").getBytes(StandardCharsets.UTF_8);
         var upload = mockMvc.perform(multipart(URL)
                         .file(new MockMultipartFile("file", "subjects.csv", "text/csv", csv))
                         .with(asUser(Permissions.QUESTION_MODIFY)))
@@ -97,6 +99,12 @@ class QuestionImportValidationIT extends AbstractIntegrationTest {
                         .content("{\"mapping\":{\"c0\":\"type\",\"c1\":\"content\",\"c2\":\"subject\",\"c3\":\"grade\",\"c4\":\"difficulty\",\"c5\":\"knowledge\"},\"duplicatePolicy\":\"SKIP\",\"skipErrors\":false}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.createdCount").value(2));
         assertThat(jdbc.queryForObject("select count(*) from questionbank.question", Long.class)).isEqualTo(before + 2);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question_knowledge k
+                join questionbank.question q on q.id = k.question_id
+                join catalog.catalog_item n on n.id = k.knowledge_item_id
+                where q.content_text in ('Mathematics', 'English') and n.code = '0D1-1-1'
+                """, Integer.class)).isEqualTo(2);
     }
 
     @Test

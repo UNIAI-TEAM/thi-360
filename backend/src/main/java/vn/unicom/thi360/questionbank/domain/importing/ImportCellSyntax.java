@@ -36,6 +36,11 @@ public final class ImportCellSyntax {
             .trim().toLowerCase(Locale.ROOT);
     }
 
+    /** Tên đã chuẩn hóa để lập chỉ mục tra cứu (parser dựng map một lần mỗi lượt đọc). */
+    public static String normalizeText(String value) {
+        return normalize(value);
+    }
+
     /** So khớp mã: bỏ khoảng trắng đầu cuối, viết hoa. */
     public static boolean sameCode(String left, String right) {
         return normalizeCode(left).equals(normalizeCode(right));

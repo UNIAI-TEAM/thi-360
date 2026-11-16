@@ -204,7 +204,7 @@ public final class QuestionImportParser {
             for (int idx : childIdx) {
                 RowParse child = parsed.get(idx);
                 child.knowledge = resolveKnowledge(ctx, child, child.rawKnowledge,
-                    ctx.catalog.knowledgeNodes(), passage.subjectCode);
+                    passage.subjectCode);
             }
             List<Integer> blocking = new ArrayList<>();
             for (int idx : childIdx) {
@@ -367,7 +367,7 @@ public final class QuestionImportParser {
             row.rawKnowledge = raw.get(ImportField.KNOWLEDGE);
         } else {
             row.knowledge = resolveKnowledge(ctx, row, raw.get(ImportField.KNOWLEDGE),
-                ctx.catalog.knowledgeNodes(), row.subjectCode);
+                row.subjectCode);
             if (raw.get(ImportField.KNOWLEDGE).isBlank()) {
                 row.add(ImportIssueCode.KNOWLEDGE_MISSING, ImportField.KNOWLEDGE, null, null, type);
             }
@@ -516,26 +516,41 @@ public final class QuestionImportParser {
         return found.code();
     }
 
+    /**
+     * Ô knowledge: mã MAPID hoặc tên danh mục tiếng Việt, một mục mỗi dòng (spec 4.6). Ô trống
+     * trả ngay (R1-6); chỉ mục danh mục đã dựng sẵn trong {@link Context}. Tên khớp nhiều nút
+     * là lỗi chặn {@code KNOWLEDGE_AMBIGUOUS} (R1-5).
+     */
     private static List<ImportKnowledgeRef> resolveKnowledge(
-        Context ctx, RowParse row, String raw, List<ImportKnowledgeNode> nodes, String subjectCode) {
+        Context ctx, RowParse row, String raw, String subjectCode) {
         List<ImportKnowledgeRef> result = new ArrayList<>();
-        Map<String, ImportKnowledgeNode> byCode = new HashMap<>();
-        for (ImportKnowledgeNode node : nodes) {
-            if (node.active()) {
-                byCode.putIfAbsent(ImportCellSyntax.normalizeCode(node.code()), node);
-            }
+        if (raw.isBlank()) {
+            return result;
         }
         for (String code : ImportCellSyntax.splitList(raw)) {
-            ImportKnowledgeNode node = byCode.get(ImportCellSyntax.normalizeCode(code));
-            if (node == null
-                || (subjectCode != null && node.subjectCodes().stream()
+            ImportKnowledgeNode found = ctx.knowledgeByCode.get(ImportCellSyntax.normalizeCode(code));
+            if (found == null) {
+                List<ImportKnowledgeNode> byName =
+                    ctx.knowledgeByName.getOrDefault(ImportCellSyntax.normalizeText(code), List.of());
+                if (byName.size() > 1) {
+                    row.add(ImportIssueCode.KNOWLEDGE_AMBIGUOUS, ImportField.KNOWLEDGE, code,
+                        null, row.type);
+                    continue;
+                }
+                found = byName.isEmpty() ? null : byName.getFirst();
+            }
+            if (found == null
+                || (subjectCode != null && found.subjectCodes().stream()
                     .noneMatch(s -> ImportCellSyntax.sameCode(s, subjectCode)))) {
                 row.add(ImportIssueCode.KNOWLEDGE_UNKNOWN, ImportField.KNOWLEDGE, code, null, row.type);
                 row.lastSubjectCode = subjectCode;
-            } else if (!node.leaf()) {
+            } else if (!found.leaf()) {
                 row.add(ImportIssueCode.KNOWLEDGE_NOT_LEAF, ImportField.KNOWLEDGE, code, null, row.type);
-            } else if (result.stream().noneMatch(ref -> ref.nodeId().equals(node.nodeId()))) {
-                result.add(new ImportKnowledgeRef(node.nodeId(), node.code(), result.isEmpty()));
+            } else {
+                ImportKnowledgeNode resolved = found;
+                if (result.stream().noneMatch(ref -> ref.nodeId().equals(resolved.nodeId()))) {
+                    result.add(new ImportKnowledgeRef(resolved.nodeId(), resolved.code(), result.isEmpty()));
+                }
             }
         }
         return result;
@@ -1089,6 +1104,10 @@ public final class QuestionImportParser {
         private final ImportDictionary dictionary;
         private final Map<ImportField, String> columnByField;
         private final Map<String, String> headerByKey;
+        // Lập chỉ mục danh mục kiến thức MỘT lần mỗi lượt đọc, không theo dòng (R1-6):
+        // tra theo mã MAPID hoặc tên tiếng Việt (spec 4.6), tên trùng là lỗi chặn.
+        private final Map<String, ImportKnowledgeNode> knowledgeByCode;
+        private final Map<String, List<ImportKnowledgeNode>> knowledgeByName;
 
         Context(ImportSheet sheet, ImportCatalog catalog,
             ImportDictionary dictionary, MappingCheck check) {
@@ -1099,6 +1118,17 @@ public final class QuestionImportParser {
             this.headerByKey = new HashMap<>();
             for (ImportColumn column : sheet.columns()) {
                 headerByKey.put(column.key(), column.header());
+            }
+            this.knowledgeByCode = new HashMap<>();
+            this.knowledgeByName = new HashMap<>();
+            for (ImportKnowledgeNode node : catalog.knowledgeNodes()) {
+                if (!node.active()) {
+                    continue;
+                }
+                knowledgeByCode.putIfAbsent(ImportCellSyntax.normalizeCode(node.code()), node);
+                knowledgeByName
+                    .computeIfAbsent(ImportCellSyntax.normalizeText(node.name()), key -> new ArrayList<>())
+                    .add(node);
             }
         }
 
