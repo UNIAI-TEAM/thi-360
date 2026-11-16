@@ -2331,7 +2331,7 @@
           "ALL_OR_NOTHING": "All correct or nothing",
           "PARTIAL": "Partial credit (proportional; any wrong pick gives 0)"
         },
-        "essayMaxPoints": "Maximum {points} points",
+        "essayMaxPoints": "Maximum {points, plural, one {# point} other {# points}}",
         "wordLimit": "{count, plural, one {about # word} other {about # words}}",
         "rubricTitle": "Rubric",
         "gradingGuideTitle": "Grading guide",
@@ -2564,7 +2564,7 @@
       },
       "set": {
         "hint": "Each sub-question is a full question with its own type, classified like the set. At least 2 sub-questions.",
-        "totalPoints": "Question set total: {points, number} points",
+        "totalPoints": "Question set total: {points, plural, one {# point} other {# points}}",
         "childTitle": "Question {number}",
         "childName": "sub-question {number}",
         "hasErrors": "Has errors",
@@ -2715,7 +2715,7 @@
         "manualGrading": "Graded by hand",
         "gradingGuide": "Grading guide",
         "gradingGuideHint": "Required. Graders see it while grading; learners do not.",
-        "maxPoints": "Maximum {points} points (the question's Points field).",
+        "maxPoints": "Maximum {points, plural, one {# point} other {# points}} (the question's Points field).",
         "maxPointsUnknown": "The maximum comes from the question's Points field.",
         "rubricLegend": "Rubric (optional)",
         "rubricHint": "Each criterion has a description and maximum points. If you add criteria, they must add up to the question points.",
@@ -3026,7 +3026,7 @@
       "matchItem": "Item {number}",
       "matchSelectLabel": "Choice matched to item {number}",
       "childTitle": "Question {number}",
-      "points": "{points} points",
+      "points": "{points, plural, one {# point} other {# points}}",
       "essayLabel": "Your answer",
       "essayWords": "{count, plural, one {# word} other {# words}}",
       "essayWordsLimit": "{count, plural, one {# word} other {# words}}, limit {limit}",
@@ -3052,17 +3052,17 @@
         "noSample": "This question has no sample answer.",
         "guide": "Grading guide",
         "noGuide": "This question has no grading guide.",
-        "criterionPoints": "{points} points"
+        "criterionPoints": "{points, plural, one {# point} other {# points}}"
       },
       "result": {
         "title": "Trial grading result",
         "idle": "Choose, change or leave answers blank, then press Try grading to see the score of each part and of the whole question.",
-        "score": "{earned} / {max} points",
+        "score": "{earned} / {max, plural, one {# point} other {# points}}",
         "manualPending": "Awaiting grading: the Essay part is scored by a grader and is not included in this score.",
         "correct": "Correct",
         "wrong": "Wrong",
         "blank": "Blank",
-        "partPoints": "{earned}/{max} points",
+        "partPoints": "{earned}/{max, plural, one {# point} other {# points}}",
         "correctOption": "Correct answer",
         "wrongPick": "Wrong choice",
         "standardAnswer": "Standard answer: {answer}",
@@ -3079,7 +3079,7 @@
         "rowBlank": "Blank {number}",
         "rowPair": "Item {number}",
         "rowStatement": "Statement {letter}",
-        "childPoints": "{earned}/{max} points"
+        "childPoints": "{earned}/{max, plural, one {# point} other {# points}}"
       }
     },
     "usage": {

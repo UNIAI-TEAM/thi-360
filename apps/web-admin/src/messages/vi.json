@@ -2331,7 +2331,7 @@
           "ALL_OR_NOTHING": "Đúng hết mới có điểm",
           "PARTIAL": "Chấm từng phần (theo tỉ lệ; chọn sai một phương án thì 0 điểm)"
         },
-        "essayMaxPoints": "Điểm tối đa {points}",
+        "essayMaxPoints": "Điểm tối đa {points, number}",
         "wordLimit": "khoảng {count, number} chữ",
         "rubricTitle": "Tiêu chí chấm",
         "gradingGuideTitle": "Hướng dẫn chấm",
@@ -2715,7 +2715,7 @@
         "manualGrading": "Chấm tay",
         "gradingGuide": "Hướng dẫn chấm",
         "gradingGuideHint": "Bắt buộc. Người chấm xem khi chấm; học viên không thấy.",
-        "maxPoints": "Điểm tối đa {points} (ô Điểm của câu).",
+        "maxPoints": "Điểm tối đa {points, number} (ô Điểm của câu).",
         "maxPointsUnknown": "Điểm tối đa lấy theo ô Điểm của câu.",
         "rubricLegend": "Tiêu chí chấm (không bắt buộc)",
         "rubricHint": "Mỗi tiêu chí có mô tả và điểm tối đa. Có tiêu chí thì tổng điểm các tiêu chí phải bằng điểm của câu.",
@@ -3026,7 +3026,7 @@
       "matchItem": "Mục {number}",
       "matchSelectLabel": "Lựa chọn ghép với mục {number}",
       "childTitle": "Câu {number}",
-      "points": "{points} điểm",
+      "points": "{points, number} điểm",
       "essayLabel": "Bài làm",
       "essayWords": "{count, plural, other {# chữ}}",
       "essayWordsLimit": "{count, number} chữ, giới hạn {limit} chữ",
@@ -3052,17 +3052,17 @@
         "noSample": "Câu chưa có bài làm mẫu.",
         "guide": "Hướng dẫn chấm",
         "noGuide": "Câu chưa có hướng dẫn chấm.",
-        "criterionPoints": "{points} điểm"
+        "criterionPoints": "{points, number} điểm"
       },
       "result": {
         "title": "Kết quả chấm thử",
         "idle": "Chọn, đổi hoặc bỏ trống đáp án rồi bấm Chấm thử để xem điểm từng ý và cả câu.",
-        "score": "{earned} / {max} điểm",
+        "score": "{earned} / {max, number} điểm",
         "manualPending": "Chờ chấm: phần Tự luận do người chấm cho điểm, chưa tính vào điểm này.",
         "correct": "Đúng",
         "wrong": "Sai",
         "blank": "Bỏ trống",
-        "partPoints": "{earned}/{max} điểm",
+        "partPoints": "{earned}/{max, number} điểm",
         "correctOption": "Đáp án đúng",
         "wrongPick": "Bạn chọn sai",
         "standardAnswer": "Đáp án chuẩn: {answer}",
@@ -3079,7 +3079,7 @@
         "rowBlank": "Ô {number}",
         "rowPair": "Mục {number}",
         "rowStatement": "Ý {letter}",
-        "childPoints": "{earned}/{max} điểm"
+        "childPoints": "{earned}/{max, number} điểm"
       }
     },
     "usage": {

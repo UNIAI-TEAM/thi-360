@@ -28,6 +28,24 @@ function seedEssay(gradingGuide: string) {
   });
 }
 
+describe("trinh soan Tu luan: diem toi da theo so it/so nhieu (en)", () => {
+  it("1 diem la 'point', 1.5 va 2 la 'points'", async () => {
+    for (const [points, text] of [
+      ["1", "Maximum 1 point (the question's Points field)."],
+      ["1.5", "Maximum 1.5 points (the question's Points field)."],
+      ["2", "Maximum 2 points (the question's Points field)."],
+    ] as const) {
+      const id = await seedQuestion("ESSAY", (values) => {
+        values.points = points;
+        values.body.gradingGuide = "Guide";
+      });
+      const { unmount } = renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+      expect(await screen.findByText(text)).toBeInTheDocument();
+      unmount();
+    }
+  });
+});
+
 describe("trinh soan Tu luan: huong dan cham bat buoc", () => {
   it("de trong hoac chi co khoang trang thi chan luu va danh dau o; nhap xong luu duoc khong can tieu chi", async () => {
     const user = userEvent.setup();

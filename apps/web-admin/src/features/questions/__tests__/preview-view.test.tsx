@@ -184,6 +184,8 @@ describe("xem trước câu hỏi", () => {
     await userEvent.click(screen.getByRole("radio", { name: /^A\.\s*1$/ }));
     await userEvent.click(screen.getByRole("button", { name: "Try grading" }));
     await waitFor(() => expect(screen.getByText("Wrong choice")).toBeInTheDocument());
+    // Số ít khi điểm tối đa là 1 (ICU plural), không "1 points".
+    expect(screen.getByText("0 / 1 point")).toBeInTheDocument();
     expect(screen.getByText("Trial grading result")).toBeInTheDocument();
     expect(screen.queryByText("Chấm thử")).not.toBeInTheDocument();
   });

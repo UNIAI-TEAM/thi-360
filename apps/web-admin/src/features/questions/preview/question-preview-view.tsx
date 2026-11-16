@@ -16,7 +16,7 @@ import {
 } from "./grading";
 import { PreviewFrame, type PreviewDevice } from "./preview-frame";
 import { QuestionPlayer, ResultMark } from "./question-player";
-import { useScoreFormat } from "./score-format";
+import { roundScore, useScoreFormat } from "./score-format";
 
 const RESULT_TONE = {
   correct: "success",
@@ -106,7 +106,7 @@ function ResultPanel({ question, result }: { question: QuestionDetail; result: Q
           <>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-h3 font-bold tabular-nums text-text">
-                {t("score", { earned: scoreText(result.earned), max: scoreText(result.max) })}
+                {t("score", { earned: scoreText(result.earned), max: roundScore(result.max) })}
               </p>
               <StatusChip tone={RESULT_TONE[result.state]}>{t(`state.${result.state}`)}</StatusChip>
             </div>
@@ -135,7 +135,7 @@ function ResultRows({ question, result }: { question: QuestionDetail; result: Qu
               <span>{t("rowChild", { number: index + 1 })}</span>
               <span className="flex items-center gap-2">
                 <span className="text-caption text-text-secondary tabular-nums">
-                  {t("childPoints", { earned: scoreText(childResult.earned), max: scoreText(childResult.max) })}
+                  {t("childPoints", { earned: scoreText(childResult.earned), max: roundScore(childResult.max) })}
                 </span>
                 <StatusChip tone={RESULT_TONE[childResult.state]}>{t(`state.${childResult.state}`)}</StatusChip>
               </span>

@@ -7,7 +7,7 @@ import { Fragment, useId } from "react";
 import { optionLetter, statementLetter } from "../components/question-editor-shared";
 import type { QuestionDetail } from "../types";
 import { countWords, emptyAnswer, type PartResult, type PartState, type PreviewAnswer, type QuestionResult } from "./grading";
-import { useScoreFormat } from "./score-format";
+import { roundScore, useScoreFormat } from "./score-format";
 
 /**
  * Bài làm thử của một câu theo giao diện học viên (UniNote PBI-03 mục 8.5): đề bài, ngữ liệu, thứ tự câu con và
@@ -154,7 +154,7 @@ export function ResultMark({ part, state, className }: { part?: PartResult; stat
       {t(state)}
       {part?.earned != null && part.max != null && (
         <span className="font-normal text-text-secondary">
-          {t("partPoints", { earned: scoreText(part.earned), max: scoreText(part.max) })}
+          {t("partPoints", { earned: scoreText(part.earned), max: roundScore(part.max) })}
         </span>
       )}
     </span>
@@ -469,7 +469,6 @@ function QuestionSetPlayer({
 }) {
   const t = useTranslations("questions.preview");
   const tType = useTranslations("content.questionType");
-  const scoreText = useScoreFormat();
   const Heading = headingLevel === 3 ? "h3" : "h4";
   return (
     <ol className="m-0 flex list-none flex-col gap-3 p-0">
@@ -480,7 +479,7 @@ function QuestionSetPlayer({
             <div className="flex flex-wrap items-center gap-2">
               <Heading className="text-label font-semibold text-text">{t("childTitle", { number: index + 1 })}</Heading>
               <span className="text-caption text-text-secondary">{tType(child.type)}</span>
-              <span className="text-caption text-text-muted">{t("points", { points: scoreText(child.points) })}</span>
+              <span className="text-caption text-text-muted">{t("points", { points: child.points })}</span>
             </div>
             <QuestionPlayer
               question={child}
@@ -530,7 +529,6 @@ function EssayInput({
 /** Đối chiếu bài làm với hướng dẫn chấm, tiêu chí và bài mẫu (câu Tự luận chấm tay, UniNote 8.5). */
 function EssayCompare({ body, text }: { body: Extract<QuestionDetail["body"], { type: "ESSAY" }>; text: string }) {
   const t = useTranslations("questions.preview.essay");
-  const scoreText = useScoreFormat();
   const block = "rounded-lg border border-border bg-subtle p-3.5 text-body wrap-break-word whitespace-pre-wrap text-text";
   return (
     <section aria-label={t("title")} className="flex flex-col gap-3 @container">
@@ -556,7 +554,7 @@ function EssayCompare({ body, text }: { body: Extract<QuestionDetail["body"], { 
               <span className="font-semibold">{index + 1}.</span>
               <span className="min-w-0 flex-1 wrap-break-word">{criterion.description}</span>
               <span className="text-caption font-semibold text-text-secondary">
-                {t("criterionPoints", { points: scoreText(criterion.points) })}
+                {t("criterionPoints", { points: criterion.points })}
               </span>
             </li>
           ))}
