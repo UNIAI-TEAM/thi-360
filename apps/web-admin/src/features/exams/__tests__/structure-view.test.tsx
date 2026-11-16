@@ -35,7 +35,11 @@ describe("Cấu trúc và ma trận", () => {
 
   it("khối theo %: quy đổi phần dư lớn nhất hiện phần nguyên và phần dư", async () => {
     const user = userEvent.setup();
-    openStructure("ex-hsa-f-001");
+    // Ma trận riêng của nhóm là mục mở thêm, mặc định đóng.
+    openStructure("ex-hsa-f-001", "?block=blk-22");
+    const summary = await screen.findByText("Ma trận lớp và độ khó riêng của nhóm");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    await user.click(summary);
     await user.click(await screen.findByRole("radio", { name: "Kết hợp Khối lớp × Độ khó" }));
     await user.click(screen.getByRole("radio", { name: "Tỷ lệ %" }));
     expect(await screen.findByText(/Quy đổi thành số câu · khối/)).toBeInTheDocument();

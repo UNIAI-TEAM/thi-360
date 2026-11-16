@@ -15,8 +15,35 @@ export function draftId(prefix: string): string {
 
 export const ENGLISH_CODE = "ENGLISH";
 
-/** Đang sửa gì: một phần (thông tin phần, nhánh và tổ hợp) hoặc một khối. */
-export type StructureSelection = { kind: "part"; partId: string } | { kind: "block"; blockId: string };
+/** Đang sửa gì: một phần (thông tin phần, lựa chọn), một môn (chỉ tiêu cấp môn và các nhóm) hoặc một nhóm lấy câu. */
+export type StructureSelection =
+  | { kind: "part"; partId: string }
+  | { kind: "section"; sectionId: string }
+  | { kind: "block"; blockId: string };
+
+export interface SectionContext {
+  part: ExamPart;
+  option: ExamPartOption | null;
+  section: ExamSection;
+  location: SectionLocation;
+}
+
+export function findSection(parts: readonly ExamPart[], sectionId: string): SectionContext | null {
+  for (const part of parts) {
+    for (const group of sectionGroups(part)) {
+      const section = group.sections.find((item) => item.id === sectionId);
+      if (section) {
+        return {
+          part,
+          option: part.options.find((option) => option.id === group.optionId) ?? null,
+          section,
+          location: { partId: part.id, optionId: group.optionId, sectionId },
+        };
+      }
+    }
+  }
+  return null;
+}
 
 export interface BlockContext {
   part: ExamPart;
@@ -244,18 +271,15 @@ export function firstBlockId(part: ExamPart): string | null {
 }
 
 export function selectionExists(parts: readonly ExamPart[], selection: StructureSelection): boolean {
-  return selection.kind === "part"
-    ? parts.some((part) => part.id === selection.partId)
-    : findBlock(parts, selection.blockId) !== null;
+  if (selection.kind === "part") return parts.some((part) => part.id === selection.partId);
+  if (selection.kind === "section") return findSection(parts, selection.sectionId) !== null;
+  return findBlock(parts, selection.blockId) !== null;
 }
 
-/** Mặc định mở khối đầu tiên của bài; bài chưa có khối thì mở phần đầu tiên. */
+/** Mặc định mở môn đầu tiên của phần cố định có môn (soạn theo môn, B9); không có thì mở phần đầu tiên. */
 export function defaultSelection(parts: readonly ExamPart[]): StructureSelection | null {
   for (const part of parts) {
-    if (part.mode === "FIXED") {
-      const blockId = firstBlockId(part);
-      if (blockId) return { kind: "block", blockId };
-    }
+    if (part.mode === "FIXED" && part.sections[0]) return { kind: "section", sectionId: part.sections[0].id };
   }
   return parts[0] ? { kind: "part", partId: parts[0].id } : null;
 }
@@ -283,90 +307,6 @@ export function confirmOption(parts: readonly ExamPart[], partId: string, option
 /** Đổi điểm tối đa của phần (BCA 25 / 60 / 15); `null`: phần không chia điểm riêng. */
 export function setPartPoints(parts: readonly ExamPart[], partId: string, maxPoints: number | null): ExamPart[] {
   return updatePart(parts, partId, (part) => ({ ...part, maxPoints }));
-}
-
-/** Mọi cách chọn `k` phần tử theo thứ tự đã cho (thứ tự từ điển của chỉ số): 5 môn chọn 3 cho 10 cách. */
-export function kCombinations<T>(items: readonly T[], k: number): T[][] {
-  if (k <= 0 || k > items.length) return [];
-  const result: T[][] = [];
-  const pick = (start: number, chosen: T[]) => {
-    if (chosen.length === k) {
-      result.push([...chosen]);
-      return;
-    }
-    for (let index = start; index <= items.length - (k - chosen.length); index += 1) {
-      chosen.push(items[index]!);
-      pick(index + 1, chosen);
-      chosen.pop();
-    }
-  };
-  pick(0, []);
-  return result;
-}
-
-/** Một tổ hợp sinh từ "chọn k trong n môn". */
-export interface GeneratedCombination {
-  /** Mã danh mục khi danh mục đã có tổ hợp cùng các môn; không thì mã tạm `TH-nn` theo thứ tự sinh. */
-  code: string;
-  /** Có trong danh mục Tổ hợp của kỳ thi. */
-  catalogued: boolean;
-  /** Môn theo thứ tự của danh mục (khi có) hoặc theo thứ tự đã chọn. */
-  subjectCodes: string[];
-  /** Đã gắn vào phần (cùng các môn), không gắn lại. */
-  attached: boolean;
-}
-
-export const TEMPORARY_COMBINATION_PREFIX = "TH-";
-
-function sameSubjects(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((code) => b.includes(code));
-}
-
-/**
- * Sinh các tổ hợp "chọn `k` trong các môn đã chọn" (HSA: 5 môn chọn 3 được 10 tổ hợp). Tổ hợp trùng môn với danh mục
- * dùng mã danh mục (KH-1…); tổ hợp chưa có mã nhận mã tạm `TH-nn` để quản trị viên đối chiếu, chờ nhập vào Cấu hình chung.
- */
-export function generateCombinations(
-  subjectCodes: readonly string[],
-  k: number,
-  catalog: readonly CombinationOption[],
-  part: ExamPart,
-): GeneratedCombination[] {
-  const attachedSets = part.options
-    .filter((option) => option.kind === "COMBINATION")
-    .map((option) => option.sections.map((section) => section.subjectCode));
-  return kCombinations(subjectCodes, k).map((subjects, index) => {
-    const match = catalog.find((combination) => sameSubjects(combination.subjectCodes, subjects));
-    return {
-      code: match?.code ?? `${TEMPORARY_COMBINATION_PREFIX}${String(index + 1).padStart(2, "0")}`,
-      catalogued: Boolean(match),
-      subjectCodes: match ? [...match.subjectCodes] : subjects,
-      attached: attachedSets.some((set) => sameSubjects(set, subjects)),
-    };
-  });
-}
-
-/**
- * Gắn các tổ hợp đã sinh: số câu chia đều theo phần dư lớn nhất (17–17–16) và chờ chuyên gia xác nhận. Tổ hợp mã tạm
- * mang tên ghép từ tên môn (`subjectName`) để hiện khi danh mục chưa có.
- */
-export function attachGenerated(
-  parts: readonly ExamPart[],
-  partId: string,
-  combinations: readonly GeneratedCombination[],
-  subjectName: (code: string) => string,
-): ExamPart[] {
-  return updatePart(parts, partId, (part) => {
-    const used = new Set(part.options.map((option) => option.code));
-    const added = combinations
-      .filter((combination) => !combination.attached && !used.has(combination.code))
-      .map((combination) => ({
-        ...buildOption("COMBINATION", combination.code, combination.subjectCodes, optionQuestionCount(part)),
-        name: combination.catalogued ? null : combination.subjectCodes.map(subjectName).join(" – "),
-        expertConfirmed: false,
-      }));
-    return { ...part, options: [...part.options, ...added] };
-  });
 }
 
 /** Thêm một nhánh nội dung (THPTQG Tin học: Khoa học máy tính, Tin học ứng dụng) với một môn, đủ số câu còn lại. */

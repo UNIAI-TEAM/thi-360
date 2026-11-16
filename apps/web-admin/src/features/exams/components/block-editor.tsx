@@ -1,67 +1,65 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  ConfirmDialog,
-  FormField,
-  IconButton,
-  Input,
-  Select,
-} from "@thi360/ui";
-import { ArrowDown, ArrowUp, CircleMinus, ListTree, Trash2 } from "lucide-react";
+import { Badge, Button, Card, Checkbox, ConfirmDialog, FormField, IconButton, Input, Select } from "@thi360/ui";
+import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useMemo, useState } from "react";
-import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
-import { indexKnowledge } from "@/features/content/knowledge-tree";
+import { useId, useState } from "react";
 import {
   QUESTION_TYPES,
   type CompetencyOption,
   type ContentReference,
-  type KnowledgeRef,
   type QuestionType,
   type ScoringDefaults,
 } from "@/features/content/types";
 import type { MatrixAxes } from "../matrix";
-import { blockPointsEach, emptyMatrix, validateBlock } from "../matrix";
+import { blockPointsEach, emptyMatrix, isSetBlock, validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
-import type { BlockShuffleRule, KnowledgeScope, QuestionBlock } from "../types";
+import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
-import { ChoiceCardGroup, OptionalNumberInput } from "./create-exam-fields";
+import { OptionalNumberInput } from "./create-exam-fields";
+import { KnowledgeScopeField } from "./knowledge-scope-field";
 
-const SHUFFLE_RULES: BlockShuffleRule[] = ["SHUFFLE", "KEEP_ORDER"];
-const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [], match: "ANY" };
+/** Giá trị của ô chọn dạng trả lời cho nhóm lấy theo chỉ tiêu dạng trả lời của môn (`questionType = null`). */
+const OPEN_TYPE = "__OPEN__";
+/** Ô chọn "không lọc" của dạng bài và dạng câu con. */
+const ANY = "__ANY__";
+/** D19: câu con của Bộ câu hỏi không phải Bộ câu hỏi hay Điền khuyết. */
+const CHILD_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE");
 
 export interface BlockEditorProps {
   block: QuestionBlock;
-  /** Môn của khối (kế thừa từ phần/môn đang cấu hình). */
+  /** Môn chứa nhóm: nhóm không đặt phạm vi MAPID thì dùng phạm vi của môn. */
+  section: ExamSection;
   subjectCode: string;
-  /** "Phần 1 · Toán · khối 2 / 2". */
+  /** "Phần 1 · Toán · nhóm 2 / 2". */
   locationText: string;
   position: number;
   siblingCount: number;
   axes: MatrixAxes;
   labels: MatrixLabels;
   reference: ContentReference | undefined;
-  /** Quy tắc chấm mặc định của kỳ thi, nạp khi khối đổi sang Đúng/Sai hoặc Nhiều đáp án. */
+  /** Quy tắc chấm mặc định của kỳ thi, nạp khi nhóm đổi sang Đúng/Sai hoặc Nhiều đáp án. */
   scoringDefaults: ScoringDefaults | null;
   /** Năng lực của kỳ thi (V-ACT); rỗng: không có lọc và chiều năng lực. */
   competencies: readonly CompetencyOption[];
   onChange: (block: QuestionBlock) => void;
   onMove: (offset: -1 | 1) => void;
   onRemove: () => void;
+  /** Về màn môn chứa nhóm. */
+  onOpenSection: () => void;
 }
 
 /**
- * Một khối câu hỏi (bản vẽ `BaiThiCauTruc`, UniNote PBI-04 mục 6.1): tên, dạng câu, số câu (câu chùm: số bộ × số câu
- * mỗi bộ), điểm mỗi câu, quy tắc đảo, phạm vi kiến thức (MAPID, khớp ít nhất một/tất cả, có lấy mã con), rồi ma trận.
+ * Một nhóm lấy câu của môn (bản vẽ `BaiThiCauTruc`, UniNote PBI-04 mục 6.1, spec B9): nhóm câu đơn khai số câu và phạm vi
+ * nguồn; nhóm câu chùm khai số chùm, số câu con mỗi chùm, phạm vi ngữ liệu hoặc dạng bài và luôn lấy nguyên chùm. Dạng
+ * trả lời mẫu đã điền sẵn thì chỉ đọc. Phạm vi MAPID để trống là dùng phạm vi của môn. Ma trận lớp, độ khó của riêng
+ * nhóm là mục mở thêm, mặc định đóng; câu của nhóm vẫn tính vào chỉ tiêu của môn.
  */
 export function BlockEditor({
   block,
+  section,
   subjectCode,
   locationText,
   position,
@@ -74,30 +72,27 @@ export function BlockEditor({
   onChange,
   onMove,
   onRemove,
+  onOpenSection,
 }: BlockEditorProps) {
   const t = useTranslations("exams.structure.block");
   const tContent = useTranslations("content");
   const titleId = useId();
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
-  // Nhóm kế thừa phạm vi MAPID của môn (`knowledgeScope = null`) hiện như phạm vi trống tới khi FE-3c làm màn theo môn.
-  const scope = block.knowledgeScope ?? EMPTY_SCOPE;
-  const matrix = block.matrix ?? emptyMatrix();
+  const isSet = isSetBlock(block);
+  const remainder = block.questionCount === null;
   const questionCount = block.questionCount ?? 0;
-  const editable = { ...block, knowledgeScope: scope, matrix, questionCount };
-  const knowledgeIndex = useMemo(() => indexKnowledge(reference?.knowledgeTree ?? []), [reference]);
-  const scopeRefs: KnowledgeRef[] = scope.nodeIds.map((nodeId) => {
-    const node = knowledgeIndex.get(nodeId)?.node;
-    return { nodeId, code: node?.code ?? nodeId, name: node?.name ?? "", primary: false };
-  });
+  const matrix = block.matrix ?? emptyMatrix();
+  const editableMatrix = { ...block, matrix, questionCount };
 
+  // Nguồn đếm theo phạm vi có hiệu lực (của nhóm, hoặc của môn khi nhóm kế thừa) và dạng trả lời của nhóm.
+  const quotaTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
   const availableQuery = useAvailableQuestions({
     subjectCode,
     questionType: block.questionType,
-    answerTypes: [],
+    answerTypes: block.questionType === null ? quotaTypes : [],
     childAnswerType: block.childAnswerType,
-    knowledgeScope: block.knowledgeScope,
+    knowledgeScope: block.knowledgeScope ?? section.knowledgeScope,
     taskTypeCode: block.taskTypeCode,
     tagCodes: block.tagCodes,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
@@ -109,24 +104,33 @@ export function BlockEditor({
   const setIssue = issues.find((issue) => issue.code === "SET_SIZE_MISMATCH");
 
   const update = (patch: Partial<QuestionBlock>) => onChange({ ...block, ...patch });
-  const setType = (questionType: QuestionType) => {
-    // Đổi dạng câu thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
+  const setType = (questionType: QuestionType | null) => {
+    // Đổi dạng thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
     const expectedScoring = expectedScoringFor(questionType, scoringDefaults, blockPointsEach(block));
-    if (questionType === "QUESTION_SET") {
+    if (questionType === "QUESTION_SET" || questionType === "CLOZE") {
       const setSize = Math.max(questionCount, 1);
-      update({ questionType, setCount: 1, setSize, questionCount: setSize, expectedScoring });
+      update({ questionType, setCount: 1, setSize, questionCount: setSize, childAnswerType: null, expectedScoring });
     } else {
-      update({ questionType, setCount: null, setSize: null, expectedScoring });
+      update({
+        questionType,
+        setCount: null,
+        setSize: null,
+        childAnswerType: null,
+        questionCount: remainder ? null : Math.max(questionCount, 1),
+        expectedScoring,
+      });
     }
   };
+  const setSets = (setCount: number, setSize: number) => update({ setCount, setSize, questionCount: setCount * setSize });
+  const setScope = (knowledgeScope: KnowledgeScope | null) => update({ knowledgeScope });
 
-  // Năng lực chọn được: năng lực của môn khối (V-ACT gắn năng lực theo môn); môn không có năng lực riêng thì mọi năng lực.
+  // Năng lực chọn được: năng lực của môn của nhóm (V-ACT gắn năng lực theo môn); môn không có năng lực riêng thì mọi năng lực.
   const subjectCompetencies = competencies.filter((competency) => competency.subjectCode === subjectCode);
   const competencyChoices = subjectCompetencies.length ? subjectCompetencies : competencies;
-  const selectedCompetencies = scope.competencyCodes ?? [];
+  const selectedCompetencies = block.knowledgeScope?.competencyCodes ?? [];
   const competencyName = (code: string) => competencies.find((item) => item.code === code)?.name ?? code;
   const setCompetencies = (codes: string[]) => {
-    const knowledgeScope = { ...scope, competencyCodes: codes };
+    const knowledgeScope = { nodeIds: [], match: "ANY" as const, ...block.knowledgeScope, competencyCodes: codes };
     // Chiều năng lực của ma trận đi theo năng lực đã chọn (giữ giá trị của năng lực còn lại).
     const byCompetency = matrix.byCompetency?.length
       ? (codes.length ? codes : competencyChoices.map((item) => item.code)).map((code) => ({
@@ -134,15 +138,14 @@ export function BlockEditor({
           value: matrix.byCompetency?.find((item) => item.code === code)?.value ?? 0,
         }))
       : matrix.byCompetency;
-    update({ knowledgeScope, matrix: { ...matrix, byCompetency } });
+    update({ knowledgeScope, matrix: block.matrix ? { ...matrix, byCompetency } : block.matrix });
   };
   const matrixCompetencies = (selectedCompetencies.length ? selectedCompetencies : competencyChoices.map((item) => item.code)).map(
     (code) => ({ code, name: competencyName(code) }),
   );
-  const setSets = (setCount: number, setSize: number) =>
-    update({ setCount, setSize, questionCount: setCount * setSize });
 
-  const isSet = block.questionType === "QUESTION_SET";
+  const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
+  const taskTypes = reference?.taskTypes ?? [];
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -153,6 +156,10 @@ export function BlockEditor({
             {block.questionType === "ESSAY" && <Badge className="font-medium">{t("manualGrading")}</Badge>}
           </h2>
           <p className="text-caption text-text-muted">{locationText}</p>
+          {block.templateGroupCode && <p className="text-caption text-text-muted">{t("fromTemplate", { code: block.templateGroupCode })}</p>}
+          <Button type="button" variant="link" size="sm" className="w-fit px-0" onClick={onOpenSection}>
+            {t("backToSection")}
+          </Button>
         </div>
         <div className="flex items-center gap-0.5">
           <IconButton
@@ -188,16 +195,35 @@ export function BlockEditor({
             />
           )}
         </FormField>
-        <FormField label={t("questionType")} required>
-          {(controlProps) => (
-            <Select
-              {...controlProps}
-              value={block.questionType ?? undefined}
-              onValueChange={(value) => setType(value as QuestionType)}
-              options={QUESTION_TYPES.map((type) => ({ value: type, label: tContent(`questionType.${type}`) }))}
-            />
-          )}
-        </FormField>
+        {block.answerTypeLocked ? (
+          <FormField label={t("questionType")} hint={t("typeLocked")}>
+            {(controlProps) => (
+              <div className="relative">
+                <Input
+                  {...controlProps}
+                  readOnly
+                  value={block.questionType ? typeLabel(block.questionType) : t("typeOpen")}
+                  className="pr-9"
+                />
+                <Lock aria-hidden className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-text-muted" />
+              </div>
+            )}
+          </FormField>
+        ) : (
+          <FormField label={t("questionType")} required hint={block.questionType === null ? t("typeOpenHint") : undefined}>
+            {(controlProps) => (
+              <Select
+                {...controlProps}
+                value={block.questionType ?? OPEN_TYPE}
+                onValueChange={(value) => setType(value === OPEN_TYPE ? null : (value as QuestionType))}
+                options={[
+                  ...(isSet ? [] : [{ value: OPEN_TYPE, label: t("typeOpen") }]),
+                  ...QUESTION_TYPES.map((type) => ({ value: type, label: typeLabel(type) })),
+                ]}
+              />
+            )}
+          </FormField>
+        )}
         {isSet ? (
           <>
             <FormField label={t("setCount")} required>
@@ -218,15 +244,48 @@ export function BlockEditor({
                 />
               )}
             </FormField>
+            {block.questionType === "QUESTION_SET" && (
+              <FormField label={t("childAnswerType")} hint={t("childAnswerTypeHint")}>
+                {(controlProps) => (
+                  <Select
+                    {...controlProps}
+                    value={block.childAnswerType ?? ANY}
+                    onValueChange={(value) => update({ childAnswerType: value === ANY ? null : (value as QuestionType) })}
+                    options={[
+                      { value: ANY, label: t("childAnswerTypeAny") },
+                      ...CHILD_TYPES.map((type) => ({ value: type, label: typeLabel(type) })),
+                    ]}
+                  />
+                )}
+              </FormField>
+            )}
           </>
         ) : (
-          <FormField label={t("questionCount")} required hint={t("questionCountHint")} error={countError}>
+          <FormField
+            label={t("questionCount")}
+            required={!remainder}
+            hint={remainder ? t("remainderHint") : t("questionCountHint")}
+            error={countError}
+          >
             {(controlProps) => (
-              <BlockNumberInput
-                {...controlProps}
-                value={questionCount}
-                onValueChange={(value) => update({ questionCount: value })}
-              />
+              <div className="flex flex-col gap-2">
+                <BlockNumberInput
+                  {...controlProps}
+                  value={questionCount}
+                  disabled={remainder}
+                  onValueChange={(value) => update({ questionCount: value })}
+                />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`${titleId}-remainder`}
+                    checked={remainder}
+                    onCheckedChange={(checked) => update({ questionCount: checked === true ? null : 1 })}
+                  />
+                  <label htmlFor={`${titleId}-remainder`} className="cursor-pointer text-body text-text">
+                    {t("remainder")}
+                  </label>
+                </div>
+              </div>
             )}
           </FormField>
         )}
@@ -249,93 +308,62 @@ export function BlockEditor({
             />
           )}
         </FormField>
-        <FormField label={t("shuffle")} required>
+        <FormField label={isSet ? t("taskTypeSet") : t("taskType")} hint={isSet ? t("taskTypeSetHint") : undefined}>
           {(controlProps) => (
             <Select
               {...controlProps}
-              value={block.shuffle ?? "SHUFFLE"}
-              onValueChange={(value) => update({ shuffle: value as BlockShuffleRule })}
-              options={SHUFFLE_RULES.map((rule) => ({ value: rule, label: t(`shuffleRules.${rule}`) }))}
+              value={block.taskTypeCode ?? ANY}
+              onValueChange={(value) => update({ taskTypeCode: value === ANY ? null : value })}
+              options={[{ value: ANY, label: t("taskTypeAny") }, ...taskTypes.map((item) => ({ value: item.code, label: item.name }))]}
             />
           )}
         </FormField>
       </div>
-      {!isSet && <p className="text-caption text-text-muted">{t("setNotApplicable")}</p>}
       {isSet && countError && <p className="text-caption text-danger">{countError}</p>}
       {setIssue && setIssue.code === "SET_SIZE_MISMATCH" && (
         <p className="text-caption text-danger">{t("errors.setMismatch", { expected: setIssue.expected })}</p>
       )}
+      {isSet && <p className="text-caption text-text-muted">{t("setWholeNote")}</p>}
 
-      <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
-        <legend className="px-1 text-label font-semibold text-text">{t("scope")}</legend>
-        <div className="flex flex-wrap items-center gap-2">
-          {scopeRefs.length === 0 && <span className="text-body text-text-muted">{t("scopeNone")}</span>}
-          {scopeRefs.map((ref) => (
-            <span
-              key={ref.nodeId}
-              className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-subtle py-0.5 pr-0.5 pl-3 text-label text-text"
-            >
-              <span className="min-w-0 wrap-anywhere">
-                <span className="font-semibold">{ref.code}</span> {ref.name}
-              </span>
-              <IconButton
-                icon={<CircleMinus />}
-                className="size-8"
-                aria-label={t("scopeRemove", { code: ref.code, name: ref.name })}
-                onClick={() =>
-                  update({
-                    knowledgeScope: { ...scope, nodeIds: scope.nodeIds.filter((id) => id !== ref.nodeId) },
-                  })
-                }
-              />
-            </span>
-          ))}
-          <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-            <ListTree />
-            <span>{t("scopePick")}</span>
-          </Button>
-        </div>
-        <ChoiceCardGroup
-          variant="pill"
-          legend={t("match")}
-          name={`${block.id}-match`}
-          value={scope.match}
-          onChange={(match) => update({ knowledgeScope: { ...scope, match } })}
-          options={[
-            { value: "ANY", label: t("matchAny") },
-            { value: "ALL", label: t("matchAll") },
-          ]}
-        />
-        {competencies.length > 0 && (
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-field-label font-medium text-text-secondary">{t("competencies")}</legend>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {competencyChoices.map((competency) => {
-                const id = `${block.id}-competency-${competency.code}`;
-                return (
-                  <div key={competency.code} className="flex items-center gap-2">
-                    <Checkbox
-                      id={id}
-                      checked={selectedCompetencies.includes(competency.code)}
-                      onCheckedChange={(checked) =>
-                        setCompetencies(
-                          checked === true
-                            ? [...selectedCompetencies, competency.code]
-                            : selectedCompetencies.filter((code) => code !== competency.code),
-                        )
-                      }
-                    />
-                    <label htmlFor={id} className="cursor-pointer text-body text-text">
-                      {competency.name}
-                    </label>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-caption text-text-muted">{t("competenciesHint")}</p>
-          </fieldset>
-        )}
-      </fieldset>
+      <KnowledgeScopeField
+        fieldId={block.id}
+        value={block.knowledgeScope}
+        onChange={setScope}
+        inherited={{ scope: section.knowledgeScope }}
+        reference={reference}
+        subjectCode={subjectCode}
+        name={block.name}
+      />
+
+      {competencies.length > 0 && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-field-label font-medium text-text-secondary">{t("competencies")}</legend>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {competencyChoices.map((competency) => {
+              const id = `${block.id}-competency-${competency.code}`;
+              return (
+                <div key={competency.code} className="flex items-center gap-2">
+                  <Checkbox
+                    id={id}
+                    checked={selectedCompetencies.includes(competency.code)}
+                    onCheckedChange={(checked) =>
+                      setCompetencies(
+                        checked === true
+                          ? [...selectedCompetencies, competency.code]
+                          : selectedCompetencies.filter((code) => code !== competency.code),
+                      )
+                    }
+                  />
+                  <label htmlFor={id} className="cursor-pointer text-body text-text">
+                    {competency.name}
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-caption text-text-muted">{t("competenciesHint")}</p>
+        </fieldset>
+      )}
 
       <BlockScoringEditor
         block={block}
@@ -343,30 +371,40 @@ export function BlockEditor({
         onChange={(expectedScoring) => update({ expectedScoring })}
       />
 
-      <BlockMatrixEditor
-        key={block.id}
-        block={editable}
-        axes={axes}
-        labels={labels}
-        competencies={competencies.length ? matrixCompetencies : []}
-        onChange={(matrix) => update({ matrix })}
-        available={availableQuery.data}
-        availableState={availableState}
-      />
+      <details className="group rounded-md border border-border">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
+          <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
+          {t("ownMatrix")}
+          <span className="text-caption font-normal text-text-muted">
+            {block.matrix === null ? t("ownMatrixNone") : t("ownMatrixSet")}
+          </span>
+        </summary>
+        <div className="flex flex-col gap-3 border-t border-border p-4">
+          <p className="text-caption text-text-muted">{t("ownMatrixHint")}</p>
+          {remainder ? (
+            <p className="text-body text-text-secondary">{t("ownMatrixNeedsCount")}</p>
+          ) : (
+            <>
+              <BlockMatrixEditor
+                key={block.id}
+                block={editableMatrix}
+                axes={axes}
+                labels={labels}
+                competencies={competencies.length ? matrixCompetencies : []}
+                onChange={(next) => update({ matrix: next })}
+                available={availableQuery.data}
+                availableState={availableState}
+              />
+              {block.matrix !== null && (
+                <Button type="button" variant="secondary" size="sm" className="w-fit" onClick={() => update({ matrix: null })}>
+                  {t("ownMatrixRemove")}
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </details>
 
-      <KnowledgePickerDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        value={scopeRefs}
-        selectableLevels={["CHAPTER", "LESSON", "KNOWLEDGE"]}
-        withPrimary={false}
-        defaultSubjectCode={subjectCode}
-        description={t("pickerDescription", { name: block.name })}
-        onApply={(refs) => {
-          update({ knowledgeScope: { ...scope, nodeIds: refs.map((ref) => ref.nodeId) } });
-          setPickerOpen(false);
-        }}
-      />
       <ConfirmDialog
         open={confirmRemove}
         onOpenChange={setConfirmRemove}

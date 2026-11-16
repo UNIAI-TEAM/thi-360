@@ -9,12 +9,13 @@ import type { ExamPart, ExamSection, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
 import { OptionalNumberInput } from "./create-exam-fields";
+import { SubjectChoiceOptions } from "./subject-choice-options";
 import type { StructureNames } from "./exam-structure-issues";
 
 export interface PartPanelProps
   extends Pick<
     CombinationOptionsProps,
-    "showEnglish" | "subjectPool" | "defaultCombinationSize" | "branchSubjects" | "onGenerate" | "onAddBranch" | "onConfirm"
+    "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"
   > {
   part: ExamPart;
   /** `SHARED`: phần không có ô thời lượng, bài dùng thời lượng chung `sharedMinutes`. */
@@ -32,6 +33,8 @@ export interface PartPanelProps
   onAttachCombination: (combination: CombinationOption) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
+  /** Mở môn để soạn chỉ tiêu cấp môn và các nhóm. */
+  onSelectSection: (sectionId: string) => void;
   onPoints: (points: number | null) => void;
   onOnPaper: (questionCountOnPaper: number) => void;
   onChoose: (choose: number) => void;
@@ -57,14 +60,12 @@ export function ExamStructurePartPanel({
   onAttachCombination,
   onRemoveOption,
   onSelectBlock,
+  onSelectSection,
   onPoints,
   onOnPaper,
   onChoose,
   showEnglish,
-  subjectPool,
-  defaultCombinationSize,
   branchSubjects,
-  onGenerate,
   onAddBranch,
   onConfirm,
 }: PartPanelProps) {
@@ -186,24 +187,39 @@ export function ExamStructurePartPanel({
       )}
 
       {part.mode === "FIXED" ? (
-        <SectionsTable part={part} names={names} onSectionCount={onSectionCount} onAddBlock={onAddBlock} />
+        <SectionsTable
+          part={part}
+          names={names}
+          onSectionCount={onSectionCount}
+          onAddBlock={onAddBlock}
+          onSelectSection={onSelectSection}
+        />
       ) : (
         <>
           {part.sections.length > 0 && (
-            <SectionsTable part={part} names={names} common onSectionCount={onSectionCount} onAddBlock={onAddBlock} />
+            <SectionsTable
+              part={part}
+              names={names}
+              common
+              onSectionCount={onSectionCount}
+              onAddBlock={onAddBlock}
+              onSelectSection={onSelectSection}
+            />
           )}
+          {part.options
+            .filter((option) => option.kind === "SUBJECT_CHOICE")
+            .map((option) => (
+              <SubjectChoiceOptions key={option.id} option={option} names={names} onSelectSection={onSelectSection} />
+            ))}
           <CombinationOptions
             part={part}
             combinations={combinations}
             names={names}
             issues={issues}
             showEnglish={showEnglish}
-            subjectPool={subjectPool}
-            defaultCombinationSize={defaultCombinationSize}
             branchSubjects={branchSubjects}
             onToggleEnglish={onToggleEnglish}
             onAttach={onAttachCombination}
-            onGenerate={onGenerate}
             onAddBranch={onAddBranch}
             onConfirm={onConfirm}
             onRemove={onRemoveOption}
@@ -223,12 +239,14 @@ function SectionsTable({
   common = false,
   onSectionCount,
   onAddBlock,
+  onSelectSection,
 }: {
   part: ExamPart;
   names: StructureNames;
   common?: boolean;
   onSectionCount: PartPanelProps["onSectionCount"];
   onAddBlock: PartPanelProps["onAddBlock"];
+  onSelectSection: PartPanelProps["onSelectSection"];
 }) {
   const t = useTranslations("exams.structure.part");
   const single = !common && part.sections.length === 1;
@@ -268,7 +286,16 @@ function SectionsTable({
               return (
                 <tr key={section.id}>
                   <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
-                    {subject}
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-left font-medium"
+                      aria-label={t("openSubject", { subject })}
+                      onClick={() => onSelectSection(section.id)}
+                    >
+                      {subject}
+                    </Button>
                     <span className="block text-caption font-normal text-text-muted">
                       {t("blockCount", { count: section.blocks.length })}
                     </span>

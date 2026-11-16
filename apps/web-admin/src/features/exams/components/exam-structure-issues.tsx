@@ -21,6 +21,8 @@ export function optionLabel(
 ): string {
   if (option.kind === "BRANCH") return option.name ?? option.code;
   if (option.kind === "SUBJECT") return names.subject(option.code);
+  // Phương án chọn môn (HSA Khoa học): tên của phương án, không phải mã tổ hợp.
+  if (option.kind === "SUBJECT_CHOICE") return option.name ?? option.code;
   // Tổ hợp sinh từ "chọn k trong n" chưa có trong danh mục mang tên riêng (tên các môn).
   return `${option.code} · ${option.name ?? names.combination(option.code)}`;
 }

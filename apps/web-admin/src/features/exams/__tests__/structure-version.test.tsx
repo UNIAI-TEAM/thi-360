@@ -60,7 +60,7 @@ describe("Cấu trúc: phiên bản năm", () => {
     expect(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ })).toBeDisabled();
     unmount();
     const part = await createExam({ name: "HSA Toán", code: "HSA-P-902", kind: "HSA", scope: "PART", partCode: "MATH", maxScore: 50, description: null });
-    openStructure(part.id);
+    openStructure(part.id, `?part=${examStore.require(part.id).parts[0]!.id}`);
     await screen.findByRole("textbox", { name: /Số câu phải làm/ });
     expect(screen.queryByRole("combobox", { name: /Phiên bản cấu trúc/ })).not.toBeInTheDocument();
   });

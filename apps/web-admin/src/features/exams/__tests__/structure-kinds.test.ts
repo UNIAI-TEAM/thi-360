@@ -10,14 +10,10 @@ import {
 import {
   addBranch,
   attachCombination,
-  attachGenerated,
   confirmOption,
-  generateCombinations,
-  kCombinations,
   optionQuestionCount,
   setPartQuestionCount,
   setSectionCount,
-  TEMPORARY_COMBINATION_PREFIX,
 } from "../components/exam-structure-draft";
 import {
   choiceGroups,
@@ -242,49 +238,18 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
   });
 });
 
-describe("tổ hợp chọn k trong n môn", () => {
-  const hsaCatalog = reference.combinations.filter((combination) => combination.examKindCode === "HSA");
-  const subjects = ["PHYSICS", "CHEMISTRY", "BIOLOGY", "HISTORY", "GEOGRAPHY"];
-
-  it("5 môn chọn 3 được 10 tổ hợp; chọn 0 hoặc quá số môn thì không có", () => {
-    expect(kCombinations(subjects, 3)).toHaveLength(10);
-    expect(kCombinations(subjects, 3)[0]).toEqual(["PHYSICS", "CHEMISTRY", "BIOLOGY"]);
-    expect(kCombinations(subjects, 0)).toEqual([]);
-    expect(kCombinations(subjects, 6)).toEqual([]);
-  });
-
-  it("tổ hợp trùng danh mục dùng mã danh mục, còn lại mã tạm; tổ hợp đã gắn được đánh dấu", () => {
-    // HSA không còn tổ hợp KH-n (một SUBJECT_CHOICE); bài QDA có hai tổ hợp đã gắn, danh mục QDA có QD01–QD04 hai môn.
+describe("tổ hợp của phần tự chọn", () => {
+  it("gắn tổ hợp danh mục: số câu chia đều 25–25 cho tổ hợp hai môn, thêm vào cuối danh sách lựa chọn", () => {
+    // HSA đã chuyển sang một phương án chọn môn (không còn sinh tổ hợp); bài QDA có hai tổ hợp đã gắn (QD01, QD04).
     const exam = sample("ex-qda-f-001");
     const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const qdaCatalog = reference.combinations.filter((combination) => combination.examKindCode === "QDA");
-    const generated = generateCombinations(subjects, 2, qdaCatalog, choice);
-    expect(generated).toHaveLength(10);
-    const catalogued = generated.filter((item) => item.catalogued).map((item) => item.code);
-    expect(catalogued.sort()).toEqual(["QD01", "QD02", "QD03", "QD04"]);
-    const temporary = generated.filter((item) => !item.catalogued);
-    expect(temporary.every((item) => item.code.startsWith(TEMPORARY_COMBINATION_PREFIX))).toBe(true);
-    expect(generated.filter((item) => item.attached).map((item) => item.code).sort()).toEqual(["QD01", "QD04"]);
-  });
-
-  it("gắn tổ hợp sinh ra: chia đều 17–17–16, chờ chuyên gia xác nhận, bỏ qua tổ hợp đã gắn", () => {
-    // HSA không còn KH-n trong dữ liệu mẫu: gắn ba tổ hợp danh mục vào phần tự chọn rồi sinh tiếp.
-    const exam = sample("ex-hsa-f-001");
-    const base = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const seeded = hsaCatalog.slice(0, 3).reduce(
-      (parts, combination) => attachCombination(parts, base.id, combination),
-      exam.parts.map((part) => (part.id === base.id ? { ...part, options: part.options.filter((item) => item.kind === "SUBJECT") } : part)),
-    );
-    const choice = seeded.find((part) => part.id === base.id)!;
+    const qd02 = reference.combinations.find((combination) => combination.code === "QD02")!;
     const before = choice.options.length;
-    const generated = generateCombinations(subjects, 3, hsaCatalog, choice);
-    const parts = attachGenerated(seeded, choice.id, generated, (code) => code.toLowerCase());
-    const after = parts.find((part) => part.id === choice.id)!;
-    expect(after.options).toHaveLength(before + 7);
-    const added = after.options.slice(before);
-    expect(added.every((option) => option.expertConfirmed === false)).toBe(true);
-    expect(added[0]!.sections.map((section) => section.questionCount)).toEqual([17, 17, 16]);
-    expect(added[0]!.name).toBe(added[0]!.sections.map((section) => section.subjectCode.toLowerCase()).join(" – "));
+    const next = attachCombination(exam.parts, choice.id, qd02).find((part) => part.id === choice.id)!;
+    expect(next.options).toHaveLength(before + 1);
+    const added = next.options.at(-1)!;
+    expect(added).toMatchObject({ kind: "COMBINATION", code: "QD02" });
+    expect(added.sections.map((section) => section.questionCount)).toEqual([25, 25]);
   });
 
   it("sửa số câu môn của lựa chọn đã xác nhận thì phải xác nhận lại", () => {
