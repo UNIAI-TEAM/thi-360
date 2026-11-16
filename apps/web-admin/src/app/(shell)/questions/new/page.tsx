@@ -5,7 +5,6 @@ import { QuestionEditorView } from "@/features/questions/components/question-edi
 import { QuestionTypePicker } from "@/features/questions/components/question-type-picker";
 import { isQuestionType } from "@/features/questions/editor-types";
 
-
 export async function generateMetadata({
   searchParams,
 }: {
@@ -22,7 +21,6 @@ export default async function QuestionCreatePage({
 }: {
   searchParams: Promise<{ type?: string | string[] }>;
 }) {
-  
   const { type } = await searchParams;
   const value = typeof type === "string" ? type : null;
   return isQuestionType(value) ? <QuestionEditorView key={value} mode="create" type={value} /> : <QuestionTypePicker />;
