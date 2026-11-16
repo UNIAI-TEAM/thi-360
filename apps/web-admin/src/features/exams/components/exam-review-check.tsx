@@ -229,9 +229,15 @@ function CheckResultView({
         </div>
         <div className="flex flex-wrap gap-2">
           {hasUnconfirmed && (
-            <Button variant="outline" onClick={deep.start} loading={deepRunning} disabled={running}>
+            <Button
+              variant="outline"
+              onClick={deep.start}
+              loading={deepRunning}
+              disabled={running}
+              aria-label={deepRunning ? t("deep.runningLabel") : undefined}
+            >
               <SearchCheck />
-              {t("deep.start")}
+              {deepRunning ? t("deep.runningLabel") : t("deep.start")}
             </Button>
           )}
           <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
@@ -535,9 +541,11 @@ function PathActions({ path }: { path: PathCheck }) {
         onClick={deep.start}
         loading={deep.phase === "running"}
         disabled={checking}
-        aria-label={t("paths.deepAria", { path: label })}
+        aria-label={
+          deep.phase === "running" ? t("deep.runningLabel") : t("paths.deepAria", { path: label })
+        }
       >
-        {t("deep.start")}
+        {deep.phase === "running" ? t("deep.runningLabel") : t("deep.start")}
       </Button>
       <Button variant="link" size="sm" onClick={() => onShowOverlap(path.pathId)}>
         {t("paths.viewOverlap")}

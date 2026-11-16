@@ -4006,6 +4006,7 @@
       },
       "deep": {
         "start": "Deep check",
+        "runningLabel": "Deep check running…",
         "hint": "Some results could not be confirmed within the processing limit. Deep check gives the solver up to {seconds, number} seconds and runs in the background.",
         "live": {
           "running": "Deep check is running. The new result appears when it finishes.",
@@ -4050,7 +4051,7 @@
         "UNCONFIRMED": "Unconfirmed"
       },
       "noIssue": "None",
-      "moreIssues": "and {count, plural, one {# more issue} other {# more issues}}",
+      "moreIssues": "And {count, plural, one {# more issue} other {# more issues}}.",
       "issueWithPath": "{path}: {issue}",
       "paths": {
         "title": "Results by choice path",

@@ -4006,6 +4006,7 @@
       },
       "deep": {
         "start": "Kiểm tra kỹ",
+        "runningLabel": "Đang kiểm tra kỹ…",
         "hint": "Có kết quả chưa xác nhận được trong giới hạn xử lý. Kiểm tra kỹ cho bộ giải tới {seconds, number} giây và chạy nền.",
         "live": {
           "running": "Đang kiểm tra kỹ. Kết quả mới hiện khi xong.",
@@ -4050,7 +4051,7 @@
         "UNCONFIRMED": "Chưa xác nhận được"
       },
       "noIssue": "Không có",
-      "moreIssues": "và {count, number} vấn đề khác",
+      "moreIssues": "Và {count, number} vấn đề khác.",
       "issueWithPath": "{path}: {issue}",
       "paths": {
         "title": "Kết quả theo đường lựa chọn",
