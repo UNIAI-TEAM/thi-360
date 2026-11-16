@@ -51,6 +51,7 @@ final class PathSearch {
     private int[] pairClass;
     private List<int[]>[] pairMembers; // thành viên (g, c) theo thứ tự ứng viên
     private int[] pairUnits;   // đơn vị một thành viên của cặp
+    private boolean[] independentPair; // every key occurs exactly once across all pairs
     private int[][] pairVec;   // vector đóng góp của cặp
     private int[][] suffixMax; // suffixMax[p][r] cung tối đa còn lại của chỉ tiêu r từ cặp p trở đi
     private int[][] suffixUnits; // suffixUnits[p][g] đơn vị tối đa còn lấy của nhóm g từ cặp p
@@ -204,6 +205,24 @@ final class PathSearch {
             }
             pairMembers[p] = ms;
             pairUnits[p] = unitsOfMember(g, c);
+        }
+        independentPair = new boolean[nPairs];
+        Arrays.fill(independentPair, true);
+        Map<String, Integer> keyOwner = new HashMap<>();
+        for (int p = 0; p < nPairs; p++) {
+            int g = pairGroup[p];
+            for (int[] member : pairMembers[p]) {
+                if ((steps++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
+                for (String key : ctx.keys()[g][member[1]]) {
+                    Integer other = keyOwner.putIfAbsent(key, p);
+                    if (other != null) {
+                        independentPair[p] = false;
+                        independentPair[other] = false;
+                    }
+                }
+            }
         }
         // cận cung còn lại: mỗi chỉ tiêu, tổng tối đa có thể cộng từ cặp p trở đi
         int rCount = ctx.reqs().size();
@@ -479,7 +498,9 @@ final class PathSearch {
                 List<int[]> ch = chosen[f.p];
                 ch.remove(ch.size() - 1);
                 f.pending = null;
-                f.pos++;
+                // With disjoint identities every member in this pair is interchangeable.
+                // A downstream failure cannot be repaired by picking a different one.
+                f.pos = independentPair[f.p] ? pairMembers[f.p].size() : f.pos + 1;
             }
             List<int[]> ms = pairMembers[f.p];
             if (f.need == 0 || f.pos >= ms.size()) {
