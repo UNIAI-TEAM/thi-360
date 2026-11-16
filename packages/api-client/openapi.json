@@ -1033,6 +1033,21 @@
         "required" : [ "childCount", "code", "createdAt", "depth", "displayOrder", "effectiveStatus", "groupCode", "groupId", "id", "inheritedRefs", "nameVi", "ownRefs", "path", "status", "system", "updatedAt", "value", "version" ],
         "type" : "object"
       },
+      "CatalogOption" : {
+        "description" : "Một lựa chọn danh mục (mã + tên theo ngôn ngữ của request)",
+        "properties" : {
+          "code" : {
+            "description" : "Mã giá trị",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên hiển thị",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "name" ],
+        "type" : "object"
+      },
       "CatalogOptionResponse" : {
         "description" : "Lựa chọn danh mục đang hoạt động cho module khác",
         "properties" : {
@@ -1432,6 +1447,32 @@
         "required" : [ "code", "createdAt", "id", "memberCount", "name", "status", "updatedAt", "version" ],
         "type" : "object"
       },
+      "CombinationOption" : {
+        "description" : "Mã tổ hợp môn gắn với một kỳ thi",
+        "properties" : {
+          "code" : {
+            "description" : "Mã tổ hợp",
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "description" : "Mã kỳ thi dùng tổ hợp này",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên hiển thị",
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "description" : "Mã các môn trong tổ hợp",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "code", "examKindCode", "name", "subjectCodes" ],
+        "type" : "object"
+      },
       "CombinationSubjectResponse" : {
         "description" : "Môn học trong một phiên bản mã tổ hợp",
         "properties" : {
@@ -1545,6 +1586,109 @@
           }
         },
         "required" : [ "createdAt", "examCode", "examItemId", "examNameVi", "examStatus", "id", "isCurrent", "itemCode", "itemId", "itemNameVi", "subjects", "versionNo" ],
+        "type" : "object"
+      },
+      "CompetencyOption" : {
+        "description" : "Một năng lực (danh mục COMPETENCY): gắn một môn và các kỳ thi liên kết",
+        "properties" : {
+          "code" : {
+            "description" : "Mã năng lực",
+            "type" : "string"
+          },
+          "examKindCodes" : {
+            "description" : "Mã các kỳ thi liên kết",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "description" : "Tên hiển thị",
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "description" : "Mã môn của năng lực; null khi chưa gắn",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "examKindCodes", "name" ],
+        "type" : "object"
+      },
+      "ContentReferenceResponse" : {
+        "description" : "Dữ liệu tham chiếu gộp cho màn Ngân hàng câu hỏi và Bài thi (spec mục 5.3, 9.2)",
+        "properties" : {
+          "combinations" : {
+            "description" : "Các mã tổ hợp đang hiệu lực",
+            "items" : {
+              "$ref" : "#/components/schemas/CombinationOption"
+            },
+            "type" : "array"
+          },
+          "competencies" : {
+            "description" : "Các năng lực đang hoạt động",
+            "items" : {
+              "$ref" : "#/components/schemas/CompetencyOption"
+            },
+            "type" : "array"
+          },
+          "difficulties" : {
+            "description" : "Các mức độ câu hỏi đang hoạt động",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogOption"
+            },
+            "type" : "array"
+          },
+          "examKinds" : {
+            "description" : "Các kỳ thi kèm hồ sơ; rỗng cho tới khi BE-4 bổ sung",
+            "items" : {
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "grades" : {
+            "description" : "Các khối lớp đang hoạt động",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogOption"
+            },
+            "type" : "array"
+          },
+          "knowledgeTree" : {
+            "description" : "Cây kiến thức đầy đủ",
+            "items" : {
+              "$ref" : "#/components/schemas/KnowledgeNode"
+            },
+            "type" : "array"
+          },
+          "questionTypes" : {
+            "description" : "Tám dạng câu cố định; luôn đủ 8 kể cả khi chưa có giá trị QUESTION_FORMAT",
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionTypeOption"
+            },
+            "type" : "array"
+          },
+          "subjects" : {
+            "description" : "Các môn đang hoạt động",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogOption"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "description" : "Các nhãn câu hỏi đang hoạt động",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogOption"
+            },
+            "type" : "array"
+          },
+          "taskTypes" : {
+            "description" : "Các dạng bài đang hoạt động",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogOption"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "combinations", "competencies", "difficulties", "examKinds", "grades", "knowledgeTree", "questionTypes", "subjects", "tags", "taskTypes" ],
         "type" : "object"
       },
       "CreateCatalogGroupRequest" : {
@@ -2159,6 +2303,46 @@
         "required" : [ "errors", "id", "passwordGenerated", "rowNo", "status" ],
         "type" : "object"
       },
+      "KnowledgeNode" : {
+        "description" : "Nút trong cây kiến thức (danh mục KNOWLEDGE)",
+        "properties" : {
+          "active" : {
+            "description" : "Nút đang có hiệu lực",
+            "type" : "boolean"
+          },
+          "children" : {
+            "description" : "Các nút con trực tiếp"
+          },
+          "code" : {
+            "description" : "Mã nút (MAPID)",
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "description" : "Mã khối lớp liên kết hiệu lực; null với nút cấp môn",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID nút danh mục",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "level" : {
+            "description" : "Cấp trong cây: SUBJECT, CHAPTER, LESSON hoặc KNOWLEDGE",
+            "enum" : [ "SUBJECT", "CHAPTER", "LESSON", "KNOWLEDGE" ],
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên hiển thị",
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "description" : "Mã môn liên kết hiệu lực (riêng hoặc kế thừa); null khi chưa gắn",
+            "type" : "string"
+          }
+        },
+        "required" : [ "active", "children", "code", "id", "level", "name" ],
+        "type" : "object"
+      },
       "LoginRequest" : {
         "description" : "Yêu cầu đăng nhập",
         "properties" : {
@@ -2750,6 +2934,25 @@
           }
         },
         "required" : [ "status", "time" ],
+        "type" : "object"
+      },
+      "QuestionTypeOption" : {
+        "description" : "Một dạng câu hỏi cố định; tên lấy từ danh mục QUESTION_FORMAT khi có, ngược lại tên mặc định trong mã nguồn",
+        "properties" : {
+          "active" : {
+            "description" : "Có thể tạo câu dạng này; false chỉ khi giá trị danh mục bị ngừng (spec D1)",
+            "type" : "boolean"
+          },
+          "code" : {
+            "description" : "Mã dạng câu",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên hiển thị",
+            "type" : "string"
+          }
+        },
+        "required" : [ "active", "code", "name" ],
         "type" : "object"
       },
       "ReorderCatalogItemsRequest" : {
@@ -4164,6 +4367,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -4282,6 +4505,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -4470,6 +4713,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -4598,6 +4861,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -4717,6 +5000,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -4834,6 +5137,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -4999,6 +5322,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -5115,6 +5458,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -5234,6 +5597,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -5349,6 +5732,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -5475,6 +5878,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -5646,6 +6069,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -5772,6 +6215,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -5890,6 +6353,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -6025,6 +6508,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -6158,6 +6661,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -6289,6 +6812,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -6410,6 +6953,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -6528,6 +7091,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -6655,6 +7238,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -6819,6 +7422,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -6936,6 +7559,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -7055,6 +7698,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -7170,6 +7833,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -7296,6 +7979,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -7425,6 +8128,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -7543,6 +8266,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -7668,6 +8411,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -7785,6 +8548,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -7906,6 +8689,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -8057,6 +8860,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -8173,6 +8996,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -8293,6 +9136,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -8408,6 +9271,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -8534,6 +9417,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -8684,6 +9587,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -8809,6 +9732,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -8936,6 +9879,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -9073,6 +10036,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -9201,6 +10184,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -9234,6 +10237,136 @@
         },
         "summary" : "Cập nhật trạng thái hoạt động của lớp học",
         "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/content-reference" : {
+      "get" : {
+        "description" : "Mở cho người có QUESTION.VIEW hoặc EXAM.VIEW. Trả lựa chọn danh mục, dạng bài, tám dạng câu cố định và cây kiến thức; examKinds rỗng tới BE-4. Kết quả cache theo revision danh mục.",
+        "operationId" : "getContentReference",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ContentReferenceResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Dữ liệu tham chiếu gộp cho màn Ngân hàng câu hỏi và Bài thi",
+        "tags" : [ "Exam" ]
       }
     },
     "/api/v1/admin/import-batches" : {
@@ -9336,6 +10469,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -9446,6 +10599,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -9564,6 +10737,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -9691,6 +10884,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -9810,6 +11023,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -9920,6 +11153,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -10037,6 +11290,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -10188,6 +11461,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -10326,6 +11619,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -10493,6 +11806,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -10643,6 +11976,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -10800,6 +12153,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -10917,6 +12290,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -11027,6 +12420,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -11143,6 +12556,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -11269,6 +12702,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -11397,6 +12850,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -11591,6 +13064,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -11707,6 +13200,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -11836,6 +13349,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -11955,6 +13488,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -12072,6 +13625,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -12192,6 +13765,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -12307,6 +13900,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -12434,6 +14047,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -12552,6 +14185,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -12669,6 +14322,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -12798,6 +14471,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -12915,6 +14608,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -13034,6 +14747,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -13151,6 +14884,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -13270,6 +15023,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -13387,6 +15160,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -13514,6 +15307,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -13631,6 +15444,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -13760,6 +15593,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -13877,6 +15730,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -14003,6 +15876,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -14156,6 +16049,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -14267,6 +16180,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -14387,6 +16320,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -14503,6 +16456,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -14621,6 +16594,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -14738,6 +16731,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -14858,6 +16871,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -14997,6 +17030,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -15145,6 +17198,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -15253,6 +17326,26 @@
               }
             },
             "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
           },
           "429" : {
             "content" : {
@@ -15363,6 +17456,26 @@
             },
             "description" : "Precondition Failed"
           },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
           "429" : {
             "content" : {
               "*/*" : {
@@ -15442,6 +17555,9 @@
   }, {
     "description" : "Tra cứu danh mục đang hoạt động cho các module khác",
     "name" : "Catalog Options"
+  }, {
+    "description" : "Dữ liệu tham chiếu và bài thi",
+    "name" : "Exam"
   }, {
     "description" : "Xác thực và phiên đăng nhập",
     "name" : "Auth"
