@@ -56,6 +56,7 @@
             {
               "id": "sec-24",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": {
                 "nodeIds": [
@@ -174,6 +175,7 @@
             {
               "id": "sec-28",
               "subjectCode": "LITERATURE",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -322,6 +324,7 @@
                 {
                   "id": "sec-32",
                   "subjectCode": "ENGLISH",
+                  "choiceGroup": null,
                   "questionCount": 50,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -401,6 +404,7 @@
                 {
                   "id": "sec-sci-1-physics",
                   "subjectCode": "PHYSICS",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -488,6 +492,7 @@
                 {
                   "id": "sec-sci-1-chemistry",
                   "subjectCode": "CHEMISTRY",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -575,6 +580,7 @@
                 {
                   "id": "sec-sci-1-biology",
                   "subjectCode": "BIOLOGY",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -661,6 +667,7 @@
                 {
                   "id": "sec-sci-1-history",
                   "subjectCode": "HISTORY",
+                  "choiceGroup": "SOCIAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -747,6 +754,7 @@
                 {
                   "id": "sec-sci-1-geography",
                   "subjectCode": "GEOGRAPHY",
+                  "choiceGroup": "SOCIAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -836,8 +844,7 @@
                 17,
                 17,
                 16
-              ],
-              "expertConfirmed": false
+              ]
             }
           ]
         }
@@ -931,6 +938,7 @@
             {
               "id": "sec-41",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -1079,6 +1087,7 @@
             {
               "id": "sec-35",
               "subjectCode": "LITERATURE",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -1170,6 +1179,7 @@
                 {
                   "id": "sec-37",
                   "subjectCode": "ENGLISH",
+                  "choiceGroup": null,
                   "questionCount": 50,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -1248,6 +1258,7 @@
                 {
                   "id": "sec-44",
                   "subjectCode": "PHYSICS",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -1317,6 +1328,7 @@
                 {
                   "id": "sec-46",
                   "subjectCode": "CHEMISTRY",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -1395,6 +1407,7 @@
                 {
                   "id": "sec-48",
                   "subjectCode": "HISTORY",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -1463,6 +1476,7 @@
                 {
                   "id": "sec-201",
                   "subjectCode": "GEOGRAPHY",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -1627,6 +1641,7 @@
             {
               "id": "sec-57",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -1775,6 +1790,7 @@
             {
               "id": "sec-51",
               "subjectCode": "LITERATURE",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -1866,6 +1882,7 @@
                 {
                   "id": "sec-53",
                   "subjectCode": "ENGLISH",
+                  "choiceGroup": null,
                   "questionCount": 50,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -1944,6 +1961,7 @@
                 {
                   "id": "sec-60",
                   "subjectCode": "PHYSICS",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -2013,6 +2031,7 @@
                 {
                   "id": "sec-62",
                   "subjectCode": "CHEMISTRY",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -2091,6 +2110,7 @@
                 {
                   "id": "sec-64",
                   "subjectCode": "HISTORY",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -2159,6 +2179,7 @@
                 {
                   "id": "sec-203",
                   "subjectCode": "GEOGRAPHY",
+                  "choiceGroup": null,
                   "questionCount": 25,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -2301,6 +2322,7 @@
             {
               "id": "sec-67",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": {
                 "nodeIds": [
@@ -2473,6 +2495,7 @@
             {
               "id": "sec-70",
               "subjectCode": "ENGLISH",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -2632,6 +2655,7 @@
             {
               "id": "sec-88",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": {
                 "nodeIds": [
@@ -2750,6 +2774,7 @@
             {
               "id": "sec-92",
               "subjectCode": "LITERATURE",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -2898,6 +2923,7 @@
                 {
                   "id": "sec-96",
                   "subjectCode": "ENGLISH",
+                  "choiceGroup": null,
                   "questionCount": 50,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -2977,6 +3003,7 @@
                 {
                   "id": "sec-sci-3-physics",
                   "subjectCode": "PHYSICS",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -3064,6 +3091,7 @@
                 {
                   "id": "sec-sci-3-chemistry",
                   "subjectCode": "CHEMISTRY",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -3151,6 +3179,7 @@
                 {
                   "id": "sec-sci-3-biology",
                   "subjectCode": "BIOLOGY",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -3237,6 +3266,7 @@
                 {
                   "id": "sec-sci-3-history",
                   "subjectCode": "HISTORY",
+                  "choiceGroup": "SOCIAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -3323,6 +3353,7 @@
                 {
                   "id": "sec-sci-3-geography",
                   "subjectCode": "GEOGRAPHY",
+                  "choiceGroup": "SOCIAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -3412,8 +3443,7 @@
                 17,
                 17,
                 16
-              ],
-              "expertConfirmed": false
+              ]
             }
           ]
         }
@@ -3485,6 +3515,7 @@
             {
               "id": "sec-121",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": {
                 "nodeIds": [
@@ -3603,6 +3634,7 @@
             {
               "id": "sec-125",
               "subjectCode": "LITERATURE",
+              "choiceGroup": null,
               "questionCount": 50,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -3751,6 +3783,7 @@
                 {
                   "id": "sec-129",
                   "subjectCode": "ENGLISH",
+                  "choiceGroup": null,
                   "questionCount": 50,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -3830,6 +3863,7 @@
                 {
                   "id": "sec-sci-4-physics",
                   "subjectCode": "PHYSICS",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -3917,6 +3951,7 @@
                 {
                   "id": "sec-sci-4-chemistry",
                   "subjectCode": "CHEMISTRY",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -4004,6 +4039,7 @@
                 {
                   "id": "sec-sci-4-biology",
                   "subjectCode": "BIOLOGY",
+                  "choiceGroup": "NATURAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -4090,6 +4126,7 @@
                 {
                   "id": "sec-sci-4-history",
                   "subjectCode": "HISTORY",
+                  "choiceGroup": "SOCIAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -4176,6 +4213,7 @@
                 {
                   "id": "sec-sci-4-geography",
                   "subjectCode": "GEOGRAPHY",
+                  "choiceGroup": "SOCIAL",
                   "questionCount": null,
                   "knowledgeScope": {
                     "nodeIds": [
@@ -4265,8 +4303,7 @@
                 17,
                 17,
                 16
-              ],
-              "expertConfirmed": true
+              ]
             }
           ]
         }
@@ -4351,6 +4388,7 @@
             {
               "id": "sec-b1",
               "subjectCode": "LITERATURE",
+              "choiceGroup": null,
               "questionCount": 1,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -4417,6 +4455,7 @@
             {
               "id": "sec-b2-1",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 35,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -4579,6 +4618,7 @@
             {
               "id": "sec-b2-2",
               "subjectCode": "HISTORY",
+              "choiceGroup": null,
               "questionCount": 10,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -4637,6 +4677,7 @@
             {
               "id": "sec-b2-3",
               "subjectCode": "ENGLISH",
+              "choiceGroup": null,
               "questionCount": 20,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -4727,6 +4768,7 @@
                 {
                   "id": "sec-b3-1",
                   "subjectCode": "PHYSICS",
+                  "choiceGroup": null,
                   "questionCount": 15,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -4803,6 +4845,7 @@
                 {
                   "id": "sec-b3-2",
                   "subjectCode": "CHEMISTRY",
+                  "choiceGroup": null,
                   "questionCount": 15,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -4879,6 +4922,7 @@
                 {
                   "id": "sec-b3-3",
                   "subjectCode": "BIOLOGY",
+                  "choiceGroup": null,
                   "questionCount": 15,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -4955,6 +4999,7 @@
                 {
                   "id": "sec-b3-4",
                   "subjectCode": "GEOGRAPHY",
+                  "choiceGroup": null,
                   "questionCount": 15,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -5094,6 +5139,7 @@
             {
               "id": "sec-v1-1",
               "subjectCode": "VIETNAMESE",
+              "choiceGroup": null,
               "questionCount": 30,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -5155,6 +5201,7 @@
             {
               "id": "sec-v1-2",
               "subjectCode": "ENGLISH",
+              "choiceGroup": null,
               "questionCount": 30,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -5233,6 +5280,7 @@
             {
               "id": "sec-v2",
               "subjectCode": "MATH",
+              "choiceGroup": null,
               "questionCount": 30,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -5323,6 +5371,7 @@
             {
               "id": "sec-v3",
               "subjectCode": "SCIENTIFIC_THINKING",
+              "choiceGroup": null,
               "questionCount": 30,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -5463,6 +5512,7 @@
             {
               "id": "sec-t1",
               "subjectCode": "INFORMATICS",
+              "choiceGroup": null,
               "questionCount": 24,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -5542,6 +5592,7 @@
             {
               "id": "sec-t2-0",
               "subjectCode": "INFORMATICS",
+              "choiceGroup": null,
               "questionCount": 2,
               "knowledgeScope": null,
               "answerQuotas": null,
@@ -5656,6 +5707,7 @@
                 {
                   "id": "sec-t2-cs",
                   "subjectCode": "INFORMATICS",
+                  "choiceGroup": null,
                   "questionCount": 2,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -5772,6 +5824,7 @@
                 {
                   "id": "sec-t2-ict",
                   "subjectCode": "INFORMATICS",
+                  "choiceGroup": null,
                   "questionCount": 2,
                   "knowledgeScope": null,
                   "answerQuotas": null,
@@ -5893,7 +5946,7 @@
       "timing": "PER_PART",
       "durationMinutes": 195,
       "maxScore": 150,
-      "expertNote": "Khoa học chọn 3 trong 5 môn (Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí); số câu từng môn mặc định 17–17–16, cần chuyên gia xác nhận trước khi bán.",
+      "expertNote": "Khoa học chọn 3 trong 5 môn (Vật lí, Hóa học, Sinh học: nhóm tự nhiên; Lịch sử, Địa lí: nhóm xã hội); số câu từng môn chia 17–17–16 theo nhóm của các môn đã chọn.",
       "parts": [
         {
           "name": "Phần 1 · Toán học và Xử lí số liệu",
@@ -6064,6 +6117,7 @@
                 "sections": [
                   {
                     "subjectCode": "PHYSICS",
+                    "choiceGroup": "NATURAL",
                     "questionCount": null,
                     "knowledgeScope": {
                       "nodeIds": [
@@ -6142,6 +6196,7 @@
                   },
                   {
                     "subjectCode": "CHEMISTRY",
+                    "choiceGroup": "NATURAL",
                     "questionCount": null,
                     "knowledgeScope": {
                       "nodeIds": [
@@ -6220,6 +6275,7 @@
                   },
                   {
                     "subjectCode": "BIOLOGY",
+                    "choiceGroup": "NATURAL",
                     "questionCount": null,
                     "knowledgeScope": {
                       "nodeIds": [
@@ -6297,6 +6353,7 @@
                   },
                   {
                     "subjectCode": "HISTORY",
+                    "choiceGroup": "SOCIAL",
                     "questionCount": null,
                     "knowledgeScope": {
                       "nodeIds": [
@@ -6374,6 +6431,7 @@
                   },
                   {
                     "subjectCode": "GEOGRAPHY",
+                    "choiceGroup": "SOCIAL",
                     "questionCount": null,
                     "knowledgeScope": {
                       "nodeIds": [
@@ -6455,8 +6513,7 @@
                   17,
                   17,
                   16
-                ],
-                "expertConfirmed": false
+                ]
               }
             }
           ]

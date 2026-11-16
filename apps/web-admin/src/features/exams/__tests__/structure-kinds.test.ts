@@ -140,6 +140,7 @@ describe("thời lượng chung và theo phần", () => {
         answerQuotas: null,
         matrix: null,
         groupOrder: "SHUFFLE",
+        choiceGroup: null,
         blocks: [],
       },
     ],
@@ -185,6 +186,8 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
       ]);
       const science = choice.options[1]!;
       expect(science).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16] });
+      expect(science).not.toHaveProperty("expertConfirmed");
+      expect(science.sections.map((section) => section.choiceGroup)).toEqual(["NATURAL", "NATURAL", "NATURAL", "SOCIAL", "SOCIAL"]);
       expect(science.sections.map((section) => section.subjectCode)).toEqual([
         "PHYSICS",
         "CHEMISTRY",
@@ -194,11 +197,13 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
       ]);
       expect(science.sections.every((section) => section.questionCount === null)).toBe(true);
     }
-    // Mẫu cũng không còn 10 phương án KH-n: một SUBJECT_CHOICE, chờ chuyên gia xác nhận.
+    // Mẫu cũng không còn 10 phương án KH-n: một SUBJECT_CHOICE, môn có nhóm tự nhiên, xã hội, không cờ chờ xác nhận.
     const template = (fixture as { templates: ExamTemplate[] }).templates.find((item) => item.code === "HSA_FULL")!;
     const options = template.parts[2]!.options!;
     expect(options.map((option) => option.kind)).toEqual(["SUBJECT", "SUBJECT_CHOICE"]);
-    expect(options[1]!.subjectChoice).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16], expertConfirmed: false });
+    expect(options[1]!.subjectChoice).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16] });
+    expect(options[1]!.subjectChoice).not.toHaveProperty("expertConfirmed");
+    expect(options[1]!.subjectChoice!.sections.map((section) => section.choiceGroup)).toEqual(["NATURAL", "NATURAL", "NATURAL", "SOCIAL", "SOCIAL"]);
     const serialized = JSON.stringify(fixture);
     expect(serialized).not.toMatch(/"code": ?"KH-\d"/);
   });

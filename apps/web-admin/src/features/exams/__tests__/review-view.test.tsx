@@ -43,8 +43,8 @@ describe("ExamReviewView", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(3);
     expect(within(table).getAllByText("Hợp lệ")).toHaveLength(1);
     expect(within(table).getByText("Không hợp lệ")).toBeInTheDocument();
-    // Mỗi đường nêu vấn đề chặn đầu tiên: phương án Khoa học chờ chuyên gia xác nhận số câu từng môn.
-    expect(within(table).getByText(/chờ chuyên gia xác nhận/)).toBeInTheDocument();
+    // Mỗi đường nêu vấn đề chặn đầu tiên: phương án Khoa học thiếu nguồn Hóa học Lớp 12 ở chỉ tiêu cấp môn.
+    expect(within(table).getByText(/không đủ nguồn cho chỉ tiêu cấp môn/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Đến dòng ma trận cần sửa của Khoa học" })).toBeInTheDocument();
   });
 

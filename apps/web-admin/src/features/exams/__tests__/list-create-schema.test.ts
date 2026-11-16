@@ -109,8 +109,8 @@ describe("mẫu cấu trúc khởi tạo", () => {
       code: "SCIENCE",
       chooseSubjects: 3,
       countsByPick: [17, 17, 16],
-      expertConfirmed: false,
     });
+    expect(hsa[2]!.subjectChoice).not.toHaveProperty("expertConfirmed");
     expect(hsa[2]!.subjectChoice!.sections.map((section) => section.subjectCode)).toEqual([
       "PHYSICS",
       "CHEMISTRY",

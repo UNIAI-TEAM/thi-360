@@ -21,11 +21,11 @@ const HSA = "ex-hsa-f-001";
 /** `revision` hiện tại của bài (D13): lệnh công bố gửi lại làm `expectedRevision`. */
 const rev = (examId: string) => examStore.require(examId).revision;
 const EN = "opt-30";
-/** Phương án Khoa học (SUBJECT_CHOICE) của bài mẫu: HSA-F-001 chưa xác nhận số câu và thiếu nguồn Hóa học Lớp 12. */
+/** Phương án Khoa học (SUBJECT_CHOICE) của bài mẫu: HSA-F-001 thiếu nguồn Hóa học Lớp 12. */
 const SCIENCE = "opt-sci-1";
-/** HSA-F-000: đã xác nhận 17–17–16, mọi cách chọn môn đủ nguồn. */
-const CONFIRMED = "ex-hsa-f-000";
-const CONFIRMED_SCIENCE = "opt-sci-4";
+/** HSA-F-000: mọi cách chọn môn đủ nguồn. */
+const SOURCED = "ex-hsa-f-000";
+const SOURCED_SCIENCE = "opt-sci-4";
 
 beforeEach(() => {
   examStore.reset();
@@ -56,7 +56,7 @@ describe("runExamCheck / getExamCheck", () => {
     const result = await runExamCheck({ examId: HSA, extendedTimeLimit: true });
     expect(result.timeLimitSeconds).toBe(120);
     expect(pick(result)).toBe("VALID");
-    // Còn lại: phương án chờ chuyên gia xác nhận và chỉ tiêu Hóa học Lớp 12 thiếu nguồn.
+    // Còn lại: chỉ tiêu Hóa học Lớp 12 thiếu nguồn ở cả hai số câu môn có thể nhận (17 câu cần 9, 16 câu cần 8).
     expect(result.issueCount).toBe(2);
     expect(examStore.require(HSA).check.issueCount).toBe(2);
   });
@@ -117,7 +117,7 @@ describe("generatePreview", () => {
   });
 
   it("đường Khoa học: xem trước cần đúng số môn đã chọn, thiếu hoặc sai thì 422 PREVIEW_SUBJECTS_INVALID", async () => {
-    const request = { examId: CONFIRMED, pathId: CONFIRMED_SCIENCE, seed: 1 };
+    const request = { examId: SOURCED, pathId: SOURCED_SCIENCE, seed: 1 };
     for (const subjectCodes of [undefined, [], ["PHYSICS", "CHEMISTRY"], ["PHYSICS", "CHEMISTRY", "ENGLISH"], ["PHYSICS", "PHYSICS", "CHEMISTRY"]]) {
       await expect(generatePreview({ ...request, subjectCodes })).rejects.toMatchObject({ status: 422, code: "PREVIEW_SUBJECTS_INVALID" });
     }
@@ -125,7 +125,7 @@ describe("generatePreview", () => {
     expect(result.status).toBe("GENERATED");
     if (result.status !== "GENERATED") return;
     const science = result.paper.parts[2]!;
-    // Ba môn đã chọn theo thứ tự môn trong cấu trúc, số câu 17, 17, 16 (D25), không theo thứ tự gửi lên.
+    // Ba môn đã chọn theo thứ tự môn trong cấu trúc, chia theo nhóm (B10): hai môn tự nhiên 17, môn xã hội 16.
     const perSubject = new Map<string, number>();
     for (const block of science.blocks) perSubject.set(block.subjectCode, (perSubject.get(block.subjectCode) ?? 0) + block.questionCount);
     expect([...perSubject]).toEqual([
@@ -134,6 +134,24 @@ describe("generatePreview", () => {
       ["HISTORY", 16],
     ]);
     expect(result.paper.totalQuestions).toBe(150);
+  });
+
+  it("đường Khoa học, ba môn tự nhiên: môn nhận 16 câu chọn theo hạt giống, cùng hạt giống cùng môn", async () => {
+    const countsFor = async (seed: number) => {
+      const result = await generatePreview({ examId: SOURCED, pathId: SOURCED_SCIENCE, seed, subjectCodes: ["PHYSICS", "CHEMISTRY", "BIOLOGY"] });
+      if (result.status !== "GENERATED") throw new Error("expected paper");
+      const perSubject = new Map<string, number>();
+      for (const block of result.paper.parts[2]!.blocks) perSubject.set(block.subjectCode, (perSubject.get(block.subjectCode) ?? 0) + block.questionCount);
+      return [...perSubject].map(([, count]) => count);
+    };
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 12; seed += 1) {
+      const counts = await countsFor(seed);
+      expect([...counts].sort()).toEqual([16, 17, 17]);
+      expect(await countsFor(seed)).toEqual(counts);
+      seen.add(String(counts.indexOf(16)));
+    }
+    expect(seen.size).toBeGreaterThan(1);
   });
 
   it("sinh theo một phiên bản đã công bố", async () => {

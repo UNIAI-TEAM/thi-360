@@ -173,6 +173,12 @@ export interface AnswerQuotas {
   items: Array<{ answerType: QuestionType; value: number }>;
 }
 
+/**
+ * Nhóm của môn trong `SUBJECT_CHOICE` (B10): môn tự nhiên (Vật lí, Hóa học, Sinh học) hoặc môn xã hội (Lịch sử, Địa lí).
+ * Số câu từng môn tính theo nhóm của các môn đã chọn (`allocateSubjectCounts`).
+ */
+export type ChoiceGroup = "NATURAL" | "SOCIAL";
+
 /** Một môn trong phần thi (hoặc trong một phương án) cùng các nhóm lấy câu của môn (B9). */
 export interface ExamSection {
   id: string;
@@ -187,6 +193,8 @@ export interface ExamSection {
   matrix: BlockMatrix | null;
   /** Thứ tự nhóm do mẫu quy định (D24): `SHUFFLE` đảo cả nhóm, câu cùng nhóm vẫn liền nhau. */
   groupOrder: "FIXED" | "SHUFFLE";
+  /** Nhóm của môn trong `SUBJECT_CHOICE` (B10); `null` ngoài `SUBJECT_CHOICE`. */
+  choiceGroup: ChoiceGroup | null;
   blocks: QuestionBlock[];
 }
 
@@ -206,13 +214,14 @@ export interface ExamPartOption {
   /** `SUBJECT_CHOICE`: số môn học viên chọn; kind khác `null`. */
   chooseSubjects: number | null;
   /**
-   * `SUBJECT_CHOICE`: số câu của môn thứ i trong các môn đã chọn, xếp theo thứ tự môn trong cấu trúc, không theo thứ
-   * tự bấm chọn (D25); tổng bằng số câu của phương án. Kind khác `null`.
+   * `SUBJECT_CHOICE`: các số câu của phương án, chia cho ba môn đã chọn theo nhóm của môn (B10, D25): HSA 17, 17, 16.
+   * Nhóm có nhiều môn được chọn hơn nhận số lớn nhất mỗi môn, môn của nhóm còn lại nhận số nhỏ nhất; tổng bằng số câu
+   * của phương án. Kind khác `null`.
    */
   countsByPick: number[] | null;
   /**
-   * Số câu từng môn đã được chuyên gia xác nhận (HSA chia 17–17–16 đang chờ xác nhận). `false`: kiểm tra cấu hình nhắc
-   * trước khi công bố; bỏ trống: không cần xác nhận.
+   * Số câu từng môn đã được chuyên gia xác nhận (tổ hợp sinh mới hoặc sửa số câu chờ xác nhận). `false`: kiểm tra cấu
+   * hình nhắc trước khi công bố; bỏ trống: không cần xác nhận. Phương án `SUBJECT_CHOICE` không dùng cờ này.
    */
   expertConfirmed?: boolean;
 }
@@ -358,14 +367,14 @@ export interface ExamTemplateSection {
   answerQuotas?: AnswerQuotas | null;
   matrix?: BlockMatrix | null;
   groupOrder?: ExamSection["groupOrder"];
+  choiceGroup?: ChoiceGroup | null;
 }
 
-/** Phương án chọn môn của mẫu (HSA Khoa học): 5 môn, chọn 3, số câu 17, 17, 16 chờ chuyên gia xác nhận (D25). */
+/** Phương án chọn môn của mẫu (HSA Khoa học): 5 môn kèm nhóm, chọn 3, số câu 17, 17, 16 chia theo nhóm (B10, D25). */
 export interface TemplateSubjectChoice {
   sections: ExamTemplateSection[];
   chooseSubjects: number;
   countsByPick: number[];
-  expertConfirmed: boolean;
 }
 
 /**

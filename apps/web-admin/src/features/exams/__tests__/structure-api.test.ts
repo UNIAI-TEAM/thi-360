@@ -64,7 +64,9 @@ describe("tạo bài thi", () => {
     expect(exam.parts.map((part) => part.mode)).toEqual(["FIXED", "FIXED", "CHOICE"]);
     expect(exam.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "SCIENCE"]);
     const science = exam.parts[2]!.options[1]!;
-    expect(science).toMatchObject({ kind: "SUBJECT_CHOICE", chooseSubjects: 3, countsByPick: [17, 17, 16], expertConfirmed: false });
+    expect(science).toMatchObject({ kind: "SUBJECT_CHOICE", chooseSubjects: 3, countsByPick: [17, 17, 16] });
+    expect(science).not.toHaveProperty("expertConfirmed");
+    expect(science.sections.map((section) => section.choiceGroup)).toEqual(["NATURAL", "NATURAL", "NATURAL", "SOCIAL", "SOCIAL"]);
     expect(science.sections.map((section) => section.questionCount)).toEqual([null, null, null, null, null]);
     expect(exam.combinationCount).toBe(0);
     expect(exam.versions.map((version) => version.state)).toEqual(["WORKING"]);

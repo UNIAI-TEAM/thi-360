@@ -26,6 +26,7 @@ import type {
   MatrixDimensionValue,
   QuestionBlock,
 } from "./types";
+import { allocateSubjectCounts } from "./subject-choice";
 
 /**
  * Kiểm tra cấu hình bài thi (UniNote PBI-04 mục 7–9), hàm thuần: cùng bài thi và cùng nguồn cho cùng kết quả.
@@ -594,7 +595,10 @@ export function groupCounts(section: ExamSection, count: number): number[] {
   return section.blocks.map((block) => block.questionCount ?? remainder);
 }
 
-/** Một cách chọn môn của `SUBJECT_CHOICE`: các môn xếp theo thứ tự trong cấu trúc, môn thứ i nhận `countsByPick[i]` (D25). */
+/**
+ * Một trường hợp chọn môn của `SUBJECT_CHOICE`: các môn xếp theo thứ tự trong cấu trúc, môn thứ i nhận `counts[i]` theo
+ * nhóm của các môn đã chọn (B10, D25). Bộ ba môn tự nhiên có 3 trường hợp, mỗi bộ ba khác có 1.
+ */
 export interface SubjectPick {
   sectionIds: string[];
   subjectCodes: string[];
@@ -604,24 +608,35 @@ export interface SubjectPick {
 /** Tối đa 8 môn trong một `SUBJECT_CHOICE` (spec 5.2). */
 export const SUBJECT_CHOICE_MAX_SECTIONS = 8;
 
-export function enumerateSubjectPicks(option: ExamPartOption): SubjectPick[] {
+/** Mọi bộ môn học viên có thể chọn, theo thứ tự cấu trúc (HSA: 10 bộ ba). */
+function subjectTriples(option: ExamPartOption): ExamSection[][] {
   const pick = option.chooseSubjects ?? 0;
   const { sections } = option;
   if (pick <= 0 || pick > sections.length || sections.length > SUBJECT_CHOICE_MAX_SECTIONS) return [];
-  const picks: SubjectPick[] = [];
-  const walk = (start: number, chosen: number[]) => {
+  const triples: ExamSection[][] = [];
+  const walk = (start: number, chosen: ExamSection[]) => {
     if (chosen.length === pick) {
-      picks.push({
-        sectionIds: chosen.map((index) => sections[index]!.id),
-        subjectCodes: chosen.map((index) => sections[index]!.subjectCode),
-        counts: chosen.map((_, position) => option.countsByPick?.[position] ?? 0),
-      });
+      triples.push(chosen);
       return;
     }
-    for (let index = start; index < sections.length; index += 1) walk(index + 1, [...chosen, index]);
+    for (let index = start; index < sections.length; index += 1) walk(index + 1, [...chosen, sections[index]!]);
   };
   walk(0, []);
-  return picks;
+  return triples;
+}
+
+/** Mọi trường hợp chọn môn và chia số câu của phương án (HSA: 10 bộ ba, 12 trường hợp). */
+export function enumerateSubjectPicks(option: ExamPartOption): SubjectPick[] {
+  return subjectTriples(option).flatMap((chosen) =>
+    allocateSubjectCounts(
+      chosen.map((section) => section.choiceGroup),
+      option.countsByPick ?? [],
+    ).map((counts) => ({
+      sectionIds: chosen.map((section) => section.id),
+      subjectCodes: chosen.map((section) => section.subjectCode),
+      counts,
+    })),
+  );
 }
 
 /** Các số câu một môn có thể nhận qua mọi cách chọn môn, theo thứ tự xuất hiện. */
@@ -637,7 +652,10 @@ function possibleCountsBySection(picks: readonly SubjectPick[]): Map<string, num
   return result;
 }
 
-/** `countsByPick` sai số phần tử hoặc sai tổng (tổng bằng số câu của phương án), hoặc số môn chọn không hợp lệ. */
+/**
+ * `countsByPick` sai số phần tử hoặc sai tổng (tổng bằng số câu của phương án), số môn chọn không hợp lệ, có môn thiếu
+ * `choiceGroup`, hoặc có bộ môn không chia được theo nhóm (B10).
+ */
 function subjectChoiceCountsIssue(
   option: ExamPartOption,
   target: number,
@@ -654,6 +672,10 @@ function subjectChoiceCountsIssue(
   if (counts.some((value) => !Number.isInteger(value) || value < 0) || total !== target) {
     return makeIssue({ ...base, required: target, available: total });
   }
+  const grouped = option.sections.filter((section) => section.choiceGroup !== null).length;
+  if (grouped !== option.sections.length) return makeIssue({ ...base, required: option.sections.length, available: grouped });
+  const ungrouped = subjectTriples(option).filter((chosen) => allocateSubjectCounts(chosen.map((section) => section.choiceGroup), counts).length === 0);
+  if (ungrouped.length > 0) return makeIssue({ ...base, required: pick, available: ungrouped.length });
   return null;
 }
 
@@ -919,7 +941,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     for (const choice of path.choices) {
       const part = parts.find((item) => item.id === choice.partId);
       const option = part?.options.find((item) => item.id === choice.optionId);
-      // Số câu từng môn của lựa chọn chờ chuyên gia xác nhận (HSA chia 17–17–16): chưa công bố được đường này.
+      // Số câu từng môn của tổ hợp chờ chuyên gia xác nhận (tổ hợp sinh mới hoặc sửa số câu): chưa công bố được đường này.
       if (part && option?.expertConfirmed === false) {
         issues.push(makeIssue({ code: "OPTION_UNCONFIRMED", partId: part.id, partName: part.name, optionId: option.id }));
       }

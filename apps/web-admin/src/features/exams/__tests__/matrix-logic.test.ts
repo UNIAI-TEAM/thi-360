@@ -190,6 +190,7 @@ describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
     answerQuotas: null,
     matrix: null,
     groupOrder: "SHUFFLE",
+    choiceGroup: null,
     blocks: [],
   });
   const singles = (knowledgeScope: QuestionBlock["knowledgeScope"]): QuestionBlock => ({

@@ -91,6 +91,7 @@ function singlePart(blocks: QuestionBlock[], questionCount = 10): ExamPart {
         answerQuotas: null,
         matrix: null,
         groupOrder: "SHUFFLE",
+        choiceGroup: null,
         blocks,
       },
     ],
@@ -283,7 +284,7 @@ describe("checkExam", () => {
       ["SCIENCE", "INVALID"],
     ]);
     const science = outcome.paths[1]!;
-    expect(science.selections).toHaveLength(10);
+    expect(science.selections).toHaveLength(12);
     const resultOf = (...subjects: string[]) => science.selections.find((item) => item.subjectCodes.join() === subjects.join())?.result;
     // Hóa học thiếu câu Lớp 12 (chỉ tiêu cấp môn): mọi cách chọn có Hóa học là INVALID; Địa lí có nguồn giao nhau chưa xác nhận được.
     expect(resultOf("PHYSICS", "BIOLOGY", "HISTORY")).toBe("VALID");
@@ -293,7 +294,7 @@ describe("checkExam", () => {
     expect(science.issues).toContainEqual(
       expect.objectContaining({ code: "SUBJECT_QUOTA_INFEASIBLE", subjectCode: "CHEMISTRY", gradeCode: "GRADE_12", required: 9, available: 4 }),
     );
-    expect(science.issues.some((issue) => issue.code === "OPTION_UNCONFIRMED")).toBe(true);
+    expect(science.issues.some((issue) => issue.code === "SUBJECT_CHOICE_COUNTS_INVALID")).toBe(false);
     expect(outcome.paths.every((path) => path.totalQuestions === 150 && path.totalMinutes === 195)).toBe(true);
     expect(outcome.totalPoints).toBe(150);
   });
@@ -349,29 +350,56 @@ describe("checkExam", () => {
     ]);
   });
 
-  it("SUBJECT_CHOICE assigns 17/17/16 in structure order", () => {
+  it("SUBJECT_CHOICE splits by choiceGroup: 17/17/16, 16/17/17, three NATURAL give 3 cases, 12 in total (B10)", () => {
     const hsa = examStore.require("ex-hsa-f-001");
     const science = hsa.parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
+    expect(science.sections.map((section) => [section.subjectCode, section.choiceGroup])).toEqual([
+      ["PHYSICS", "NATURAL"],
+      ["CHEMISTRY", "NATURAL"],
+      ["BIOLOGY", "NATURAL"],
+      ["HISTORY", "SOCIAL"],
+      ["GEOGRAPHY", "SOCIAL"],
+    ]);
     const picks = enumerateSubjectPicks(science);
-    expect(picks).toHaveLength(10);
-    // Môn thứ i trong ba môn đã chọn, theo thứ tự môn trong cấu trúc, nhận countsByPick[i]: môn đứng sau cùng nhận 16.
-    expect(picks.find((pick) => pick.subjectCodes.join() === "PHYSICS,CHEMISTRY,BIOLOGY")?.counts).toEqual([17, 17, 16]);
-    expect(picks.find((pick) => pick.subjectCodes.join() === "CHEMISTRY,HISTORY,GEOGRAPHY")?.counts).toEqual([17, 17, 16]);
-    expect(picks.every((pick) => pick.counts.join() === "17,17,16")).toBe(true);
-    expect(picks.every((pick) => pick.subjectCodes.join() === [...pick.sectionIds].map((id) => science.sections.find((s) => s.id === id)!.subjectCode).join())).toBe(true);
+    const countsOf = (...subjects: string[]) =>
+      picks.filter((pick) => pick.subjectCodes.join() === subjects.join()).map((pick) => pick.counts);
+    // Hai môn tự nhiên + một môn xã hội: môn tự nhiên 17, môn xã hội 16.
+    expect(countsOf("PHYSICS", "CHEMISTRY", "HISTORY")).toEqual([[17, 17, 16]]);
+    // Một môn tự nhiên + hai môn xã hội: môn tự nhiên 16, môn xã hội 17.
+    expect(countsOf("BIOLOGY", "HISTORY", "GEOGRAPHY")).toEqual([[16, 17, 17]]);
+    // Ba môn tự nhiên: ba trường hợp, mỗi môn một lần nhận 16.
+    expect(countsOf("PHYSICS", "CHEMISTRY", "BIOLOGY")).toEqual([
+      [16, 17, 17],
+      [17, 16, 17],
+      [17, 17, 16],
+    ]);
+    expect(picks).toHaveLength(12);
+    expect(new Set(picks.map((pick) => pick.subjectCodes.join())).size).toBe(10);
+    expect(picks.every((pick) => pick.counts.reduce((total, count) => total + count, 0) === 50)).toBe(true);
 
     const outcome = checkExam(hsa, mockAvailability(hsa.id, hsa.parts));
     const selections = outcome.paths.find((path) => path.choices[0]!.kind === "SUBJECT_CHOICE")!.selections;
-    expect(selections.map((item) => item.counts.join("/"))).toEqual(Array(10).fill("17/17/16"));
-    expect(selections[0]!.subjectCodes).toEqual(["PHYSICS", "CHEMISTRY", "BIOLOGY"]);
+    expect(selections.map((item) => [item.subjectCodes.join(), item.counts.join("/")])).toEqual(
+      picks.map((pick) => [pick.subjectCodes.join(), pick.counts.join("/")]),
+    );
 
-    // Số câu từng môn đổi theo countsByPick, vẫn theo thứ tự cấu trúc; nhóm "lấy phần còn lại" nhận phần chênh.
+    // Số câu của phương án đổi theo countsByPick; nhóm "lấy phần còn lại" nhận phần chênh.
     const custom = structuredClone(hsa);
     const customScience = custom.parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
-    customScience.countsByPick = [20, 15, 15];
-    expect(enumerateSubjectPicks(customScience)[0]!.counts).toEqual([20, 15, 15]);
-    expect(groupCounts(customScience.sections[0]!, 20)).toEqual([10, 10]);
-    expect(groupCounts(customScience.sections[0]!, 15)).toEqual([10, 5]);
+    customScience.countsByPick = [18, 18, 14];
+    expect(enumerateSubjectPicks(customScience).find((pick) => pick.subjectCodes.join() === "PHYSICS,CHEMISTRY,HISTORY")?.counts).toEqual([18, 18, 14]);
+    expect(groupCounts(customScience.sections[0]!, 18)).toEqual([10, 8]);
+    expect(groupCounts(customScience.sections[0]!, 14)).toEqual([10, 4]);
+  });
+
+  it("SUBJECT_CHOICE: môn thiếu choiceGroup không chia được số câu, báo SUBJECT_CHOICE_COUNTS_INVALID", () => {
+    const hsa = structuredClone(examStore.require("ex-hsa-f-002"));
+    const science = hsa.parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
+    science.sections[3]!.choiceGroup = null;
+    const result = checkExam(hsa, mockAvailability(hsa.id, hsa.parts));
+    const issues = result.paths.flatMap((path) => path.issues).filter((issue) => issue.code === "SUBJECT_CHOICE_COUNTS_INVALID");
+    expect(issues).toHaveLength(1);
+    expect(result.paths.find((path) => path.choices[0]!.kind === "SUBJECT_CHOICE")!.selections).toEqual([]);
   });
 
   it("SUBJECT_CHOICE: countsByPick sai tổng, thiếu nhóm phần còn lại, chỉ tiêu theo số câu khi số câu môn đổi", () => {

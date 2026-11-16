@@ -132,6 +132,7 @@ function newSection(subjectCode: string, questionCount: number | null): ExamSect
     answerQuotas: null,
     matrix: null,
     groupOrder: "SHUFFLE",
+    choiceGroup: null,
     blocks: [],
   };
 }
@@ -184,6 +185,7 @@ function sectionFromTemplate(section: ExamTemplateSection): ExamSection {
     answerQuotas: structuredClone(section.answerQuotas ?? null),
     matrix: structuredClone(section.matrix ?? null),
     groupOrder: section.groupOrder ?? "SHUFFLE",
+    choiceGroup: section.choiceGroup ?? null,
     blocks: blocksFromTemplate(section.blocks),
   };
 }
@@ -212,7 +214,7 @@ function buildPartOption(
   };
 }
 
-/** Phương án `SUBJECT_CHOICE` (HSA Khoa học): các môn khai nhóm và nguồn một lần, số câu theo `countsByPick` (D25). */
+/** Phương án `SUBJECT_CHOICE` (HSA Khoa học): các môn khai nhóm và nguồn một lần, số câu chia theo `choiceGroup` (B10, D25). */
 function subjectChoiceOption(choice: NonNullable<CreateExamPartInput["subjectChoice"]>): ExamPartOption {
   return {
     id: mockId("opt"),
@@ -222,7 +224,6 @@ function subjectChoiceOption(choice: NonNullable<CreateExamPartInput["subjectCho
     sections: choice.sections.map(sectionFromTemplate),
     chooseSubjects: choice.chooseSubjects,
     countsByPick: [...choice.countsByPick],
-    expertConfirmed: choice.expertConfirmed,
   };
 }
 

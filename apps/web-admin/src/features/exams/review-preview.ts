@@ -27,6 +27,7 @@ import type {
 import { blockPointsEach, countOf, isSetBlock, sum } from "./matrix";
 import type { ExamPart, ExamSection, QuestionBlock } from "./types";
 import { effectiveScope } from "./mock/source-count";
+import { allocateSubjectCounts, pickAllocation } from "./subject-choice";
 
 /**
  * Bộ sinh đề xem trước (mô phỏng cơ chế sinh đề thật, UniNote PBI-04 mục 10, 12): cùng quy tắc với Kiểm tra cấu
@@ -401,14 +402,22 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     return section.blocks.map((block, index) => buildBlock(block, section, perGroup[index]!, sectionRemaining, quotas));
   };
 
-  /** Môn của một phần trên đường: môn cố định theo số câu của môn; `SUBJECT_CHOICE` chỉ các môn đã chọn, theo thứ tự cấu trúc (D25). */
+  /**
+   * Môn của một phần trên đường: môn cố định theo số câu của môn; `SUBJECT_CHOICE` chỉ các môn đã chọn, theo thứ tự cấu
+   * trúc, số câu chia theo nhóm của môn (B10, D25); ba môn cùng nhóm thì môn nhận số câu nhỏ nhất chọn theo hạt giống.
+   */
   const sectionsToBuild = (part: ExamPart, optionId: string | null, sections: readonly ExamSection[]) => {
     const option = part.options.find((item) => item.id === optionId && item.kind === "SUBJECT_CHOICE");
     if (!option) return sections.map((section) => ({ section, count: section.questionCount ?? sum(section.blocks.map(countOf)) }));
     const chosen = option.sections.filter((section) => input.subjectCodes?.includes(section.subjectCode));
+    const counts = pickAllocation(
+      allocateSubjectCounts(chosen.map((section) => section.choiceGroup), option.countsByPick ?? []),
+      seededRandom(input.seed),
+    );
+    if (!counts) throw new Error(`Option ${option.id} has no subject count allocation`);
     return [
       ...part.sections.map((section) => ({ section, count: section.questionCount ?? sum(section.blocks.map(countOf)) })),
-      ...chosen.map((section, index) => ({ section, count: option.countsByPick?.[index] ?? 0 })),
+      ...chosen.map((section, index) => ({ section, count: counts[index]! })),
     ];
   };
 

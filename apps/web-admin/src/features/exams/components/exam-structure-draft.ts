@@ -182,6 +182,7 @@ export function buildOption(
       answerQuotas: null,
       matrix: null,
       groupOrder: "SHUFFLE",
+      choiceGroup: null,
       blocks: [],
     })),
     chooseSubjects: null,

@@ -112,6 +112,6 @@ describe("hộp thoại công bố", () => {
     await user.click(await screen.findByRole("button", { name: "Công bố" }));
     const dialog = await screen.findByRole("dialog");
     const row = within(dialog).getByRole("checkbox", { name: /^Khoa học/ }).parentElement!;
-    expect(within(row).getByText(/chờ chuyên gia xác nhận/)).toBeInTheDocument();
+    expect(within(row).getByText(/không đủ nguồn cho chỉ tiêu cấp môn/)).toBeInTheDocument();
   });
 });
