@@ -172,6 +172,7 @@ class PaperSolverOracleTest {
         SectionOnPath noGroup = new SectionOnPath("MATH", "sec-ng", 2, SubjectQuota.NONE,
                 List.of());
         SolvePath pathNg = SolvePath.of(0, List.of(noGroup));
+        assertThat(oracle.evaluate(pathNg, source).status()).isEqualTo(SolveStatus.INVALID);
         PathResult forgedNoGroup = PathResult.valid(pathNg, List.of());
         assertThat(codes(validator.validate(forgedNoGroup, source)))
                 .contains(ViolationCode.MISSING_WITNESS);
@@ -179,7 +180,6 @@ class PaperSolverOracleTest {
                 List.of(new SubjectWitness("MATH", 2, List.of())));
         assertThat(codes(validator.validate(emptyWitnessNoGroup, source)))
                 .contains(ViolationCode.SECTION_TOTAL_MISMATCH);
-
 
         // sai chỉ tiêu dạng trả lời của môn (2 câu đủ nhưng một câu không đúng dạng)
         CandidateSource wide = group -> List.of(q1, q2, q3);
