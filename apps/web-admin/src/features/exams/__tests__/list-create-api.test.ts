@@ -1,14 +1,18 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { applyExamTemplate, createExam, listExams, suggestExamCode, updateExamInfo, updateExamStructure } from "../api";
-import { examStore } from "../mock/store";
+import { ExamsApiError } from "../review-api";
 import type { CreateExamRequest } from "../types";
-import { pinInMemoryBackend } from "./in-memory-backend";
+import { ExamsBackend } from "./fake-exams-backend";
 
-pinInMemoryBackend();
+// Danh mục tổ hợp là dữ liệu của FE-1 (Nội dung); createExam đọc khi có parts tùy chỉnh.
+vi.mock("@/features/content/api", () => ({ getContentReference: async () => ({ combinations: [] }) }));
 
-afterEach(() => {
-  examStore.reset();
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 function request(overrides: Partial<CreateExamRequest>): CreateExamRequest {
@@ -23,11 +27,12 @@ function request(overrides: Partial<CreateExamRequest>): CreateExamRequest {
 }
 
 async function rejectsWith(promise: Promise<unknown>, status: number, code: string) {
-  await expect(promise).rejects.toBeInstanceOf(MockApiError);
-  await promise.catch((error: MockApiError) => {
-    expect(error.status).toBe(status);
-    expect(error.code).toBe(code);
-  });
+  const error = await promise.then(
+    () => undefined,
+    (caught: unknown) => caught,
+  );
+  expect(error).toBeInstanceOf(ExamsApiError);
+  expect(error).toMatchObject({ status, code });
 }
 
 describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
@@ -68,7 +73,10 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
       ["BRANCH", "ICT", "INFORMATICS"],
     ]);
     const page = await listExams({ subjectCode: "INFORMATICS" });
-    expect(page.content.map((item) => [item.code, item.branchCount, item.timing])).toContainEqual(["THPTQG-F-TIN-009", 2, "SHARED"]);
+    expect(page.content.map((item) => item.code)).toContain("THPTQG-F-TIN-009");
+    const row = page.content.find((item) => item.code === "THPTQG-F-TIN-009")!;
+    // Danh sách thật không trả timing/số nhánh; thời lượng chung của SHARED vẫn có.
+    expect(row).toMatchObject({ scope: "SUBJECT", durationMinutes: 50, timingUnknown: true });
   });
 
   it("V-ACT: thang 1.200, điểm phần 600/300/300; năng lực của mẫu thành phạm vi kiến thức của khối", async () => {
