@@ -248,6 +248,9 @@ final class MaxFlow {
         for (int g = 0; g < nG; g++) {
             List<Integer> picked = new ArrayList<>();
             for (int i = 0; i < ctx.cands().get(g).size(); i++) {
+                if ((ei & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 int[] edges = flowEdge[ei];
                 if (edges != null && net.flow(edges[0]) > 0) {
                     picked.add(i);

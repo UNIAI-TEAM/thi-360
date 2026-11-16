@@ -106,11 +106,15 @@ final class SubproblemSolver {
         int rCount = reqs.size();
         long[] supply = new long[rCount];
         java.util.Set<String> countedForSubject = new java.util.HashSet<>();
+        int scans = 0;
         for (int g = 0; g < nG; g++) {
             deadlineCheck.run();
             int groupUnits = ctx.groups().get(g).units();
             long units = 0;
             for (int i = 0; i < ctx.cands().get(g).size(); i++) {
+                if ((scans++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 if (ctx.usable()[g][i]) {
                     units += ctx.units()[g][i];
                     int[] vec = ctx.contrib()[g][i];
