@@ -19,6 +19,9 @@ public final class ImportSheets {
         throws ImportFileException {
 
         List<String> header = table.isEmpty() ? List.of() : table.get(0);
+        if (header.isEmpty() || header.stream().allMatch(value -> value == null || value.isBlank())) {
+            throw new ImportFileException(ImportIssueCode.IMPORT_INVALID_HEADER, "Thiếu dòng tiêu đề");
+        }
         List<String> keys = new ArrayList<>(header.size());
         for (int i = 0; i < header.size(); i++) {
             keys.add("c" + i);
@@ -45,6 +48,9 @@ public final class ImportSheets {
                     "Số dòng dữ liệu vượt quá giới hạn tối đa " + limits.maxRows() + " dòng");
             }
             rows.add(new ImportSheetRow(i + 1, cells));
+        }
+        if (rows.isEmpty()) {
+            throw new ImportFileException(ImportIssueCode.IMPORT_EMPTY_FILE, "Tệp không có dòng dữ liệu");
         }
 
         List<ImportColumn> columns = new ArrayList<>(header.size());

@@ -16,14 +16,13 @@ import java.util.regex.Pattern;
  * {@link #suggestMapping} gợi ý theo bí danh của {@link ImportDictionary} (mã trường tự là bí
  * danh, nên cột của tệp mẫu mới tự khớp); {@link #checkMapping} kiểm trường bắt buộc và trùng.
  *
- * <p>Trường bắt buộc của mapping chỉ là {@code type} và {@code content} (quyết định 8.1: thiếu
- * đáp án chỉ là cảnh báo; môn/khối/mức độ thiếu là lỗi trên dòng chứ không phải lỗi mapping).
+ * <p>Thiếu đáp án chỉ là cảnh báo, nên không bắt buộc ánh xạ {@code correctAnswer}.
  */
 public final class ImportColumnMapper {
 
     /** Trường bắt buộc phải có cột ánh xạ để tệp đọc được. */
     public static final Set<ImportField> REQUIRED_FIELDS =
-        Set.of(ImportField.TYPE, ImportField.CONTENT);
+        Set.of(ImportField.TYPE, ImportField.CONTENT, ImportField.SUBJECT, ImportField.GRADE, ImportField.DIFFICULTY);
 
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
     private static final Pattern D_STROKE = Pattern.compile("[Đđ]");
