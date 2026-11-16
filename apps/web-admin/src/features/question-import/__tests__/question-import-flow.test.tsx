@@ -347,7 +347,7 @@ describe("Nhập câu hỏi từ tệp (API thật, client giả)", () => {
     expect(within(matching).getByText(/Mỗi lựa chọn dùng một lần/)).toBeInTheDocument();
   }, 20_000);
 
-  it("không bỏ qua dòng lỗi thì không nhập và báo trong màn", async () => {
+  async function reachCheckStep() {
     const user = userEvent.setup();
     const { container } = renderWithProviders(<QuestionImportView />);
     await uploadSample(container, user);
