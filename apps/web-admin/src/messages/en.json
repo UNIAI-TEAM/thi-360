@@ -3769,7 +3769,16 @@
         "POINTS_TOTAL_MISMATCH": "The path totals {available, number} points; the exam scale is {required, number}.",
         "COMPETENCY_SHORTAGE": "Block {block} needs {required, number} questions for {competency}; {available, number} matching questions are available.",
         "RUBRIC_MISSING": "Block {block}: {available, plural, one {# essay source question has} other {# essay source questions have}} no rubric ({codes}).",
-        "SCORING_MISMATCH": "Block {block}: {available, plural, one {# source question uses} other {# source questions use}} a scoring rule different from the block's expected rule ({codes}). Warning only; publishing is not blocked."
+        "SCORING_MISMATCH": "Block {block}: {available, plural, one {# source question uses} other {# source questions use}} a scoring rule different from the block's expected rule ({codes}). Warning only; publishing is not blocked.",
+        "ANSWER_QUOTA_TOTAL_MISMATCH": "Subject {subject}: the answer-type quotas add up to {available, number} questions; they must add up to the subject's {required, number}.",
+        "SUBJECT_MATRIX_TOTAL_MISMATCH": "Subject {subject}: the {dimension, select, GRADE {grade} DIFFICULTY {difficulty} other {grade and difficulty}} quotas add up to {available, number} questions; they must add up to the subject's {required, number}.",
+        "GROUP_ANSWER_TYPE_MISSING": "Group {block} has no answer type, and subject {subject} sets no answer-type quota.",
+        "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: the per-subject counts of the subject choice are invalid (need {required, number}, found {available, number}). There must be one value per chosen subject, adding up to the option's question count.",
+        "REMAINDER_GROUP_INVALID": "Subject {subject} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed {required, number} questions (found {available, number}).",
+        "SUBJECT_QUOTA_COUNT_VARIES": "Subject {subject} receives {required, number} to {available, number} questions: subject quotas must be set as percentages, not as question counts.",
+        "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: the {answerType} quota needs {required, number} questions; {available, number} matching questions are available.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: not enough source for the subject quota; it needs {required, number} questions at {dimension, select, GRADE {{level}} DIFFICULTY {{level}} other {{grade}/{difficulty}}}; {available, number} matching questions are available.",
+        "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
       }
     },
     "versions": {

@@ -6003,7 +6003,47 @@
           "questionCount": 50,
           "durationMinutes": 60,
           "mode": "FIXED",
-          "subjectCode": "LITERATURE"
+          "subjectCode": null,
+          "sections": [
+            {
+              "subjectCode": "LITERATURE",
+              "questionCount": 50,
+              "knowledgeScope": null,
+              "answerQuotas": null,
+              "matrix": null,
+              "groupOrder": "SHUFFLE",
+              "blocks": [
+                {
+                  "name": "Đọc hiểu",
+                  "questionType": "QUESTION_SET",
+                  "questionCount": 10,
+                  "requiredPointsPerQuestion": 1,
+                  "setCount": 2,
+                  "setSize": 5,
+                  "taskTypeCode": null,
+                  "childAnswerType": null,
+                  "templateGroupCode": "HSA.LITERATURE.READING",
+                  "answerTypeLocked": false,
+                  "knowledgeScope": null,
+                  "matrix": null,
+                  "shuffle": "SHUFFLE"
+                },
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 40,
+                  "requiredPointsPerQuestion": 1,
+                  "taskTypeCode": null,
+                  "childAnswerType": null,
+                  "templateGroupCode": "HSA.LITERATURE.MCQ",
+                  "answerTypeLocked": true,
+                  "knowledgeScope": null,
+                  "matrix": null,
+                  "shuffle": "SHUFFLE"
+                }
+              ]
+            }
+          ]
         },
         {
           "name": "Phần 3 · Khoa học (3A) hoặc Tiếng Anh (3B)",

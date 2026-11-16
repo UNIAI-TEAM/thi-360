@@ -9,6 +9,7 @@ import {
 } from "../components/block-scoring-editor";
 import {
   addBranch,
+  attachCombination,
   attachGenerated,
   confirmOption,
   generateCombinations,
@@ -29,7 +30,7 @@ import {
   type MatrixAxes,
 } from "../matrix";
 import fixture from "../mock/exams.json";
-import type { BlockMatrix, ExamDetail, ExamPart, QuestionBlock } from "../types";
+import type { BlockMatrix, ExamDetail, ExamPart, ExamTemplate, QuestionBlock } from "../types";
 
 const reference = referenceFixture as ContentReference;
 const exams = (fixture as { exams: ExamDetail[] }).exams;
@@ -55,6 +56,10 @@ function competencyBlock(byCompetency: BlockMatrix["byCompetency"], unit: BlockM
     requiredPointsPerQuestion: 1,
     knowledgeScope: { nodeIds: [], match: "ANY", competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
     tagCodes: [],
+    taskTypeCode: null,
+    childAnswerType: null,
+    templateGroupCode: null,
+    answerTypeLocked: false,
     matrix: {
       mode: "SEPARATE",
       unit,
@@ -170,6 +175,69 @@ describe("chiều năng lực của ma trận", () => {
   });
 });
 
+describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
+  it("HSA has one SUBJECT_CHOICE, no KH-n", () => {
+    for (const id of ["ex-hsa-f-000", "ex-hsa-f-001", "ex-hsa-f-002"]) {
+      const choice = sample(id).parts.find((part) => part.mode === "CHOICE")!;
+      expect(choice.options.map((option) => [option.kind, option.code])).toEqual([
+        ["SUBJECT", "ENGLISH"],
+        ["SUBJECT_CHOICE", "SCIENCE"],
+      ]);
+      const science = choice.options[1]!;
+      expect(science).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16] });
+      expect(science.sections.map((section) => section.subjectCode)).toEqual([
+        "PHYSICS",
+        "CHEMISTRY",
+        "BIOLOGY",
+        "HISTORY",
+        "GEOGRAPHY",
+      ]);
+      expect(science.sections.every((section) => section.questionCount === null)).toBe(true);
+    }
+    // Mẫu cũng không còn 10 phương án KH-n: một SUBJECT_CHOICE, chờ chuyên gia xác nhận.
+    const template = (fixture as { templates: ExamTemplate[] }).templates.find((item) => item.code === "HSA_FULL")!;
+    const options = template.parts[2]!.options!;
+    expect(options.map((option) => option.kind)).toEqual(["SUBJECT", "SUBJECT_CHOICE"]);
+    expect(options[1]!.subjectChoice).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16], expertConfirmed: false });
+    const serialized = JSON.stringify(fixture);
+    expect(serialized).not.toMatch(/"code": ?"KH-\d"/);
+    expect(serialized).not.toContain("includeDescendants");
+  });
+
+  it("Toán HSA: chỉ tiêu cấp môn 35 + 15, lớp 3/20/27, độ khó 2/21/20/7; nhóm có templateGroupCode", () => {
+    const math = sample("ex-hsa-f-001").parts[0]!.sections[0]!;
+    expect(math.answerQuotas).toEqual({
+      unit: "COUNT",
+      items: [
+        { answerType: "SINGLE_CHOICE", value: 35 },
+        { answerType: "SHORT_ANSWER", value: 15 },
+      ],
+    });
+    expect(math.matrix?.byGrade.map((item) => item.value)).toEqual([3, 20, 27]);
+    expect(math.matrix?.byDifficulty.map((item) => item.value)).toEqual([2, 21, 20, 7]);
+    expect(math.blocks.map((block) => block.templateGroupCode)).toEqual(["HSA.MATH.SINGLES", "HSA.MATH.CLUSTER"]);
+    expect(math.blocks[0]!.questionType).toBeNull();
+  });
+
+  it("sáu kỳ thi còn lại chỉ có trường mới rỗng (D26)", () => {
+    for (const item of exams.filter((exam) => exam.kind !== "HSA")) {
+      for (const part of item.parts) {
+        for (const section of [...part.sections, ...part.options.flatMap((option) => option.sections)]) {
+          expect(section, item.id).toMatchObject({ knowledgeScope: null, answerQuotas: null, matrix: null });
+          for (const block of section.blocks) {
+            expect(block, item.id).toMatchObject({
+              templateGroupCode: null,
+              taskTypeCode: null,
+              childAnswerType: null,
+              answerTypeLocked: false,
+            });
+          }
+        }
+      }
+    }
+  });
+});
+
 describe("tổ hợp chọn k trong n môn", () => {
   const hsaCatalog = reference.combinations.filter((combination) => combination.examKindCode === "HSA");
   const subjects = ["PHYSICS", "CHEMISTRY", "BIOLOGY", "HISTORY", "GEOGRAPHY"];
@@ -182,23 +250,31 @@ describe("tổ hợp chọn k trong n môn", () => {
   });
 
   it("tổ hợp trùng danh mục dùng mã danh mục, còn lại mã tạm; tổ hợp đã gắn được đánh dấu", () => {
-    const exam = sample("ex-hsa-f-001");
+    // HSA không còn tổ hợp KH-n (một SUBJECT_CHOICE); bài QDA có hai tổ hợp đã gắn, danh mục QDA có QD01–QD04 hai môn.
+    const exam = sample("ex-qda-f-001");
     const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const generated = generateCombinations(subjects, 3, hsaCatalog, choice);
+    const qdaCatalog = reference.combinations.filter((combination) => combination.examKindCode === "QDA");
+    const generated = generateCombinations(subjects, 2, qdaCatalog, choice);
     expect(generated).toHaveLength(10);
     const catalogued = generated.filter((item) => item.catalogued).map((item) => item.code);
-    expect(catalogued.sort()).toEqual(["KH-1", "KH-2", "KH-3"]);
+    expect(catalogued.sort()).toEqual(["QD01", "QD02", "QD03", "QD04"]);
     const temporary = generated.filter((item) => !item.catalogued);
     expect(temporary.every((item) => item.code.startsWith(TEMPORARY_COMBINATION_PREFIX))).toBe(true);
-    expect(generated.filter((item) => item.attached).map((item) => item.code).sort()).toEqual(["KH-1", "KH-2", "KH-3"]);
+    expect(generated.filter((item) => item.attached).map((item) => item.code).sort()).toEqual(["QD01", "QD04"]);
   });
 
   it("gắn tổ hợp sinh ra: chia đều 17–17–16, chờ chuyên gia xác nhận, bỏ qua tổ hợp đã gắn", () => {
+    // HSA không còn KH-n trong dữ liệu mẫu: gắn ba tổ hợp danh mục vào phần tự chọn rồi sinh tiếp.
     const exam = sample("ex-hsa-f-001");
-    const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
+    const base = exam.parts.find((part) => part.mode === "CHOICE")!;
+    const seeded = hsaCatalog.slice(0, 3).reduce(
+      (parts, combination) => attachCombination(parts, base.id, combination),
+      exam.parts.map((part) => (part.id === base.id ? { ...part, options: part.options.filter((item) => item.kind === "SUBJECT") } : part)),
+    );
+    const choice = seeded.find((part) => part.id === base.id)!;
     const before = choice.options.length;
     const generated = generateCombinations(subjects, 3, hsaCatalog, choice);
-    const parts = attachGenerated(exam.parts, choice.id, generated, (code) => code.toLowerCase());
+    const parts = attachGenerated(seeded, choice.id, generated, (code) => code.toLowerCase());
     const after = parts.find((part) => part.id === choice.id)!;
     expect(after.options).toHaveLength(before + 7);
     const added = after.options.slice(before);
@@ -208,7 +284,7 @@ describe("tổ hợp chọn k trong n môn", () => {
   });
 
   it("sửa số câu môn của lựa chọn đã xác nhận thì phải xác nhận lại", () => {
-    const exam = sample("ex-hsa-f-001");
+    const exam = sample("ex-qda-f-001");
     const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
     const option = choice.options.find((item) => item.kind === "COMBINATION")!;
     const confirmed = confirmOption(exam.parts, choice.id, option.id);

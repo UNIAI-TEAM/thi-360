@@ -57,7 +57,7 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     expect(informatics.getByText("28 câu · 50 phút chung")).toBeInTheDocument();
 
     const hsa = rowOf(table, "HSA FULL · Đề luyện số 1");
-    expect(hsa.getByText("Tiếng Anh + 3 tổ hợp")).toBeInTheDocument();
+    expect(hsa.getByText("Tiếng Anh")).toBeInTheDocument();
     expect(hsa.queryByText("Có tự luận")).not.toBeInTheDocument();
   });
 

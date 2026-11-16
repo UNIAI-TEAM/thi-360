@@ -35,20 +35,17 @@ function panel(name: string) {
 }
 
 describe("ExamReviewView", () => {
-  it("hien ket qua kiem tra theo tung duong, KH-2 thieu cau o mot o ma tran", async () => {
+  it("hien ket qua kiem tra theo tung duong, Khoa hoc thieu nguon Hoa hoc Lop 12 o chi tieu cap mon", async () => {
     renderWithProviders(<ExamReviewView examId={HSA} />);
     const check = await screen.findByRole("heading", { name: "Kết quả theo đường lựa chọn" });
     expect(check).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: "Kết quả kiểm tra của 4 đường lựa chọn" });
-    expect(within(table).getAllByRole("row")).toHaveLength(5);
-    expect(within(table).getAllByText("Hợp lệ")).toHaveLength(2);
+    const table = screen.getByRole("table", { name: "Kết quả kiểm tra của 2 đường lựa chọn" });
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(within(table).getAllByText("Hợp lệ")).toHaveLength(1);
     expect(within(table).getByText("Không hợp lệ")).toBeInTheDocument();
-    expect(within(table).getByText("Chưa xác nhận được")).toBeInTheDocument();
-    expect(within(table).getByText(/cần 3 câu .*hiện có 2 câu phù hợp/)).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Đến dòng ma trận cần sửa/ })[0]).toHaveAttribute(
-      "href",
-      expect.stringMatching(/^\/exams\/ex-hsa-f-001\/structure\?block=/),
-    );
+    // Mỗi đường nêu vấn đề chặn đầu tiên: phương án Khoa học chờ chuyên gia xác nhận số câu từng môn.
+    expect(within(table).getByText(/chờ chuyên gia xác nhận/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Đến dòng ma trận cần sửa của Khoa học" })).toBeInTheDocument();
   });
 
   it("bai chua kiem tra hien trang thai trong, chay kiem tra thi co ket qua", async () => {
@@ -63,26 +60,26 @@ describe("ExamReviewView", () => {
     );
   });
 
-  it("sinh de xem truoc tu bang kiem tra cho KH-1", async () => {
+  it("sinh de xem truoc tu bang kiem tra cho duong Tieng Anh", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExamReviewView examId={HSA} />);
     // Đợi danh mục (tên khối lớp, độ khó) tải xong: bảng dựng lại ô một lần khi tên đổi.
-    await waitFor(() => expect(screen.getAllByText(/cần 3 câu/)[0]).not.toHaveTextContent("G12"));
-    await user.click(screen.getAllByRole("button", { name: /^Sinh đề xem trước cho KH-1/ })[0]!);
+    await waitFor(() => expect(screen.getAllByText(/cần 9 câu/)[0]).not.toHaveTextContent("G12"));
+    await user.click(screen.getAllByRole("button", { name: /^Sinh đề xem trước cho Tiếng Anh/ })[0]!);
     expect(screen.getByRole("tab", { name: "Đề xem trước" })).toHaveAttribute("aria-selected", "true");
     const preview = panel("Đề xem trước");
     expect(await within(preview).findByText("150 câu · 150 điểm · 195 phút")).toBeInTheDocument();
     expect(window.location.search).toContain("tab=preview");
-    expect(window.location.search).toContain("path=opt-1");
+    expect(window.location.search).toContain("path=opt-30");
   });
 
   it("duong khong hop le khong sinh de thieu cau", async () => {
     const user = userEvent.setup();
-    navigation.search = "tab=preview&path=opt-8";
+    navigation.search = "tab=preview&path=opt-sci-1";
     renderWithProviders(<ExamReviewView examId={HSA} />);
     const preview = await waitFor(() => panel("Đề xem trước"));
     await user.click(await within(preview).findByRole("button", { name: "Sinh đề xem trước" }));
-    expect(await within(preview).findByRole("heading", { name: /^Không sinh được đề cho KH-2/ })).toBeInTheDocument();
+    expect(await within(preview).findByRole("heading", { name: /^Không sinh được đề cho Khoa học/ })).toBeInTheDocument();
     expect(within(preview).getByText("Không trả về đề thiếu câu, không nới điều kiện ma trận.")).toBeInTheDocument();
   });
 });

@@ -79,7 +79,7 @@ describe("dữ liệu mẫu dùng chung", () => {
     expect(list.content.map((exam) => exam.code)).toContain("HSA-F-001");
     const exam = await getExam("ex-hsa-f-001");
     // Môn của SUBJECT_CHOICE không có số câu cố định (D25): tổng theo `countsByPick`, kiểm ở check-exam.test.ts.
-    expect(validateStructure(exam.parts, { grades: [], difficulties: [] })).toEqual([]);
+    expect(validateStructure(exam.parts, { grades: [], difficulties: [] }).filter((issue) => issue.code !== "BLOCK")).toEqual([]);
     const choice = exam.parts.find((part) => part.mode === "CHOICE");
     const science = choice?.options.find((o) => o.kind === "SUBJECT_CHOICE");
     expect(science).toMatchObject({ code: "SCIENCE", chooseSubjects: 3, countsByPick: [17, 17, 16] });

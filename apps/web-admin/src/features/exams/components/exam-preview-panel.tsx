@@ -80,6 +80,18 @@ export function ExamPreviewPanel({
   const fallback = (options.find((option) => option.result === null || option.result === "VALID") ?? options[0])?.path.pathId;
   const pathId = selected && options.some((option) => option.path.pathId === selected) ? selected : (fallback ?? null);
 
+  /**
+   * Đường có `SUBJECT_CHOICE` cần gửi đúng số môn muốn xem (spec 5.2): tới khi FE-3c có ô chọn môn ở xem trước, xem
+   * trước các môn đầu tiên của phương án theo thứ tự cấu trúc.
+   */
+  function defaultSubjects(candidatePathId: string): string[] | undefined {
+    const parts = version !== null ? versionQuery.data?.parts : exam.parts;
+    const path = options.find((option) => option.path.pathId === candidatePathId)?.path;
+    const choice = path?.choices.find((item) => item.kind === "SUBJECT_CHOICE");
+    const option = parts?.find((part) => part.id === choice?.partId)?.options.find((item) => item.id === choice?.optionId);
+    return option ? option.sections.slice(0, option.chooseSubjects ?? 0).map((section) => section.subjectCode) : undefined;
+  }
+
   function start(nextPathId: string | null = pathId) {
     if (!nextPathId) return;
     const nextRun = run + 1;
@@ -87,7 +99,7 @@ export function ExamPreviewPanel({
     setTab("paper");
     setLiveMessage(t("live.generating"));
     generate.mutate(
-      { pathId: nextPathId, seed: nextRun, version },
+      { pathId: nextPathId, seed: nextRun, version, subjectCodes: defaultSubjects(nextPathId) },
       {
         onSuccess: (result) => {
           setLiveMessage(

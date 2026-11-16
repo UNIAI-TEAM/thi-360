@@ -96,24 +96,33 @@ function errors(input: CreateExamFormValues, taken: ReadonlySet<string> = new Se
 }
 
 describe("mẫu cấu trúc khởi tạo", () => {
-  it("HSA FULL: 3 phần 150 câu 195 phút, phần 3 có Tiếng Anh và tổ hợp 3 môn 17–17–16", () => {
+  it("HSA FULL: 3 phần 150 câu 195 phút, phần 3 có Tiếng Anh và một phương án Khoa học chọn 3 trong 5 môn", () => {
     const hsa = parts("HSA", "FULL");
-    expect(hsa.map((part) => [part.questionCount, part.durationMinutes, part.mode, part.subjectCode])).toEqual([
+    expect(hsa.map((part) => [part.questionCount, part.durationMinutes, part.mode, part.sections[0]?.subjectCode ?? ""])).toEqual([
       [50, 75, "FIXED", "MATH"],
       [50, 60, "FIXED", "LITERATURE"],
       [50, 60, "CHOICE", ""],
     ]);
     expect(hsa[2]!.englishOption).toBe(true);
-    expect(hsa[2]!.combinations.map((item) => [item.code, item.subjectCounts])).toEqual([
-      ["KH-1", [17, 17, 16]],
-      ["KH-2", [17, 17, 16]],
-      ["KH-3", [17, 17, 16]],
+    expect(hsa[2]!.combinations).toEqual([]);
+    expect(hsa[2]!.subjectChoice).toMatchObject({
+      code: "SCIENCE",
+      chooseSubjects: 3,
+      countsByPick: [17, 17, 16],
+      expertConfirmed: false,
+    });
+    expect(hsa[2]!.subjectChoice!.sections.map((section) => section.subjectCode)).toEqual([
+      "PHYSICS",
+      "CHEMISTRY",
+      "BIOLOGY",
+      "HISTORY",
+      "GEOGRAPHY",
     ]);
     expect(summarizeParts(hsa)).toEqual({
       partCount: 3,
       totalQuestions: 150,
       totalMinutes: 195,
-      pathCount: 4,
+      pathCount: 2,
       totalPoints: null,
     });
   });
@@ -168,7 +177,7 @@ describe("kiểm tra trang Tạo bài thi", () => {
 
   it("số câu và thời lượng của phần phải là số nguyên dương; phần cố định phải có môn", () => {
     const base = parts("HSA", "FULL");
-    const broken = [{ ...base[0]!, questionCount: 0, durationMinutes: 0, subjectCode: "", name: " " }, ...base.slice(1)];
+    const broken = [{ ...base[0]!, questionCount: 0, durationMinutes: 0, subjectCode: "", sections: [], name: " " }, ...base.slice(1)];
     expect(errors(values({ parts: broken }))).toEqual({
       "parts.0.name": "partNameRequired",
       "parts.0.questionCount": "questionCountPositive",
@@ -179,21 +188,21 @@ describe("kiểm tra trang Tạo bài thi", () => {
   });
 
   it("tổng số câu các môn của tổ hợp phải bằng số câu của phần (51/50 bị báo)", () => {
-    const base = parts("HSA", "FULL");
+    const base = parts("QDA", "FULL");
     const choice = base[2]!;
-    const over = { ...choice, combinations: choice.combinations.map((item, index) => (index === 2 ? { ...item, subjectCounts: [17, 17, 17] } : item)) };
-    expect(errors(values({ parts: [base[0]!, base[1]!, over] }))).toEqual({
-      "parts.2.combinations.2.subjectCounts": "allocationTotal 51/50",
+    const over = { ...choice, combinations: choice.combinations.map((item, index) => (index === 1 ? { ...item, subjectCounts: [25, 26] } : item)) };
+    expect(errors(values({ kind: "QDA", parts: [base[0]!, base[1]!, over] }))).toEqual({
+      "parts.2.combinations.1.subjectCounts": "allocationTotal 51/50",
     });
-    const zero = { ...choice, combinations: [{ code: "KH-1", subjectCounts: [25, 25, 0] }] };
-    expect(errors(values({ parts: [base[0]!, base[1]!, zero] }))).toEqual({
+    const zero = { ...choice, combinations: [{ code: "QD01", subjectCounts: [50, 0] }] };
+    expect(errors(values({ kind: "QDA", parts: [base[0]!, base[1]!, zero] }))).toEqual({
       "parts.2.combinations.0.subjectCounts": "subjectCountPositive",
     });
   });
 
   it("phần tự chọn phải có ít nhất một đường lựa chọn", () => {
     const base = parts("HSA", "FULL");
-    const empty = { ...base[2]!, englishOption: false, combinations: [] };
+    const empty = { ...base[2]!, englishOption: false, combinations: [], subjectChoice: null };
     expect(errors(values({ parts: [base[0]!, base[1]!, empty] }))).toEqual({ "parts.2.combinations": "noOptions" });
     expect(summarizeParts([base[0]!, base[1]!, empty]).pathCount).toBe(0);
   });

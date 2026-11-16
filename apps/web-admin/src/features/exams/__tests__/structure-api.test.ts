@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   countAvailableQuestions,
+  countSubjectAvailableQuestions,
   createExam,
   discontinueExam,
   duplicateExam,
@@ -12,7 +13,7 @@ import {
   updateExamStructure,
 } from "../api";
 import { examStore } from "../mock/store";
-import type { CreateExamRequest } from "../types";
+import type { AvailableQuestionsQuery, CreateExamRequest } from "../types";
 import { MockApiError } from "@/lib/mock/content-mock";
 
 const NEW_EXAM: CreateExamRequest = {
@@ -21,6 +22,15 @@ const NEW_EXAM: CreateExamRequest = {
   kind: "HSA",
   scope: "FULL",
   description: "  ",
+};
+
+/** Nhóm câu đơn Toán chọn một đáp án, chưa giới hạn phạm vi; các test đặt `knowledgeScope` riêng. */
+const MATH_SINGLE: AvailableQuestionsQuery = {
+  subjectCode: "MATH",
+  questionType: "SINGLE_CHOICE",
+  answerTypes: [],
+  childAnswerType: null,
+  knowledgeScope: null,
 };
 
 afterEach(() => {
@@ -52,9 +62,11 @@ describe("tạo bài thi", () => {
       check: { status: "UNCHECKED" },
     });
     expect(exam.parts.map((part) => part.mode)).toEqual(["FIXED", "FIXED", "CHOICE"]);
-    expect(exam.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "KH-1", "KH-2", "KH-3"]);
-    expect(exam.parts[2]!.options[1]!.sections.map((section) => section.questionCount)).toEqual([17, 17, 16]);
-    expect(exam.parts.flatMap((part) => part.sections).every((section) => section.blocks.length === 0)).toBe(true);
+    expect(exam.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "SCIENCE"]);
+    const science = exam.parts[2]!.options[1]!;
+    expect(science).toMatchObject({ kind: "SUBJECT_CHOICE", chooseSubjects: 3, countsByPick: [17, 17, 16], expertConfirmed: false });
+    expect(science.sections.map((section) => section.questionCount)).toEqual([null, null, null, null, null]);
+    expect(exam.combinationCount).toBe(0);
     expect(exam.versions.map((version) => version.state)).toEqual(["WORKING"]);
     expect((await getExamStructure(exam.id)).parts).toHaveLength(3);
   });
@@ -218,17 +230,37 @@ describe("sao chép và ngừng bán", () => {
 describe("nguồn câu hỏi của khối", () => {
   it("đếm câu Sẵn sàng theo môn và dạng, thu hẹp khi chọn kiến thức", async () => {
     const all = await countAvailableQuestions({
-      subjectCode: "MATH",
-      questionType: "SINGLE_CHOICE",
+      ...MATH_SINGLE,
       knowledgeScope: { nodeIds: [], match: "ANY" },
     });
     expect(all.total).toBeGreaterThan(0);
     expect(all.cells.reduce((total, cell) => total + cell.value, 0)).toBe(all.total);
     const none = await countAvailableQuestions({
-      subjectCode: "MATH",
-      questionType: "SINGLE_CHOICE",
+      ...MATH_SINGLE,
       knowledgeScope: { nodeIds: ["khong-co"], match: "ANY" },
     });
     expect(none.total).toBe(0);
+  });
+
+  it("countSubjectAvailableQuestions dedups across groups", async () => {
+    // Hai nhóm cùng môn Toán có nguồn giao nhau: CH-000001 gắn kn-1D4-1-1 nằm trong cả hai phạm vi (nút cha khớp nút con, D23).
+    const group = (nodeIds: string[]) => ({ ...MATH_SINGLE, knowledgeScope: { nodeIds, match: "ANY" as const } });
+    const first = await countAvailableQuestions(group(["kn-1D4"]));
+    const second = await countAvailableQuestions(group(["kn-1D4-1"]));
+    expect(first.total).toBeGreaterThan(0);
+    expect(second.total).toBeGreaterThan(0);
+    const union = await countSubjectAvailableQuestions({
+      subjectCode: "MATH",
+      groups: [group(["kn-1D4"]), group(["kn-1D4-1"])],
+    });
+    expect(union.total).toBeLessThan(first.total + second.total);
+    expect(union.total).toBe(first.total);
+    // Nhóm lấy theo chỉ tiêu dạng trả lời của môn: hợp các dạng, byAnswerType cộng đúng tổng.
+    const byQuota = await countSubjectAvailableQuestions({
+      subjectCode: "MATH",
+      groups: [{ ...MATH_SINGLE, questionType: null, answerTypes: ["SINGLE_CHOICE", "SHORT_ANSWER"], knowledgeScope: null }],
+    });
+    expect(byQuota.byAnswerType.map((item) => item.answerType).sort()).toEqual(["SHORT_ANSWER", "SINGLE_CHOICE"]);
+    expect(byQuota.byAnswerType.reduce((total, item) => total + item.value, 0)).toBe(byQuota.total);
   });
 });

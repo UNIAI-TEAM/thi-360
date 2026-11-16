@@ -3769,7 +3769,16 @@
         "POINTS_TOTAL_MISMATCH": "Tổng điểm của đường là {available, number}, thang điểm của bài là {required, number}.",
         "COMPETENCY_SHORTAGE": "Khối {block} cần {required, number} câu năng lực {competency}, hiện có {available, number} câu phù hợp.",
         "RUBRIC_MISSING": "Khối {block}: {available, number} câu tự luận nguồn chưa có tiêu chí chấm ({codes}).",
-        "SCORING_MISMATCH": "Khối {block}: {available, number} câu nguồn có quy tắc chấm khác quy tắc mong đợi của khối ({codes}). Chỉ cảnh báo, không chặn công bố."
+        "SCORING_MISMATCH": "Khối {block}: {available, number} câu nguồn có quy tắc chấm khác quy tắc mong đợi của khối ({codes}). Chỉ cảnh báo, không chặn công bố.",
+        "ANSWER_QUOTA_TOTAL_MISMATCH": "Môn {subject}: tổng chỉ tiêu dạng trả lời là {available, number} câu, phải bằng {required, number} câu của môn.",
+        "SUBJECT_MATRIX_TOTAL_MISMATCH": "Môn {subject}: tổng chỉ tiêu {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} other {khối lớp, độ khó}} là {available, number} câu, phải bằng {required, number} câu của môn.",
+        "GROUP_ANSWER_TYPE_MISSING": "Nhóm {block} chưa có dạng trả lời, trong khi môn {subject} không khai chỉ tiêu dạng trả lời.",
+        "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: số câu từng môn của phương án chọn môn không hợp lệ (cần {required, number}, hiện {available, number}). Số phần tử phải bằng số môn được chọn và tổng bằng số câu của phương án.",
+        "REMAINDER_GROUP_INVALID": "Môn {subject} có số câu thay đổi: cần đúng một nhóm câu đơn lấy phần còn lại, và tổng các nhóm cố định không vượt {required, number} câu (hiện {available, number}).",
+        "SUBJECT_QUOTA_COUNT_VARIES": "Môn {subject} nhận từ {required, number} đến {available, number} câu: chỉ tiêu cấp môn phải khai theo tỉ lệ, không khai theo số câu.",
+        "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: chỉ tiêu dạng {answerType} cần {required, number} câu, hiện có {available, number} câu phù hợp.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: không đủ nguồn cho chỉ tiêu cấp môn, cần {required, number} câu {dimension, select, GRADE {{level}} DIFFICULTY {{level}} other {{grade}/{difficulty}}}, hiện có {available, number} câu phù hợp.",
+        "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
       }
     },
     "versions": {
