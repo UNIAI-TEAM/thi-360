@@ -42,10 +42,10 @@ public class QuestionImportLookup {
         Map<UUID, List<CatalogItemRefView>> refs = catalog.findEffectiveItemRefs(
                 knowledge.stream().map(CatalogItemView::id).toList());
         List<ImportKnowledgeNode> nodes = knowledge.stream().map(item -> {
-            String subject = refs.getOrDefault(item.id(), List.of()).stream()
+            List<String> subjects = refs.getOrDefault(item.id(), List.of()).stream()
                     .filter(ref -> "SUBJECT".equals(ref.refGroupCode()))
-                    .map(CatalogItemRefView::refItemCode).findFirst().orElse(null);
-            return new ImportKnowledgeNode(item.id(), item.code(), subject, item.depth() == 3,
+                    .map(CatalogItemRefView::refItemCode).toList();
+            return new ImportKnowledgeNode(item.id(), item.code(), subjects, item.depth() == 3,
                     item.effectiveStatus() == CatalogStatus.ACTIVE);
         }).toList();
         ImportCatalog result = new ImportCatalog(options("SUBJECT"), options("GRADE"), options("QUESTION_LEVEL"),

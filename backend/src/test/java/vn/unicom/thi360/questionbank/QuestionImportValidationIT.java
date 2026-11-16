@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -65,6 +66,30 @@ class QuestionImportValidationIT extends AbstractIntegrationTest {
         mockMvc.perform(post(URL + "/{id}/validate", id).with(asUser(Permissions.QUESTION_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"mapping\":{\"c0\":\"type\",\"c1\":\"content\"}}"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("IMPORT_SOURCE_GONE"));
+    }
+
+    @Test
+    @Transactional
+    void knowledgeInheritedFromMultipleSubjectsAcceptsEachSubject() throws Exception {
+        jdbc.update("""
+                insert into catalog.catalog_item_ref (item_id, ref_item_id)
+                select chapter.id, subject.id from catalog.catalog_item chapter, catalog.catalog_item subject
+                where chapter.code = '0D1' and subject.code = 'ANH'
+                """);
+        byte[] csv = ("type,content,subject,grade,difficulty,knowledge\n"
+                + "SHORT_ANSWER,Mathematics,TOAN,G10,NB,0D1-1-1\n"
+                + "SHORT_ANSWER,English,ANH,G10,NB,0D1-1-1\n").getBytes(StandardCharsets.UTF_8);
+        var upload = mockMvc.perform(multipart(URL)
+                        .file(new MockMultipartFile("file", "subjects.csv", "text/csv", csv))
+                        .with(asUser(Permissions.QUESTION_MODIFY)))
+                .andExpect(status().isOk()).andReturn();
+        String id = mapper.readTree(upload.getResponse().getContentAsByteArray()).get("id").asText();
+        mockMvc.perform(post(URL + "/{id}/validate", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mapping\":{\"c0\":\"type\",\"c1\":\"content\",\"c2\":\"subject\",\"c3\":\"grade\",\"c4\":\"difficulty\",\"c5\":\"knowledge\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rows[0].status").value("VALID"))
+                .andExpect(jsonPath("$.rows[1].status").value("VALID"));
     }
 
     @Test
