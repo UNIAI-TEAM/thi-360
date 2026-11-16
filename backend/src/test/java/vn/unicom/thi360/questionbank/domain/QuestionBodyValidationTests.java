@@ -498,6 +498,29 @@ class QuestionBodyValidationTests {
             BigDecimal.ONE, "<p>Tính \\( x^2 + 1 </p>", null, List.of(), List.of());
         assertTrue(codes(readyErrors(input)).contains("MATH_UNBALANCED"));
     }
+    @Test
+    void mathIsCheckedInAllHtmlFieldsAndDelimiterOrder() {
+        String bad = "<p>\\( x \\[ y \\) z \\]</p>";
+        QuestionBody choice = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE,
+            List.of(new ChoiceOption("a", bad, true), new ChoiceOption("b", "B", false)), false);
+        QuestionInput question = new QuestionInput(QuestionType.SINGLE_CHOICE, choice, BigDecimal.ONE,
+            "<p>\\(x\\) and \\[y\\]</p>", bad, List.of(bad), List.of());
+        assertTrue(QuestionBodyValidator.validateSave(question, null).isEmpty());
+        var errors = readyErrors(question);
+        for (String path : List.of("body.options[0].content", "solution", "commonMistakes[0]")) {
+            assertTrue(errors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
+                && e.path().equals(path)), errors.toString());
+        }
+        assertTrue(errors.stream().noneMatch(e -> e.code().equals("MATH_UNBALANCED") && e.path().equals("content")));
+        QuestionBody essay = new QuestionBody.EssayBody(QuestionType.ESSAY, bad,
+            List.of(new EssayCriterion("c", bad, BigDecimal.ONE)), bad, null);
+        var essayErrors = readyErrors(input(QuestionType.ESSAY, essay));
+        for (String path : List.of("body.gradingGuide", "body.sampleAnswer", "body.rubric[0].description")) {
+            assertTrue(essayErrors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
+                && e.path().equals(path)), essayErrors.toString());
+        }
+    }
+
 
     private static List<QuestionFieldError> readyErrors(QuestionInput input) {
         return QuestionBodyValidator.validateReady(input, FULL, true, null).errors();

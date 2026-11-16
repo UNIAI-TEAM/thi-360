@@ -1,6 +1,8 @@
 package vn.unicom.thi360.questionbank.domain;
 
 import java.math.BigDecimal;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -494,11 +496,44 @@ public final class QuestionBodyValidator {
             }
         }
         checkMathPairs(input.content(), "content", errors);
-        if (input.body() instanceof QuestionBody.ClozeBody cloze) {
-            checkMathPairs(cloze.passage(), "body.passage", errors);
+        checkMathPairs(input.solution(), "solution", errors);
+        for (int i = 0; i < input.commonMistakes().size(); i++) {
+            checkMathPairs(input.commonMistakes().get(i), "commonMistakes[" + i + "]", errors);
         }
-        if (input.body() instanceof QuestionBody.QuestionSetBody set) {
-            checkMathPairs(set.passage(), "body.passage", errors);
+        switch (input.body()) {
+            case QuestionBody.SingleChoiceBody b -> {
+                for (int i = 0; i < b.options().size(); i++) {
+                    checkMathPairs(b.options().get(i).content(), "body.options[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.MultipleChoiceBody b -> {
+                for (int i = 0; i < b.options().size(); i++) {
+                    checkMathPairs(b.options().get(i).content(), "body.options[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.TrueFalseBody b -> {
+                for (int i = 0; i < b.statements().size(); i++) {
+                    checkMathPairs(b.statements().get(i).content(), "body.statements[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.MatchingBody b -> {
+                for (int i = 0; i < b.left().size(); i++) {
+                    checkMathPairs(b.left().get(i).content(), "body.left[" + i + "].content", errors);
+                }
+                for (int i = 0; i < b.right().size(); i++) {
+                    checkMathPairs(b.right().get(i).content(), "body.right[" + i + "].content", errors);
+                }
+            }
+            case QuestionBody.EssayBody b -> {
+                checkMathPairs(b.gradingGuide(), "body.gradingGuide", errors);
+                checkMathPairs(b.sampleAnswer(), "body.sampleAnswer", errors);
+                for (int i = 0; i < b.rubric().size(); i++) {
+                    checkMathPairs(b.rubric().get(i).description(), "body.rubric[" + i + "].description", errors);
+                }
+            }
+            case QuestionBody.ClozeBody b -> checkMathPairs(b.passage(), "body.passage", errors);
+            case QuestionBody.QuestionSetBody b -> checkMathPairs(b.passage(), "body.passage", errors);
+            case QuestionBody.ShortAnswerBody b -> { }
         }
     }
 
@@ -559,29 +594,30 @@ public final class QuestionBodyValidator {
         if (text.isEmpty()) {
             return;
         }
-        if (!balanced(text, "\\(", "\\)") || !balanced(text, "\\[", "\\]")) {
+        if (!balanced(text)) {
             errors.add(QuestionFieldError.of("MATH_UNBALANCED", path));
         }
     }
 
-    private static boolean balanced(String text, String open, String close) {
-        int depth = 0;
-        int i = 0;
-        while (i < text.length()) {
-            if (text.startsWith(open, i)) {
-                depth++;
-                i += open.length();
-            } else if (text.startsWith(close, i)) {
-                depth--;
-                if (depth < 0) {
+    private static boolean balanced(String text) {
+        Deque<Character> delimiters = new ArrayDeque<>();
+        for (int i = 0; i + 1 < text.length(); i++) {
+            if (text.charAt(i) != '\\') {
+                continue;
+            }
+            char delimiter = text.charAt(i + 1);
+            if (delimiter == '(' || delimiter == '[') {
+                delimiters.push(delimiter);
+                i++;
+            } else if (delimiter == ')' || delimiter == ']') {
+                if (delimiters.isEmpty()
+                    || delimiters.pop() != (delimiter == ')' ? '(' : '[')) {
                     return false;
                 }
-                i += close.length();
-            } else {
                 i++;
             }
         }
-        return depth == 0;
+        return delimiters.isEmpty();
     }
 
 
