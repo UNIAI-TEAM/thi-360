@@ -289,6 +289,84 @@ class QuestionImportParserTests {
             result.rows().getFirst().draft().knowledge());
     }
 
+    @Test
+    void suggestMappingLeavesKnowledgeUnmappedAndIgnoresNotes() {
+        var columns = List.of(
+            new ImportColumn("c0", "Ghi chú nội bộ", ""), new ImportColumn("c1", "Dạng câu", ""),
+            new ImportColumn("c2", "Nội dung", ""), new ImportColumn("c3", "Môn", ""),
+            new ImportColumn("c4", "Lớp", ""), new ImportColumn("c5", "Mức độ", ""),
+            new ImportColumn("c6", "Mã KT chưa ánh xạ", ""));
+        var mapping = ImportColumnMapper.suggestMapping(columns, DICTIONARY);
+        assertEquals("IGNORE", mapping.byColumnKey().get("c0"));
+        assertEquals("type", mapping.byColumnKey().get("c1"));
+        assertEquals(ColumnMapping.UNMAPPED, mapping.byColumnKey().get("c6"));
+        var check = ImportColumnMapper.checkMapping(columns, mapping);
+        assertTrue(check.valid());
+        var noSubject = new java.util.HashMap<>(mapping.byColumnKey());
+        noSubject.put("c3", "UNMAPPED");
+        var checkMissing = ImportColumnMapper.checkMapping(columns, new ColumnMapping(noSubject));
+        assertFalse(checkMissing.valid());
+        assertTrue(checkMissing.missingRequired().contains(ImportField.SUBJECT));
+    }
+
+    @Test
+    void vietnameseAliasesResolveTypesAndUnknownBlocks() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "options", "correctAnswer"),
+            List.of("Trắc nghiệm 1 đáp án", "A", "MATH", "GRADE_11", "RECOGNITION", "1\n2", "A"),
+            List.of("Đúng / Sai", "B", "MATH", "GRADE_11", "RECOGNITION", "a. x", "Đ"),
+            List.of("Ghép đôi", "C", "MATH", "GRADE_11", "RECOGNITION", "1. l", "1 = A"),
+            List.of("Không có", "D", "MATH", "GRADE_11", "RECOGNITION", "", "")));
+        assertEquals(QuestionType.SINGLE_CHOICE, result.rows().get(0).draft().type());
+        assertEquals(QuestionType.TRUE_FALSE, result.rows().get(1).draft().type());
+        assertEquals(QuestionType.MATCHING, result.rows().get(2).draft().type());
+        assertTrue(result.rows().get(3).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.TYPE_UNKNOWN && i.blocking()));
+    }
+
+    @Test
+    void inFileDuplicatesAndRepeatedSetCodesBlock() throws Exception {
+        var result = parse(List.of(
+            List.of("sourceCode", "type", "content", "subject", "grade", "difficulty", "setCode", "correctAnswer"),
+            List.of("A-1", "SHORT_ANSWER", "Một", "MATH", "GRADE_11", "RECOGNITION", "", "1"),
+            List.of("a-1", "SHORT_ANSWER", "Hai", "MATH", "GRADE_11", "RECOGNITION", "", "2"),
+            List.of("", "QUESTION_SET", "Bộ 1", "MATH", "GRADE_11", "RECOGNITION", "S", ""),
+            List.of("", "QUESTION_SET", "Bộ 2", "MATH", "GRADE_11", "RECOGNITION", "S", "")));
+        assertTrue(result.rows().get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.DUPLICATE_IN_FILE && i.blocking()
+                && Integer.valueOf(2).equals(i.relatedRow())));
+        assertTrue(result.rows().get(3).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.SET_CODE_REPEATED && i.blocking()));
+    }
+
+    @Test
+    void setCodeWithoutPassageAndClozeChildAreBlocked() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "setCode", "correctAnswer"),
+            List.of("SHORT_ANSWER", "Mồ côi", "MATH", "GRADE_11", "RECOGNITION", "NOPE", "1"),
+            List.of("QUESTION_SET", "Bộ", "MATH", "GRADE_11", "RECOGNITION", "S", ""),
+            List.of("CLOZE", "Con [[b1]]", "", "", "", "S", "b1 = x")));
+        assertTrue(result.rows().get(0).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.SET_PASSAGE_MISSING && i.blocking()));
+        assertTrue(result.rows().get(2).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.CHILD_TYPE_NOT_ALLOWED && i.blocking()));
+    }
+
+    @Test
+    void nonPositivePointsBlockAndSetOrClozePointsRejected() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "points", "correctAnswer"),
+            List.of("SINGLE_CHOICE", "A", "MATH", "GRADE_11", "RECOGNITION", "0", "A"),
+            List.of("CLOZE", "B [[b1]]", "MATH", "GRADE_11", "RECOGNITION", "1,5", "b1 = x"),
+            List.of("QUESTION_SET", "Bộ", "MATH", "GRADE_11", "RECOGNITION", "2", "")));
+        assertTrue(result.rows().get(0).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.POINTS_INVALID && i.blocking()));
+        assertTrue(result.rows().get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.POINTS_INVALID && i.blocking()));
+        assertTrue(result.rows().get(2).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.POINTS_INVALID && i.blocking()));
+    }
+
 
     @Test
     void unknownCatalogValuesBlockWhileMissingGuideWarns() throws Exception {
