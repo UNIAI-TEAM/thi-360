@@ -15,6 +15,32 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class ExamCreateIT extends AbstractIntegrationTest {
     @Test
+    void allKindsAllowedScopes() throws Exception {
+        String[][] cases = {
+                {"HSA", "FULL"}, {"HSA", "PART"}, {"QDA", "FULL"}, {"QDA", "PART"},
+                {"BCA", "FULL"}, {"VACT", "FULL"}, {"SPT", "SUBJECT"},
+                {"SP2E", "SUBJECT"}, {"THPTQG", "SUBJECT"}
+        };
+        for (String[] c : cases) {
+            String code = c[0] + "-" + UUID.randomUUID().toString().substring(0, 8);
+            String selection = switch (c[1]) {
+                case "PART" -> ",\"partCode\":\"TOAN\"";
+                case "SUBJECT" -> ",\"subjectCode\":\"TOAN\"";
+                default -> "";
+            };
+            mockMvc.perform(post("/api/v1/admin/exams")
+                            .with(asUser(Permissions.EXAM_MODIFY))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"kind\":\"" + c[0] + "\",\"scope\":\"" + c[1]
+                                    + "\",\"name\":\"Draft\",\"code\":\"" + code + "\"" + selection + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.kind").value(c[0]))
+                    .andExpect(jsonPath("$.scope").value(c[1]));
+        }
+    }
+
+    @Test
     void createsHsaDraftFromLatestTemplate() throws Exception {
         String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
         mockMvc.perform(post("/api/v1/admin/exams")
