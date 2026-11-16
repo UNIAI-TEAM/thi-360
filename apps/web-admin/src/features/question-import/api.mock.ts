@@ -2,7 +2,7 @@ import referenceFixture from "@/features/content/mock/reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { MOCK_CURRENT_AUTHOR, questionStore } from "@/features/questions/mock/store";
 import type { QuestionBody, QuestionDetail } from "@/features/questions/types";
-import { DEFAULT_POINTS, evenScoreTable } from "@/features/questions/editor-form";
+import { DEFAULT_POINTS, evenScoreTable, roundPoints } from "@/features/questions/editor-form";
 import { createMockStore, MockApiError, mockId, mockRequest } from "@/lib/mock/content-mock";
 import {
   checkImportFile,
@@ -134,13 +134,31 @@ function nextQuestionNumber(): number {
 }
 
 /**
- * Điểm của câu nhập vào: tệp chưa có cột Điểm nên câu đơn 1 điểm; câu Tự luận có tiêu chí chấm thì bằng tổng điểm tiêu
- * chí (để hướng dẫn chấm khớp điểm của câu).
+ * Điểm của câu nhập vào: theo cột Điểm; không ghi thì câu đơn 1 điểm. Điền khuyết là tổng điểm các ô, Đúng/Sai theo
+ * cách chấm ghi trong tệp, Tự luận có tiêu chí chấm thì bằng tổng điểm tiêu chí (để hướng dẫn chấm khớp điểm của câu).
  */
 function draftPoints(draft: ImportQuestionDraft): number {
+  if (draft.type === "CLOZE") {
+    return roundPoints(draft.blanks.reduce((sum, blank) => sum + (blank.points ?? DEFAULT_POINTS), 0)) || DEFAULT_POINTS;
+  }
   if (draft.points !== null) return draft.points;
+  const scoring = draft.trueFalseScoring;
+  if (draft.type === "TRUE_FALSE" && scoring) {
+    return scoring.method === "PER_STATEMENT"
+      ? roundPoints(scoring.points.reduce((sum, value) => sum + value, 0))
+      : (scoring.points.at(-1) ?? DEFAULT_POINTS);
+  }
   if (draft.type !== "ESSAY" || draft.rubric.length === 0) return DEFAULT_POINTS;
-  return Math.round(draft.rubric.reduce((sum, criterion) => sum + criterion.points, 0) * 1000) / 1000;
+  return roundPoints(draft.rubric.reduce((sum, criterion) => sum + criterion.points, 0));
+}
+
+/** Chia đều `total` điểm cho `count` cặp ghép (làm tròn 4 chữ số; cặp cuối nhận phần dư để tổng đúng bằng điểm câu). */
+function evenShares(total: number, count: number): number[] {
+  if (count === 0) return [];
+  const share = Math.round((total / count) * 10000) / 10000;
+  return Array.from({ length: count }, (_, index) =>
+    index === count - 1 ? Math.round((total - share * (count - 1)) * 10000) / 10000 : share,
+  );
 }
 
 function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: string[]): QuestionBody {
@@ -154,22 +172,54 @@ function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: s
       }));
       return draft.type === "SINGLE_CHOICE"
         ? { type: "SINGLE_CHOICE", shuffleOptions: true, options }
-        : { type: "MULTIPLE_CHOICE", shuffleOptions: true, options, scoringRule: "ALL_OR_NOTHING" };
+        : { type: "MULTIPLE_CHOICE", shuffleOptions: true, options, scoringRule: draft.scoringRule ?? "ALL_OR_NOTHING" };
     }
-    case "TRUE_FALSE":
+    case "TRUE_FALSE": {
+      const scoring = draft.trueFalseScoring;
+      const perStatement = scoring?.method === "PER_STATEMENT";
       return {
         type: "TRUE_FALSE",
         statements: draft.statements.map((statement, index) => ({
           id: `${idPrefix}-s${index + 1}`,
           content: statement.content,
           answer: statement.answer ?? false,
-          points: null,
+          points: perStatement ? (scoring.points[index] ?? null) : null,
         })),
-        scoringMethod: "COUNT_TABLE",
-        scoreTable: evenScoreTable(draft.statements.length, draftPoints(draft)),
+        scoringMethod: perStatement ? "PER_STATEMENT" : "COUNT_TABLE",
+        scoreTable: perStatement ? [] : (scoring?.points ?? evenScoreTable(draft.statements.length, draftPoints(draft))),
       };
+    }
     case "SHORT_ANSWER":
       return { type: "SHORT_ANSWER", answers: draft.acceptedAnswers, inputHint: draft.inputHint };
+    case "CLOZE":
+      return {
+        type: "CLOZE",
+        passage: draft.content,
+        blanks: draft.blanks.map((blank) => ({
+          id: blank.id,
+          answers: blank.answers,
+          points: blank.points ?? DEFAULT_POINTS,
+        })),
+      };
+    case "MATCHING": {
+      const matching = draft.matching ?? { left: [], right: [], pairs: [], reuseRight: false };
+      const leftId = new Map(matching.left.map((item, index) => [item.key, `${idPrefix}-l${index + 1}`]));
+      const rightId = new Map(matching.right.map((item, index) => [item.key, `${idPrefix}-r${index + 1}`]));
+      const shares = evenShares(draftPoints(draft), matching.pairs.length);
+      return {
+        type: "MATCHING",
+        left: matching.left.map((item) => ({ id: leftId.get(item.key)!, content: item.content })),
+        right: matching.right.map((item) => ({ id: rightId.get(item.key)!, content: item.content })),
+        pairs: matching.pairs.map((pair, index) => ({
+          leftId: leftId.get(pair.leftKey)!,
+          rightId: rightId.get(pair.rightKey)!,
+          points: shares[index]!,
+        })),
+        reuseRight: matching.reuseRight,
+        shuffleLeft: false,
+        shuffleRight: true,
+      };
+    }
     case "ESSAY":
       return {
         type: "ESSAY",
@@ -199,7 +249,7 @@ function questionFromRow(
     code: identity.code,
     type: draft.type ?? "SINGLE_CHOICE",
     status: "DRAFT",
-    taskTypeCode: null,
+    taskTypeCode: draft.taskTypeCode,
     contentPreview: draft.content,
     subjectCode: draft.subjectCode ?? "",
     gradeCode: draft.gradeCode ?? "",
@@ -218,7 +268,7 @@ function questionFromRow(
     content: draft.content,
     body: bodyFromDraft(draft, identity.id, childQuestions.map((child) => child.id)),
     solution,
-    commonMistakes: null,
+    commonMistakes: draft.commonMistakes,
     attachmentIds: [],
     children: childQuestions,
   };

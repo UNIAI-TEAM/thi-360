@@ -3326,7 +3326,27 @@
       "rubric": "Tiêu chí chấm",
       "noRubric": "Chưa có tiêu chí chấm; câu sẽ ở Nháp tới khi bổ sung.",
       "criterionPoints": "{points, number} điểm",
-      "sampleAnswer": "Bài làm mẫu"
+      "sampleAnswer": "Bài làm mẫu",
+      "scoringLabel": "Cách chấm",
+      "scoringRules": {
+        "ALL_OR_NOTHING": "Đúng hết mới có điểm",
+        "PARTIAL": "Chấm từng phần"
+      },
+      "trueFalseScoring": {
+        "PER_STATEMENT": "Cộng điểm từng ý: {points}",
+        "COUNT_TABLE": "Bảng theo số ý đúng: {points}",
+        "EVEN": "Bảng chia đều theo điểm của câu"
+      },
+      "blanksLabel": "Các ô trống",
+      "pairsLabel": "Các cặp ghép",
+      "pairWith": "ghép với {key}. {content}",
+      "rightChoices": "Lựa chọn bên phải: {items}",
+      "matchReuse": "Một lựa chọn dùng cho nhiều mục",
+      "matchOnce": "Mỗi lựa chọn dùng một lần",
+      "points": "Điểm",
+      "pointsDefault": "1 (mặc định)",
+      "taskType": "Dạng bài",
+      "commonMistakes": "Lỗi sai thường gặp"
     },
     "issues": {
       "REQUIRED": {
@@ -3336,10 +3356,6 @@
       "TYPE_UNKNOWN": {
         "message": "Dạng câu “{value}” chưa được hỗ trợ",
         "fix": "Dùng một trong: Một đáp án, Nhiều đáp án, Trả lời ngắn, Điền khuyết, Bộ câu hỏi, Đúng/Sai, Ghép đôi, Tự luận."
-      },
-      "TYPE_NOT_IMPORTABLE": {
-        "message": "Dạng “{value}” chưa nhập được từ tệp",
-        "fix": "Soạn câu Ghép đôi, Điền khuyết trên màn Thêm câu hỏi."
       },
       "SUBJECT_UNKNOWN": {
         "message": "Môn học “{value}” không có trong danh mục",
@@ -3362,12 +3378,16 @@
         "fix": "Câu hỏi chỉ gắn với nút cấp Kiến thức, cấp cuối của cây."
       },
       "OPTIONS_TOO_FEW": {
-        "message": "Cần ít nhất {min, number} phương án",
-        "fix": "Điền nội dung vào các cột phương án A, B, C, D."
+        "message": "{type, select, MATCHING {Cần ít nhất {min, number} mục ở mỗi cột} other {Cần ít nhất {min, number} phương án}}",
+        "fix": "{type, select, MATCHING {Điền cột Lựa chọn (mục bên trái) và cột Lựa chọn phải, mỗi dòng một mục dạng “1. nội dung” và “A. nội dung”.} other {Điền cột Lựa chọn, mỗi dòng một phương án dạng “A. nội dung”; hoặc các cột phương án A, B, C, D của tệp cũ.}}"
+      },
+      "OPTIONS_TOO_MANY": {
+        "message": "Tối đa {max, number} mục",
+        "fix": "Bớt mục thừa ở cột {column}."
       },
       "ANSWER_INVALID": {
-        "message": "Đáp án đúng “{value}” không khớp các phương án",
-        "fix": "{type, select, MULTIPLE_CHOICE {Ghi chữ cái của các phương án đúng, cách nhau dấu phẩy, ví dụ A, C.} TRUE_FALSE {Ghi Đ hoặc S cho từng ý có nội dung, cách nhau dấu phẩy, ví dụ Đ, S, Đ.} other {Ghi một trong A, B, C, D của phương án có nội dung.}}"
+        "message": "{type, select, CLOZE {Đáp án “{value}” không khớp ô nào trong nội dung} MATCHING {Cặp ghép “{value}” không hợp lệ} SHORT_ANSWER {Có quá 20 đáp án} other {Đáp án đúng “{value}” không khớp các phương án}}",
+        "fix": "{type, select, MULTIPLE_CHOICE {Ghi chữ cái của các phương án đúng, cách nhau dấu phẩy, ví dụ A, C.} TRUE_FALSE {Ghi Đ hoặc S cho từng ý có nội dung, cách nhau dấu phẩy, ví dụ Đ, S, Đ.} CLOZE {Mỗi dòng “b1 = đáp án 1 | đáp án 2”, mã ô phải có trong nội dung dạng [[b1]].} MATCHING {Mỗi dòng “1 = A” nối mục bên trái với lựa chọn bên phải có thật; mỗi mục trái một cặp, mỗi lựa chọn chỉ dùng một lần trừ khi Cách chấm là REUSE.} SHORT_ANSWER {Tối đa 20 đáp án, mỗi dòng một đáp án.} other {Ghi một chữ cái từ A tới J của phương án có nội dung.}}"
       },
       "FORMULA_INVALID": {
         "message": "Công thức ở cột {column} không đọc được (thiếu dấu ngoặc nhọn)",
@@ -3412,6 +3432,26 @@
       "POINTS_INVALID": {
         "message": "Điểm “{value}” không hợp lệ",
         "fix": "Ghi điểm là số lớn hơn 0, ví dụ 1 hoặc 0,75."
+      },
+      "TASK_TYPE_UNKNOWN": {
+        "message": "Dạng bài “{value}” không có trong danh mục",
+        "fix": "Dùng tên hoặc mã của một Dạng bài đang hoạt động, hoặc để trống."
+      },
+      "SCORING_INVALID": {
+        "message": "Cách chấm “{value}” không hợp lệ",
+        "fix": "{type, select, MULTIPLE_CHOICE {Ghi ALL_OR_NOTHING hoặc PARTIAL.} TRUE_FALSE {Ghi “PER_STATEMENT: 0,25 / 0,25” (cộng đúng điểm của câu) hoặc “COUNT_TABLE: 0,1 / 0,25 / 0,5 / 1” (không giảm, số cuối bằng điểm của câu), đủ một số cho mỗi ý.} CLOZE {Mỗi dòng “b1 = 0,5” với mã ô có trong nội dung và điểm lớn hơn 0.} MATCHING {Ghi REUSE hoặc ONCE.} other {Kiểm tra lại cột Cách chấm.}}"
+      },
+      "ANSWER_MISSING": {
+        "message": "Chưa đủ đáp án",
+        "fix": "Câu vẫn được nhập ở trạng thái Nháp; bổ sung đáp án trước khi chuyển Sẵn sàng."
+      },
+      "CLOZE_MARKER_INVALID": {
+        "message": "Dấu vị trí trong nội dung bị lặp hoặc quá {max, number} ô",
+        "fix": "Mỗi ô một mã riêng, ví dụ [[b1]], [[b2]]; tối đa 30 ô."
+      },
+      "SET_CHILD_TYPE_INVALID": {
+        "message": "Dạng “{value}” không làm được câu con của Bộ câu hỏi",
+        "fix": "Nhập Điền khuyết thành câu riêng, không ghi Mã chùm."
       }
     },
     "errorReport": {

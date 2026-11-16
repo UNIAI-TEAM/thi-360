@@ -1,4 +1,10 @@
-import type { KnowledgeRef, PersonRef, QuestionType } from "@/features/content/types";
+import type {
+  KnowledgeRef,
+  MultipleChoiceRule,
+  PersonRef,
+  QuestionType,
+  TrueFalseMethod,
+} from "@/features/content/types";
 
 /**
  * Nhập câu hỏi từ tệp (PBI-03, UNI-2594), dữ liệu mẫu. Khi có OpenAPI của backend, đổi các kiểu dưới đây thành bí
@@ -93,13 +99,13 @@ export type DuplicatePolicy = (typeof DUPLICATE_POLICIES)[number];
 export const IMPORT_ISSUE_CODES = [
   "REQUIRED",
   "TYPE_UNKNOWN",
-  "TYPE_NOT_IMPORTABLE",
   "SUBJECT_UNKNOWN",
   "GRADE_UNKNOWN",
   "DIFFICULTY_UNKNOWN",
   "KNOWLEDGE_UNKNOWN",
   "KNOWLEDGE_NOT_LEAF",
   "OPTIONS_TOO_FEW",
+  "OPTIONS_TOO_MANY",
   "ANSWER_INVALID",
   "FORMULA_INVALID",
   "DUPLICATE_IN_FILE",
@@ -112,6 +118,11 @@ export const IMPORT_ISSUE_CODES = [
   "RUBRIC_INVALID",
   "GRADING_GUIDE_MISSING",
   "POINTS_INVALID",
+  "TASK_TYPE_UNKNOWN",
+  "SCORING_INVALID",
+  "ANSWER_MISSING",
+  "CLOZE_MARKER_INVALID",
+  "SET_CHILD_TYPE_INVALID",
 ] as const;
 export type ImportIssueCode = (typeof IMPORT_ISSUE_CODES)[number];
 
@@ -135,21 +146,50 @@ export interface ImportRowIssue {
   subjectCode?: string;
   /** Số phương án tối thiểu (lỗi `OPTIONS_TOO_FEW`). */
   min?: number;
+  /** Số mục tối đa (lỗi `OPTIONS_TOO_MANY`). */
+  max?: number;
 }
 
 export type ImportRowStatus = "VALID" | "ERROR" | "DUPLICATE";
 
 export interface ImportDraftOption {
-  letter: OptionLetter;
+  letter: string;
   content: string;
   correct: boolean;
 }
 
 export interface ImportDraftStatement {
-  letter: OptionLetter;
+  letter: string;
   content: string;
   /** `null` khi chưa đọc được đáp án. */
   answer: boolean | null;
+}
+
+/** Một ô trống của câu Điền khuyết: mã ô trong ngữ liệu, đáp án (chuẩn đứng đầu) và điểm (`null`: mặc định 1). */
+export interface ImportDraftBlank {
+  id: string;
+  answers: string[];
+  points: number | null;
+}
+
+export interface ImportDraftMatchItem {
+  /** Nhãn trong tệp: `1`, `2` ở cột trái; `A`, `B` ở cột phải. */
+  key: string;
+  content: string;
+}
+
+/** Câu Ghép đôi đọc từ tệp: hai cột, các cặp (`leftKey` trỏ tới một lựa chọn phải) và cách dùng lại lựa chọn. */
+export interface ImportDraftMatching {
+  left: ImportDraftMatchItem[];
+  right: ImportDraftMatchItem[];
+  pairs: Array<{ leftKey: string; rightKey: string }>;
+  reuseRight: boolean;
+}
+
+/** Cách chấm Đúng/Sai đọc từ cột Cách chấm; `points` là điểm từng ý (`PER_STATEMENT`) hoặc bảng theo số ý đúng (`COUNT_TABLE`). */
+export interface ImportDraftTrueFalseScoring {
+  method: TrueFalseMethod;
+  points: number[];
 }
 
 /** Một tiêu chí chấm của câu Tự luận đọc từ cột Tiêu chí chấm ("Mô tả: điểm", các tiêu chí cách nhau dấu ;). */
@@ -167,6 +207,18 @@ export interface ImportQuestionDraft {
   statements: ImportDraftStatement[];
   /** Trả lời ngắn: đáp án chuẩn đứng đầu, sau là các đáp án được chấp nhận. */
   acceptedAnswers: string[];
+  /** Nhiều đáp án: cách chấm (cột Cách chấm); `null`: mặc định `ALL_OR_NOTHING`. */
+  scoringRule: MultipleChoiceRule | null;
+  /** Đúng/Sai: cách chấm (cột Cách chấm); `null`: bảng chia đều. */
+  trueFalseScoring: ImportDraftTrueFalseScoring | null;
+  /** Điền khuyết: các ô trống theo thứ tự xuất hiện trong ngữ liệu. */
+  blanks: ImportDraftBlank[];
+  /** Ghép đôi: hai cột và các cặp; `null` với dạng khác. */
+  matching: ImportDraftMatching | null;
+  /** Lỗi sai thường gặp (cột Lỗi sai thường gặp). */
+  commonMistakes: string | null;
+  /** Dạng bài (cột Dạng bài), mã trong danh mục. */
+  taskTypeCode: string | null;
   /** Điểm của câu (cột Điểm); `null`: mặc định 1. */
   points: number | null;
   /** Trả lời ngắn: hướng dẫn nhập (cột Hướng dẫn nhập). */

@@ -3326,7 +3326,27 @@
       "rubric": "Rubric",
       "noRubric": "No rubric yet; the question stays Draft until one is added.",
       "criterionPoints": "{points, number} pts",
-      "sampleAnswer": "Sample answer"
+      "sampleAnswer": "Sample answer",
+      "scoringLabel": "Scoring",
+      "scoringRules": {
+        "ALL_OR_NOTHING": "All correct or no points",
+        "PARTIAL": "Partial credit"
+      },
+      "trueFalseScoring": {
+        "PER_STATEMENT": "Points per statement: {points}",
+        "COUNT_TABLE": "Table by correct statements: {points}",
+        "EVEN": "Table split evenly by the question points"
+      },
+      "blanksLabel": "Blanks",
+      "pairsLabel": "Matched pairs",
+      "pairWith": "matched with {key}. {content}",
+      "rightChoices": "Right-hand choices: {items}",
+      "matchReuse": "A choice can be used for several items",
+      "matchOnce": "Each choice is used once",
+      "points": "Points",
+      "pointsDefault": "1 (default)",
+      "taskType": "Task type",
+      "commonMistakes": "Common mistakes"
     },
     "issues": {
       "REQUIRED": {
@@ -3336,10 +3356,6 @@
       "TYPE_UNKNOWN": {
         "message": "Question type “{value}” is not supported",
         "fix": "Use one of: Single choice, Multiple choice, Short answer, Cloze, Question set, True/False, Matching, Essay."
-      },
-      "TYPE_NOT_IMPORTABLE": {
-        "message": "Type “{value}” cannot be imported from a file yet",
-        "fix": "Create Matching and Cloze questions on the Add question screen."
       },
       "SUBJECT_UNKNOWN": {
         "message": "Subject “{value}” is not in the catalog",
@@ -3362,12 +3378,16 @@
         "fix": "Questions attach only to Knowledge nodes, the last level of the tree."
       },
       "OPTIONS_TOO_FEW": {
-        "message": "At least {min, number} options are needed",
-        "fix": "Fill in the option columns A, B, C, D."
+        "message": "{type, select, MATCHING {At least {min, number} items are needed in each column} other {At least {min, number} options are needed}}",
+        "fix": "{type, select, MATCHING {Fill the Choices column (left items) and the Right choices column, one item per line as “1. text” and “A. text”.} other {Fill the Choices column, one option per line as “A. text”, or the option columns A, B, C, D of the old file.}}"
+      },
+      "OPTIONS_TOO_MANY": {
+        "message": "At most {max, number} items",
+        "fix": "Remove the extra items in column {column}."
       },
       "ANSWER_INVALID": {
-        "message": "Correct answer “{value}” does not match the options",
-        "fix": "{type, select, MULTIPLE_CHOICE {Write the letters of the correct options separated by commas, for example A, C.} TRUE_FALSE {Write T or F for each filled statement, separated by commas, for example T, F, T.} other {Write one of A, B, C, D for a filled option.}}"
+        "message": "{type, select, CLOZE {The answer “{value}” matches no blank in the content} MATCHING {The pair “{value}” is not valid} SHORT_ANSWER {There are more than 20 answers} other {The correct answer “{value}” does not match the options}}",
+        "fix": "{type, select, MULTIPLE_CHOICE {Write the letters of the correct options separated by commas, for example A, C.} TRUE_FALSE {Write T or F for each statement that has text, separated by commas, for example T, F, T.} CLOZE {One line per blank as “b1 = answer 1 | answer 2”; the blank code must appear in the content as [[b1]].} MATCHING {One line “1 = A” per pair, linking a left item to an existing right choice; one pair per left item, and each choice only once unless Scoring is REUSE.} SHORT_ANSWER {At most 20 answers, one per line.} other {Write one letter from A to J of an option that has text.}}"
       },
       "FORMULA_INVALID": {
         "message": "The formula in column {column} cannot be read (unbalanced braces)",
@@ -3412,6 +3432,26 @@
       "POINTS_INVALID": {
         "message": "Points “{value}” are not valid",
         "fix": "Enter points as a number greater than 0, for example 1 or 0.75."
+      },
+      "TASK_TYPE_UNKNOWN": {
+        "message": "The task type “{value}” is not in the catalog",
+        "fix": "Use the name or code of an active task type, or leave it empty."
+      },
+      "SCORING_INVALID": {
+        "message": "The scoring “{value}” is not valid",
+        "fix": "{type, select, MULTIPLE_CHOICE {Write ALL_OR_NOTHING or PARTIAL.} TRUE_FALSE {Write “PER_STATEMENT: 0.25 / 0.25” (adds up to the question points) or “COUNT_TABLE: 0.1 / 0.25 / 0.5 / 1” (not decreasing, last value equals the question points), one value per statement.} CLOZE {One line “b1 = 0.5” per blank, with a blank code from the content and points greater than 0.} MATCHING {Write REUSE or ONCE.} other {Check the Scoring column.}}"
+      },
+      "ANSWER_MISSING": {
+        "message": "Answers are incomplete",
+        "fix": "The question is still imported as a Draft; add the answers before marking it Ready."
+      },
+      "CLOZE_MARKER_INVALID": {
+        "message": "A blank marker in the content is repeated or there are more than {max, number} blanks",
+        "fix": "Give each blank its own code, for example [[b1]], [[b2]]; at most 30 blanks."
+      },
+      "SET_CHILD_TYPE_INVALID": {
+        "message": "The type “{value}” cannot be a child of a Question set",
+        "fix": "Import Cloze as a standalone question, without a Set code."
       }
     },
     "errorReport": {

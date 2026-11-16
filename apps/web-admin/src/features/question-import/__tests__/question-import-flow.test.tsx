@@ -3,8 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
-import { importHistoryStore } from "../api.mock";
+import { downloadQuestionTemplate, importHistoryStore } from "../api.mock";
 import { QuestionImportView } from "../components/question-import-view";
+import { readFileText } from "../files";
 
 function setUrl(search = "") {
   window.history.replaceState(null, "", `/questions/import${search}`);
@@ -132,6 +133,42 @@ describe("Nhập câu hỏi từ tệp", () => {
 
     await user.click(screen.getByRole("button", { name: "Nhập tệp khác" }));
     expect(await screen.findByRole("heading", { name: "Chọn tệp câu hỏi" })).toHaveFocus();
+  }, 20_000);
+
+  it("tệp mẫu 8 dạng: kiểm tra hợp lệ cả 10 dòng và xem trước Điền khuyết, Ghép đôi, Đúng/Sai", async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<QuestionImportView />);
+    const template = await downloadQuestionTemplate();
+    const text = (await readFileText(template.blob)).replace("\uFEFF", "");
+
+    await screen.findByRole("heading", { name: "Chọn tệp câu hỏi" });
+    await user.upload(fileInput(container), new File([text], template.filename, { type: "text/csv" }));
+    await user.click(screen.getByRole("button", { name: "Đọc tệp" }));
+    await screen.findByRole("heading", { name: "Ánh xạ cột" });
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: kiểm tra" }));
+    await screen.findByRole("heading", { name: "Kiểm tra và xem trước" });
+    const summary = screen.getByLabelText("Tóm tắt kiểm tra");
+    expect(within(summary).getAllByText("10").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("tab", { name: "Hợp lệ (10)" }));
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 5" }));
+    const cloze = (await screen.findByRole("heading", { name: "Xem trước dòng 5" })).closest("section")!;
+    const blanks = within(cloze).getByRole("list", { name: "Các ô trống" });
+    expect(within(blanks).getByText("Hà Nội")).toBeInTheDocument();
+    expect(within(blanks).getByText("Hồng | sông Hồng")).toBeInTheDocument();
+    expect(within(blanks).getByText("0,5 điểm")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 6" }));
+    const trueFalse = (await screen.findByRole("heading", { name: "Xem trước dòng 6" })).closest("section")!;
+    expect(within(trueFalse).getByText(/Bảng theo số ý đúng: 0,1 \/ 0,25 \/ 0,5 \/ 1/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 7" }));
+    const matching = (await screen.findByRole("heading", { name: "Xem trước dòng 7" })).closest("section")!;
+    const pairs = within(matching).getByRole("list", { name: "Các cặp ghép" });
+    expect(within(pairs).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(pairs).getByText("ghép với B. eˣ + C")).toBeInTheDocument();
+    expect(within(matching).getByText(/D\. x²\/2 \+ C/)).toBeInTheDocument();
+    expect(within(matching).getByText(/Mỗi lựa chọn dùng một lần/)).toBeInTheDocument();
   }, 20_000);
 
   it("không bỏ qua dòng lỗi thì không nhập và báo trong màn", async () => {
