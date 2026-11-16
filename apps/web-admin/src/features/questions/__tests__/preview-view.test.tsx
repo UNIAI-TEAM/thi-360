@@ -158,6 +158,26 @@ describe("xem trước câu hỏi", () => {
     expect(within(panel).getByText("Câu 3")).toBeInTheDocument();
   });
 
+  it("Bộ câu hỏi chỉ có câu Tự luận đã điền: chấm thử báo Chờ chấm, không báo Sai", async () => {
+    const essay = questionStore.require("q-8001");
+    const set: QuestionDetail = {
+      ...questionStore.require("q-0027"),
+      id: "q-essay-set",
+      points: essay.points,
+      body: { type: "QUESTION_SET", passage: "Đọc đoạn trích.", childIds: [essay.id] },
+      children: [essay],
+    };
+    questionStore.insert(set);
+    renderWithProviders(<QuestionPreviewView questionId="q-essay-set" />);
+    await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
+    await userEvent.type(screen.getByRole("textbox", { name: "Bài làm" }), "Lòng biết ơn");
+    await userEvent.click(grade());
+
+    const panel = screen.getByRole("heading", { name: "Kết quả chấm thử" }).closest("div")!;
+    expect(within(panel).getAllByText("Chờ chấm", { selector: "span" }).length).toBeGreaterThan(0);
+    expect(within(panel).queryByText("Sai")).not.toBeInTheDocument();
+  });
+
   it("tiếng Anh: không còn chữ tiếng Việt trong khung xem trước", async () => {
     renderWithProviders(<QuestionPreviewView questionId="q-0001" />, { locale: "en", messages: en });
     expect(await screen.findByRole("group", { name: "Preview in a desktop browser" })).toBeInTheDocument();

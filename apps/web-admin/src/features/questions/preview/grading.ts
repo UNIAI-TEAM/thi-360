@@ -231,7 +231,16 @@ export function gradePreview(question: QuestionDetail, answer: PreviewAnswer): Q
     const answered = results.some((result) => result.state !== "blank");
     const hasManualPart = results.some((result) => result.hasManualPart || result.state === "manual");
     const state = overallState(earned, total, answered);
-    return emptyResult(total, hasManualPart && state === "correct" ? "partial" : state, {
+    // Phần Tự luận chưa chấm không phải phần sai: chỉ khi có câu con tự chấm bị sai mới báo Sai; không thì chờ chấm.
+    const autoWrong = results.some((result) => result.state === "wrong");
+    const setState: QuestionResultState = !hasManualPart
+      ? state
+      : state === "correct"
+        ? "partial"
+        : state === "wrong" && !autoWrong
+          ? "manual"
+          : state;
+    return emptyResult(total, setState, {
       earned,
       hasManualPart,
       children,

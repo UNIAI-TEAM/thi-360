@@ -183,6 +183,35 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
     expect(gradePreview(set, emptyAnswer(set)).state).toBe("blank");
   });
 
+  it("Bo cau hoi chi co phan Tu luan duoc dien: Cho cham, khong bao Sai (UniNote 8.5)", () => {
+    const essay = question(
+      { type: "ESSAY", gradingGuide: "Guide", rubric: [], sampleAnswer: null, wordLimit: null },
+      1.5,
+    );
+    const set = question({ type: "QUESTION_SET", passage: "", childIds: [essay.id] }, 1.5, [essay]);
+    const filled = gradePreview(set, { type: "QUESTION_SET", children: { [essay.id]: { type: "ESSAY", text: "bài làm" } } });
+    expect(filled).toMatchObject({ state: "manual", earned: 0, max: 1.5, hasManualPart: true });
+
+    // Cau con tu cham bo trong, cau Tu luan da dien: van la cho cham, khong phai sai.
+    const single = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!], shuffleOptions: false }, 1);
+    const mixed = question({ type: "QUESTION_SET", passage: "", childIds: [single.id, essay.id] }, 2.5, [single, essay]);
+    const essayOnly = gradePreview(mixed, {
+      type: "QUESTION_SET",
+      children: { [essay.id]: { type: "ESSAY", text: "bài làm" } },
+    });
+    expect(essayOnly.state).toBe("manual");
+
+    // Co cau con tu cham bi sai thi van la Sai.
+    const wrong = gradePreview(mixed, {
+      type: "QUESTION_SET",
+      children: { [single.id]: { type: "SINGLE_CHOICE", selected: "c" }, [essay.id]: { type: "ESSAY", text: "bài làm" } },
+    });
+    expect(wrong).toMatchObject({ state: "wrong", earned: 0 });
+
+    // Khong dien gi: Bo trong.
+    expect(gradePreview(mixed, emptyAnswer(mixed)).state).toBe("blank");
+  });
+
   it("Tu luan: khong co diem tu dong, bo trong la blank", () => {
     const q = question({ type: "ESSAY", gradingGuide: "G", rubric: [], sampleAnswer: null, wordLimit: 500 }, 5);
     expect(gradePreview(q, { type: "ESSAY", text: "một hai ba" })).toMatchObject({
