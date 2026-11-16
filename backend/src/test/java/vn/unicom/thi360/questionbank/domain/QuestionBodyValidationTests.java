@@ -67,8 +67,8 @@ class QuestionBodyValidationTests {
         return new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>Đọc đoạn sau và trả lời.</p>",
             List.of(
-                new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>Câu con 1</p>", singleChoiceBody(), null, null, null, List.of()),
-                new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu con 2</p>", shortAnswerBody(), new BigDecimal("2"), null, null, List.of())));
+                new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>Câu con 1</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
+                new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu con 2</p>", shortAnswerBody(), null, new BigDecimal("2"), null, null, List.of(), null)));
     }
 
     static QuestionBody trueFalseBody() {
@@ -269,13 +269,13 @@ class QuestionBodyValidationTests {
         // D19: không cho Bộ câu hỏi hay Điền khuyết làm câu con.
         QuestionBody setWithCloze = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>p</p>", List.of(
-            new ChildQuestion(QuestionType.CLOZE, "<p>c</p>", clozeBody(), null, null, null, List.of())));
+            new ChildQuestion(QuestionType.CLOZE, "<p>c</p>", clozeBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(QuestionBodyValidator.validateSave(
             input(QuestionType.QUESTION_SET, setWithCloze), null)).contains("QUESTION_CHILD_TYPE_NOT_ALLOWED"));
 
         QuestionBody nestedSet = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>p</p>", List.of(
-            new ChildQuestion(QuestionType.QUESTION_SET, "<p>c</p>", questionSetBody(), null, null, null, List.of())));
+            new ChildQuestion(QuestionType.QUESTION_SET, "<p>c</p>", questionSetBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(QuestionBodyValidator.validateSave(
             input(QuestionType.QUESTION_SET, nestedSet), null)).contains("QUESTION_CHILD_TYPE_NOT_ALLOWED"));
     }
@@ -381,16 +381,16 @@ class QuestionBodyValidationTests {
     void questionSetNeedsTwoReadyChildren() {
         QuestionBody oneChild = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>p</p>", List.of(
-            new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, List.of())));
+            new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(readyErrors(input(QuestionType.QUESTION_SET, oneChild)))
             .contains("SET_WITHOUT_CHILDREN"));
 
         // Câu con chưa đạt điều kiện của dạng mình thì bộ không Sẵn sàng được.
         QuestionBody childNotReady = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>p</p>", List.of(
-            new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, List.of()),
+            new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
             new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>c2</p>",
-                new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of(), null), null, null, null, List.of())));
+                new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of(), null), null, null, null, null, List.of(), null)));
         List<QuestionFieldError> errors = readyErrors(input(QuestionType.QUESTION_SET, childNotReady));
         assertTrue(errors.stream().anyMatch(
             e -> e.code().equals("BLANK_WITHOUT_ANSWER") && e.path().equals("body.children[1].body.answers")));
@@ -552,6 +552,53 @@ class QuestionBodyValidationTests {
             assertTrue(essayErrors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
                 && e.path().equals(path)), essayErrors.toString());
         }
+
+        // R2-1: các nhánh duyệt MULTIPLE_CHOICE / TRUE_FALSE / MATCHING được kiểm thường trực —
+        // câu nháp vẫn lưu, Sẵn sàng chặn đúng đường dẫn; công thức hợp lệ vẫn được chấp nhận.
+        QuestionBody multiple = new QuestionBody.MultipleChoiceBody(QuestionType.MULTIPLE_CHOICE,
+            List.of(new ChoiceOption("a1", bad, true),
+                new ChoiceOption("a2", "<p>\\(y\\)</p>", true),
+                new ChoiceOption("a3", "<p>C</p>", false)),
+            true, QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING);
+        QuestionInput multipleInput = input(QuestionType.MULTIPLE_CHOICE, multiple);
+        assertTrue(QuestionBodyValidator.validateSave(multipleInput, null).isEmpty());
+        var multipleErrors = readyErrors(multipleInput);
+        assertTrue(multipleErrors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
+            && e.path().equals("body.options[0].content")), multipleErrors.toString());
+        assertTrue(multipleErrors.stream().noneMatch(e -> e.code().equals("MATH_UNBALANCED")
+            && e.path().equals("body.options[1].content")));
+
+        QuestionBody trueFalse = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
+            new TrueFalseStatement("s1", bad, true, null),
+            new TrueFalseStatement("s2", "<p>\\(y\\)</p>", false, null),
+            new TrueFalseStatement("s3", "<p>Ý 3</p>", true, null),
+            new TrueFalseStatement("s4", "<p>Ý 4</p>", false, null)),
+            QuestionBody.TrueFalseScoringMethod.COUNT_TABLE,
+            List.of(new BigDecimal("0.1"), new BigDecimal("0.25"), new BigDecimal("0.5"), new BigDecimal("1")));
+        QuestionInput trueFalseInput = input(QuestionType.TRUE_FALSE, trueFalse);
+        assertTrue(QuestionBodyValidator.validateSave(trueFalseInput, null).isEmpty());
+        var trueFalseErrors = readyErrors(trueFalseInput);
+        assertTrue(trueFalseErrors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
+            && e.path().equals("body.statements[0].content")), trueFalseErrors.toString());
+        assertTrue(trueFalseErrors.stream().noneMatch(e -> e.code().equals("MATH_UNBALANCED")
+            && e.path().equals("body.statements[1].content")));
+
+        QuestionBody matching = new QuestionBody.MatchingBody(QuestionType.MATCHING,
+            List.of(new MatchingSide("l1", bad), new MatchingSide("l2", "<p>\\(y\\)</p>")),
+            List.of(new MatchingSide("r1", bad), new MatchingSide("r2", "<p>\\[z\\]</p>"),
+                new MatchingSide("r3", "<p>Phải 3</p>")),
+            List.of(new MatchingPair("l1", "r1", new BigDecimal("0.5")),
+                new MatchingPair("l2", "r2", new BigDecimal("0.5"))),
+            false, true, true);
+        QuestionInput matchingInput = input(QuestionType.MATCHING, matching);
+        assertTrue(QuestionBodyValidator.validateSave(matchingInput, null).isEmpty());
+        var matchingErrors = readyErrors(matchingInput);
+        for (String path : List.of("body.left[0].content", "body.right[0].content")) {
+            assertTrue(matchingErrors.stream().anyMatch(e -> e.code().equals("MATH_UNBALANCED")
+                && e.path().equals(path)), matchingErrors.toString());
+        }
+        assertTrue(matchingErrors.stream().noneMatch(e -> e.code().equals("MATH_UNBALANCED")
+            && (e.path().equals("body.left[1].content") || e.path().equals("body.right[1].content"))));
     }
 
 

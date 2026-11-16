@@ -61,7 +61,7 @@ class QuestionSearchNormalizerTests {
             List.of(
                 new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu hỏi con</p>",
                     new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of("4"), null),
-                    BigDecimal.ONE, null, null, List.of())));
+                    null, BigDecimal.ONE, null, null, List.of(), null)));
         String search = QuestionSearchNormalizer.searchText("CH-2", null, body);
         assertTrue(search.contains("doan van doc hieu"));
         assertTrue(search.contains("cau hoi con"));

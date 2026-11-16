@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.support.StaticListableBeanFactory;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import vn.unicom.thi360.questionbank.domain.QuestionHtmlSanitizer;
 import vn.unicom.thi360.questionbank.spi.HtmlContentSanitizer;
@@ -34,21 +34,21 @@ class HtmlContentSanitizerAdapterTests {
 
     @Test
     void productionConstructorUsesAvailableResolverOrRejectsUnknownImages() {
-        StaticListableBeanFactory factory = new StaticListableBeanFactory();
-        HtmlContentSanitizer absent = new HtmlContentSanitizerAdapter(
-            factory.getBeanProvider(QuestionAssetResolver.class));
+        ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withUserConfiguration(QuestionbankBeans.class, HtmlContentSanitizerAdapter.class);
         String image = "<img data-asset-id=\"" + assetId + "\">";
-        Result rejected = absent.sanitize(image, Options.withImages());
-        assertFalse(rejected.isClean());
-        assertTrue(rejected.violations().stream().anyMatch(v -> "data-asset-id".equals(v.attribute())));
+        runner.run(context -> {
+            Result rejected = context.getBean(HtmlContentSanitizer.class).sanitize(image, Options.withImages());
+            assertFalse(rejected.isClean());
+            assertTrue(rejected.violations().stream().anyMatch(v -> "data-asset-id".equals(v.attribute())));
+        });
 
         QuestionAssetResolver resolver = id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty();
-        factory.addBean("resolver", resolver);
-        HtmlContentSanitizer present = new HtmlContentSanitizerAdapter(
-            factory.getBeanProvider(QuestionAssetResolver.class));
-        Result accepted = present.sanitize(image, Options.withImages());
-        assertTrue(accepted.isClean(), () -> accepted.violations().toString());
-        assertTrue(accepted.html().contains("src=\"" + assetPath + "\""));
+        runner.withBean(QuestionAssetResolver.class, () -> resolver).run(context -> {
+            Result accepted = context.getBean(HtmlContentSanitizer.class).sanitize(image, Options.withImages());
+            assertTrue(accepted.isClean(), () -> accepted.violations().toString());
+            assertTrue(accepted.html().contains("src=\"" + assetPath + "\""));
+        });
     }
 
     @Test
