@@ -44,8 +44,9 @@ public class ExamVersionQueryService {
             Set<String> alreadyPublished = new LinkedHashSet<>();
             for (Row row : rows) {
                 JsonNode oldConfig = json(row.config());
-                if (ExamVersionChanges.between(oldConfig, json(row.parts()), config, parts).isEmpty()) {
-                    alreadyPublished.addAll(row.publishedPaths());
+                if ("SERVING".equals(row.state())
+                        && ExamVersionChanges.between(oldConfig, json(row.parts()), config, parts).isEmpty()) {
+                    alreadyPublished.addAll(row.servingPaths());
                 }
             }
             if (!rows.isEmpty()) {

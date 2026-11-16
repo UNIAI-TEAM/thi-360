@@ -117,4 +117,56 @@ class ExamVersionLifecycleIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("a+b"))
                 .andExpect(jsonPath("$.items").isEmpty());
     }
+
+    @Test
+    void unpublishedPathsIgnoreRetiredHistoryAndCountOnlyServingMatchingPaths() throws Exception {
+        UUID id = exam("PUBLISHED");
+        jdbc.update("update exam.exam set duration_minutes=45,has_unpublished_changes=true,serving_version=2 where id=?", id);
+        snapshot(id, 1, "array['default']", "array[]::text[]", "RETIRED", "45");
+        snapshot(id, 2, "array['default']", "array['default']", "SERVING", "90");
+        mockMvc.perform(get("/api/v1/admin/exams/" + id + "/versions").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("default"));
+    }
+
+    @Test
+    void matchingVersionsContributeOnlyTheirServingPathsDespiteDifferentResolvedQuotas() throws Exception {
+        UUID id = exam("PUBLISHED");
+        jdbc.update("update exam.exam set has_unpublished_changes=true,serving_version=2 where id=?", id);
+        jdbc.update("""
+                update exam.exam_structure set parts='{"parts":[{"id":"p","participation":{"mode":"CHOICE","choose":1},
+                "options":[{"id":"a","kind":"SUBJECT","code":"A","sections":[],"blocks":[]},
+                {"id":"b","kind":"SUBJECT","code":"B","sections":[],"blocks":[]}]}]}'::jsonb where exam_id=?
+                """, id);
+        snapshot(id, 1, "array['a','b']", "array['a']", "SERVING", "null");
+        snapshot(id, 2, "array['b']", "array['b']", "SERVING", "null");
+        jdbc.update("update exam.exam_version set config=jsonb_set(config,'{resolvedQuotas}',jsonb_build_object(version_no::text,version_no)) where exam_id=?", id);
+        String url = "/api/v1/admin/exams/" + id + "/versions";
+        mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.workingCopy.unpublishedPaths").isEmpty());
+        jdbc.update("update exam.exam_version set state='RETIRED',serving_path_ids=array[]::text[] where exam_id=? and version_no=2", id);
+        mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("b"));
+    }
+
+    private void snapshot(UUID id, int number, String published, String serving, String state, String duration) {
+        jdbc.update("""
+                insert into exam.exam_version(id,exam_id,version_no,config,parts,published_path_ids,serving_path_ids,
+                    check_run_id,state,status,published_at,published_by)
+                select ?,e.id,?,jsonb_build_object('code',e.code,'name',e.name,'description',e.description,
+                    'instructions',e.instructions,'kindItemId',e.kind_item_id,'scope',e.scope,'partCode',e.part_code,
+                    'subjectItemId',e.subject_item_id,'templateCode',e.template_code,'structureYear',e.structure_year,
+                    'matrixYear',e.matrix_year,'yearsConfirmed',e.years_confirmed,'timing',e.timing,
+                    'durationMinutes',%s,'maxScore',e.max_score,'referenceMax',e.reference_max,
+                    'practiceScoring',e.practice_scoring,'coverAssetId',e.cover_asset_id,
+                    'kindProfile',jsonb_build_object('scopes',p.scopes,'templateBy',p.template_by,'timing',p.timing,
+                    'maxScore',p.max_score,'referenceMax',p.reference_max,'practiceScoring',p.practice_scoring,
+                    'trueFalseScoring',p.tf_scoring,'multipleChoiceRule',p.mc_rule)),
+                    s.parts,%s,%s,?,?,'PUBLISHED',now(),?
+                from exam.exam e join exam.exam_structure s on s.exam_id=e.id
+                left join exam.exam_kind_profile p on p.exam_item_id=e.kind_item_id where e.id=?
+                """.formatted(duration, published, serving),
+                UUID.randomUUID(), number, UUID.randomUUID(), state, UUID.randomUUID(), id);
+    }
 }
