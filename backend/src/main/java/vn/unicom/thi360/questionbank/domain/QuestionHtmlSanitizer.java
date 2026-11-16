@@ -31,7 +31,9 @@ import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
  * quyết định theo spec: nội dung không đổi thì lưu như cũ, có phần bị bỏ thì 422
  * {@code QUESTION_CONTENT_UNSAFE}. Phần {@code src} của {@code img} luôn được viết lại từ
  * {@code data-asset-id} qua {@link QuestionAssetResolver}: thiếu id hoặc id không tra được là
- * lỗi; {@code src} đầu vào khác đường phục vụ thật bị loại và báo.
+ * lỗi; {@code src} đầu vào khác đường phục vụ thật bị loại và báo. Với
+ * {@link #clean(String, boolean)} truyền {@code allowImages=false} thì mọi {@code img} là vi
+ * phạm và bị loại (nội dung chỉ chữ, ví dụ hướng dẫn làm bài của spec 5.2).
  */
 public class QuestionHtmlSanitizer {
 
@@ -70,17 +72,32 @@ public class QuestionHtmlSanitizer {
         "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
         "span", "img");
 
-    private static final Set<String> MATH_CLASSES = Set.of("math-inline", "math-block");
+    private static final Set<String> ALLOWED_TAGS_NO_IMG = Set.of(
+        "p", "br", "strong", "em", "u", "s", "sub", "sup",
+        "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
+        "span");
 
-    private static final Safelist SAFELIST = Safelist.none()
-        .addTags(
-            "p", "br", "strong", "em", "u", "s", "sub", "sup",
-            "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
-            "span", "img")
-        .addAttributes("img", "src", "alt", "width", "height", "data-asset-id")
-        .addAttributes("span", "class")
-        .addAttributes("td", "colspan", "rowspan")
-        .addAttributes("th", "colspan", "rowspan");
+    private static final Safelist SAFELIST = safelist(true);
+
+    private static final Safelist SAFELIST_NO_IMG = safelist(false);
+
+    private static Safelist safelist(boolean allowImages) {
+        Safelist safelist = Safelist.none()
+            .addTags(
+                "p", "br", "strong", "em", "u", "s", "sub", "sup",
+                "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
+                "span")
+            .addAttributes("span", "class")
+            .addAttributes("td", "colspan", "rowspan")
+            .addAttributes("th", "colspan", "rowspan");
+        if (allowImages) {
+            safelist.addTags("img")
+                .addAttributes("img", "src", "alt", "width", "height", "data-asset-id");
+        }
+        return safelist;
+    }
+
+    private static final Set<String> MATH_CLASSES = Set.of("math-inline", "math-block");
 
     private final QuestionAssetResolver assetResolver;
 
@@ -93,13 +110,23 @@ public class QuestionHtmlSanitizer {
      * lời gọi map sang {@code QUESTION_CONTENT_UNSAFE} khi danh sách không rỗng.
      */
     public Result clean(String html) {
+        return clean(html, true);
+    }
+
+    /**
+     * {@code allowImages=false} coi mọi {@code img} là vi phạm và loại khỏi kết quả (dùng cho
+     * nội dung chỉ chữ như hướng dẫn làm bài, spec 5.2); {@code true} giữ quy tắc câu hỏi.
+     */
+    public Result clean(String html, boolean allowImages) {
         if (html == null || html.isBlank()) {
             return new Result(html == null ? "" : html, List.of());
         }
+        Set<String> allowedTags = allowImages ? ALLOWED_TAGS : ALLOWED_TAGS_NO_IMG;
         Document source = Jsoup.parse(html, "", Parser.htmlParser());
         List<Violation> violations = new ArrayList<>();
-        inspect(source.body(), violations);
-        Document clean = new org.jsoup.safety.Cleaner(SAFELIST).clean(source);
+        inspect(source.body(), violations, allowedTags);
+        Document clean = new org.jsoup.safety.Cleaner(allowImages ? SAFELIST : SAFELIST_NO_IMG)
+            .clean(source);
         clean.outputSettings(new Document.OutputSettings().prettyPrint(false));
         stripDisallowed(clean);
         boolean[] modified = {false};
@@ -124,15 +151,15 @@ public class QuestionHtmlSanitizer {
      * không được phép, giá trị {@code class} của {@code span} ngoài hai lớp công thức, và
      * {@code src}/{@code href} không phải đường nội bộ an toàn (liên kết ngoài, {@code javascript:}).
      */
-    private void inspect(Element element, List<Violation> violations) {
+    private void inspect(Element element, List<Violation> violations, Set<String> allowedTags) {
         for (Node node : element.childNodes()) {
             if (node instanceof Element child) {
                 String tag = child.tagName().toLowerCase(Locale.ROOT);
-                if (!ALLOWED_TAGS.contains(tag)) {
+                if (!allowedTags.contains(tag)) {
                     violations.add(Violation.tag(tag));
                     // Không đi sâu vào phần tử bị loại: phần tử con hợp lệ của nó vẫn được giữ
                     // bởi jsoup Cleaner, nên vẫn phải duyệt con để báo đủ.
-                    inspect(child, violations);
+                    inspect(child, violations, allowedTags);
                     continue;
                 }
                 for (Attribute attribute : child.attributes()) {
@@ -142,7 +169,7 @@ public class QuestionHtmlSanitizer {
                         violations.add(Violation.attribute(tag, name, value));
                     }
                 }
-                inspect(child, violations);
+                inspect(child, violations, allowedTags);
             }
             // Comment và DataNode (mã script/style) bị loại cùng thẻ cha.
         }
