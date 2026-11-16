@@ -219,7 +219,7 @@ public class QuestionService {
 
         boolean versionCreated = false;
         Integer targetVersion;
-        if (question.getStatus() == QuestionStatus.DRAFT && question.getWorkingVersionNo() != null) {
+        if (question.getWorkingVersionNo() != null) {
             targetVersion = question.getWorkingVersionNo();
         } else {
             Integer max = versionRepository.findMaxVersionNo(question.getId());
@@ -255,7 +255,6 @@ public class QuestionService {
         question.setHasSolution(sanitized.solution() != null && !sanitized.solution().isBlank());
         setSourceCode(question, request == null ? null : request.sourceCode());
         question.setWorkingVersionNo(targetVersion);
-        question.setStatus(QuestionStatus.DRAFT);
         question.touch(now, actorId);
 
         knowledgeRepository.deleteByQuestionId(question.getId());
@@ -274,16 +273,19 @@ public class QuestionService {
     public QuestionSummary markReady(UUID id, Long expectedRevision) {
         Question question = loadStandaloneForUpdate(id);
         checkRevision(question, expectedRevision);
-        switch (question.getStatus()) {
-            case READY -> throw new ConflictException(ERR_ALREADY_READY);
-            case RETIRED -> throw new ConflictException(ERR_ALREADY_RETIRED);
-            default -> { /* DRAFT: tiếp tục */ }
+        if (question.getStatus() == QuestionStatus.READY && question.getWorkingVersionNo() == null) {
+            throw new ConflictException(ERR_ALREADY_READY);
         }
         QuestionVersion working = workingVersion(question);
+        if (working == null && question.getCurrentVersionNo() != null) {
+            working = versionRepository.findByQuestionIdAndVersionNo(
+                    id, question.getCurrentVersionNo()).orElse(null);
+        }
         if (working == null || working.getSnapshot() == null) {
             throw new ConflictException(ERR_NOT_READY);
         }
         readinessOrThrow(question, working.getSnapshot());
+        UUID oldSubject = question.getStatus() == QuestionStatus.READY ? servingSubject(question) : null;
 
         Instant now = Instant.now();
         UUID actorId = currentUserProvider.requireCurrentUser().id();
@@ -307,28 +309,26 @@ public class QuestionService {
         question.touch(now, actorId);
         questionRepository.save(question);
         supportDao.bumpSourceRevision(question.getSubjectItemId());
+        if (oldSubject != null && !Objects.equals(oldSubject, question.getSubjectItemId())) {
+            supportDao.bumpSourceRevision(oldSubject);
+        }
         audit("QUESTION.READY", question, null, auditState(question));
         entityManager.flush();
         return mapper.toSummary(question, working, mapper.batch());
     }
 
-    /** Ngừng câu Sẵn sàng: bỏ bản Nháp đang sửa, phiên bản phục vụ giữ nguyên (spec 4.5). */
+    /** Ngừng câu và giữ bản làm việc nếu có (spec 4.4). */
     @Transactional
     public QuestionSummary retire(UUID id, Long expectedRevision) {
         Question question = loadStandaloneForUpdate(id);
         checkRevision(question, expectedRevision);
-        switch (question.getStatus()) {
-            case RETIRED -> throw new ConflictException(ERR_ALREADY_RETIRED);
-            case DRAFT -> throw new ConflictException(ERR_NOT_READY);
-            default -> { /* READY: tiếp tục */ }
+        if (question.getStatus() == QuestionStatus.RETIRED) {
+            throw new ConflictException(ERR_ALREADY_RETIRED);
         }
+        boolean wasReady = question.getStatus() == QuestionStatus.READY;
+        UUID oldSubject = wasReady ? servingSubject(question) : null;
         Instant now = Instant.now();
         UUID actorId = currentUserProvider.requireCurrentUser().id();
-        if (question.getWorkingVersionNo() != null) {
-            versionRepository.deleteById(
-                    new QuestionVersion.PK(id, question.getWorkingVersionNo()));
-            question.setWorkingVersionNo(null);
-        }
         for (Question child : questionRepository.findByParentIdAndDeletedAtIsNullOrderByPosition(id)) {
             child.setStatus(QuestionStatus.RETIRED);
             child.touch(now, actorId);
@@ -336,7 +336,9 @@ public class QuestionService {
         question.setStatus(QuestionStatus.RETIRED);
         question.touch(now, actorId);
         questionRepository.save(question);
-        supportDao.bumpSourceRevision(question.getSubjectItemId());
+        if (wasReady) {
+            supportDao.bumpSourceRevision(oldSubject);
+        }
         audit("QUESTION.RETIRE", question, null, auditState(question));
         entityManager.flush();
         return mapper.toSummary(question, mapper.displayedVersion(question), mapper.batch());
@@ -374,20 +376,19 @@ public class QuestionService {
                 skipped.add(new BulkQuestionStatusResult.Skipped(id, "NOT_FOUND", null));
                 continue;
             }
-            if (question.getStatus() == target) {
+            if (question.getStatus() == target
+                    && !(target == QuestionStatus.READY && question.getWorkingVersionNo() != null)) {
                 skipped.add(new BulkQuestionStatusResult.Skipped(id, "ALREADY_IN_STATUS", null));
                 continue;
             }
-            if (target == QuestionStatus.READY && question.getStatus() == QuestionStatus.RETIRED) {
-                skipped.add(new BulkQuestionStatusResult.Skipped(id, "NOT_READY", ERR_ALREADY_RETIRED));
-                continue;
-            }
-            if (target == QuestionStatus.RETIRED && question.getStatus() == QuestionStatus.DRAFT) {
-                skipped.add(new BulkQuestionStatusResult.Skipped(id, "NOT_READY", "QUESTION_DRAFT"));
-                continue;
-            }
+            boolean wasReady = question.getStatus() == QuestionStatus.READY;
+            UUID oldSubject = wasReady ? servingSubject(question) : null;
             if (target == QuestionStatus.READY) {
                 QuestionVersion working = workingVersion(question);
+                if (working == null && question.getCurrentVersionNo() != null) {
+                    working = versionRepository.findByQuestionIdAndVersionNo(
+                            id, question.getCurrentVersionNo()).orElse(null);
+                }
                 QuestionFieldError firstError = working == null
                         ? new QuestionFieldError(ERR_NOT_READY, "status", ERR_NOT_READY)
                         : readinessErrors(question, working.getSnapshot());
@@ -408,17 +409,18 @@ public class QuestionService {
             } else {
                 Instant now = Instant.now();
                 UUID actorId = currentUserProvider.requireCurrentUser().id();
-                if (question.getWorkingVersionNo() != null) {
-                    versionRepository.deleteById(
-                            new QuestionVersion.PK(id, question.getWorkingVersionNo()));
-                    question.setWorkingVersionNo(null);
-                }
                 applyRetireToChildren(question, now, actorId);
                 question.setStatus(QuestionStatus.RETIRED);
                 question.touch(now, actorId);
             }
             questionRepository.save(question);
-            supportDao.bumpSourceRevision(question.getSubjectItemId());
+            if (target == QuestionStatus.READY) {
+                supportDao.bumpSourceRevision(question.getSubjectItemId());
+            }
+            if (wasReady && (target != QuestionStatus.READY
+                    || !Objects.equals(oldSubject, question.getSubjectItemId()))) {
+                supportDao.bumpSourceRevision(oldSubject);
+            }
             audit(target == QuestionStatus.READY ? "QUESTION.READY" : "QUESTION.RETIRE",
                     question, null, auditState(question));
             entityManager.flush();
@@ -580,7 +582,7 @@ public class QuestionService {
 
         Integer targetVersion;
         boolean versionCreated;
-        if (question.getStatus() == QuestionStatus.DRAFT && question.getWorkingVersionNo() != null) {
+        if (question.getWorkingVersionNo() != null) {
             targetVersion = question.getWorkingVersionNo();
             versionCreated = false;
         } else {
@@ -1098,6 +1100,17 @@ public class QuestionService {
                 .orElse(null);
     }
 
+    private UUID servingSubject(Question question) {
+        if (question.getCurrentVersionNo() == null) {
+            return null;
+        }
+        return versionRepository.findByQuestionIdAndVersionNo(
+                        question.getId(), question.getCurrentVersionNo())
+                .map(QuestionVersion::getSnapshot)
+                .map(QuestionSnapshot::subjectItemId)
+                .orElse(null);
+    }
+
     private void upsertVersion(
             UUID questionId, int versionNo, QuestionSnapshot snapshot, UUID actorId, Instant now) {
         QuestionVersion version = versionRepository
@@ -1130,7 +1143,6 @@ public class QuestionService {
                 snapshot.solution() != null && !snapshot.solution().isBlank());
         setSourceCode(question, sourceCode);
         question.setWorkingVersionNo(workingVersionNo);
-        question.setStatus(QuestionStatus.DRAFT);
         question.touch(now, actorId);
     }
 

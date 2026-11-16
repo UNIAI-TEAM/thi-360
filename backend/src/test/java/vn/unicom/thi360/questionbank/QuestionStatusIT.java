@@ -2,6 +2,7 @@ package vn.unicom.thi360.questionbank;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -72,7 +73,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.version").value(1));
         assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, 2L);
 
-        // Retire lần hai → 409 QUESTION_ALREADY_RETIRED; câu Ngừng không ready được.
+        // Retire lần hai bị từ chối; có thể bật lại bản current.
         mockMvc.perform(post(BASE + "/{id}/retire", id)
                         .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,8 +84,9 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("QUESTION_ALREADY_RETIRED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"));
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, 3L);
     }
 
     @Test
@@ -181,7 +183,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void bulkRetireSkipsDraftsAndMissing() throws Exception {
+    void bulkRetireUpdatesDraftAndSkipsMissing() throws Exception {
         UUID draft = createQuestion();
         MvcResult result = mockMvc.perform(post(BASE + "/bulk/retire")
                         .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
@@ -189,14 +191,88 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ids\":[\"%s\",\"%s\"]}".formatted(draft, UUID.randomUUID())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.updated", hasSize(0)))
-                .andExpect(jsonPath("$.skipped", hasSize(2)))
+                .andExpect(jsonPath("$.updated", hasSize(1)))
+                .andExpect(jsonPath("$.skipped", hasSize(1)))
                 .andReturn();
         JsonNode json = read(result);
         java.util.Set<String> reasons = new java.util.HashSet<>();
         json.at("/skipped").forEach(s -> reasons.add(s.get("reason").asText()));
         org.assertj.core.api.Assertions.assertThat(reasons)
-                .containsExactlyInAnyOrder("NOT_READY", "NOT_FOUND");
+                .containsExactly("NOT_FOUND");
+    }
+
+    @Test
+    void readyEditKeepsServingVersionUntilRepublished() throws Exception {
+        UUID id = createQuestion();
+        transition(id, "ready");
+        long sourceBeforeEdit = sourceRevision();
+        update(id);
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT status, current_version_no, working_version_no FROM questionbank.question WHERE id = ?", id))
+                .containsEntry("status", "READY")
+                .containsEntry("current_version_no", 1)
+                .containsEntry("working_version_no", 2);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceBeforeEdit);
+        transition(id, "ready");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT status, current_version_no, working_version_no FROM questionbank.question WHERE id = ?", id))
+                .containsEntry("status", "READY")
+                .containsEntry("current_version_no", 2)
+                .containsEntry("working_version_no", null);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceBeforeEdit + 1);
+    }
+
+    @Test
+    void retiredEditStaysRetiredAndCanBeReactivated() throws Exception {
+        UUID id = createQuestion();
+        transition(id, "ready");
+        transition(id, "retire");
+        long sourceBeforeEdit = sourceRevision();
+        update(id);
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT status, current_version_no, working_version_no FROM questionbank.question WHERE id = ?", id))
+                .containsEntry("status", "RETIRED")
+                .containsEntry("current_version_no", 1)
+                .containsEntry("working_version_no", 2);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceBeforeEdit);
+        transition(id, "ready");
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceBeforeEdit + 1);
+    }
+
+    @Test
+    void retireDraftRetainsWorkingWithoutChangingSource() throws Exception {
+        UUID id = createQuestion();
+        long before = sourceRevision();
+        transition(id, "retire");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT status, working_version_no FROM questionbank.question WHERE id = ?", id))
+                .containsEntry("status", "RETIRED").containsEntry("working_version_no", 1);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, before);
+        transition(id, "ready");
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, before + 1);
+    }
+
+    private void transition(UUID id, String action) throws Exception {
+        mockMvc.perform(post(BASE + "/{id}/" + action, id)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+    }
+
+    private void update(UUID id) throws Exception {
+        String request = QuestionTestSupport.createSingleChoiceRequest();
+        mockMvc.perform(put(BASE + "/{id}", id)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "," + request.substring(1)))
+                .andExpect(status().isOk());
+    }
+
+    private long sourceRevision() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COALESCE((SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?), 0)",
+                Long.class, QuestionTestSupport.SUBJECT_TOAN_ID);
     }
 
     // ---------------------------------------------------------------- trợ giúp
