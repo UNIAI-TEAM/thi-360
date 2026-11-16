@@ -61,7 +61,7 @@ class SubjectMatrixCasesTest {
             if (gw.groupId().equals("gs")) {
                 assertThat(gw.picks()).hasSize(2);
             } else {
-                assertThat(gw.picks()).hasSize(31 + 14);
+                assertThat(gw.picks()).hasSize(31 + 13);
             }
         }
     }

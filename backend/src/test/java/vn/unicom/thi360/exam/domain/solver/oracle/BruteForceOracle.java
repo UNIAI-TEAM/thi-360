@@ -179,7 +179,9 @@ public final class BruteForceOracle {
      */
     public List<List<SubjectPick>> combosOf(SolvePath path) {
         if (path.choices().isEmpty()) {
-            return List.of();
+            // tích Đề-các của không cách chọn = một tổ hợp rỗng: đường không SUBJECT_CHOICE
+            // vẫn là một đường con cần đánh giá (spec 5.4), không phải không đường con
+            return List.of(List.of());
         }
         List<List<SubjectPick>> perChoice = new ArrayList<>(path.choices().size());
         for (int i = 0; i < path.choices().size(); i++) {
@@ -226,9 +228,10 @@ public final class BruteForceOracle {
 
     /**
      * Khóa định danh đường để so oracle với kết quả bộ giải: phương án đã chọn + các môn cố định
-     * + phương án SUBJECT_CHOICE + chữ ký cách chọn. Phần tử {@code picks} rỗng mã hóa là
-     * {@code ALL}, một cách chọn mã hóa khóa riêng của nó — nên khóa của đường tổng hợp và của
-     * đường con từng cách chọn không trùng nhau.
+     * + phương án SUBJECT_CHOICE + chữ ký cách chọn. Phần tử {@code picks} rỗng — hoặc liệt kê
+     * đủ mọi cách chọn (solver materialize đường tổng hợp) — mã hóa là {@code ALL}, một cách
+     * chọn mã hóa khóa riêng của nó — nên khóa của đường tổng hợp và của đường con từng cách
+     * chọn không trùng nhau.
      */
     public static String pathKey(SolvePath path) {
         StringBuilder sb = new StringBuilder(aggregateKey(path));
@@ -238,7 +241,9 @@ public final class BruteForceOracle {
                 sb.append(';');
             }
             List<SubjectPick> picks = i < path.picks().size() ? path.picks().get(i) : List.of();
-            if (picks.isEmpty()) {
+            // đường tổng hợp của solver liệt kê đủ mọi cách chọn → cùng khóa "ALL" với oracle
+            if (picks.isEmpty()
+                    || picks.size() == OracleSupport.picksOf(path.choices().get(i)).size()) {
                 sb.append("ALL");
             } else if (picks.size() == 1) {
                 sb.append(OracleSupport.pickKey(picks.get(0)));
