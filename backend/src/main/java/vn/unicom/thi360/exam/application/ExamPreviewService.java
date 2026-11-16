@@ -51,7 +51,7 @@ public class ExamPreviewService {
         PaperSolver solver = new PaperSolver(limits, clock);
         SolverInputBuilder.SolverInput input;
         try {
-            input = builder.build(id, document);
+            input = builder.build(id, maskUnselectedOptions(document, request.pathId()));
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("EXAM_STRUCTURE_INVALID");
         }
@@ -111,6 +111,24 @@ public class ExamPreviewService {
 
     private static QuestionSourcePort.VersionKey key(QuestionPick pick) {
         return new QuestionSourcePort.VersionKey(UUID.fromString(pick.questionId()), pick.versionNo());
+    }
+
+    /** Keep unrelated incomplete draft options from preventing the requested path being built. */
+    private static ExamStructureDocument maskUnselectedOptions(ExamStructureDocument document, String pathId) {
+        var selected = new java.util.HashSet<>(List.of(pathId.split("\\+", -1)));
+        List<ExamPart> parts = new ArrayList<>(document.parts().size());
+        for (ExamPart part : document.parts()) {
+            List<ExamPartOption> options = new ArrayList<>(part.options().size());
+            for (ExamPartOption option : part.options()) {
+                options.add(selected.contains(option.id()) ? option
+                        : new ExamPartOption(option.id(), OptionKind.SUBJECT, option.code(), option.name(),
+                                null, null, List.of(), List.of(), option.expertConfirmed()));
+            }
+            parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
+                    part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
+                    part.maxPoints(), part.sections(), options));
+        }
+        return new ExamStructureDocument(parts);
     }
 
     /**

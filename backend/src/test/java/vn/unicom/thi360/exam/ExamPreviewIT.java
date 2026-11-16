@@ -210,7 +210,9 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         UUID examId = exam("""
                 [{"id":"p","order":1,"name":"Choice","questionCount":3,"participation":{"mode":"CHOICE","choose":1},"sections":[],
                   "options":[{"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":2,
-                  "countsByPick":[2,1],"sections":[%s]}]}]
+                  "countsByPick":[2,1],"sections":[%s]},
+                  {"id":"unfinished","kind":"SUBJECT_CHOICE","code":"UNFINISHED","expertConfirmed":false,
+                   "chooseSubjects":0,"countsByPick":[],"sections":[]}]}]
                 """.formatted(sections));
         String request = "{\"pathId\":\"science\",\"seed\":42,\"subjectCodes\":[\"" + a.code()
                 + "\",\"" + b.code() + "\"]}";
