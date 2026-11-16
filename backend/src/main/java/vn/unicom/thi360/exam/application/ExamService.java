@@ -933,6 +933,7 @@ public class ExamService {
                         .orElseGet(() -> new PersonRef(exam.getUpdatedBy(), null));
         List<ExamVersionResponse> versions = new ArrayList<>();
         versions.add(new ExamVersionResponse(null, "WORKING", null, null, 0, null, List.of(), List.of()));
+        versions.addAll(ExamVersionQueryService.publishedRows(jdbcTemplate, objectMapper, userDirectory, exam.getId()));
         return new ExamDetailResponse(
                 exam.getId(),
                 exam.getCode(),
