@@ -128,7 +128,18 @@ thi360:
       max-rows: 2000
     scheduling:
       enabled: true
-
+    assets:
+      # BE-2b (spec 4.2, plan B5): cỡ tệp theo loại; multipart chung 21/22 MB vẫn chặn trước.
+      max-image-size: ${THI360_QB_ASSET_IMAGE_MAX:5MB}
+      max-attachment-size: ${THI360_QB_ASSET_ATTACHMENT_MAX:20MB}
+      # Giới hạn tần suất tải lên theo người (quyết định 8.1): 60 tệp / 10 phút → 429.
+      upload-per-user-limit: ${THI360_QB_ASSET_RATE_LIMIT:60}
+      upload-per-user-window: ${THI360_QB_ASSET_RATE_WINDOW:PT10M}
+      # Tiền tố khóa trong bucket riêng tư dùng chung (quyết định 8.2).
+      key-prefix: ${THI360_QB_ASSET_KEY_PREFIX:questions/}
+      cleanup:
+        scheduling:
+          enabled: true
 ---
 spring:
   config:
@@ -206,6 +217,10 @@ thi360:
   questionbank:
     scheduling:
       enabled: false
+    assets:
+      cleanup:
+        scheduling:
+          enabled: false
 ---
 spring:
   config:
