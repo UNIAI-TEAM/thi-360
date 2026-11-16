@@ -8,13 +8,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -23,10 +23,19 @@ import vn.unicom.thi360.identity.spi.Permissions;
  * tạo/nhân đôi/xóa/loạt; cùng khóa + cùng thân trả lại kết quả đã lưu (không chạy lại nghiệp
  * vụ), cùng khóa + khác thân → 409 {@code IDEMPOTENCY_KEY_REUSED}.
  */
+@Transactional
 class QuestionIdempotencyIT extends AbstractIntegrationTest {
 
     private static final String BASE = "/api/v1/admin/questions";
     private final UUID actorId = UUID.randomUUID();
+    private long sourceAtStart;
+
+    @BeforeEach
+    void captureSourceRevision() {
+        sourceAtStart = jdbcTemplate.queryForObject(
+                "SELECT COALESCE((SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?), 0)",
+                Long.class, QuestionTestSupport.SUBJECT_TOAN_ID);
+    }
 
     @Override
     protected org.springframework.test.web.servlet.request.RequestPostProcessor asUser(String... permissions) {
@@ -39,12 +48,6 @@ class QuestionIdempotencyIT extends AbstractIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @BeforeEach
-    @AfterEach
-    void clean() {
-        QuestionTestSupport.deleteAllQuestions(jdbcTemplate);
-        jdbcTemplate.update("DELETE FROM shared.idempotency_key WHERE scope LIKE '%:question.%'");
-    }
 
     @Test
     void missingKeyRejected400() throws Exception {
@@ -81,7 +84,8 @@ class QuestionIdempotencyIT extends AbstractIntegrationTest {
                         read(replay).at("/summary/code").asText())
                 .isEqualTo(code);
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM questionbank.question WHERE parent_id IS NULL", Integer.class);
+                "SELECT count(*) FROM questionbank.question WHERE parent_id IS NULL AND created_by = ?",
+                Integer.class, actorId);
         org.assertj.core.api.Assertions.assertThat(count).isEqualTo(1);
     }
 
@@ -165,9 +169,9 @@ class QuestionIdempotencyIT extends AbstractIntegrationTest {
 
     private void assertSourceRevision(long expected) {
         Long revision = jdbcTemplate.queryForObject(
-                "SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?",
+                "SELECT COALESCE((SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?), 0)",
                 Long.class, QuestionTestSupport.SUBJECT_TOAN_ID);
-        org.assertj.core.api.Assertions.assertThat(revision).isEqualTo(expected);
+        org.assertj.core.api.Assertions.assertThat(revision).isEqualTo(sourceAtStart + expected);
     }
 
     private JsonNode read(MvcResult result) throws Exception {

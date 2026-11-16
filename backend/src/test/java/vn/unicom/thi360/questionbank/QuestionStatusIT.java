@@ -9,13 +9,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -24,6 +24,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
  * (422 {@code QUESTION_NOT_READY}), đổi trạng thái hàng loạt với câu bị bỏ qua, và revision
  * nguồn theo môn tăng khi tập Sẵn sàng đổi (D14).
  */
+@Transactional
 class QuestionStatusIT extends AbstractIntegrationTest {
 
     private static final String BASE = "/api/v1/admin/questions";
@@ -34,10 +35,11 @@ class QuestionStatusIT extends AbstractIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    private long sourceAtStart;
+
     @BeforeEach
-    @AfterEach
-    void clean() {
-        QuestionTestSupport.deleteAllQuestions(jdbcTemplate);
+    void captureSourceRevision() {
+        sourceAtStart = sourceRevision();
     }
 
     @Test
@@ -53,7 +55,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("READY"))
                 .andExpect(jsonPath("$.version").value(1));
-        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, 1L);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceAtStart + 1);
 
         // Ready lần hai → 409 QUESTION_ALREADY_READY.
         mockMvc.perform(post(BASE + "/{id}/ready", id)
@@ -71,7 +73,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RETIRED"))
                 .andExpect(jsonPath("$.version").value(1));
-        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, 2L);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceAtStart + 2);
 
         // Retire lần hai bị từ chối; có thể bật lại bản current.
         mockMvc.perform(post(BASE + "/{id}/retire", id)
@@ -86,7 +88,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                         .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("READY"));
-        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, 3L);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceAtStart + 3);
     }
 
     @Test
@@ -144,7 +146,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                 Integer.class, parentId);
         org.assertj.core.api.Assertions.assertThat(readyChildren).isEqualTo(2);
         // Một lần tăng revision nguồn cho cả bộ (không tăng theo câu con).
-        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, 1L);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceAtStart + 1);
     }
 
     @Test
@@ -179,7 +181,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                                 ? json.at("/skipped/0/reason").asText()
                                 : json.at("/skipped/1/reason").asText())
                 .isEqualTo("NOT_READY");
-        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, 2L);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, sourceAtStart + 2);
     }
 
     @Test
@@ -296,7 +298,7 @@ class QuestionStatusIT extends AbstractIntegrationTest {
 
     private void assertSourceRevision(UUID subjectItemId, long expected) {
         Long revision = jdbcTemplate.queryForObject(
-                "SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?",
+                "SELECT COALESCE((SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?), 0)",
                 Long.class, subjectItemId);
         org.assertj.core.api.Assertions.assertThat(revision).isEqualTo(expected);
     }

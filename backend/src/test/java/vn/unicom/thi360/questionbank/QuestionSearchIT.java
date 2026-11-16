@@ -9,13 +9,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -23,11 +22,18 @@ import vn.unicom.thi360.identity.spi.Permissions;
  * Danh sách câu hỏi (spec 4.5): tìm kiếm bỏ dấu trên {@code search_text}, lọc phân loại,
  * lọc MAPID mở rộng tới nút con (D23), lọc nhãn và đếm theo trạng thái cùng bộ lọc.
  */
+@Transactional
 class QuestionSearchIT extends AbstractIntegrationTest {
 
     private static final String BASE = "/api/v1/admin/questions";
     private static final String TAG_CODE = "IT-TAG-A";
     private static final UUID TAG_ITEM_ID = UUID.fromString("00000000-0000-7000-8200-00000000ff01");
+    private final UUID actorId = UUID.randomUUID();
+
+    @Override
+    protected org.springframework.test.web.servlet.request.RequestPostProcessor asUser(String... permissions) {
+        return asUser(actorId, "question-search-it", permissions);
+    }
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -35,12 +41,6 @@ class QuestionSearchIT extends AbstractIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @BeforeEach
-    @AfterEach
-    void clean() {
-        QuestionTestSupport.deleteAllQuestions(jdbcTemplate);
-        jdbcTemplate.update("DELETE FROM catalog.catalog_item WHERE id = ?", TAG_ITEM_ID);
-    }
 
     @Test
     void keywordMatchesAccentedTextCaseInsensitive() throws Exception {
@@ -51,14 +51,14 @@ class QuestionSearchIT extends AbstractIntegrationTest {
         createQuestion(QuestionTestSupport.createSingleChoiceRequest());
 
         // Từ khóa không dấu, chữ thường khớp nội dung có dấu.
-        mockMvc.perform(get(BASE).param("keyword", "dao ham")
+        mockMvc.perform(get(BASE).param("createdBy", actorId.toString()).param("keyword", "dao ham")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.totalItems").value(1));
 
         // Từ khóa một ký tự chỉ so mã câu → rỗng.
-        mockMvc.perform(get(BASE).param("keyword", "a")
+        mockMvc.perform(get(BASE).param("createdBy", actorId.toString()).param("keyword", "a")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)));
@@ -66,9 +66,9 @@ class QuestionSearchIT extends AbstractIntegrationTest {
         // Khớp mã câu qua cột code.
         String code = jdbcTemplate.queryForObject(
                 "SELECT code FROM questionbank.question WHERE parent_id IS NULL"
-                        + " ORDER BY created_at LIMIT 1",
-                String.class);
-        mockMvc.perform(get(BASE).param("keyword", code)
+                        + " AND created_by = ? ORDER BY created_at LIMIT 1",
+                String.class, actorId);
+        mockMvc.perform(get(BASE).param("createdBy", actorId.toString()).param("keyword", code)
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(1));
@@ -78,11 +78,12 @@ class QuestionSearchIT extends AbstractIntegrationTest {
     void filtersByClassificationAndStatus() throws Exception {
         createQuestion(QuestionTestSupport.createSingleChoiceRequest());
         // Câu khác môn/khối không khớp lọc.
-        mockMvc.perform(get(BASE).param("subjectCode", "VAN")
+        mockMvc.perform(get(BASE).param("createdBy", actorId.toString()).param("subjectCode", "VAN")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)));
         mockMvc.perform(get(BASE)
+                        .param("createdBy", actorId.toString())
                         .param("subjectCode", "TOAN")
                         .param("gradeCode", "G10")
                         .param("difficultyCode", "NB")
@@ -91,11 +92,11 @@ class QuestionSearchIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(1));
-        mockMvc.perform(get(BASE).param("status", "READY")
+        mockMvc.perform(get(BASE).param("createdBy", actorId.toString()).param("status", "READY")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)));
-        mockMvc.perform(get(BASE).param("status", "DRAFT")
+        mockMvc.perform(get(BASE).param("createdBy", actorId.toString()).param("status", "DRAFT")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(1));
@@ -111,6 +112,7 @@ class QuestionSearchIT extends AbstractIntegrationTest {
         createQuestion(request);
 
         mockMvc.perform(get(BASE)
+                        .param("createdBy", actorId.toString())
                         .param("knowledgeIds", QuestionTestSupport.KNOWLEDGE_CHAPTER_ID.toString())
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
@@ -118,6 +120,7 @@ class QuestionSearchIT extends AbstractIntegrationTest {
 
         // Nút chương khác không khớp.
         mockMvc.perform(get(BASE)
+                        .param("createdBy", actorId.toString())
                         .param("knowledgeIds", "00000000-0000-7000-8200-000000001002")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
@@ -138,7 +141,7 @@ class QuestionSearchIT extends AbstractIntegrationTest {
                 + ",\"tagCodes\":[\"" + TAG_CODE + "\"]}");
         createQuestion(QuestionTestSupport.createSingleChoiceRequest());
 
-        mockMvc.perform(get(BASE).param("tagCodes", TAG_CODE)
+        mockMvc.perform(get(BASE).param("createdBy", actorId.toString()).param("tagCodes", TAG_CODE)
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(1));
@@ -148,12 +151,13 @@ class QuestionSearchIT extends AbstractIntegrationTest {
     void statusCountsShareListFilters() throws Exception {
         createQuestion(QuestionTestSupport.createSingleChoiceRequest());
         mockMvc.perform(get(BASE + "/status-counts")
+                        .param("createdBy", actorId.toString())
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.draft").value(1))
                 .andExpect(jsonPath("$.ready").value(0))
                 .andExpect(jsonPath("$.retired").value(0));
-        mockMvc.perform(get(BASE + "/status-counts").param("subjectCode", "VAN")
+        mockMvc.perform(get(BASE + "/status-counts").param("createdBy", actorId.toString()).param("subjectCode", "VAN")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.draft").value(0));

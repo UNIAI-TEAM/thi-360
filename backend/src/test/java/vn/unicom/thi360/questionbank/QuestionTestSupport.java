@@ -1,8 +1,6 @@
 package vn.unicom.thi360.questionbank;
 
-import java.util.List;
 import java.util.UUID;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Fixture chung của các IT ngân hàng câu hỏi: id giá trị danh mục đã seed (dev data),
@@ -66,22 +64,4 @@ final class QuestionTestSupport {
                 .formatted(SUBJECT_TOAN, GRADE_G10, LEVEL_NB, TASK_TYPE_SINGLE, questionSetBody());
     }
 
-    /** Xóa mọi dữ liệu câu hỏi (kể cả câu con) để test độc lập. */
-    static void deleteAllQuestions(JdbcTemplate jdbc) {
-        jdbc.update("DELETE FROM questionbank.question_usage_ledger");
-        jdbc.update("DELETE FROM questionbank.question_knowledge");
-        jdbc.update("DELETE FROM questionbank.question_tag");
-        jdbc.update("DELETE FROM questionbank.question_version");
-        jdbc.update("DELETE FROM questionbank.question WHERE parent_id IS NOT NULL");
-        jdbc.update("DELETE FROM questionbank.question");
-        jdbc.update("DELETE FROM questionbank.question_source_revision");
-    }
-
-    /** Mã câu đầu tiên của một dạng (truy vấn nhanh cho assert). */
-    static List<String> codesByStatus(JdbcTemplate jdbc, String status) {
-        return jdbc.queryForList(
-                "SELECT code FROM questionbank.question WHERE status = ? AND parent_id IS NULL"
-                        + " AND deleted_at IS NULL ORDER BY created_at",
-                String.class, status);
-    }
 }

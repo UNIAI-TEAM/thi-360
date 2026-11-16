@@ -14,13 +14,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditEvent;
@@ -32,6 +31,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
  * lọc HTML (422), khóa lạc quan (412), xóa mềm, nhân đôi, khôi phục phiên bản và nhật ký
  * {@code QUESTION.*}.
  */
+@Transactional
 class QuestionApiIT extends AbstractIntegrationTest {
 
     private static final String BASE = "/api/v1/admin/questions";
@@ -45,20 +45,15 @@ class QuestionApiIT extends AbstractIntegrationTest {
     @MockitoSpyBean
     private AuditRecorder auditRecorder;
 
-    @BeforeEach
-    @AfterEach
-    void clean() {
-        QuestionTestSupport.deleteAllQuestions(jdbcTemplate);
-    }
 
     // ---------------------------------------------------------------- quyền & tồn tại
 
     @Test
-    void anonymousGets401OnAdminEndpoints() throws Exception {
+    void anonymousReadIsUnauthorizedAndWriteWithoutOriginIsForbidden() throws Exception {
         mockMvc.perform(get(BASE)).andExpect(status().isUnauthorized());
         mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                         .content(QuestionTestSupport.createSingleChoiceRequest()))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
