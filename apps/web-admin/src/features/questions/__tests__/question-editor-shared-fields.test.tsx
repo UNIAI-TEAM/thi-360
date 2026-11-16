@@ -49,7 +49,7 @@ describe("truong dung chung: dang bai, loi sai thuong gap", () => {
     expect(taskType).toHaveTextContent("None");
 
     await user.click(taskType);
-    await user.click(await screen.findByRole("option", { name: "Tính toán" }));
+    await user.click(await screen.findByRole("option", { name: "Calculation" }));
     rich(screen.getByRole("textbox", { name: /^Common mistakes/ })).set("<p>Nhầm dấu khi chuyển vế</p>");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
@@ -123,18 +123,18 @@ describe("cau con cua bo cau hoi sua phan loai rieng", () => {
     renderEn(<QuestionEditorView mode="edit" questionId={id} />);
 
     const first = await openChild(1);
-    expect(first.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Lớp 12");
-    expect(first.getByRole("combobox", { name: "Difficulty" })).toHaveTextContent("Same as the set: Nhận biết");
+    expect(first.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Grade 12");
+    expect(first.getByRole("combobox", { name: "Difficulty" })).toHaveTextContent("Same as the set: Recognition");
     expect(first.getByText("Own")).toBeInTheDocument();
     expect(first.getByText("Phương trình dao động", { exact: false })).toBeInTheDocument();
 
     const second = await openChild(2);
-    expect(second.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Same as the set: Lớp 11");
+    expect(second.getByRole("combobox", { name: "Grade" })).toHaveTextContent("Same as the set: Grade 11");
     expect(second.getByText("Same as the set")).toBeInTheDocument();
     expect(second.getByText("Giới hạn hữu hạn của dãy số", { exact: false })).toBeInTheDocument();
 
     await user.click(second.getByRole("combobox", { name: "Difficulty" }));
-    await user.click(await screen.findByRole("option", { name: "Thông hiểu" }));
+    await user.click(await screen.findByRole("option", { name: "Comprehension" }));
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
 

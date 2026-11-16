@@ -151,6 +151,6 @@ describe("chi tiet cau Tu luan va Dung/Sai", () => {
     navigation.pathname = "/questions/q-8008";
     renderEn(<QuestionDetailContent questionId="q-8008" />);
     expect(await screen.findByText("Competency")).toBeInTheDocument();
-    expect(await screen.findByText("Toán học")).toBeInTheDocument();
+    expect(await screen.findByText("Mathematical competence")).toBeInTheDocument();
   });
 });
