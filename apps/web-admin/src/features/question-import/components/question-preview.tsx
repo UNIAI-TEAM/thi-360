@@ -119,6 +119,36 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
               </p>
             )}
 
+            {draft.type === "ESSAY" && (
+              <div className="flex flex-col gap-2">
+                <p className="text-caption font-semibold text-text-muted">{t("preview.rubric")}</p>
+                {draft.rubric.length > 0 ? (
+                  <ol aria-label={t("preview.rubric")} className="flex flex-col gap-2">
+                    {draft.rubric.map((criterion, index) => (
+                      <li
+                        key={index}
+                        className="flex items-start gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-body text-text"
+                      >
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-subtle text-caption font-semibold">
+                          {index + 1}
+                        </span>
+                        <span className="min-w-0 flex-1 wrap-anywhere">{criterion.description}</span>
+                        <span className="shrink-0 text-caption font-semibold text-text-secondary">
+                          {t("preview.criterionPoints", { points: criterion.points })}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-body text-text-muted">{t("preview.noRubric")}</p>
+                )}
+                <p className="text-body text-text">
+                  <span className="font-semibold">{t("preview.sampleAnswer")}: </span>
+                  {draft.sampleAnswer ?? none}
+                </p>
+              </div>
+            )}
+
             {row.isSetPassage && (
               <div className="flex flex-col gap-2">
                 <p className="text-caption font-semibold text-text-muted">

@@ -81,14 +81,14 @@ describe("tạo bài thi", () => {
           mode: "CHOICE",
           subjectCode: null,
           englishOption: true,
-          combinations: [{ code: "KH-4", subjectCounts: [26, 24] }],
+          combinations: [{ code: "QD01", subjectCounts: [26, 24] }],
         },
       ],
     });
     expect(exam).toMatchObject({ totalQuestions: 90, durationMinutes: 130, englishOption: true, combinationCount: 1 });
     expect(exam.parts[1]!.options.map((option) => [option.code, option.sections.map((section) => section.questionCount)])).toEqual([
       ["ENGLISH", [50]],
-      ["KH-4", [26, 24]],
+      ["QD01", [26, 24]],
     ]);
   });
 
@@ -123,7 +123,7 @@ describe("sửa bài thi", () => {
     const before = await getExam("ex-qda-f-001");
     expect(before.check.status).toBe("VALID");
     const parts = structuredClone(before.parts);
-    parts[0]!.durationMinutes += 5;
+    parts[0]!.durationMinutes = (parts[0]!.durationMinutes ?? 0) + 5;
     const saved = await updateExamStructure("ex-qda-f-001", { parts });
     expect(saved.hasUnpublishedChanges).toBe(true);
     expect(saved.check.status).toBe("NEEDS_RECHECK");
@@ -172,7 +172,7 @@ describe("sửa bài thi", () => {
       [50, 55, "FIXED"],
       [50, 60, "CHOICE"],
     ]);
-    expect(changed.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "KH-4", "KH-5", "KH-6"]);
+    expect(changed.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "QD01", "QD02", "QD03", "QD04"]);
     expect(changed.parts[2]!.options[1]!.sections.map((section) => section.questionCount)).toEqual([25, 25]);
   });
 });
@@ -186,7 +186,7 @@ describe("mẫu QDA theo UniNote mục 5.1", () => {
       [50, 55, "FIXED"],
       [50, 60, "CHOICE"],
     ]);
-    expect(exam.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "KH-4", "KH-6"]);
+    expect(exam.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "QD01", "QD04"]);
   });
 });
 

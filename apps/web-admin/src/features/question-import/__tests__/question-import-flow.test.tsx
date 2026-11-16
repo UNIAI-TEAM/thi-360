@@ -88,8 +88,8 @@ describe("Nhập câu hỏi từ tệp", () => {
     await waitFor(() => expect(checkHeading).toHaveFocus());
     const summary = screen.getByLabelText("Tóm tắt kiểm tra");
     expect(within(summary).getByText("26")).toBeInTheDocument();
-    expect(within(summary).getByText("14")).toBeInTheDocument();
-    expect(within(summary).getByText("9")).toBeInTheDocument();
+    expect(within(summary).getByText("15")).toBeInTheDocument();
+    expect(within(summary).getByText("8")).toBeInTheDocument();
     expect(within(summary).getByText("3")).toBeInTheDocument();
 
     const errors = screen.getByRole("table", { name: "Các dòng lỗi" });
@@ -97,27 +97,36 @@ describe("Nhập câu hỏi từ tệp", () => {
     expect(within(errors).getByText("Môn học “Toan” không có trong danh mục")).toBeInTheDocument();
     expect(window.location.search).toBe("");
 
-    await user.click(screen.getByRole("button", { name: "Xem trước dòng 19" }));
-    const preview = await screen.findByRole("heading", { name: "Xem trước dòng 19" });
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 18" }));
+    const preview = await screen.findByRole("heading", { name: "Xem trước dòng 18" });
     await waitFor(() => expect(preview).toHaveFocus());
     const previewSection = preview.closest("section");
     if (!previewSection) throw new Error("no preview section");
-    expect(within(previewSection).getByText(/Dạng câu “Tự luận” chưa được hỗ trợ/)).toBeInTheDocument();
+    expect(within(previewSection).getByText(/Môn học “Toan” không có trong danh mục/)).toBeInTheDocument();
     expect(within(previewSection).getByText("Có lỗi")).toBeInTheDocument();
+
+    // UNI-2599: câu Tự luận chưa có tiêu chí chấm vẫn hợp lệ, kèm cảnh báo (câu ở Nháp tới khi bổ sung).
+    await user.click(screen.getByRole("tab", { name: "Hợp lệ (15)" }));
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 19" }));
+    const essayPreview = await screen.findByRole("heading", { name: "Xem trước dòng 19" });
+    const essaySection = essayPreview.closest("section");
+    if (!essaySection) throw new Error("no essay preview section");
+    expect(within(essaySection).getByText(/Câu tự luận chưa có tiêu chí chấm/)).toBeInTheDocument();
+    expect(within(essaySection).getByText("Chưa có tiêu chí chấm; câu sẽ ở Nháp tới khi bổ sung.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Trùng (3)" }));
     expect(window.location.search).toBe("?tab=duplicates");
     expect(screen.getByRole("link", { name: "CH-000004" })).toHaveAttribute("href", "/questions/q-0004");
 
-    await user.click(screen.getByRole("button", { name: "Nhập 14 câu" }));
-    const resultHeading = await screen.findByRole("heading", { name: "Đã nhập xong 12 câu" });
+    await user.click(screen.getByRole("button", { name: "Nhập 15 câu" }));
+    const resultHeading = await screen.findByRole("heading", { name: "Đã nhập xong 13 câu" });
     await waitFor(() => expect(resultHeading).toHaveFocus());
     expect(screen.getByRole("link", { name: "Xem các câu vừa nhập" })).toHaveAttribute(
       "href",
       "/questions?status=DRAFT",
     );
     expect(screen.getByRole("button", { name: "Tải file lỗi" })).toBeInTheDocument();
-    expect(questionStore.all().length).toBe(before + 12);
+    expect(questionStore.all().length).toBe(before + 13);
     expect(questionStore.all()[0]?.status).toBe("DRAFT");
     expect(window.location.search).toBe("");
 
@@ -132,9 +141,9 @@ describe("Nhập câu hỏi từ tệp", () => {
     await user.click(screen.getByRole("button", { name: "Tiếp tục: kiểm tra" }));
     await screen.findByRole("heading", { name: "Kiểm tra và xem trước" });
 
-    const skip = screen.getByRole("checkbox", { name: "Bỏ qua 9 dòng lỗi, chỉ nhập các câu hợp lệ" });
+    const skip = screen.getByRole("checkbox", { name: "Bỏ qua 8 dòng lỗi, chỉ nhập các câu hợp lệ" });
     await user.click(skip);
-    await user.click(screen.getByRole("button", { name: "Nhập 14 câu" }));
+    await user.click(screen.getByRole("button", { name: "Nhập 15 câu" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Tệp còn dòng lỗi.");
     expect(skip).toHaveFocus();
   });

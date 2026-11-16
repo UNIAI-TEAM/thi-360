@@ -92,7 +92,11 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
               <OutlineButton
                 current={selection?.kind === "part" && selection.partId === part.id}
                 onClick={() => onSelect({ kind: "part", partId: part.id })}
-                meta={t("partMeta", { count: part.questionCount, minutes: part.durationMinutes })}
+                meta={t("partMeta", {
+                  count: part.questionCount,
+                  minutes: part.durationMinutes ?? 0,
+                  hasMinutes: part.durationMinutes === null ? "no" : "yes",
+                })}
                 warning={partHasIssue(part.id) ? t("hasIssue") : null}
                 strong
               >
@@ -100,10 +104,26 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
               </OutlineButton>
               {part.mode === "CHOICE" ? (
                 <ol className="flex flex-col gap-2 pl-2">
+                  {part.sections.length > 0 && (
+                    <li className="flex flex-col gap-0.5 border-l border-border pl-2">
+                      <span className="pl-1 text-label font-medium text-text">{t("common")}</span>
+                      <ol className="flex flex-col gap-1">
+                        {part.sections.map((section) => renderSection(part, null, section, true))}
+                      </ol>
+                    </li>
+                  )}
                   {part.options.length === 0 && <li className="pl-3 text-caption text-text-muted">{t("noOptions")}</li>}
                   {part.options.map((option) => (
                     <li key={option.id} className="flex flex-col gap-0.5 border-l border-border pl-2">
-                      <span className="pl-1 text-label font-medium text-text">{optionLabel(option, names)}</span>
+                      <span className="flex flex-wrap items-center gap-x-1.5 pl-1 text-label font-medium text-text">
+                        {optionLabel(option, names)}
+                        {option.expertConfirmed === false && (
+                          <span className="inline-flex items-center gap-1 text-caption font-normal text-warning">
+                            <TriangleAlert aria-hidden className="size-3.5" />
+                            {t("expertPending")}
+                          </span>
+                        )}
+                      </span>
                       <ol className="flex flex-col gap-1">
                         {option.sections.map((section) => renderSection(part, option.id, section, option.sections.length > 1))}
                       </ol>

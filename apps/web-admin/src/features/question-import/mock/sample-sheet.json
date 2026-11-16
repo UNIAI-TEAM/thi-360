@@ -19,7 +19,7 @@
     ["TOAN11-0013", "Trắc nghiệm 1 đáp án", "Tổng của cấp số nhân lùi vô hạn 1 + 1/2 + 1/4 + … bằng", "1", "3/2", "2", "4", "E", "", "Toán", "11", "Thông hiểu", "1D4-1-3", "", "", ""],
     ["TOAN11-0014", "Trắc nghiệm 1 đáp án", "Tính $\\frac{1}{x$ khi x = 2.", "1/2", "2", "1", "0", "A", "", "Toán", "11", "Nhận biết", "1D4-2-1", "", "", "Công thức lỗi"],
     ["TOAN11-0015", "Trắc nghiệm 1 đáp án", "Giới hạn một bên lim |x|/x khi x tiến tới 0 từ bên phải bằng", "−1", "0", "1", "Không tồn tại", "C", "", "Toan", "11", "Thông hiểu", "1D4-2-2", "", "", ""],
-    ["TOAN11-0016", "Tự luận", "Chứng minh rằng phương trình x³ − 3x + 1 = 0 có ba nghiệm phân biệt.", "", "", "", "", "Xem lời giải", "", "Toán", "11", "Vận dụng cao", "1D4-3-2", "", "", ""],
+    ["TOAN11-0016", "Tự luận", "Chứng minh rằng phương trình x³ − 3x + 1 = 0 có ba nghiệm phân biệt.", "", "", "", "", "Xét f(x) = x³ − 3x + 1 liên tục trên ℝ: f(−2) < 0, f(0) > 0, f(1) < 0, f(2) > 0 nên phương trình có ba nghiệm phân biệt.", "", "Toán", "11", "Vận dụng cao", "1D4-3-2", "", "", ""],
     ["TOAN11-0017", "Trắc nghiệm 1 đáp án", "Giới hạn lim (2x + 1)/(x − 1) khi x tiến tới dương vô cực bằng", "0", "1", "2", "Dương vô cực", "C", "Chia cả tử và mẫu cho x.", "Toán", "11", "Nhận biết", "", "", "", "Chưa gắn MAPID"],
     ["LY12-0001", "Trắc nghiệm 1 đáp án", "Một vật dao động điều hòa với phương trình x = 5cos(2πt) cm. Biên độ dao động là", "2 cm", "5 cm", "10 cm", "2π cm", "B", "", "Vật lí", "12", "Nhận biết", "2L1-1-1", "", "", ""],
     ["TOAN11-0019", "Trắc nghiệm 1 đáp án", "Hàm số nào liên tục trên ℝ?", "y = 1/x", "y = x² + 1", "y = tan x", "y = √x", "B", "", "Toán", "13", "Nhận biết", "1D4-3-2", "", "", "Lớp sai"],

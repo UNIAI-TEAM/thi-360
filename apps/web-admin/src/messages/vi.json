@@ -1299,6 +1299,10 @@
       "rbac": {
         "description": "Vai trò, danh sách quyền và gán quyền hàng loạt",
         "label": "Phân quyền"
+      },
+      "grading": {
+        "description": "Lượt thi có câu tự luận chờ chấm và đã có điểm",
+        "label": "Chấm tự luận"
       }
     }
   },
@@ -2146,7 +2150,8 @@
       "TRUE_FALSE": "Đúng / Sai",
       "FILL_IN": "Điền đáp án",
       "DRAG_DROP": "Kéo thả",
-      "QUESTION_SET": "Câu chùm"
+      "QUESTION_SET": "Câu chùm",
+      "ESSAY": "Tự luận"
     },
     "questionStatus": {
       "DRAFT": "Nháp",
@@ -2300,7 +2305,8 @@
         "sourceCode": "Mã nguồn nhập",
         "createdBy": "Người tạo",
         "byAt": "{name} · {at}",
-        "updatedAt": "Sửa lần cuối"
+        "updatedAt": "Sửa lần cuối",
+        "competency": "Năng lực"
       },
       "body": {
         "noContent": "Chưa có đề bài.",
@@ -2315,7 +2321,23 @@
         "zoneLabel": "Ô thả {number}",
         "correctItem": "Thẻ đúng:",
         "distractors": "Thẻ nhiễu: {items}",
-        "noDistractors": "Không có thẻ nhiễu."
+        "noDistractors": "Không có thẻ nhiễu.",
+        "manualGrading": "Chấm tay",
+        "scoringRule": "Cách chấm:",
+        "scoringRules": {
+          "ALL_OR_NOTHING": "Đúng hết mới có điểm",
+          "PARTIAL": "Chấm từng phần (theo tỉ lệ; chọn sai một phương án thì 0 điểm)"
+        },
+        "essayMaxPoints": "Điểm tối đa {points}",
+        "wordLimit": "khoảng {count, number} chữ",
+        "rubricTitle": "Tiêu chí chấm",
+        "noRubric": "Chưa có tiêu chí chấm.",
+        "sampleAnswer": "Bài làm mẫu",
+        "scoreTableTitle": "Bảng điểm theo số ý đúng",
+        "scoreTableCell": "Đúng {count, number} ý",
+        "scoreTableLine": "Bảng điểm theo số ý đúng: {values}",
+        "scoreValue": "{value, number}",
+        "essaySummary": "Chấm tay · tối đa {points, number} điểm"
       }
     },
     "editor": {
@@ -2349,14 +2371,16 @@
         "default": "Ô nhập nhiều dòng. Trình soạn thảo có công thức, hình và bảng sẽ có ở bản sau.",
         "fillIn": "Ghi ___ (ba dấu gạch dưới) ở chỗ cần điền, hoặc đặt con trỏ rồi bấm “Thêm ô trống”.",
         "trueFalse": "Phần dùng chung cho mọi ý: dữ kiện, hình vẽ, bảng số liệu.",
-        "passage": "Bài đọc, bảng số liệu hoặc hình dùng chung cho mọi câu con."
+        "passage": "Bài đọc, bảng số liệu hoặc hình dùng chung cho mọi câu con.",
+        "essay": "Đề bài và yêu cầu của câu tự luận, ví dụ độ dài bài viết. Học viên viết câu trả lời, người chấm chấm tay theo tiêu chí."
       },
       "bodyTitle": {
         "options": "Phương án",
         "statements": "Các ý",
         "blanks": "Đáp án từng ô trống",
         "dragDrop": "Ô thả và thẻ",
-        "children": "Câu con"
+        "children": "Câu con",
+        "essay": "Hướng dẫn chấm"
       },
       "toast": {
         "created": "Đã lưu câu hỏi {code} ở trạng thái Nháp.",
@@ -2394,7 +2418,8 @@
           "TRUE_FALSE": "Một đề bài, mỗi ý chọn Đúng hoặc Sai.",
           "FILL_IN": "Học viên gõ số hoặc chữ vào ô trống.",
           "DRAG_DROP": "Học viên kéo thẻ vào ô trống trong câu.",
-          "QUESTION_SET": "Một đoạn dẫn chung cho nhiều câu con."
+          "QUESTION_SET": "Một đoạn dẫn chung cho nhiều câu con.",
+          "ESSAY": "Câu trả lời viết, chấm tay theo tiêu chí chấm."
         },
         "cancel": "Hủy",
         "continue": "Tiếp tục"
@@ -2422,7 +2447,10 @@
         "addTag": "Thêm nhãn",
         "removeTag": "Bỏ nhãn {name}",
         "tagAdded": "Đã thêm nhãn {name}.",
-        "tagRemoved": "Đã bỏ nhãn {name}."
+        "tagRemoved": "Đã bỏ nhãn {name}.",
+        "competency": "Năng lực",
+        "competencyNone": "Không gắn",
+        "competencyHint": "Dùng cho bài thi chia ma trận theo năng lực (V-ACT). Không bắt buộc."
       },
       "rows": {
         "moveUp": "Đưa {name} lên",
@@ -2544,7 +2572,63 @@
         "zoneItemRequired": "Nhập thẻ đúng của ô thả.",
         "distractorRequired": "Nhập nội dung thẻ nhiễu hoặc xóa thẻ.",
         "childrenMin": "Câu chùm cần ít nhất 2 câu con.",
-        "childContentRequired": "Nhập đề bài câu con."
+        "childContentRequired": "Nhập đề bài câu con.",
+        "scoreValueInvalid": "Điểm phải là số không âm.",
+        "scoreNotIncreasing": "Điểm không được nhỏ hơn ô trước.",
+        "scoreLastMismatch": "Ô cuối phải bằng điểm của câu.",
+        "rubricMin": "Thêm ít nhất một tiêu chí chấm.",
+        "criterionRequired": "Nhập mô tả tiêu chí.",
+        "criterionMax": "Mô tả quá dài.",
+        "criterionPointsInvalid": "Điểm tiêu chí phải là số lớn hơn 0.",
+        "rubricTotalMismatch": "Tổng điểm các tiêu chí phải bằng điểm của câu.",
+        "sampleAnswerMax": "Bài làm mẫu quá dài.",
+        "wordLimitInvalid": "Số chữ phải là số nguyên lớn hơn 0."
+      },
+      "scoreTable": {
+        "legend": "Bảng điểm theo số ý đúng",
+        "hint": "Điểm học viên được khi đúng 1, 2, … ý. Giá trị không giảm dần; ô cuối bằng điểm của câu ({points}).",
+        "cellLabel": "Đúng {count, number} ý",
+        "even": "Chia đều",
+        "evenApplied": "Đã chia đều bảng điểm theo điểm của câu.",
+        "fromExamKind": "Theo mẫu kỳ thi…",
+        "fromExamKindLabel": "Bảng điểm mẫu cho câu {count, number} ý",
+        "templateItem": "{kind}: {values}",
+        "templateNeeds": "Dùng cho câu {count, number} ý",
+        "templateApplied": "Đã nạp bảng điểm theo mẫu {kind}.",
+        "reflowed": "Bảng điểm đã chia đều lại cho {count, number} ý."
+      },
+      "scoringRule": {
+        "legend": "Cách chấm",
+        "chosen": "Đã chọn cách chấm: {rule}.",
+        "ALL_OR_NOTHING": {
+          "label": "Đúng hết mới có điểm",
+          "description": "Học viên chọn đúng và đủ mọi phương án đúng thì được trọn điểm; còn lại 0 điểm."
+        },
+        "PARTIAL": {
+          "label": "Chấm từng phần",
+          "description": "Điểm theo tỉ lệ số phương án đúng đã chọn; chọn sai một phương án thì 0 điểm."
+        }
+      },
+      "essay": {
+        "manualGrading": "Chấm tay",
+        "maxPoints": "Điểm tối đa {points} (ô Điểm của câu).",
+        "maxPointsUnknown": "Điểm tối đa lấy theo ô Điểm của câu.",
+        "rubricLegend": "Tiêu chí chấm",
+        "rubricHint": "Mỗi tiêu chí có mô tả và điểm tối đa. Tổng điểm các tiêu chí phải bằng điểm của câu.",
+        "descriptionLabel": "Mô tả tiêu chí {number}",
+        "pointsLabel": "Điểm tiêu chí {number}",
+        "rowName": "tiêu chí {number}",
+        "add": "Thêm tiêu chí",
+        "added": "Đã thêm tiêu chí {number}.",
+        "removed": "Đã xóa tiêu chí {number}.",
+        "moved": "Đã chuyển tiêu chí {number} tới vị trí {position}.",
+        "totalMatches": "Tổng điểm tiêu chí {total} / {points}: khớp điểm của câu",
+        "totalDiffers": "Tổng điểm tiêu chí {total} / {points}: chưa khớp điểm của câu",
+        "totalOnly": "Tổng điểm tiêu chí {total}",
+        "sampleAnswer": "Bài làm mẫu",
+        "sampleAnswerHint": "Không bắt buộc. Người chấm xem khi chấm; học viên không thấy.",
+        "wordLimit": "Số chữ gợi ý",
+        "wordLimitHint": "Không bắt buộc, ví dụ 200."
       }
     },
     "statusDialogs": {
@@ -2595,7 +2679,11 @@
         "RESOURCE_UNAVAILABLE": "Không tải được {value}.",
         "TYPE_UNSUPPORTED": "Dạng câu chưa được hỗ trợ.",
         "BODY_TYPE_MISMATCH": "Phần đáp án không khớp dạng câu.",
-        "NESTED_SET": "Câu chùm không được chứa câu chùm khác."
+        "NESTED_SET": "Câu chùm không được chứa câu chùm khác.",
+        "CRITERION_EMPTY": "Tiêu chí chấm {position, number} chưa có mô tả.",
+        "SCORE_TABLE_INVALID": "Bảng điểm theo số ý đúng chưa hợp lệ (đủ số ý, không giảm, ô cuối bằng điểm của câu).",
+        "NO_RUBRIC": "Câu tự luận chưa có tiêu chí chấm.",
+        "RUBRIC_TOTAL_MISMATCH": "Tổng điểm tiêu chí chấm chưa bằng điểm của câu."
       },
       "childIssue": "Câu con {child, number}: {issue}",
       "moreIssues": "và {count, number} chỗ khác",
@@ -2680,7 +2768,8 @@
       "chipCreatedFrom": "Ngày tạo từ {value}",
       "chipCreatedTo": "Ngày tạo đến {value}",
       "remove": "Bỏ lọc {label}",
-      "clearAll": "Xóa tất cả bộ lọc"
+      "clearAll": "Xóa tất cả bộ lọc",
+      "competency": "Năng lực"
     },
     "bulk": {
       "groupLabel": "Thao tác hàng loạt",
@@ -2791,7 +2880,8 @@
           "gradeCode": "Khối lớp",
           "difficultyCode": "Mức độ",
           "knowledge": "Kiến thức (MAPID)",
-          "tagCodes": "Nhãn"
+          "tagCodes": "Nhãn",
+          "competencyCode": "Năng lực"
         },
         "fieldsShort": {
           "content": "đề bài",
@@ -2803,7 +2893,8 @@
           "gradeCode": "khối lớp",
           "difficultyCode": "mức độ",
           "knowledge": "kiến thức",
-          "tagCodes": "nhãn"
+          "tagCodes": "nhãn",
+          "competencyCode": "năng lực"
         }
       }
     },
@@ -2862,7 +2953,8 @@
       "difficulty": "Mức độ",
       "knowledge": "Kiến thức (MAPID)",
       "tags": "Nhãn",
-      "setCode": "Mã chùm"
+      "setCode": "Mã chùm",
+      "rubric": "Tiêu chí chấm"
     },
     "upload": {
       "heading": "Chọn tệp câu hỏi",
@@ -2888,17 +2980,18 @@
       "optionsRow": "A, B, C, D",
       "rules": {
         "sourceCode": "Dùng để nhận ra câu đã nhập trước đó; không lặp trong tệp.",
-        "type": "Trắc nghiệm 1 đáp án, Trắc nghiệm nhiều đáp án, Đúng / Sai, Điền đáp án hoặc Câu chùm.",
+        "type": "Trắc nghiệm 1 đáp án, Trắc nghiệm nhiều đáp án, Đúng / Sai, Điền đáp án, Tự luận hoặc Câu chùm.",
         "content": "Đề bài; với dòng Câu chùm là ngữ liệu chung. Công thức viết bằng LaTeX.",
         "options": "Phương án trắc nghiệm, hoặc các ý của câu Đúng / Sai. Trắc nghiệm cần ít nhất 2 phương án.",
-        "correctAnswer": "Chữ cái phương án đúng (A); nhiều đáp án cách nhau dấu phẩy (A, C); Đúng / Sai ghi Đ hoặc S cho từng ý; Điền đáp án ghi các đáp án chấp nhận, cách nhau dấu |. Dòng Câu chùm để trống.",
+        "correctAnswer": "Chữ cái phương án đúng (A); nhiều đáp án cách nhau dấu phẩy (A, C); Đúng / Sai ghi Đ hoặc S cho từng ý; Điền đáp án ghi các đáp án chấp nhận, cách nhau dấu |; Tự luận ghi bài làm mẫu (không bắt buộc). Dòng Câu chùm để trống.",
         "solution": "Lời giải hoặc hướng dẫn giải.",
         "subject": "Tên hoặc mã môn trong danh mục. Câu con để trống thì lấy theo dòng Câu chùm.",
         "grade": "Số lớp (10, 11, 12) hoặc tên khối.",
         "difficulty": "Nhận biết, Thông hiểu, Vận dụng hoặc Vận dụng cao.",
         "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống thì phải bổ sung trước khi chuyển Sẵn sàng.",
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
-        "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm."
+        "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm.",
+        "rubric": "Chỉ cho câu Tự luận: mỗi tiêu chí ghi “Mô tả: điểm”, cách nhau dấu ; (ví dụ Mở bài: 0,25; Thân bài: 1). Điểm của câu bằng tổng điểm tiêu chí. Để trống thì câu ở Nháp tới khi bổ sung tiêu chí."
       },
       "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2."
     },
@@ -3033,7 +3126,11 @@
         "VALID": "Hợp lệ",
         "ERROR": "Có lỗi",
         "DUPLICATE": "Trùng"
-      }
+      },
+      "rubric": "Tiêu chí chấm",
+      "noRubric": "Chưa có tiêu chí chấm; câu sẽ ở Nháp tới khi bổ sung.",
+      "criterionPoints": "{points, number} điểm",
+      "sampleAnswer": "Bài làm mẫu"
     },
     "issues": {
       "REQUIRED": {
@@ -3042,7 +3139,7 @@
       },
       "TYPE_UNKNOWN": {
         "message": "Dạng câu “{value}” chưa được hỗ trợ",
-        "fix": "Dùng một trong: Trắc nghiệm 1 đáp án, Trắc nghiệm nhiều đáp án, Đúng / Sai, Điền đáp án, Câu chùm."
+        "fix": "Dùng một trong: Trắc nghiệm 1 đáp án, Trắc nghiệm nhiều đáp án, Đúng / Sai, Điền đáp án, Tự luận, Câu chùm."
       },
       "TYPE_NOT_IMPORTABLE": {
         "message": "Dạng “{value}” chưa nhập được từ tệp",
@@ -3107,6 +3204,14 @@
       "TAG_UNKNOWN": {
         "message": "Nhãn “{value}” không có trong danh mục, sẽ bỏ qua",
         "fix": "Thêm nhãn trong Cấu hình chung nếu cần dùng."
+      },
+      "RUBRIC_INVALID": {
+        "message": "Tiêu chí chấm “{value}” thiếu điểm hoặc điểm không hợp lệ",
+        "fix": "Ghi mỗi tiêu chí dạng “Mô tả: điểm” với điểm lớn hơn 0, các tiêu chí cách nhau dấu ;."
+      },
+      "RUBRIC_MISSING": {
+        "message": "Câu tự luận chưa có tiêu chí chấm",
+        "fix": "Câu vẫn được nhập ở trạng thái Nháp; bổ sung tiêu chí chấm trước khi chuyển Sẵn sàng."
       }
     },
     "errorReport": {
@@ -3195,7 +3300,8 @@
         "check": "Kiểm tra gần nhất",
         "all": "Tất cả",
         "unpublishedOnly": "Có bản sửa chưa công bố",
-        "clear": "Xóa bộ lọc"
+        "clear": "Xóa bộ lọc",
+        "subject": "Môn"
       },
       "table": {
         "exam": "Bài thi",
@@ -3206,7 +3312,8 @@
         "draft": "Bản sửa",
         "check": "Kiểm tra gần nhất",
         "updated": "Cập nhật",
-        "actions": "Thao tác"
+        "actions": "Thao tác",
+        "choice": "Lựa chọn"
       },
       "actions": {
         "create": "Tạo bài thi",
@@ -3228,7 +3335,15 @@
       "discontinueDescription": "Bài “{name}” không bán thêm. Học viên đã mua vẫn làm được phiên bản v{version}; lượt thi đã tạo giữ nguyên.",
       "discontinueSuccess": "Đã ngừng bán bài thi {code}.",
       "discontinueConflict": "Bài thi không còn ở trạng thái Đang phục vụ. Tải lại danh sách rồi thử lại.",
-      "discontinueError": "Không ngừng bán được bài thi. Thử lại sau."
+      "discontinueError": "Không ngừng bán được bài thi. Thử lại sau.",
+      "structureValueShared": "{questions, number} câu · {minutes, number} phút chung",
+      "essay": "Có tự luận",
+      "choice": {
+        "english": "Tiếng Anh",
+        "combinations": "{count, number} tổ hợp",
+        "branches": "{count, number} nhánh",
+        "none": "Không có phần tự chọn"
+      }
     },
     "general": {
       "title": "Thông tin chung của bài thi",
@@ -3253,14 +3368,27 @@
         "structure": "Cấu trúc",
         "structureValue": "{parts, number} phần · {questions, number} câu · {minutes, number} phút",
         "paths": "Đường lựa chọn",
-        "pathsEnglishAndCombinations": "Tiếng Anh + {count, number} tổ hợp",
         "pathsEnglishOnly": "Tiếng Anh",
         "pathsCombinationsOnly": "{count, number} tổ hợp",
         "pathsFixed": "Không có phần tự chọn",
         "attempts": "Lượt làm",
         "attemptsValue": "{count, number} lượt",
-        "updated": "Cập nhật lần cuối"
-      }
+        "updated": "Cập nhật lần cuối",
+        "pathsBranches": "{count, number} nhánh",
+        "years": "Năm cấu trúc {structureYear} · năm ma trận {matrixYear}",
+        "yearsConfirmed": "Chỉ tiêu ma trận",
+        "yearsConfirmedYes": "Chuyên gia đã xác nhận",
+        "yearsConfirmedNo": "Chờ chuyên gia xác nhận",
+        "structureValueShared": "{parts, number} phần · {questions, number} câu · {minutes, number} phút chung",
+        "maxScore": "Thang điểm",
+        "maxScoreValue": "{count, number} điểm",
+        "maxScoreUnset": "Chưa đặt",
+        "essay": "Tự luận",
+        "essayValue": "Có câu tự luận, chấm tay"
+      },
+      "loadErrorTitle": "Không tải được danh mục và mẫu cấu trúc",
+      "loadErrorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "retry": "Thử lại"
     },
     "structure": {
       "title": "Cấu trúc và ma trận",
@@ -3298,7 +3426,10 @@
         "points": "Tổng điểm",
         "allocated": "Đã phân bổ",
         "allocatedValue": "{allocated, number}, còn thiếu {missing, number}",
-        "issues": "Lỗi cần xử lý"
+        "issues": "Lỗi cần xử lý",
+        "questionsPrinted": "{count, number} câu làm ({printed, number} câu in trên đề)",
+        "sharedMinutes": "{count, number} phút, chung cả bài",
+        "pointsOfScale": "{points} / {scale} điểm"
       },
       "unsaved": {
         "title": "Rời trang khi chưa lưu?",
@@ -3309,7 +3440,7 @@
       "outline": {
         "title": "Cấu trúc",
         "summary": "{parts, number} phần · {count, number} câu",
-        "partMeta": "{count, number} câu · {minutes, number} phút",
+        "partMeta": "{count, number} câu{hasMinutes, select, yes { · {minutes, number} phút} other {}}",
         "section": "{subject} · {count, number} câu",
         "blockCount": "{count, number} câu",
         "sets": "({sets, number} bộ × {size, number})",
@@ -3317,11 +3448,13 @@
         "noBlocks": "Chưa có khối câu hỏi.",
         "noOptions": "Chưa có nhánh nào.",
         "untitledBlock": "Khối chưa đặt tên",
-        "hasIssue": "có lỗi cần xử lý"
+        "hasIssue": "có lỗi cần xử lý",
+        "common": "Phần chung",
+        "expertPending": "chờ chuyên gia xác nhận"
       },
       "part": {
         "fixedHint": "Mọi học viên làm cùng các môn của phần này.",
-        "choiceHint": "Mỗi đường lựa chọn phải đủ {count, number} câu và {minutes, number} phút.",
+        "choiceHint": "{shared, select, yes {Mỗi đường lựa chọn phải đủ {count, number} câu; thời lượng dùng chung cả bài.} other {Mỗi đường lựa chọn phải đủ {count, number} câu và {minutes, number} phút.}}",
         "name": "Tên phần",
         "nameRequired": "Nhập tên phần.",
         "order": "Thứ tự",
@@ -3342,7 +3475,17 @@
         "actions": "Thao tác",
         "addBlock": "Thêm khối",
         "addBlockTarget": "Thêm khối vào {subject}",
-        "total": "Tổng"
+        "total": "Tổng",
+        "sharedDuration": "{minutes, number} phút, dùng chung cả bài",
+        "sharedHint": "Bài dùng thời lượng chung nên các phần không có thời lượng riêng. Đổi thời lượng ở Thông tin chung.",
+        "points": "Điểm của phần",
+        "pointsHint": "Tổng điểm các khối của mỗi đường phải bằng điểm của phần.",
+        "pointsHintFixed": "Các khối đang có {points, number} điểm; tổng phải bằng điểm của phần.",
+        "pointsInvalid": "Tổng điểm các khối khác điểm của phần.",
+        "commonTitle": "Phần chung của mọi nhánh",
+        "commonHint": "Mọi học viên làm phần chung, rồi chọn thêm một nhánh.",
+        "commonCaption": "Môn và số câu phần chung của {name}",
+        "commonTotal": "{count, number} câu chung"
       },
       "block": {
         "title": "Khối câu hỏi · {name}",
@@ -3381,7 +3524,11 @@
           "nameRequired": "Nhập tên khối.",
           "countPositive": "Số câu cần lấy phải lớn hơn 0.",
           "setMismatch": "Số bộ × số câu mỗi bộ phải bằng số câu của khối ({expected, number})."
-        }
+        },
+        "pointsTotal": "Khối có {points, number} điểm.",
+        "manualGrading": "Chấm tay",
+        "competencies": "Năng lực",
+        "competenciesHint": "Chỉ lấy câu gắn một trong các năng lực đã chọn. Không chọn năng lực nào: lấy mọi năng lực của môn."
       },
       "issues": {
         "partCount": "{part}: số câu phải là số nguyên dương.",
@@ -3392,7 +3539,8 @@
         "dimension": {
           "COMBINED": "ma trận",
           "GRADE": "theo khối lớp",
-          "DIFFICULTY": "theo độ khó"
+          "DIFFICULTY": "theo độ khó",
+          "COMPETENCY": "theo năng lực"
         },
         "block": {
           "prefix": "{section} · {block}: {detail}",
@@ -3401,6 +3549,35 @@
           "invalidValue": "ma trận có giá trị âm hoặc không phải số nguyên.",
           "percentTotal": "tổng tỷ lệ {dimension} là {value}%, phải bằng 100%.",
           "allocationTotal": "{dimension} có {actual, number} câu, khối cần {expected, number} câu."
+        },
+        "partPoints": "{part}: các khối có {actual} điểm, phần cần {expected} điểm."
+      },
+      "yearsPending": "Năm cấu trúc ({structure}) khác năm ma trận ({matrix}) và chưa được xác nhận. Bài chưa công bố được cho tới khi xác nhận ở Thông tin chung.",
+      "yearsLink": "Mở Thông tin chung",
+      "expertNote": "Ghi chú của mẫu cấu trúc: {note}",
+      "combinationsGenerated": "Đã thêm {count, number} tổ hợp.",
+      "branchAdded": "Đã thêm nhánh {name}.",
+      "optionConfirmed": "Đã xác nhận số câu của {code}.",
+      "scoring": {
+        "title": "Quy tắc chấm mong đợi",
+        "essay": "Câu tự luận chấm tay theo tiêu chí chấm của từng câu. Kiểm tra cấu hình báo lỗi khi câu nguồn chưa có tiêu chí chấm.",
+        "compare": "Đối chiếu quy tắc chấm của câu nguồn",
+        "compareHint": "Quy tắc chấm thật lưu trên từng câu. Bật để Kiểm tra cấu hình cảnh báo câu nguồn có quy tắc khác quy tắc dưới đây.",
+        "statements": "Số ý mỗi câu",
+        "statementsHint": "Từ {min, number} đến {max, number} ý. Đổi số ý thì bảng chia đều lại.",
+        "useKindDefault": "Dùng bảng của kỳ thi",
+        "tableLegend": "Điểm theo số ý đúng (điểm mỗi câu: {points})",
+        "correctCount": "Đúng {count, number} ý",
+        "lastNotPoints": "Đúng hết các ý phải được đủ điểm của câu ({points}).",
+        "decreasing": "Điểm không được giảm khi đúng thêm ý.",
+        "ruleLegend": "Quy tắc chấm câu nhiều đáp án",
+        "rules": {
+          "ALL_OR_NOTHING": "Đúng hết mới có điểm",
+          "PARTIAL": "Chấm từng phần"
+        },
+        "ruleHints": {
+          "ALL_OR_NOTHING": "Chọn đúng và đủ mọi đáp án đúng mới được điểm của câu.",
+          "PARTIAL": "Được một phần điểm theo các đáp án chọn đúng, theo quy tắc lưu trên câu."
         }
       }
     },
@@ -3432,11 +3609,13 @@
         "pathsValue": "{valid, number} / {total, number} hợp lệ",
         "questions": "Số câu mỗi đường",
         "minutes": "Thời gian",
-        "minutesValue": "{count, number} phút",
+        "minutesValue": "{count, number} phút{shared, select, yes {, chung cả bài} other {}}",
         "points": "Tổng điểm",
         "issues": "Lỗi cần xử lý",
         "issuesValue": "{count, number} vấn đề",
-        "none": "Không có"
+        "none": "Không có",
+        "questionsPrinted": "{count, number} câu làm ({printed, number} câu in trên đề)",
+        "pointsOfScale": "{points} / {scale} điểm"
       },
       "path": {
         "single": "Đề chung"
@@ -3498,7 +3677,7 @@
           "SOURCE": "Mọi chỉ tiêu của ma trận có đủ câu phù hợp trong ngân hàng.",
           "QUESTION_SET": "Khối câu chùm (nếu có) có đủ bộ phù hợp, lấy nguyên bộ.",
           "OVERLAP": "Không có câu nào phải dùng để đáp ứng nhiều chỉ tiêu.",
-          "POINTS": "Bài không cấu hình tổng điểm cố định; tổng {points, number} điểm.",
+          "POINTS": "{hasScale, select, yes {Tổng {points, number} điểm, bằng thang điểm {scale, number}; điểm từng phần khớp tổng điểm các khối.} other {Bài không cấu hình tổng điểm cố định; tổng {points, number} điểm.}}",
           "DISPLAY": "Ngữ liệu, công thức, hình ảnh và đáp án của nguồn hiển thị được."
         }
       },
@@ -3526,7 +3705,8 @@
           "result": "Kết quả ghép",
           "issue": "Vấn đề",
           "location": "Vị trí xử lý"
-        }
+        },
+        "manualGrading": "Chấm tay"
       },
       "issue": {
         "INFO_MISSING": "Thiếu thông tin bắt buộc của bài thi (tên, mã hoặc môn của bài lẻ).",
@@ -3534,15 +3714,22 @@
         "PATH_TOTAL_MISMATCH": "Tổng số câu của đường là {available, number}, yêu cầu của bài thi là {required, number} câu.",
         "PART_TOTAL_MISMATCH": "Tổng phân bổ của {part} là {available, number} câu, yêu cầu của phần thi là {required, number} câu.",
         "SECTION_TOTAL_MISMATCH": "Tổng các khối của môn {subject} là {available, number} câu, yêu cầu là {required, number} câu.",
-        "MATRIX_TOTAL_MISMATCH": "Khối {block}: tổng phân bổ {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} other {của ma trận}} là {available, number} câu, khối cần {required, number} câu.",
+        "MATRIX_TOTAL_MISMATCH": "Khối {block}: tổng phân bổ {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} COMPETENCY {theo năng lực} other {của ma trận}} là {available, number} câu, khối cần {required, number} câu.",
         "MATRIX_NEGATIVE": "Khối {block} có chỉ tiêu âm.",
-        "PERCENT_TOTAL_INVALID": "Khối {block}: tổng tỷ lệ {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} other {của ma trận}} là {available, number}%, phải bằng 100%.",
+        "PERCENT_TOTAL_INVALID": "Khối {block}: tổng tỷ lệ {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} COMPETENCY {theo năng lực} other {của ma trận}} là {available, number}%, phải bằng 100%.",
         "SET_SIZE_MISMATCH": "Khối {block}: số bộ × số câu mỗi bộ là {available, number}, khối cần {required, number} câu.",
         "CELL_SHORTAGE": "Khối {block} cần {required, number} câu {grade}/{difficulty}, hiện có {available, number} câu phù hợp.",
         "DIMENSION_SHORTAGE": "Khối {block} cần {required, number} câu {level}, hiện có {available, number} câu phù hợp.",
         "MATRIX_INFEASIBLE": "Khối {block}: đủ nguồn từng chiều nhưng chưa có cách chọn {required, number} câu thỏa đồng thời khối lớp và độ khó.",
         "SET_SHORTAGE": "Khối {block} yêu cầu {required, number} bộ, nguồn hiện chỉ có {available, number} bộ hợp lệ.",
-        "OVERLAP_UNCONFIRMED": "Khối {block}: {available, number} câu dùng chung giữa các nhóm kiến thức; chưa tìm được phương án trong giới hạn xử lý ({seconds, number} giây, mẫu). Không kết luận là ngân hàng thiếu câu."
+        "OVERLAP_UNCONFIRMED": "Khối {block}: {available, number} câu dùng chung giữa các nhóm kiến thức; chưa tìm được phương án trong giới hạn xử lý ({seconds, number} giây, mẫu). Không kết luận là ngân hàng thiếu câu.",
+        "YEARS_UNCONFIRMED": "Năm cấu trúc ({required}) khác năm ma trận ({available}) và chưa được xác nhận.",
+        "OPTION_UNCONFIRMED": "{part}: số câu từng môn của lựa chọn đang chờ chuyên gia xác nhận.",
+        "PART_POINTS_MISMATCH": "{part}: các khối có tổng {available, number} điểm, phần cần {required, number} điểm.",
+        "POINTS_TOTAL_MISMATCH": "Tổng điểm của đường là {available, number}, thang điểm của bài là {required, number}.",
+        "COMPETENCY_SHORTAGE": "Khối {block} cần {required, number} câu năng lực {competency}, hiện có {available, number} câu phù hợp.",
+        "RUBRIC_MISSING": "Khối {block}: {available, number} câu tự luận nguồn chưa có tiêu chí chấm ({codes}).",
+        "SCORING_MISMATCH": "Khối {block}: {available, number} câu nguồn có quy tắc chấm khác quy tắc mong đợi của khối ({codes}). Chỉ cảnh báo, không chặn công bố."
       }
     },
     "versions": {
@@ -3632,9 +3819,10 @@
         "description": "Chỉ đọc. Bản chụp lúc công bố; lượt thi đã dùng bản này giữ nguyên.",
         "error": "Không tải được cấu hình của phiên bản.",
         "note": "Ghi chú",
-        "partMeta": "{count, number} câu · {minutes, number} phút",
+        "partMeta": "{count, number} câu{hasMinutes, select, yes { · {minutes, number} phút} other {}}{hasPoints, select, yes { · {points, number} điểm} other {}}",
         "section": "{subject} · {count, number} câu",
-        "block": "{name} · {type} · {count, number} câu · {mode, select, COMBINED {ma trận kết hợp} other {ma trận riêng}}"
+        "block": "{name} · {type} · {count, number} câu · {mode, select, COMBINED {ma trận kết hợp} other {ma trận riêng}}{manual, select, yes { · chấm tay} other {}}",
+        "common": "Phần chung"
       }
     },
     "editor": {
@@ -3668,7 +3856,12 @@
     },
     "kind": {
       "HSA": "HSA",
-      "QDA": "QDA"
+      "QDA": "QDA",
+      "BCA": "BCA",
+      "VACT": "V-ACT",
+      "SPT": "SPT",
+      "SP2E": "SP2E",
+      "THPTQG": "THPTQG"
     },
     "format": {
       "FULL": "FULL",
@@ -3721,8 +3914,8 @@
       },
       "footer": "Sinh thử thành công không thay cho kiểm tra toàn bộ cấu hình.",
       "footerLink": "Xem kết quả kiểm tra",
-      "paperSummary": "{questions, number} câu · {points, number} điểm · {minutes, number} phút",
-      "partRange": "câu {first, number}–{last, number} · {minutes, number} phút",
+      "paperSummary": "{questions, number} câu · {points, number} điểm · {minutes, number} phút{shared, select, yes {, chung cả bài} other {}}",
+      "partRange": "câu {first, number}–{last, number}{hasMinutes, select, yes { · {minutes, number} phút} other {}}",
       "blockHeading": "Khối {block}",
       "blockRange": "câu {first, number}–{last, number} · {count, number} câu",
       "blockRangeSets": "{sets, number} bộ × {size, number} câu · câu {first, number}–{last, number}",
@@ -3772,7 +3965,14 @@
         "subject": "Môn",
         "count": "Số câu",
         "empty": "Không có câu gắn kiến thức"
-      }
+      },
+      "manualGradingNote": "Đề có câu tự luận chấm tay theo tiêu chí chấm của từng câu; điểm tự luận có sau khi giáo viên chấm.",
+      "partPoints": "{points, number} điểm",
+      "partPointsOf": "{points, number} / {max, number} điểm",
+      "manualGrading": "Chấm tay",
+      "rubricTitle": "Tiêu chí chấm",
+      "rubricEmpty": "Câu chưa có tiêu chí chấm.",
+      "rubricItem": "{description}: {points, number} điểm"
     },
     "publish": {
       "close": "Đóng",
@@ -3799,7 +3999,8 @@
         "blockedServing": "Không công bố được. Lượt thi mới của đường này tiếp tục dùng cấu hình v{version}.",
         "blockedNew": "Chưa mở bán cho tới khi kiểm tra hợp lệ.",
         "new": "Mới",
-        "viewCheck": "Xem kết quả kiểm tra →"
+        "viewCheck": "Xem kết quả kiểm tra →",
+        "firstIssue": "{issue}{more, plural, =0 {} other { (và # vấn đề khác)}}"
       },
       "summary": {
         "exam": "Bài thi",
@@ -3812,7 +4013,8 @@
       "note": "Ghi chú công bố",
       "noteHint": "Không bắt buộc, tối đa {max, number} ký tự.",
       "selectedSummary": "Sẽ công bố {count, number} / {total, number} đường lựa chọn",
-      "submit": "Công bố {count, number} đường lựa chọn"
+      "submit": "Công bố {count, number} đường lựa chọn",
+      "yearsLink": "Mở Thông tin chung"
     },
     "create": {
       "title": "Tạo bài thi",
@@ -3828,9 +4030,13 @@
       "sections": {
         "info": "Thông tin chung",
         "structure": "Cấu trúc khởi tạo",
-        "structureDescription": "Nạp từ mẫu {name} · đổi kỳ thi hoặc hình thức sẽ nạp lại mẫu và hỏi xác nhận",
+        "structureDescription": "Nạp từ mẫu {name} · đổi kỳ thi, hình thức, môn hoặc mẫu sẽ nạp lại cấu trúc và hỏi xác nhận",
         "choice": "Phần tự chọn · Phần {order}",
-        "choiceDescription": "Mỗi đường lựa chọn phải đủ {count, number} câu"
+        "choiceDescription": "Mỗi đường lựa chọn phải đủ {count, number} câu",
+        "timing": "Thời gian và thang điểm",
+        "timingSharedDescription": "Cả bài dùng một thời lượng chung; đặt thang điểm và điểm của từng phần nếu kỳ thi chia điểm theo phần",
+        "timingPerPartDescription": "Mỗi phần có thời lượng riêng; đặt thang điểm và điểm của từng phần nếu kỳ thi chia điểm theo phần",
+        "choiceCommonDescription": "Phần chung {common, number} câu cộng một lựa chọn {option, number} câu, học viên làm {total, number} câu"
       },
       "name": "Tên bài thi",
       "namePlaceholder": "Ví dụ: HSA FULL · Đề luyện số 2",
@@ -3839,8 +4045,6 @@
       "generateCode": "Tự sinh mã",
       "codeGenerated": "Đã sinh mã {code}.",
       "kind": "Kỳ thi",
-      "kindHsaDescription": "Toán 75 · Văn 60 · KH/TA 60 phút",
-      "kindQdaDescription": "Toán 80 · Văn 55 · KH/TA 60 phút",
       "format": "Hình thức",
       "formatFull": "FULL",
       "formatFullDescription": "Đủ ba phần",
@@ -3866,7 +4070,10 @@
         "invalidType": "Chọn tệp ảnh PNG, JPG hoặc WebP.",
         "tooLarge": "Ảnh tối đa 5 MB.",
         "selected": "Đã chọn ảnh {name}.",
-        "removed": "Đã bỏ ảnh giới thiệu."
+        "removed": "Đã bỏ ảnh giới thiệu.",
+        "choose": "Chọn ảnh",
+        "change": "Đổi ảnh",
+        "empty": "Chưa chọn ảnh"
       },
       "parts": {
         "caption": "Các phần thi theo thứ tự, số câu và thời lượng",
@@ -3889,14 +4096,18 @@
         "total": "Tổng · {count, number} phần",
         "questionsValue": "{count, number} câu",
         "minutesValue": "{count, number} phút",
-        "templateNote": "Mẫu chỉ là cấu hình ban đầu; phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố."
+        "templateNote": "Mẫu chỉ là cấu hình ban đầu; phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố.",
+        "points": "Điểm",
+        "choiceCommon": "Phần chung và nhánh",
+        "choiceBranches": "Theo nhánh",
+        "multiSubject": "Nhiều môn ({count, number} môn)",
+        "sectionsLegend": "Số câu từng môn (tổng phải bằng {count, number} câu)",
+        "templateNoteShared": "Bài dùng thời lượng chung nên phần không có thời lượng riêng. Mẫu chỉ là cấu hình ban đầu; phải kiểm tra cấu hình trước khi công bố."
       },
       "choice": {
         "english": "Cho chọn Tiếng Anh ({count, number} câu)",
         "englishHint": "Học viên được chọn Tiếng Anh thay cho Khoa học. Khối câu hỏi Tiếng Anh soạn ở bước sau.",
-        "combinations": "Tổ hợp khoa học từ danh mục",
-        "hintHSA": "HSA: tổ hợp 3 môn, ví dụ 17–17–16",
-        "hintQDA": "QDA: tổ hợp 2 môn, mẫu 25–25",
+        "combinations": "Tổ hợp từ danh mục",
         "attach": "Gắn tổ hợp",
         "emptyAllocation": "Chưa gắn tổ hợp nào. Học viên chỉ chọn được tổ hợp đã gắn vào bài.",
         "subjectLabel": "{index, number}. {subject}",
@@ -3912,7 +4123,17 @@
           "total": "Tổng số câu các môn phải bằng số câu của phần ({count, number} câu). Không tự chia 51 câu rồi bỏ ngẫu nhiên.",
           "fixed": "Số câu từng môn lưu cố định trong từng tổ hợp; hệ thống không tự chọn môn bị giảm câu ở mỗi lượt thi.",
           "catalog": "Mã tổ hợp mới thêm trong danh mục không tự vào bài đang phục vụ."
-        }
+        },
+        "hintSubjects": "{kind}: mỗi tổ hợp {count, number} môn",
+        "hintMixed": "{kind}: tổ hợp có số môn khác nhau",
+        "commonValue": "Phần chung {count, number} câu",
+        "commonLegend": "Phần chung (mọi học viên làm)",
+        "commonHint": "Mọi học viên làm {common, number} câu chung, cộng {option, number} câu của lựa chọn đã chọn.",
+        "branches": "Nhánh nội dung",
+        "branchesHint": "Học viên chọn một nhánh; mỗi nhánh {count, number} câu",
+        "branchCode": "Mã nhánh {code}",
+        "branchCount": "Số câu",
+        "expertPending": "Chờ chuyên gia xác nhận số câu"
       },
       "summary": {
         "title": "Tóm tắt",
@@ -3921,14 +4142,19 @@
         "partCount": "Số phần",
         "pathCount": "Số đường lựa chọn",
         "minutesValue": "{count, number} phút",
-        "pathsEnglishAndCombinations": "Tiếng Anh + {count, number} tổ hợp",
         "pathsEnglishOnly": "Tiếng Anh",
         "pathsCombinationsOnly": "{count, number} tổ hợp",
         "pathsNone": "Chưa có đường nào",
         "pathsFixed": "Một đường cố định",
         "issuesTitle": "Cần xử lý",
         "noIssues": "Không còn mục cần xử lý",
-        "draftNote": "Bài được tạo ở trạng thái Nháp. Sửa hết các mục cần xử lý để tạo bài thi."
+        "draftNote": "Bài được tạo ở trạng thái Nháp. Sửa hết các mục cần xử lý để tạo bài thi.",
+        "sharedTiming": "Thời lượng chung",
+        "maxScore": "Thang điểm",
+        "pointsValue": "{count, number} điểm",
+        "maxScoreUnset": "Đặt lúc thiết lập",
+        "partPoints": "Các phần: {count, number} điểm",
+        "pathsBranches": "{count, number} nhánh"
       },
       "fields": {
         "name": "Tên bài thi",
@@ -3941,7 +4167,13 @@
         "partQuestions": "Phần {order} · số câu",
         "partDuration": "Phần {order} · thời lượng",
         "partOptions": "Phần {order} · đường lựa chọn",
-        "combination": "Tổ hợp {code}"
+        "combination": "Tổ hợp {code}",
+        "subjectCode": "Môn của bài thi",
+        "sharedDuration": "Thời lượng chung",
+        "maxScore": "Thang điểm",
+        "partPoints": "Phần {order} · điểm",
+        "partSections": "Phần {order} · số câu từng môn",
+        "branch": "Nhánh {name}"
       },
       "replace": {
         "title": "Nạp lại mẫu {name}?",
@@ -3955,7 +4187,7 @@
       "errors": {
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
         "generic": "Không tạo được bài thi. Thử lại sau.",
-        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng và tổ hợp rồi thử lại."
+        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại."
       },
       "validation": {
         "nameRequired": "Nhập tên bài thi.",
@@ -3971,10 +4203,16 @@
         "partSubjectRequired": "Chọn môn của phần.",
         "questionCountPositive": "Số câu phải là số nguyên dương.",
         "durationPositive": "Thời lượng phải lớn hơn 0 phút.",
-        "noOptions": "Chưa có đường lựa chọn nào: cho chọn Tiếng Anh hoặc gắn tổ hợp.",
+        "noOptions": "Chưa có đường lựa chọn nào: cho chọn Tiếng Anh, gắn tổ hợp hoặc giữ ít nhất một nhánh.",
         "subjectCountPositive": "Số câu từng môn phải là số nguyên dương.",
         "allocationTotal": "Tổng số câu các môn là {actual, number}, phải bằng {expected, number} câu của phần.",
-        "partsRequired": "Bài thi chưa có phần nào."
+        "partsRequired": "Bài thi chưa có phần nào.",
+        "kindSubjectRequired": "Chọn môn của bài thi.",
+        "sharedDurationPositive": "Thời lượng chung phải là số phút nguyên dương.",
+        "maxScoreRequired": "Nhập thang điểm.",
+        "maxScorePositive": "Thang điểm phải lớn hơn 0.",
+        "pointsPositive": "Điểm của phần phải lớn hơn 0.",
+        "commonTooLarge": "Phần chung có {common, number} câu, không còn câu cho lựa chọn trong {total, number} câu của phần."
       },
       "preview": {
         "title": "Cấu trúc sẽ nạp · {name}",
@@ -3990,7 +4228,61 @@
         "choiceNote": "Học viên chọn Tiếng Anh hoặc một tổ hợp Khoa học; số câu từng môn chỉnh ở Cấu trúc",
         "subjectPending": "Chưa chọn môn",
         "emptyNote": "Khai báo số câu và thời lượng ở Cấu trúc",
-        "note": "Mẫu chỉ là cấu hình ban đầu. Bạn phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố."
+        "note": "Mẫu chỉ là cấu hình ban đầu. Bạn phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố.",
+        "points": "Điểm",
+        "pointsValue": "{count, number} điểm",
+        "durationShared": "chung",
+        "durationSharedValue": "{count, number} phút chung",
+        "choiceOptionsNote": "Học viên chọn một trong {count, number} lựa chọn gắn sẵn",
+        "sectionsNote": "{count, number} môn trong phần"
+      },
+      "kindHintKind": "{kind}: một mẫu cấu trúc cho cả kỳ thi · {timing}",
+      "kindHintSubject": "{kind}: mẫu cấu trúc theo môn và năm · {timing}",
+      "timingMode": {
+        "PER_PART": "thời lượng theo từng phần",
+        "SHARED": "thời lượng chung cho cả bài"
+      },
+      "formatOnlyFull": "Kỳ thi này chỉ có bài FULL",
+      "templateSubject": "{kind} {subject} {year}",
+      "templateBlank": "{kind} {subject} (chưa có mẫu)",
+      "noSubject": "chưa chọn môn",
+      "subjectTemplate": {
+        "subject": "Môn của bài thi",
+        "subjectHint": "{count, number} môn có mẫu cấu trúc; môn chưa có mẫu thì tạo cấu trúc trống",
+        "subjectPlaceholder": "Chọn môn",
+        "subjectWithTemplates": "{subject} · {count, number} mẫu",
+        "noTemplate": "{subject} chưa có mẫu cấu trúc. Cấu trúc khởi tạo để trống: nhập số câu, thời lượng và thêm phần nếu cần.",
+        "template": "Mẫu cấu trúc",
+        "templateHint": "Mẫu theo năm cấu trúc, mới nhất đứng đầu",
+        "templateYear": "Cấu trúc {year}"
+      },
+      "templateNotes": {
+        "structureYear": "Năm cấu trúc",
+        "matrixYear": "Năm ma trận",
+        "yearsDiffer": "Cấu trúc {structureYear} dùng ma trận {matrixYear}: chuyên gia cần xác nhận chỉ tiêu ma trận trước khi bán.",
+        "yearsConfirm": "Chuyên gia đã xác nhận chỉ tiêu ma trận {matrixYear} dùng được cho cấu trúc này",
+        "yearsConfirmHint": "Chưa xác nhận thì kiểm tra cấu hình chặn công bố. Có thể xác nhận sau ở Thông tin chung.",
+        "expertNote": "Lưu ý của mẫu"
+      },
+      "timing": {
+        "sharedDuration": "Thời lượng chung (phút)",
+        "sharedHint": "Cả bài dùng một thời lượng; các phần không có thời lượng riêng",
+        "perPart": "Thời lượng theo phần",
+        "perPartHint": "Tổng thời lượng các phần; nhập từng phần ở Cấu trúc khởi tạo",
+        "minutesValue": "{count, number} phút",
+        "maxScore": "Thang điểm",
+        "maxScoreHint": "Điểm tối đa của bài",
+        "maxScoreOptionalHint": "Để trống nếu thang điểm đặt lúc thiết lập bài",
+        "pointsByPart": "Chia điểm theo phần",
+        "pointsByPartHint": "Mỗi phần có điểm tối đa riêng, nhập ở Cấu trúc khởi tạo. Tắt thì điểm tính theo khối câu hỏi.",
+        "pointsTotal": "Tổng điểm các phần: {actual, number} điểm",
+        "pointsTotalOf": "Tổng điểm các phần: {actual, number} / {expected, number} điểm",
+        "pointsMismatch": "Lệch thang điểm"
+      },
+      "blocks": {
+        "title": "Khối gợi ý từ mẫu ({count, number} câu, sửa ở Cấu trúc và ma trận)",
+        "item": "{name}: {count, number} câu",
+        "essay": "chấm tay"
       }
     },
     "matrix": {
@@ -4044,7 +4336,11 @@
         "invalidValue": "Ma trận có giá trị âm hoặc số câu không phải số nguyên.",
         "percentTotal": "Tổng tỷ lệ {dimension} là {value}%, phải bằng 100%.",
         "allocationTotal": "Tổng {dimension} là {actual, number} câu, khối cần {expected, number} câu."
-      }
+      },
+      "byCompetencyCaption": "Theo năng lực",
+      "competencyToggle": "Phân bổ theo năng lực",
+      "competencyHint": "Chiều riêng, độc lập với khối lớp và độ khó: tổng phải bằng số câu của khối.",
+      "competencyHeader": "Năng lực"
     },
     "combinations": {
       "title": "Nhánh học viên chọn",
@@ -4076,7 +4372,8 @@
         "total": "Tổng số câu các môn phải bằng số câu của phần. Hệ thống không tự chia 51 câu rồi bỏ một câu.",
         "fixed": "Số câu từng môn lưu cố định trong từng tổ hợp; hệ thống không tự chọn môn bị giảm câu ở mỗi lượt thi.",
         "newCodes": "Mã tổ hợp mới thêm trong Cấu hình chung không tự vào bài đang phục vụ.",
-        "sample": "Danh sách môn của KH-1, KH-2, KH-3 là dữ liệu mẫu, chờ BA nhập trong Cấu hình chung."
+        "sample": "Danh sách môn của KH-1, KH-2, KH-3 là dữ liệu mẫu, chờ BA nhập trong Cấu hình chung.",
+        "expert": "Tổ hợp mới sinh hoặc mới sửa số câu chờ chuyên gia xác nhận; đường dùng tổ hợp chưa xác nhận không công bố được."
       },
       "attachDialog": {
         "title": "Gắn tổ hợp",
@@ -4086,6 +4383,223 @@
         "required": "Chọn một tổ hợp.",
         "cancel": "Hủy",
         "submit": "Gắn tổ hợp"
+      },
+      "branchDescription": "Mọi học viên làm {common, number} câu phần chung rồi chọn một nhánh. Một đường gồm phần chung và một nhánh, đủ {count, number} câu.",
+      "branchesTitle": "Nhánh ({count, number})",
+      "branchesCaption": "Các nhánh của phần",
+      "branchesEmpty": "Chưa có nhánh nào. Thêm nhánh để học viên chọn.",
+      "addBranch": "Thêm nhánh",
+      "generate": "Sinh tổ hợp",
+      "temporaryCode": "Mã tạm",
+      "totalWithCommon": "{total, number} / {count, number} (gồm {common, number} câu chung)",
+      "expertPending": "Chờ chuyên gia xác nhận",
+      "expertConfirm": "Xác nhận",
+      "expertConfirmAria": "Xác nhận số câu của {code}",
+      "expertConfirmed": "Chuyên gia đã xác nhận",
+      "generator": {
+        "title": "Sinh tổ hợp môn",
+        "description": "Chọn các môn và số môn mỗi tổ hợp. Mỗi tổ hợp có {count, number} câu chia cho các môn.",
+        "subjectsLegend": "Môn để chọn",
+        "size": "Số môn mỗi tổ hợp",
+        "sizeHint": "Từ 1 đến {total, number} môn.",
+        "sizeInvalid": "Số môn mỗi tổ hợp phải từ 1 đến {total, number}.",
+        "listLegend": "Tổ hợp sinh ra (đã chọn {selected, number} / {total, number})",
+        "listEmpty": "Chọn môn và số môn để sinh tổ hợp.",
+        "attached": "Đã gắn",
+        "temporaryCode": "Mã tạm",
+        "required": "Chọn ít nhất một tổ hợp.",
+        "note": "Tổ hợp trùng danh sách môn với danh mục dùng mã của danh mục; tổ hợp khác nhận mã tạm TH-nn. Mọi tổ hợp thêm ở đây chờ chuyên gia xác nhận số câu từng môn.",
+        "cancel": "Hủy",
+        "submit": "Thêm {count, number} tổ hợp"
+      },
+      "branchDialog": {
+        "title": "Thêm nhánh",
+        "description": "Nhánh là phần học viên chọn thêm sau phần chung, có {count, number} câu.",
+        "name": "Tên nhánh",
+        "nameHint": "Ví dụ: Khoa học máy tính",
+        "nameRequired": "Nhập tên nhánh.",
+        "nameMax": "Tên nhánh tối đa {max, number} ký tự.",
+        "subject": "Môn",
+        "subjectRequired": "Chọn môn.",
+        "cancel": "Hủy",
+        "submit": "Thêm nhánh"
+      }
+    }
+  },
+  "grading": {
+    "status": {
+      "GRADING": "Đang chấm",
+      "SCORED": "Đã có điểm"
+    },
+    "filters": {
+      "ariaLabel": "Lọc lượt thi cần chấm",
+      "statusLegend": "Trạng thái",
+      "statusAll": "Tất cả",
+      "search": "Tìm kiếm",
+      "searchPlaceholder": "Tên, mã học viên hoặc mã bài thi",
+      "kind": "Kỳ thi",
+      "exam": "Bài thi",
+      "grader": "Người chấm",
+      "all": "Tất cả",
+      "graderUnassigned": "Chưa có người chấm",
+      "examOption": "{code} · {name}",
+      "chip": "{label}: {value}",
+      "activeLabel": "Đang lọc",
+      "remove": "Bỏ lọc {label}",
+      "clearAll": "Xóa tất cả bộ lọc"
+    },
+    "list": {
+      "title": "Chấm tự luận",
+      "description": "Lượt thi có câu tự luận: chờ chấm và đã có điểm. Phần trắc nghiệm đã được chấm khi học viên nộp bài.",
+      "filteredCount": "{count, number} lượt thi khớp bộ lọc",
+      "filteredCountRich": "<strong>{count, number}</strong> lượt thi khớp bộ lọc",
+      "loadingCount": "Đang tải danh sách lượt thi…",
+      "errorCount": "Chưa xác định số lượt thi",
+      "hint": "Nộp trước chấm trước",
+      "tableAriaLabel": "Danh sách lượt thi cần chấm khớp bộ lọc",
+      "table": {
+        "learner": "Học viên",
+        "exam": "Bài thi",
+        "submittedAt": "Nộp lúc",
+        "progress": "Tự luận",
+        "score": "Điểm",
+        "grader": "Người chấm",
+        "status": "Trạng thái",
+        "actions": "Thao tác"
+      },
+      "progress": "{graded, number}/{count, number} câu đã chấm",
+      "noGrader": "Chưa có",
+      "score": {
+        "total": "{score}/{max}",
+        "parts": "Trắc nghiệm {objective} + tự luận {essay}",
+        "objective": "Trắc nghiệm {score}/{max}",
+        "essayPending": "Tự luận chưa có điểm"
+      },
+      "actions": {
+        "gradeAria": "Chấm bài của {name}",
+        "gradeTooltip": "Chấm bài",
+        "viewAria": "Xem kết quả chấm của {name}",
+        "viewTooltip": "Xem kết quả chấm"
+      },
+      "sortBy": "Sắp xếp theo",
+      "ascending": "tăng dần",
+      "descending": "giảm dần",
+      "errorTitle": "Không tải được danh sách lượt thi",
+      "errorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "retry": "Thử lại",
+      "emptyTitle": "Chưa có lượt thi cần chấm",
+      "emptyDescription": "Lượt thi có câu tự luận sẽ hiện ở đây sau khi học viên nộp bài.",
+      "emptyFilteredTitle": "Không có lượt thi khớp bộ lọc",
+      "emptyFilteredDescription": "Đổi hoặc bỏ bớt điều kiện lọc để xem thêm lượt thi.",
+      "paginationNav": "Phân trang danh sách lượt thi",
+      "paginationPrevious": "Trước",
+      "paginationNext": "Sau",
+      "paginationRowsPerPage": "Số dòng mỗi trang",
+      "paginationPage": "Trang {page}",
+      "paginationRange": "Hiển thị {from}–{to} trên {total}"
+    },
+    "detail": {
+      "title": "Chấm bài",
+      "loading": "Đang tải lượt thi",
+      "notFoundTitle": "Không tìm thấy lượt thi",
+      "notFoundDescription": "Lượt thi không tồn tại hoặc đã bị xóa.",
+      "errorTitle": "Không tải được lượt thi",
+      "errorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "retry": "Thử lại",
+      "backToList": "Quay lại danh sách chấm",
+      "emptyTitle": "Lượt thi không có câu tự luận",
+      "emptyDescription": "Không có câu nào cần chấm tay. Điểm của lượt là điểm phần trắc nghiệm.",
+      "heading": "Bài làm của {name}",
+      "subheading": "{code} · {examCode} · {examName}",
+      "formLabel": "Chấm bài của {name}",
+      "essayLabel": "{part} · Câu {number}",
+      "summary": {
+        "kind": "Kỳ thi",
+        "submittedAt": "Nộp lúc",
+        "grader": "Người chấm",
+        "gradedAt": "Chấm xong lúc",
+        "essays": "Tự luận"
+      },
+      "navigator": {
+        "label": "Các câu tự luận của lượt thi",
+        "score": "{score}/{max}",
+        "state": {
+          "complete": "đã nhập đủ điểm",
+          "partial": "chưa nhập đủ điểm",
+          "empty": "chưa chấm",
+          "error": "có ô điểm sai"
+        }
+      },
+      "question": {
+        "meta": "{code} · {points} điểm",
+        "source": {
+          "BANK": "Đề và tiêu chí từ ngân hàng câu hỏi",
+          "ATTEMPT": "Đề và tiêu chí lưu lúc thi"
+        },
+        "passage": "Đoạn đọc hiểu ({code})",
+        "prompt": "Đề bài",
+        "answer": "Bài làm của học viên",
+        "wordCount": "{count, number} chữ",
+        "wordCountWithLimit": "{count, number} chữ · gợi ý khoảng {limit, number} chữ",
+        "noAnswer": "Học viên bỏ trống câu này.",
+        "sampleAnswer": "Đáp án gợi ý"
+      },
+      "rubric": {
+        "title": "Tiêu chí chấm",
+        "max": "Tối đa {max} điểm",
+        "legend": "Điểm theo tiêu chí của {label}",
+        "criterion": "{index}. {description}",
+        "criterionHint": "Tối đa {max} điểm; số thập phân dùng dấu phẩy hoặc dấu chấm.",
+        "subtotal": "Điểm câu này",
+        "subtotalValue": "{score}/{max}",
+        "comment": "Nhận xét",
+        "commentHint": "Không bắt buộc. Học viên thấy nhận xét khi lượt thi có điểm.",
+        "noComment": "Không có nhận xét.",
+        "previous": "Câu trước",
+        "next": "Câu sau"
+      },
+      "validation": {
+        "invalid": "Nhập số không âm, tối đa hai chữ số thập phân (ví dụ 1,5).",
+        "tooHigh": "Điểm không được vượt quá {max}.",
+        "required": "Nhập điểm cho tiêu chí này trước khi hoàn tất.",
+        "commentMax": "Nhận xét tối đa {limit} ký tự.",
+        "summary": "Có ô cần sửa. Đã chuyển tới ô đầu tiên.",
+        "missing": "Còn {count, number} tiêu chí chưa có điểm. Đã chuyển tới tiêu chí đầu tiên."
+      },
+      "totals": {
+        "objective": "Trắc nghiệm (đã chấm khi nộp)",
+        "noObjective": "Đề không có phần trắc nghiệm",
+        "essayDraft": "Tự luận (tạm tính)",
+        "totalDraft": "Tổng điểm (tạm tính)",
+        "value": "{score}/{max}"
+      },
+      "draft": {
+        "save": "Lưu nháp",
+        "saved": "Đã lưu nháp điểm chấm.",
+        "unsaved": "Có điểm chưa lưu.",
+        "hint": "Lưu nháp để chấm tiếp sau; lượt thi vẫn ở trạng thái Đang chấm."
+      },
+      "finish": {
+        "action": "Hoàn tất chấm",
+        "confirmTitle": "Hoàn tất chấm bài của {name}?",
+        "confirmDescription": "Tổng điểm của lượt: trắc nghiệm {objective} + tự luận {essay} = {total}/{max}. Lượt thi chuyển sang Đã có điểm.",
+        "confirmDescriptionEssayOnly": "Tổng điểm của lượt: {total}/{max}. Lượt thi chuyển sang Đã có điểm.",
+        "cancel": "Quay lại chấm",
+        "confirm": "Xác nhận hoàn tất",
+        "done": "Đã hoàn tất chấm bài của {name}. Tổng điểm {score}/{max}."
+      },
+      "result": {
+        "title": "Đã có điểm",
+        "essay": "Tự luận",
+        "total": "Tổng điểm"
+      },
+      "errors": {
+        "ATTEMPT_ALREADY_SCORED": "Lượt thi đã có điểm, không lưu được nữa. Tải lại trang để xem kết quả.",
+        "GRADING_INCOMPLETE": "Còn tiêu chí chưa có điểm.",
+        "SCORE_OUT_OF_RANGE": "Có điểm nằm ngoài khoảng cho phép của tiêu chí.",
+        "UNKNOWN_QUESTION": "Đề hoặc tiêu chí của câu đã thay đổi. Tải lại trang rồi chấm lại.",
+        "NOT_FOUND": "Không tìm thấy lượt thi.",
+        "generic": "Không lưu được điểm. Hãy thử lại."
       }
     }
   }

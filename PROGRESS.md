@@ -2,9 +2,9 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
-## Trạng thái hiện tại (2026-11-15)
+## Trạng thái hiện tại (2026-11-16)
 
-**Giai đoạn:** đợt 1 (nền, PBI-01, PBI-02) đã merge vào `develop` ngày 2026-11-14 (PR #25, `14f983c`; 105/105 điểm của plan). Đợt 2 đã có mockup giao diện PBI-03, PBI-04 trên dữ liệu mẫu (UNI-2590, mục dưới); phần backend chưa bắt đầu. Các việc phát sinh sau khi dùng thử bản demo: mỗi việc một issue và một PR vào `develop`. Các mục `T…` bên dưới là nhật ký của đợt 1, đường dẫn trang trong đó là tên cũ (xem bảng đổi tên ở mục "Sau đợt 1").
+**Giai đoạn:** đợt 1 (nền, PBI-01, PBI-02) đã merge vào `develop` ngày 2026-11-14 (PR #25, `14f983c`; 105/105 điểm của plan). Đợt 2 đã có mockup giao diện PBI-03, PBI-04 trên dữ liệu mẫu (UNI-2590), mở rộng cho 7 kỳ thi và chấm tự luận (UNI-2599); đặc tả backend đã viết (UNI-2605), chưa bắt đầu code backend. Các việc phát sinh sau khi dùng thử bản demo: mỗi việc một issue và một PR vào `develop`. Các mục `T…` bên dưới là nhật ký của đợt 1, đường dẫn trang trong đó là tên cũ (xem bảng đổi tên ở mục "Sau đợt 1").
 
 ### Sau đợt 1 (2026-11-14)
 
@@ -48,6 +48,17 @@
   - Quy ước mới ở `DESIGN.md` 5.14: trang Tạo cho đối tượng nhiều phần thay hộp thoại, dải trạng thái có số lượng và chip bộ lọc, layout chung cho trang con, luồng nhiều bước, cột `Table` phải ổn định.
   - **Chờ BA:** 6 dạng câu (bản vẽ) hay 4 (UniNote); câu Nháp có bắt buộc gắn kiến thức không; sửa câu Sẵn sàng thì về Nháp hay tạo phiên bản mới; công bố một phần khi còn lỗi; tạo bài thi Nháp khi còn mục "Cần xử lý"; danh mục tổ hợp chưa có trường kỳ thi nên lọc tổ hợp theo kỳ thi đang dựa vào dữ liệu mẫu; môn của KH-2; ảnh bìa lưu ở đâu.
   - Để lại: trình soạn thảo đầy đủ (canvas trang 07) chưa làm, ô đề bài là ô nhập nhiều dòng; test `question-import-flow` và `users-list` chậm khi chạy cả bộ trên máy bận (đạt khi chạy riêng).
+
+### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
+
+- **UNI-2599** (cha), nền UNI-2600, bốn lane UNI-2601 đến UNI-2604; đặc tả `docs/specs/2026-11-16-mockup-7-ky-thi.md` (cấu trúc đề do M.Trường tóm tắt từ thư mục Drive "MÔ TẢ CẤU TRÚC ĐỀ THI - ALL KHÓA").
+  - Quyết định của M.Trường: tự luận chấm tay, có màn hàng chờ chấm `/grading`; câu Đúng/Sai chấm theo bảng điểm số ý đúng (mặc định THPTQG 0,1/0,25/0,5/1); câu nhiều đáp án "Đúng hết mới có điểm" hoặc "Chấm từng phần"; quy tắc chấm lưu ở câu hỏi, khối của bài thi giữ quy tắc mong đợi để kiểm tra cấu hình đối chiếu.
+  - Danh mục mẫu: 7 kỳ thi (QDA là ĐGNL Bộ Quốc phòng), mã tổ hợp gắn kỳ thi (KH-n, QĐ01–QĐ04, CA1–CA4), năng lực V-ACT, lớp Liên lớp; 20 mẫu cấu trúc. Seed danh mục dev/test có đủ 12 môn thi THPT.
+  - Quy ước mới ở `DESIGN.md` 5.14: nhãn "Chấm tay", chip "Chờ chuyên gia xác nhận", thời lượng chung, bảng điểm sửa được, nút chọn tệp của kit, màn chấm.
+  - **Cần chuyên gia hoặc BA xác nhận:** THPTQG 12 môn do agent điền theo định dạng 2025 của Bộ GD&ĐT; SPT, SP2E chỉ có môn Toán, điểm từng câu là tạm, SP2E thiếu thời lượng; HSA chia 17–17–16; số câu Trả lời ngắn trong môn Toán của BCA; câu Trả lời ngắn của SPT chấm tự động hay chấm tay; quy tắc chấm lệch khối nên chỉ cảnh báo hay chặn công bố; tổ hợp sinh ngoài danh mục có vào danh mục chung không; có cho chấm lại sau khi hoàn tất không. Tiêu chí chấm, bài làm mẫu trong `/grading` do agent tự viết.
+  - **Đối chiếu bảng cấu trúc đề tổng quát (2026-11-16):** SP2E là ĐH Sư phạm Hà Nội 2; BCA Phần 2 tính Toán, Sử 1 điểm, Tiếng Anh 0,75 điểm mỗi câu; V-ACT thang 1.200 (4 thành phần × 300, IRT sau); tên phần HSA, QDA theo bảng; câu điền số nhận phân số. Chi tiết ở mục 1.1 của đặc tả 7 kỳ thi và mục 8, 12 của đặc tả backend.
+  - Để lại: câu mẫu môn Tin học, Tiếng Việt, Tư duy khoa học chưa có nút kiến thức trong cây mẫu; hai nhánh Tin học (Khoa học máy tính, Tin học ứng dụng) lấy chung một nguồn câu.
+- **UNI-2605** đặc tả backend PBI-03, PBI-04: `docs/specs/2026-11-16-be-pbi-03-04.md`. M.Trường chốt: phạm vi PBI-03 + PBI-04 (lượt thi, chấm làm sau); nội dung HTML lọc + LaTeX + ảnh MinIO; giữ 7 dạng câu; công bố bài thi là quyền riêng `EXAM.PUBLISH`. Chín điểm agent tự quyết ghi ở mục 1.1.
 
 ### Nhật ký đợt 1
 

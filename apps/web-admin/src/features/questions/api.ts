@@ -57,7 +57,7 @@ const reference = referenceFixture as ContentReference;
 
 const SUMMARY_KEYS = [
   "id", "code", "type", "status", "contentPreview", "subjectCode", "gradeCode", "difficultyCode", "points",
-  "knowledge", "tagCodes", "hasSolution", "version", "usedInExamCount", "sourceCode", "createdBy", "createdAt",
+  "knowledge", "competencyCode", "tagCodes", "hasSolution", "version", "usedInExamCount", "sourceCode", "createdBy", "createdAt",
   "updatedAt",
 ] as const satisfies readonly (keyof QuestionSummary)[];
 
@@ -98,6 +98,7 @@ function matchesQuery(question: QuestionDetail, query: ListQuestionsQuery): bool
   if (query.difficultyCode && question.difficultyCode !== query.difficultyCode) return false;
   if (query.type && question.type !== query.type) return false;
   if (query.status && question.status !== query.status) return false;
+  if (query.competencyCode && question.competencyCode !== query.competencyCode) return false;
   if (query.tagCode && !question.tagCodes.includes(query.tagCode)) return false;
   if (query.createdById && question.createdBy.id !== query.createdById) return false;
   if (query.hasSolution !== undefined && question.hasSolution !== query.hasSolution) return false;

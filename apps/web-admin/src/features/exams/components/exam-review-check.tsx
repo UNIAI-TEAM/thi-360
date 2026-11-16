@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  Badge,
   Button,
   Card,
   EmptyState,
@@ -215,12 +216,32 @@ function CheckResultView({
             total: result.paths.length,
           })}
         />
-        <SummaryItem label={t("summary.questions")} value={format.number(first?.totalQuestions ?? 0)} />
+        <SummaryItem
+          label={t("summary.questions")}
+          value={
+            result.printedQuestions !== (first?.totalQuestions ?? 0)
+              ? t("summary.questionsPrinted", { count: first?.totalQuestions ?? 0, printed: result.printedQuestions })
+              : format.number(first?.totalQuestions ?? 0)
+          }
+        />
         <SummaryItem
           label={t("summary.minutes")}
-          value={t("summary.minutesValue", { count: first?.totalMinutes ?? 0 })}
+          value={t("summary.minutesValue", {
+            count: first?.totalMinutes ?? 0,
+            shared: exam.timing === "SHARED" ? "yes" : "no",
+          })}
         />
-        <SummaryItem label={t("summary.points")} value={format.number(result.totalPoints)} />
+        <SummaryItem
+          label={t("summary.points")}
+          value={
+            result.maxScore !== null
+              ? t("summary.pointsOfScale", {
+                  points: format.number(result.totalPoints, { maximumFractionDigits: 2 }),
+                  scale: format.number(result.maxScore, { maximumFractionDigits: 2 }),
+                })
+              : format.number(result.totalPoints, { maximumFractionDigits: 2 })
+          }
+        />
         <SummaryItem
           label={t("summary.issues")}
           value={result.issueCount ? t("summary.issuesValue", { count: result.issueCount }) : t("summary.none")}
@@ -497,6 +518,8 @@ function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckRe
       questions: first?.totalQuestions ?? exam.totalQuestions,
       minutes: first?.totalMinutes ?? exam.durationMinutes,
       points: result.totalPoints,
+      scale: exam.maxScore ?? 0,
+      hasScale: exam.maxScore === null ? "no" : "yes",
     });
 
   return (
@@ -646,6 +669,9 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
           <span className="flex min-w-44 flex-col">
             <span className="text-caption text-text-muted">{t("blocks.part", { order: row.original.partOrder })}</span>
             <span className="font-semibold text-text">{name(row.original)}</span>
+            {row.original.questionType === "ESSAY" && (
+              <Badge className="mt-1 w-fit">{t("blocks.manualGrading")}</Badge>
+            )}
           </span>
         ),
       },

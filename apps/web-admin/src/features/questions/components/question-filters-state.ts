@@ -24,6 +24,8 @@ export interface QuestionFilters {
   grade: string | null;
   difficulty: string | null;
   type: QuestionType | null;
+  /** Mã năng lực (V-ACT). */
+  competency: string | null;
   /** Id nút kiến thức (MAPID); Chương hoặc Bài thì gồm cả kiến thức bên dưới. */
   knowledge: string[];
   tag: string | null;
@@ -50,6 +52,7 @@ export const DEFAULT_QUESTION_FILTERS: QuestionFilters = {
   grade: null,
   difficulty: null,
   type: null,
+  competency: null,
   knowledge: [],
   tag: null,
   author: null,
@@ -68,6 +71,7 @@ const PARAM = {
   grade: "grade",
   difficulty: "difficulty",
   type: "type",
+  competency: "competency",
   knowledge: "knowledge",
   tag: "tag",
   author: "author",
@@ -108,6 +112,7 @@ export function parseQuestionFilters(search: string): QuestionFilters {
     grade: text(params.get(PARAM.grade)),
     difficulty: text(params.get(PARAM.difficulty)),
     type: oneOf(QUESTION_TYPES, params.get(PARAM.type)),
+    competency: text(params.get(PARAM.competency)),
     knowledge: (params.get(PARAM.knowledge) ?? "")
       .split(",")
       .map((id) => id.trim())
@@ -136,6 +141,7 @@ export function serializeQuestionFilters(filters: QuestionFilters, baseSearch = 
   set(PARAM.grade, filters.grade);
   set(PARAM.difficulty, filters.difficulty);
   set(PARAM.type, filters.type);
+  set(PARAM.competency, filters.competency);
   set(PARAM.knowledge, filters.knowledge.length ? filters.knowledge.join(",") : null);
   set(PARAM.tag, filters.tag);
   set(PARAM.author, filters.author);
@@ -157,6 +163,7 @@ export function toListQuestionsQuery(filters: QuestionFilters): ListQuestionsQue
     ...(filters.grade ? { gradeCode: filters.grade } : {}),
     ...(filters.difficulty ? { difficultyCode: filters.difficulty } : {}),
     ...(filters.type ? { type: filters.type } : {}),
+    ...(filters.competency ? { competencyCode: filters.competency } : {}),
     ...(filters.knowledge.length ? { knowledgeIds: filters.knowledge } : {}),
     ...(filters.tag ? { tagCode: filters.tag } : {}),
     ...(filters.author ? { createdById: filters.author } : {}),
@@ -172,6 +179,7 @@ export function toListQuestionsQuery(filters: QuestionFilters): ListQuestionsQue
 /** Bộ lọc nằm trong "Bộ lọc khác" (đếm để hiện trên nút mở). */
 export function countAdvancedFilters(filters: QuestionFilters): number {
   return [
+    filters.competency,
     filters.knowledge.length > 0,
     filters.tag,
     filters.author,

@@ -128,6 +128,7 @@ export async function generatePreview({ examId, pathId, seed, version = null }: 
         candidates: mockBlockCandidates,
         knowledgeNode: mockKnowledgeNode,
         knowledgeChapter: mockKnowledgeChapter,
+        sharedDurationMinutes: exam.timing === "SHARED" ? exam.durationMinutes : null,
       });
       return { ...base, status: "GENERATED" as const, paper };
     },

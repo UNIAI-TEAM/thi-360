@@ -2,6 +2,7 @@ import type {
   BlockMatrix,
   ExamPart,
   ExamSection,
+  ExamTiming,
   MatrixDimensionValue,
   MatrixMode,
   MatrixUnit,
@@ -154,6 +155,39 @@ export interface BlockAllocation {
   total: number;
   gradeTotal: number;
   difficultyTotal: number;
+  /**
+   * Chiều năng lực (V-ACT), cộng thêm vào ma trận Lớp × Độ khó: mã theo thứ tự đã khai báo, số câu sau quy đổi, tổng
+   * đã nhập và tổng số câu. Khối không dùng chiều này: `null`.
+   */
+  competency: {
+    codes: string[];
+    input: number[];
+    counts: number[];
+    conversion: Apportionment | null;
+    inputTotal: number;
+    total: number;
+  } | null;
+}
+
+/** Khối có dùng chiều năng lực: `byCompetency` có ít nhất một mã. */
+export function hasCompetencyDimension(matrix: BlockMatrix): boolean {
+  return (matrix.byCompetency?.length ?? 0) > 0;
+}
+
+function competencyAllocation(matrix: BlockMatrix, questionCount: number): BlockAllocation["competency"] {
+  if (!hasCompetencyDimension(matrix)) return null;
+  const values = matrix.byCompetency ?? [];
+  const input = values.map((item) => item.value);
+  const conversion = matrix.unit === "PERCENT" ? apportionByPercent(input, questionCount) : null;
+  const counts = conversion ? conversion.results : input;
+  return {
+    codes: values.map((item) => item.code),
+    input,
+    counts,
+    conversion,
+    inputTotal: sum(input),
+    total: sum(counts),
+  };
 }
 
 export function computeAllocation(block: Pick<QuestionBlock, "questionCount" | "matrix">, axes: MatrixAxes): BlockAllocation {
@@ -183,6 +217,7 @@ export function computeAllocation(block: Pick<QuestionBlock, "questionCount" | "
       total: sum(rows),
       gradeTotal: sum(rows),
       difficultyTotal: sum(rows),
+      competency: competencyAllocation(matrix, questionCount),
     };
   }
   const gradeInput = dimensionValues(matrix.byGrade, axes.grades);
@@ -210,6 +245,7 @@ export function computeAllocation(block: Pick<QuestionBlock, "questionCount" | "
     total: sum(byGrade),
     gradeTotal: sum(byGrade),
     difficultyTotal: sum(byDifficulty),
+    competency: competencyAllocation(matrix, questionCount),
   };
 }
 
@@ -290,12 +326,21 @@ export function convertMatrixUnit(
   if (matrix.unit === unit) return matrix;
   const convert = (values: readonly number[]) =>
     unit === "COUNT" ? apportionByPercent(values, questionCount).results : countsToPercents(values, questionCount);
+  const competency = hasCompetencyDimension(matrix)
+    ? {
+        byCompetency: toDimension(
+          convert((matrix.byCompetency ?? []).map((item) => item.value)),
+          (matrix.byCompetency ?? []).map((item) => item.code),
+        ),
+      }
+    : {};
   if (matrix.mode === "COMBINED") {
     const values = convert(combinedGrid(matrix, axes).flat());
-    return { ...matrix, unit, cells: gridToCells(chunk(values, axes.difficulties.length), axes) };
+    return { ...matrix, ...competency, unit, cells: gridToCells(chunk(values, axes.difficulties.length), axes) };
   }
   return {
     ...matrix,
+    ...competency,
     unit,
     byGrade: toDimension(convert(dimensionValues(matrix.byGrade, axes.grades)), axes.grades),
     byDifficulty: toDimension(convert(dimensionValues(matrix.byDifficulty, axes.difficulties)), axes.difficulties),
@@ -304,7 +349,7 @@ export function convertMatrixUnit(
 
 // ---------------------------------------------------------------- kiểm tra một khối
 
-export type MatrixDimension = "COMBINED" | "GRADE" | "DIFFICULTY";
+export type MatrixDimension = "COMBINED" | "GRADE" | "DIFFICULTY" | "COMPETENCY";
 
 export type BlockIssue =
   | { code: "COUNT_NOT_POSITIVE" }
@@ -314,9 +359,11 @@ export type BlockIssue =
   | { code: "ALLOCATION_TOTAL"; dimension: MatrixDimension; expected: number; actual: number };
 
 function matrixValues(matrix: BlockMatrix): number[] {
-  return matrix.mode === "COMBINED"
-    ? matrix.cells.map((cell) => cell.value)
-    : [...matrix.byGrade, ...matrix.byDifficulty].map((item) => item.value);
+  const base =
+    matrix.mode === "COMBINED"
+      ? matrix.cells.map((cell) => cell.value)
+      : [...matrix.byGrade, ...matrix.byDifficulty].map((item) => item.value);
+  return [...base, ...(matrix.byCompetency ?? []).map((item) => item.value)];
 }
 
 const PERCENT_TOLERANCE = 1e-6;
@@ -345,6 +392,9 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
           { dimension: "GRADE", input: allocation.inputGradeTotal, total: allocation.gradeTotal },
           { dimension: "DIFFICULTY", input: allocation.inputDifficultyTotal, total: allocation.difficultyTotal },
         ];
+  if (allocation.competency) {
+    dimensions.push({ dimension: "COMPETENCY", input: allocation.competency.inputTotal, total: allocation.competency.total });
+  }
   for (const { dimension, input, total } of dimensions) {
     if (matrix.unit === "PERCENT") {
       if (Math.abs(input - 100) > PERCENT_TOLERANCE) issues.push({ code: "PERCENT_TOTAL", dimension, actual: roundPrecision(input) });
@@ -357,7 +407,7 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
 
 // ---------------------------------------------------------------- cấu trúc
 
-/** Vị trí của một môn: phần, lựa chọn của phần tự chọn (nếu có), môn. */
+/** Vị trí của một môn: phần, lựa chọn của phần tự chọn (nếu có), môn. Môn chung của phần tự chọn có `optionId` null. */
 export interface SectionLocation {
   partId: string;
   optionId: string | null;
@@ -369,26 +419,71 @@ export type StructureIssue =
   | { code: "PART_DURATION_NOT_POSITIVE"; partId: string }
   | { code: "NO_OPTIONS"; partId: string }
   | { code: "SECTIONS_TOTAL"; partId: string; optionId: string | null; expected: number; actual: number }
+  | { code: "PART_POINTS"; partId: string; optionId: string | null; expected: number; actual: number }
   | { code: "BLOCKS_TOTAL"; location: SectionLocation; expected: number; actual: number }
   | { code: "BLOCK"; location: SectionLocation; blockId: string; issue: BlockIssue };
 
-/** Mọi nhóm môn của phần: phần cố định có một nhóm (`optionId` null), phần tự chọn mỗi lựa chọn một nhóm. */
+/**
+ * Nhóm môn theo vị trí lưu: phần cố định có một nhóm (`optionId` null); phần tự chọn có nhóm môn chung (`optionId` null,
+ * khi `sections` khác rỗng) rồi mỗi lựa chọn một nhóm. Dùng để tìm, sửa, liệt kê khối; mỗi khối nằm đúng một nhóm.
+ */
 export function sectionGroups(part: ExamPart): Array<{ optionId: string | null; sections: ExamSection[] }> {
-  return part.mode === "CHOICE"
-    ? part.options.map((option) => ({ optionId: option.id, sections: option.sections }))
-    : [{ optionId: null, sections: part.sections }];
+  if (part.mode !== "CHOICE") return [{ optionId: null, sections: part.sections }];
+  const common = part.sections.length ? [{ optionId: null, sections: part.sections }] : [];
+  return [...common, ...part.options.map((option) => ({ optionId: option.id, sections: option.sections }))];
 }
 
-/** Kiểm tra cấu trúc trên máy (mục 6.2, 5.3): số câu phần = tổng môn, môn = tổng khối, từng khối hợp lệ. */
-export function validateStructure(parts: readonly ExamPart[], axes: MatrixAxes): StructureIssue[] {
+/**
+ * Các môn học viên làm theo từng lựa chọn của phần: phần cố định một nhóm; phần tự chọn mỗi lựa chọn một nhóm gồm môn
+ * chung cộng môn của lựa chọn (THPTQG Tin học: 2 câu chung + 2 câu của nhánh).
+ */
+export function choiceGroups(part: ExamPart): Array<{ optionId: string | null; sections: ExamSection[] }> {
+  if (part.mode !== "CHOICE") return [{ optionId: null, sections: part.sections }];
+  return part.options.map((option) => ({ optionId: option.id, sections: [...part.sections, ...option.sections] }));
+}
+
+function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
+  return sections.flatMap((section) => section.blocks);
+}
+
+/** Tổng điểm các khối của một nhóm môn (số câu × điểm mỗi câu). */
+export function sectionsPoints(sections: readonly ExamSection[]): number {
+  return roundPrecision(sum(blocksOf(sections).map((block) => block.questionCount * block.pointsPerQuestion)));
+}
+
+/** Điểm riêng của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
+export function partPoints(part: ExamPart): number | null {
+  return part.points ?? null;
+}
+
+export interface ValidateStructureOptions {
+  /** `PER_PART`: phần phải có thời lượng dương. `SHARED`: phần không có thời lượng riêng. Bỏ trống: chỉ kiểm khi có. */
+  timing?: ExamTiming;
+}
+
+/**
+ * Kiểm tra cấu trúc trên máy (mục 6.2, 5.3): số câu phần = tổng môn (mỗi lựa chọn tính cả môn chung), môn = tổng khối,
+ * điểm phần = tổng điểm khối khi phần có điểm riêng (BCA), từng khối hợp lệ.
+ */
+export function validateStructure(
+  parts: readonly ExamPart[],
+  axes: MatrixAxes,
+  options: ValidateStructureOptions = {},
+): StructureIssue[] {
   const issues: StructureIssue[] = [];
   for (const part of parts) {
     if (!Number.isInteger(part.questionCount) || part.questionCount <= 0) {
       issues.push({ code: "PART_COUNT_NOT_POSITIVE", partId: part.id });
     }
-    if (!(part.durationMinutes > 0)) issues.push({ code: "PART_DURATION_NOT_POSITIVE", partId: part.id });
+    // Thời lượng `null`: bài dùng thời lượng chung (BCA, V-ACT), phần không có thời lượng riêng.
+    const missing = options.timing === "PER_PART" && part.durationMinutes === null;
+    const notPositive = part.durationMinutes !== null && !(part.durationMinutes > 0);
+    if (options.timing !== "SHARED" && (missing || notPositive)) {
+      issues.push({ code: "PART_DURATION_NOT_POSITIVE", partId: part.id });
+    }
     if (part.mode === "CHOICE" && part.options.length === 0) issues.push({ code: "NO_OPTIONS", partId: part.id });
-    for (const group of sectionGroups(part)) {
+    const expectedPoints = partPoints(part);
+    for (const group of choiceGroups(part)) {
       const sectionsTotal = sum(group.sections.map((section) => section.questionCount));
       if (sectionsTotal !== part.questionCount) {
         issues.push({
@@ -399,6 +494,14 @@ export function validateStructure(parts: readonly ExamPart[], axes: MatrixAxes):
           actual: sectionsTotal,
         });
       }
+      if (expectedPoints !== null) {
+        const actual = sectionsPoints(group.sections);
+        if (Math.abs(actual - expectedPoints) > PERCENT_TOLERANCE) {
+          issues.push({ code: "PART_POINTS", partId: part.id, optionId: group.optionId, expected: expectedPoints, actual });
+        }
+      }
+    }
+    for (const group of sectionGroups(part)) {
       for (const section of group.sections) {
         const location = { partId: part.id, optionId: group.optionId, sectionId: section.id };
         const blocksTotal = sum(section.blocks.map((block) => block.questionCount));
@@ -418,24 +521,38 @@ export function validateStructure(parts: readonly ExamPart[], axes: MatrixAxes):
 
 export interface StructureTotals {
   partCount: number;
+  /** Số câu học viên làm (mỗi phần tự chọn tính một lựa chọn). */
   totalQuestions: number;
+  /**
+   * Số câu in trên đề: phần tự chọn theo nhánh nội dung (`BRANCH`) in cả môn chung và mọi nhánh (THPTQG Tin học in 30,
+   * học viên làm 28). Phần chọn môn hoặc tổ hợp là các đề riêng, tính như số câu học viên làm.
+   */
+  printedQuestions: number;
+  /** Bài dùng thời lượng chung: thời lượng chung; không thì tổng thời lượng các phần. */
   totalMinutes: number;
-  /** Tổng điểm theo số câu × điểm mỗi câu; phần tự chọn tính theo lựa chọn đầu tiên. */
+  /** Tổng điểm theo số câu × điểm mỗi câu; phần tự chọn tính theo lựa chọn đầu tiên (cộng môn chung). */
   totalPoints: number;
   /** Số câu đã phân bổ vào khối; phần tự chọn lấy lựa chọn ít câu nhất (đường thiếu nhiều nhất). */
   allocated: number;
   missing: number;
 }
 
-function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
-  return sections.flatMap((section) => section.blocks);
+export interface StructureTotalsOptions {
+  /** Thời lượng chung của bài (`timing = SHARED`); `null` hoặc bỏ trống: cộng thời lượng các phần. */
+  sharedDuration?: number | null;
 }
 
-export function structureTotals(parts: readonly ExamPart[]): StructureTotals {
+/** Số câu in trên đề của một phần (xem `StructureTotals.printedQuestions`). */
+export function printedPartQuestions(part: ExamPart): number {
+  if (part.mode !== "CHOICE" || !part.options.some((option) => option.kind === "BRANCH")) return part.questionCount;
+  return sum([...part.sections, ...part.options.flatMap((option) => option.sections)].map((section) => section.questionCount));
+}
+
+export function structureTotals(parts: readonly ExamPart[], options: StructureTotalsOptions = {}): StructureTotals {
   let allocated = 0;
   let totalPoints = 0;
   for (const part of parts) {
-    const groups = sectionGroups(part).map((group) => blocksOf(group.sections));
+    const groups = choiceGroups(part).map((group) => blocksOf(group.sections));
     const counts = groups.map((blocks) => sum(blocks.map((block) => block.questionCount)));
     allocated += counts.length ? Math.min(...counts) : 0;
     const first = groups[0] ?? [];
@@ -445,7 +562,8 @@ export function structureTotals(parts: readonly ExamPart[]): StructureTotals {
   return {
     partCount: parts.length,
     totalQuestions,
-    totalMinutes: sum(parts.map((part) => part.durationMinutes)),
+    printedQuestions: sum(parts.map(printedPartQuestions)),
+    totalMinutes: options.sharedDuration ?? sum(parts.map((part) => part.durationMinutes ?? 0)),
     totalPoints: roundPrecision(totalPoints),
     allocated,
     missing: Math.max(0, totalQuestions - allocated),

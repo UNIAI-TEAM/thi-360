@@ -35,7 +35,8 @@ type TemplateRowKey =
   | "difficulty"
   | "knowledge"
   | "tags"
-  | "setCode";
+  | "setCode"
+  | "rubric";
 
 const TEMPLATE_ROWS: ReadonlyArray<{ key: TemplateRowKey; required: boolean }> = [
   { key: "sourceCode", required: false },
@@ -50,6 +51,7 @@ const TEMPLATE_ROWS: ReadonlyArray<{ key: TemplateRowKey; required: boolean }> =
   { key: "knowledge", required: false },
   { key: "tags", required: false },
   { key: "setCode", required: false },
+  { key: "rubric", required: false },
 ];
 
 export interface UploadStepProps {

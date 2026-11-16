@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  Badge,
   Button,
   Card,
   Checkbox,
@@ -27,6 +28,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { MockDataBanner } from "@/components/mock-data-banner";
+import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import {
   FILTER_FORM,
   FILTER_SEARCH,
@@ -36,39 +38,61 @@ import {
 import { examTabHref } from "../editor-tabs";
 import { useExamList } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
-import type { ExamCheckStatus, ExamFormat, ExamKind, ExamStatus, ExamSummary, ListExamsQuery } from "../types";
+import {
+  EXAM_KINDS,
+  type ExamCheckStatus,
+  type ExamFormat,
+  type ExamKind,
+  type ExamStatus,
+  type ExamSummary,
+  type ListExamsQuery,
+} from "../types";
+import { useKindLabel, useSingleScopes } from "./create-exam-fields";
 import { ExamListRowActions } from "./exam-list-actions";
 
 const ALL = "ALL";
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const KINDS: ExamKind[] = ["HSA", "QDA"];
 const FORMATS: ExamFormat[] = ["FULL", "SINGLE"];
 const STATUSES: ExamStatus[] = ["DRAFT", "PUBLISHED", "DISCONTINUED"];
 const CHECK_STATUSES: ExamCheckStatus[] = ["UNCHECKED", "VALID", "INVALID", "NEEDS_RECHECK"];
 
 /**
- * Cột phụ ẩn theo bề rộng khung chứa bảng (DESIGN.md mục 5.9): Cập nhật ẩn trước, rồi Hình thức, Kỳ thi. Khung hẹp
- * hơn 640px thì bảng thành danh sách thẻ.
+ * Cột phụ ẩn theo bề rộng khung chứa bảng (DESIGN.md mục 5.9): Cập nhật ẩn trước, rồi Hình thức, Lựa chọn, Kỳ thi.
+ * Khung hẹp hơn 640px thì bảng thành danh sách thẻ (thẻ vẫn có Lựa chọn).
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
-  "@max-[80rem]:[&_:is(th,td):has([data-col=updated])]:hidden",
-  "@max-[72rem]:[&_:is(th,td):has([data-col=format])]:hidden",
+  "@max-[86rem]:[&_:is(th,td):has([data-col=updated])]:hidden",
+  "@max-[78rem]:[&_:is(th,td):has([data-col=format])]:hidden",
+  "@max-[72rem]:[&_:is(th,td):has([data-col=choice])]:hidden",
   "@max-[66rem]:[&_:is(th,td):has([data-col=kind])]:hidden",
 ].join(" ");
 
 const CREATE_EXAM_HREF = "/exams/new";
 
-/** Danh sách bài thi (bản vẽ `BaiThi`): lọc, bảng/thẻ, sửa, sao chép, ngừng bán, tạo bài thi. */
+/**
+ * Danh sách bài thi (bản vẽ `BaiThi`; spec 7 kỳ thi): lọc theo bảy kỳ thi của danh mục và theo môn, cột Lựa chọn (tổ
+ * hợp, nhánh hoặc môn), thời lượng ghi "chung" khi bài dùng thời lượng chung, huy hiệu "Có tự luận"; bảng/thẻ, sửa,
+ * sao chép, ngừng bán, tạo bài thi.
+ */
 export function ExamListView() {
   const t = useTranslations("exams");
   const common = useTranslations("common");
   const format = useFormatter();
   const unpublishedId = useId();
+  const referenceQuery = useContentReference();
+  const lookup = useReferenceLookup(referenceQuery.data);
+  const kindLabel = useKindLabel();
+  const { scopeName } = useSingleScopes();
+  const kindCodes = useMemo(
+    () => referenceQuery.data?.examKinds.map((kind) => kind.code) ?? [...EXAM_KINDS],
+    [referenceQuery.data],
+  );
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<ExamKind | typeof ALL>(ALL);
+  const [subject, setSubject] = useState<string>(ALL);
   const [examFormat, setExamFormat] = useState<ExamFormat | typeof ALL>(ALL);
   const [status, setStatus] = useState<ExamStatus | typeof ALL>(ALL);
   const [checkStatus, setCheckStatus] = useState<ExamCheckStatus | typeof ALL>(ALL);
@@ -94,6 +118,7 @@ export function ExamListView() {
     () => ({
       ...(search ? { q: search } : {}),
       ...(kind !== ALL ? { kind } : {}),
+      ...(subject !== ALL ? { subjectCode: subject } : {}),
       ...(examFormat !== ALL ? { format: examFormat } : {}),
       ...(status !== ALL ? { status } : {}),
       ...(checkStatus !== ALL ? { checkStatus } : {}),
@@ -101,18 +126,25 @@ export function ExamListView() {
       page: page - 1,
       size: pageSize,
     }),
-    [search, kind, examFormat, status, checkStatus, unpublishedOnly, page, pageSize],
+    [search, kind, subject, examFormat, status, checkStatus, unpublishedOnly, page, pageSize],
   );
   const examsQuery = useExamList(query);
 
   const hasActiveFilters = Boolean(
-    search || kind !== ALL || examFormat !== ALL || status !== ALL || checkStatus !== ALL || unpublishedOnly,
+    search ||
+      kind !== ALL ||
+      subject !== ALL ||
+      examFormat !== ALL ||
+      status !== ALL ||
+      checkStatus !== ALL ||
+      unpublishedOnly,
   );
 
   function resetFilters() {
     setSearchInput("");
     setSearch("");
     setKind(ALL);
+    setSubject(ALL);
     setExamFormat(ALL);
     setStatus(ALL);
     setCheckStatus(ALL);
@@ -123,13 +155,30 @@ export function ExamListView() {
   const option = (value: string, label: string) => ({ value, label });
   const allOption = option(ALL, t("list.filters.all"));
 
-  const { structureText, updatedText } = useMemo(
+  const { structureText, updatedText, choiceText } = useMemo(
     () => ({
       structureText: (exam: ExamSummary) =>
-        t("list.structureValue", { questions: exam.totalQuestions, minutes: exam.durationMinutes }),
+        t(exam.timing === "SHARED" ? "list.structureValueShared" : "list.structureValue", {
+          questions: exam.totalQuestions,
+          minutes: exam.durationMinutes,
+        }),
       updatedText: (exam: ExamSummary) => format.dateTime(new Date(exam.updatedAt), "dateTime"),
+      /**
+       * Cột Lựa chọn: bài lẻ ghi phần/môn; bài khác ghi môn của bài (kỳ thi theo môn) và các lựa chọn của phần tự chọn
+       * (Tiếng Anh, tổ hợp, nhánh). Không có gì thì `null`.
+       */
+      choiceText: (exam: ExamSummary): string | null => {
+        if (exam.format === "SINGLE") return exam.singleSubjectCode ? scopeName(exam.singleSubjectCode) : null;
+        const options = [
+          ...(exam.englishOption ? [t("list.choice.english")] : []),
+          ...(exam.combinationCount > 0 ? [t("list.choice.combinations", { count: exam.combinationCount })] : []),
+          ...((exam.branchCount ?? 0) > 0 ? [t("list.choice.branches", { count: exam.branchCount ?? 0 })] : []),
+        ].join(" + ");
+        const subjectText = exam.subjectCode ? lookup.subject(exam.subjectCode) : "";
+        return [subjectText, options].filter(Boolean).join(" · ") || null;
+      },
     }),
-    [t, format],
+    [t, format, scopeName, lookup],
   );
 
   const columns = useMemo<ColumnDef<ExamSummary>[]>(
@@ -154,7 +203,7 @@ export function ExamListView() {
         id: "kind",
         header: () => <span data-col="kind">{t("list.table.kind")}</span>,
         enableSorting: false,
-        cell: ({ row }) => <span data-col="kind">{t(`kind.${row.original.kind}`)}</span>,
+        cell: ({ row }) => <span data-col="kind">{kindLabel(row.original.kind)}</span>,
       },
       {
         id: "format",
@@ -167,10 +216,21 @@ export function ExamListView() {
         ),
       },
       {
+        id: "choice",
+        header: () => <span data-col="choice">{t("list.table.choice")}</span>,
+        enableSorting: false,
+        cell: ({ row }) => <ChoiceCell text={choiceText(row.original)} />,
+      },
+      {
         id: "structure",
         header: t("list.table.structure"),
         enableSorting: false,
-        cell: ({ row }) => <span className="whitespace-nowrap tabular-nums">{structureText(row.original)}</span>,
+        cell: ({ row }) => (
+          <div className="flex flex-col items-start gap-1">
+            <span className="whitespace-nowrap tabular-nums">{structureText(row.original)}</span>
+            {row.original.hasEssay && <Badge>{t("list.essay")}</Badge>}
+          </div>
+        ),
       },
       {
         id: "status",
@@ -219,7 +279,7 @@ export function ExamListView() {
         ),
       },
     ],
-    [t, structureText, updatedText],
+    [t, structureText, updatedText, choiceText, kindLabel],
   );
 
   const cards = useMemo<TableCards<ExamSummary>>(
@@ -236,12 +296,14 @@ export function ExamListView() {
           status={<ExamStatusChip exam={exam} />}
           tags={
             <>
-              <ListCardTag>{t(`kind.${exam.kind}`)}</ListCardTag>
+              <ListCardTag>{kindLabel(exam.kind)}</ListCardTag>
               <ListCardTag>{t(`format.${exam.format}`)}</ListCardTag>
+              {exam.hasEssay && <ListCardTag>{t("list.essay")}</ListCardTag>}
               {exam.hasUnpublishedChanges && <StatusChip tone="warning">{t("list.unpublished")}</StatusChip>}
             </>
           }
           meta={[
+            { label: t("list.table.choice"), value: choiceText(exam) ?? t("list.choice.none") },
             { label: t("list.table.structure"), value: structureText(exam) },
             { label: t("list.table.updated"), value: updatedText(exam) },
           ]}
@@ -250,7 +312,7 @@ export function ExamListView() {
         </ListCard>
       ),
     }),
-    [t, structureText, updatedText],
+    [t, structureText, updatedText, choiceText, kindLabel],
   );
 
   const items = examsQuery.data?.content ?? [];
@@ -303,7 +365,23 @@ export function ExamListView() {
                     setKind(value as ExamKind | typeof ALL);
                     setPage(1);
                   }}
-                  options={[allOption, ...KINDS.map((value) => option(value, t(`kind.${value}`)))]}
+                  options={[allOption, ...kindCodes.map((value) => option(value, kindLabel(value)))]}
+                />
+              )}
+            </FormField>
+            <FormField label={t("list.filters.subject")} className={cn(FILTER_SELECT, "@3xl:min-w-36")}>
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={subject}
+                  onValueChange={(value) => {
+                    setSubject(value);
+                    setPage(1);
+                  }}
+                  options={[
+                    allOption,
+                    ...(referenceQuery.data?.subjects ?? []).map((item) => option(item.code, item.name)),
+                  ]}
                 />
               )}
             </FormField>
@@ -459,6 +537,21 @@ export function ExamListView() {
         )}
       </Card>
     </div>
+  );
+}
+
+/** Ô Lựa chọn; không có lựa chọn thì gạch ngang kèm chữ cho trình đọc màn hình. */
+function ChoiceCell({ text }: { text: string | null }) {
+  const t = useTranslations("exams.list");
+  return (
+    <span data-col="choice" className="block min-w-28">
+      {text ?? (
+        <span className="text-text-muted">
+          <span aria-hidden>—</span>
+          <span className="sr-only">{t("choice.none")}</span>
+        </span>
+      )}
+    </span>
   );
 }
 

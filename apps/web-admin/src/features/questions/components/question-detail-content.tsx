@@ -69,6 +69,12 @@ function InfoSection({ question }: { question: QuestionDetail }) {
         <InfoItem label={t("info.subject")}>{lookup.subject(question.subjectCode)}</InfoItem>
         <InfoItem label={t("info.grade")}>{lookup.grade(question.gradeCode)}</InfoItem>
         <InfoItem label={t("info.difficulty")}>{lookup.difficulty(question.difficultyCode)}</InfoItem>
+        {question.competencyCode && (
+          <InfoItem label={t("info.competency")}>
+            {referenceQuery.data?.competencies.find((option) => option.code === question.competencyCode)?.name ??
+              question.competencyCode}
+          </InfoItem>
+        )}
         <InfoItem label={t("info.points")}>
           {question.type === "QUESTION_SET"
             ? t("info.pointsTotal", { points: question.points, count: question.children.length })

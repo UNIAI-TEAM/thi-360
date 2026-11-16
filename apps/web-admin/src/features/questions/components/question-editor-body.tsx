@@ -4,6 +4,7 @@ import type { QuestionType } from "@/features/content/types";
 import { BlanksEditor } from "./question-editor-blanks";
 import { ChoiceOptionsEditor } from "./question-editor-choice";
 import { DragDropEditor } from "./question-editor-drag";
+import { EssayEditor } from "./question-editor-essay";
 import type { BodyPath, ContentPath } from "./question-editor-shared";
 import { StatementsEditor } from "./question-editor-statements";
 
@@ -30,6 +31,8 @@ export function QuestionBodyEditor({
       return <BlanksEditor prefix={prefix} contentPath={contentPath} contentFieldId={contentFieldId} />;
     case "DRAG_DROP":
       return <DragDropEditor prefix={prefix} />;
+    case "ESSAY":
+      return <EssayEditor prefix={prefix} />;
     case "QUESTION_SET":
       return null;
   }

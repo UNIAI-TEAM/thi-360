@@ -231,5 +231,9 @@ function answerSummary(child: EditorChild, t: ReturnType<typeof useTranslations>
       const items = body.zones.map((zone) => zone.itemContent.trim()).filter(Boolean);
       return items.length ? items.join("; ") : t("noAnswer");
     }
+    case "ESSAY": {
+      const criteria = body.rubric.map((criterion) => criterion.description.trim()).filter(Boolean);
+      return criteria.length ? criteria.join("; ") : t("noAnswer");
+    }
   }
 }

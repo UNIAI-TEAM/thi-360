@@ -58,7 +58,8 @@ function availability(blockId: string, count: (grade: string, level: string) => 
 
 function exam(parts: ExamPart[], totalQuestions: number): ExamDetail {
   const seed = examStore.require("ex-hsa-l-toan-001");
-  return { ...seed, parts, totalQuestions };
+  // Các ca kiểm tra dưới đây không xét thang điểm; ca có thang điểm đặt `maxScore` riêng.
+  return { ...seed, parts, totalQuestions, maxScore: null };
 }
 
 function singlePart(blocks: QuestionBlock[], questionCount = 10): ExamPart {
@@ -161,7 +162,7 @@ describe("enumeratePaths", () => {
       enumeratePaths(examStore.require("ex-qda-f-001").parts, mockChoiceName).map((path) =>
         path.choices.map((c) => c.code).join(),
       ),
-    ).toEqual(["ENGLISH", "KH-4", "KH-6"]);
+    ).toEqual(["ENGLISH", "QD01", "QD04"]);
   });
 });
 

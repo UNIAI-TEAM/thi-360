@@ -74,13 +74,21 @@ export function useLookup() {
   return useReferenceLookup(reference);
 }
 
+/** Số mã câu nguồn nêu trong một vấn đề; còn lại ghi "…". */
+const QUESTION_CODES_SHOWN = 5;
+
 /** Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). */
 export function useIssueText() {
   const t = useTranslations("exams.review.issue");
   const lookup = useLookup();
+  const competencies = useContentReference().data?.competencies;
   return useCallback(
     (issue: CheckIssue) => {
       const subject = issue.subjectCode ? lookup.subject(issue.subjectCode) : "";
+      const codes = issue.questionCodes ?? [];
+      const competency = issue.competencyCode
+        ? (competencies?.find((item) => item.code === issue.competencyCode)?.name ?? issue.competencyCode)
+        : "";
       const values = {
         block: issue.blockName ? `${subject} · ${issue.blockName}` : subject,
         subject,
@@ -90,17 +98,21 @@ export function useIssueText() {
         level:
           issue.dimension === "GRADE" && issue.gradeCode
             ? lookup.grade(issue.gradeCode)
-            : issue.difficultyCode
-              ? lookup.difficulty(issue.difficultyCode)
-              : "",
+            : issue.dimension === "COMPETENCY"
+              ? competency
+              : issue.difficultyCode
+                ? lookup.difficulty(issue.difficultyCode)
+                : "",
         dimension: issue.dimension ?? "NONE",
         required: issue.required ?? 0,
         available: issue.available ?? 0,
         seconds: issue.timeLimitSeconds ?? 0,
+        competency,
+        codes: codes.slice(0, QUESTION_CODES_SHOWN).join(", ") + (codes.length > QUESTION_CODES_SHOWN ? ", …" : ""),
       };
       return t(issue.code, values);
     },
-    [t, lookup],
+    [t, lookup, competencies],
   );
 }
 

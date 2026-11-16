@@ -181,15 +181,17 @@ describe("NAVIGATION của đợt 1", () => {
 });
 
 describe("mục dữ liệu mẫu của đợt 2", () => {
-  it("Ngân hàng câu hỏi và Bài thi đứng đầu nhóm Nội dung, chỉ hiện khi bật cờ dữ liệu mẫu", () => {
+  it("Ngân hàng câu hỏi, Bài thi và Chấm tự luận đứng đầu nhóm Nội dung, chỉ hiện khi bật cờ dữ liệu mẫu", () => {
     const contentGroup = NAVIGATION.find((g) => g.id === "content");
-    expect(contentGroup?.items.map((item) => item.id)).toEqual(["questions", "exams", "catalog"]);
+    expect(contentGroup?.items.map((item) => item.id)).toEqual(["questions", "exams", "grading", "catalog"]);
     const granted = new Set(["CATALOG.VIEW"]);
     const contentIds = (enabled: boolean) =>
       filterNavigation(NAVIGATION, granted, enabled)
         .find((g) => g.id === "content")
         ?.items.map((item) => item.id);
-    expect(contentIds(true)).toEqual(["questions", "exams", "catalog"]);
+    expect(contentIds(true)).toEqual(["questions", "exams", "grading", "catalog"]);
     expect(contentIds(false)).toEqual(["catalog"]);
+    // Màn chấm một lượt thi vẫn thuộc mục Chấm tự luận.
+    expect(resolveBreadcrumb(NAVIGATION, "/grading/att-bca-001")?.item.id).toBe("grading");
   });
 });

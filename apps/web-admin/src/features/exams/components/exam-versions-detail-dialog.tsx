@@ -4,7 +4,7 @@ import { Badge, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTi
 import { useFormatter, useTranslations } from "next-intl";
 import { sortedParts } from "../check";
 import { useExamVersion } from "../review-queries";
-import type { ExamSection } from "../types";
+import type { ExamPartOption, ExamSection } from "../types";
 import { pathLabelCodes, useChoiceNameResolver, useLookup } from "./exam-review-shared";
 
 /** Xem cấu hình của một phiên bản đã công bố, chỉ đọc (bản chụp lúc công bố). */
@@ -49,6 +49,12 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
     return <p className="text-body text-danger">{t("detail.error")}</p>;
   }
   const { row, parts } = query.data;
+  const optionName = (option: ExamPartOption) =>
+    option.kind === "BRANCH"
+      ? (option.name ?? option.code)
+      : option.kind === "COMBINATION"
+        ? `${option.code} · ${option.name ?? nameOf(option.kind, option.code)}`
+        : nameOf(option.kind, option.code);
   return (
     <div className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1 scroll-shadows-y">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-subtle px-3.5 py-3 text-body">
@@ -73,20 +79,29 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
             <h3 className="font-semibold text-text">
               {part.name}{" "}
               <span className="font-normal text-text-muted">
-                · {t("detail.partMeta", { count: part.questionCount, minutes: part.durationMinutes })}
+                ·{" "}
+                {t("detail.partMeta", {
+                  count: part.questionCount,
+                  minutes: part.durationMinutes ?? 0,
+                  hasMinutes: part.durationMinutes === null ? "no" : "yes",
+                  points: part.points ?? 0,
+                  hasPoints: part.points === null || part.points === undefined ? "no" : "yes",
+                })}
               </span>
             </h3>
             {part.mode === "FIXED" ? (
               <SectionList sections={part.sections} />
             ) : (
               <ul className="flex flex-col gap-2">
+                {part.sections.length > 0 && (
+                  <li className="flex flex-col gap-1">
+                    <span className="text-label font-semibold text-text-secondary">{t("detail.common")}</span>
+                    <SectionList sections={part.sections} />
+                  </li>
+                )}
                 {part.options.map((option) => (
                   <li key={option.id} className="flex flex-col gap-1">
-                    <span className="text-label font-semibold text-text-secondary">
-                      {option.kind === "COMBINATION"
-                        ? `${option.code} · ${nameOf(option.kind, option.code)}`
-                        : nameOf(option.kind, option.code)}
-                    </span>
+                    <span className="text-label font-semibold text-text-secondary">{optionName(option)}</span>
                     <SectionList sections={option.sections} />
                   </li>
                 ))}
@@ -119,6 +134,7 @@ function SectionList({ sections }: { sections: ExamSection[] }) {
                     type: types(block.questionType),
                     count: block.questionCount,
                     mode: block.matrix.mode,
+                    manual: block.questionType === "ESSAY" ? "yes" : "no",
                   })}
                 </Badge>
               </li>

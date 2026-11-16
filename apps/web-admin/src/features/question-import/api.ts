@@ -2,6 +2,7 @@ import referenceFixture from "@/features/content/mock/reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { MOCK_CURRENT_AUTHOR, questionStore } from "@/features/questions/mock/store";
 import type { QuestionBody, QuestionDetail } from "@/features/questions/types";
+import { DEFAULT_POINTS, evenScoreTable } from "@/features/questions/editor-form";
 import { createMockStore, MockApiError, mockId, mockRequest } from "@/lib/mock/content-mock";
 import {
   checkImportFile,
@@ -137,19 +138,28 @@ function nextQuestionNumber(): number {
   }, 0);
 }
 
+/**
+ * Điểm của câu nhập vào: tệp chưa có cột Điểm nên câu đơn 1 điểm; câu Tự luận có tiêu chí chấm thì bằng tổng điểm tiêu
+ * chí (để hướng dẫn chấm khớp điểm của câu).
+ */
+function draftPoints(draft: ImportQuestionDraft): number {
+  if (draft.type !== "ESSAY" || draft.rubric.length === 0) return DEFAULT_POINTS;
+  return Math.round(draft.rubric.reduce((sum, criterion) => sum + criterion.points, 0) * 1000) / 1000;
+}
+
 function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: string[]): QuestionBody {
   switch (draft.type) {
     case "MULTIPLE_CHOICE":
-    case "SINGLE_CHOICE":
-      return {
-        type: draft.type,
-        shuffleOptions: true,
-        options: draft.options.map((option, index) => ({
-          id: `${idPrefix}-o${index + 1}`,
-          content: option.content,
-          correct: option.correct,
-        })),
-      };
+    case "SINGLE_CHOICE": {
+      const options = draft.options.map((option, index) => ({
+        id: `${idPrefix}-o${index + 1}`,
+        content: option.content,
+        correct: option.correct,
+      }));
+      return draft.type === "SINGLE_CHOICE"
+        ? { type: "SINGLE_CHOICE", shuffleOptions: true, options }
+        : { type: "MULTIPLE_CHOICE", shuffleOptions: true, options, scoringRule: "ALL_OR_NOTHING" };
+    }
     case "TRUE_FALSE":
       return {
         type: "TRUE_FALSE",
@@ -158,9 +168,18 @@ function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: s
           content: statement.content,
           answer: statement.answer ?? false,
         })),
+        scoreTable: evenScoreTable(draft.statements.length, DEFAULT_POINTS),
       };
     case "FILL_IN":
       return { type: "FILL_IN", blanks: [{ id: `${idPrefix}-b1`, acceptedAnswers: draft.acceptedAnswers }] };
+    case "ESSAY":
+      return {
+        type: "ESSAY",
+        maxPoints: draftPoints(draft),
+        rubric: draft.rubric.map((criterion, index) => ({ id: `${idPrefix}-r${index + 1}`, ...criterion })),
+        sampleAnswer: draft.sampleAnswer,
+        wordLimit: null,
+      };
     default:
       return { type: "QUESTION_SET", passage: draft.content, childIds };
   }
@@ -186,7 +205,7 @@ function questionFromRow(
     subjectCode: draft.subjectCode ?? "",
     gradeCode: draft.gradeCode ?? "",
     difficultyCode: draft.difficultyCode ?? "",
-    points: row.isSetPassage ? Math.max(1, childQuestions.length) : 1,
+    points: row.isSetPassage ? childQuestions.reduce((sum, child) => sum + child.points, 0) || 1 : draftPoints(draft),
     knowledge: draft.knowledge,
     tagCodes: draft.tagCodes,
     hasSolution: Boolean(solution) || childQuestions.some((child) => child.hasSolution),

@@ -33,7 +33,7 @@ describe("chọn dạng câu", () => {
     const user = userEvent.setup();
     renderEn(<QuestionTypePicker />);
     const group = screen.getByRole("group", { name: "Question type" });
-    expect(within(group).getAllByRole("radio")).toHaveLength(6);
+    expect(within(group).getAllByRole("radio")).toHaveLength(7);
     await user.click(within(group).getAllByRole("radio")[1]!);
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(navigation.push).toHaveBeenCalledWith("/questions/new?type=MULTIPLE_CHOICE");

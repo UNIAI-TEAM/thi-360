@@ -31,6 +31,30 @@
     {
       "code": "GEOGRAPHY",
       "name": "Địa lí"
+    },
+    {
+      "code": "VIETNAMESE",
+      "name": "Tiếng Việt"
+    },
+    {
+      "code": "ECON_LAW",
+      "name": "Giáo dục kinh tế và pháp luật"
+    },
+    {
+      "code": "INFORMATICS",
+      "name": "Tin học"
+    },
+    {
+      "code": "TECH_INDUSTRY",
+      "name": "Công nghệ (định hướng công nghiệp)"
+    },
+    {
+      "code": "TECH_AGRICULTURE",
+      "name": "Công nghệ (định hướng nông nghiệp)"
+    },
+    {
+      "code": "SCIENTIFIC_THINKING",
+      "name": "Tư duy khoa học"
     }
   ],
   "grades": [
@@ -45,6 +69,10 @@
     {
       "code": "GRADE_12",
       "name": "Lớp 12"
+    },
+    {
+      "code": "GRADE_MIXED",
+      "name": "Liên lớp"
     }
   ],
   "difficulties": [
@@ -87,6 +115,123 @@
       "name": "Cần rà soát"
     }
   ],
+  "examKinds": [
+    {
+      "code": "HSA",
+      "name": "Đánh giá năng lực ĐHQG Hà Nội (HSA)",
+      "formats": [
+        "FULL",
+        "SINGLE"
+      ],
+      "templateBy": "KIND",
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "scoringDefaults": {
+        "trueFalseTable": null,
+        "multipleChoiceRule": "ALL_OR_NOTHING"
+      }
+    },
+    {
+      "code": "QDA",
+      "name": "Đánh giá năng lực Bộ Quốc phòng (QDA)",
+      "formats": [
+        "FULL",
+        "SINGLE"
+      ],
+      "templateBy": "KIND",
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "scoringDefaults": {
+        "trueFalseTable": null,
+        "multipleChoiceRule": "ALL_OR_NOTHING"
+      }
+    },
+    {
+      "code": "BCA",
+      "name": "Đánh giá tuyển sinh Công an nhân dân (BCA)",
+      "formats": [
+        "FULL"
+      ],
+      "templateBy": "KIND",
+      "timing": "SHARED",
+      "maxScore": 100,
+      "scoringDefaults": {
+        "trueFalseTable": null,
+        "multipleChoiceRule": "ALL_OR_NOTHING"
+      }
+    },
+    {
+      "code": "VACT",
+      "name": "Đánh giá năng lực ĐHQG TP.HCM (V-ACT)",
+      "formats": [
+        "FULL"
+      ],
+      "templateBy": "KIND",
+      "timing": "SHARED",
+      "maxScore": 1200,
+      "scoringDefaults": {
+        "trueFalseTable": null,
+        "multipleChoiceRule": "ALL_OR_NOTHING"
+      }
+    },
+    {
+      "code": "SPT",
+      "name": "Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)",
+      "formats": [
+        "FULL"
+      ],
+      "templateBy": "SUBJECT",
+      "timing": "PER_PART",
+      "maxScore": 10,
+      "scoringDefaults": {
+        "trueFalseTable": [
+          0.1,
+          0.25,
+          0.5,
+          1
+        ],
+        "multipleChoiceRule": "ALL_OR_NOTHING"
+      }
+    },
+    {
+      "code": "SP2E",
+      "name": "Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)",
+      "formats": [
+        "FULL"
+      ],
+      "templateBy": "SUBJECT",
+      "timing": "PER_PART",
+      "maxScore": 10,
+      "scoringDefaults": {
+        "trueFalseTable": [
+          0.1,
+          0.25,
+          0.5,
+          1
+        ],
+        "multipleChoiceRule": "ALL_OR_NOTHING"
+      }
+    },
+    {
+      "code": "THPTQG",
+      "name": "Tốt nghiệp THPT (THPTQG)",
+      "formats": [
+        "FULL"
+      ],
+      "templateBy": "SUBJECT",
+      "timing": "PER_PART",
+      "maxScore": 10,
+      "scoringDefaults": {
+        "trueFalseTable": [
+          0.1,
+          0.25,
+          0.5,
+          1
+        ],
+        "multipleChoiceRule": "ALL_OR_NOTHING"
+      }
+    }
+  ],
   "combinations": [
     {
       "code": "KH-1",
@@ -95,7 +240,8 @@
         "PHYSICS",
         "CHEMISTRY",
         "BIOLOGY"
-      ]
+      ],
+      "examKindCode": "HSA"
     },
     {
       "code": "KH-2",
@@ -104,7 +250,8 @@
         "PHYSICS",
         "CHEMISTRY",
         "HISTORY"
-      ]
+      ],
+      "examKindCode": "HSA"
     },
     {
       "code": "KH-3",
@@ -113,30 +260,117 @@
         "HISTORY",
         "GEOGRAPHY",
         "BIOLOGY"
-      ]
+      ],
+      "examKindCode": "HSA"
     },
     {
-      "code": "KH-4",
-      "name": "Vật lí – Hóa học",
+      "code": "QD01",
+      "name": "QĐ01 · Vật lí – Hóa học",
       "subjectCodes": [
         "PHYSICS",
         "CHEMISTRY"
-      ]
+      ],
+      "examKindCode": "QDA"
     },
     {
-      "code": "KH-5",
-      "name": "Hóa học – Sinh học",
+      "code": "QD02",
+      "name": "QĐ02 · Hóa học – Sinh học",
       "subjectCodes": [
         "CHEMISTRY",
         "BIOLOGY"
-      ]
+      ],
+      "examKindCode": "QDA"
     },
     {
-      "code": "KH-6",
-      "name": "Lịch sử – Địa lí",
+      "code": "QD03",
+      "name": "QĐ03 · Vật lí – Sinh học",
+      "subjectCodes": [
+        "PHYSICS",
+        "BIOLOGY"
+      ],
+      "examKindCode": "QDA"
+    },
+    {
+      "code": "QD04",
+      "name": "QĐ04 · Lịch sử – Địa lí",
       "subjectCodes": [
         "HISTORY",
         "GEOGRAPHY"
+      ],
+      "examKindCode": "QDA"
+    },
+    {
+      "code": "CA1",
+      "name": "CA1 · Vật lí",
+      "subjectCodes": [
+        "PHYSICS"
+      ],
+      "examKindCode": "BCA"
+    },
+    {
+      "code": "CA2",
+      "name": "CA2 · Hóa học",
+      "subjectCodes": [
+        "CHEMISTRY"
+      ],
+      "examKindCode": "BCA"
+    },
+    {
+      "code": "CA3",
+      "name": "CA3 · Sinh học",
+      "subjectCodes": [
+        "BIOLOGY"
+      ],
+      "examKindCode": "BCA"
+    },
+    {
+      "code": "CA4",
+      "name": "CA4 · Địa lí",
+      "subjectCodes": [
+        "GEOGRAPHY"
+      ],
+      "examKindCode": "BCA"
+    }
+  ],
+  "competencies": [
+    {
+      "code": "VACT-NN-TV",
+      "name": "Sử dụng ngôn ngữ · Tiếng Việt",
+      "subjectCode": "VIETNAMESE",
+      "examKindCodes": [
+        "VACT"
+      ]
+    },
+    {
+      "code": "VACT-NN-TA",
+      "name": "Sử dụng ngôn ngữ · Tiếng Anh",
+      "subjectCode": "ENGLISH",
+      "examKindCodes": [
+        "VACT"
+      ]
+    },
+    {
+      "code": "VACT-TOAN",
+      "name": "Toán học",
+      "subjectCode": "MATH",
+      "examKindCodes": [
+        "VACT"
+      ]
+    },
+    {
+      "code": "VACT-TD-LOGIC",
+      "name": "Tư duy khoa học · Logic, phân tích số liệu",
+      "subjectCode": "SCIENTIFIC_THINKING",
+      "examKindCodes": [
+        "VACT"
+      ]
+    },
+    {
+      "code": "VACT-TD-SL",
+      "name": "Tư duy khoa học · Suy luận khoa học",
+      "subjectCode": "SCIENTIFIC_THINKING",
+      "examKindCodes": [
+        "VACT"
       ]
     }
   ],

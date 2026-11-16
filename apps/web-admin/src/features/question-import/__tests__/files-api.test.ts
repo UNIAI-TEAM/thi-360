@@ -93,9 +93,21 @@ describe("API nhập câu hỏi (dữ liệu mẫu)", () => {
     expect(template.filename).toBe("mau-nhap-cau-hoi.csv");
     const text = await readFileText(template.blob);
     const upload = await uploadQuestionFile(file(template.filename, text.replace(BOM, "")));
-    expect(upload).toMatchObject({ fileType: "CSV", sheetName: null, rowCount: 7 });
+    expect(upload).toMatchObject({ fileType: "CSV", sheetName: null, rowCount: 8 });
     const validation = await validateImport({ uploadId: upload.id, mapping: upload.suggestedMapping });
-    expect(validation.summary).toMatchObject({ total: 7, valid: 7, error: 0, duplicate: 0, validSets: 1, validSetChildren: 2 });
+    expect(validation.summary).toMatchObject({ total: 8, valid: 8, error: 0, duplicate: 0, validSets: 1, validSetChildren: 2 });
+    const result = await commitImport({
+      uploadId: upload.id,
+      mapping: upload.suggestedMapping,
+      duplicatePolicy: "SKIP",
+      skipErrors: false,
+    });
+    expect(result.createdCount).toBe(6);
+    // Câu Tự luận có tiêu chí chấm: điểm của câu bằng tổng điểm tiêu chí.
+    const essay = questionStore.all().find((question) => question.sourceCode === "MAU-0008");
+    expect(essay).toMatchObject({ type: "ESSAY", points: 2 });
+    expect(essay?.body).toMatchObject({ type: "ESSAY", maxPoints: 2 });
+    if (essay?.body.type === "ESSAY") expect(essay.body.rubric.map((criterion) => criterion.points)).toEqual([0.25, 0.25, 1, 0.5]);
   });
 
   it("nhập câu hợp lệ thành Nháp, bỏ qua câu trùng, ghi lịch sử", async () => {
@@ -107,19 +119,22 @@ describe("API nhập câu hỏi (dữ liệu mẫu)", () => {
       duplicatePolicy: "SKIP",
       skipErrors: true,
     });
-    // 14 dòng hợp lệ = 11 câu đơn + 1 câu chùm có 2 câu con.
+    // 15 dòng hợp lệ = 12 câu đơn (gồm 1 câu Tự luận chưa có tiêu chí chấm, UNI-2599) + 1 câu chùm có 2 câu con.
     expect(result).toMatchObject({
-      createdCount: 12,
-      singleCount: 11,
+      createdCount: 13,
+      singleCount: 12,
       setCount: 1,
       setChildCount: 2,
       skippedDuplicateCount: 3,
       newVersionCount: 0,
-      errorRowCount: 9,
-      missingKnowledgeCount: 12,
+      errorRowCount: 8,
+      missingKnowledgeCount: 13,
     });
-    expect(result.errors).toHaveLength(9);
-    expect(questionStore.all().length).toBe(before + 12);
+    expect(result.errors).toHaveLength(8);
+    expect(questionStore.all().length).toBe(before + 13);
+    const essay = questionStore.all().find((question) => question.sourceCode === "TOAN11-0016");
+    expect(essay).toMatchObject({ type: "ESSAY", status: "DRAFT", points: 1 });
+    expect(essay?.body).toMatchObject({ type: "ESSAY", maxPoints: 1, rubric: [] });
     const imported = questionStore.all().filter((question) => question.sourceCode?.startsWith("TOAN11-"));
     expect(imported.length).toBeGreaterThan(0);
     expect(imported.every((question) => question.status === "DRAFT" && question.version === 1)).toBe(true);

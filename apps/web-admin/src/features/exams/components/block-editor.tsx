@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  Badge,
   Button,
   Card,
+  Checkbox,
   ConfirmDialog,
   FormField,
   IconButton,
@@ -16,13 +18,21 @@ import { useTranslations } from "next-intl";
 import { useId, useMemo, useState } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
-import { QUESTION_TYPES, type ContentReference, type KnowledgeRef, type QuestionType } from "@/features/content/types";
+import {
+  QUESTION_TYPES,
+  type CompetencyOption,
+  type ContentReference,
+  type KnowledgeRef,
+  type QuestionType,
+  type ScoringDefaults,
+} from "@/features/content/types";
 import type { MatrixAxes } from "../matrix";
 import { validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
 import type { BlockShuffleRule, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
+import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { ChoiceCardGroup } from "./create-exam-fields";
 
 const SHUFFLE_RULES: BlockShuffleRule[] = ["SHUFFLE", "KEEP_ORDER"];
@@ -38,6 +48,10 @@ export interface BlockEditorProps {
   axes: MatrixAxes;
   labels: MatrixLabels;
   reference: ContentReference | undefined;
+  /** Quy tắc chấm mặc định của kỳ thi, nạp khi khối đổi sang Đúng/Sai hoặc Nhiều đáp án. */
+  scoringDefaults: ScoringDefaults | null;
+  /** Năng lực của kỳ thi (V-ACT); rỗng: không có lọc và chiều năng lực. */
+  competencies: readonly CompetencyOption[];
   onChange: (block: QuestionBlock) => void;
   onMove: (offset: -1 | 1) => void;
   onRemove: () => void;
@@ -56,6 +70,8 @@ export function BlockEditor({
   axes,
   labels,
   reference,
+  scoringDefaults,
+  competencies,
   onChange,
   onMove,
   onRemove,
@@ -87,13 +103,35 @@ export function BlockEditor({
 
   const update = (patch: Partial<QuestionBlock>) => onChange({ ...block, ...patch });
   const setType = (questionType: QuestionType) => {
+    // Đổi dạng câu thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
+    const expectedScoring = expectedScoringFor(questionType, scoringDefaults, block.pointsPerQuestion);
     if (questionType === "QUESTION_SET") {
       const setSize = Math.max(block.questionCount, 1);
-      update({ questionType, setCount: 1, setSize, questionCount: setSize });
+      update({ questionType, setCount: 1, setSize, questionCount: setSize, expectedScoring });
     } else {
-      update({ questionType, setCount: null, setSize: null });
+      update({ questionType, setCount: null, setSize: null, expectedScoring });
     }
   };
+
+  // Năng lực chọn được: năng lực của môn khối (V-ACT gắn năng lực theo môn); môn không có năng lực riêng thì mọi năng lực.
+  const subjectCompetencies = competencies.filter((competency) => competency.subjectCode === subjectCode);
+  const competencyChoices = subjectCompetencies.length ? subjectCompetencies : competencies;
+  const selectedCompetencies = block.knowledgeScope.competencyCodes ?? [];
+  const competencyName = (code: string) => competencies.find((item) => item.code === code)?.name ?? code;
+  const setCompetencies = (codes: string[]) => {
+    const knowledgeScope = { ...block.knowledgeScope, competencyCodes: codes };
+    // Chiều năng lực của ma trận đi theo năng lực đã chọn (giữ giá trị của năng lực còn lại).
+    const byCompetency = block.matrix.byCompetency?.length
+      ? (codes.length ? codes : competencyChoices.map((item) => item.code)).map((code) => ({
+          code,
+          value: block.matrix.byCompetency?.find((item) => item.code === code)?.value ?? 0,
+        }))
+      : block.matrix.byCompetency;
+    update({ knowledgeScope, matrix: { ...block.matrix, byCompetency } });
+  };
+  const matrixCompetencies = (selectedCompetencies.length ? selectedCompetencies : competencyChoices.map((item) => item.code)).map(
+    (code) => ({ code, name: competencyName(code) }),
+  );
   const setSets = (setCount: number, setSize: number) =>
     update({ setCount, setSize, questionCount: setCount * setSize });
 
@@ -103,8 +141,9 @@ export function BlockEditor({
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 id={titleId} className="text-h3 font-bold wrap-break-word text-text">
+          <h2 id={titleId} className="flex flex-wrap items-center gap-2 text-h3 font-bold wrap-break-word text-text">
             {t("title", { name: block.name || t("untitled") })}
+            {block.questionType === "ESSAY" && <Badge className="font-medium">{t("manualGrading")}</Badge>}
           </h2>
           <p className="text-caption text-text-muted">{locationText}</p>
         </div>
@@ -184,7 +223,11 @@ export function BlockEditor({
             )}
           </FormField>
         )}
-        <FormField label={t("points")} required>
+        <FormField
+          label={t("points")}
+          required
+          hint={t("pointsTotal", { points: Math.round(block.questionCount * block.pointsPerQuestion * 10_000) / 10_000 })}
+        >
           {(controlProps) => (
             <BlockNumberInput
               {...controlProps}
@@ -254,6 +297,35 @@ export function BlockEditor({
             { value: "ALL", label: t("matchAll") },
           ]}
         />
+        {competencies.length > 0 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-field-label font-medium text-text-secondary">{t("competencies")}</legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {competencyChoices.map((competency) => {
+                const id = `${block.id}-competency-${competency.code}`;
+                return (
+                  <div key={competency.code} className="flex items-center gap-2">
+                    <Checkbox
+                      id={id}
+                      checked={selectedCompetencies.includes(competency.code)}
+                      onCheckedChange={(checked) =>
+                        setCompetencies(
+                          checked === true
+                            ? [...selectedCompetencies, competency.code]
+                            : selectedCompetencies.filter((code) => code !== competency.code),
+                        )
+                      }
+                    />
+                    <label htmlFor={id} className="cursor-pointer text-body text-text">
+                      {competency.name}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-caption text-text-muted">{t("competenciesHint")}</p>
+          </fieldset>
+        )}
         <div className="flex items-start gap-3">
           <Switch
             id={descendantsId}
@@ -274,11 +346,18 @@ export function BlockEditor({
         </div>
       </fieldset>
 
+      <BlockScoringEditor
+        block={block}
+        defaults={scoringDefaults}
+        onChange={(expectedScoring) => update({ expectedScoring })}
+      />
+
       <BlockMatrixEditor
         key={block.id}
         block={block}
         axes={axes}
         labels={labels}
+        competencies={competencies.length ? matrixCompetencies : []}
         onChange={(matrix) => update({ matrix })}
         available={availableQuery.data}
         availableState={availableState}

@@ -5,10 +5,12 @@ import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
-import { emptyStatement, type QuestionEditorValues } from "../editor-form";
+import { DEFAULT_POINTS, emptyStatement, evenScoreTableText, parsePoints, type QuestionEditorValues } from "../editor-form";
+import { ScoreTableEditor } from "./question-editor-score-table";
 import {
   FieldErrorText,
   GroupError,
+  pointsPathOf,
   RowActions,
   statementLetter,
   useAnnounce,
@@ -16,15 +18,26 @@ import {
   type BodyPath,
 } from "./question-editor-shared";
 
-/** Các ý của câu Đúng / Sai: mỗi ý một nhóm radio Đúng/Sai (canvas `CauHoiDungSaiForm`). */
+/**
+ * Các ý của câu Đúng / Sai: mỗi ý một nhóm radio Đúng/Sai (canvas `CauHoiDungSaiForm`), kèm bảng điểm theo số ý đúng
+ * (UNI-2599). Thêm hoặc xóa ý thì bảng điểm chia đều lại theo số ý mới.
+ */
 export function StatementsEditor({ prefix }: { prefix: BodyPath }) {
   const t = useTranslations("questions.editor.statements");
+  const tTable = useTranslations("questions.editor.scoreTable");
   const announce = useAnnounce();
   const groupId = useId();
   const addRef = useRef<HTMLButtonElement>(null);
-  const { control } = useFormContext<QuestionEditorValues>();
+  const { control, getValues, setValue } = useFormContext<QuestionEditorValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: `${prefix}.statements`, keyName: "rowKey" });
   const groupError = useEditorError(`${prefix}.statements`);
+
+  /** Bảng điểm theo số ý mới, chia đều theo điểm của câu. */
+  const reflowTable = (count: number) => {
+    const points = parsePoints(getValues(pointsPathOf(prefix)));
+    setValue(`${prefix}.scoreTable`, evenScoreTableText(count, points > 0 ? points : DEFAULT_POINTS), { shouldDirty: true });
+    return tTable("reflowed", { count });
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -43,7 +56,7 @@ export function StatementsEditor({ prefix }: { prefix: BodyPath }) {
             }}
             onRemove={() => {
               remove(index);
-              announce(t("removed", { letter: statementLetter(index) }));
+              announce(`${t("removed", { letter: statementLetter(index) })} ${reflowTable(fields.length - 1)}`);
               addRef.current?.focus();
             }}
           />
@@ -57,12 +70,13 @@ export function StatementsEditor({ prefix }: { prefix: BodyPath }) {
         className="self-start"
         onClick={() => {
           append(emptyStatement(), { shouldFocus: true, focusName: `${prefix}.statements.${fields.length}.content` });
-          announce(t("added", { letter: statementLetter(fields.length) }));
+          announce(`${t("added", { letter: statementLetter(fields.length) })} ${reflowTable(fields.length + 1)}`);
         }}
       >
         <Plus aria-hidden />
         {t("add")}
       </Button>
+      <ScoreTableEditor prefix={prefix} />
     </div>
   );
 }

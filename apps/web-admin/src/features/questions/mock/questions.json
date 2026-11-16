@@ -192,7 +192,8 @@
             "correct": false
           }
         ],
-        "shuffleOptions": true
+        "shuffleOptions": true,
+        "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
       "children": []
@@ -299,6 +300,11 @@
             "content": "(c)' = 0 với c là hằng số",
             "answer": true
           }
+        ],
+        "scoreTable": [
+          0.3333,
+          0.6667,
+          1.0
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
@@ -652,6 +658,11 @@
             "content": "Đồ thị cắt trục tung tại (0; 3)",
             "answer": true
           }
+        ],
+        "scoreTable": [
+          0.3333,
+          0.6667,
+          1.0
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
@@ -714,7 +725,8 @@
             "correct": false
           }
         ],
-        "shuffleOptions": true
+        "shuffleOptions": true,
+        "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
       "children": []
@@ -1049,6 +1061,10 @@
             "content": "Thủy phân trong môi trường axit luôn hoàn toàn",
             "answer": false
           }
+        ],
+        "scoreTable": [
+          0.5,
+          1.0
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
@@ -1177,7 +1193,8 @@
             "correct": false
           }
         ],
-        "shuffleOptions": true
+        "shuffleOptions": true,
+        "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
       "children": []
@@ -1768,6 +1785,570 @@
           "children": []
         }
       ]
+    },
+    {
+      "id": "q-8001",
+      "code": "CH-008001",
+      "type": "ESSAY",
+      "status": "READY",
+      "contentPreview": "Viết đoạn văn nghị luận (khoảng 200 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của lòng biết ơn trong cuộc sống.",
+      "subjectCode": "LITERATURE",
+      "gradeCode": "GRADE_12",
+      "difficultyCode": "APPLICATION",
+      "points": 2,
+      "knowledge": [
+        {
+          "nodeId": "kn-2V1-1-1",
+          "code": "2V1-1-1",
+          "name": "Luận điểm và lí lẽ",
+          "primary": true
+        }
+      ],
+      "tagCodes": [],
+      "hasSolution": true,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-ngoc",
+        "name": "Nguyễn Thị Ngọc"
+      },
+      "createdAt": "2026-10-05T08:30:00+07:00",
+      "updatedAt": "2026-10-21T15:10:00+07:00",
+      "content": "Viết đoạn văn nghị luận (khoảng 200 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của lòng biết ơn trong cuộc sống.",
+      "body": {
+        "type": "ESSAY",
+        "maxPoints": 2,
+        "rubric": [
+          {
+            "id": "q-8001-r1",
+            "description": "Đảm bảo hình thức đoạn văn khoảng 200 chữ",
+            "points": 0.25
+          },
+          {
+            "id": "q-8001-r2",
+            "description": "Xác định đúng vấn đề nghị luận: ý nghĩa của lòng biết ơn",
+            "points": 0.25
+          },
+          {
+            "id": "q-8001-r3",
+            "description": "Triển khai vấn đề: lí lẽ rõ ràng, dẫn chứng phù hợp",
+            "points": 1
+          },
+          {
+            "id": "q-8001-r4",
+            "description": "Chính tả, ngữ pháp; cách diễn đạt mới mẻ, sáng tạo",
+            "points": 0.5
+          }
+        ],
+        "sampleAnswer": "Lòng biết ơn là sự ghi nhớ và trân trọng những gì người khác đã làm cho mình. Biết ơn giúp ta sống tử tế, gắn kết với gia đình, thầy cô, cộng đồng và có thêm động lực để sống tốt hơn…",
+        "wordLimit": 200
+      },
+      "solution": "Chấp nhận nhiều cách triển khai, miễn hợp lí và thuyết phục.",
+      "children": []
+    },
+    {
+      "id": "q-8002",
+      "code": "CH-008002",
+      "type": "ESSAY",
+      "status": "DRAFT",
+      "contentPreview": "Viết bài văn nghị luận (khoảng 600 chữ) phân tích một truyện ngắn hiện đại Việt Nam mà anh/chị đã học, làm rõ giá trị nhân đạo của tác phẩm.",
+      "subjectCode": "LITERATURE",
+      "gradeCode": "GRADE_12",
+      "difficultyCode": "HIGH_APPLICATION",
+      "points": 4,
+      "knowledge": [
+        {
+          "nodeId": "kn-2V1-1-1",
+          "code": "2V1-1-1",
+          "name": "Luận điểm và lí lẽ",
+          "primary": true
+        }
+      ],
+      "tagCodes": [],
+      "hasSolution": false,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-lan",
+        "name": "Phạm Mai Lan"
+      },
+      "createdAt": "2026-10-08T09:00:00+07:00",
+      "updatedAt": "2026-10-22T10:45:00+07:00",
+      "content": "Viết bài văn nghị luận (khoảng 600 chữ) phân tích một truyện ngắn hiện đại Việt Nam mà anh/chị đã học, làm rõ giá trị nhân đạo của tác phẩm.",
+      "body": {
+        "type": "ESSAY",
+        "maxPoints": 4,
+        "rubric": [
+          {
+            "id": "q-8002-r1",
+            "description": "Đảm bảo cấu trúc bài văn nghị luận: mở bài, thân bài, kết bài",
+            "points": 0.5
+          },
+          {
+            "id": "q-8002-r2",
+            "description": "Xác định đúng vấn đề: giá trị nhân đạo của tác phẩm",
+            "points": 0.5
+          },
+          {
+            "id": "q-8002-r3",
+            "description": "Phân tích giá trị nhân đạo qua nhân vật, chi tiết, tình huống",
+            "points": 2
+          }
+        ],
+        "sampleAnswer": null,
+        "wordLimit": 600
+      },
+      "solution": null,
+      "children": []
+    },
+    {
+      "id": "q-8003",
+      "code": "CH-008003",
+      "type": "QUESTION_SET",
+      "status": "READY",
+      "contentPreview": "Đọc hiểu: đoạn trích về việc đọc sách · 2 câu con tự luận",
+      "subjectCode": "LITERATURE",
+      "gradeCode": "GRADE_12",
+      "difficultyCode": "COMPREHENSION",
+      "points": 1.5,
+      "knowledge": [
+        {
+          "nodeId": "kn-2V1-2-1",
+          "code": "2V1-2-1",
+          "name": "Thông tin chính",
+          "primary": true
+        }
+      ],
+      "tagCodes": [],
+      "hasSolution": false,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-hung",
+        "name": "Trần Văn Hùng"
+      },
+      "createdAt": "2026-10-10T09:00:00+07:00",
+      "updatedAt": "2026-10-23T09:00:00+07:00",
+      "content": "Đọc đoạn trích: “Mỗi ngày đọc vài trang sách là cách ta trò chuyện với những người đi trước. Sách không cho ta câu trả lời có sẵn, nhưng giúp ta biết đặt câu hỏi đúng.” và trả lời các câu hỏi.",
+      "body": {
+        "type": "QUESTION_SET",
+        "passage": "Đọc đoạn trích: “Mỗi ngày đọc vài trang sách là cách ta trò chuyện với những người đi trước. Sách không cho ta câu trả lời có sẵn, nhưng giúp ta biết đặt câu hỏi đúng.” và trả lời các câu hỏi.",
+        "childIds": [
+          "q-8003-c1",
+          "q-8003-c2"
+        ]
+      },
+      "solution": null,
+      "children": [
+        {
+          "id": "q-8003-c1",
+          "code": "CH-008003-1",
+          "type": "ESSAY",
+          "status": "READY",
+          "contentPreview": "Xác định phương thức biểu đạt chính của đoạn trích.",
+          "subjectCode": "LITERATURE",
+          "gradeCode": "GRADE_12",
+          "difficultyCode": "RECOGNITION",
+          "points": 0.5,
+          "knowledge": [
+            {
+              "nodeId": "kn-2V1-2-1",
+              "code": "2V1-2-1",
+              "name": "Thông tin chính",
+              "primary": true
+            }
+          ],
+          "tagCodes": [],
+          "hasSolution": false,
+          "version": 1,
+          "usedInExamCount": 0,
+          "sourceCode": null,
+          "createdBy": {
+            "id": "u-hung",
+            "name": "Trần Văn Hùng"
+          },
+          "createdAt": "2026-10-10T09:00:00+07:00",
+          "updatedAt": "2026-10-23T09:00:00+07:00",
+          "content": "Xác định phương thức biểu đạt chính của đoạn trích.",
+          "body": {
+            "type": "ESSAY",
+            "maxPoints": 0.5,
+            "rubric": [
+              {
+                "id": "q-8003-c1-r1",
+                "description": "Nêu đúng phương thức biểu đạt chính: nghị luận",
+                "points": 0.5
+              }
+            ],
+            "sampleAnswer": "Nghị luận.",
+            "wordLimit": null
+          },
+          "solution": null,
+          "children": []
+        },
+        {
+          "id": "q-8003-c2",
+          "code": "CH-008003-2",
+          "type": "ESSAY",
+          "status": "READY",
+          "contentPreview": "Theo anh/chị, thông điệp ý nghĩa nhất của đoạn trích là gì? Vì sao?",
+          "subjectCode": "LITERATURE",
+          "gradeCode": "GRADE_12",
+          "difficultyCode": "COMPREHENSION",
+          "points": 1,
+          "knowledge": [
+            {
+              "nodeId": "kn-2V1-2-1",
+              "code": "2V1-2-1",
+              "name": "Thông tin chính",
+              "primary": true
+            }
+          ],
+          "tagCodes": [],
+          "hasSolution": false,
+          "version": 1,
+          "usedInExamCount": 0,
+          "sourceCode": null,
+          "createdBy": {
+            "id": "u-hung",
+            "name": "Trần Văn Hùng"
+          },
+          "createdAt": "2026-10-10T09:00:00+07:00",
+          "updatedAt": "2026-10-23T09:00:00+07:00",
+          "content": "Theo anh/chị, thông điệp ý nghĩa nhất của đoạn trích là gì? Vì sao?",
+          "body": {
+            "type": "ESSAY",
+            "maxPoints": 1,
+            "rubric": [
+              {
+                "id": "q-8003-c2-r1",
+                "description": "Nêu được một thông điệp phù hợp với đoạn trích",
+                "points": 0.5
+              },
+              {
+                "id": "q-8003-c2-r2",
+                "description": "Lí giải hợp lí, thuyết phục",
+                "points": 0.5
+              }
+            ],
+            "sampleAnswer": "Thông điệp: đọc sách giúp ta biết đặt câu hỏi đúng, vì…",
+            "wordLimit": 100
+          },
+          "solution": null,
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "q-8004",
+      "code": "CH-008004",
+      "type": "TRUE_FALSE",
+      "status": "READY",
+      "contentPreview": "Cho hàm số y = x³ − 3x. Xét tính đúng sai của các khẳng định sau.",
+      "subjectCode": "MATH",
+      "gradeCode": "GRADE_12",
+      "difficultyCode": "COMPREHENSION",
+      "points": 1,
+      "knowledge": [
+        {
+          "nodeId": "kn-2D1-1-1",
+          "code": "2D1-1-1",
+          "name": "Xét tính đơn điệu",
+          "primary": true
+        }
+      ],
+      "tagCodes": [],
+      "hasSolution": true,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-ngoc",
+        "name": "Nguyễn Thị Ngọc"
+      },
+      "createdAt": "2026-10-06T10:00:00+07:00",
+      "updatedAt": "2026-10-24T14:20:00+07:00",
+      "content": "Cho hàm số y = x³ − 3x. Xét tính đúng sai của các khẳng định sau.",
+      "body": {
+        "type": "TRUE_FALSE",
+        "statements": [
+          {
+            "id": "q-8004-s1",
+            "content": "Hàm số đồng biến trên khoảng (1; +∞)",
+            "answer": true
+          },
+          {
+            "id": "q-8004-s2",
+            "content": "Hàm số nghịch biến trên khoảng (−1; 1)",
+            "answer": true
+          },
+          {
+            "id": "q-8004-s3",
+            "content": "Hàm số đạt cực đại tại x = 1",
+            "answer": false
+          },
+          {
+            "id": "q-8004-s4",
+            "content": "Đồ thị hàm số đi qua gốc tọa độ",
+            "answer": true
+          }
+        ],
+        "scoreTable": [
+          0.1,
+          0.25,
+          0.5,
+          1
+        ]
+      },
+      "solution": "y' = 3x² − 3, y' = 0 khi x = ±1; lập bảng biến thiên.",
+      "children": []
+    },
+    {
+      "id": "q-8005",
+      "code": "CH-008005",
+      "type": "TRUE_FALSE",
+      "status": "READY",
+      "contentPreview": "Một vật dao động điều hòa với phương trình x = 4cos(2πt) cm. Xét tính đúng sai của các khẳng định sau.",
+      "subjectCode": "PHYSICS",
+      "gradeCode": "GRADE_12",
+      "difficultyCode": "APPLICATION",
+      "points": 1,
+      "knowledge": [
+        {
+          "nodeId": "kn-2L1-1-1",
+          "code": "2L1-1-1",
+          "name": "Phương trình dao động",
+          "primary": true
+        }
+      ],
+      "tagCodes": [],
+      "hasSolution": true,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-hung",
+        "name": "Trần Văn Hùng"
+      },
+      "createdAt": "2026-10-07T08:15:00+07:00",
+      "updatedAt": "2026-10-25T09:40:00+07:00",
+      "content": "Một vật dao động điều hòa với phương trình x = 4cos(2πt) cm. Xét tính đúng sai của các khẳng định sau.",
+      "body": {
+        "type": "TRUE_FALSE",
+        "statements": [
+          {
+            "id": "q-8005-s1",
+            "content": "Biên độ dao động là 4 cm",
+            "answer": true
+          },
+          {
+            "id": "q-8005-s2",
+            "content": "Chu kì dao động là 2 s",
+            "answer": false
+          },
+          {
+            "id": "q-8005-s3",
+            "content": "Tại t = 0 vật ở vị trí biên dương",
+            "answer": true
+          },
+          {
+            "id": "q-8005-s4",
+            "content": "Tốc độ cực đại của vật là 8π cm/s",
+            "answer": true
+          }
+        ],
+        "scoreTable": [
+          0.1,
+          0.25,
+          0.5,
+          1
+        ]
+      },
+      "solution": "ω = 2π rad/s nên T = 1 s; vmax = ωA = 8π cm/s.",
+      "children": []
+    },
+    {
+      "id": "q-8006",
+      "code": "CH-008006",
+      "type": "MULTIPLE_CHOICE",
+      "status": "READY",
+      "contentPreview": "Hàm số y = x³ − 3x + 2 có những tính chất nào sau đây? (Có thể có nhiều đáp án đúng.)",
+      "subjectCode": "MATH",
+      "gradeCode": "GRADE_12",
+      "difficultyCode": "APPLICATION",
+      "points": 1,
+      "knowledge": [
+        {
+          "nodeId": "kn-2D1-2-1",
+          "code": "2D1-2-1",
+          "name": "Cực trị của hàm số",
+          "primary": true
+        }
+      ],
+      "tagCodes": [],
+      "hasSolution": true,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-lan",
+        "name": "Phạm Mai Lan"
+      },
+      "createdAt": "2026-10-09T13:00:00+07:00",
+      "updatedAt": "2026-10-26T11:05:00+07:00",
+      "content": "Hàm số y = x³ − 3x + 2 có những tính chất nào sau đây? (Có thể có nhiều đáp án đúng.)",
+      "body": {
+        "type": "MULTIPLE_CHOICE",
+        "options": [
+          {
+            "id": "q-8006-o1",
+            "content": "Đạt cực đại tại x = −1",
+            "correct": true
+          },
+          {
+            "id": "q-8006-o2",
+            "content": "Đạt cực tiểu tại x = 1",
+            "correct": true
+          },
+          {
+            "id": "q-8006-o3",
+            "content": "Đồng biến trên ℝ",
+            "correct": false
+          },
+          {
+            "id": "q-8006-o4",
+            "content": "Giá trị cực đại bằng 2",
+            "correct": false
+          }
+        ],
+        "shuffleOptions": true,
+        "scoringRule": "PARTIAL"
+      },
+      "solution": "y' = 3x² − 3; cực đại tại x = −1 (y = 4), cực tiểu tại x = 1 (y = 0).",
+      "children": []
+    },
+    {
+      "id": "q-8007",
+      "code": "CH-008007",
+      "type": "SINGLE_CHOICE",
+      "status": "READY",
+      "contentPreview": "Choose the word closest in meaning to “abundant” in the sentence: “The region has abundant natural resources.”",
+      "subjectCode": "ENGLISH",
+      "gradeCode": "GRADE_MIXED",
+      "difficultyCode": "COMPREHENSION",
+      "points": 1,
+      "knowledge": [
+        {
+          "nodeId": "kn-2E1-1-3",
+          "code": "2E1-1-3",
+          "name": "Vocabulary in context",
+          "primary": true
+        }
+      ],
+      "competencyCode": "VACT-NN-TA",
+      "tagCodes": [],
+      "hasSolution": true,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-ngoc",
+        "name": "Nguyễn Thị Ngọc"
+      },
+      "createdAt": "2026-10-11T09:30:00+07:00",
+      "updatedAt": "2026-10-27T16:00:00+07:00",
+      "content": "Choose the word closest in meaning to “abundant” in the sentence: “The region has abundant natural resources.”",
+      "body": {
+        "type": "SINGLE_CHOICE",
+        "options": [
+          {
+            "id": "q-8007-o1",
+            "content": "plentiful",
+            "correct": true
+          },
+          {
+            "id": "q-8007-o2",
+            "content": "scarce",
+            "correct": false
+          },
+          {
+            "id": "q-8007-o3",
+            "content": "expensive",
+            "correct": false
+          },
+          {
+            "id": "q-8007-o4",
+            "content": "hidden",
+            "correct": false
+          }
+        ],
+        "shuffleOptions": true
+      },
+      "solution": "“Abundant” nghĩa là dồi dào, phong phú.",
+      "children": []
+    },
+    {
+      "id": "q-8008",
+      "code": "CH-008008",
+      "type": "SINGLE_CHOICE",
+      "status": "READY",
+      "contentPreview": "Tập xác định của hàm số y = √(x − 1) + 1/(x − 3) là",
+      "subjectCode": "MATH",
+      "gradeCode": "GRADE_MIXED",
+      "difficultyCode": "APPLICATION",
+      "points": 1,
+      "knowledge": [
+        {
+          "nodeId": "kn-0D2-1-1",
+          "code": "0D2-1-1",
+          "name": "Tập xác định của hàm số",
+          "primary": true
+        }
+      ],
+      "competencyCode": "VACT-TOAN",
+      "tagCodes": [],
+      "hasSolution": true,
+      "version": 1,
+      "usedInExamCount": 0,
+      "sourceCode": null,
+      "createdBy": {
+        "id": "u-lan",
+        "name": "Phạm Mai Lan"
+      },
+      "createdAt": "2026-10-12T10:10:00+07:00",
+      "updatedAt": "2026-10-28T08:50:00+07:00",
+      "content": "Tập xác định của hàm số y = √(x − 1) + 1/(x − 3) là",
+      "body": {
+        "type": "SINGLE_CHOICE",
+        "options": [
+          {
+            "id": "q-8008-o1",
+            "content": "[1; +∞) \\ {3}",
+            "correct": true
+          },
+          {
+            "id": "q-8008-o2",
+            "content": "(1; +∞)",
+            "correct": false
+          },
+          {
+            "id": "q-8008-o3",
+            "content": "[1; 3)",
+            "correct": false
+          },
+          {
+            "id": "q-8008-o4",
+            "content": "ℝ \\ {3}",
+            "correct": false
+          }
+        ],
+        "shuffleOptions": true
+      },
+      "solution": "Điều kiện x − 1 ≥ 0 và x ≠ 3.",
+      "children": []
     }
   ]
 }

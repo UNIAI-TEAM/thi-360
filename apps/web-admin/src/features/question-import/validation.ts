@@ -10,6 +10,7 @@ import {
   type ColumnMapping,
   type ImportColumn,
   type ImportDictionary,
+  type ImportDraftCriterion,
   type ImportDraftOption,
   type ImportDraftStatement,
   type ImportField,
@@ -36,6 +37,9 @@ import {
  * - Mã nguồn trùng trong tệp: dòng sau là lỗi. Trùng với câu đã có trong ngân hàng: dòng là "trùng", xử lý theo lựa
  *   chọn ở bước 2. Chỉ xét trùng ngân hàng cho câu đơn và dòng ngữ liệu; câu con đi theo dòng ngữ liệu của nó.
  * - Thiếu kiến thức và nhãn không có trong danh mục chỉ là cảnh báo, vẫn nhập.
+ * - Tự luận (UNI-2599): cột Đáp án (nếu có) là bài làm mẫu; cột Tiêu chí chấm ghi "Mô tả: điểm", các tiêu chí cách
+ *   nhau dấu ; hoặc xuống dòng. Để trống thì cảnh báo, câu vẫn nhập ở Nháp và chưa chuyển Sẵn sàng được tới khi bổ
+ *   sung tiêu chí; viết sai thì lỗi.
  */
 
 export interface ExistingQuestionRef {
@@ -53,7 +57,7 @@ export interface ValidateImportRowsInput {
   dictionary: ImportDictionary;
 }
 
-const WARNING_CODES: ReadonlySet<ImportIssueCode> = new Set(["KNOWLEDGE_MISSING", "TAG_UNKNOWN"]);
+const WARNING_CODES: ReadonlySet<ImportIssueCode> = new Set(["KNOWLEDGE_MISSING", "TAG_UNKNOWN", "RUBRIC_MISSING"]);
 
 /** Trường câu con lấy theo dòng ngữ liệu khi để trống. */
 const INHERITED_FIELDS = ["subject", "grade", "difficulty", "knowledge"] as const satisfies readonly ImportField[];
@@ -132,6 +136,27 @@ function parseLetters(value: string): OptionLetter[] | null {
   return letters;
 }
 
+const CRITERION_RE = /^(.+?)\s*(?:[:=]\s*(\d+(?:[.,]\d+)?)|\(\s*(\d+(?:[.,]\d+)?)\s*\))\s*$/u;
+
+/**
+ * Cột Tiêu chí chấm thành danh sách tiêu chí: mỗi tiêu chí "Mô tả: 0,5" hoặc "Mô tả (0,5)", cách nhau dấu ; hoặc xuống
+ * dòng. Trả `{ invalid }` là phần đầu tiên không đọc được (thiếu điểm hoặc điểm không lớn hơn 0).
+ */
+export function parseRubric(value: string): { criteria: ImportDraftCriterion[]; invalid: string | null } {
+  const criteria: ImportDraftCriterion[] = [];
+  const parts = value
+    .split(/[;\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  for (const part of parts) {
+    const match = CRITERION_RE.exec(part);
+    const points = Number((match?.[2] ?? match?.[3] ?? "").replace(",", "."));
+    if (!match || !(points > 0)) return { criteria, invalid: part };
+    criteria.push({ description: match[1]!.trim(), points });
+  }
+  return { criteria, invalid: null };
+}
+
 function flattenKnowledge(nodes: readonly KnowledgeNode[], into: KnowledgeNode[] = []): KnowledgeNode[] {
   for (const node of nodes) {
     into.push(node);
@@ -147,6 +172,8 @@ function emptyDraft(): ImportQuestionDraft {
     options: [],
     statements: [],
     acceptedAnswers: [],
+    rubric: [],
+    sampleAnswer: null,
     solution: null,
     subjectCode: null,
     gradeCode: null,
@@ -321,6 +348,14 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
         .split("|")
         .map((answer) => answer.trim())
         .filter(Boolean);
+    } else if (type === "ESSAY") {
+      draft.sampleAnswer = raw.correctAnswer || null;
+      if (!raw.rubric) add("RUBRIC_MISSING", "rubric");
+      else {
+        const { criteria, invalid } = parseRubric(raw.rubric);
+        if (invalid !== null) add("RUBRIC_INVALID", "rubric", { value: invalid });
+        draft.rubric = criteria;
+      }
     }
 
     for (const field of FORMULA_FIELDS) {

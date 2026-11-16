@@ -1,4 +1,5 @@
 import {
+  ClipboardCheck,
   ClipboardList,
   FileQuestion,
   GraduationCap,
@@ -87,6 +88,14 @@ export const NAVIGATION: readonly NavGroup[] = [
         id: "exams",
         href: "/exams",
         icon: ClipboardList,
+        permission: null,
+        mockOnly: true,
+      },
+      {
+        // Chưa có mã quyền chấm bài (UNI-2604): hiện như các màn dữ liệu mẫu khác; khi có backend đặt mã quyền thật.
+        id: "grading",
+        href: "/grading",
+        icon: ClipboardCheck,
         permission: null,
         mockOnly: true,
       },

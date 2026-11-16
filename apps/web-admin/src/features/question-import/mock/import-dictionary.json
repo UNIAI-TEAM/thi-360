@@ -14,7 +14,8 @@
     "difficulty": ["Mức độ", "Độ khó"],
     "knowledge": ["Kiến thức", "Kiến thức (MAPID)", "MAPID", "Mã kiến thức"],
     "tags": ["Nhãn"],
-    "setCode": ["Mã chùm", "Mã câu chùm", "Set code"]
+    "setCode": ["Mã chùm", "Mã câu chùm", "Set code"],
+    "rubric": ["Tiêu chí chấm", "Hướng dẫn chấm", "Thang chấm", "Rubric"]
   },
   "ignoreHeaders": ["Ghi chú nội bộ", "Ghi chú", "STT"],
   "typeAliases": {
@@ -23,7 +24,8 @@
     "TRUE_FALSE": ["Đúng / Sai", "Đúng/Sai", "Đúng sai", "True / False", "True/False"],
     "FILL_IN": ["Điền đáp án", "Điền", "Short answer", "Fill in"],
     "DRAG_DROP": ["Kéo thả", "Drag and drop"],
-    "QUESTION_SET": ["Câu chùm", "Question set"]
+    "QUESTION_SET": ["Câu chùm", "Question set"],
+    "ESSAY": ["Tự luận", "Câu tự luận", "Tự luận (chấm tay)", "Essay"]
   },
   "trueTokens": ["Đ", "Đúng", "T", "True"],
   "falseTokens": ["S", "Sai", "F", "False"]

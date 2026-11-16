@@ -8,6 +8,7 @@ import {
   Layers,
   ListChecks,
   Move,
+  PenLine,
   SquareCheckBig,
   TextCursorInput,
   type LucideIcon,
@@ -26,6 +27,7 @@ const TYPE_ICON: Record<QuestionType, LucideIcon> = {
   FILL_IN: TextCursorInput,
   DRAG_DROP: Move,
   QUESTION_SET: Layers,
+  ESSAY: PenLine,
 };
 
 export function questionCreateHref(type: QuestionType): string {

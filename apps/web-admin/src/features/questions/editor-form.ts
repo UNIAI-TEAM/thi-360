@@ -1,4 +1,4 @@
-import type { KnowledgeRef, QuestionType } from "@/features/content/types";
+import type { KnowledgeRef, MultipleChoiceRule, QuestionType } from "@/features/content/types";
 import { normalizePrimary } from "@/features/content/knowledge-tree";
 import type { ChildQuestionType, SaveChildQuestionRequest, SaveQuestionRequest } from "./editor-types";
 import type { QuestionBody, QuestionDetail } from "./types";
@@ -44,13 +44,28 @@ export interface EditorDistractor {
   content: string;
 }
 
+/** Một tiêu chí chấm của câu Tự luận; điểm là chuỗi như ô Điểm của câu. */
+export interface EditorCriterion {
+  id: string;
+  description: string;
+  points: string;
+}
+
 export interface EditorBody {
   options: EditorOption[];
   shuffleOptions: boolean;
+  /** Nhiều đáp án: đúng hết mới có điểm hay chấm từng phần. */
+  scoringRule: MultipleChoiceRule;
   statements: EditorStatement[];
+  /** Đúng/Sai: điểm khi đúng 1, 2, … ý (chuỗi như ô Điểm); rỗng: chia đều theo ý. */
+  scoreTable: string[];
   blanks: EditorBlank[];
   zones: EditorZone[];
   distractors: EditorDistractor[];
+  /** Tự luận: tiêu chí chấm, bài làm mẫu, số chữ gợi ý (chuỗi rỗng: không giới hạn). */
+  rubric: EditorCriterion[];
+  sampleAnswer: string;
+  wordLimit: string;
 }
 
 export interface EditorChild {
@@ -70,6 +85,8 @@ export interface QuestionEditorValues {
   subjectCode: string;
   gradeCode: string;
   difficultyCode: string;
+  /** Năng lực (V-ACT); chuỗi rỗng: không gắn. */
+  competencyCode: string;
   /** Chuỗi để giữ đúng điều người dùng gõ ("1,5"); đổi sang số khi lưu. */
   points: string;
   knowledge: KnowledgeRef[];
@@ -118,7 +135,14 @@ export function emptyDistractor(): EditorDistractor {
   return { id: draftRowId("i"), content: "" };
 }
 
-/** Phần thân trống theo dạng: 4 phương án, 2 ý Đúng/Sai, 2 ô thả; Điền đáp án thêm ô cùng lúc với chỗ trống. */
+export function emptyCriterion(points = ""): EditorCriterion {
+  return { id: draftRowId("r"), description: "", points };
+}
+
+/**
+ * Phần thân trống theo dạng: 4 phương án, 2 ý Đúng/Sai kèm bảng điểm chia đều, 2 ô thả, 1 tiêu chí chấm mang đủ điểm
+ * mặc định; Điền đáp án thêm ô cùng lúc với chỗ trống.
+ */
 export function emptyBody(type: QuestionType): EditorBody {
   return {
     options:
@@ -126,10 +150,15 @@ export function emptyBody(type: QuestionType): EditorBody {
         ? [emptyOption(), emptyOption(), emptyOption(), emptyOption()]
         : [],
     shuffleOptions: true,
+    scoringRule: "ALL_OR_NOTHING",
     statements: type === "TRUE_FALSE" ? [emptyStatement(), emptyStatement()] : [],
+    scoreTable: type === "TRUE_FALSE" ? evenScoreTableText(2, DEFAULT_POINTS) : [],
     blanks: [],
     zones: type === "DRAG_DROP" ? [emptyZone(), emptyZone()] : [],
     distractors: [],
+    rubric: type === "ESSAY" ? [emptyCriterion(formatPoints(DEFAULT_POINTS))] : [],
+    sampleAnswer: "",
+    wordLimit: "",
   };
 }
 
@@ -151,6 +180,7 @@ export function emptyEditorValues(type: QuestionType): QuestionEditorValues {
     subjectCode: "",
     gradeCode: "",
     difficultyCode: "",
+    competencyCode: "",
     points: String(DEFAULT_POINTS),
     knowledge: [],
     tagCodes: [],
@@ -161,7 +191,8 @@ export function emptyEditorValues(type: QuestionType): QuestionEditorValues {
   };
 }
 
-function formatPoints(points: number): string {
+/** 1.5 → "1,5" (cách viết của ô Điểm). */
+export function formatPoints(points: number): string {
   return String(points).replace(".", ",");
 }
 
@@ -176,11 +207,17 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
   const base = emptyBody("QUESTION_SET");
   switch (body.type) {
     case "SINGLE_CHOICE":
+      return {
+        ...base,
+        options: body.options.map((option) => ({ ...option })),
+        shuffleOptions: body.shuffleOptions,
+      };
     case "MULTIPLE_CHOICE":
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
         shuffleOptions: body.shuffleOptions,
+        scoringRule: body.scoringRule,
       };
     case "TRUE_FALSE":
       return {
@@ -190,6 +227,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
           content: statement.content,
           answer: statement.answer ? "TRUE" : "FALSE",
         })),
+        scoreTable: body.scoreTable.map(formatPoints),
       };
     case "FILL_IN":
       return {
@@ -215,6 +253,17 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
     }
     case "QUESTION_SET":
       return base;
+    case "ESSAY":
+      return {
+        ...base,
+        rubric: body.rubric.map((criterion) => ({
+          id: criterion.id,
+          description: criterion.description,
+          points: formatPoints(criterion.points),
+        })),
+        sampleAnswer: body.sampleAnswer ?? "",
+        wordLimit: body.wordLimit === null ? "" : String(body.wordLimit),
+      };
   }
 }
 
@@ -224,6 +273,7 @@ export function toEditorValues(question: QuestionDetail): QuestionEditorValues {
     subjectCode: question.subjectCode,
     gradeCode: question.gradeCode,
     difficultyCode: question.difficultyCode,
+    competencyCode: question.competencyCode ?? "",
     points: formatPoints(question.points),
     knowledge: normalizePrimary(question.knowledge),
     tagCodes: [...question.tagCodes],
@@ -246,14 +296,24 @@ function trimmed(value: string): string {
   return value.trim();
 }
 
-export function editorToBody(type: QuestionType, body: EditorBody, content: string): QuestionBody {
+/**
+ * Phần thân gửi lên theo dạng câu. `points` là điểm của câu: Đúng/Sai không có bảng điểm thì chia đều theo ý; Tự luận
+ * lấy làm điểm tối đa.
+ */
+export function editorToBody(type: QuestionType, body: EditorBody, content: string, points: number = DEFAULT_POINTS): QuestionBody {
   switch (type) {
     case "SINGLE_CHOICE":
+      return {
+        type,
+        options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
+        shuffleOptions: body.shuffleOptions,
+      };
     case "MULTIPLE_CHOICE":
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
         shuffleOptions: body.shuffleOptions,
+        scoringRule: body.scoringRule,
       };
     case "TRUE_FALSE":
       return {
@@ -263,6 +323,10 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
           content: trimmed(statement.content),
           answer: statement.answer === "TRUE",
         })),
+        scoreTable:
+          body.scoreTable.length === body.statements.length
+            ? body.scoreTable.map(parsePoints)
+            : evenScoreTable(body.statements.length, points),
       };
     case "FILL_IN":
       return {
@@ -283,7 +347,61 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
       };
     case "QUESTION_SET":
       return { type, passage: trimmed(content), childIds: [] };
+    case "ESSAY": {
+      const wordLimit = Number.parseInt(body.wordLimit.trim(), 10);
+      return {
+        type,
+        maxPoints: points,
+        rubric: body.rubric.map((criterion) => ({
+          id: criterion.id,
+          description: trimmed(criterion.description),
+          points: parsePoints(criterion.points),
+        })),
+        sampleAnswer: trimmed(body.sampleAnswer) || null,
+        wordLimit: Number.isInteger(wordLimit) && wordLimit > 0 ? wordLimit : null,
+      };
+    }
   }
+}
+
+/** Bảng điểm Đúng/Sai chia đều: đúng `i + 1` ý được `(i + 1) / n` điểm của câu, làm tròn 2 chữ số. */
+export function evenScoreTable(statementCount: number, points: number): number[] {
+  return Array.from({ length: statementCount }, (_, index) => Math.round((points * (index + 1) * 100) / statementCount) / 100);
+}
+
+/** Như `evenScoreTable`, viết theo ô Điểm ("0,5"). */
+export function evenScoreTableText(statementCount: number, points: number): string[] {
+  return evenScoreTable(statementCount, points).map(formatPoints);
+}
+
+/** Làm tròn điểm tới 3 chữ số thập phân (0,125). */
+export function roundPoints(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+/** Hai giá trị điểm coi là bằng nhau (bỏ qua sai số làm tròn của số thực). */
+export function samePoints(left: number, right: number): boolean {
+  return Math.abs(left - right) < 0.0005;
+}
+
+/**
+ * Bảng điểm mẫu của kỳ thi (tính theo câu 1 điểm, ví dụ THPTQG 0,1 / 0,25 / 0,5 / 1) đổi theo điểm của câu: nhân tỉ lệ
+ * `points / phần tử cuối`, phần tử cuối đúng bằng `points`.
+ */
+export function scaleScoreTable(table: readonly number[], points: number): number[] {
+  const last = table.at(-1);
+  if (!last || !Number.isFinite(points) || points <= 0) return [...table];
+  return table.map((value, index) => (index === table.length - 1 ? points : roundPoints((value * points) / last)));
+}
+
+/** Tổng điểm các tiêu chí chấm có điểm hợp lệ. */
+export function rubricTotal(rubric: readonly Pick<EditorCriterion, "points">[]): number {
+  return roundPoints(
+    rubric.reduce((sum, criterion) => {
+      const points = parsePoints(criterion.points);
+      return Number.isFinite(points) ? sum + points : sum;
+    }, 0),
+  );
 }
 
 function toChildRequest(child: EditorChild): SaveChildQuestionRequest {
@@ -291,7 +409,7 @@ function toChildRequest(child: EditorChild): SaveChildQuestionRequest {
     id: child.existingId,
     type: child.type,
     content: trimmed(child.content),
-    body: editorToBody(child.type, child.body, child.content),
+    body: editorToBody(child.type, child.body, child.content, parsePoints(child.points)),
     solution: trimmed(child.solution) || null,
     points: parsePoints(child.points),
   };
@@ -306,12 +424,13 @@ export function toSaveRequest(values: QuestionEditorValues): SaveQuestionRequest
     subjectCode: values.subjectCode,
     gradeCode: values.gradeCode,
     difficultyCode: values.difficultyCode,
+    competencyCode: values.competencyCode || null,
     points: isSet ? children.reduce((sum, child) => sum + child.points, 0) : parsePoints(values.points),
     knowledge: normalizePrimary(values.knowledge),
     tagCodes: [...values.tagCodes],
     content: trimmed(values.content),
     solution: isSet ? null : trimmed(values.solution) || null,
-    body: editorToBody(values.type, values.body, values.content),
+    body: editorToBody(values.type, values.body, values.content, parsePoints(values.points)),
     children,
   };
 }
