@@ -706,7 +706,8 @@ public class ExamService {
                 code -> catalogLookup.findActiveItem("TASK_TYPE", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("COMPETENCY", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("SUBJECT_COMBINATION", code)
-                        .map(CatalogItemView::id).orElse(null));
+                        .map(CatalogItemView::id).orElse(null),
+                code -> catalogLookup.findActiveItem("QUESTION_TAG", code).map(CatalogItemView::id).orElse(null));
     }
 
     private void validateStructureReferences(ExamStructureDocument doc) {
@@ -737,6 +738,7 @@ public class ExamService {
         if (block.taskTypeCode() != null) {
             requireActiveReference("TASK_TYPE", block.taskTypeCode());
         }
+        block.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
         validateScopeReferences(block.knowledgeScope());
         validateMatrixReferences(block.matrix());
     }
