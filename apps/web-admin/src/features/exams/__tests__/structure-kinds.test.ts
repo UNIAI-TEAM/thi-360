@@ -95,7 +95,7 @@ describe("cấu trúc theo bảy kỳ thi: bài mẫu", () => {
 
   it("BCA: điểm khối lệch điểm phần bị báo PART_POINTS", () => {
     const exam = sample("ex-bca-f-001");
-    exam.parts[1]!.sections[1]!.blocks[0]!.pointsPerQuestion = 1;
+    exam.parts[1]!.sections[2]!.blocks[0]!.pointsPerQuestion = 1;
     expect(validateStructure(exam.parts, AXES, { timing: exam.timing })).toEqual([
       { code: "PART_POINTS", partId: "part-b2", optionId: null, expected: 60, actual: 65 },
     ]);

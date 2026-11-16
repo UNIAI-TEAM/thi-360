@@ -148,7 +148,7 @@
     },
     {
       "code": "BCA",
-      "name": "Đánh giá của Bộ Công an (BCA)",
+      "name": "Đánh giá tuyển sinh Công an nhân dân (BCA)",
       "formats": [
         "FULL"
       ],
@@ -162,13 +162,13 @@
     },
     {
       "code": "VACT",
-      "name": "Đánh giá năng lực ĐHQG TP.HCM V-ACT 2026",
+      "name": "Đánh giá năng lực ĐHQG TP.HCM (V-ACT)",
       "formats": [
         "FULL"
       ],
       "templateBy": "KIND",
       "timing": "SHARED",
-      "maxScore": null,
+      "maxScore": 1200,
       "scoringDefaults": {
         "trueFalseTable": null,
         "multipleChoiceRule": "ALL_OR_NOTHING"
@@ -195,7 +195,7 @@
     },
     {
       "code": "SP2E",
-      "name": "Đánh giá năng lực ĐH Sư phạm TP.HCM (SP2E)",
+      "name": "Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)",
       "formats": [
         "FULL"
       ],

@@ -4450,8 +4450,8 @@
                 },
                 {
                   "id": "blk-b2-2",
-                  "name": "Nhiều đáp án",
-                  "questionType": "MULTIPLE_CHOICE",
+                  "name": "Trả lời ngắn",
+                  "questionType": "FILL_IN",
                   "questionCount": 5,
                   "setCount": null,
                   "setSize": null,
@@ -4534,9 +4534,6 @@
                     ],
                     "byGrade": [],
                     "byDifficulty": []
-                  },
-                  "expectedScoring": {
-                    "multipleChoiceRule": "ALL_OR_NOTHING"
                   }
                 }
               ]
@@ -4553,7 +4550,7 @@
                   "questionCount": 10,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 0.5,
+                  "pointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -4604,7 +4601,7 @@
                   "questionCount": 20,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "pointsPerQuestion": 0.75,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -5704,21 +5701,21 @@
       "expertNote": "Khoa học chọn 3 trong 5 môn (Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí); số câu từng môn mặc định 17–17–16, cần chuyên gia xác nhận trước khi bán.",
       "parts": [
         {
-          "name": "Phần 1 · Tư duy định lượng (Toán)",
+          "name": "Phần 1 · Toán học và Xử lí số liệu",
           "questionCount": 50,
           "durationMinutes": 75,
           "mode": "FIXED",
           "subjectCode": "MATH"
         },
         {
-          "name": "Phần 2 · Tư duy định tính (Ngữ văn)",
+          "name": "Phần 2 · Văn học – Ngôn ngữ",
           "questionCount": 50,
           "durationMinutes": 60,
           "mode": "FIXED",
           "subjectCode": "LITERATURE"
         },
         {
-          "name": "Phần 3 · Khoa học hoặc Tiếng Anh",
+          "name": "Phần 3 · Khoa học (3A) hoặc Tiếng Anh (3B)",
           "questionCount": 50,
           "durationMinutes": 60,
           "mode": "CHOICE",
@@ -5791,21 +5788,21 @@
       "expertNote": "Phần lựa chọn: QĐ01 Lí–Hóa, QĐ02 Hóa–Sinh, QĐ03 Lí–Sinh, QĐ04 Sử–Địa (mỗi môn 25 câu), QĐ05 Tiếng Anh 50 câu. Kiểm tra riêng từng mã trước khi bán.",
       "parts": [
         {
-          "name": "Phần 1 · Toán học",
+          "name": "Phần 1 · Toán học và Xử lí số liệu",
           "questionCount": 50,
           "durationMinutes": 80,
           "mode": "FIXED",
           "subjectCode": "MATH"
         },
         {
-          "name": "Phần 2 · Ngữ văn",
+          "name": "Phần 2 · Ngôn ngữ – Văn học",
           "questionCount": 50,
           "durationMinutes": 55,
           "mode": "FIXED",
           "subjectCode": "LITERATURE"
         },
         {
-          "name": "Phần 3 · Khoa học hoặc Tiếng Anh",
+          "name": "Phần 3 · Khoa học (3A: QĐ01–QĐ04) hoặc Tiếng Anh (3B: QĐ05)",
           "questionCount": 50,
           "durationMinutes": 60,
           "mode": "CHOICE",
@@ -5821,7 +5818,7 @@
       "timing": "SHARED",
       "durationMinutes": 180,
       "maxScore": 100,
-      "expertNote": "Điểm từng câu Phần 2 quy từ 60 điểm cho 65 câu; hướng dẫn chấm tự luận Phần 1 phải có trước khi công bố.",
+      "expertNote": "Toán có cả câu trắc nghiệm và câu trả lời ngắn; số câu từng dạng chờ xác nhận. Hướng dẫn chấm tự luận Phần 1 phải có trước khi công bố.",
       "parts": [
         {
           "name": "Phần 1 · Tự luận Ngữ văn",
@@ -5832,7 +5829,7 @@
           "points": 25,
           "blocks": [
             {
-              "name": "Bài nghị luận",
+              "name": "Nghị luận xã hội (tối thiểu 500 chữ)",
               "questionType": "ESSAY",
               "questionCount": 1,
               "pointsPerQuestion": 25
@@ -5849,15 +5846,39 @@
           "sections": [
             {
               "subjectCode": "MATH",
-              "questionCount": 35
+              "questionCount": 35,
+              "blocks": [
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 35,
+                  "pointsPerQuestion": 1
+                }
+              ]
             },
             {
               "subjectCode": "HISTORY",
-              "questionCount": 10
+              "questionCount": 10,
+              "blocks": [
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 10,
+                  "pointsPerQuestion": 1
+                }
+              ]
             },
             {
               "subjectCode": "ENGLISH",
-              "questionCount": 20
+              "questionCount": 20,
+              "blocks": [
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 20,
+                  "pointsPerQuestion": 0.75
+                }
+              ]
             }
           ]
         },
@@ -5937,11 +5958,11 @@
       "code": "VACT_FULL",
       "kind": "VACT",
       "format": "FULL",
-      "name": "V-ACT 2026 · 3 phần · 120 câu · 150 phút chung",
+      "name": "V-ACT 2026 · 3 phần · 120 câu · 150 phút chung · thang 1.200",
       "timing": "SHARED",
       "durationMinutes": 150,
-      "maxScore": null,
-      "expertNote": "Thang điểm luyện tập đặt lúc thiết lập bài; chấm theo IRT làm sau.",
+      "maxScore": 1200,
+      "expertNote": "Thang 1.200 chia đều 4 thành phần (Tiếng Việt, Tiếng Anh, Toán, Tư duy khoa học), mỗi thành phần 300 điểm, kỳ thi thật chấm bằng IRT. Bài luyện tập tạm tính 10 điểm mỗi câu tới khi có IRT.",
       "parts": [
         {
           "name": "Phần 1 · Sử dụng ngôn ngữ",
@@ -5958,7 +5979,7 @@
                   "name": "Tiếng Việt",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 30,
-                  "pointsPerQuestion": 1,
+                  "pointsPerQuestion": 10,
                   "competencyCode": "VACT-NN-TV"
                 }
               ]
@@ -5971,12 +5992,13 @@
                   "name": "Tiếng Anh",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 30,
-                  "pointsPerQuestion": 1,
+                  "pointsPerQuestion": 10,
                   "competencyCode": "VACT-NN-TA"
                 }
               ]
             }
-          ]
+          ],
+          "points": 600
         },
         {
           "name": "Phần 2 · Toán học",
@@ -5989,10 +6011,11 @@
               "name": "Toán học",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 30,
-              "pointsPerQuestion": 1,
+              "pointsPerQuestion": 10,
               "competencyCode": "VACT-TOAN"
             }
-          ]
+          ],
+          "points": 300
         },
         {
           "name": "Phần 3 · Tư duy khoa học",
@@ -6005,17 +6028,18 @@
               "name": "Logic, phân tích số liệu",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 12,
-              "pointsPerQuestion": 1,
+              "pointsPerQuestion": 10,
               "competencyCode": "VACT-TD-LOGIC"
             },
             {
               "name": "Suy luận khoa học",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 18,
-              "pointsPerQuestion": 1,
+              "pointsPerQuestion": 10,
               "competencyCode": "VACT-TD-SL"
             }
-          ]
+          ],
+          "points": 300
         }
       ]
     },

@@ -70,9 +70,10 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
     expect(page.content.map((item) => [item.code, item.branchCount, item.timing])).toContainEqual(["THPTQG-F-TIN-009", 2, "SHARED"]);
   });
 
-  it("V-ACT: thang điểm để trống; năng lực của mẫu thành phạm vi kiến thức của khối", async () => {
+  it("V-ACT: thang 1.200, điểm phần 600/300/300; năng lực của mẫu thành phạm vi kiến thức của khối", async () => {
     const exam = await createExam(request({ kind: "VACT", code: "VACT-T-001", templateCode: "VACT_FULL" }));
-    expect(exam.maxScore).toBeNull();
+    expect(exam.maxScore).toBe(1200);
+    expect(exam.parts.map((part) => part.points)).toEqual([600, 300, 300]);
     expect(exam.parts[1]!.sections[0]!.blocks[0]!.knowledgeScope.competencyCodes).toEqual(["VACT-TOAN"]);
   });
 

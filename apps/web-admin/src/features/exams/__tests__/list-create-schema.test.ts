@@ -332,7 +332,7 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     expect(older).not.toHaveProperty("yearsConfirmed");
   });
 
-  it("kỳ thi theo môn phải chọn môn; thang điểm để trống chỉ với V-ACT", () => {
+  it("kỳ thi theo môn phải chọn môn; thang điểm bắt buộc; V-ACT thang 1.200 chia điểm theo phần", () => {
     expect(errors(values({ kind: "THPTQG", templateCode: NO_TEMPLATE, maxScore: 10 }))).toMatchObject({
       subjectCode: "kindSubjectRequired",
     });
@@ -340,7 +340,7 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     expect(errors(values({ maxScore: 0 }))).toEqual({ maxScore: "maxScorePositive" });
     const vact = templateParts("VACT_FULL");
     const defaults = scopeDefaults(template("VACT_FULL"), kindOption("VACT"), "FULL");
-    expect(defaults).toMatchObject({ timing: "SHARED", sharedDuration: 150, maxScore: null, pointsByPart: false });
+    expect(defaults).toMatchObject({ timing: "SHARED", sharedDuration: 150, maxScore: 1200, pointsByPart: true });
     expect(errors(values({ kind: "VACT", templateCode: "VACT_FULL", ...defaults, parts: vact }))).toEqual({});
   });
 

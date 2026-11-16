@@ -12,13 +12,46 @@ Cấu trúc đề do M.Trường tóm tắt ngày 2026-11-16 từ thư mục Dri
 |---|---|---|
 | ĐGNL ĐHQG Hà Nội | HSA | 150 câu, 195 phút. Toán 50 câu/75 phút, Văn học – Ngôn ngữ 50 câu/60 phút, Khoa học hoặc Tiếng Anh 50 câu/60 phút. Khoa học: chọn 3 trong 5 môn, admin đặt số câu từng môn (tổng 50); chia 17–17–16 chờ chuyên gia xác nhận. Bài lẻ: admin chọn phần bán và đặt thời lượng. |
 | ĐGNL Bộ Quốc phòng | QDA | 150 câu, 195 phút. Toán 50 câu/80 phút, Ngôn ngữ – Văn học 50 câu/55 phút, phần lựa chọn 50 câu/60 phút: QĐ01 Lí+Hóa, QĐ02 Hóa+Sinh, QĐ03 Lí+Sinh, QĐ04 Sử+Địa (25 câu mỗi môn), QĐ05 Tiếng Anh 50 câu. Kiểm tra riêng từng mã trước khi bán. |
-| Bộ Công an | BCA | 81 câu, 180 phút chung, thang 100. Phần 1: 1 câu tự luận Ngữ văn, 25 điểm. Phần 2: 65 câu, 60 điểm (Toán 35, Lịch sử 10, Tiếng Anh 20). Phần 3: 15 câu, 15 điểm, CA1 Lí, CA2 Hóa, CA3 Sinh, CA4 Địa. Phần bắt buộc dùng chung cho 4 mã. Phải có hướng dẫn chấm tự luận trước khi công bố. |
-| V-ACT 2026 | VACT | 120 câu chọn một, 150 phút chung. Ngôn ngữ: 30 Tiếng Việt và 30 Tiếng Anh. Toán: 30 câu. Tư duy khoa học: 12 câu logic, số liệu và 18 câu suy luận khoa học. Toán theo lớp 10, 11, 12 hoặc liên lớp; các phần khác theo năng lực, chủ đề, MAPID. Thang luyện tập đặt lúc thiết lập; IRT làm sau. |
+| Tuyển sinh Công an nhân dân | BCA | 81 câu, 180 phút chung, thang 100. Phần 1: 1 câu tự luận Ngữ văn, 25 điểm. Phần 2: 65 câu, 60 điểm (Toán 35 câu × 1, Lịch sử 10 × 1, Tiếng Anh 20 × 0,75). Phần 3: 15 câu, 15 điểm, CA1 Lí, CA2 Hóa, CA3 Sinh, CA4 Địa. Phần bắt buộc dùng chung cho 4 mã. Phải có hướng dẫn chấm tự luận trước khi công bố. |
+| V-ACT 2026 | VACT | 120 câu chọn một, 150 phút chung. Ngôn ngữ: 30 Tiếng Việt và 30 Tiếng Anh. Toán: 30 câu. Tư duy khoa học: 12 câu logic, số liệu và 18 câu suy luận khoa học. Toán theo lớp 10, 11, 12 hoặc liên lớp; các phần khác theo năng lực, chủ đề, MAPID. Thang 1.200 (4 thành phần × 300) chấm bằng IRT; bài luyện tập tạm tính theo câu. |
 | ĐHSP Hà Nội | SPT | Mẫu theo môn (12 môn, tài liệu 2025). Mỗi môn có thời lượng, phần, số câu, số ý và cách tính điểm riêng. Ví dụ Toán: 25 câu/90 phút gồm 16 chọn một, 2 đúng/sai, 4 trả lời ngắn và 3 tự luận. |
-| ĐHSP TP.HCM | SP2E | Mẫu theo môn và phiên bản (9 môn), mỗi mẫu có năm cấu trúc và năm ma trận. Toán 2025: 22 câu. Toán 2026: 40 câu gồm 25 lựa chọn (5 câu có thể nhiều đáp án đúng), 5 dữ liệu tổng hợp và 10 trả lời ngắn. Năm cấu trúc khác năm ma trận thì admin phải xác nhận chỉ tiêu chuyên môn. |
+| ĐH Sư phạm Hà Nội 2 | SP2E | Mẫu theo môn và phiên bản (9 môn), mỗi mẫu có năm cấu trúc và năm ma trận. Toán 2025: 22 câu. Toán 2026: 40 câu gồm 25 lựa chọn (5 câu có thể nhiều đáp án đúng), 5 dữ liệu tổng hợp và 10 trả lời ngắn. Năm cấu trúc khác năm ma trận thì admin phải xác nhận chỉ tiêu chuyên môn. |
 | Tốt nghiệp THPT | THPTQG | 12 mẫu theo môn. Ngữ văn: 5 câu đọc hiểu và 2 câu viết. Tin học: đề in 30 câu, học viên làm 28 theo nhánh. Đúng/sai: số ý và bảng điểm theo số ý đúng. |
 
 Dữ liệu mẫu chỉ có mẫu SPT Toán và SP2E Toán (2025, 2026), vì bản tóm tắt chỉ ghi hai môn này. THPTQG có đủ 12 môn theo định dạng 2025 của Bộ GD&ĐT; agent tự điền phần này, chưa ai đối chiếu với tài liệu của dự án.
+
+### 1.1. Bảng cấu trúc đề tổng quát
+
+M.Trường gửi thêm bảng tổng quát 7 kỳ thi ngày 2026-11-16. Dữ liệu mẫu và đặc tả backend đã đối chiếu theo bảng này.
+
+| Mã | Đơn vị, hình thức | Thời gian, thang điểm | Phần | Dạng câu, cách chấm |
+|---|---|---|---|---|
+| HSA | ĐHQG Hà Nội, thi trên máy | 195 phút, 150 điểm | P1 Toán học và Xử lí số liệu 50 câu; P2 Văn học – Ngôn ngữ 50 câu; P3 Khoa học (3A) hoặc Tiếng Anh (3B) 50 câu | Chọn một 4 phương án, điền đáp án (số nguyên, phân số, thập phân), chùm câu. 1 điểm mỗi câu đúng, không trừ điểm. |
+| QDA | Bộ Quốc phòng, thi trên máy | 195 phút, 150 điểm | P1 Toán học và Xử lí số liệu 50; P2 Ngôn ngữ – Văn học 50; P3 Khoa học (3A: QĐ01–QĐ04) hoặc Tiếng Anh (3B: QĐ05) 50 | Như HSA. Câu điền đáp án nhận số nguyên, phân số, thập phân dấu phẩy, phải đúng giá trị. Tối đa 50 điểm mỗi phần. |
+| BCA | Đánh giá tuyển sinh Công an nhân dân (đề minh họa 2026), thi trên giấy | 180 phút chung, 100 điểm (25 tự luận, 75 trắc nghiệm) | P1 tự luận Ngữ văn: 1 câu nghị luận xã hội, tối thiểu 500 chữ, 25 điểm; P2 bắt buộc Toán, Lịch sử, Tiếng Anh 65 câu, 60 điểm; P3 tự chọn CA1–CA4 15 câu, 15 điểm | Toán có câu trả lời ngắn. Toán, Lịch sử, phần tự chọn 1 điểm mỗi câu; Tiếng Anh 0,75 điểm mỗi câu. |
+| SP2E | ĐH Sư phạm Hà Nội 2 (9 môn năm 2026), phiếu trả lời | 60–90 phút tùy môn, 10 điểm mỗi môn | Đa số môn 3 phần: Nhiều lựa chọn, Đúng/Sai, Trả lời ngắn hoặc Ghép đôi | Ngữ văn: đọc hiểu trắc nghiệm và viết bài luận. Đúng/Sai chấm theo số ý đúng. |
+| SPT | ĐH Sư phạm Hà Nội (12 môn, đề tham khảo 075) | 60–90 phút, 10 điểm mỗi môn | 3–4 phần | Môn chính: chọn một 4 phương án, Đúng/Sai, Trả lời ngắn, Tự luận. Văn, Sử, GDKT&PL: chọn một, Đúng/Sai, Tự luận. Trắc nghiệm chấm tự động; tự luận và trả lời ngắn chấm theo đáp án chi tiết. |
+| THPTQG | Tốt nghiệp THPT, từ 2025 | 50–120 phút, 10 điểm mỗi môn | Toán, KHTN, Địa: 3 phần (chọn một, Đúng/Sai, Trả lời ngắn). Sử, GDKT&PL, Công nghệ, Tin: 2 phần (chọn một, Đúng/Sai). Ngữ văn: tự luận 2 phần | Đúng/Sai theo bảng 0,1 / 0,25 / 0,5 / 1. |
+| VACT | ĐHQG TP.HCM, đợt 2 năm 2026, thi trên giấy | 150 phút, 1.200 điểm theo IRT: 4 thành phần, mỗi thành phần 300 (Tiếng Việt, Tiếng Anh, Toán, Tư duy khoa học) | 120 câu: Ngôn ngữ 60 (Tiếng Việt, Tiếng Anh), Toán 30, Tư duy khoa học 30 | Chọn một 4 phương án, câu đơn và chùm câu (dữ kiện, biểu đồ, ngữ liệu liên môn). |
+
+Thay đổi trong dữ liệu mẫu sau khi đối chiếu:
+
+- Tên kỳ thi: SP2E là ĐH Sư phạm Hà Nội 2 (trước ghi nhầm ĐHSP TP.HCM); BCA là "Đánh giá tuyển sinh Công an nhân dân".
+- Tên phần của mẫu HSA_FULL và QDA_FULL theo bảng.
+- BCA:
+  - Khối tự luận đổi tên thành "Nghị luận xã hội (tối thiểu 500 chữ)".
+  - Phần 2 tính điểm theo bảng: Toán 35 × 1, Lịch sử 10 × 1, Tiếng Anh 20 × 0,75, cộng 60 điểm. Hết chỗ "tạm" 60 điểm cho 65 câu.
+  - Bài mẫu `ex-bca-f-001` có 5 câu Trả lời ngắn trong môn Toán. Bảng không ghi Toán có bao nhiêu câu trả lời ngắn, nên mẫu cấu trúc vẫn để 35 câu chọn một và ghi chú chờ xác nhận.
+- V-ACT:
+  - Thang của kỳ thi và mẫu là 1.200.
+  - Điểm phần 600 / 300 / 300.
+  - Bài luyện tập tạm tính 10 điểm mỗi câu tới khi có IRT.
+  - Bài mẫu `ex-vact-f-001` vẫn để trống thang điểm, để giữ ví dụ lỗi "thiếu thang điểm" trong kiểm tra cấu hình.
+
+Chưa đưa vào dữ liệu mẫu:
+
+- Câu Ghép đôi của SP2E. Dự kiến dùng dạng Kéo thả (`DRAG_DROP`), chờ xác nhận.
+- Số chữ tối thiểu của câu tự luận mới là thông tin trong đề bài, chưa thành ràng buộc khi chấm.
 
 ## 2. Quyết định (M.Trường, 2026-11-16)
 
