@@ -163,6 +163,46 @@ class ExamCheckerTests {
     }
 
     @Test
+    void malformedChoiceDoesNotHideASeparateValidPath() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        String doc = """
+                {"parts":[{"id":"p","name":"Part","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                "options":[
+                {"id":"valid","kind":"SUBJECT","code":"MATH","sections":[{"id":"s","subjectCode":"MATH","questionCount":1,
+                "blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                {"id":"bad","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":3,"countsByPick":[1],"sections":[]}
+                ]}]}
+                """;
+        JsonNode paths = check(exam, document(doc)).result().path("paths");
+        assertThat(paths).hasSize(2);
+        assertThat(paths.get(0).path("result").asText()).isEqualTo("VALID");
+        assertThat(paths.get(1).path("result").asText()).isEqualTo("INVALID");
+        assertThat(paths.get(1).path("issues").findValuesAsText("code")).contains("SUBJECT_CHOICE_COUNTS_INVALID");
+    }
+
+    @Test
+    void legacyFractionInOneOptionDoesNotHideASeparateValidPath() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        String doc = """
+                {"parts":[{"id":"p","name":"Part","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                "options":[
+                {"id":"valid","kind":"SUBJECT","code":"MATH","sections":[{"id":"s","subjectCode":"MATH","questionCount":1,
+                "blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                {"id":"bad","kind":"SUBJECT","code":"MATH","sections":[{"id":"bad-s","subjectCode":"MATH","questionCount":1,
+                "matrix":{"mode":"COMBINED","unit":"COUNT","cells":[{"gradeCode":"G","difficultyCode":"D","value":0.5}]},
+                "blocks":[{"id":"bad-b","questionType":"SINGLE_CHOICE","questionCount":1}]}]}
+                ]}]}
+                """;
+        JsonNode paths = check(exam, document(doc)).result().path("paths");
+        assertThat(paths).hasSize(2);
+        assertThat(paths.get(0).path("result").asText()).isEqualTo("VALID");
+        assertThat(paths.get(1).path("result").asText()).isEqualTo("INVALID");
+        assertThat(paths.get(1).path("issues").findValuesAsText("code")).contains("MATRIX_NON_INTEGER");
+    }
+
+    @Test
     void unconfirmedOptionDoesNotInvalidateAnotherChoice() throws Exception {
         Exam exam = exam(1, null, "RAW");
         subject("MATH", 1);
