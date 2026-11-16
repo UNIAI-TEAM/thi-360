@@ -1,7 +1,9 @@
 package vn.unicom.thi360.questionbank.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -82,14 +84,24 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         String sql = roots(List.of(filter), params, limit) + units() + """
                 select units.*, r.task_type_item_id,
                        coalesce(r.snapshot #>> '{body,scoringRule}', r.snapshot #>> '{body,scoringMethod}') scoring_rule,
+                       r.snapshot #>> '{body,scoringMethod}' root_tf_method,
+                       (r.snapshot #> '{body,scoreTable}')::text root_tf_table,
+                       r.snapshot #>> '{body,scoringRule}' root_mc_rule,
+                       (case when units.unit_id = r.id then r.snapshot else child.snapshot end) #>> '{body,scoringMethod}' unit_tf_method,
+                       ((case when units.unit_id = r.id then r.snapshot else child.snapshot end) #> '{body,scoreTable}')::text unit_tf_table,
+                       (case when units.unit_id = r.id then r.snapshot else child.snapshot end) #>> '{body,scoringRule}' unit_mc_rule,
                        array(select knowledge_item_id from questionbank.question_knowledge k
                              where k.question_id = units.unit_id order by knowledge_item_id) mapids
                 from units join roots r on r.id = units.root_id
+                left join questionbank.question_version child
+                  on child.question_id = units.unit_id and child.version_no = r.current_version_no
+                     and units.unit_id <> r.id
                 order by units.root_id, units.unit_order
                 """;
         Map<UUID, String> codes = catalogCodes();
         Map<UUID, List<Unit>> grouped = new LinkedHashMap<>();
         Map<UUID, Candidate> candidates = new LinkedHashMap<>();
+        Map<UUID, ScoringDetails> scoringByUnit = new HashMap<>();
         jdbc.query(sql, params, rs -> {
             UUID root = rs.getObject("root_id", UUID.class);
             UUID unitId = rs.getObject("unit_id", UUID.class);
@@ -97,20 +109,53 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
             List<UUID> ids = mapids == null ? List.of() : List.of((UUID[]) mapids.getArray());
             UUID competencyId = rs.getObject("competency_id", UUID.class);
             String competency = codes.get(competencyId);
+            if (!scoringByUnit.containsKey(unitId)) {
+                scoringByUnit.put(unitId, scoring(rs.getString("unit_tf_method"), rs.getString("unit_tf_table"),
+                        rs.getString("unit_mc_rule")));
+            }
             Unit unit = new Unit(unitId, rs.getString("reference"),
                     QuestionType.valueOf(rs.getString("answer_type")),
                     codes.get(rs.getObject("grade_id", UUID.class)),
                     codes.get(rs.getObject("level_id", UUID.class)), ids,
-                    competency == null ? List.of() : List.of(competency), rs.getBigDecimal("points"));
+                    competency == null ? List.of() : List.of(competency), rs.getBigDecimal("points"),
+                    scoringByUnit.get(unitId));
             grouped.computeIfAbsent(root, ignored -> new ArrayList<>()).add(unit);
-            String type = rs.getString("root_type");
-            candidates.putIfAbsent(root, new Candidate(root, rs.getInt("version_no"),
-                    type.equals("QUESTION_SET") || type.equals("CLOZE") ? root : null,
-                    grouped.get(root), codes.get(rs.getObject("task_type_item_id", UUID.class)),
-                    rs.getString("scoring_rule")));
+            if (!candidates.containsKey(root)) {
+                String type = rs.getString("root_type");
+                ScoringDetails rootScoring = root.equals(unitId) ? scoringByUnit.get(unitId)
+                        : scoring(rs.getString("root_tf_method"), rs.getString("root_tf_table"), rs.getString("root_mc_rule"));
+                candidates.put(root, new Candidate(root, rs.getInt("version_no"),
+                        type.equals("QUESTION_SET") || type.equals("CLOZE") ? root : null,
+                        grouped.get(root), codes.get(rs.getObject("task_type_item_id", UUID.class)),
+                        rs.getString("scoring_rule"), rootScoring == null ? null : rootScoring.trueFalseMethod(),
+                        rootScoring == null ? null : rootScoring.trueFalseTable(),
+                        rootScoring == null ? null : rootScoring.multipleChoiceRule()));
+            }
         });
         return candidates.values().stream().map(c -> new Candidate(c.questionId(), c.versionNo(), c.setId(),
-                List.copyOf(c.units()), c.taskTypeCode(), c.scoringRule())).toList();
+                List.copyOf(c.units()), c.taskTypeCode(), c.scoringRule(), c.trueFalseMethod(),
+                c.trueFalseTable(), c.multipleChoiceRule())).toList();
+    }
+
+    private ScoringDetails scoring(String method, String tableJson, String multipleChoiceRule) throws SQLException {
+        List<BigDecimal> table = null;
+        if (tableJson != null) {
+            try {
+                JsonNode node = mapper.readTree(tableJson);
+                if (!node.isNull()) {
+                    if (!node.isArray()) throw new SQLException("Invalid serving scoring table");
+                    table = new ArrayList<>(node.size());
+                    for (JsonNode value : node) {
+                        if (!value.isNumber()) throw new SQLException("Invalid serving scoring table value");
+                        table.add(value.decimalValue());
+                    }
+                }
+            } catch (JsonProcessingException e) {
+                throw new SQLException("Invalid serving scoring table", e);
+            }
+        }
+        return method == null && table == null && multipleChoiceRule == null
+                ? null : new ScoringDetails(method, table, multipleChoiceRule);
     }
 
     @Override

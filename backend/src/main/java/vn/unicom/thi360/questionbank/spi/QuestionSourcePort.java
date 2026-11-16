@@ -30,11 +30,33 @@ public interface QuestionSourcePort {
     record Counts(long total, List<CellCount> byCell, List<AnswerTypeCount> byAnswerType,
                   List<CompetencyCount> byCompetency) {}
 
+    /** Scoring information from the serving snapshot; null fields do not apply to that type. */
+    record ScoringDetails(String trueFalseMethod, List<BigDecimal> trueFalseTable,
+                          String multipleChoiceRule) {
+        public ScoringDetails {
+            trueFalseTable = trueFalseTable == null ? null : List.copyOf(trueFalseTable);
+        }
+    }
+
     record Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                 String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
-                BigDecimal points) {}
+                BigDecimal points, ScoringDetails scoring) {
+        public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
+                    String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes, BigDecimal points) {
+            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes, points, null);
+        }
+    }
     record Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
-                     String taskTypeCode, String scoringRule) {}
+                     String taskTypeCode, String scoringRule, String trueFalseMethod,
+                     List<BigDecimal> trueFalseTable, String multipleChoiceRule) {
+        public Candidate {
+            trueFalseTable = trueFalseTable == null ? null : List.copyOf(trueFalseTable);
+        }
+        public Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
+                         String taskTypeCode, String scoringRule) {
+            this(questionId, versionNo, setId, units, taskTypeCode, scoringRule, null, null, null);
+        }
+    }
     record VersionKey(UUID questionId, int versionNo) {}
     /** Snapshot and stable question codes, including children of a question set. */
     record Version(VersionKey key, JsonNode snapshot, String code, Map<UUID, String> childCodes) {

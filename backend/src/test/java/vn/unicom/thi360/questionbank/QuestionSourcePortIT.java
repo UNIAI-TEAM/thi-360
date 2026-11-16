@@ -116,6 +116,61 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void candidatesExposeServingScoringForStandaloneAndSetChildren() {
+        UUID subject = UUID.randomUUID();
+        UUID root = question(subject, "READY", 1, 2);
+        jdbc.update("UPDATE questionbank.question SET type = 'TRUE_FALSE' WHERE id = ?", root);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.1,0.25,0.5,1]}}", root);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 2",
+                "{\"body\":{\"scoringMethod\":\"PER_STATEMENT\",\"scoreTable\":[9,9,9,9]}}", root);
+        var trueFalse = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.TRUE_FALSE, null, null, List.of(), List.of(), null);
+        assertThat(source.findCandidates(trueFalse, 10)).singleElement().satisfies(candidate -> {
+            assertThat(candidate.trueFalseMethod()).isEqualTo("COUNT_TABLE");
+            assertThat(candidate.trueFalseTable()).containsExactly(
+                    new BigDecimal("0.1"), new BigDecimal("0.25"), new BigDecimal("0.5"), BigDecimal.ONE);
+            assertThat(candidate.multipleChoiceRule()).isNull();
+            assertThat(candidate.units().getFirst().scoring().trueFalseMethod()).isEqualTo("COUNT_TABLE");
+        });
+
+        UUID multiple = question(subject, "READY", 1, 2);
+        jdbc.update("UPDATE questionbank.question SET type = 'MULTIPLE_CHOICE' WHERE id = ?", multiple);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"scoringRule\":\"PARTIAL\"}}", multiple);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 2",
+                "{\"body\":{\"scoringRule\":\"ALL_OR_NOTHING\"}}", multiple);
+        var multipleChoice = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.MULTIPLE_CHOICE, null, null, List.of(), List.of(), null);
+        assertThat(source.findCandidates(multipleChoice, 10)).singleElement().satisfies(candidate -> {
+            assertThat(candidate.multipleChoiceRule()).isEqualTo("PARTIAL");
+            assertThat(candidate.units().getFirst().scoring().multipleChoiceRule()).isEqualTo("PARTIAL");
+        });
+
+        UUID set = UUID.randomUUID();
+        UUID child = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no) "
+                + "VALUES (?, ?, 'QUESTION_SET', 'READY', ?, 1)", set, "SET-" + set, subject);
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,'{}'::jsonb)", set);
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,points) "
+                + "VALUES (?, ?, 'TRUE_FALSE', 'READY', ?, 0, 1)", child, "CHILD-" + child, set);
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)",
+                child, "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.25,1]}}");
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,2,?::jsonb)",
+                child, "{\"body\":{\"scoringMethod\":\"PER_STATEMENT\",\"scoreTable\":[9,9]}}");
+        var sets = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null);
+        assertThat(source.findCandidates(sets, 10)).singleElement().satisfies(candidate -> {
+            assertThat(candidate.trueFalseMethod()).isNull();
+            assertThat(candidate.units()).singleElement().satisfies(unit -> {
+                assertThat(unit.questionId()).isEqualTo(child);
+                assertThat(unit.scoring().trueFalseMethod()).isEqualTo("COUNT_TABLE");
+                assertThat(unit.scoring().trueFalseTable()).containsExactly(new BigDecimal("0.25"), BigDecimal.ONE);
+            });
+        });
+    }
+
+    @Test
     void countsCompleteSetsAndClozeUnits() {
         UUID subject = UUID.randomUUID();
         UUID set = UUID.randomUUID();
