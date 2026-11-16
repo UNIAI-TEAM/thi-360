@@ -2,23 +2,14 @@ package vn.unicom.thi360.exam.domain.solver;
 
 import java.util.List;
 
-/**
- * Quy tắc tạm (spec 12, D25) gán số câu cho từng môn được chọn của một {@link SubjectChoice}:
- * với một cách chọn môn (đã lọc còn {@code choose} môn, theo thứ tự cấu trúc), trả mảng số câu
- * song song với {@code pickedSubjectCodes}.
- *
- * <p>Cách làm tạm chờ BA chốt nằm sau interface này để đổi bằng một thay thế nhỏ; cài đặt mặc định
- * là {@link StructureOrderAllocator}.
- */
-@FunctionalInterface
+/** Quy tắc phân bổ số câu cho một bộ môn được chọn. */
 public interface SubjectCountAllocator {
+    /** Mọi cách phân bổ có thể xảy ra, song song với các section đã chọn. */
+    List<int[]> allocations(SubjectChoice choice, List<SectionOnPath> picked);
 
-    /**
-     * Số câu của từng môn được chọn.
-     *
-     * @param choice             phương án SUBJECT_CHOICE đang mở
-     * @param pickedSubjectCodes mã các môn được chọn, theo thứ tự cấu trúc (đúng {@code choice.choose} phần tử)
-     * @return mảng số câu song song {@code pickedSubjectCodes}; mỗi phần tử &gt; 0
-     */
-    int[] allocate(SubjectChoice choice, List<String> pickedSubjectCodes);
+    /** Chọn một cách phân bổ theo hạt giống khi sinh đề. */
+    default int[] select(SubjectChoice choice, List<SectionOnPath> picked, long seed) {
+        List<int[]> allocations = allocations(choice, picked);
+        return allocations.get(new java.util.Random(seed).nextInt(allocations.size()));
+    }
 }

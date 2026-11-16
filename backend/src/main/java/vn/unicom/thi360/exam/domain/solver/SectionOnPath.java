@@ -26,7 +26,8 @@ public record SectionOnPath(
         String sectionId,
         Integer questionCount,
         SubjectQuota subjectQuota,
-        List<GroupQuota> groups) {
+        List<GroupQuota> groups,
+        String choiceGroup) {
 
     public SectionOnPath {
         Objects.requireNonNull(subjectCode, "subjectCode must not be null");
@@ -50,8 +51,15 @@ public record SectionOnPath(
         }
     }
 
+    /** Môn không tham gia lựa chọn nhóm tự nhiên/xã hội. */
+    public SectionOnPath(String subjectCode, String sectionId, Integer questionCount,
+            SubjectQuota subjectQuota, List<GroupQuota> groups) {
+        this(subjectCode, sectionId, questionCount, subjectQuota, groups, null);
+    }
+
     /** Bản sao có số câu đã quyết (dùng khi mở {@link SubjectChoice} thành {@link SubjectPick}). */
     public SectionOnPath withQuestionCount(int resolvedCount) {
-        return new SectionOnPath(subjectCode, sectionId, resolvedCount, subjectQuota, groups);
+        return new SectionOnPath(subjectCode, sectionId, resolvedCount, subjectQuota, groups,
+                choiceGroup);
     }
 }
