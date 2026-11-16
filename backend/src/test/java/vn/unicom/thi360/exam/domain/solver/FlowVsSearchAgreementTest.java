@@ -49,9 +49,11 @@ class FlowVsSearchAgreementTest {
         for (int g = 0; g < ctx.groups().size(); g++) {
             for (int i : picked.get(g)) {
                 int[] vec = ctx.contrib()[g][i];
-                // chỉ tiêu phía môn tính trên mọi đơn vị; chỉ tiêu của nhóm chỉ tính đơn vị nhóm đó
-                // (TỔNG của nhóm khác khớp mọi đơn vị nên không được cộng vào)
-                for (int r = 0; r < ctx.subjectReqs(); r++) {
+                // chỉ tiêu phía môn của section chứa nhóm g tính trên đơn vị của các nhóm cùng
+                // section; chỉ tiêu của nhóm chỉ tính đơn vị nhóm đó (TỔNG của nhóm khác khớp
+                // mọi đơn vị nên không được cộng vào)
+                int[] blk = ctx.subjectBlocks()[ctx.sectionOf()[g]];
+                for (int r = blk[0]; r < blk[1]; r++) {
                     sums[r] += vec[r];
                 }
                 for (int r = ctx.reqFrom()[g]; r < ctx.reqTo()[g]; r++) {

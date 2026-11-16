@@ -172,12 +172,14 @@ final class PathSearch {
             int c = pairs.get(p)[1];
             pairGroup[p] = g;
             pairClass[p] = c;
-            // vector charge của cặp: chỉ chỉ tiêu phía môn + chỉ tiêu của chính nhóm — đóng góp
-            // vào TỔNG của nhóm khác (matcher khớp mọi đơn vị) không được trừ ở cặp này
+            // vector charge của cặp: chỉ chỉ tiêu phía môn của section chứa nhóm + chỉ tiêu của
+            // chính nhóm — đóng góp vào TỔNG của nhóm khác (matcher khớp mọi đơn vị) và chỉ tiêu
+            // phía môn của section khác không được trừ ở cặp này (R2-3)
             int[] full = classVecs.get(c);
             int[] masked = new int[full.length];
+            int[] blk = ctx.subjectBlocks()[ctx.sectionOf()[g]];
             for (int r = 0; r < full.length; r++) {
-                if (r < ctx.subjectReqs() || (r >= ctx.reqFrom()[g] && r < ctx.reqTo()[g])) {
+                if ((r >= blk[0] && r < blk[1]) || (r >= ctx.reqFrom()[g] && r < ctx.reqTo()[g])) {
                     masked[r] = full[r];
                 }
             }

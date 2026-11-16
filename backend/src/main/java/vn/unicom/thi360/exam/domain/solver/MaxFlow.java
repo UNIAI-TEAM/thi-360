@@ -43,9 +43,14 @@ final class MaxFlow {
      * phía tối đa một phân hoạch, và mọi ứng viên usable là câu độc lập một đơn vị.
      */
     boolean applies(Prep.SubproblemContext ctx) {
+        // spec 5.4 bước 1: mạng luồng chỉ áp dụng khi môn nằm ở đúng một ExamSection (R2-3) —
+        // nhiều section cùng mã phải đi quay lui vì vùng gán chung nhưng chỉ tiêu từng section
+        if (ctx.subjectBlocks().length != 1) {
+            return false;
+        }
         int subjectDims = 0;
         for (int[] dim : ctx.dims()) {
-            if (dim[1] <= ctx.subjectReqs()) {
+            if (dim[2] < 0) {
                 subjectDims++;
             }
         }
@@ -99,7 +104,6 @@ final class MaxFlow {
         int nG = ctx.groups().size();
         // mục chỉ tiêu của mỗi phía mà luồng đi qua: phía nhóm = phân hoạch của nhóm (hoặc TỔNG);
         // phía môn = phân hoạch duy nhất của môn (hoặc không có → câu nối thẳng đích)
-        int[] groupReqOf = new int[nG]; // một nút chỉ tiêu cho mỗi nhóm khi nhóm không có phân hoạch
         List<int[]> groupReqNodes = new ArrayList<>(nG);
         int[] subjectReqNodes;
 
@@ -113,7 +117,7 @@ final class MaxFlow {
         }
         int[] subjectDim = null;
         for (int[] dim : ctx.dims()) {
-            if (dim[1] <= ctx.subjectReqs()) {
+            if (dim[2] < 0) {
                 subjectDim = dim;
                 break;
             }

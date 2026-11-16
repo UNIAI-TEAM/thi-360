@@ -8,20 +8,29 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * Chuẩn bị một bài toán con theo môn (spec 5.4): dịch chỉ tiêu cấp môn ({@link SubjectQuota}) và
- * chỉ tiêu của các nhóm ({@link GroupQuota}) thành mảng chỉ tiêu nội bộ, quy chỉ tiêu tỉ lệ ra số
- * câu bằng {@link QuotaApportioner}, và lọc ứng viên của từng nhóm.
+ * Chuẩn bị một bài toán con theo môn (spec 5.4): dịch chỉ tiêu cấp môn ({@link SubjectQuota})
+ * của từng {@link SectionOnPath} và chỉ tiêu của các nhóm ({@link GroupQuota}) thành mảng chỉ
+ * tiêu nội bộ, quy chỉ tiêu tỉ lệ ra số câu bằng {@link QuotaApportioner}, và lọc ứng viên của
+ * từng nhóm.
  *
- * <p>Bố cục {@code reqs}: chỉ tiêu phía môn trước (dạng trả lời, rồi ô COMBINED, rồi chiều lớp,
- * rồi chiều độ khó — mỗi chiều khai báo là một phân hoạch trên đơn vị), sau đó theo thứ tự nhóm:
- * chỉ tiêu TỔNG của nhóm (quota = số đơn vị của nhóm) rồi chỉ tiêu phụ (ma trận, năng lực, nhóm
- * MAPID). {@code reqFrom[g]} / {@code reqTo[g]} là khoảng chỉ tiêu của nhóm g (TỔNG ở reqFrom).
+ * <p>Nhiều {@link SectionOnPath} cùng {@code subjectCode} được gộp thành một bài toán con để
+ * tìm kiếm chung (vùng gán chung, khóa duy nhất chung), nhưng <b>phạm vi chỉ tiêu không gộp</b>
+ * (R2-3): chỉ tiêu cấp môn của một section chỉ tính trên các nhóm của section đó và tổng phải
+ * bằng số câu của section đó; nhóm "lấy phần còn lại" nhận phần chênh của riêng section mình
+ * (R2-4); tổng đơn vị của các nhóm mỗi section phải bằng đúng số câu của section (R2-5).
  *
- * <p>Mỗi chiều đã khai (dạng trả lời của môn, từng chiều ma trận môn, từng chiều ma trận nhóm) là
- * một phân hoạch: mọi đơn vị của ứng viên phải khớp đúng một mục chỉ tiêu của mỗi chiều, nên tổng
- * chỉ tiêu của chiều phải bằng số đơn vị được kiểm soát (số câu của môn / của nhóm). Đơn vị khớp
- * mục chỉ tiêu quota 0 thì ứng viên không usable; đơn vị không khớp mục nào của một chiều cũng vậy
- * (không có chỗ để đếm mà không vi phạm).
+ * <p>Bố cục {@code reqs}: theo thứ tự section — trước chỉ tiêu phía môn của section (dạng trả
+ * lời, rồi ô COMBINED, rồi chiều lớp, rồi chiều độ khó — mỗi chiều khai báo là một phân hoạch),
+ * rồi theo thứ tự nhóm của section: chỉ tiêu TỔNG của nhóm (quota = số đơn vị của nhóm) rồi chỉ
+ * tiêu phụ (ma trận, năng lực, nhóm MAPID). {@code reqFrom[g]} / {@code reqTo[g]} là khoảng chỉ
+ * tiêu của nhóm g (TỔNG ở reqFrom); {@code subjectBlocks[s]} là khoảng chỉ tiêu phía môn của
+ * section s.
+ *
+ * <p>Mỗi chiều đã khai (dạng trả lời của section, từng chiều ma trận môn của section, từng chiều
+ * ma trận nhóm) là một phân hoạch: mọi đơn vị của ứng viên phải khớp đúng một mục chỉ tiêu của
+ * mỗi chiều áp dụng cho nhóm chứa nó, nên tổng chỉ tiêu của chiều phải bằng số đơn vị được kiểm
+ * soát (số câu của section / của nhóm). Đơn vị khớp mục chỉ tiêu quota 0 thì ứng viên không
+ * usable; đơn vị không khớp mục nào của một chiều áp dụng cũng vậy.
  *
  * <p>Chỉ tiêu phụ không phân hoạch của nhóm (năng lực, nhóm MAPID) là chỉ tiêu tối thiểu độc lập:
  * đơn vị có gắn thì đếm, tổng không nhất thiết bằng số đơn vị của nhóm.
@@ -129,27 +138,35 @@ final class Prep {
     /**
      * Bài toán con đã chuẩn bị: chỉ tiêu nội bộ và ứng viên đã lọc của từng nhóm.
      *
-     * @param subjectCode mã môn
-     * @param count       số đơn vị của bài toán con (= số câu của môn)
-     * @param groups      các nhóm đã quyết đơn vị
-     * @param reqs        toàn bộ chỉ tiêu (phía môn trước, rồi theo nhóm)
-     * @param subjectReqs số chỉ tiêu phía môn (đầu mảng reqs)
-     * @param reqFrom     reqFrom[g] = chỉ số chỉ tiêu TỔNG của nhóm g
-     * @param reqTo       reqTo[g] = chỉ số sau chỉ tiêu cuối của nhóm g
-     * @param cands       cands[g] ứng viên của nhóm g (đã xáo nếu GENERATE)
-     * @param contrib     contrib[g][i][r] đóng góp của ứng viên i vào chỉ tiêu r
-     * @param units       units[g][i] số đơn vị của ứng viên i
-     * @param keys        keys[g][i] khóa duy nhất (questionId + childIds)
-     * @param usable      ứng viên i có thể được chọn cho nhóm g không
-     * @param dims        các phân hoạch {from, to}: mọi đơn vị phải khớp một mục dương của mỗi phân
-     *                    hoạch áp dụng cho nó (phía môn + phía nhóm của chính nhóm)
+     * @param subjectCode   mã môn
+     * @param count         số đơn vị của bài toán con (= tổng số câu các section)
+     * @param sections      các section của bài toán con (theo thứ tự)
+     * @param groups        các nhóm đã quyết đơn vị (gộp các section, theo thứ tự)
+     * @param sectionOf     sectionOf[g] = chỉ số section chứa nhóm g
+     * @param reqs          toàn bộ chỉ tiêu (theo section: phía môn của section, rồi các nhóm)
+     * @param reqRefs       reqRefs[r] định danh {@link QuotaRef} của chỉ tiêu phía môn; null với
+     *                      chỉ tiêu phía nhóm
+     * @param subjectBlocks subjectBlocks[s] = {from, to} khoảng chỉ tiêu phía môn của section s
+     * @param reqFrom       reqFrom[g] = chỉ số chỉ tiêu TỔNG của nhóm g
+     * @param reqTo         reqTo[g] = chỉ số sau chỉ tiêu cuối của nhóm g
+     * @param cands         cands[g] ứng viên của nhóm g (đã xáo nếu GENERATE)
+     * @param contrib       contrib[g][i][r] đóng góp của ứng viên i vào chỉ tiêu r
+     * @param units         units[g][i] số đơn vị của ứng viên i
+     * @param keys          keys[g][i] khóa duy nhất (questionId + childIds)
+     * @param usable        ứng viên i có thể được chọn cho nhóm g không
+     * @param dims          các phân hoạch {from, to, owner}: owner &gt;= 0 là nhóm sở hữu; owner =
+     *                      -(s+1) là chỉ tiêu phía môn của section s. Mọi đơn vị phải khớp một mục
+     *                      dương của mỗi phân hoạch áp dụng cho nhóm chứa nó
      */
     record SubproblemContext(
             String subjectCode,
             int count,
+            List<SectionOnPath> sections,
             List<ResolvedGroup> groups,
+            int[] sectionOf,
             List<Requirement> reqs,
-            int subjectReqs,
+            List<QuotaRef> reqRefs,
+            int[][] subjectBlocks,
             int[] reqFrom,
             int[] reqTo,
             List<List<PathCandidate>> cands,
@@ -163,136 +180,191 @@ final class Prep {
     // ---------------------------------------------------------------- chuẩn bị
 
     /**
-     * Dựng {@link SubproblemContext}: dịch chỉ tiêu, quy tỉ lệ, lọc ứng viên.
+     * Dựng {@link SubproblemContext}: dịch chỉ tiêu theo section, quy tỉ lệ, lọc ứng viên.
      *
      * @return context, hoặc null khi rõ ràng bất khả thi (tổng một chiều ≠ số đơn vị được kiểm
-     *         soát, tổng cố định vượt số câu của môn, số đơn vị dương mà không có chỉ tiêu dương);
-     *         lý do cụ thể đặt vào {@code failReason}, nhóm vào {@code failGroup}
+     *         soát, nhóm cố định vượt số câu của section, số đơn vị dương mà không có chỉ tiêu
+     *         dương, tổng nhóm một section khác số câu của section); lý do cụ thể đặt vào
+     *         {@code failReason}, nhóm vào {@code failGroup}
      */
     static SubproblemContext prepare(Subproblem problem,
             List<List<PathCandidate>> candidatesByGroup, QuotaApportioner apportioner,
             Runnable deadlineCheck, String[] failReason, String[] failGroup) {
+        List<SectionOnPath> sections = problem.sections();
+        int nS = sections.size();
+        // nhóm gộp theo section + số đơn vị đã quyết: nhóm "lấy phần còn lại" nhận phần chênh
+        // của riêng section mình (R2-4), không phải của môn đã gộp
+        List<ResolvedGroup> groups = new ArrayList<>();
         List<GroupQuota> flat = new ArrayList<>();
-        for (SectionOnPath section : problem.sections()) {
-            flat.addAll(section.groups());
+        List<Integer> secIdx = new ArrayList<>();
+        for (int s = 0; s < nS; s++) {
             deadlineCheck.run();
-        }
-        // số đơn vị từng nhóm: SINGLE cố định, SET = setCount × setSize, nhóm "lấy phần còn lại"
-        // nhận phần chênh giữa số câu của môn và tổng cố định
-        List<ResolvedGroup> groups = new ArrayList<>(flat.size());
-        int fixedUnits = 0;
-        for (GroupQuota g : flat) {
-            if (g.kind() != GroupQuota.GroupKind.SINGLE || g.questionCount() != null) {
-                fixedUnits += g.resolvedUnitCount(0);
+            SectionOnPath section = sections.get(s);
+            int fixed = 0;
+            for (GroupQuota g : section.groups()) {
+                if (g.kind() != GroupQuota.GroupKind.SINGLE || g.questionCount() != null) {
+                    fixed += g.resolvedUnitCount(0);
+                }
+            }
+            int count = section.questionCount() == null ? 0 : section.questionCount();
+            int remainder = count - fixed;
+            if (remainder < 0) {
+                failReason[0] = "fixed group units " + fixed + " exceed section count "
+                        + count + " of section " + section.sectionId();
+                return null;
+            }
+            int sum = 0;
+            for (GroupQuota g : section.groups()) {
+                int units = (g.kind() == GroupQuota.GroupKind.SINGLE
+                        && g.questionCount() == null)
+                                ? remainder
+                                : g.resolvedUnitCount(0);
+                groups.add(new ResolvedGroup(g, units));
+                flat.add(g);
+                secIdx.add(s);
+                sum += units;
+            }
+            // tổng đơn vị các nhóm của một section phải bằng đúng số câu của nó (R2-5):
+            // mọi đề VALID chứa đúng số đơn vị đó của section
+            if (sum != count) {
+                failReason[0] = "resolved group units " + sum + " != section count " + count
+                        + " of section " + section.sectionId();
+                return null;
             }
         }
-        int remainder = problem.count() - fixedUnits;
-        if (remainder < 0) {
-            failReason[0] = "fixed group units " + fixedUnits + " exceed subject count "
-                    + problem.count();
-            return null;
-        }
-        for (GroupQuota g : flat) {
-            int units = (g.kind() == GroupQuota.GroupKind.SINGLE && g.questionCount() == null)
-                    ? remainder
-                    : g.resolvedUnitCount(0);
-            groups.add(new ResolvedGroup(g, units));
+        int[] sectionOf = new int[flat.size()];
+        for (int g = 0; g < flat.size(); g++) {
+            sectionOf[g] = secIdx.get(g);
         }
         if (candidatesByGroup.size() != groups.size()) {
             throw new IllegalArgumentException("candidatesByGroup must be parallel to groups");
         }
 
         List<Requirement> reqs = new ArrayList<>();
+        List<QuotaRef> reqRefs = new ArrayList<>();
         List<int[]> dims = new ArrayList<>();
+        String subjectCode = problem.subjectCode();
+        int[][] subjectBlocks = new int[nS][];
+        int[] reqFrom = new int[groups.size()];
+        int[] reqTo = new int[groups.size()];
 
-        // ---- chỉ tiêu phía môn ----
-        SubjectQuota quota = mergedSubjectQuota(problem.sections());
-        if (quota.answerQuotas() != null) {
-            List<DimensionQuota> items = quota.answerQuotas().items();
-            addDim(reqs, dims, items, quota.answerQuotas().unit(), problem.count(), apportioner,
-                    i -> Requirement.subjectAnswer(items.get(i)),
-                    failReason, "subject answer quotas");
-        }
-        if (quota.matrix() instanceof MatrixQuota.Combined combined) {
-            addDim(reqs, dims, combined.cells().stream()
-                    .map(c -> new DimensionQuota(c.gradeCode() + "/" + c.difficultyCode(), c.quota()))
-                    .toList(), combined.unit(), problem.count(), apportioner,
-                    i -> Requirement.subjectCell(combined.cells().get(i)),
-                    failReason, "subject combined matrix");
-        } else if (quota.matrix() instanceof MatrixQuota.Separate separate) {
-            if (!separate.grades().isEmpty()) {
-                addDim(reqs, dims, separate.grades(), separate.unit(), problem.count(), apportioner,
-                        i -> Requirement.subjectGrade(separate.grades().get(i)),
-                        failReason, "subject grade dimension");
-            }
-            if (!separate.difficulties().isEmpty()) {
-                addDim(reqs, dims, separate.difficulties(), separate.unit(), problem.count(),
-                        apportioner, i -> Requirement.subjectDifficulty(
-                                separate.difficulties().get(i)),
-                        failReason, "subject difficulty dimension");
-            }
-        }
-        int subjectReqs = reqs.size();
-        if (failReason[0] != null) {
-            return null;
-        }
-
-        // ---- chỉ tiêu phía nhóm ----
-        int nG = groups.size();
-        int[] reqFrom = new int[nG];
-        int[] reqTo = new int[nG];
-        for (int g = 0; g < nG; g++) {
+        for (int s = 0; s < nS; s++) {
             deadlineCheck.run();
-            ResolvedGroup rg = groups.get(g);
-            GroupQuota group = rg.group();
-            reqFrom[g] = reqs.size();
-            reqs.add(Requirement.groupTotal(group.groupId(), rg.units()));
-            if (group.matrix() instanceof MatrixQuota.Combined combined) {
-                addDim(reqs, dims, combined.cells().stream()
+            SectionOnPath section = sections.get(s);
+            String sectionId = section.sectionId();
+            int count = section.questionCount() == null ? 0 : section.questionCount();
+            SubjectQuota quota = section.subjectQuota() == null
+                    ? SubjectQuota.NONE
+                    : section.subjectQuota();
+            subjectBlocks[s] = new int[]{reqs.size(), reqs.size()};
+            if (quota.answerQuotas() != null) {
+                List<DimensionQuota> items = quota.answerQuotas().items();
+                addDim(reqs, reqRefs, dims, items, quota.answerQuotas().unit(), count, apportioner,
+                        i -> Requirement.subjectAnswer(items.get(i)),
+                        i -> new QuotaRef(subjectCode, sectionId, "ANSWER", items.get(i).code()),
+                        -(s + 1), failReason, "subject answer quotas of section " + sectionId);
+            }
+            if (quota.matrix() instanceof MatrixQuota.Combined combined) {
+                addDim(reqs, reqRefs, dims, combined.cells().stream()
                         .map(c -> new DimensionQuota(
                                 c.gradeCode() + "/" + c.difficultyCode(), c.quota()))
-                        .toList(), combined.unit(), rg.units(), apportioner,
-                        i -> Requirement.groupCell(group.groupId(), combined.cells().get(i)),
-                        failReason, "group " + group.groupId() + " combined matrix");
-            } else if (group.matrix() instanceof MatrixQuota.Separate separate) {
+                        .toList(), combined.unit(), count, apportioner,
+                        i -> Requirement.subjectCell(combined.cells().get(i)),
+                        i -> new QuotaRef(subjectCode, sectionId, "CELL",
+                                combined.cells().get(i).gradeCode() + "/"
+                                        + combined.cells().get(i).difficultyCode()),
+                        -(s + 1), failReason,
+                        "subject combined matrix of section " + sectionId);
+            } else if (quota.matrix() instanceof MatrixQuota.Separate separate) {
                 if (!separate.grades().isEmpty()) {
-                    addDim(reqs, dims, separate.grades(), separate.unit(), rg.units(), apportioner,
-                            i -> Requirement.groupGrade(group.groupId(), separate.grades().get(i)),
-                            failReason, "group " + group.groupId() + " grade dimension");
+                    addDim(reqs, reqRefs, dims, separate.grades(), separate.unit(), count,
+                            apportioner,
+                            i -> Requirement.subjectGrade(separate.grades().get(i)),
+                            i -> new QuotaRef(subjectCode, sectionId, "GRADE",
+                                    separate.grades().get(i).code()),
+                            -(s + 1), failReason,
+                            "subject grade dimension of section " + sectionId);
                 }
                 if (!separate.difficulties().isEmpty()) {
-                    addDim(reqs, dims, separate.difficulties(), separate.unit(), rg.units(),
-                            apportioner, i -> Requirement.groupDifficulty(group.groupId(),
-                                    separate.difficulties().get(i)),
-                            failReason, "group " + group.groupId() + " difficulty dimension");
+                    addDim(reqs, reqRefs, dims, separate.difficulties(), separate.unit(), count,
+                            apportioner,
+                            i -> Requirement.subjectDifficulty(separate.difficulties().get(i)),
+                            i -> new QuotaRef(subjectCode, sectionId, "DIFFICULTY",
+                                    separate.difficulties().get(i).code()),
+                            -(s + 1), failReason,
+                            "subject difficulty dimension of section " + sectionId);
                 }
             }
-            for (CompetencyQuota c : group.competencies()) {
-                reqs.add(Requirement.competency(group.groupId(), c));
-            }
-            for (MapidGroupQuota mg : group.mapidGroups()) {
-                reqs.add(Requirement.mapidGroup(group.groupId(), mg));
-            }
-            reqTo[g] = reqs.size();
+            subjectBlocks[s][1] = reqs.size();
             if (failReason[0] != null) {
-                failGroup[0] = group.groupId();
                 return null;
             }
-            // nhóm có đơn vị dương mà không có chỉ tiêu dương nào (TỔNG + phụ): vô lý → INVALID
-            if (rg.units() > 0 && reqs.get(reqFrom[g]).quota() <= 0) {
-                failReason[0] = "group " + group.groupId() + " needs " + rg.units()
-                        + " units with non-positive total";
-                failGroup[0] = group.groupId();
-                return null;
+
+            // ---- chỉ tiêu phía nhóm của section s ----
+            for (int g = 0; g < groups.size(); g++) {
+                if (sectionOf[g] != s) {
+                    continue;
+                }
+                deadlineCheck.run();
+                ResolvedGroup rg = groups.get(g);
+                GroupQuota group = rg.group();
+                reqFrom[g] = reqs.size();
+                reqs.add(Requirement.groupTotal(group.groupId(), rg.units()));
+                reqRefs.add(null);
+                if (group.matrix() instanceof MatrixQuota.Combined combined) {
+                    addDim(reqs, reqRefs, dims, combined.cells().stream()
+                            .map(c -> new DimensionQuota(
+                                    c.gradeCode() + "/" + c.difficultyCode(), c.quota()))
+                            .toList(), combined.unit(), rg.units(), apportioner,
+                            i -> Requirement.groupCell(group.groupId(), combined.cells().get(i)),
+                            i -> null, g,
+                            failReason, "group " + group.groupId() + " combined matrix");
+                } else if (group.matrix() instanceof MatrixQuota.Separate separate) {
+                    if (!separate.grades().isEmpty()) {
+                        addDim(reqs, reqRefs, dims, separate.grades(), separate.unit(), rg.units(),
+                                apportioner,
+                                i -> Requirement.groupGrade(group.groupId(),
+                                        separate.grades().get(i)),
+                                i -> null, g,
+                                failReason, "group " + group.groupId() + " grade dimension");
+                    }
+                    if (!separate.difficulties().isEmpty()) {
+                        addDim(reqs, reqRefs, dims, separate.difficulties(), separate.unit(),
+                                rg.units(), apportioner,
+                                i -> Requirement.groupDifficulty(group.groupId(),
+                                        separate.difficulties().get(i)),
+                                i -> null, g,
+                                failReason,
+                                "group " + group.groupId() + " difficulty dimension");
+                    }
+                }
+                for (CompetencyQuota c : group.competencies()) {
+                    reqs.add(Requirement.competency(group.groupId(), c));
+                    reqRefs.add(null);
+                }
+                for (MapidGroupQuota mg : group.mapidGroups()) {
+                    reqs.add(Requirement.mapidGroup(group.groupId(), mg));
+                    reqRefs.add(null);
+                }
+                reqTo[g] = reqs.size();
+                if (failReason[0] != null) {
+                    failGroup[0] = group.groupId();
+                    return null;
+                }
+                // nhóm có đơn vị dương mà không có chỉ tiêu dương nào (TỔNG + phụ): vô lý → INVALID
+                if (rg.units() > 0 && reqs.get(reqFrom[g]).quota() <= 0) {
+                    failReason[0] = "group " + group.groupId() + " needs " + rg.units()
+                            + " units with non-positive total";
+                    failGroup[0] = group.groupId();
+                    return null;
+                }
             }
-        }
-        if (failReason[0] != null) {
-            return null;
         }
 
         int[][] dimsArr = dims.toArray(int[][]::new);
 
         // ---- lọc ứng viên ----
+        int nG = groups.size();
         List<List<PathCandidate>> cands = new ArrayList<>(nG);
         int[][][] contrib = new int[nG][][];
         int[][] units = new int[nG][];
@@ -316,22 +388,27 @@ final class Prep {
                 keys[g][i] = keysOf(c);
                 units[g][i] = c.units().size();
                 int[] vec = contrib[g][i];
-                usable[g][i] = usableFor(rg.group(), c, vec, reqs, subjectReqs, dimsArr,
-                        reqFrom[g], reqTo[g]);
+                usable[g][i] = usableFor(rg.group(), c, vec, reqs, subjectBlocks, dimsArr,
+                        reqFrom[g], reqTo[g], sectionOf[g], deadlineCheck);
             }
         }
-        return new SubproblemContext(problem.subjectCode(), problem.count(), groups, reqs,
-                subjectReqs, reqFrom, reqTo, cands, contrib, units, keys, usable, dimsArr);
+        return new SubproblemContext(problem.subjectCode(), problem.count(), sections, groups,
+                sectionOf, reqs, reqRefs, subjectBlocks, reqFrom, reqTo, cands, contrib, units,
+                keys, usable, dimsArr);
     }
 
     /**
      * Thêm một phân hoạch chỉ tiêu (dãy giá trị theo {@code unit}) vào {@code reqs}; ghi chiều vào
-     * {@code dims}; kiểm tổng chiều = {@code expected} (spec 5.2). Sai tổng → failReason.
+     * {@code dims} với chủ sở hữu {@code owner} (&gt;= 0: nhóm; &lt; 0: chỉ tiêu phía môn của
+     * section {@code -owner-1}); kiểm tổng chiều = {@code expected} (spec 5.2). Sai tổng →
+     * failReason.
      */
-    private static void addDim(List<Requirement> reqs, List<int[]> dims,
+    private static void addDim(List<Requirement> reqs, List<QuotaRef> reqRefs, List<int[]> dims,
             List<DimensionQuota> items, QuotaUnit unit, int expected,
             QuotaApportioner apportioner,
-            java.util.function.IntFunction<Requirement> make, String[] failReason, String label) {
+            java.util.function.IntFunction<Requirement> make,
+            java.util.function.IntFunction<QuotaRef> makeRef,
+            int owner, String[] failReason, String label) {
         int[] values = new int[items.size()];
         if (unit == QuotaUnit.PERCENT) {
             values = apportioner.apportion(
@@ -351,37 +428,23 @@ final class Prep {
         }
         int from = reqs.size();
         for (int i = 0; i < items.size(); i++) {
-            reqs.add(make.apply(i));
+            Requirement r = make.apply(i);
+            // quota đã quy thay giá trị gốc (PERCENT → số câu)
+            reqs.add(new Requirement(r.kind(), r.key(), values[i], r.matcher()));
+            reqRefs.add(makeRef.apply(i));
         }
-        // ghi quota đã quy: các Requirement được dựng từ giá trị gốc → thay bằng giá trị đã quy
-        // (đơn giản: dựng lại matcher từ make nhưng quota phải là values[i])
-        for (int i = 0; i < items.size(); i++) {
-            Requirement r = reqs.get(from + i);
-            reqs.set(from + i, new Requirement(r.kind(), r.key(), values[i], r.matcher()));
-        }
-        dims.add(new int[]{from, from + items.size()});
-    }
-
-    /** Chỉ tiêu cấp môn có hiệu lực của bài toán con: mọi môn cùng mã dùng chung chỉ tiêu (B9). */
-    private static SubjectQuota mergedSubjectQuota(List<SectionOnPath> sections) {
-        for (SectionOnPath s : sections) {
-            if (s.subjectQuota() != null && s.subjectQuota() != SubjectQuota.NONE
-                    && (s.subjectQuota().answerQuotas() != null
-                            || s.subjectQuota().matrix() != null)) {
-                return s.subjectQuota();
-            }
-        }
-        return SubjectQuota.NONE;
+        dims.add(new int[]{from, from + items.size(), owner});
     }
 
     /**
      * Ứng viên có usable cho nhóm không: qua bộ lọc của nhóm (kích thước bộ, dạng câu con, dạng
      * trả lời, điểm, quy tắc chấm), không trùng khóa trong chính nó, mọi đơn vị khớp ít nhất một
-     * mục chỉ tiêu dương trong mỗi phân hoạch áp dụng (phía môn + ma trận của chính nhóm), và
-     * không đóng góp vào mục chỉ tiêu quota 0 trong phạm vi áp dụng đó.
+     * mục chỉ tiêu dương trong mỗi phân hoạch áp dụng (chỉ tiêu phía môn của section chứa nhóm +
+     * chiều của chính nhóm), và không đóng góp vào mục chỉ tiêu quota 0 trong phạm vi áp dụng đó.
      */
     private static boolean usableFor(GroupQuota group, PathCandidate c, int[] vec,
-            List<Requirement> reqs, int subjectReqs, int[][] dims, int reqFrom, int reqTo) {
+            List<Requirement> reqs, int[][] subjectBlocks, int[][] dims, int reqFrom, int reqTo,
+            int sectionIdx, Runnable deadlineCheck) {
         List<CountingUnit> us = c.units();
         if (us.isEmpty()) {
             return false;
@@ -425,16 +488,20 @@ final class Prep {
                 return false;
             }
         }
-        // vector đóng góp + phủ các phân hoạch áp dụng (phía môn + chiều của chính nhóm)
+        // vector đóng góp + phủ các phân hoạch áp dụng cho nhóm này
         int rCount = reqs.size();
+        int scans = 0;
         for (CountingUnit u : us) {
             for (int r = 0; r < rCount; r++) {
+                if ((scans++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 if (reqs.get(r).matcher().test(u)) {
                     vec[r]++;
                 }
             }
             for (int[] dim : dims) {
-                if (!dimApplies(dim, subjectReqs, reqFrom, reqTo)) {
+                if (!dimApplies(dim, reqFrom, reqTo, sectionIdx)) {
                     continue;
                 }
                 boolean covered = false;
@@ -449,19 +516,29 @@ final class Prep {
                 }
             }
         }
-        // không đóng góp vào mục quota 0 trong phạm vi áp dụng (phía môn + chỉ tiêu chính nhóm)
+        // không đóng góp vào mục quota 0 trong phạm vi áp dụng (chỉ tiêu phía môn của section
+        // chứa nhóm + chỉ tiêu của chính nhóm)
+        int[] blk = subjectBlocks[sectionIdx];
         for (int r = 0; r < rCount; r++) {
             if (vec[r] > 0 && reqs.get(r).quota() == 0
-                    && (r < subjectReqs || (r >= reqFrom && r < reqTo))) {
+                    && ((r >= blk[0] && r < blk[1]) || (r >= reqFrom && r < reqTo))) {
                 return false;
             }
         }
         return true;
     }
 
-    /** Phân hoạch {@code dim} có áp dụng cho ứng viên của nhóm [reqFrom, reqTo) không. */
-    private static boolean dimApplies(int[] dim, int subjectReqs, int reqFrom, int reqTo) {
-        return dim[1] <= subjectReqs || (dim[0] >= reqFrom && dim[1] <= reqTo);
+    /**
+     * Phân hoạch {@code dim} có áp dụng cho ứng viên của một nhóm không: phân hoạch của chính
+     * nhóm (owner = chỉ số nhóm nằm trong [reqFrom, reqTo) của nó) hoặc chỉ tiêu phía môn của
+     * section chứa nhóm (owner = -(sectionIdx+1)).
+     */
+    private static boolean dimApplies(int[] dim, int reqFrom, int reqTo, int sectionIdx) {
+        int owner = dim[2];
+        if (owner >= 0) {
+            return dim[0] >= reqFrom && dim[1] <= reqTo;
+        }
+        return owner == -(sectionIdx + 1);
     }
 
     /** Khóa duy nhất của ứng viên: questionId + mọi childId khác null của các đơn vị. */
