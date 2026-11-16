@@ -309,14 +309,15 @@ public class ExamService {
         }
         String prefixStr = prefix.toString();
         Integer next = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(MAX(CAST(SUBSTRING(e.code FROM ?) AS int)), 0) + 1"
+                "SELECT COALESCE(MAX(CAST(SUBSTRING(e.code_normalized FROM ?) AS bigint)), 0) + 1"
                         + " FROM exam.exam e"
-                        + " WHERE e.code_normalized LIKE ?"
-                        + " AND e.code ~ ?",
+                        + " WHERE LEFT(e.code_normalized, ?) = ?"
+                        + " AND SUBSTRING(e.code_normalized FROM ?) ~ '^[0-9]{3,9}$'",
                 Integer.class,
                 prefixStr.length() + 1,
-                prefixStr.toLowerCase(Locale.ROOT) + "%",
-                "^" + java.util.regex.Pattern.quote(prefixStr) + "[0-9]{3}$");
+                prefixStr.length(),
+                prefixStr.toLowerCase(Locale.ROOT),
+                prefixStr.length() + 1);
         return new SuggestExamCodeResponse(prefixStr + String.format("%03d", next == null ? 1 : next));
     }
 
