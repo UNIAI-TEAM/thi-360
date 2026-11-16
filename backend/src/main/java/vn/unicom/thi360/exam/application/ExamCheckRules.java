@@ -349,9 +349,9 @@ public final class ExamCheckRules {
         List<Integer> counts = option.countsByPick() == null ? List.of() : option.countsByPick();
         int common = part.sections().stream().mapToInt(section -> section.questionCount() == null ? 0 : section.questionCount()).sum();
         int target = (part.questionCount() == null ? 0 : part.questionCount()) - common;
-        boolean invalid = choose < 1 || choose > option.sections().size() || option.sections().size() > 8
+        boolean invalid = choose < 1 || option.sections().size() < 2
+                || choose > option.sections().size() || option.sections().size() > 8
                 || counts.size() != choose || counts.stream().anyMatch(value -> value == null || value <= 0)
-                || counts.stream().filter(Objects::nonNull).mapToInt(Integer::intValue).sum() != target
                 || option.sections().stream().anyMatch(section -> section.choiceGroup() == null);
         if (!invalid) invalid = !allocationsMatch(option, choose, counts);
         if (!invalid) return null;

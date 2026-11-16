@@ -163,6 +163,30 @@ class ExamCheckerTests {
     }
 
     @Test
+    void selectedOptionCombinationDeterminesPartTotal() throws Exception {
+        Exam exam = exam(2, null, "RAW");
+        for (String code : List.of("A", "AA", "B", "BB", "FIX")) subject(code, 2);
+        String choice = """
+                {"id":"%s","kind":"SUBJECT_CHOICE","code":"%s","chooseSubjects":1,"countsByPick":[1],
+                "sections":[%s,%s]}
+                """;
+        String first = choice.formatted("first", "FIRST", scienceSection("A", "NATURAL"), scienceSection("AA", "NATURAL"));
+        String second = choice.formatted("second", "SECOND", scienceSection("B", "NATURAL"), scienceSection("BB", "NATURAL"));
+        String regular = """
+                {"id":"fixed","kind":"SUBJECT","code":"FIX","sections":[{"id":"fixed-s","subjectCode":"FIX",
+                "questionCount":1,"blocks":[{"id":"fixed-b","questionType":"SINGLE_CHOICE","questionCount":1}]}]}
+                """;
+        for (String options : List.of(first + "," + second, first + "," + regular)) {
+            String doc = """
+                    {"parts":[{"id":"p","questionCount":2,"participation":{"mode":"CHOICE","choose":2},"options":[%s]}]}
+                    """.formatted(options);
+            JsonNode result = check(exam, document(doc)).result();
+            assertThat(result.path("status").asText()).isEqualTo("VALID");
+            assertThat(issueCodes(result)).doesNotContain("SUBJECT_CHOICE_COUNTS_INVALID", "PART_TOTAL_MISMATCH");
+        }
+    }
+
+    @Test
     void malformedChoiceDoesNotHideASeparateValidPath() throws Exception {
         Exam exam = exam(1, null, "RAW");
         subject("MATH", 1);
