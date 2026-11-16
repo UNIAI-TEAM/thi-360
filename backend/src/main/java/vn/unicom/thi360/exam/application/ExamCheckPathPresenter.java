@@ -330,6 +330,19 @@ final class ExamCheckPathPresenter {
     }
 
     private static boolean affectsSelection(ObjectNode issue, List<SubjectPick> tuple) {
+        if (issue.has("selection")) {
+            for (var entry : issue.path("selection")) {
+                boolean matched = false;
+                for (SubjectPick pick : tuple) {
+                    for (int i = 0; i < pick.sections().size(); i++) {
+                        if (Objects.equals(entry.path("sectionId").asText(), pick.sections().get(i).sectionId())
+                                && entry.path("count").asInt() == pick.counts().get(i)) matched = true;
+                    }
+                }
+                if (!matched) return false;
+            }
+            return true;
+        }
         String sectionId = issue.path("sectionId").asText(null);
         String optionId = issue.path("optionId").asText(null);
         if (sectionId == null && optionId == null) return false;

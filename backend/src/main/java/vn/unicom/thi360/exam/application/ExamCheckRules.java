@@ -166,10 +166,45 @@ public final class ExamCheckRules {
     }
 
     private void totals(List<ObjectNode> found, PathResult result) {
-        List<SectionOnPath> counted = new ArrayList<>(result.path().sections());
-        for (List<SubjectPick> choices : result.path().picks()) {
-            if (!choices.isEmpty()) counted.addAll(choices.getFirst().resolvedSections());
+        List<List<SubjectPick>> tuples = new ArrayList<>();
+        product(result.path().picks(), 0, new ArrayList<>(), tuples);
+        for (List<SubjectPick> tuple : tuples) {
+            List<ObjectNode> tupleIssues = new ArrayList<>();
+            totalsForTuple(tupleIssues, result, tuple);
+            if (!tuple.isEmpty()) {
+                for (ObjectNode issue : tupleIssues) {
+                    var selection = issue.putArray("selection");
+                    StringBuilder suffix = new StringBuilder();
+                    for (SubjectPick pick : tuple) {
+                        for (int i = 0; i < pick.sections().size(); i++) {
+                            String id = pick.sections().get(i).sectionId();
+                            int count = pick.counts().get(i);
+                            var entry = selection.addObject();
+                            entry.put("sectionId", id);
+                            entry.put("count", count);
+                            suffix.append('|').append(id.length()).append(':').append(id).append(':').append(count);
+                        }
+                    }
+                    issue.put("key", issue.path("key").asText() + suffix);
+                }
+            }
+            found.addAll(tupleIssues);
         }
+    }
+
+    private static void product(List<List<SubjectPick>> choices, int index, List<SubjectPick> prefix,
+                                List<List<SubjectPick>> out) {
+        if (index == choices.size()) { out.add(List.copyOf(prefix)); return; }
+        for (SubjectPick pick : choices.get(index)) {
+            prefix.add(pick);
+            product(choices, index + 1, prefix, out);
+            prefix.removeLast();
+        }
+    }
+
+    private void totalsForTuple(List<ObjectNode> found, PathResult result, List<SubjectPick> tuple) {
+        List<SectionOnPath> counted = new ArrayList<>(result.path().sections());
+        for (SubjectPick pick : tuple) counted.addAll(pick.resolvedSections());
         Map<String, Integer> counts = new LinkedHashMap<>();
         Map<String, BigDecimal> points = new LinkedHashMap<>();
         Set<String> missingPoints = new LinkedHashSet<>();

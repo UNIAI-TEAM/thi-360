@@ -247,6 +247,32 @@ class ExamCheckerTests {
         assertThat(science.path("issues").findValues("subjectCount").stream().anyMatch(value -> value.asInt() == 17)).isTrue();
     }
 
+    @Test
+    void sciencePointsAreCheckedForEachSelectionAndSplit() throws Exception {
+        Exam exam = exam(50, new BigDecimal("50"), "RAW");
+        for (String code : List.of("A", "B", "C", "D", "E")) subject(code, 17);
+        List<String> sections = new ArrayList<>();
+        for (String code : List.of("A", "B", "C", "D", "E")) {
+            boolean natural = List.of("A", "B", "C").contains(code);
+            sections.add(scienceSection(code, natural ? "NATURAL" : "SOCIAL")
+                    .replace("\"questionType\":\"SINGLE_CHOICE\"", "\"questionType\":\"SINGLE_CHOICE\",\"requiredPointsPerQuestion\":" + (natural ? "1" : "2")));
+        }
+        String doc = """
+                {"parts":[{"id":"p","questionCount":50,"participation":{"mode":"CHOICE","choose":1},
+                "options":[{"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":3,
+                "countsByPick":[17,17,16],"sections":[%s]}]}]}
+                """.formatted(String.join(",", sections));
+        JsonNode path = check(exam, document(doc)).result().path("paths").get(0);
+        assertThat(path.path("result").asText()).isEqualTo("INVALID");
+        assertThat(path.path("selections")).hasSize(12);
+        for (JsonNode selection : path.path("selections")) {
+            boolean naturalOnly = !selection.path("subjectCodes").toString().contains("\"D\"")
+                    && !selection.path("subjectCodes").toString().contains("\"E\"");
+            assertThat(selection.path("result").asText()).isEqualTo(naturalOnly ? "VALID" : "INVALID");
+            if (!naturalOnly) assertThat(selection.path("issues").findValuesAsText("code")).contains("POINTS_TOTAL_MISMATCH");
+        }
+    }
+
     private ExamChecker.Evaluation check(Exam exam, ExamStructureDocument document) {
         when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
         when(catalog.findActiveItem(eq("SUBJECT"), any())).thenAnswer(invocation -> {
