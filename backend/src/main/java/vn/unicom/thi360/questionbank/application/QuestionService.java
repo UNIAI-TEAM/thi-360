@@ -416,6 +416,11 @@ public class QuestionService {
                             id, "NOT_READY", firstError.code()));
                     continue;
                 }
+                if (question.getWorkingVersionNo() != null
+                        && hasUsedRemovedChild(question, working.getSnapshot())) {
+                    skipped.add(new BulkQuestionStatusResult.Skipped(id, "NOT_READY", ERR_IN_USE));
+                    continue;
+                }
                 Instant now = Instant.now();
                 UUID actorId = currentUserProvider.requireCurrentUser().id();
                 if (question.getWorkingVersionNo() != null) {
@@ -450,6 +455,22 @@ public class QuestionService {
             updated.add(mapper.toSummary(question, mapper.displayedVersion(question), mapper.batch()));
         }
         return new BulkQuestionStatusResult(updated, skipped);
+    }
+
+    private boolean hasUsedRemovedChild(Question parent, QuestionSnapshot snapshot) {
+        if (!(snapshot.body() instanceof QuestionBody.QuestionSetBody set)) {
+            return false;
+        }
+        Set<UUID> kept = new HashSet<>();
+        for (QuestionBody.ChildQuestion child : set.children()) {
+            kept.add(child.id());
+        }
+        for (Question child : questionRepository.findByParentIdAndDeletedAtIsNullOrderByPosition(parent.getId())) {
+            if (!kept.contains(child.getId()) && ledgerRepository.existsByQuestionId(child.getId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void applyReadyToChildren(Question parent, int versionNo, Instant now, UUID actorId) {
@@ -1027,28 +1048,38 @@ public class QuestionService {
     }
 
     private void validateChildOverrides(QuestionBody body) {
+        List<QuestionFieldError> errors = childOverrideErrors(body, catalogLookup);
+        if (!errors.isEmpty()) {
+            throw bodyInvalid(errors);
+        }
+    }
+
+    static List<QuestionFieldError> childOverrideErrors(QuestionBody body, CatalogLookup catalogLookup) {
+        List<QuestionFieldError> errors = new ArrayList<>();
         if (!(body instanceof QuestionBody.QuestionSetBody set)) {
-            return;
+            return errors;
         }
         for (int i = 0; i < set.children().size(); i++) {
             QuestionBody.ChildQuestion child = set.children().get(i);
             String path = "body.children[" + i + "]";
-            validateChildCatalogItem(child.gradeItemId(), "GRADE", path + ".gradeItemId");
-            validateChildCatalogItem(child.levelItemId(), "QUESTION_LEVEL", path + ".levelItemId");
+            checkChildCatalogItem(child.gradeItemId(), "GRADE", path + ".gradeItemId", catalogLookup, errors);
+            checkChildCatalogItem(child.levelItemId(), "QUESTION_LEVEL", path + ".levelItemId", catalogLookup, errors);
             Set<UUID> seen = new HashSet<>();
             if (child.knowledgeItemIds() != null) {
                 for (UUID id : child.knowledgeItemIds()) {
                     if (!seen.add(id)) {
-                        throw new BusinessRuleException(ERR_BODY_INVALID, null,
-                                List.of(new FieldError(path + ".knowledgeItemIds", ERR_DUPLICATE_ID, null)));
+                        errors.add(new QuestionFieldError(ERR_DUPLICATE_ID, path + ".knowledgeItemIds", ERR_DUPLICATE_ID));
+                    } else {
+                        checkChildCatalogItem(id, "KNOWLEDGE", path + ".knowledgeItemIds", catalogLookup, errors);
                     }
-                    validateChildCatalogItem(id, "KNOWLEDGE", path + ".knowledgeItemIds");
                 }
             }
         }
+        return errors;
     }
 
-    private void validateChildCatalogItem(UUID id, String group, String field) {
+    private static void checkChildCatalogItem(UUID id, String group, String field,
+            CatalogLookup catalogLookup, List<QuestionFieldError> errors) {
         if (id == null) {
             return;
         }
@@ -1058,8 +1089,7 @@ public class QuestionService {
                         .map(active -> active.id().equals(id)).orElse(false))
                 .isPresent();
         if (!valid) {
-            throw new BusinessRuleException(ERR_BODY_INVALID, null,
-                    List.of(new FieldError(field, ERR_CATALOG_UNKNOWN, translated(ERR_CATALOG_UNKNOWN))));
+            errors.add(new QuestionFieldError(ERR_CATALOG_UNKNOWN, field, ERR_CATALOG_UNKNOWN));
         }
     }
 
@@ -1133,6 +1163,9 @@ public class QuestionService {
     // ---------------------------------------------------------------- kiểm tra Sẵn sàng
 
     private void readinessOrThrow(Question question, QuestionSnapshot snapshot) {
+        if (snapshot != null) {
+            validateChildOverrides(snapshot.body());
+        }
         QuestionFieldError first = readinessErrors(question, snapshot);
         if (first != null) {
             // Gom toàn bộ lỗi, không chỉ lỗi đầu.
@@ -1150,7 +1183,7 @@ public class QuestionService {
         if (snapshot == null) {
             return List.of(new QuestionFieldError(ERR_NOT_READY, "snapshot", ERR_NOT_READY));
         }
-        validateChildOverrides(snapshot.body());
+        List<QuestionFieldError> errors = new ArrayList<>(childOverrideErrors(snapshot.body(), catalogLookup));
         QuestionInput input = new QuestionInput(
                 question.getType(), snapshot.body(), snapshot.points(),
                 snapshot.content(), snapshot.solution(), snapshot.commonMistakes(),
@@ -1160,8 +1193,8 @@ public class QuestionService {
                 snapshot.gradeItemId() != null,
                 snapshot.levelItemId() != null);
         boolean hasPrimary = snapshot.knowledge().stream().anyMatch(QuestionSnapshot.KnowledgeRef::primary);
-        return QuestionBodyValidator.validateReady(input, classification, hasPrimary, assetResolver)
-                .errors();
+        errors.addAll(QuestionBodyValidator.validateReady(input, classification, hasPrimary, assetResolver).errors());
+        return errors;
     }
 
     // ---------------------------------------------------------------- trợ giúp

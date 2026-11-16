@@ -186,6 +186,80 @@ class QuestionStatusIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void bulkReadySkipsSetWithDeactivatedChildOverride() throws Exception {
+        UUID valid = createQuestion();
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        UUID grade = UUID.fromString("00000000-0000-7000-8200-000000000302");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.at("/body/children/0"))
+                .put("gradeItemId", grade.toString());
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        UUID invalid = UUID.fromString(read(created).at("/summary/id").asText());
+        jdbcTemplate.update("UPDATE catalog.catalog_item SET status = 2 WHERE id = ?", grade);
+        var rows = servingRows(invalid);
+        long before = sourceRevision();
+        assertBulkReadySkips(valid, invalid, "CATALOG_VALUE_UNKNOWN");
+        org.assertj.core.api.Assertions.assertThat(servingRows(invalid)).isEqualTo(rows);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, before + 1);
+    }
+
+    @Test
+    void bulkReadySkipsSetRemovingLedgerUsedChild() throws Exception {
+        UUID valid = createQuestion();
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        var originalChildren = (com.fasterxml.jackson.databind.node.ArrayNode) request.at("/body/children");
+        originalChildren.add(originalChildren.get(1).deepCopy());
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode initial = read(created);
+        UUID invalid = UUID.fromString(initial.at("/summary/id").asText());
+        UUID usedChild = UUID.fromString(initial.at("/body/children/2/id").asText());
+        transition(invalid, "ready");
+        jdbcTemplate.update("INSERT INTO questionbank.question_usage_ledger"
+                + " (question_id, version_no, kind, exam_id, first_at) VALUES (?, 1, 'PREVIEW', ?, now())",
+                usedChild, UUID.randomUUID());
+        var children = (com.fasterxml.jackson.databind.node.ArrayNode) initial.at("/body/children").deepCopy();
+        children.remove(2);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).set("children", children);
+        request.put("expectedRevision", currentRevision(invalid));
+        mockMvc.perform(put(BASE + "/{id}", invalid).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        var rows = servingRows(invalid);
+        long before = sourceRevision();
+        assertBulkReadySkips(valid, invalid, "QUESTION_IN_USE");
+        org.assertj.core.api.Assertions.assertThat(servingRows(invalid)).isEqualTo(rows);
+        assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, before + 1);
+    }
+
+    private void assertBulkReadySkips(UUID valid, UUID invalid, String detail) throws Exception {
+        mockMvc.perform(post(BASE + "/bulk/ready").with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ids\":[\"%s\",\"%s\"]}".formatted(valid, invalid)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.updated", hasSize(1)))
+                .andExpect(jsonPath("$.updated[0].id").value(valid.toString()))
+                .andExpect(jsonPath("$.skipped", hasSize(1)))
+                .andExpect(jsonPath("$.skipped[0].questionId").value(invalid.toString()))
+                .andExpect(jsonPath("$.skipped[0].reason").value("NOT_READY"))
+                .andExpect(jsonPath("$.skipped[0].detail").value(detail));
+    }
+
+    private java.util.List<java.util.Map<String, Object>> servingRows(UUID parent) {
+        return jdbcTemplate.queryForList(
+                "SELECT id, status, current_version_no, working_version_no, revision, deleted_at, position, "
+                        + "grade_item_id, search_text FROM questionbank.question "
+                        + "WHERE id = ? OR parent_id = ? ORDER BY id", parent, parent);
+    }
+
+    @Test
     void bulkRetireUpdatesDraftAndSkipsMissing() throws Exception {
         UUID draft = createQuestion();
         MvcResult result = mockMvc.perform(post(BASE + "/bulk/retire")
