@@ -50,7 +50,7 @@ export function storedQuestion(id: string) {
  */
 export function rich(element: HTMLElement) {
   const editor = (element as HTMLElement & { editor?: Editor }).editor;
-  if (!editor) throw new Error("Phần tử này không phải trình soạn HTML");
+  if (!editor) throw new Error("This element is not an HTML editor");
   return {
     get text() {
       return editor.getText();
