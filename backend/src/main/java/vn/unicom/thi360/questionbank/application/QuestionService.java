@@ -90,8 +90,6 @@ public class QuestionService {
     private static final String ERR_DUPLICATE_ID = "QUESTION_DUPLICATE_ID";
     private static final String ERR_CATALOG_UNKNOWN = "CATALOG_VALUE_UNKNOWN";
 
-    private static final int CHILD_MIN = 2;
-
     private final QuestionRepository questionRepository;
     private final QuestionVersionRepository versionRepository;
     private final QuestionKnowledgeRepository knowledgeRepository;
@@ -693,10 +691,6 @@ public class QuestionService {
             Instant now,
             UUID actorId) {
         List<QuestionBody.ChildQuestion> children = setBody.children();
-        if (children.size() < CHILD_MIN) {
-            throw new BusinessRuleException(ERR_BODY_INVALID, null,
-                    List.of(new FieldError("body.children", "QUESTION_SET_CHILDREN_MIN", null)));
-        }
         Set<UUID> ids = new HashSet<>();
         for (QuestionBody.ChildQuestion child : children) {
             if (child.id() != null && !ids.add(child.id())) {
