@@ -209,6 +209,7 @@ public class QuestionService {
         List<UUID> tagItemIds = resolveTagIds(request == null ? null : request.tagCodes());
 
         Sanitized sanitized = sanitize(request);
+        validateChildOverrides(sanitized.body());
         QuestionInput input = new QuestionInput(
                 type, sanitized.body(), effectivePoints(type, request == null ? null : request.points(), sanitized.body()),
                 sanitized.content(), sanitized.solution(), sanitized.commonMistakes(), sanitized.attachmentIds());
@@ -1017,6 +1018,43 @@ public class QuestionService {
                 resolveItemId("COMPETENCY", request == null ? null : request.competencyCode(), "competencyCode"));
     }
 
+    private void validateChildOverrides(QuestionBody body) {
+        if (!(body instanceof QuestionBody.QuestionSetBody set)) {
+            return;
+        }
+        for (int i = 0; i < set.children().size(); i++) {
+            QuestionBody.ChildQuestion child = set.children().get(i);
+            String path = "body.children[" + i + "]";
+            validateChildCatalogItem(child.gradeItemId(), "GRADE", path + ".gradeItemId");
+            validateChildCatalogItem(child.levelItemId(), "QUESTION_LEVEL", path + ".levelItemId");
+            Set<UUID> seen = new HashSet<>();
+            if (child.knowledgeItemIds() != null) {
+                for (UUID id : child.knowledgeItemIds()) {
+                    if (!seen.add(id)) {
+                        throw new BusinessRuleException(ERR_BODY_INVALID, null,
+                                List.of(new FieldError(path + ".knowledgeItemIds", ERR_DUPLICATE_ID, null)));
+                    }
+                    validateChildCatalogItem(id, "KNOWLEDGE", path + ".knowledgeItemIds");
+                }
+            }
+        }
+    }
+
+    private void validateChildCatalogItem(UUID id, String group, String field) {
+        if (id == null) {
+            return;
+        }
+        boolean valid = catalogLookup.findItem(id)
+                .filter(item -> group.equals(item.groupCode()))
+                .filter(item -> catalogLookup.findActiveItem(group, item.code())
+                        .map(active -> active.id().equals(id)).orElse(false))
+                .isPresent();
+        if (!valid) {
+            throw new BusinessRuleException(ERR_BODY_INVALID, null,
+                    List.of(new FieldError(field, ERR_CATALOG_UNKNOWN, translated(ERR_CATALOG_UNKNOWN))));
+        }
+    }
+
     private UUID resolveItemId(String groupCode, String itemCode, String field) {
         if (itemCode == null || itemCode.isBlank()) {
             return null;
@@ -1033,6 +1071,10 @@ public class QuestionService {
             List<vn.unicom.thi360.questionbank.api.KnowledgeRef> knowledge) {
         if (knowledge == null || knowledge.isEmpty()) {
             return List.of();
+        }
+        if (knowledge.stream().filter(Objects::nonNull).filter(ref -> ref.primary()).count() > 1) {
+            throw new BusinessRuleException(ERR_BODY_INVALID, null,
+                    List.of(new FieldError("knowledge", ERR_BODY_INVALID, null)));
         }
         List<KnowledgeResolved> resolved = new ArrayList<>(knowledge.size());
         Set<UUID> seen = new HashSet<>();
@@ -1100,6 +1142,7 @@ public class QuestionService {
         if (snapshot == null) {
             return List.of(new QuestionFieldError(ERR_NOT_READY, "snapshot", ERR_NOT_READY));
         }
+        validateChildOverrides(snapshot.body());
         QuestionInput input = new QuestionInput(
                 question.getType(), snapshot.body(), snapshot.points(),
                 snapshot.content(), snapshot.solution(), snapshot.commonMistakes(),
