@@ -70,6 +70,11 @@ export interface SaveQuestionRequest {
   body: QuestionBody;
   /** Câu con của Bộ câu hỏi; rỗng với dạng khác. */
   children: SaveChildQuestionRequest[];
+  /**
+   * Chỉ khi tạo: định danh lần soạn (một lần mở biểu mẫu "Tạo câu hỏi") để gom các lần bấm Lưu và thử lại vào cùng
+   * một khóa idempotency. Không gửi lên máy chủ; bỏ trống thì mỗi lần gọi là một lệnh mới.
+   */
+  saveIntentId?: string;
 }
 
 export interface UpdateQuestionRequest extends SaveQuestionRequest {

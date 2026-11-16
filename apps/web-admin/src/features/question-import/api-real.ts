@@ -1,9 +1,9 @@
 import type { components } from "@thi360/api-client";
 import { extractFilenameFromDisposition } from "@/features/bulk-import/api";
 import { ContentApiError, toContentApiError } from "@/features/content/api-error";
+import { withIdempotencyKey } from "@/features/content/idempotency";
 import { QUESTION_TYPES, type MultipleChoiceRule, type QuestionType } from "@/features/content/types";
 import { createBrowserApiClient } from "@/lib/api/client";
-import { ApiStatusError } from "@/lib/api/query-client";
 import { importFileType } from "./files";
 import {
   IGNORE_COLUMN,
@@ -286,44 +286,33 @@ export async function validateImport({ uploadId, mapping }: ValidateImportParams
 }
 
 /**
- * Khóa idempotency của lần nhập: sinh một lần cho mỗi lần bấm "Nhập" và gửi lại đúng khóa đó khi thử lại cùng lệnh
- * (cùng `uploadId`, ánh xạ, cách xử lý trùng, bỏ qua lỗi). Đổi một trong các giá trị là lệnh khác nên khóa mới (cùng
- * khóa khác thân bị máy chủ từ chối 409). Khóa chỉ được giữ lại khi chưa biết lệnh đã chạy hay chưa: mất kết nối,
- * 5xx, 429, 408.
+ * Nhập với `Idempotency-Key` (spec 7.1, quy tắc chung ở `content/idempotency.ts`): một lần nhập là một `uploadId`;
+ * cùng `uploadId` mà đổi ánh xạ, cách xử lý trùng hay bỏ qua lỗi là lệnh khác nên khóa mới.
  */
-const pendingCommitKeys = new Map<string, string>();
-
-function commitSignature({ uploadId, mapping, duplicatePolicy, skipErrors }: CommitImportParams): string {
-  return JSON.stringify([uploadId, duplicatePolicy, skipErrors, Object.entries(mapping).sort(([a], [b]) => (a < b ? -1 : 1))]);
-}
-
-function mayHaveRun(failure: unknown): boolean {
-  if (!(failure instanceof ApiStatusError)) return true;
-  return failure.status >= 500 || failure.status === 429 || failure.status === 408;
+function commitFingerprint({ mapping, duplicatePolicy, skipErrors }: CommitImportParams): string {
+  return JSON.stringify([duplicatePolicy, skipErrors, Object.entries(mapping).sort(([a], [b]) => (a < b ? -1 : 1))]);
 }
 
 export async function commitImport(params: CommitImportParams): Promise<ImportHistoryEntry> {
-  const signature = commitSignature(params);
-  const key = pendingCommitKeys.get(signature) ?? crypto.randomUUID();
-  pendingCommitKeys.set(signature, key);
-  try {
-    const client = createBrowserApiClient();
-    const { data, error, response } = await client.POST("/api/v1/admin/question-imports/uploads/{id}/commit", {
-      params: { path: { id: params.uploadId }, header: { "Idempotency-Key": key } },
-      body: {
-        uploadId: params.uploadId,
-        mapping: params.mapping,
-        duplicatePolicy: params.duplicatePolicy,
-        skipErrors: params.skipErrors,
-      },
-    });
-    if (!response.ok || !data) throw toContentApiError(response.status, error);
-    pendingCommitKeys.delete(signature);
-    return mapHistoryEntry(data);
-  } catch (failure) {
-    if (!mayHaveRun(failure)) pendingCommitKeys.delete(signature);
-    throw failure;
-  }
+  const data = await withIdempotencyKey(
+    `commit:${params.uploadId}`,
+    async (key) => {
+      const client = createBrowserApiClient();
+      const { data, error, response } = await client.POST("/api/v1/admin/question-imports/uploads/{id}/commit", {
+        params: { path: { id: params.uploadId }, header: { "Idempotency-Key": key } },
+        body: {
+          uploadId: params.uploadId,
+          mapping: params.mapping,
+          duplicatePolicy: params.duplicatePolicy,
+          skipErrors: params.skipErrors,
+        },
+      });
+      if (!response.ok || !data) throw toContentApiError(response.status, error);
+      return data;
+    },
+    commitFingerprint(params),
+  );
+  return mapHistoryEntry(data);
 }
 
 export async function listImportHistory(): Promise<ImportHistoryEntry[]> {

@@ -1,16 +1,42 @@
-/**
- * Khóa idempotency của lệnh ghi (plan B7, spec 7.1): một khóa cho mỗi lần bấm, gửi lại đúng khóa đó khi thử lại cùng
- * lệnh. `scope` mô tả lệnh và dữ liệu của nó (ví dụ `duplicate:<id>`); khóa chỉ được nhớ tới khi lệnh thành công, nên
- * lần bấm kế tiếp sau một lần xong sẽ có khóa mới, còn lần thử lại sau lỗi dùng lại khóa cũ.
- */
-const pending = new Map<string, string>();
+import { ApiStatusError } from "@/lib/api/query-client";
 
-export async function withIdempotencyKey<T>(scope: string, run: (key: string) => Promise<T>): Promise<T> {
-  const key = pending.get(scope) ?? crypto.randomUUID();
-  pending.set(scope, key);
-  const result = await run(key);
-  pending.delete(scope);
-  return result;
+/**
+ * Khóa idempotency của lệnh ghi (plan B7, spec 7.1). Một quy tắc cho mọi lệnh có khóa (tạo, nhân bản, đổi trạng thái
+ * hàng loạt, nhập câu hỏi): giữ khóa chỉ khi chưa biết lệnh đã chạy hay chưa, để lần thử lại gửi đúng khóa đó và máy
+ * chủ trả kết quả đã lưu thay vì chạy lần hai; sau thành công hoặc sau lỗi chắc chắn là lệnh chưa chạy (4xx) thì quên
+ * khóa, lần bấm kế tiếp có khóa mới.
+ *
+ * `scope` định danh một ý định của người dùng (`duplicate:<id>`, `create:<lần mở biểu mẫu>`, `commit:<uploadId>`), không
+ * chứa dữ liệu của lệnh. `fingerprint` là dữ liệu của lệnh: cùng khóa mà khác thân bị máy chủ từ chối 409, nên đổi dữ
+ * liệu giữa hai lần bấm là lệnh khác và nhận khóa mới.
+ */
+const pending = new Map<string, { key: string; fingerprint: string }>();
+
+/**
+ * Lệnh có thể đã chạy phía máy chủ: mất kết nối, hết thời gian chờ (408), 429 và 5xx. Lỗi không phải lỗi HTTP (mạng,
+ * hủy) cũng tính là có thể đã chạy. Còn lại (400, 403, 404, 409, 422...) máy chủ đã từ chối và không lưu gì.
+ */
+export function mayHaveRun(failure: unknown): boolean {
+  if (!(failure instanceof ApiStatusError)) return true;
+  return failure.status >= 500 || failure.status === 429 || failure.status === 408;
+}
+
+export async function withIdempotencyKey<T>(
+  scope: string,
+  run: (key: string) => Promise<T>,
+  fingerprint = "",
+): Promise<T> {
+  const existing = pending.get(scope);
+  const entry = existing && existing.fingerprint === fingerprint ? existing : { key: crypto.randomUUID(), fingerprint };
+  pending.set(scope, entry);
+  try {
+    const result = await run(entry.key);
+    pending.delete(scope);
+    return result;
+  } catch (failure) {
+    if (!mayHaveRun(failure)) pending.delete(scope);
+    throw failure;
+  }
 }
 
 /** Xóa các khóa đang nhớ (test). */

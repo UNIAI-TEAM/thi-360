@@ -55,18 +55,27 @@ async function toSaveBody(request: SaveQuestionRequest) {
   };
 }
 
-/** Tạo câu hỏi (luôn Nháp). Khóa idempotency theo nội dung yêu cầu: thử lại cùng yêu cầu dùng lại khóa. */
+/**
+ * Tạo câu hỏi (luôn Nháp). Khóa idempotency theo lần soạn (`saveIntentId`): bấm Lưu hai lần hoặc thử lại sau lỗi mạng
+ * hay 5xx dùng lại khóa; thân yêu cầu đổi giữa hai lần thì khóa mới (`withIdempotencyKey`).
+ */
 export async function createQuestion(request: SaveQuestionRequest): Promise<QuestionDetail> {
   const body = await toSaveBody(request);
-  return withIdempotencyKey(`create:${JSON.stringify(body)}`, async (key) => {
-    const client = createBrowserApiClient();
-    const { data, error, response } = await client.POST("/api/v1/admin/questions", {
-      params: { header: { "Idempotency-Key": key } },
-      body,
-    });
-    if (!response.ok || !data) throw toContentApiError(response.status, error);
-    return fromApiDetail(data);
-  });
+  const scope = `create:${request.saveIntentId ?? crypto.randomUUID()}`;
+  const created = await withIdempotencyKey(
+    scope,
+    async (key) => {
+      const client = createBrowserApiClient();
+      const { data, error, response } = await client.POST("/api/v1/admin/questions", {
+        params: { header: { "Idempotency-Key": key } },
+        body,
+      });
+      if (!response.ok || !data) throw toContentApiError(response.status, error);
+      return data;
+    },
+    JSON.stringify(body),
+  );
+  return fromApiDetail(created);
 }
 
 /** Sửa câu hỏi; 412 `QUESTION_REVISION_CONFLICT` khi `expectedRevision` lệch, 422 kèm lỗi theo trường. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ContentApiError } from "@/features/content/api-error";
-import { fakeApi } from "@/test/fake-api";
+import { fail, fakeApi } from "@/test/fake-api";
 import { getQuestion, getQuestionRetireImpact } from "../api";
 import {
   createQuestion,
@@ -95,6 +95,29 @@ describe("API soạn câu hỏi (nhánh thật, client giả)", () => {
     expect(created.id).not.toBe(source.id);
     const versions = await listQuestionVersions(created.id);
     expect(versions.versions.map((entry) => [entry.version, entry.state])).toEqual([[1, "WORKING"]]);
+  });
+
+  it("tạo: thử lại sau 5xx dùng lại khóa idempotency, sau 422 thì khóa mới, đổi nội dung giữa hai lần thì khóa mới", async () => {
+    const POST = "/api/v1/admin/questions";
+    const keys = () =>
+      fakeApi.calls
+        .filter((call) => call.method === "POST" && call.path === POST)
+        .map((call) => (call.options as { params: { header: Record<string, string> } }).params.header["Idempotency-Key"]);
+    const request = { ...toSaveRequest(toEditorValues(await getQuestion("q-0001"))), saveIntentId: "intent-1" };
+
+    fakeApi.post(POST, fail(503, { code: "UNAVAILABLE" }));
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 503 });
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 503 });
+    expect(keys()[1]).toBe(keys()[0]);
+
+    // Sửa nội dung rồi gửi lại: khác thân thì máy chủ từ chối cùng khóa (409), nên là lệnh mới.
+    await expect(createQuestion({ ...request, content: `${request.content} (sửa)` })).rejects.toMatchObject({ status: 503 });
+    expect(keys()[2]).not.toBe(keys()[0]);
+
+    fakeApi.post(POST, fail(422, { code: "VALIDATION_FAILED" }));
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 422 });
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 422 });
+    expect(keys()[4]).not.toBe(keys()[3]);
   });
 
   it("sửa câu Sẵn sàng tạo phiên bản Nháp mới, bản cũ vẫn hiện hành", async () => {

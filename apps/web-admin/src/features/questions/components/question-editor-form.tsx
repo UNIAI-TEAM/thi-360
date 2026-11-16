@@ -70,6 +70,8 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const format = useFormatter();
   const router = useRouter();
   const formId = useId();
+  // Một lần mở biểu mẫu tạo là một ý định lưu: các lần bấm Lưu và thử lại của nó dùng chung khóa idempotency.
+  const [saveIntentId] = useState(() => crypto.randomUUID());
   const [liveMessage, setLiveMessage] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -131,7 +133,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
     setSubmitError(null);
     const request = toSaveRequest(values);
     if (!question) {
-      createMutation.mutate(request, {
+      createMutation.mutate({ ...request, saveIntentId }, {
         onSuccess: (created) => {
           notify.success(t("toast.created", { code: created.code }));
           router.push(`/questions/${encodeURIComponent(created.id)}`);

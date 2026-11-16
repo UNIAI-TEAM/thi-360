@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ContentApiError } from "@/features/content/api-error";
 import { withIdempotencyKey, resetIdempotencyKeys } from "@/features/content/idempotency";
 import { fromApiDetail, fromApiSummary } from "../api-mapping";
 import { resolveFormPath, toFormPath } from "../editor-field-errors";
@@ -122,6 +123,30 @@ describe("khóa idempotency", () => {
     await withIdempotencyKey("create:a", async (key) => void seen.push(key));
     expect(seen[1]).toBe(seen[0]);
     expect(seen[2]).not.toBe(seen[0]);
+  });
+});
+
+describe("khóa idempotency: quy tắc mayHaveRun", () => {
+  it("giữ khóa sau lỗi mạng, 5xx, 429, 408; bỏ khóa sau 4xx chắc chắn", async () => {
+    const attempt = async (scope: string, failure: unknown) => {
+      const seen: string[] = [];
+      for (let index = 0; index < 2; index += 1) {
+        await withIdempotencyKey(scope, async (key) => {
+          seen.push(key);
+          throw failure;
+        }).catch(() => undefined);
+      }
+      return seen;
+    };
+    resetIdempotencyKeys();
+    for (const [index, failure] of [new TypeError("fetch failed"), new ContentApiError(503), new ContentApiError(429), new ContentApiError(408)].entries()) {
+      const [first, retry] = await attempt(`kept:${index}`, failure);
+      expect(retry).toBe(first);
+    }
+    for (const [index, status] of [400, 403, 404, 409, 422].entries()) {
+      const [first, retry] = await attempt(`dropped:${index}`, new ContentApiError(status));
+      expect(retry).not.toBe(first);
+    }
   });
 });
 
