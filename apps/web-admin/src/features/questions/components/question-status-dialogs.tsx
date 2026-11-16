@@ -111,7 +111,7 @@ export function MarkReadyDialog({ question, open, onOpenChange, onDone }: Questi
             onClose={() => close(false)}
             onConfirm={() =>
               mutation.mutate(
-                { id: question.id },
+                { id: question.id, expectedRevision: question.revision },
                 {
                   onSuccess: (updated) => {
                     notify.success(t("readyDone", { code: updated.code }));
@@ -358,7 +358,7 @@ export function RetireQuestionDialog({ question, open, onOpenChange, onDone }: Q
             onClose={() => close(false)}
             onConfirm={() =>
               mutation.mutate(
-                { id: question.id },
+                { id: question.id, expectedRevision: question.revision },
                 {
                   onSuccess: (updated) => {
                     notify.success(t("retireDone", { code: updated.code }));

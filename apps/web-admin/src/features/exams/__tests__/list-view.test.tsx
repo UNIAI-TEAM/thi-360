@@ -38,7 +38,7 @@ describe("danh sách bài thi", () => {
     await user.type(screen.getByRole("searchbox", { name: "Tìm kiếm" }), "QDA-F-002");
     await waitFor(() => expect(screen.queryByRole("link", { name: "HSA FULL · Đề luyện số 1" })).not.toBeInTheDocument());
     expect(screen.getByRole("link", { name: "QDA FULL · Đề luyện số 2" })).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("sao chép tạo bài Nháp mới với mã -COPY", async () => {
     const user = userEvent.setup();

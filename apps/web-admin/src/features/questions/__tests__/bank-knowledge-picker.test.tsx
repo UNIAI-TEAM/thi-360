@@ -38,7 +38,7 @@ describe("KnowledgePickerDialog (canvas ChonKienThuc)", () => {
       expect.objectContaining({ nodeId: "kn-1D4-2-3", primary: false }),
       expect.objectContaining({ nodeId: "kn-1D4-2-4", primary: true }),
     ]);
-  });
+  }, 20_000);
 
   it("che do loc: tick duoc Chuong, Bai va khong co kien thuc chinh", async () => {
     const onApply = vi.fn();

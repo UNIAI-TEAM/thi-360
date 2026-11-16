@@ -1,22 +1,17 @@
-import { mockRequest } from "@/lib/mock/content-mock";
-import referenceFixture from "./mock/reference.json";
-import type { ContentReference } from "./types";
+import { guardApi, isContentMockEnabled, isGradingMockEnabled } from "@/lib/mock/flags";
+import * as mock from "./api.mock";
 
 /**
- * Dữ liệu tham chiếu của Ngân hàng câu hỏi và Bài thi: môn, khối, độ khó, nhãn, mã tổ hợp, cây kiến thức.
- * Dữ liệu mẫu. Khi nối backend: gọi API lựa chọn của danh mục dùng chung (`/api/v1/admin/catalog/...`) và ghép lại
- * thành `ContentReference`; giữ nguyên chữ ký hàm.
+ * Dữ liệu tham chiếu của Ngân hàng câu hỏi và Bài thi. Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì dùng dữ liệu mẫu
+ * (`api.mock.ts`); hàng chờ chấm đọc cùng dữ liệu này nên cờ `NEXT_PUBLIC_THI360_GRADING_MOCK` cũng mở được. Cờ tắt:
+ * nhánh API thật, chưa nối (FE-1, FE-2).
  */
-const reference = referenceFixture as ContentReference;
+export { CONTENT_QUERY_KEYS } from "./keys";
 
-export const CONTENT_QUERY_KEYS = {
-  all: ["content"] as const,
-  reference: () => ["content", "reference"] as const,
-};
-
-export async function getContentReference(): Promise<ContentReference> {
-  return mockRequest(() => reference);
-}
+export const getContentReference = guardApi(
+  () => isContentMockEnabled() || isGradingMockEnabled(),
+  mock.getContentReference,
+);
 
 export interface ContentApiDeps {
   getContentReference: typeof getContentReference;

@@ -35,12 +35,15 @@ export function toSnapshot(question: QuestionSnapshot): QuestionSnapshot {
     gradeCode: question.gradeCode,
     difficultyCode: question.difficultyCode,
     competencyCode: question.competencyCode ?? null,
+    taskTypeCode: question.taskTypeCode ?? null,
     points: question.points,
     knowledge: question.knowledge,
     tagCodes: question.tagCodes,
     content: question.content,
     body: question.body,
     solution: question.solution,
+    commonMistakes: question.commonMistakes ?? null,
+    attachmentIds: question.attachmentIds,
     children: question.children,
   });
 }
@@ -88,18 +91,27 @@ function comparableBody(body: QuestionDetail["body"]): unknown {
     case "TRUE_FALSE":
       return {
         type: body.type,
-        statements: body.statements.map((s) => [s.content, s.answer]),
+        statements: body.statements.map((s) => [s.content, s.answer, s.points]),
+        scoringMethod: body.scoringMethod,
         scoreTable: body.scoreTable ?? [],
       };
-    case "FILL_IN":
-      return { type: body.type, blanks: body.blanks.map((blank) => blank.acceptedAnswers) };
-    case "DRAG_DROP": {
-      const contentOf = new Map(body.items.map((item) => [item.id, item.content]));
-      const used = new Set(body.zones.map((zone) => zone.correctItemId));
+    case "SHORT_ANSWER":
+      return { type: body.type, answers: body.answers, inputHint: body.inputHint?.trim() || null };
+    case "CLOZE":
+      return { type: body.type, passage: body.passage, blanks: body.blanks.map((blank) => [blank.answers, blank.points]) };
+    case "MATCHING": {
+      const contentOf = new Map(body.right.map((item) => [item.id, item.content]));
+      const pairOf = new Map(body.pairs.map((pair) => [pair.leftId, pair]));
+      const used = new Set(body.pairs.map((pair) => pair.rightId));
       return {
         type: body.type,
-        zones: body.zones.map((zone) => [zone.label, contentOf.get(zone.correctItemId) ?? ""]),
-        distractors: body.items.filter((item) => !used.has(item.id)).map((item) => item.content),
+        pairs: body.left.map((item) => [
+          item.content,
+          contentOf.get(pairOf.get(item.id)?.rightId ?? "") ?? "",
+          pairOf.get(item.id)?.points ?? 0,
+        ]),
+        distractors: body.right.filter((item) => !used.has(item.id)).map((item) => item.content),
+        reuseRight: body.reuseRight,
       };
     }
     case "QUESTION_SET":
@@ -107,7 +119,7 @@ function comparableBody(body: QuestionDetail["body"]): unknown {
     case "ESSAY":
       return {
         type: body.type,
-        maxPoints: body.maxPoints,
+        gradingGuide: body.gradingGuide.trim(),
         rubric: body.rubric.map((criterion) => [criterion.description, criterion.points]),
         sampleAnswer: body.sampleAnswer?.trim() || null,
         wordLimit: body.wordLimit,

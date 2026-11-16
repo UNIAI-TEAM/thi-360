@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
-import { importHistoryStore } from "../api";
+import { importHistoryStore } from "../api.mock";
 import { QuestionImportView } from "../components/question-import-view";
 
 function setUrl(search = "") {
@@ -111,7 +111,7 @@ describe("Nhập câu hỏi từ tệp", () => {
     const essayPreview = await screen.findByRole("heading", { name: "Xem trước dòng 19" });
     const essaySection = essayPreview.closest("section");
     if (!essaySection) throw new Error("no essay preview section");
-    expect(within(essaySection).getByText(/Câu tự luận chưa có tiêu chí chấm/)).toBeInTheDocument();
+    expect(within(essaySection).getByText(/Câu tự luận chưa có hướng dẫn chấm/)).toBeInTheDocument();
     expect(within(essaySection).getByText("Chưa có tiêu chí chấm; câu sẽ ở Nháp tới khi bổ sung.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Trùng (3)" }));

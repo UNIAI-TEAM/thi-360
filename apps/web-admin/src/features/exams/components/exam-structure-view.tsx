@@ -239,7 +239,7 @@ function StructureEditor({
 
   const runSave = () => {
     save.mutate(
-      { parts: draft },
+      { parts: draft, expectedRevision: exam.revision },
       {
         onSuccess: () => {
           setBaseline(JSON.stringify(draft));

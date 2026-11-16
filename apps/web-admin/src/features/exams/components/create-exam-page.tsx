@@ -49,6 +49,7 @@ import {
   partsEdited,
   resolveScope,
   scopeDefaults,
+  scopeOfFormat,
   type ScopeDefaults,
   type SingleScope,
   summarizeParts,
@@ -250,8 +251,8 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const suggestion = useSuggestedExamCode(
     {
       kind: values.kind,
-      format: values.format,
-      singleScope: values.format === "SINGLE" ? values.singleSubjectCode : null,
+      scope: scopeOfFormat(values.format, kinds, values.kind),
+      partCode: values.format === "SINGLE" ? values.singleSubjectCode : null,
       subjectCode: values.subjectCode || null,
     },
     true,
@@ -478,7 +479,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
 
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
-    createExam.mutate(toCreateExamRequest(submitted, templates), {
+    createExam.mutate(toCreateExamRequest(submitted, kinds), {
       onSuccess: (exam) => {
         const message = t("success", { code: exam.code });
         notify.success(message);

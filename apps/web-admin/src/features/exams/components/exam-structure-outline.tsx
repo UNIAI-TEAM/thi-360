@@ -37,7 +37,7 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
         <div className="flex items-center justify-between gap-2 pl-3">
           {showSubject ? (
             <span className="min-w-0 text-caption font-semibold text-text-secondary">
-              {t("section", { subject, count: section.questionCount })}
+              {t("section", { subject, count: section.questionCount ?? 0 })}
             </span>
           ) : (
             <span className="sr-only">{subject}</span>
@@ -58,7 +58,7 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
                 <OutlineButton
                   current={selection?.kind === "block" && selection.blockId === block.id}
                   onClick={() => onSelect({ kind: "block", blockId: block.id })}
-                  meta={t("blockCount", { count: block.questionCount })}
+                  meta={t("blockCount", { count: block.questionCount ?? 0 })}
                   warning={blockHasIssue(block.id) ? t("hasIssue") : null}
                   inset
                 >

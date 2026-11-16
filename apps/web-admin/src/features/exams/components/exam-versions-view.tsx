@@ -32,6 +32,7 @@ import {
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { getErrorStatus } from "@/lib/api/query-client";
 import { useExam } from "../queries";
 import { useDiscontinueExam, useExamVersions } from "../review-queries";
 import type { ExamChange, ExamChangeKind, ExamVersionList, ExamVersionRow } from "../review-types";
@@ -142,12 +143,17 @@ export function ExamVersionsView({ examId }: { examId: string }) {
         loading={discontinue.isPending}
         error={discontinueError}
         onConfirm={() =>
-          discontinue.mutate(undefined, {
+          discontinue.mutate({ expectedRevision: exam.revision }, {
             onSuccess: () => {
               setDiscontinueOpen(false);
               notify.success(t("discontinue.done", { code: exam.code }));
             },
-            onError: () => setDiscontinueError(t("discontinue.error")),
+            onError: (error) => {
+              const status = getErrorStatus(error);
+              setDiscontinueError(
+                status === 409 || status === 412 ? t("discontinue.conflict") : t("discontinue.error"),
+              );
+            },
           })
         }
       />

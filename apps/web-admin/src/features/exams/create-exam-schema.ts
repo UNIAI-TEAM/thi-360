@@ -4,11 +4,13 @@ import { splitEvenly, sum } from "./matrix";
 import type {
   CreateExamPartInput,
   CreateExamRequest,
-  ExamFormat,
   ExamKind,
+  ExamScope as ApiExamScope,
   ExamTemplate,
   ExamTemplateBlock,
   ExamTemplatePart,
+  ExamTemplateSection,
+  TemplateSubjectChoice,
   ExamTiming,
 } from "./types";
 
@@ -17,6 +19,22 @@ import type {
  * `docs/specs/2026-11-16-mockup-7-ky-thi.md`) và tab Thông tin chung. Không phụ thuộc React để kiểm thử riêng; chữ báo
  * lỗi truyền vào từ `exams.create.validation`. Quy tắc theo kỳ thi đọc từ danh mục (`ExamKindOption`), không so mã.
  */
+
+/**
+ * Hình thức của bước 1 hiện tại (giao diện đang làm theo bản UniNote trước): `FULL` là Toàn bài hoặc Theo môn, `SINGLE`
+ * là Theo phần. API dùng phạm vi (`ExamScope`); hai hàm dưới đổi qua lại ở ranh giới. FE-3c đổi bước 1 sang phạm vi.
+ */
+export type ExamFormat = "FULL" | "SINGLE";
+
+export function formatOfScope(scope: ApiExamScope): ExamFormat {
+  return scope === "PART" ? "SINGLE" : "FULL";
+}
+
+/** Phạm vi gửi lên theo hình thức: bài lẻ là Theo phần; còn lại Theo môn với kỳ thi có mẫu theo môn, không thì Toàn bài. */
+export function scopeOfFormat(format: ExamFormat, kinds: readonly ExamKindOption[], kind: ExamKind): ApiExamScope {
+  if (format === "SINGLE") return "PART";
+  return kindOptionFor(kinds, kind)?.templateBy === "SUBJECT" ? "SUBJECT" : "FULL";
+}
 
 export const EXAM_NAME_MAX = 200;
 export const EXAM_CODE_MAX = 50;
@@ -47,13 +65,16 @@ export function isSubjectKind(kinds: readonly ExamKindOption[], kind: ExamKind):
   return kindOptionFor(kinds, kind)?.templateBy === "SUBJECT";
 }
 
-/** Hình thức kỳ thi cho phép (HSA, QDA có FULL và bài lẻ; kỳ thi khác chỉ FULL). Không có trong danh mục: cả hai. */
+/** Hình thức kỳ thi cho phép, suy từ phạm vi (HSA, QDA có Toàn bài và bài lẻ; kỳ thi khác chỉ Toàn bài). Không có trong danh mục: cả hai. */
 export function formatsForKind(kinds: readonly ExamKindOption[], kind: ExamKind): ExamFormat[] {
-  return kindOptionFor(kinds, kind)?.formats ?? ["FULL", "SINGLE"];
+  const option = kindOptionFor(kinds, kind);
+  if (!option) return ["FULL", "SINGLE"];
+  const formats = new Set(option.scopes.map(formatOfScope));
+  return (["FULL", "SINGLE"] as const).filter((format) => formats.has(format));
 }
 
 export function templateFor(templates: readonly ExamTemplate[], kind: ExamKind, format: ExamFormat): ExamTemplate | undefined {
-  return templates.find((template) => template.kind === kind && template.format === format);
+  return templates.find((template) => template.kind === kind && formatOfScope(template.scope) === format);
 }
 
 /** Mẫu theo môn của kỳ thi, năm cấu trúc mới nhất trước. */
@@ -64,7 +85,7 @@ export function subjectTemplates(
   subjectCode: string,
 ): ExamTemplate[] {
   return templates
-    .filter((template) => template.kind === kind && template.format === format && template.subjectCode === subjectCode)
+    .filter((template) => template.kind === kind && formatOfScope(template.scope) === format && template.subjectCode === subjectCode)
     .sort((a, b) => (b.structureYear ?? 0) - (a.structureYear ?? 0));
 }
 
@@ -76,7 +97,7 @@ export function templateCountBySubject(
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const template of templates) {
-    if (template.kind !== kind || template.format !== format || !template.subjectCode) continue;
+    if (template.kind !== kind || formatOfScope(template.scope) !== format || !template.subjectCode) continue;
     counts.set(template.subjectCode, (counts.get(template.subjectCode) ?? 0) + 1);
   }
   return counts;
@@ -317,7 +338,15 @@ export interface CreateSectionValues {
   subjectCode: string;
   questionCount: number;
   blocks: ExamTemplateBlock[];
+  /** Phạm vi MAPID và chỉ tiêu cấp môn của mẫu (B9); bỏ trống: môn không có chỉ tiêu. Giữ nguyên khi gửi lên. */
+  knowledgeScope?: ExamTemplateSection["knowledgeScope"];
+  answerQuotas?: ExamTemplateSection["answerQuotas"];
+  matrix?: ExamTemplateSection["matrix"];
+  groupOrder?: ExamTemplateSection["groupOrder"];
 }
+
+/** Phương án chọn môn của mẫu (HSA Khoa học) giữ nguyên từ mẫu; chưa có ô soạn ở trang Tạo bài thi (FE-3c). */
+export type CreateSubjectChoiceValues = { code: string; name?: string | null } & TemplateSubjectChoice;
 
 /** Nhánh nội dung của phần tự chọn (THPTQG Tin học: Khoa học máy tính, Tin học ứng dụng). */
 export interface CreateBranchValues {
@@ -343,6 +372,8 @@ export interface CreatePartValues {
   /** Phần tự chọn cho bật nhánh Tiếng Anh (mẫu không gắn sẵn lựa chọn, hoặc gắn sẵn Tiếng Anh). Không gửi lên. */
   englishAvailable: boolean;
   combinations: CreateCombinationValues[];
+  /** Phần tự chọn có phương án chọn môn (HSA Khoa học, thay cho 10 tổ hợp KH-n); `null`: không có. */
+  subjectChoice: CreateSubjectChoiceValues | null;
   /** Phần cố định nhiều môn, hoặc phần chung của phần tự chọn. */
   sections: CreateSectionValues[];
   branches: CreateBranchValues[];
@@ -412,7 +443,18 @@ export function createExamSchema(
         expertConfirmed: z.boolean().optional(),
       }),
     ),
-    sections: z.array(z.object({ subjectCode: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) })),
+    subjectChoice: z.custom<CreateSubjectChoiceValues>((value) => typeof value === "object").nullable(),
+    sections: z.array(
+      z.object({
+        subjectCode: z.string(),
+        questionCount: z.number(),
+        blocks: z.array(blockSchema),
+        knowledgeScope: z.custom<CreateSectionValues["knowledgeScope"]>().optional(),
+        answerQuotas: z.custom<CreateSectionValues["answerQuotas"]>().optional(),
+        matrix: z.custom<CreateSectionValues["matrix"]>().optional(),
+        groupOrder: z.enum(["FIXED", "SHUFFLE"]).optional(),
+      }),
+    ),
     branches: z.array(
       z.object({ code: z.string(), name: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) }),
     ),
@@ -452,7 +494,7 @@ export function createExamSchema(
           }
           return;
         }
-        if (!item.englishOption && item.combinations.length === 0 && item.branches.length === 0) {
+        if (!item.englishOption && item.combinations.length === 0 && item.branches.length === 0 && !item.subjectChoice) {
           issue([...base, "combinations"], messages.noOptions);
         }
         const expected = item.questionCount - common;
@@ -521,6 +563,7 @@ function basePart(overrides: Partial<CreatePartValues>): CreatePartValues {
     englishOption: false,
     englishAvailable: false,
     combinations: [],
+    subjectChoice: null,
     sections: [],
     branches: [],
     blocks: [],
@@ -538,8 +581,8 @@ const cloneBlocks = (blocks: readonly ExamTemplateBlock[] | undefined): ExamTemp
  */
 function partFromTemplate(part: ExamTemplatePart, combinations: readonly CombinationOption[]): CreatePartValues {
   const sections: CreateSectionValues[] = (part.sections ?? []).map((section) => ({
-    subjectCode: section.subjectCode,
-    questionCount: section.questionCount,
+    ...structuredClone(section),
+    questionCount: section.questionCount ?? 0,
     blocks: cloneBlocks(section.blocks),
   }));
   const common: CreatePartValues = basePart({
@@ -574,6 +617,12 @@ function partFromTemplate(part: ExamTemplatePart, combinations: readonly Combina
           ...(option.expertConfirmed !== undefined ? { expertConfirmed: option.expertConfirmed } : {}),
         };
       }),
+    subjectChoice: (() => {
+      const choice = options.find((option) => option.kind === "SUBJECT_CHOICE" && option.subjectChoice);
+      return choice?.subjectChoice
+        ? { code: choice.code, name: choice.name ?? null, ...structuredClone(choice.subjectChoice) }
+        : null;
+    })(),
     branches: options
       .filter((option) => option.kind === "BRANCH")
       .map((option) => ({
@@ -666,8 +715,10 @@ export interface CreateExamSummary {
 }
 
 /** Số đường lựa chọn của một phần tự chọn: nhánh Tiếng Anh, tổ hợp đã gắn và nhánh nội dung. */
-export function choicePathCount(part: Pick<CreatePartValues, "englishOption" | "combinations" | "branches">): number {
-  return (part.englishOption ? 1 : 0) + part.combinations.length + part.branches.length;
+export function choicePathCount(
+  part: Pick<CreatePartValues, "englishOption" | "combinations" | "branches" | "subjectChoice">,
+): number {
+  return (part.englishOption ? 1 : 0) + part.combinations.length + part.branches.length + (part.subjectChoice ? 1 : 0);
 }
 
 export function summarizeParts(
@@ -700,6 +751,7 @@ export function partsEdited(parts: readonly CreatePartValues[], baseline: readon
       part.points,
       part.englishOption,
       part.combinations.map((item) => [item.code, item.subjectCounts]),
+      part.subjectChoice ? [part.subjectChoice.code, part.subjectChoice.countsByPick] : null,
       part.sections.map((section) => [section.subjectCode, section.questionCount]),
       part.branches.map((branch) => [branch.code, branch.questionCount]),
     ]);
@@ -736,12 +788,12 @@ export function partInputsFromValues(
             ...(item.expertConfirmed !== undefined ? { expertConfirmed: item.expertConfirmed } : {}),
           }))
         : [],
+      ...(choice && part.subjectChoice ? { subjectChoice: part.subjectChoice } : {}),
       ...(multi
         ? {
             sections: part.sections.map((section) => ({
-              subjectCode: section.subjectCode,
-              questionCount: section.questionCount,
-              ...(section.blocks.length ? { blocks: section.blocks } : {}),
+              ...section,
+              blocks: section.blocks.length ? section.blocks : undefined,
             })),
           }
         : {}),
@@ -760,21 +812,26 @@ export function partInputsFromValues(
   });
 }
 
-export function toCreateExamRequest(values: CreateExamFormValues, templates: readonly ExamTemplate[]): CreateExamRequest {
-  const template = findTemplate(templates, values.templateCode);
+/**
+ * Yêu cầu tạo bài (bước 1, PBI-04 mục 4). Mẫu và xác nhận năm không đi theo yêu cầu: máy chủ nạp mẫu mới nhất khớp
+ * phạm vi; mẫu khác hoặc xác nhận năm đi sau bằng `applyExamTemplate` và `updateExamInfo` (xem `useCreateExam`).
+ */
+export function toCreateExamRequest(
+  values: CreateExamFormValues,
+  kinds: readonly ExamKindOption[],
+): CreateExamRequest {
   const shared = values.timing === "SHARED";
   return {
     name: values.name.trim(),
     code: values.code.trim().toUpperCase(),
     kind: values.kind,
-    format: values.format,
-    templateCode: template?.code ?? null,
-    singleSubjectCode: values.format === "SINGLE" ? values.singleSubjectCode : null,
+    scope: scopeOfFormat(values.format, kinds, values.kind),
+    partCode: values.format === "SINGLE" ? values.singleSubjectCode : null,
     subjectCode: values.subjectCode || null,
     durationMinutes: shared ? values.sharedDuration : null,
     maxScore: values.maxScore,
-    ...(yearsDiffer(template) ? { yearsConfirmed: values.yearsConfirmed } : {}),
     description: values.description.trim() || null,
+    instructions: null,
     parts: partInputsFromValues(values.parts, values),
   };
 }

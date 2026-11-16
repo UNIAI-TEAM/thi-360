@@ -84,8 +84,8 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
                   count: part.questionCount,
                   minutes: part.durationMinutes ?? 0,
                   hasMinutes: part.durationMinutes === null ? "no" : "yes",
-                  points: part.points ?? 0,
-                  hasPoints: part.points === null || part.points === undefined ? "no" : "yes",
+                  points: part.maxPoints ?? 0,
+                  hasPoints: part.maxPoints === null || part.maxPoints === undefined ? "no" : "yes",
                 })}
               </span>
             </h3>
@@ -123,7 +123,7 @@ function SectionList({ sections }: { sections: ExamSection[] }) {
       {sections.map((section) => (
         <li key={section.id} className="flex flex-col gap-1">
           <span className="text-body text-text">
-            {t("section", { subject: lookup.subject(section.subjectCode), count: section.questionCount })}
+            {t("section", { subject: lookup.subject(section.subjectCode), count: section.questionCount ?? 0 })}
           </span>
           <ul className="flex flex-wrap gap-1.5">
             {section.blocks.map((block) => (
@@ -131,9 +131,9 @@ function SectionList({ sections }: { sections: ExamSection[] }) {
                 <Badge>
                   {t("block", {
                     name: block.name,
-                    type: types(block.questionType),
-                    count: block.questionCount,
-                    mode: block.matrix.mode,
+                    type: block.questionType ? types(block.questionType) : "",
+                    count: block.questionCount ?? 0,
+                    mode: block.matrix?.mode ?? "COMBINED",
                     manual: block.questionType === "ESSAY" ? "yes" : "no",
                   })}
                 </Badge>

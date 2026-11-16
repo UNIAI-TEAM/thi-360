@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
-import { resetQuestionHistoryForTests } from "../editor-api";
+import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout } from "../components/question-detail-layout";
 import { QuestionEditorView } from "../components/question-editor-view";
@@ -31,24 +31,25 @@ afterEach(() => {
 });
 
 describe("soan cau Tu luan", () => {
-  it("them tieu chi, tong diem lech diem cua cau thi bao loi khi luu", async () => {
+  it("tieu chi tuy chon, co thi tong diem phai khop diem cua cau; huong dan cham bat buoc", async () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="create" type="ESSAY" />);
     const section = (await screen.findByRole("heading", { name: "Grading guide" })).closest("section");
     if (!section) throw new Error("no grading section");
     expect(within(section).getByText("Graded by hand")).toBeInTheDocument();
-    expect(within(section).getByText("Criteria total 1 / 1: matches the question points")).toBeInTheDocument();
+    // Tiêu chí chấm là tùy chọn (D20): biểu mẫu mới chưa có tiêu chí, hướng dẫn chấm là bắt buộc.
+    expect(within(section).queryByText(/Criteria total/)).not.toBeInTheDocument();
 
     await user.click(within(section).getByRole("button", { name: "Add criterion" }));
-    const second = within(section).getByRole("textbox", { name: "Criterion 2 description" });
-    expect(second).toHaveFocus();
-    await user.type(second, "Lap luan");
-    await user.type(within(section).getByRole("textbox", { name: "Criterion 2 points" }), "0,5");
-    expect(within(section).getByText("Criteria total 1.5 / 1: does not match the question points yet")).toBeInTheDocument();
+    const first = within(section).getByRole("textbox", { name: "Criterion 1 description" });
+    expect(first).toHaveFocus();
+    await user.type(first, "Lap luan");
+    await user.type(within(section).getByRole("textbox", { name: "Criterion 1 points" }), "0,5");
+    expect(within(section).getByText("Criteria total 0.5 / 1: does not match the question points yet")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Save draft" }));
     expect(await screen.findByText("The criteria must add up to the question points.")).toBeInTheDocument();
-    expect(screen.getByText("Enter the criterion description.")).toBeInTheDocument();
+    expect(screen.getByText("Enter the grading guide.")).toBeInTheDocument();
     expect(navigation.push).not.toHaveBeenCalled();
   });
 

@@ -53,17 +53,19 @@ describe("Cấu trúc theo bảy kỳ thi", () => {
     expect(screen.getAllByText("Chuyên gia đã xác nhận")).toHaveLength(4);
   });
 
-  it("HSA: sinh tổ hợp 5 môn chọn 3, bỏ qua tổ hợp đã gắn, tổ hợp mới chờ chuyên gia xác nhận", async () => {
+  it("QDA: sinh tổ hợp 5 môn chọn 2, bỏ qua tổ hợp đã gắn, tổ hợp mới chờ chuyên gia xác nhận", async () => {
+    // HSA đã chuyển sang một phương án chọn môn (không còn hộp thoại sinh tổ hợp); QDA, BCA giữ màn tổ hợp.
     const user = userEvent.setup();
-    openStructure("ex-hsa-f-001", "?part=part-33");
+    openStructure("ex-qda-f-001", "?part=" + examStore.require("ex-qda-f-001").parts[2]!.id);
     expect(await screen.findByRole("heading", { name: "Phần 3 · Khoa học hoặc Tiếng Anh" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Sinh tổ hợp" }));
     const dialog = await screen.findByRole("dialog", { name: "Sinh tổ hợp môn" });
-    expect(within(dialog).getByText("Tổ hợp sinh ra (đã chọn 7 / 10)")).toBeInTheDocument();
-    expect(within(dialog).getAllByText("Đã gắn")).toHaveLength(3);
-    await user.click(within(dialog).getByRole("button", { name: "Thêm 7 tổ hợp" }));
+    expect(within(dialog).getByText("Tổ hợp sinh ra (đã chọn 8 / 10)")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Đã gắn")).toHaveLength(2);
+    await user.click(within(dialog).getByRole("button", { name: "Thêm 8 tổ hợp" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getAllByRole("button", { name: /^Xác nhận số câu của TH-/ })).toHaveLength(7);
+    // Sáu tổ hợp mã tạm (TH-n) chờ chuyên gia xác nhận; QD02, QD03 dùng mã danh mục.
+    expect(screen.getAllByRole("button", { name: /^Xác nhận số câu của TH-/ })).toHaveLength(6);
   });
 
   it("V-ACT: khối Tư duy khoa học chia theo năng lực", async () => {

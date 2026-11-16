@@ -26,9 +26,7 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
       name: "BCA thu",
       code: "BCA-F-902",
       kind: "BCA",
-      format: "FULL",
-      templateCode: "BCA_FULL",
-      singleSubjectCode: null,
+      scope: "FULL",
       description: null,
     });
     const user = userEvent.setup();
@@ -53,9 +51,7 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
       name: "SP2E thu",
       code: "SP2E-F-TOAN-902",
       kind: "SP2E",
-      format: "FULL",
-      templateCode: "SP2E_MATH_2026",
-      singleSubjectCode: null,
+      scope: "SUBJECT",
       subjectCode: "MATH",
       description: null,
     });

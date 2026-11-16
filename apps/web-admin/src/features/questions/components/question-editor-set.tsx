@@ -223,17 +223,17 @@ function answerSummary(child: EditorChild, t: ReturnType<typeof useTranslations>
       );
       return parts.length ? parts.join(", ") : t("noAnswer");
     }
-    case "FILL_IN": {
-      const answers = body.blanks.map((blank) => blank.answers.map((answer) => answer.value.trim()).filter(Boolean).join(" / "));
-      return answers.some(Boolean) ? answers.join("; ") : t("noAnswer");
+    case "SHORT_ANSWER": {
+      const answers = (body.blanks[0]?.answers ?? []).map((answer) => answer.value.trim()).filter(Boolean);
+      return answers.length ? answers.join(" / ") : t("noAnswer");
     }
-    case "DRAG_DROP": {
+    case "MATCHING": {
       const items = body.zones.map((zone) => zone.itemContent.trim()).filter(Boolean);
       return items.length ? items.join("; ") : t("noAnswer");
     }
     case "ESSAY": {
-      const criteria = body.rubric.map((criterion) => criterion.description.trim()).filter(Boolean);
-      return criteria.length ? criteria.join("; ") : t("noAnswer");
+      const guide = body.gradingGuide.trim();
+      return guide || t("noAnswer");
     }
   }
 }

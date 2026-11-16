@@ -74,7 +74,8 @@ export function usePublishExam(examId: string, deps: ExamReviewApiDeps = default
 export function useDiscontinueExam(examId: string, deps: ExamReviewApiDeps = defaultExamReviewApiDeps) {
   const invalidate = useInvalidateExam(examId);
   return useMutation({
-    mutationFn: () => deps.discontinueExam({ examId }),
+    mutationFn: ({ expectedRevision }: { expectedRevision: number }) =>
+      deps.discontinueExam({ examId, expectedRevision }),
     onSuccess: () => invalidate(),
   });
 }

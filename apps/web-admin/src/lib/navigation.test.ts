@@ -181,17 +181,25 @@ describe("NAVIGATION của đợt 1", () => {
 });
 
 describe("mục dữ liệu mẫu của đợt 2", () => {
-  it("Ngân hàng câu hỏi, Bài thi và Chấm tự luận đứng đầu nhóm Nội dung, chỉ hiện khi bật cờ dữ liệu mẫu", () => {
+  const contentIds = (granted: string[], flags: { content: boolean; grading: boolean }) =>
+    filterNavigation(NAVIGATION, new Set(granted), flags)
+      .find((g) => g.id === "content")
+      ?.items.map((item) => item.id);
+
+  it("Ngân hàng câu hỏi, Bài thi và Chấm tự luận đứng đầu nhóm Nội dung", () => {
     const contentGroup = NAVIGATION.find((g) => g.id === "content");
     expect(contentGroup?.items.map((item) => item.id)).toEqual(["questions", "exams", "grading", "catalog"]);
-    const granted = new Set(["CATALOG.VIEW"]);
-    const contentIds = (enabled: boolean) =>
-      filterNavigation(NAVIGATION, granted, enabled)
-        .find((g) => g.id === "content")
-        ?.items.map((item) => item.id);
-    expect(contentIds(true)).toEqual(["questions", "exams", "grading", "catalog"]);
-    expect(contentIds(false)).toEqual(["catalog"]);
     // Màn chấm một lượt thi vẫn thuộc mục Chấm tự luận.
     expect(resolveBreadcrumb(NAVIGATION, "/grading/att-bca-001")?.item.id).toBe("grading");
+  });
+
+  it("hiện khi có quyền hoặc khi cờ dữ liệu mẫu của mục bật; mỗi cờ chỉ mở các mục của nó", () => {
+    const none = { content: false, grading: false };
+    expect(contentIds(["CATALOG.VIEW"], none)).toEqual(["catalog"]);
+    expect(contentIds(["CATALOG.VIEW"], { content: true, grading: true })).toEqual(["questions", "exams", "grading", "catalog"]);
+    expect(contentIds(["CATALOG.VIEW"], { content: true, grading: false })).toEqual(["questions", "exams", "catalog"]);
+    expect(contentIds(["CATALOG.VIEW"], { content: false, grading: true })).toEqual(["grading", "catalog"]);
+    expect(contentIds(["QUESTION.VIEW", "EXAM.VIEW", "GRADING.VIEW"], none)).toEqual(["questions", "exams", "grading"]);
+    expect(contentIds(["EXAM.VIEW"], none)).toEqual(["exams"]);
   });
 });

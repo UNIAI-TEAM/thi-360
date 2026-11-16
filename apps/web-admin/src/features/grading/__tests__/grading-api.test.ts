@@ -104,7 +104,7 @@ describe("grading api: chi tiet", () => {
       points: 1,
       body: {
         type: "ESSAY",
-        maxPoints: 1,
+        gradingGuide: "Huong dan cham",
         rubric: [
           { id: "c1", description: "Dieu kien", points: 0.25 },
           { id: "c9", description: "Tieu chi moi", points: 0.75 },

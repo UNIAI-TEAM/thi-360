@@ -6,7 +6,10 @@
         {
           "version": 1,
           "savedAt": "2026-10-08T08:27:00+07:00",
-          "savedBy": { "id": "u-ngoc", "name": "Nguyễn Thị Ngọc" },
+          "savedBy": {
+            "id": "u-ngoc",
+            "name": "Nguyễn Thị Ngọc"
+          },
           "readyAt": "2026-10-09T09:00:00+07:00",
           "patch": {
             "content": "Chiến dịch Điện Biên Phủ kết thúc vào năm nào?",
@@ -14,10 +17,26 @@
             "body": {
               "type": "SINGLE_CHOICE",
               "options": [
-                { "id": "q-0021-o1", "content": "1954", "correct": true },
-                { "id": "q-0021-o2", "content": "1953", "correct": false },
-                { "id": "q-0021-o3", "content": "1947", "correct": false },
-                { "id": "q-0021-o4", "content": "1975", "correct": false }
+                {
+                  "id": "q-0021-o1",
+                  "content": "1954",
+                  "correct": true
+                },
+                {
+                  "id": "q-0021-o2",
+                  "content": "1953",
+                  "correct": false
+                },
+                {
+                  "id": "q-0021-o3",
+                  "content": "1947",
+                  "correct": false
+                },
+                {
+                  "id": "q-0021-o4",
+                  "content": "1975",
+                  "correct": false
+                }
               ],
               "shuffleOptions": true
             },
@@ -27,16 +46,35 @@
         {
           "version": 2,
           "savedAt": "2026-10-20T14:12:00+07:00",
-          "savedBy": { "id": "u-lan", "name": "Phạm Mai Lan" },
+          "savedBy": {
+            "id": "u-lan",
+            "name": "Phạm Mai Lan"
+          },
           "readyAt": "2026-10-21T08:30:00+07:00",
           "patch": {
             "body": {
               "type": "SINGLE_CHOICE",
               "options": [
-                { "id": "q-0021-o1", "content": "1954", "correct": true },
-                { "id": "q-0021-o2", "content": "1953", "correct": false },
-                { "id": "q-0021-o3", "content": "1947", "correct": false },
-                { "id": "q-0021-o4", "content": "1975", "correct": false }
+                {
+                  "id": "q-0021-o1",
+                  "content": "1954",
+                  "correct": true
+                },
+                {
+                  "id": "q-0021-o2",
+                  "content": "1953",
+                  "correct": false
+                },
+                {
+                  "id": "q-0021-o3",
+                  "content": "1947",
+                  "correct": false
+                },
+                {
+                  "id": "q-0021-o4",
+                  "content": "1975",
+                  "correct": false
+                }
               ],
               "shuffleOptions": true
             },
@@ -46,7 +84,10 @@
         {
           "version": 3,
           "savedAt": "2026-11-08T10:51:00+07:00",
-          "savedBy": { "id": "u-ngoc", "name": "Nguyễn Thị Ngọc" },
+          "savedBy": {
+            "id": "u-ngoc",
+            "name": "Nguyễn Thị Ngọc"
+          },
           "readyAt": "2026-11-08T11:20:00+07:00",
           "patch": {}
         }
@@ -58,13 +99,26 @@
         {
           "version": 1,
           "savedAt": "2026-10-10T08:21:00+07:00",
-          "savedBy": { "id": "u-ngoc", "name": "Nguyễn Thị Ngọc" },
+          "savedBy": {
+            "id": "u-ngoc",
+            "name": "Nguyễn Thị Ngọc"
+          },
           "readyAt": "2026-10-11T09:00:00+07:00",
           "patch": {
             "difficultyCode": "COMPREHENSION",
             "knowledge": [
-              { "nodeId": "kn-1D4-3-1", "code": "1D4-3-1", "name": "Hàm số liên tục tại một điểm", "primary": true },
-              { "nodeId": "kn-1D4-3-2", "code": "1D4-3-2", "name": "Ứng dụng tính liên tục", "primary": false }
+              {
+                "nodeId": "kn-1D4-3-1",
+                "code": "1D4-3-1",
+                "name": "Hàm số liên tục tại một điểm",
+                "primary": true
+              },
+              {
+                "nodeId": "kn-1D4-3-2",
+                "code": "1D4-3-2",
+                "name": "Ứng dụng tính liên tục",
+                "primary": false
+              }
             ],
             "solution": "Hàm đa thức và hàm lượng giác liên tục trên ℝ."
           }
@@ -72,7 +126,10 @@
         {
           "version": 2,
           "savedAt": "2026-11-10T10:33:00+07:00",
-          "savedBy": { "id": "u-ngoc", "name": "Nguyễn Thị Ngọc" },
+          "savedBy": {
+            "id": "u-ngoc",
+            "name": "Nguyễn Thị Ngọc"
+          },
           "readyAt": "2026-11-10T11:05:00+07:00",
           "patch": {}
         }
@@ -84,21 +141,34 @@
         {
           "version": 1,
           "savedAt": "2026-10-05T08:42:00+07:00",
-          "savedBy": { "id": "u-ngoc", "name": "Nguyễn Thị Ngọc" },
+          "savedBy": {
+            "id": "u-ngoc",
+            "name": "Nguyễn Thị Ngọc"
+          },
           "readyAt": "2026-10-06T09:15:00+07:00",
           "patch": {
             "points": 1,
             "difficultyCode": "COMPREHENSION",
             "knowledge": [
-              { "nodeId": "kn-2D1-2-1", "code": "2D1-2-1", "name": "Cực trị của hàm số", "primary": true }
+              {
+                "nodeId": "kn-2D1-2-1",
+                "code": "2D1-2-1",
+                "name": "Cực trị của hàm số",
+                "primary": true
+              }
             ],
-            "tagCodes": ["HSA_2025"]
+            "tagCodes": [
+              "HSA_2025"
+            ]
           }
         },
         {
           "version": 2,
           "savedAt": "2026-11-05T10:06:00+07:00",
-          "savedBy": { "id": "u-hung", "name": "Trần Văn Hùng" },
+          "savedBy": {
+            "id": "u-hung",
+            "name": "Trần Văn Hùng"
+          },
           "readyAt": null,
           "patch": {}
         }
@@ -110,17 +180,30 @@
         {
           "version": 1,
           "savedAt": "2026-10-08T08:49:00+07:00",
-          "savedBy": { "id": "u-hung", "name": "Trần Văn Hùng" },
+          "savedBy": {
+            "id": "u-hung",
+            "name": "Trần Văn Hùng"
+          },
           "readyAt": "2026-10-09T10:00:00+07:00",
           "patch": {
-            "body": { "type": "FILL_IN", "blanks": [{ "id": "q-0007-b1", "acceptedAnswers": ["4", "bốn"] }] },
+            "body": {
+              "type": "SHORT_ANSWER",
+              "answers": [
+                "4",
+                "bốn"
+              ],
+              "inputHint": null
+            },
             "solution": null
           }
         },
         {
           "version": 2,
           "savedAt": "2026-11-08T10:17:00+07:00",
-          "savedBy": { "id": "u-hung", "name": "Trần Văn Hùng" },
+          "savedBy": {
+            "id": "u-hung",
+            "name": "Trần Văn Hùng"
+          },
           "readyAt": "2026-11-08T14:00:00+07:00",
           "patch": {}
         }
@@ -132,14 +215,23 @@
         {
           "version": 1,
           "savedAt": "2026-10-20T09:00:00+07:00",
-          "savedBy": { "id": "u-hung", "name": "Trần Văn Hùng" },
+          "savedBy": {
+            "id": "u-hung",
+            "name": "Trần Văn Hùng"
+          },
           "readyAt": "2026-10-21T09:00:00+07:00",
-          "patch": { "tagCodes": [], "difficultyCode": "RECOGNITION" }
+          "patch": {
+            "tagCodes": [],
+            "difficultyCode": "RECOGNITION"
+          }
         },
         {
           "version": 2,
           "savedAt": "2026-11-02T09:00:00+07:00",
-          "savedBy": { "id": "u-hung", "name": "Trần Văn Hùng" },
+          "savedBy": {
+            "id": "u-hung",
+            "name": "Trần Văn Hùng"
+          },
           "readyAt": "2026-11-02T15:30:00+07:00",
           "patch": {}
         }

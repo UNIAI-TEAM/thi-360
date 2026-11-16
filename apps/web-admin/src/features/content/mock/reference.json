@@ -93,6 +93,66 @@
       "name": "Vận dụng cao"
     }
   ],
+  "taskTypes": [
+    {
+      "code": "CALCULATION",
+      "name": "Tính toán"
+    },
+    {
+      "code": "REASONING",
+      "name": "Lập luận"
+    },
+    {
+      "code": "READING",
+      "name": "Đọc hiểu"
+    },
+    {
+      "code": "APPLICATION_PROBLEM",
+      "name": "Bài toán thực tế"
+    }
+  ],
+  "questionTypes": [
+    {
+      "code": "SINGLE_CHOICE",
+      "name": "Một đáp án",
+      "active": true
+    },
+    {
+      "code": "MULTIPLE_CHOICE",
+      "name": "Nhiều đáp án",
+      "active": true
+    },
+    {
+      "code": "SHORT_ANSWER",
+      "name": "Trả lời ngắn",
+      "active": true
+    },
+    {
+      "code": "CLOZE",
+      "name": "Điền khuyết",
+      "active": true
+    },
+    {
+      "code": "QUESTION_SET",
+      "name": "Bộ câu hỏi",
+      "active": true
+    },
+    {
+      "code": "TRUE_FALSE",
+      "name": "Đúng/Sai",
+      "active": true
+    },
+    {
+      "code": "MATCHING",
+      "name": "Ghép đôi",
+      "active": true
+    },
+    {
+      "code": "ESSAY",
+      "name": "Tự luận",
+      "active": true
+    }
+  ],
   "tags": [
     {
       "code": "HSA_2025",
@@ -119,115 +179,157 @@
     {
       "code": "HSA",
       "name": "Đánh giá năng lực ĐHQG Hà Nội (HSA)",
-      "formats": [
-        "FULL",
-        "SINGLE"
-      ],
       "templateBy": "KIND",
       "timing": "PER_PART",
       "maxScore": 150,
+      "scopes": [
+        "FULL",
+        "PART"
+      ],
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "scoringDefaults": {
-        "trueFalseTable": null,
+        "trueFalse": {
+          "method": "PER_STATEMENT",
+          "table": [],
+          "statementPoints": null
+        },
         "multipleChoiceRule": "ALL_OR_NOTHING"
       }
     },
     {
       "code": "QDA",
       "name": "Đánh giá năng lực Bộ Quốc phòng (QDA)",
-      "formats": [
-        "FULL",
-        "SINGLE"
-      ],
       "templateBy": "KIND",
       "timing": "PER_PART",
       "maxScore": 150,
+      "scopes": [
+        "FULL",
+        "PART"
+      ],
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "scoringDefaults": {
-        "trueFalseTable": null,
+        "trueFalse": {
+          "method": "PER_STATEMENT",
+          "table": [],
+          "statementPoints": null
+        },
         "multipleChoiceRule": "ALL_OR_NOTHING"
       }
     },
     {
       "code": "BCA",
       "name": "Đánh giá tuyển sinh Công an nhân dân (BCA)",
-      "formats": [
-        "FULL"
-      ],
       "templateBy": "KIND",
       "timing": "SHARED",
       "maxScore": 100,
+      "scopes": [
+        "FULL"
+      ],
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "scoringDefaults": {
-        "trueFalseTable": null,
+        "trueFalse": {
+          "method": "PER_STATEMENT",
+          "table": [],
+          "statementPoints": null
+        },
         "multipleChoiceRule": "ALL_OR_NOTHING"
       }
     },
     {
       "code": "VACT",
       "name": "Đánh giá năng lực ĐHQG TP.HCM (V-ACT)",
-      "formats": [
-        "FULL"
-      ],
       "templateBy": "KIND",
       "timing": "SHARED",
       "maxScore": 1200,
+      "scopes": [
+        "FULL"
+      ],
+      "referenceMax": 1200,
+      "practiceScoring": "LINEAR",
       "scoringDefaults": {
-        "trueFalseTable": null,
+        "trueFalse": {
+          "method": "PER_STATEMENT",
+          "table": [],
+          "statementPoints": null
+        },
         "multipleChoiceRule": "ALL_OR_NOTHING"
       }
     },
     {
       "code": "SPT",
       "name": "Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)",
-      "formats": [
-        "FULL"
-      ],
       "templateBy": "SUBJECT",
       "timing": "PER_PART",
       "maxScore": 10,
+      "scopes": [
+        "SUBJECT"
+      ],
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "scoringDefaults": {
-        "trueFalseTable": [
-          0.1,
-          0.25,
-          0.5,
-          1
-        ],
+        "trueFalse": {
+          "method": "COUNT_TABLE",
+          "table": [
+            0.1,
+            0.25,
+            0.5,
+            1
+          ],
+          "statementPoints": null
+        },
         "multipleChoiceRule": "ALL_OR_NOTHING"
       }
     },
     {
       "code": "SP2E",
       "name": "Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)",
-      "formats": [
-        "FULL"
-      ],
       "templateBy": "SUBJECT",
       "timing": "PER_PART",
       "maxScore": 10,
+      "scopes": [
+        "SUBJECT"
+      ],
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "scoringDefaults": {
-        "trueFalseTable": [
-          0.1,
-          0.25,
-          0.5,
-          1
-        ],
+        "trueFalse": {
+          "method": "COUNT_TABLE",
+          "table": [
+            0.1,
+            0.25,
+            0.5,
+            1
+          ],
+          "statementPoints": null
+        },
         "multipleChoiceRule": "ALL_OR_NOTHING"
       }
     },
     {
       "code": "THPTQG",
       "name": "Tốt nghiệp THPT (THPTQG)",
-      "formats": [
-        "FULL"
-      ],
       "templateBy": "SUBJECT",
       "timing": "PER_PART",
       "maxScore": 10,
+      "scopes": [
+        "SUBJECT"
+      ],
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "scoringDefaults": {
-        "trueFalseTable": [
-          0.1,
-          0.25,
-          0.5,
-          1
-        ],
+        "trueFalse": {
+          "method": "COUNT_TABLE",
+          "table": [
+            0.1,
+            0.25,
+            0.5,
+            1
+          ],
+          "statementPoints": null
+        },
         "multipleChoiceRule": "ALL_OR_NOTHING"
       }
     }

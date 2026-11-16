@@ -6,16 +6,17 @@
  */
 
 /**
- * Sáu dạng câu theo bản vẽ (BA ghi bốn dạng; đang chờ BA chốt, xem UNI-2590) và dạng Tự luận cho BCA, SPT, THPTQG
- * Ngữ văn (UNI-2599, chấm tay).
+ * Tám dạng câu theo BA (spec 1, B6): Một đáp án, Nhiều đáp án, Trả lời ngắn, Điền khuyết, Bộ câu hỏi, Đúng/Sai, Ghép
+ * đôi, Tự luận (chấm tay). Là mã cố định trong mã nguồn; tên hiển thị lấy từ `ContentReference.questionTypes`.
  */
 export const QUESTION_TYPES = [
   "SINGLE_CHOICE",
   "MULTIPLE_CHOICE",
-  "TRUE_FALSE",
-  "FILL_IN",
-  "DRAG_DROP",
+  "SHORT_ANSWER",
+  "CLOZE",
   "QUESTION_SET",
+  "TRUE_FALSE",
+  "MATCHING",
   "ESSAY",
 ] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
@@ -45,11 +46,22 @@ export interface KnowledgeNode {
   children: KnowledgeNode[];
 }
 
+/** Dạng câu trong danh mục (D1): `code` là mã dạng cố định; `active = false` thì không tạo được câu mới dạng này. */
+export interface QuestionTypeOption {
+  code: QuestionType;
+  name: string;
+  active: boolean;
+}
+
 export interface ContentReference {
   subjects: CatalogOption[];
   /** Lớp 10, 11, 12 và "Liên lớp" (`GRADE_MIXED`, câu dùng kiến thức nhiều lớp, V-ACT). */
   grades: CatalogOption[];
   difficulties: CatalogOption[];
+  /** Dạng bài (nhóm danh mục `TASK_TYPE`), gắn vào câu hỏi qua `taskTypeCode`. */
+  taskTypes: CatalogOption[];
+  /** Tám dạng câu kèm tên hiển thị và trạng thái (D1). */
+  questionTypes: QuestionTypeOption[];
   tags: CatalogOption[];
   /** Bảy kỳ thi (UNI-2599): HSA, QDA, BCA, VACT, SPT, SP2E, THPTQG. */
   examKinds: ExamKindOption[];
@@ -69,8 +81,12 @@ export interface CombinationOption {
   examKindCode: string;
 }
 
-/** Hình thức bài thi: `FULL` đủ cấu trúc của kỳ thi (hoặc của môn với kỳ thi có mẫu theo môn), `SINGLE` bài lẻ một phần. */
-export type ExamFormat = "FULL" | "SINGLE";
+/**
+ * Phạm vi bài thi (PBI-04 mục 4): `FULL` Toàn bài, `PART` Theo phần, `SUBJECT` Theo môn. Kỳ thi chỉ cho phép các phạm
+ * vi trong `ExamKindOption.scopes`.
+ */
+export const EXAM_SCOPES = ["FULL", "PART", "SUBJECT"] as const;
+export type ExamScope = (typeof EXAM_SCOPES)[number];
 
 /** `PER_PART`: mỗi phần có thời lượng riêng; `SHARED`: một thời lượng chung cho cả bài (BCA, V-ACT). */
 export type ExamTiming = "PER_PART" | "SHARED";
@@ -79,26 +95,45 @@ export type ExamTiming = "PER_PART" | "SHARED";
 export const MULTIPLE_CHOICE_RULES = ["ALL_OR_NOTHING", "PARTIAL"] as const;
 export type MultipleChoiceRule = (typeof MULTIPLE_CHOICE_RULES)[number];
 
+/** Cách chấm Đúng/Sai: cộng điểm từng ý, hoặc bảng điểm theo số ý đúng. */
+export const TRUE_FALSE_METHODS = ["PER_STATEMENT", "COUNT_TABLE"] as const;
+export type TrueFalseMethod = (typeof TRUE_FALSE_METHODS)[number];
+
 /**
- * Quy tắc chấm mặc định của kỳ thi. `trueFalseTable[i]` là điểm khi đúng `i + 1` ý của câu Đúng/Sai (THPTQG 4 ý:
- * 0,1 / 0,25 / 0,5 / 1, tính theo điểm tối đa 1); `null` khi kỳ thi không dùng bảng (chia đều theo ý).
+ * Cách chấm Đúng/Sai mặc định của kỳ thi. `COUNT_TABLE`: `table[i]` là điểm khi đúng `i + 1` ý (THPTQG 4 ý: 0,1 / 0,25
+ * / 0,5 / 1, tính theo điểm tối đa 1). `PER_STATEMENT`: mỗi ý `statementPoints` điểm, `table` rỗng.
  */
+export interface TrueFalseDefaults {
+  method: TrueFalseMethod;
+  table: number[];
+  statementPoints: number | null;
+}
+
+/** Quy tắc chấm mặc định của kỳ thi. */
 export interface ScoringDefaults {
-  trueFalseTable: number[] | null;
+  trueFalse: TrueFalseDefaults;
   multipleChoiceRule: MultipleChoiceRule;
 }
 
-/** Một kỳ thi trong danh mục. */
+/** Điểm hiển thị của bài (D11): `RAW` điểm thô; `LINEAR` quy tuyến tính điểm thô về `referenceMax` (V-ACT). */
+export const PRACTICE_SCORINGS = ["RAW", "LINEAR"] as const;
+export type PracticeScoring = (typeof PRACTICE_SCORINGS)[number];
+
+/** Một kỳ thi trong danh mục (hồ sơ kỳ thi). */
 export interface ExamKindOption {
   /** Mã ngắn: `HSA`, `QDA`, `BCA`, `VACT`, `SPT`, `SP2E`, `THPTQG`. */
   code: string;
   name: string;
-  formats: ExamFormat[];
+  /** Phạm vi bài thi kỳ thi cho phép (HSA, QDA: Toàn bài và Theo phần; BCA, V-ACT: Toàn bài; SPT, SP2E, THPTQG: Theo môn). */
+  scopes: ExamScope[];
   /** `KIND`: một mẫu cho cả kỳ thi; `SUBJECT`: mẫu theo môn (và năm) như SPT, SP2E, THPTQG. */
   templateBy: "KIND" | "SUBJECT";
   timing: ExamTiming;
-  /** Thang điểm của bài; `null` khi thang đặt lúc thiết lập (V-ACT luyện tập). */
+  /** Thang điểm thô của bài; `null` khi thang đặt lúc thiết lập (V-ACT luyện tập). */
   maxScore: number | null;
+  /** Thang tham chiếu hiển thị (V-ACT 1.200); `null` khi kỳ thi không có. */
+  referenceMax: number | null;
+  practiceScoring: PracticeScoring;
   scoringDefaults: ScoringDefaults;
 }
 
