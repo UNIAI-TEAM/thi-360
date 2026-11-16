@@ -60,6 +60,100 @@ SELECT (child->>'id')::uuid, q.code || '.' || p, child->>'type', q.id, p - 1,
 FROM seed_question q CROSS JOIN LATERAL jsonb_array_elements(q.body->'children') WITH ORDINALITY c(child, p)
 WHERE q.type = 'QUESTION_SET';
 
+-- Five HSA science subjects: 48 each (four per grade/level cell), exceeding
+-- two sets of 17.  The same one-point sources also cover BCA science/history.
+INSERT INTO seed_question (id, code, type, subject_code, grade_code, level_code, content, body, plain_text)
+SELECT ('90000000-0000-7000-8003-' || lpad(n::text, 12, '0'))::uuid,
+       'CH-SEED-SCI-' || n, 'SINGLE_CHOICE', subject, grade, level,
+       '<p>Cau khoa hoc mau ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', true, 'options', jsonb_build_array(
+           jsonb_build_object('id', 'a', 'content', '<p>Dung</p>', 'correct', true),
+           jsonb_build_object('id', 'b', 'content', '<p>Sai</p>', 'correct', false))),
+       'Cau khoa hoc mau ' || n || ' Dung Sai'
+FROM (
+    SELECT (sub - 1) * 48 + (g - 1) * 16 + (l - 1) * 4 + s AS n,
+           (ARRAY['LY','HOA','SINH','SU','DIA'])[sub] AS subject,
+           (ARRAY['G10','G11','G12'])[g] AS grade,
+           (ARRAY['NB','TH','VD','VDC'])[l] AS level
+    FROM generate_series(1, 5) sub CROSS JOIN generate_series(1, 3) g
+    CROSS JOIN generate_series(1, 4) l CROSS JOIN generate_series(1, 4) s
+) generated;
+
+-- BE-4 supplies these TASK_TYPE codes.  LEFT JOIN below tolerates their
+-- absence until its dev seed is merged; no fabricated catalog values are used.
+INSERT INTO seed_question (id, code, type, subject_code, grade_code, level_code, task_code, content, body, plain_text)
+SELECT ('90000000-0000-7000-8004-' || lpad(n::text, 12, '0'))::uuid,
+       'CH-SEED-LANG-' || n, 'SINGLE_CHOICE', subject, grade, level, task_code,
+       '<p>Cau ngon ngu mau ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', true, 'options', jsonb_build_array(
+           jsonb_build_object('id', 'a', 'content', '<p>Yes</p>', 'correct', true),
+           jsonb_build_object('id', 'b', 'content', '<p>No</p>', 'correct', false))),
+       'Cau ngon ngu mau ' || n || ' Yes No'
+FROM (
+    SELECT (t - 1) * 24 + s AS n,
+           CASE WHEN t <= 4 THEN 'ANH' ELSE 'VAN' END AS subject,
+           (ARRAY['G10','G11','G12'])[1 + ((s - 1) % 3)] AS grade,
+           (ARRAY['NB','TH','VD','VDC'])[1 + ((s - 1) % 4)] AS level,
+           (ARRAY['SYNONYM','ANTONYM','DIALOGUE_COMPLETION','READING_COMPREHENSION',
+                  'WORD_USAGE_ERROR','PASSAGE_READING'])[t] AS task_code
+    FROM generate_series(1, 6) t CROSS JOIN generate_series(1, 24) s
+) generated;
+
+-- BCA English: two complete 20-question pools at the required 0.75 points.
+INSERT INTO seed_question (id, code, type, subject_code, grade_code, level_code, points, content, body, plain_text)
+SELECT ('90000000-0000-7000-8005-' || lpad(n::text, 12, '0'))::uuid,
+       'CH-SEED-BCA-' || n, 'SINGLE_CHOICE', 'ANH',
+       (ARRAY['G10','G11','G12'])[1 + ((n - 1) % 3)],
+       (ARRAY['NB','TH','VD','VDC'])[1 + ((n - 1) % 4)], 0.75,
+       '<p>English sample ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', true, 'options', jsonb_build_array(
+           jsonb_build_object('id', 'a', 'content', '<p>Yes</p>', 'correct', true),
+           jsonb_build_object('id', 'b', 'content', '<p>No</p>', 'correct', false))),
+       'English sample ' || n || ' Yes No'
+FROM generate_series(1, 40) n;
+
+-- Two BCA essays with the required 25-point score.
+INSERT INTO seed_question (id, code, type, subject_code, grade_code, level_code, points, content, body, plain_text)
+SELECT ('90000000-0000-7000-8006-' || lpad(n::text, 12, '0'))::uuid,
+       'CH-SEED-ESSAY-' || n, 'ESSAY', 'VAN', 'G12', 'VD', 25,
+       '<p>Bai van mau ' || n || '</p>',
+       jsonb_build_object('type', 'ESSAY', 'gradingGuide', '<p>Huong dan cham</p>', 'rubric', jsonb_build_array(), 'wordLimit', 500),
+       'Bai van mau ' || n || ' Huong dan cham'
+FROM generate_series(1, 2) n;
+
+-- THPTQG true/false count table: one, two, three, four correct statements.
+INSERT INTO seed_question (id, code, type, subject_code, grade_code, level_code, content, body, plain_text)
+SELECT ('90000000-0000-7000-8007-' || lpad(n::text, 12, '0'))::uuid,
+       'CH-SEED-TF-' || n, 'TRUE_FALSE', 'TOAN', 'G12', 'VD',
+       '<p>Dung sai mau ' || n || '</p>',
+       jsonb_build_object('type', 'TRUE_FALSE', 'scoringMethod', 'COUNT_TABLE',
+           'scoreTable', jsonb_build_array(0.1, 0.25, 0.5, 1), 'statements',
+           (SELECT jsonb_agg(jsonb_build_object('id', p::text, 'content', '<p>Menh de ' || p || '</p>', 'answer', p % 2 = 0) ORDER BY p)
+            FROM generate_series(1, 4) p)),
+       'Dung sai mau ' || n || ' Menh de 1 Menh de 2 Menh de 3 Menh de 4'
+FROM generate_series(1, 8) n;
+
+-- Examples of the remaining body types, including Draft and Retired.
+INSERT INTO seed_question (id, code, type, status, subject_code, grade_code, level_code, content, body, plain_text)
+SELECT ('90000000-0000-7000-8008-' || lpad(n::text, 12, '0'))::uuid,
+       'CH-SEED-OTHER-' || n, qtype, state, 'TOAN', 'G12', 'VD', '<p>Cau mau</p>',
+       CASE qtype
+           WHEN 'MULTIPLE_CHOICE' THEN jsonb_build_object('type', qtype, 'scoringRule', 'ALL_OR_NOTHING',
+               'options', jsonb_build_array(
+                   jsonb_build_object('id', 'a', 'content', '<p>A</p>', 'correct', true),
+                   jsonb_build_object('id', 'b', 'content', '<p>B</p>', 'correct', true)))
+           WHEN 'CLOZE' THEN jsonb_build_object('type', qtype, 'passage', '<p>Dien [[b1]]</p>',
+               'blanks', jsonb_build_array(jsonb_build_object('id', 'b1', 'answers', jsonb_build_array('2'), 'points', 1)))
+           ELSE jsonb_build_object('type', qtype, 'reuseRight', false,
+               'left', jsonb_build_array(jsonb_build_object('id', 'l1', 'content', '<p>Mot</p>')),
+               'right', jsonb_build_array(jsonb_build_object('id', 'r1', 'content', '<p>One</p>')),
+               'pairs', jsonb_build_array(jsonb_build_object('leftId', 'l1', 'rightId', 'r1', 'points', 1))) END,
+       CASE qtype WHEN 'MULTIPLE_CHOICE' THEN 'Cau mau A B'
+                  WHEN 'CLOZE' THEN 'Cau mau Dien [[b1]]' ELSE 'Cau mau Mot One' END
+FROM (SELECT n, (ARRAY['MULTIPLE_CHOICE','CLOZE','MATCHING','MULTIPLE_CHOICE','CLOZE'])[n] AS qtype,
+             (ARRAY['READY','READY','READY','DRAFT','RETIRED'])[n] AS state
+      FROM generate_series(1, 5) n) generated;
+
 -- Resolve catalog values by group and code, rather than assuming catalog UUIDs.
 CREATE TEMPORARY TABLE seed_resolved ON COMMIT DROP AS
 SELECT q.*, subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id, task.id AS task_id
