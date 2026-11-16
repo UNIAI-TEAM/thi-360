@@ -26,7 +26,8 @@ public record PathResult(
         String subjectCode,
         String groupId,
         List<SubjectWitness> witness,
-        List<SubjectPick> failingSelections) {
+        List<SubjectPick> failingSelections,
+        QuotaRef failingQuota) {
 
     public PathResult {
         witness = witness == null ? List.of() : List.copyOf(witness);
@@ -34,23 +35,28 @@ public record PathResult(
     }
 
     static PathResult valid(SolvePath path, List<SubjectWitness> witness) {
-        return new PathResult(path, SolveStatus.VALID, null, null, null, witness, List.of());
+        return new PathResult(path, SolveStatus.VALID, null, null, null, witness, List.of(), null);
     }
 
     static PathResult invalid(SolvePath path, SolveReason reason, String subjectCode, String groupId) {
+        return invalid(path, reason, subjectCode, groupId, null);
+    }
+
+    static PathResult invalid(SolvePath path, SolveReason reason, String subjectCode,
+            String groupId, QuotaRef failingQuota) {
         return new PathResult(path, SolveStatus.INVALID, reason, subjectCode, groupId, List.of(),
-                List.of());
+                List.of(), failingQuota);
     }
 
     static PathResult invalidPicks(SolvePath path, SolveReason reason, String subjectCode,
-            String groupId, List<SubjectPick> failingSelections) {
+            String groupId, List<SubjectPick> failingSelections, QuotaRef failingQuota) {
         return new PathResult(path, SolveStatus.INVALID, reason, subjectCode, groupId, List.of(),
-                failingSelections);
+                failingSelections, failingQuota);
     }
 
     static PathResult unconfirmed(SolvePath path, SolveReason reason, String subjectCode,
             String groupId) {
         return new PathResult(path, SolveStatus.UNCONFIRMED, reason, subjectCode, groupId, List.of(),
-                List.of());
+                List.of(), null);
     }
 }

@@ -217,35 +217,65 @@ public final class PaperSolver {
             Map<SubproblemKey, SubproblemSolver.Outcome> memo, Runnable check,
             long[] solved, long[] memoHit) {
         check.run();
-        if (path.choices().isEmpty() || path.picks().isEmpty()) {
+        if (path.choices().isEmpty()) {
             return evalTuple(path, List.of(), source, mode, memo, check, solved, memoHit);
         }
-        // tích các cách chọn môn của các phương án SUBJECT_CHOICE trên đường
+        List<List<SubjectPick>> expanded = new ArrayList<>();
+        long combinations = 1;
+        for (int i = 0; i < path.choices().size(); i++) {
+            SubjectChoice choice = path.choices().get(i);
+            if (choice.sections().size() > limits.maxChoiceSubjects()) {
+                return PathResult.invalid(path, SolveReason.CHOICE_SUBJECT_LIMIT_EXCEEDED, null, null);
+            }
+            List<SubjectPick> picks = i < path.picks().size() && !path.picks().get(i).isEmpty()
+                    ? path.picks().get(i) : choice.picks(allocator);
+            if (picks.size() > limits.maxPaths() / combinations) {
+                return PathResult.unconfirmed(path, SolveReason.PATH_LIMIT_EXCEEDED, null, null);
+            }
+            combinations *= picks.size();
+            expanded.add(picks);
+        }
         List<List<SubjectPick>> tuples = new ArrayList<>();
-        product(path.picks(), 0, new SubjectPick[path.picks().size()], tuples, check);
+        product(expanded, 0, new SubjectPick[expanded.size()], tuples, check);
         SolveStatus worst = SolveStatus.VALID;
         SolveReason reason = null;
         String subjectCode = null;
         String groupId = null;
+        QuotaRef failingQuota = null;
         List<SubjectPick> failing = new ArrayList<>();
         Map<SubproblemKey, SubjectWitness> witnesses = new LinkedHashMap<>();
         for (List<SubjectPick> tuple : tuples) {
-            check.run();
-            PathResult r = evalTuple(path, tuple, source, mode, memo, check, solved, memoHit);
+            PathResult r;
+            try {
+                check.run();
+                r = evalTuple(path, tuple, source, mode, memo, check, solved, memoHit);
+            } catch (DeadlineHit e) {
+                if (worst == SolveStatus.INVALID) {
+                    return PathResult.invalidPicks(path, reason, subjectCode, groupId, failing,
+                            failingQuota);
+                }
+                return PathResult.unconfirmed(path, SolveReason.DEADLINE_EXCEEDED, null, null);
+            }
             if (r.status() == SolveStatus.VALID) {
+                List<SectionOnPath> sections = new ArrayList<>(path.sections());
+                for (SubjectPick pick : tuple) {
+                    sections.addAll(pick.resolvedSections());
+                }
                 for (SubjectWitness w : r.witness()) {
-                    witnesses.put(new SubproblemKey(w.subjectCode(), List.of(), w.resolvedCount()),
-                            w);
+                    List<SectionOnPath> own = sections.stream()
+                            .filter(s -> s.subjectCode().equals(w.subjectCode())).toList();
+                    witnesses.put(new SubproblemKey(w.subjectCode(), own, w.resolvedCount()), w);
                 }
                 continue;
             }
-            failing.addAll(tuple);
             if (r.status() == SolveStatus.INVALID) {
+                failing.addAll(tuple);
                 if (worst != SolveStatus.INVALID) {
                     worst = SolveStatus.INVALID;
                     reason = r.reason();
                     subjectCode = r.subjectCode();
                     groupId = r.groupId();
+                    failingQuota = r.failingQuota();
                 }
             } else {
                 if (worst == SolveStatus.VALID) {
@@ -260,7 +290,7 @@ public final class PaperSolver {
             return PathResult.valid(path, new ArrayList<>(witnesses.values()));
         }
         if (worst == SolveStatus.INVALID) {
-            return PathResult.invalidPicks(path, reason, subjectCode, groupId, failing);
+            return PathResult.invalidPicks(path, reason, subjectCode, groupId, failing, failingQuota);
         }
         return PathResult.unconfirmed(path, reason, subjectCode, groupId);
     }
@@ -324,7 +354,7 @@ public final class PaperSolver {
             if (outcome.status() != SolveStatus.VALID) {
                 if (outcome.status() == SolveStatus.INVALID) {
                     return PathResult.invalid(path, outcome.reason(), e.getKey(),
-                            outcome.groupId());
+                            outcome.groupId(), outcome.failingQuota());
                 }
                 return PathResult.unconfirmed(path, outcome.reason(), e.getKey(),
                         outcome.groupId());
@@ -387,14 +417,6 @@ public final class PaperSolver {
         private static final long serialVersionUID = 1L;
     }
 
-    /** Ném khi hai nhóm trên đường trùng groupId; bắt thành INVALID(DUPLICATE_GROUP_ID). */
-    private static final class DuplicateGroupHit extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-
-        DuplicateGroupHit(String groupId) {
-            super(groupId);
-        }
-    }
     /** Nhớ nguồn theo toàn bộ giá trị {@link GroupQuota} (R1-3), không theo riêng groupId. */
     private static CandidateSource memoized(CandidateSource source) {
         Map<GroupQuota, List<PathCandidate>> cache = new HashMap<>();
