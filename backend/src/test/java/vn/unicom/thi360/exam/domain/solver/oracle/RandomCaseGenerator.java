@@ -506,7 +506,11 @@ public final class RandomCaseGenerator {
         return new PathCandidate(setId, 1, setId, null, null, units);
     }
 
-    /** Chỉ tiêu cấp môn ngẫu nhiên: dạng trả lời và/hoặc hai chiều lớp, độ khó (COUNT/PERCENT). */
+    /**
+     * Chỉ tiêu cấp môn ngẫu nhiên: dạng trả lời và/hoặc ma trận lớp × độ khó (COUNT/PERCENT).
+     * Ma trận ~1/4 ca là {@link MatrixQuota.Combined} (ô rời), còn lại {@code Separate} — để
+     * validator và oracle đều phải đếm đúng ô Combined (R3-3).
+     */
     private SubjectQuota randomSubjectQuota(int total, boolean percent) {
         QuotaUnit unit = percent ? QuotaUnit.PERCENT : QuotaUnit.COUNT;
         SubjectQuota.AnswerQuotas answerQuotas = null;
@@ -526,16 +530,35 @@ public final class RandomCaseGenerator {
             answerQuotas = new SubjectQuota.AnswerQuotas(items, unit);
         }
         if (random.nextBoolean()) {
-            List<DimensionQuota> grades = split(total, 2, unit);
-            List<DimensionQuota> diffs = split(total, 2 + random.nextInt(2), unit);
-            matrix = new MatrixQuota.Separate(
-                    assignCodes(grades, GRADES), assignCodes(diffs, DIFFICULTIES), unit);
+            if (random.nextInt(4) == 0) {
+                matrix = new MatrixQuota.Combined(assignCells(total, unit), unit);
+            } else {
+                List<DimensionQuota> grades = split(total, 2, unit);
+                List<DimensionQuota> diffs = split(total, 2 + random.nextInt(2), unit);
+                matrix = new MatrixQuota.Separate(
+                        assignCodes(grades, GRADES), assignCodes(diffs, DIFFICULTIES), unit);
+            }
         }
         if (answerQuotas == null && matrix == null) {
             answerQuotas = new SubjectQuota.AnswerQuotas(
                     List.of(new DimensionQuota(ANSWER_TYPES[0], percent ? 100 : total)), unit);
         }
         return new SubjectQuota(answerQuotas, matrix);
+    }
+
+    /** Chia {@code total} vào 2–3 ô Combined khác nhau (lớp i, độ khó i) — suy từ spec B9. */
+    private List<CellQuota> assignCells(int total, QuotaUnit unit) {
+        int parts = 2 + random.nextInt(2);
+        List<CellQuota> out = new ArrayList<>(parts);
+        int left = total;
+        for (int i = 0; i < parts; i++) {
+            int v = i == parts - 1 ? left : Math.max(0, random.nextInt(left + 1));
+            left -= v;
+            int quota = unit == QuotaUnit.PERCENT ? v * 100 / total : v;
+            out.add(new CellQuota(GRADES[i % GRADES.length], DIFFICULTIES[i % DIFFICULTIES.length],
+                    quota));
+        }
+        return out;
     }
 
     private List<DimensionQuota> split(int total, int parts, QuotaUnit unit) {

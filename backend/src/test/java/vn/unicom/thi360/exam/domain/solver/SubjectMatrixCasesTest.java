@@ -208,6 +208,40 @@ class SubjectMatrixCasesTest {
     }
 
     @Test
+    @DisplayName("B10/D25: oracle liệt kê đúng 12 phân bổ HSA từ bảng đặc tả")
+    void oracleHsaTwelveGoldenAllocations() {
+        List<SectionOnPath> sections = List.of(
+                new SectionOnPath("PHYS", "p", null, SubjectQuota.NONE, List.of(), "NATURAL"),
+                new SectionOnPath("CHEM", "c", null, SubjectQuota.NONE, List.of(), "NATURAL"),
+                new SectionOnPath("BIO", "b", null, SubjectQuota.NONE, List.of(), "NATURAL"),
+                new SectionOnPath("HIS", "h", null, SubjectQuota.NONE, List.of(), "SOCIAL"),
+                new SectionOnPath("GEO", "g", null, SubjectQuota.NONE, List.of(), "SOCIAL"));
+        SubjectChoice choice = new SubjectChoice("hsa", sections, 3, List.of(17, 17, 16));
+        SolvePath path = new SolvePath(0, List.of(), List.of(), List.of(choice), List.of());
+        Set<String> actual = new HashSet<>();
+        for (List<SubjectPick> combo :
+                new vn.unicom.thi360.exam.domain.solver.oracle.BruteForceOracle().combosOf(path)) {
+            actual.add(pickKeyOf(combo.get(0)));
+        }
+        // Chín bộ ba trộn nhóm: nhóm đôi nhận 17, nhóm lẻ 16; ba môn tự nhiên
+        // cùng nhóm: mỗi môn lần lượt nhận 16.
+        Set<String> golden = Set.of(
+                "PHYS=16+CHEM=17+BIO=17",
+                "PHYS=17+CHEM=16+BIO=17",
+                "PHYS=17+CHEM=17+BIO=16",
+                "PHYS=17+CHEM=17+HIS=16",
+                "PHYS=17+CHEM=17+GEO=16",
+                "PHYS=17+BIO=17+HIS=16",
+                "PHYS=17+BIO=17+GEO=16",
+                "PHYS=16+HIS=17+GEO=17",
+                "CHEM=17+BIO=17+HIS=16",
+                "CHEM=17+BIO=17+GEO=16",
+                "CHEM=16+HIS=17+GEO=17",
+                "BIO=16+HIS=17+GEO=17");
+        assertThat(actual).isEqualTo(golden);
+    }
+
+    @Test
     @DisplayName("chỉ tiêu tỉ lệ quy đúng cho 16 và 17 câu; nhóm lấy phần còn lại nhận đúng số câu")
     void percentQuotasAndRemainderGroup() {
         // chỉ tiêu PERCENT 50/50: môn 17 câu → 9/8 (phần dư 0,5 hòa → mục khai trước); 16 → 8/8

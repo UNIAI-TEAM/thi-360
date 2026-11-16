@@ -544,8 +544,8 @@ public final class BruteForceOracle {
                         counts.merge("D:" + u.difficultyCode(), 1, Integer::sum);
                     }
                     if (u.gradeCode() != null && u.difficultyCode() != null) {
-                        counts.merge("C:" + u.gradeCode() + "" + u.difficultyCode(), 1,
-                                Integer::sum);
+                        counts.merge("C:" + OracleSupport.cellKey(u.gradeCode(),
+                                u.difficultyCode()), 1, Integer::sum);
                     }
                     for (String comp : u.competencyCodes()) {
                         counts.merge("P:" + comp, 1, Integer::sum);

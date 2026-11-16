@@ -113,7 +113,11 @@ public final class WitnessValidator {
             out.addAll(checkInstance(inst, sw, source, usedGroupKeys));
         }
         for (Instance inst : instances) {
-            if (!inst.groups.isEmpty() && !usedInstances.contains(inst)) {
+            // mọi bài toán con mong đợi cần witness, kể cả khi mục không có nhóm nào: mục
+            // số câu dương không nhóm được oracle kết luận INVALID nên một đề VALID khai báo
+            // không witness là giả (R2-21); witness của bài toán con rỗng nhóm được kiểm qua
+            // SECTION_TOTAL_MISMATCH của chính nó
+            if (!usedInstances.contains(inst)) {
                 out.add(new Violation("MISSING_WITNESS",
                         "subproblem " + inst.key() + " has no witness"));
             }
@@ -205,20 +209,14 @@ public final class WitnessValidator {
                 inst.quotas.add(OracleSupport.resolveSubjectQuota(s.subjectQuota(),
                         s.questionCount()));
                 int[] req = OracleSupport.groupUnitRequirements(s);
-                int sum = 0;
                 for (int i = 0; i < s.groups().size(); i++) {
-                    sum += req[i];
                     inst.groups.add(s.groups().get(i));
                     inst.required.add(req[i]);
                     inst.owner.add(s);
                 }
-                inst.sectionsExact.add(sum == s.questionCount());
             }
             return inst;
         }
-
-        /** Mục i có được nhóm của nó lấp đúng số câu không (cấu trúc, không phụ thuộc nguồn). */
-        final List<Boolean> sectionsExact = new ArrayList<>();
     }
 
     /** Mọi bài toán con (môn, số câu, các mục) mà các đường con của {@code path} sinh ra. */
@@ -438,7 +436,7 @@ public final class WitnessValidator {
             counts.merge("D:" + u.difficultyCode(), 1, Integer::sum);
         }
         if (u.gradeCode() != null && u.difficultyCode() != null) {
-            counts.merge("C:" + u.gradeCode() + " " + u.difficultyCode(), 1,
+            counts.merge("C:" + OracleSupport.cellKey(u.gradeCode(), u.difficultyCode()), 1,
                     Integer::sum);
         }
         for (String comp : u.competencyCodes()) {

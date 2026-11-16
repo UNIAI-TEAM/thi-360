@@ -126,39 +126,28 @@ class PaperSolverSpecCasesTest {
     }
 
     @Test
-    @DisplayName("hết hạn trong prep: nguồn đầu tiên tiêu hết hạn, nhóm sau không được hỏi nguồn (R1-4)")
+    @DisplayName("hết hạn trong chuẩn bị ứng viên sau khi nạp nguồn")
     void deadlineDuringPrep() {
-        // hạn giờ chỉ trôi khi nạp nguồn nhóm đầu → kiểm tra hạn bên trong chuẩn bị mới bắt được
-        GroupQuota g1 = GroupQuota.single("g1", 2);
-        GroupQuota g2 = GroupQuota.single("g2", 2);
-        SectionOnPath section = new SectionOnPath("S", "sec", 4, SubjectQuota.NONE,
-                List.of(g1, g2));
-        MutableClock clock = new MutableClock();
+        GroupQuota group = GroupQuota.single("g", 1);
+        SectionOnPath section = section("S", 1, List.of(group));
+        PhaseClock clock = new PhaseClock("Prep", "prepare");
         List<String> fetched = new ArrayList<>();
         CandidateSource source = g -> {
             fetched.add(g.groupId());
-            clock.advance(Duration.ofSeconds(60));
-            List<PathCandidate> pool = new ArrayList<>();
-            for (int i = 0; i < 2_048; i++) {
-                pool.add(single(g.groupId() + "-q" + i));
-            }
-            return pool;
+            return List.of(single("q"));
         };
         PaperSolver limited = new PaperSolver(
                 new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), clock);
-        PathResult result = limited.solvePath(path(List.of(section)), source,
-                SolveMode.check());
-        // chuẩn bị đã vào (một nhóm được hỏi nguồn) rồi hết hạn trước nhóm tiếp theo
-        assertThat(fetched).hasSize(1);
+        PathResult result = limited.solvePath(path(List.of(section)), source, SolveMode.check());
+        assertThat(fetched).containsExactly("g");
+        assertThat(clock.expiredReads).isPositive();
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
         assertThat(result.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
     }
 
     @Test
-    @DisplayName("hết hạn trong quay lui (chùm + nhiều phân hoạch): nguồn nạp xong mới vượt hạn (R1-4)")
+    @DisplayName("hết hạn trong quay lui với chùm và nhiều phân hoạch")
     void deadlineDuringSearch() {
-        // môn khai hai phân hoạch cấp môn (lớp + độ khó) và có nhóm chùm → bắt buộc quay lui;
-        // đồng hồ chỉ vượt hạn sau khi nguồn của cả hai nhóm đã nạp
         SubjectQuota quota = new SubjectQuota(null, new MatrixQuota.Separate(
                 List.of(new DimensionQuota("G10", 3), new DimensionQuota("G11", 3)),
                 List.of(new DimensionQuota("NB", 3), new DimensionQuota("TH", 3))));
@@ -166,32 +155,35 @@ class PaperSolverSpecCasesTest {
         GroupQuota rest = GroupQuota.remainder("gr");
         SectionOnPath section = new SectionOnPath("S", "sec", 6, quota,
                 List.of(setGroup, rest));
-        MutableClock clock = new MutableClock();
-        List<String> fetched = new ArrayList<>();
-        CandidateSource source = g -> {
-            fetched.add(g.groupId());
-            if (fetched.size() == 2) {
-                clock.advance(Duration.ofSeconds(60));
+        // Điều chỉnh kích cỡ nguồn để một lần kiểm định kỳ rơi trong vòng quay lui.
+        // Đồng hồ chỉ hết hạn trong search, nên không thể nhầm với pha nạp hoặc dựng lớp.
+        PhaseClock clock = null;
+        PathResult result = null;
+        for (int n = 1; n <= 1024; n++) {
+            List<PathCandidate> singles = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                singles.add(unit("q" + i, i % 2 == 0 ? "G10" : "G11",
+                        (i / 2) % 2 == 0 ? "NB" : "TH"));
             }
-            if (g == setGroup) {
-                return List.of(
-                        setPair("s1", "G10", "NB"), setPair("s2", "G11", "TH"),
-                        setPair("s3", "G11", "NB"), setPair("s4", "G10", "TH"));
+            PhaseClock attemptClock = new PhaseClock("PathSearch", "search");
+            List<String> fetched = new ArrayList<>();
+            CandidateSource source = g -> {
+                fetched.add(g.groupId());
+                return g == setGroup
+                        ? List.of(setPair("s1", "G10", "NB"), setPair("s2", "G11", "TH"))
+                        : singles;
+            };
+            PaperSolver limited = new PaperSolver(
+                    new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), attemptClock);
+            PathResult attempt = limited.solvePath(path(List.of(section)), source, SolveMode.check());
+            assertThat(fetched).containsExactlyInAnyOrder("gs", "gr");
+            if (attemptClock.expiredReads > 0) {
+                clock = attemptClock;
+                result = attempt;
+                break;
             }
-            List<PathCandidate> pool = new ArrayList<>();
-            for (int i = 0; i < 10; i++) {
-                pool.add(PathCandidate.standalone("q" + i, 1, "SINGLE_CHOICE",
-                        i % 2 == 0 ? "G10" : "G11", i % 3 == 0 ? "TH" : "NB",
-                        BigDecimal.ONE));
-            }
-            return pool;
-        };
-        PaperSolver limited = new PaperSolver(
-                new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), clock);
-        PathResult result = limited.solvePath(path(List.of(section)), source,
-                SolveMode.check());
-        // cả hai nhóm đã nạp nguồn: hết hạn sau chuẩn bị, trong pha tìm kiếm
-        assertThat(fetched).containsExactlyInAnyOrder("gs", "gr");
+        }
+        assertThat(clock).as("phải kiểm hạn trong vòng quay lui").isNotNull();
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
         assertThat(result.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
     }
@@ -248,29 +240,28 @@ class PaperSolverSpecCasesTest {
     @Test
     @DisplayName("R1-1: cầu nối U/q không dùng được không được gộp định danh hai nhóm")
     void unusableBridgeCandidate() {
-        // ứng viên x1 mang đơn vị (U, Q): gA chỉ nhận U nên x1 không dùng được (đơn vị Q sai
-        // dạng), gB chỉ nhận Q nên x1 cũng không dùng được; nguồn dùng được: u1 (gA), q1 (gB)
+        // Cầu nối không dùng được mang cả hai khóa U và q; hai câu độc lập vẫn được chọn.
         GroupQuota ga = new GroupQuota("gA", GroupQuota.GroupKind.SINGLE, 1, "U", null, null,
                 null, null, List.of(), List.of(), null, null);
         GroupQuota gb = new GroupQuota("gB", GroupQuota.GroupKind.SINGLE, 1, "Q", null, null,
                 null, null, List.of(), List.of(), null, null);
         SectionOnPath section = section("S", 2, List.of(ga, gb));
-        PathCandidate bridge = new PathCandidate("x1", 1, null, null, null, List.of(
+        PathCandidate bridge = new PathCandidate("U", 1, null, null, null, List.of(
                 new CountingUnit(null, "U", "G10", "NB", List.of(), List.of(),
                         BigDecimal.ONE),
-                new CountingUnit("cx", "Q", "G10", "NB", List.of(), List.of(),
+                new CountingUnit("q", "Q", "G10", "NB", List.of(), List.of(),
                         BigDecimal.ONE)));
-        PathCandidate u1 = PathCandidate.standalone("u1", 1, "U", "G10", "NB", BigDecimal.ONE);
-        PathCandidate q1 = PathCandidate.standalone("q1", 1, "Q", "G10", "NB", BigDecimal.ONE);
+        PathCandidate u1 = PathCandidate.standalone("U", 1, "U", "G10", "NB", BigDecimal.ONE);
+        PathCandidate q1 = PathCandidate.standalone("q", 1, "Q", "G10", "NB", BigDecimal.ONE);
         PathResult result = solver.solvePath(path(List.of(section)),
                 g -> g == ga ? List.of(bridge, u1) : List.of(bridge, q1), SolveMode.check());
         assertThat(result.status()).isEqualTo(SolveStatus.VALID);
         // đường VALID phải thành bằng hai ứng viên dùng được, không nhờ cầu nối
         for (GroupWitness gw : result.witness().get(0).groups()) {
             if (gw.groupId().equals("gA")) {
-                assertThat(gw.picks()).containsExactly(new QuestionPick("u1", 1));
+                assertThat(gw.picks()).containsExactly(new QuestionPick("U", 1));
             } else {
-                assertThat(gw.picks()).containsExactly(new QuestionPick("q1", 1));
+                assertThat(gw.picks()).containsExactly(new QuestionPick("q", 1));
             }
         }
     }
@@ -499,12 +490,15 @@ class PaperSolverSpecCasesTest {
         return new PathCandidate(id, 1, id, null, null, units);
     }
 
-    /** Đồng hồ test chỉ trôi khi {@link #advance} được gọi (mô phỏng nạp nguồn tiêu hao giờ). */
-    private static final class MutableClock extends Clock {
-        private Instant now = Instant.EPOCH;
+    /** Đồng hồ chỉ hết hạn khi kiểm tra trong pha được chọn, không phụ thuộc thời gian nguồn. */
+    private static final class PhaseClock extends Clock {
+        private final String className;
+        private final String methodName;
+        private int expiredReads;
 
-        void advance(Duration delta) {
-            now = now.plus(delta);
+        PhaseClock(String className, String methodName) {
+            this.className = PaperSolver.class.getPackageName() + "." + className;
+            this.methodName = methodName;
         }
 
         @Override
@@ -519,7 +513,14 @@ class PaperSolverSpecCasesTest {
 
         @Override
         public Instant instant() {
-            return now;
+            boolean inside = StackWalker.getInstance().walk(frames -> frames.anyMatch(frame ->
+                    frame.getClassName().equals(className)
+                            && frame.getMethodName().equals(methodName)));
+            if (inside) {
+                expiredReads++;
+                return Instant.EPOCH.plusSeconds(60);
+            }
+            return Instant.EPOCH;
         }
     }
 

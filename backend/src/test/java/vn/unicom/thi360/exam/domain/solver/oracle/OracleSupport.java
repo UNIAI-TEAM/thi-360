@@ -145,9 +145,17 @@ final class OracleSupport {
         Map<String, Integer> out = new LinkedHashMap<>();
         for (int i = 0; i < cells.size(); i++) {
             CellQuota cell = cells.get(i);
-            out.put(cell.gradeCode() + "" + cell.difficultyCode(), values[i]);
+            out.put(cellKey(cell.gradeCode(), cell.difficultyCode()), values[i]);
         }
         return out;
+    }
+
+    /**
+     * Khóa một ô Combined: tiền tố độ dài mã lớp phân biệt mọi cặp mã, kể cả mã chứa dấu cách.
+     * Dùng chung bởi chỉ tiêu đã quy, bộ lọc và bộ đếm của oracle lẫn validator (R3-3).
+     */
+    static String cellKey(String gradeCode, String difficultyCode) {
+        return gradeCode.length() + ":" + gradeCode + difficultyCode;
     }
 
     /** Quy bộ chỉ tiêu cấp môn của một {@link SectionOnPath} theo số câu đã quyết của môn. */
@@ -265,7 +273,8 @@ final class OracleSupport {
                 return false;
             }
             if (!q.cells().isEmpty() && (unit.gradeCode() == null || unit.difficultyCode() == null
-                    || !q.cells().containsKey(unit.gradeCode() + "" + unit.difficultyCode()))) {
+                    || !q.cells().containsKey(cellKey(unit.gradeCode(),
+                            unit.difficultyCode())))) {
                 return false;
             }
         }

@@ -167,6 +167,20 @@ class PaperSolverOracleTest {
         assertThat(codes(validator.validate(empty, source)))
                 .contains(ViolationCode.MISSING_WITNESS);
 
+        // mục số câu dương không nhóm: đề VALID giả khai báo không witness → MISSING_WITNESS
+        // (R2-21); witness rỗng cho bài toán con đó → SECTION_TOTAL_MISMATCH
+        SectionOnPath noGroup = new SectionOnPath("MATH", "sec-ng", 2, SubjectQuota.NONE,
+                List.of());
+        SolvePath pathNg = SolvePath.of(0, List.of(noGroup));
+        assertThat(oracle.evaluate(pathNg, source).status()).isEqualTo(SolveStatus.INVALID);
+        PathResult forgedNoGroup = PathResult.valid(pathNg, List.of());
+        assertThat(codes(validator.validate(forgedNoGroup, source)))
+                .contains(ViolationCode.MISSING_WITNESS);
+        PathResult emptyWitnessNoGroup = PathResult.valid(pathNg,
+                List.of(new SubjectWitness("MATH", 2, List.of())));
+        assertThat(codes(validator.validate(emptyWitnessNoGroup, source)))
+                .contains(ViolationCode.SECTION_TOTAL_MISMATCH);
+
         // sai chỉ tiêu dạng trả lời của môn (2 câu đủ nhưng một câu không đúng dạng)
         CandidateSource wide = group -> List.of(q1, q2, q3);
         PathResult wrongType = PathResult.valid(path,
@@ -234,6 +248,57 @@ class PaperSolverOracleTest {
         assertThat(codes(validator.validate(excess, dupSource)))
                 .contains(ViolationCode.GROUP_COUNT_MISMATCH,
                         ViolationCode.SECTION_TOTAL_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("R3-3: chỉ tiêu Combined (ô lớp × độ khó) — witness hợp lệ qua validator, giả sai ô bị bắt")
+    void validatorCombinedMatrixCells() {
+        // phạm vi MÔN: môn 2 câu, ô (G10,NB)=1 + (G11,TH)=1
+        SubjectQuota cells2 = new SubjectQuota(null, new MatrixQuota.Combined(List.of(
+                new CellQuota("G10", "NB", 1), new CellQuota("G11", "TH", 1)),
+                QuotaUnit.COUNT));
+        GroupQuota g = GroupQuota.single("g1", 2);
+        SectionOnPath secSubj = new SectionOnPath("MATH", "sec-c", 2, cells2, List.of(g));
+        PathCandidate nb = PathCandidate.standalone("q-nb", 1, "SINGLE_CHOICE", "G10", "NB",
+                java.math.BigDecimal.ONE);
+        PathCandidate th = PathCandidate.standalone("q-th", 1, "SINGLE_CHOICE", "G11", "TH",
+                java.math.BigDecimal.ONE);
+        PathCandidate off = PathCandidate.standalone("q-off", 1, "SINGLE_CHOICE", "G10", "TH",
+                java.math.BigDecimal.ONE);
+        CandidateSource src = group -> List.of(nb, th, off);
+
+        PathResult subjectResult = solver.solvePath(SolvePath.of(0, List.of(secSubj)), src,
+                SolveMode.check());
+        assertThat(subjectResult.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(validator.validate(subjectResult, src)).isEmpty();
+
+        // phạm vi NHÓM: chỉ tiêu Combined của chính nhóm
+        GroupQuota gm = new GroupQuota("gm", GroupQuota.GroupKind.SINGLE, 1, null, null, null,
+                null, new MatrixQuota.Combined(List.of(new CellQuota("G10", "NB", 1)),
+                        QuotaUnit.COUNT),
+                List.of(), List.of(), null, null);
+        SectionOnPath secGroup = new SectionOnPath("ENG", "sec-g", 1, SubjectQuota.NONE,
+                List.of(gm));
+        CandidateSource gsrc = group -> List.of(nb, th);
+        PathResult groupResult = solver.solvePath(SolvePath.of(0, List.of(secGroup)), gsrc,
+                SolveMode.check());
+        assertThat(groupResult.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(validator.validate(groupResult, gsrc)).isEmpty();
+
+        // giả: witness chứa câu thuộc ô không khai → SUBJECT_CELL_QUOTA + UNDECLARED
+        PathResult forgedSubj = PathResult.valid(subjectResult.path(),
+                List.of(new SubjectWitness("MATH", 2,
+                        List.of(new GroupWitness("g1", List.of(new QuestionPick("q-nb", 1),
+                                new QuestionPick("q-off", 1)))))));
+        assertThat(codes(validator.validate(forgedSubj, src)))
+                .contains("SUBJECT_CELL_QUOTA", "SUBJECT_CELL_UNDECLARED");
+
+        // giả phạm vi nhóm: câu sai ô so với chỉ tiêu Combined của nhóm
+        PathResult forgedGroup = PathResult.valid(groupResult.path(),
+                List.of(new SubjectWitness("ENG", 1,
+                        List.of(new GroupWitness("gm", List.of(new QuestionPick("q-th", 1)))))));
+        assertThat(codes(validator.validate(forgedGroup, gsrc)))
+                .contains("GROUP_CELL_QUOTA");
     }
 
     @Test
