@@ -430,6 +430,8 @@ export function RichTextEditor({
           <form
             onSubmit={(event) => {
               event.preventDefault();
+              // Dialog dựng trong portal: submit React vẫn nổi bọt lên biểu mẫu của trang chứa trình soạn.
+              event.stopPropagation();
               applyFormula();
             }}
           >

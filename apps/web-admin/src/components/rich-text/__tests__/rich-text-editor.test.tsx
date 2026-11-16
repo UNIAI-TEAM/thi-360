@@ -48,6 +48,27 @@ describe("RichTextEditor", () => {
     expect(editable()?.querySelector("span.math-inline")).toBeTruthy();
   });
 
+  it("does not submit the surrounding page form when the formula dialog is submitted", async () => {
+    const user = userEvent.setup();
+    const onPageSubmit = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
+    const onChange = vi.fn();
+    renderWithProviders(
+      <form onSubmit={onPageSubmit}>
+        <RichTextEditor value="" onChange={onChange} />
+      </form>,
+      { locale: "en", messages: en },
+    );
+
+    await user.click(screen.getByRole("button", { name: "Insert formula" }));
+    await user.type(screen.getByLabelText("LaTeX code"), "x^2");
+    await user.click(screen.getByRole("button", { name: "Insert formula" }));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('class="math-inline"'));
+    });
+    expect(onPageSubmit).not.toHaveBeenCalled();
+  });
+
   it("inserts a block formula when Block is chosen", async () => {
     const user = userEvent.setup();
     const { onChange } = renderEditor();
