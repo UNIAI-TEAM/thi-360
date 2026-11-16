@@ -281,6 +281,65 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void auditCapturesWorkingMetadataAndFingerprintWithoutHtml() throws Exception {
+        UUID tag1 = UUID.randomUUID();
+        UUID tag2 = UUID.randomUUID();
+        for (var entry : java.util.Map.of(tag1, "AUDIT-A", tag2, "AUDIT-B").entrySet()) {
+            jdbcTemplate.update("INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value,"
+                    + " name_vi, name_en, display_order, status, is_system, depth, path)"
+                    + " VALUES (?, ?, ?, ?, ?, 'Audit', 'Audit', 0, 1, false, 1, ?)",
+                    entry.getKey(), QuestionTestSupport.QUESTION_TAG_GROUP_ID, entry.getValue(),
+                    entry.getValue().toLowerCase(java.util.Locale.ROOT), entry.getKey().equals(tag1) ? 1 : 2,
+                    "/" + entry.getKey() + "/");
+        }
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        request.put("sourceCode", "source-old");
+        request.put("content", "<p>old private content</p>");
+        request.putArray("tagCodes").add("AUDIT-A");
+        request.putArray("knowledge").addObject().put("nodeId", QuestionTestSupport.KNOWLEDGE_LEAF_ID.toString())
+                .put("primary", true);
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+        request.put("expectedRevision", currentRevision(id));
+        request.put("gradeCode", "G11");
+        request.put("sourceCode", "source-new");
+        request.put("points", 2);
+        request.put("content", "<p>new private content</p>");
+        request.putArray("tagCodes").add("AUDIT-B");
+        request.putArray("knowledge").addObject()
+                .put("nodeId", QuestionTestSupport.KNOWLEDGE_CHAPTER_ID.toString()).put("primary", true);
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        verify(auditRecorder).record(argThat((AuditEvent e) -> {
+            if (!"QUESTION.UPDATE".equals(e.action()) || !id.toString().equals(e.targetId())) {
+                return false;
+            }
+            var before = e.before();
+            var after = e.after();
+            return QuestionTestSupport.GRADE_G10_ID.equals(before.get("gradeItemId"))
+                    && UUID.fromString("00000000-0000-7000-8200-000000000302").equals(after.get("gradeItemId"))
+                    && "source-old".equals(before.get("sourceCode")) && "source-new".equals(after.get("sourceCode"))
+                    && before.get("knowledge").toString().contains(QuestionTestSupport.KNOWLEDGE_LEAF_ID.toString())
+                    && after.get("knowledge").toString().contains(QuestionTestSupport.KNOWLEDGE_CHAPTER_ID.toString())
+                    && before.get("tagItemIds").toString().contains(tag1.toString())
+                    && after.get("tagItemIds").toString().contains(tag2.toString())
+                    && "READY".equals(after.get("status")) && Integer.valueOf(1).equals(after.get("currentVersionNo"))
+                    && Integer.valueOf(2).equals(after.get("workingVersionNo"))
+                    && !before.get("snapshotSha256").equals(after.get("snapshotSha256"))
+                    && !before.toString().contains("<p>") && !after.toString().contains("<p>");
+        }));
+    }
+
+    @Test
     void duplicateCopiesAsNewDraftWithNewCode() throws Exception {
         UUID id = createQuestion();
         String originalCode = jdbcTemplate.queryForObject(

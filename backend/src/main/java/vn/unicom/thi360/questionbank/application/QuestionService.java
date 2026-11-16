@@ -1,12 +1,17 @@
 package vn.unicom.thi360.questionbank.application;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +108,7 @@ public class QuestionService {
     private final QuestionMapper mapper;
     private final AppMessages messages;
     private final EntityManager entityManager;
+    private final ObjectMapper objectMapper;
 
     public QuestionService(
             QuestionRepository questionRepository,
@@ -120,7 +126,8 @@ public class QuestionService {
             QuestionUsageProvider usageProvider,
             QuestionMapper mapper,
             AppMessages messages,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            ObjectMapper objectMapper) {
         this.questionRepository = questionRepository;
         this.versionRepository = versionRepository;
         this.knowledgeRepository = knowledgeRepository;
@@ -137,6 +144,7 @@ public class QuestionService {
         this.mapper = mapper;
         this.messages = messages;
         this.entityManager = entityManager;
+        this.objectMapper = objectMapper;
     }
 
     // ---------------------------------------------------------------- tạo / sửa
@@ -1338,7 +1346,28 @@ public class QuestionService {
         state.put("status", question.getStatus() == null ? null : question.getStatus().name());
         state.put("currentVersionNo", question.getCurrentVersionNo());
         state.put("workingVersionNo", question.getWorkingVersionNo());
-        state.put("points", question.getPoints());
+        QuestionVersion displayed = mapper.displayedVersion(question);
+        QuestionSnapshot snapshot = displayed == null ? null : displayed.getSnapshot();
+        state.put("subjectItemId", snapshot == null ? question.getSubjectItemId() : snapshot.subjectItemId());
+        state.put("gradeItemId", snapshot == null ? question.getGradeItemId() : snapshot.gradeItemId());
+        state.put("levelItemId", snapshot == null ? question.getLevelItemId() : snapshot.levelItemId());
+        state.put("taskTypeItemId", snapshot == null ? question.getTaskTypeItemId() : snapshot.taskTypeItemId());
+        state.put("competencyItemId", snapshot == null ? question.getCompetencyItemId() : snapshot.competencyItemId());
+        state.put("points", snapshot == null ? question.getPoints() : snapshot.points());
+        state.put("sourceCode", snapshot == null ? question.getSourceCode() : snapshot.sourceCode());
+        state.put("knowledge", snapshot == null ? List.of() : snapshot.knowledge().stream()
+                .map(k -> Map.of("itemId", k.itemId(), "primary", k.primary())).toList());
+        state.put("tagItemIds", snapshot == null ? List.of() : snapshot.tagItemIds());
+        state.put("attachmentIds", snapshot == null ? List.of() : snapshot.attachmentIds());
+        state.put("snapshotSha256", snapshot == null ? null : snapshotFingerprint(snapshot));
         return state;
+    }
+    private String snapshotFingerprint(QuestionSnapshot snapshot) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(objectMapper.writeValueAsBytes(snapshot)));
+        } catch (NoSuchAlgorithmException | JsonProcessingException e) {
+            throw new IllegalStateException("Cannot fingerprint question snapshot", e);
+        }
     }
 }
