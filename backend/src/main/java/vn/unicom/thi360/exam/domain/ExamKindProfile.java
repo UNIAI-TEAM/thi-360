@@ -8,6 +8,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -22,7 +23,7 @@ public class ExamKindProfile {
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "scopes", nullable = false, columnDefinition = "text[]")
-    private List<String> scopes;
+    private String[] scopes;
 
     @Column(name = "template_by", nullable = false)
     private String templateBy;
@@ -69,7 +70,7 @@ public class ExamKindProfile {
             BigDecimal maxScore, BigDecimal referenceMax, String practiceScoring, JsonNode tfScoring,
             String multipleChoiceRule, Instant now, UUID actorId) {
         this.examItemId = examItemId;
-        this.scopes = scopes == null ? List.of() : List.copyOf(scopes);
+        this.scopes = scopes == null ? new String[0] : scopes.toArray(String[]::new);
         this.templateBy = templateBy;
         this.timing = timing;
         this.maxScore = maxScore;
@@ -84,8 +85,7 @@ public class ExamKindProfile {
     }
 
     public UUID getExamItemId() { return examItemId; }
-    public List<String> getScopes() { return scopes; }
-    public String getTemplateBy() { return templateBy; }
+    public List<String> getScopes() { return scopes == null ? List.of() : List.copyOf(Arrays.asList(scopes)); }
     public String getTiming() { return timing; }
     public BigDecimal getMaxScore() { return maxScore; }
     public BigDecimal getReferenceMax() { return referenceMax; }

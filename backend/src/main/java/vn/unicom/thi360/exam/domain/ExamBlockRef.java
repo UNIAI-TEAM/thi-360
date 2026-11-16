@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -33,22 +34,22 @@ public class ExamBlockRef {
     private String questionType;
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "answer_types", columnDefinition = "text[]")
-    private List<String> answerTypes;
+    private String[] answerTypes;
     @Column(name = "task_type_item_id")
     private UUID taskTypeItemId;
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "knowledge_item_ids", columnDefinition = "uuid[]")
-    private List<UUID> knowledgeItemIds;
+    private UUID[] knowledgeItemIds;
     @Column(name = "knowledge_mode")
     private String knowledgeMode;
     @Column(name = "knowledge_inherited", nullable = false)
     private boolean knowledgeInherited;
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "tag_item_ids", columnDefinition = "uuid[]")
-    private List<UUID> tagItemIds;
+    private UUID[] tagItemIds;
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "competency_item_ids", columnDefinition = "uuid[]")
-    private List<UUID> competencyItemIds;
+    private UUID[] competencyItemIds;
     @Column(name = "required_points", precision = 8, scale = 4)
     private BigDecimal requiredPoints;
     @Column(name = "combination_item_id")
@@ -70,13 +71,13 @@ public class ExamBlockRef {
         this.sectionId = sectionId;
         this.subjectItemId = subjectItemId;
         this.questionType = questionType;
-        this.answerTypes = answerTypes == null ? null : List.copyOf(answerTypes);
+        this.answerTypes = answerTypes == null ? null : answerTypes.toArray(String[]::new);
         this.taskTypeItemId = taskTypeItemId;
-        this.knowledgeItemIds = knowledgeItemIds == null ? null : List.copyOf(knowledgeItemIds);
+        this.knowledgeItemIds = knowledgeItemIds == null ? null : knowledgeItemIds.toArray(UUID[]::new);
         this.knowledgeMode = knowledgeMode;
         this.knowledgeInherited = knowledgeInherited;
-        this.tagItemIds = tagItemIds == null ? null : List.copyOf(tagItemIds);
-        this.competencyItemIds = competencyItemIds == null ? null : List.copyOf(competencyItemIds);
+        this.tagItemIds = tagItemIds == null ? null : tagItemIds.toArray(UUID[]::new);
+        this.competencyItemIds = competencyItemIds == null ? null : competencyItemIds.toArray(UUID[]::new);
         this.requiredPoints = requiredPoints;
         this.combinationItemId = combinationItemId;
     }
@@ -90,13 +91,17 @@ public class ExamBlockRef {
     public String getSectionId() { return sectionId; }
     public UUID getSubjectItemId() { return subjectItemId; }
     public String getQuestionType() { return questionType; }
-    public List<String> getAnswerTypes() { return answerTypes; }
+    public List<String> getAnswerTypes() { return answerTypes == null ? null : List.copyOf(Arrays.asList(answerTypes)); }
     public UUID getTaskTypeItemId() { return taskTypeItemId; }
-    public List<UUID> getKnowledgeItemIds() { return knowledgeItemIds; }
+    public List<UUID> getKnowledgeItemIds() {
+        return knowledgeItemIds == null ? null : List.copyOf(Arrays.asList(knowledgeItemIds));
+    }
     public String getKnowledgeMode() { return knowledgeMode; }
     public boolean isKnowledgeInherited() { return knowledgeInherited; }
-    public List<UUID> getTagItemIds() { return tagItemIds; }
-    public List<UUID> getCompetencyItemIds() { return competencyItemIds; }
+    public List<UUID> getTagItemIds() { return tagItemIds == null ? null : List.copyOf(Arrays.asList(tagItemIds)); }
+    public List<UUID> getCompetencyItemIds() {
+        return competencyItemIds == null ? null : List.copyOf(Arrays.asList(competencyItemIds));
+    }
     public BigDecimal getRequiredPoints() { return requiredPoints; }
     public UUID getCombinationItemId() { return combinationItemId; }
 }
