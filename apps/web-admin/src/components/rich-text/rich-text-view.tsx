@@ -3,7 +3,7 @@
 import { cn } from "@thi360/ui";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { sanitizeQuestionHtml } from "./sanitize";
 import "./rich-text.css";
 
@@ -99,11 +99,9 @@ export function RichTextView({ html, allowImages = true, className }: RichTextVi
     if (rootRef.current) renderMath(rootRef.current);
   }, [sanitized]);
 
-  return (
-    <div
-      ref={rootRef}
-      className={cn("rich-text-body", className)}
-      dangerouslySetInnerHTML={{ __html: sanitized }}
-    />
-  );
+  // Cùng một đối tượng `__html` giữa các lần render: React 19 gán lại innerHTML nếu đối tượng mới, xóa công thức KaTeX
+  // đã dựng và mọi thay đổi DOM của nơi dùng (effect bên dưới chỉ chạy lại khi `sanitized` đổi).
+  const innerHtml = useMemo(() => ({ __html: sanitized }), [sanitized]);
+
+  return <div ref={rootRef} className={cn("rich-text-body", className)} dangerouslySetInnerHTML={innerHtml} />;
 }

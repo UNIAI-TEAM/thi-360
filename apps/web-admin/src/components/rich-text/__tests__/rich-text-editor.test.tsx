@@ -113,6 +113,40 @@ describe("RichTextEditor", () => {
     expect(html).not.toContain("<img");
     expect(html).toContain("after");
   });
+
+  it("updates aria-invalid, aria-label and aria-describedby on the editable after mount", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [invalid, setInvalid] = useState(false);
+      return (
+        <>
+          <button onClick={() => setInvalid((current) => !current)}>toggle</button>
+          <RichTextEditor
+            value=""
+            onChange={() => {}}
+            invalid={invalid}
+            aria-label={invalid ? "Row 2" : "Row 1"}
+            aria-describedby={invalid ? "err" : undefined}
+          />
+        </>
+      );
+    }
+    renderWithProviders(<Harness />, { locale: "en", messages: en });
+    await waitFor(() => expect(editable()).toBeTruthy());
+    expect(editable()).toHaveAttribute("aria-label", "Row 1");
+    expect(editable()).not.toHaveAttribute("aria-invalid");
+
+    await user.click(screen.getByRole("button", { name: "toggle" }));
+    await waitFor(() => expect(editable()).toHaveAttribute("aria-invalid", "true"));
+    expect(editable()).toHaveAttribute("aria-label", "Row 2");
+    expect(editable()).toHaveAttribute("aria-describedby", "err");
+    expect(editable()).toHaveClass("rich-text-editor-content");
+
+    await user.click(screen.getByRole("button", { name: "toggle" }));
+    await waitFor(() => expect(editable()).not.toHaveAttribute("aria-invalid"));
+    expect(editable()).toHaveAttribute("aria-label", "Row 1");
+    expect(editable()).not.toHaveAttribute("aria-describedby");
+  });
   it("shows the unbalanced-delimiter warning (NO_GAPS wording) while editing", async () => {
     function Harness() {
       const [html, setHtml] = useState("");
@@ -136,6 +170,26 @@ describe("RichTextView", () => {
     );
     expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
     expect(container.querySelector(".katex-display")).toBeTruthy();
+  });
+
+  it("keeps rendered formulas when the parent re-renders with the same html", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [count, setCount] = useState(0);
+      return (
+        <>
+          <button onClick={() => setCount(count + 1)}>rerender {count}</button>
+          <RichTextView html={'<p><span class="math-inline">\\(x^2\\)</span></p>'} />
+        </>
+      );
+    }
+    const { container } = render(<Harness />);
+    const formula = container.querySelector(".katex");
+    expect(formula).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "rerender 0" }));
+    await screen.findByRole("button", { name: "rerender 1" });
+    expect(container.querySelector(".katex")).toBe(formula);
   });
 
   it("renders plain-text delimiters with KaTeX too", () => {

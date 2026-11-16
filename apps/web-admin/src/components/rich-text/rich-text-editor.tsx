@@ -27,7 +27,7 @@ import {
   Underline,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type AriaAttributes } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type AriaAttributes } from "react";
 import { HtmlSanitize, MathBlock, MathCommands, MathInline } from "./extensions";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "./sanitize";
 import "./rich-text.css";
@@ -111,6 +111,17 @@ export function RichTextEditor({
     uploadErrorRef.current = onImageUploadError;
   });
 
+  const attributes: Record<string, string> = Object.fromEntries(
+    [
+      ["class", "rich-text-editor-content"],
+      ["id", id],
+      ...Object.entries(ariaProps),
+      ["aria-invalid", invalid || ariaProps["aria-invalid"] ? "true" : undefined],
+    ]
+      .filter((entry) => entry[1] !== undefined)
+      .map(([key, val]) => [key, String(val)]),
+  );
+
   const editor = useEditor(
     {
       immediatelyRender: false,
@@ -149,14 +160,7 @@ export function RichTextEditor({
       content: typeof document === "undefined" ? "" : sanitizeQuestionHtml(value ?? "", { allowImages }).html,
       editable: !disabled,
       editorProps: {
-        attributes: Object.fromEntries(
-          [
-            ["class", "rich-text-editor-content"],
-            ["id", id],
-            ...Object.entries(ariaProps),
-            ["aria-invalid", invalid || ariaProps["aria-invalid"] ? "true" : undefined],
-          ].filter((entry) => entry[1] !== undefined).map(([key, val]) => [key, String(val)]),
-        ),
+        attributes,
         handlePaste: (view: EditorView, event: ClipboardEvent) => {
           const files = imageFilesOf(event.clipboardData);
           if (files.length === 0) return false;
@@ -203,6 +207,16 @@ export function RichTextEditor({
   useEffect(() => {
     editor?.setEditable(!disabled, false);
   }, [editor, disabled]);
+
+  // `useEditor` chỉ dựng editorProps lúc tạo (deps là allowImages/placeholder): id, aria-* và trạng thái lỗi đổi sau đó
+  // (lỗi xác thực, nhãn của dòng đổi chỗ) phải đẩy vào DOM của vùng soạn tại đây. Layout effect để thuộc tính có
+  // trước frame kế (biểu mẫu tìm `[aria-invalid]` để focus ngay sau khi gửi lỗi). Khóa chuỗi để effect không chạy
+  // lại mỗi lần render.
+  const attributesKey = JSON.stringify(attributes);
+  useLayoutEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.setOptions({ editorProps: { ...editor.options.editorProps, attributes: JSON.parse(attributesKey) } });
+  }, [editor, attributesKey]);
 
   // Ảnh thả/dán: tải lên rồi chèn `img` kèm `data-asset-id` (backend viết lại `src` từ id này).
   async function insertImageFiles(view: EditorView, files: File[]) {
