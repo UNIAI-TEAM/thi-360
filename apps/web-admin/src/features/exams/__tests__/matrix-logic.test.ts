@@ -13,7 +13,7 @@ import {
   type MatrixAxes,
 } from "../matrix";
 import { questionStore } from "@/features/questions/mock/store";
-import fixture from "../mock/exams.json";
+import fixture from "./fixtures/exams.json";
 import { candidatesFor, matchesScope, queryOfBlock } from "../mock/source-count";
 import { effectiveScope } from "../subject-matrix";
 import type { BlockMatrix, ExamDetail, ExamSection, QuestionBlock } from "../types";
