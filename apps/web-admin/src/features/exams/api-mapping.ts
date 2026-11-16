@@ -196,8 +196,8 @@ const person = (value: Schemas["PersonRef"] | undefined) => value ?? { id: "", n
 
 /**
  * Dòng danh sách. Máy chủ không trả `revision`, `timing`, `partCode`, `subjectCode`, `referenceMax`, `practiceScoring`
- * cho danh sách: `timing` suy từ thời lượng chung, thời lượng bài tính theo phần là 0 (không biết), phần còn lại
- * rỗng; `revision` lấy từ chi tiết khi cần ghi (`discontinueExam`).
+ * cho danh sách: `timingUnknown` đặt `true` (`timing` chỉ là giá trị điền chỗ, màn không đọc), thời lượng không có
+ * là 0, phần còn lại rỗng; `revision` lấy từ chi tiết khi cần ghi (`discontinueExam`).
  */
 export function mapExamSummary(row: Schemas["ExamSummaryResponse"]): ExamSummary {
   return {
@@ -216,7 +216,8 @@ export function mapExamSummary(row: Schemas["ExamSummaryResponse"]): ExamSummary
     combinationCount: row.combinationCount,
     partCode: null,
     subjectCode: null,
-    timing: row.durationMinutes == null ? "PER_PART" : "SHARED",
+    timing: "PER_PART",
+    timingUnknown: true,
     maxScore: nullable(row.maxScore),
     referenceMax: null,
     practiceScoring: "RAW",

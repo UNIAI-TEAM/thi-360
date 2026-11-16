@@ -157,11 +157,20 @@ export function ExamListView() {
 
   const { structureText, updatedText, choiceText } = useMemo(
     () => ({
-      structureText: (exam: ExamSummary) =>
-        t(exam.timing === "SHARED" ? "list.structureValueShared" : "list.structureValue", {
-          questions: exam.totalQuestions,
-          minutes: exam.durationMinutes,
-        }),
+      /**
+       * Số câu và thời lượng. Danh sách của máy chủ không cho biết cách tính thời gian (`timingUnknown`): ghi thời
+       * lượng trung tính, không có thì "—", không nói "chung" hay "theo phần".
+       */
+      structureText: (exam: ExamSummary) => {
+        const key = exam.timingUnknown
+          ? exam.durationMinutes > 0
+            ? "list.structureValue"
+            : "list.structureValueNoDuration"
+          : exam.timing === "SHARED"
+            ? "list.structureValueShared"
+            : "list.structureValue";
+        return t(key, { questions: exam.totalQuestions, minutes: exam.durationMinutes });
+      },
       updatedText: (exam: ExamSummary) => format.dateTime(new Date(exam.updatedAt), "dateTime"),
       /**
        * Cột Lựa chọn: bài lẻ ghi phần/môn; bài khác ghi môn của bài (kỳ thi theo môn) và các lựa chọn của phần tự chọn

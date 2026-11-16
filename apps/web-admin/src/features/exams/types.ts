@@ -57,6 +57,11 @@ export interface ExamSummary {
   subjectCode: string | null;
   /** `SHARED`: `durationMinutes` là thời lượng chung, các phần không có thời lượng riêng (BCA, V-ACT). */
   timing: ExamTiming;
+  /**
+   * `true`: danh sách của máy chủ không trả cách tính thời gian nên `timing` không có nghĩa; màn chỉ ghi thời lượng
+   * trung tính, không nói "chung" hay "theo phần". Bỏ trống: `timing` đã biết.
+   */
+  timingUnknown?: boolean;
   /** Thang điểm thô; `null` khi chưa đặt (V-ACT đặt thang luyện tập lúc thiết lập). */
   maxScore: number | null;
   /** Thang tham chiếu hiển thị (V-ACT 1.200); `null` khi không có (D11). */
