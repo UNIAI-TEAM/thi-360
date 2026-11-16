@@ -1,8 +1,10 @@
 "use client";
 
-import { RichTextEditor } from "@/components/rich-text";
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/rich-text";
+import { useCallback } from "react";
 import { Controller, useFormContext, type Path } from "react-hook-form";
 import type { QuestionEditorValues } from "../editor-form";
+import { useRichEditorRegistry } from "./question-editor-shared";
 
 const EDITABLE = '[contenteditable="true"]';
 
@@ -47,6 +49,15 @@ export function RichTextField({
   "aria-required"?: boolean;
 }) {
   const { control } = useFormContext<QuestionEditorValues>();
+  const registry = useRichEditorRegistry();
+  const registerHandle = useCallback(
+    (handle: RichTextEditorHandle | null) => {
+      if (!registry) return;
+      if (handle) registry.set(name, handle);
+      else registry.delete(name);
+    },
+    [registry, name],
+  );
   return (
     <Controller
       control={control}
@@ -55,6 +66,7 @@ export function RichTextField({
         // `shouldFocus` của useFieldArray và việc dời focus tới ô lỗi khi gửi gọi `ref.focus()`: dẫn vào vùng soạn.
         <div ref={(node) => field.ref(node && { focus: () => focusEditable(node) })}>
           <RichTextEditor
+            handleRef={registerHandle}
             id={id}
             value={typeof field.value === "string" ? field.value : ""}
             onChange={field.onChange}

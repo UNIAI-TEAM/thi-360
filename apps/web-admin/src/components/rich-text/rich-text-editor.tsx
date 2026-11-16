@@ -2,7 +2,7 @@
 
 import { uploadQuestionAsset } from "@/features/questions/api";
 import { Button, cn, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, IconButton, Input } from "@thi360/ui";
-import { NodeSelection } from "@tiptap/pm/state";
+import { NodeSelection, Selection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -27,10 +27,18 @@ import {
   Underline,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useLayoutEffect, useRef, useState, type AriaAttributes } from "react";
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type AriaAttributes, type Ref } from "react";
 import { HtmlSanitize, MathBlock, MathCommands, MathInline } from "./extensions";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "./sanitize";
 import "./rich-text.css";
+
+/** Tay cầm điều khiển trình soạn từ ngoài, qua `handleRef`. */
+export interface RichTextEditorHandle {
+  /** Chữ thuần trước và sau điểm chèn (con trỏ hiện tại; cuối tài liệu nếu chưa từng focus). */
+  getInsertionContext: () => { before: string; after: string };
+  /** Chèn chữ thuần tại con trỏ (thay vùng đang chọn); cuối tài liệu nếu chưa từng focus. `false` khi chưa chèn được. */
+  insertText: (text: string) => boolean;
+}
 
 export interface RichTextEditorProps extends AriaAttributes {
   /** HTML nội dung (đã lọc theo spec 4.2 khi lưu); component giữ đồng bộ hai chiều. */
@@ -47,6 +55,8 @@ export interface RichTextEditorProps extends AriaAttributes {
   className?: string;
   /** Gọi khi ảnh tải lên thất bại (mặc định: bỏ qua lặng lẽ, không chèn). */
   onImageUploadError?: (error: unknown) => void;
+  /** Tay cầm để nơi dùng chèn chữ vào đúng vị trí con trỏ (vd. nút "Thêm ô trống"). */
+  handleRef?: Ref<RichTextEditorHandle>;
 }
 
 
@@ -88,6 +98,7 @@ export function RichTextEditor({
   invalid = false,
   className,
   onImageUploadError,
+  handleRef,
   ...ariaProps
 }: RichTextEditorProps) {
   const t = useTranslations("richText");
@@ -103,6 +114,8 @@ export function RichTextEditor({
   const onChangeRef = useRef(onChange);
   const allowImagesRef = useRef(allowImages);
   const uploadErrorRef = useRef(onImageUploadError);
+  // Chưa từng focus thì vùng soạn chưa có con trỏ do người dùng đặt: `insertText` chèn ở cuối thay vì đầu tài liệu.
+  const hasFocusedRef = useRef(false);
   // HTML đã phát qua onChange: lọc lặp phát hiện (vòng đồng bộ, khởi tạo rỗng → "<p></p>").
   const lastEmittedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -178,6 +191,9 @@ export function RichTextEditor({
           void insertImageFiles(view, files);
           return true;
         },
+      },
+      onFocus: () => {
+        hasFocusedRef.current = true;
       },
       onUpdate: ({ editor: current }) => {
         let html = sanitizeQuestionHtml(current.getHTML(), {
@@ -294,6 +310,30 @@ export function RichTextEditor({
           }
         : null,
   });
+
+  useImperativeHandle(
+    handleRef,
+    () => ({
+      getInsertionContext() {
+        if (!editor || editor.isDestroyed) return { before: "", after: "" };
+        const { doc, selection } = editor.state;
+        const { from, to } = hasFocusedRef.current ? selection : Selection.atEnd(doc);
+        return { before: doc.textBetween(0, from, "\n"), after: doc.textBetween(to, doc.content.size, "\n") };
+      },
+      insertText(text: string) {
+        if (!editor || editor.isDestroyed || !editor.isEditable) return false;
+        return editor
+          .chain()
+          .focus(hasFocusedRef.current ? null : "end")
+          .command(({ tr }) => {
+            tr.insertText(text);
+            return true;
+          })
+          .run();
+      },
+    }),
+    [editor],
+  );
 
   const chain = () => editor?.chain().focus();
 

@@ -63,5 +63,17 @@ export function rich(element: HTMLElement) {
         editor.commands.setContent(html, { emitUpdate: true });
       });
     },
+    /** Đặt con trỏ ngay sau đoạn chữ `fragment` (như người dùng bấm vào đó), kèm focus của vùng soạn. */
+    placeCaretAfter(fragment: string) {
+      let position = -1;
+      editor.state.doc.descendants((node, offset) => {
+        const index = position === -1 && node.isText ? (node.text ?? "").indexOf(fragment) : -1;
+        if (index !== -1) position = offset + index + fragment.length;
+      });
+      if (position === -1) throw new Error(`Text not found in the editor: ${fragment}`);
+      act(() => {
+        editor.chain().focus().setTextSelection(position).run();
+      });
+    },
   };
 }

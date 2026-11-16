@@ -1,9 +1,10 @@
 "use client";
 
+import type { RichTextEditorHandle } from "@/components/rich-text";
 import { Card, cn, IconButton } from "@thi360/ui";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { get, useFormState, type FieldError } from "react-hook-form";
 import type { QuestionEditorValues } from "../editor-form";
 
@@ -18,15 +19,31 @@ export function pointsPathOf(prefix: BodyPath): PointsPath {
   return prefix === "body" ? "points" : (prefix.replace(/\.body$/, ".points") as PointsPath);
 }
 
-/** Một `LiveStatus` cho cả biểu mẫu: các khối soạn báo kết quả đổi thứ tự, thêm, xóa qua đây. */
+/** Một `LiveStatus` cho cả biểu mẫu: các khối soạn báo kết quả đổi thứ tự, thêm, xóa qua đây. Mang luôn sổ tay cầm của các ô soạn HTML. */
 const AnnounceContext = createContext<(message: string) => void>(() => {});
 
 export function EditorAnnounceProvider({ announce, children }: { announce: (message: string) => void; children: ReactNode }) {
-  return <AnnounceContext.Provider value={announce}>{children}</AnnounceContext.Provider>;
+  return (
+    <AnnounceContext.Provider value={announce}>
+      <RichEditorRegistryProvider>{children}</RichEditorRegistryProvider>
+    </AnnounceContext.Provider>
+  );
 }
 
 export function useAnnounce() {
   return useContext(AnnounceContext);
+}
+
+/** Tay cầm các ô soạn HTML của biểu mẫu theo tên trường: nút "Thêm ô trống" chèn `___` đúng chỗ con trỏ trong ô Đề bài. */
+const RichEditorRegistryContext = createContext<Map<string, RichTextEditorHandle> | null>(null);
+
+function RichEditorRegistryProvider({ children }: { children: ReactNode }) {
+  const [registry] = useState(() => new Map<string, RichTextEditorHandle>());
+  return <RichEditorRegistryContext.Provider value={registry}>{children}</RichEditorRegistryContext.Provider>;
+}
+
+export function useRichEditorRegistry() {
+  return useContext(RichEditorRegistryContext);
 }
 
 /** Lỗi đã dịch của một trường (kể cả lỗi cấp mảng mà resolver đặt ở `.root`). */

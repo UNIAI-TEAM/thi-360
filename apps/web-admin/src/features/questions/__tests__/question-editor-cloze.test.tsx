@@ -97,6 +97,32 @@ describe("trinh soan Dien khuyet", () => {
     expect(rich(text).html.match(/<p>/g)).toHaveLength(1);
   });
 
+  it("chỗ trống mới chèn đúng chỗ con trỏ giữa câu và dòng đáp án mới nằm đúng thứ tự", async () => {
+    const user = userEvent.setup();
+    const id = await seedCloze();
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+    rich(text).placeCaretAfter("Hà Nội ");
+
+    await user.click(screen.getByRole("button", { name: "Add blank" }));
+
+    expect(rich(text).text).toBe("Hà Nội ___ là ___ của ___.");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 1" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 2" })).toHaveValue("thủ đô");
+  });
+
+  it("chưa từng focus vào đề bài thì chỗ trống mới nối vào cuối", async () => {
+    const user = userEvent.setup();
+    const id = await seedCloze();
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+
+    await user.click(screen.getByRole("button", { name: "Add blank" }));
+
+    expect(rich(text).text).toBe("Hà Nội là ___ của ___. ___");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 3" })).toHaveValue("");
+  });
+
   it("diem o khong hop le, thieu dap an hoac lech so cho trong thi chan luu va chi dung o loi", async () => {
     const user = userEvent.setup();
     const id = await seedCloze();
