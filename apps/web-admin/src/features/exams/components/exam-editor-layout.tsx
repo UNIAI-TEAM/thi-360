@@ -105,7 +105,7 @@ function ExamEditorHeader({ exam }: { exam: ExamDetail }) {
       <dl className="flex flex-wrap gap-x-6 gap-y-2 text-body">
         <SummaryItem label={t("summary.code")} value={exam.code} />
         <SummaryItem label={t("summary.kind")} value={t(`kind.${exam.kind}`)} />
-        <SummaryItem label={t("summary.format")} value={t(`format.${exam.format}`)} />
+        <SummaryItem label={t("summary.format")} value={t(`scope.${exam.scope}`)} />
         <SummaryItem label={t("summary.questions")} value={format.number(exam.totalQuestions)} />
         <SummaryItem label={t("summary.duration")} value={t("summary.minutes", { count: exam.durationMinutes })} />
         <SummaryItem label={t("summary.attempts")} value={format.number(exam.attemptCount)} />

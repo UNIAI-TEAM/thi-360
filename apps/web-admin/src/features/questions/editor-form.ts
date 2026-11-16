@@ -1,7 +1,7 @@
 import type { KnowledgeRef, MultipleChoiceRule, QuestionType } from "@/features/content/types";
 import { normalizePrimary } from "@/features/content/knowledge-tree";
-import type { ChildQuestionType, SaveChildQuestionRequest, SaveQuestionRequest } from "./editor-types";
-import type { QuestionBody, QuestionDetail } from "./types";
+import { isChildQuestionType, type ChildQuestionType, type SaveChildQuestionRequest, type SaveQuestionRequest } from "./editor-types";
+import { clozeMarker, type QuestionBody, type QuestionDetail } from "./types";
 
 /**
  * Giá trị biểu mẫu soạn câu hỏi và chuyển đổi qua lại với dữ liệu API.
@@ -62,10 +62,13 @@ export interface EditorBody {
   blanks: EditorBlank[];
   zones: EditorZone[];
   distractors: EditorDistractor[];
-  /** Tự luận: tiêu chí chấm, bài làm mẫu, số chữ gợi ý (chuỗi rỗng: không giới hạn). */
+  /** Tự luận: hướng dẫn chấm (bắt buộc khi Sẵn sàng), tiêu chí chấm (tùy chọn), bài làm mẫu, số chữ gợi ý (rỗng: không giới hạn). */
+  gradingGuide: string;
   rubric: EditorCriterion[];
   sampleAnswer: string;
   wordLimit: string;
+  /** Trả lời ngắn: hướng dẫn nhập cho học viên. */
+  inputHint: string;
 }
 
 export interface EditorChild {
@@ -87,6 +90,8 @@ export interface QuestionEditorValues {
   difficultyCode: string;
   /** Năng lực (V-ACT); chuỗi rỗng: không gắn. */
   competencyCode: string;
+  /** Dạng bài; chuỗi rỗng: không gắn. */
+  taskTypeCode: string;
   /** Chuỗi để giữ đúng điều người dùng gõ ("1,5"); đổi sang số khi lưu. */
   points: string;
   knowledge: KnowledgeRef[];
@@ -94,6 +99,9 @@ export interface QuestionEditorValues {
   /** Đề bài; câu chùm: đoạn dẫn chung. */
   content: string;
   solution: string;
+  /** Lỗi sai thường gặp (trình soạn trường này làm ở FE-3b; giá trị được giữ nguyên khi lưu). */
+  commonMistakes: string;
+  attachmentIds: string[];
   body: EditorBody;
   children: EditorChild[];
 }
@@ -153,12 +161,14 @@ export function emptyBody(type: QuestionType): EditorBody {
     scoringRule: "ALL_OR_NOTHING",
     statements: type === "TRUE_FALSE" ? [emptyStatement(), emptyStatement()] : [],
     scoreTable: type === "TRUE_FALSE" ? evenScoreTableText(2, DEFAULT_POINTS) : [],
-    blanks: [],
-    zones: type === "DRAG_DROP" ? [emptyZone(), emptyZone()] : [],
+    blanks: type === "SHORT_ANSWER" ? [emptyBlank()] : [],
+    zones: type === "MATCHING" ? [emptyZone(), emptyZone()] : [],
     distractors: [],
-    rubric: type === "ESSAY" ? [emptyCriterion(formatPoints(DEFAULT_POINTS))] : [],
+    gradingGuide: "",
+    rubric: [],
     sampleAnswer: "",
     wordLimit: "",
+    inputHint: "",
   };
 }
 
@@ -181,11 +191,14 @@ export function emptyEditorValues(type: QuestionType): QuestionEditorValues {
     gradeCode: "",
     difficultyCode: "",
     competencyCode: "",
+    taskTypeCode: "",
     points: String(DEFAULT_POINTS),
     knowledge: [],
     tagCodes: [],
     content: "",
     solution: "",
+    commonMistakes: "",
+    attachmentIds: [],
     body: emptyBody(type),
     children: [],
   };
@@ -227,28 +240,34 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
           content: statement.content,
           answer: statement.answer ? "TRUE" : "FALSE",
         })),
+        // `PER_STATEMENT` (cộng điểm từng ý) chưa có trình soạn riêng (FE-3b): hiện như bảng điểm theo số ý đúng.
         scoreTable: body.scoreTable.map(formatPoints),
       };
-    case "FILL_IN":
+    case "SHORT_ANSWER":
+      return {
+        ...base,
+        blanks: [{ id: draftRowId("b"), answers: body.answers.map((value) => ({ id: draftRowId("a"), value })) }],
+        inputHint: body.inputHint ?? "",
+      };
+    case "CLOZE":
       return {
         ...base,
         blanks: body.blanks.map((blank) => ({
           id: blank.id,
-          answers: blank.acceptedAnswers.map((value) => ({ id: draftRowId("a"), value })),
+          answers: blank.answers.map((value) => ({ id: draftRowId("a"), value })),
         })),
       };
-    case "DRAG_DROP": {
-      const contentOf = new Map(body.items.map((item) => [item.id, item.content]));
-      const used = new Set(body.zones.map((zone) => zone.correctItemId));
+    case "MATCHING": {
+      const rightOf = new Map(body.right.map((item) => [item.id, item]));
+      const pairOf = new Map(body.pairs.map((pair) => [pair.leftId, pair.rightId]));
+      const used = new Set(body.pairs.map((pair) => pair.rightId));
       return {
         ...base,
-        zones: body.zones.map((zone) => ({
-          id: zone.id,
-          label: zone.label,
-          itemId: zone.correctItemId,
-          itemContent: contentOf.get(zone.correctItemId) ?? "",
-        })),
-        distractors: body.items.filter((item) => !used.has(item.id)).map((item) => ({ ...item })),
+        zones: body.left.map((item) => {
+          const right = rightOf.get(pairOf.get(item.id) ?? "");
+          return { id: item.id, label: item.content, itemId: right?.id ?? draftRowId("i"), itemContent: right?.content ?? "" };
+        }),
+        distractors: body.right.filter((item) => !used.has(item.id)).map((item) => ({ ...item })),
       };
     }
     case "QUESTION_SET":
@@ -256,6 +275,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
     case "ESSAY":
       return {
         ...base,
+        gradingGuide: body.gradingGuide,
         rubric: body.rubric.map((criterion) => ({
           id: criterion.id,
           description: criterion.description,
@@ -274,16 +294,19 @@ export function toEditorValues(question: QuestionDetail): QuestionEditorValues {
     gradeCode: question.gradeCode,
     difficultyCode: question.difficultyCode,
     competencyCode: question.competencyCode ?? "",
+    taskTypeCode: question.taskTypeCode ?? "",
     points: formatPoints(question.points),
     knowledge: normalizePrimary(question.knowledge),
     tagCodes: [...question.tagCodes],
-    content: question.content,
+    content: question.body.type === "CLOZE" ? clozeToEditorContent(question.body.passage) : question.content,
     solution: question.solution ?? "",
+    commonMistakes: question.commonMistakes ?? "",
+    attachmentIds: [...question.attachmentIds],
     body: bodyToEditor(question.body),
     children: question.children.map((child) => ({
       key: child.id,
       existingId: child.id,
-      type: child.type === "QUESTION_SET" ? "SINGLE_CHOICE" : child.type,
+      type: isChildQuestionType(child.type) ? child.type : "SINGLE_CHOICE",
       content: child.content,
       solution: child.solution ?? "",
       points: formatPoints(child.points),
@@ -294,6 +317,23 @@ export function toEditorValues(question: QuestionDetail): QuestionEditorValues {
 
 function trimmed(value: string): string {
   return value.trim();
+}
+
+const CLOZE_MARKER_RE = /\[\[[^\]]+\]\]/g;
+
+/** Ngữ liệu Điền khuyết (`[[b1]]`) sang đề bài của trình soạn (`___`). */
+export function clozeToEditorContent(passage: string): string {
+  return passage.replace(CLOZE_MARKER_RE, BLANK_MARKER);
+}
+
+/** Đề bài của trình soạn (`___`) sang ngữ liệu Điền khuyết: chỗ trống thứ n thành `[[id của ô n]]`. */
+export function clozePassage(content: string, blankIds: readonly string[]): string {
+  let index = 0;
+  return content.split(BLANK_MARKER).reduce((text, part, position) => {
+    if (position === 0) return part;
+    const id = blankIds[index++];
+    return `${text}${id === undefined ? BLANK_MARKER : clozeMarker(id)}${part}`;
+  }, "");
 }
 
 /**
@@ -322,36 +362,52 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
           id: statement.id,
           content: trimmed(statement.content),
           answer: statement.answer === "TRUE",
+          points: null,
         })),
+        scoringMethod: "COUNT_TABLE",
         scoreTable:
           body.scoreTable.length === body.statements.length
             ? body.scoreTable.map(parsePoints)
             : evenScoreTable(body.statements.length, points),
       };
-    case "FILL_IN":
+    case "SHORT_ANSWER":
       return {
         type,
+        answers: (body.blanks[0]?.answers ?? []).map((answer) => trimmed(answer.value)).filter(Boolean),
+        inputHint: trimmed(body.inputHint) || null,
+      };
+    case "CLOZE":
+      return {
+        type,
+        passage: clozePassage(content, body.blanks.map((blank) => blank.id)),
         blanks: body.blanks.map((blank) => ({
           id: blank.id,
-          acceptedAnswers: blank.answers.map((answer) => trimmed(answer.value)).filter(Boolean),
+          answers: blank.answers.map((answer) => trimmed(answer.value)).filter(Boolean),
+          points: DEFAULT_POINTS,
         })),
       };
-    case "DRAG_DROP":
+    case "MATCHING": {
+      const pairPoints = body.zones.length ? Math.round((points * 10_000) / body.zones.length) / 10_000 : 0;
       return {
         type,
-        items: [
+        left: body.zones.map((zone) => ({ id: zone.id, content: trimmed(zone.label) })),
+        right: [
           ...body.zones.map((zone) => ({ id: zone.itemId, content: trimmed(zone.itemContent) })),
           ...body.distractors.map((item) => ({ id: item.id, content: trimmed(item.content) })),
         ],
-        zones: body.zones.map((zone) => ({ id: zone.id, label: trimmed(zone.label), correctItemId: zone.itemId })),
+        pairs: body.zones.map((zone) => ({ leftId: zone.id, rightId: zone.itemId, points: pairPoints })),
+        reuseRight: false,
+        shuffleLeft: false,
+        shuffleRight: true,
       };
+    }
     case "QUESTION_SET":
       return { type, passage: trimmed(content), childIds: [] };
     case "ESSAY": {
       const wordLimit = Number.parseInt(body.wordLimit.trim(), 10);
       return {
         type,
-        maxPoints: points,
+        gradingGuide: trimmed(body.gradingGuide),
         rubric: body.rubric.map((criterion) => ({
           id: criterion.id,
           description: trimmed(criterion.description),
@@ -412,6 +468,10 @@ function toChildRequest(child: EditorChild): SaveChildQuestionRequest {
     body: editorToBody(child.type, child.body, child.content, parsePoints(child.points)),
     solution: trimmed(child.solution) || null,
     points: parsePoints(child.points),
+    // Phân loại riêng của câu con (khối lớp, độ khó, kiến thức) có trình soạn ở FE-3b; tới đó kế thừa của bộ.
+    gradeCode: null,
+    difficultyCode: null,
+    knowledgeIds: null,
   };
 }
 
@@ -424,12 +484,22 @@ export function toSaveRequest(values: QuestionEditorValues): SaveQuestionRequest
     subjectCode: values.subjectCode,
     gradeCode: values.gradeCode,
     difficultyCode: values.difficultyCode,
+    taskTypeCode: values.taskTypeCode || null,
     competencyCode: values.competencyCode || null,
-    points: isSet ? children.reduce((sum, child) => sum + child.points, 0) : parsePoints(values.points),
+    points: isSet
+      ? children.reduce((sum, child) => sum + child.points, 0)
+      : values.type === "CLOZE"
+        ? values.body.blanks.length * DEFAULT_POINTS
+        : parsePoints(values.points),
     knowledge: normalizePrimary(values.knowledge),
     tagCodes: [...values.tagCodes],
-    content: trimmed(values.content),
+    content:
+      values.type === "CLOZE"
+        ? clozePassage(trimmed(values.content), values.body.blanks.map((blank) => blank.id))
+        : trimmed(values.content),
     solution: isSet ? null : trimmed(values.solution) || null,
+    commonMistakes: trimmed(values.commonMistakes) || null,
+    attachmentIds: [...values.attachmentIds],
     body: editorToBody(values.type, values.body, values.content, parsePoints(values.points)),
     children,
   };

@@ -15,11 +15,12 @@ import {
   type CreatePartValues,
   type CreateSectionValues,
   defaultSubjectCounts,
+  type ExamFormat,
   optionTarget,
   PART_NAME_MAX,
 } from "../create-exam-schema";
 import { sum } from "../matrix";
-import type { ExamFormat, ExamTemplateBlock, ExamTiming } from "../types";
+import type { ExamTemplateBlock, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationAttachDialog } from "./combination-options";
 import { OptionalNumberInput } from "./create-exam-fields";

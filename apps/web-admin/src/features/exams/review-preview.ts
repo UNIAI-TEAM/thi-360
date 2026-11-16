@@ -13,6 +13,7 @@ import type {
   PreviewPart,
   PreviewQuestion,
 } from "./review-types";
+import { blockPointsEach } from "./matrix";
 import type { ExamPart, QuestionBlock } from "./types";
 
 /**

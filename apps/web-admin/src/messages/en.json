@@ -2147,10 +2147,11 @@
     "questionType": {
       "SINGLE_CHOICE": "Single choice",
       "MULTIPLE_CHOICE": "Multiple choice",
-      "TRUE_FALSE": "True / False",
-      "FILL_IN": "Fill in the answer",
-      "DRAG_DROP": "Drag and drop",
+      "SHORT_ANSWER": "Short answer",
+      "CLOZE": "Cloze",
       "QUESTION_SET": "Question set",
+      "TRUE_FALSE": "True/False",
+      "MATCHING": "Matching",
       "ESSAY": "Essay"
     },
     "questionStatus": {
@@ -2318,10 +2319,10 @@
         "correct": "Correct answer",
         "true": "True",
         "false": "False",
-        "zoneLabel": "Drop zone {number}",
-        "correctItem": "Correct card:",
-        "distractors": "Distractors: {items}",
-        "noDistractors": "No distractors.",
+        "zoneLabel": "Item {number}",
+        "correctItem": "Matched with:",
+        "distractors": "Extra choices: {items}",
+        "noDistractors": "No extra choices.",
         "manualGrading": "Graded by hand",
         "scoringRule": "Scoring:",
         "scoringRules": {
@@ -2331,13 +2332,17 @@
         "essayMaxPoints": "Maximum {points} points",
         "wordLimit": "{count, plural, one {about # word} other {about # words}}",
         "rubricTitle": "Rubric",
+        "gradingGuideTitle": "Grading guide",
+        "noGradingGuide": "No grading guide yet.",
+        "standardAnswer": "Standard answer",
+        "acceptedAnswer": "Accepted answer",
+        "inputHint": "Input hint:",
         "noRubric": "No rubric yet.",
         "sampleAnswer": "Sample answer",
         "scoreTableTitle": "Score by number of correct statements",
         "scoreTableCell": "{count, plural, one {# correct} other {# correct}}",
         "scoreTableLine": "Score by number of correct statements: {values}",
-        "scoreValue": "{value, number}",
-        "essaySummary": "Graded by hand · maximum {points, number} points"
+        "scoreValue": "{value, number}"
       }
     },
     "editor": {
@@ -2377,6 +2382,7 @@
       "bodyTitle": {
         "options": "Options",
         "statements": "Statements",
+        "shortAnswer": "Answer",
         "blanks": "Answers for each blank",
         "dragDrop": "Drop zones and cards",
         "children": "Sub-questions",
@@ -2389,7 +2395,7 @@
       },
       "saveErrors": {
         "generic": "The question could not be saved. Try again in a moment.",
-        "QUESTION_VERSION_CONFLICT": "The question was just saved elsewhere. Reload the page to edit the latest version.",
+        "QUESTION_REVISION_CONFLICT": "The data was changed by someone else. Reload the page to edit the latest version.",
         "QUESTION_TYPE_IMMUTABLE": "A saved question cannot change type. Create a new question instead.",
         "QUESTION_SET_CHILDREN_MIN": "A question set needs at least 2 sub-questions.",
         "QUESTION_BODY_TYPE_MISMATCH": "The answer section does not match the question type.",
@@ -2416,8 +2422,9 @@
           "SINGLE_CHOICE": "Several options, exactly one is correct.",
           "MULTIPLE_CHOICE": "Several options, more than one may be correct.",
           "TRUE_FALSE": "One stem; each statement is True or False.",
-          "FILL_IN": "Learners type a number or text into blanks.",
-          "DRAG_DROP": "Learners drag cards into the gaps of a sentence.",
+          "SHORT_ANSWER": "Learners type a number or a short phrase; it must match the standard or an accepted answer exactly.",
+          "CLOZE": "A passage with several blanks, one answer per blank.",
+          "MATCHING": "Learners match each item on the left with one choice on the right.",
           "QUESTION_SET": "One shared passage for several sub-questions.",
           "ESSAY": "A written answer, graded by hand against the rubric."
         },
@@ -2576,7 +2583,7 @@
         "scoreValueInvalid": "Points must be a number of 0 or more.",
         "scoreNotIncreasing": "Points cannot be lower than the previous cell.",
         "scoreLastMismatch": "The last cell must equal the question points.",
-        "rubricMin": "Add at least one criterion.",
+        "gradingGuideRequired": "Enter the grading guide.",
         "criterionRequired": "Enter the criterion description.",
         "criterionMax": "The description is too long.",
         "criterionPointsInvalid": "Criterion points must be a number greater than 0.",
@@ -2609,12 +2616,25 @@
           "description": "Points in proportion to the correct options picked; picking any wrong option gives 0."
         }
       },
+      "shortAnswer": {
+        "hint": "The first answer is the standard answer; the others are spellings that are also accepted. The system does not accept equivalent forms on its own (0.5 differs from 1/2 unless 1/2 is listed).",
+        "standardLabel": "Standard answer",
+        "acceptedLabel": "Accepted answer {number}",
+        "remove": "Remove answer {number}",
+        "removed": "Removed answer {number}.",
+        "add": "Add accepted answer",
+        "added": "Added answer {number}.",
+        "inputHint": "Input hint",
+        "inputHintHint": "Optional. Learners see it while answering, for example “Write a decimal comma”."
+      },
       "essay": {
         "manualGrading": "Graded by hand",
+        "gradingGuide": "Grading guide",
+        "gradingGuideHint": "Required. Graders see it while grading; learners do not.",
         "maxPoints": "Maximum {points} points (the question's Points field).",
         "maxPointsUnknown": "The maximum comes from the question's Points field.",
-        "rubricLegend": "Rubric",
-        "rubricHint": "Each criterion has a description and maximum points. The criteria must add up to the question points.",
+        "rubricLegend": "Rubric (optional)",
+        "rubricHint": "Each criterion has a description and maximum points. If you add criteria, they must add up to the question points.",
         "descriptionLabel": "Criterion {number} description",
         "pointsLabel": "Criterion {number} points",
         "rowName": "criterion {number}",
@@ -2656,18 +2676,19 @@
         "OPTION_EMPTY": "Option {position, number} is empty.",
         "TOO_FEW_OPTIONS": "At least 2 options are required.",
         "STATEMENT_EMPTY": "Statement {position, number} is empty.",
-        "DRAG_ITEM_EMPTY": "Drag item {position, number} is empty.",
-        "ZONE_LABEL_EMPTY": "Drop zone {position, number} has no label.",
+        "MATCH_RIGHT_EMPTY": "Right-hand choice {position, number} is empty.",
+        "MATCH_LEFT_EMPTY": "Left-hand item {position, number} is empty.",
         "SET_WITHOUT_CHILDREN": "The question set has no sub-questions.",
         "NO_CORRECT_OPTION": "No correct answer is selected.",
         "SINGLE_CHOICE_MANY_CORRECT": "A single-answer question has more than one correct answer.",
         "NO_STATEMENTS": "There are no statements.",
         "NO_BLANKS": "There are no blanks.",
-        "NO_DROP_ZONES": "There are no drop zones.",
+        "NO_ANSWERS": "There are no answers.",
+        "NO_PAIRS": "There are no pairs.",
         "SUBJECT_MISSING": "No subject is selected.",
         "GRADE_MISSING": "No grade is selected.",
         "DIFFICULTY_MISSING": "No difficulty is selected.",
-        "PRIMARY_KNOWLEDGE_MISSING": "No primary knowledge is selected.",
+        "PRIMARY_KNOWLEDGE_MISSING": "No primary knowledge is selected (a warning, does not block Ready).",
         "SUBJECT_INVALID": "Subject {value} is not in the catalog.",
         "GRADE_INVALID": "Grade {value} is not in the catalog.",
         "DIFFICULTY_INVALID": "Difficulty {value} is not in the catalog.",
@@ -2675,14 +2696,14 @@
         "KNOWLEDGE_INVALID": "Knowledge {value} is inactive or not at the knowledge level.",
         "KNOWLEDGE_OTHER_SUBJECT": "Knowledge {value} belongs to another subject.",
         "BLANK_WITHOUT_ANSWER": "Blank {position, number} has no answer.",
-        "ZONE_WITHOUT_ANSWER": "Drop zone {position, number} has no correct item.",
+        "LEFT_WITHOUT_PAIR": "Left-hand item {position, number} is not paired with a choice.",
         "RESOURCE_UNAVAILABLE": "Could not load {value}.",
         "TYPE_UNSUPPORTED": "This question type is not supported.",
         "BODY_TYPE_MISMATCH": "The answer part does not match the question type.",
-        "NESTED_SET": "A question set cannot contain another question set.",
+        "NESTED_SET": "A question set cannot contain another question set or a cloze question.",
         "CRITERION_EMPTY": "Rubric criterion {position, number} has no description.",
         "SCORE_TABLE_INVALID": "The score table is not valid (one cell per statement, never decreasing, last cell equal to the question points).",
-        "NO_RUBRIC": "The essay question has no rubric.",
+        "NO_GRADING_GUIDE": "The essay question has no grading guide.",
         "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
@@ -2732,6 +2753,7 @@
         "QUESTION_NOT_READY": "The question does not meet the conditions; the list has been refreshed.",
         "QUESTION_ALREADY_READY": "The question is already ready.",
         "QUESTION_ALREADY_RETIRED": "The question is already retired.",
+        "QUESTION_REVISION_CONFLICT": "The data was changed by someone else. Reload and try again.",
         "NOT_FOUND": "Question not found.",
         "UNKNOWN": "The action failed. Please try again."
       }
@@ -2954,7 +2976,15 @@
       "knowledge": "Knowledge (MAPID)",
       "tags": "Tags",
       "setCode": "Set code",
-      "rubric": "Rubric"
+      "rubric": "Rubric",
+      "points": "Points",
+      "options": "Options",
+      "matchRight": "Right-hand choices",
+      "scoring": "Scoring",
+      "inputHint": "Input hint",
+      "gradingGuide": "Grading guide",
+      "commonMistakes": "Common mistakes",
+      "taskType": "Task type"
     },
     "upload": {
       "heading": "Choose a question file",
@@ -2991,7 +3021,15 @@
         "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty, it must be added before moving to Ready.",
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
         "setCode": "A Question set row and its child questions share the same set code.",
-        "rubric": "Essay questions only: write each criterion as “Description: points”, separated by ; (for example Opening: 0.25; Body: 1). The question points equal the criteria total. Leave empty and the question stays Draft until a rubric is added."
+        "rubric": "Essay questions only, optional: write each criterion as “Description: points”, separated by ; (for example Opening: 0.25; Body: 1). If you add criteria, the question points equal the criteria total.",
+        "points": "Question points, a number greater than 0 (0.75 or 0,75). Leave empty for the default 1.",
+        "options": "The question options; one item per line in the cell.",
+        "matchRight": "Matching: the right-hand choices, one per line in the cell.",
+        "scoring": "How the question is scored (Multiple choice, True/False, Matching, Cloze).",
+        "inputHint": "Short answer: the input hint shown to learners.",
+        "gradingGuide": "Essay: the grading guide. Leave empty and the question stays Draft until one is added.",
+        "commonMistakes": "Common mistakes, optional.",
+        "taskType": "Name or code of a task type in the catalog."
       },
       "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2."
     },
@@ -3139,11 +3177,11 @@
       },
       "TYPE_UNKNOWN": {
         "message": "Question type “{value}” is not supported",
-        "fix": "Use one of: Single choice, Multiple choice, True / False, Fill in, Essay, Question set."
+        "fix": "Use one of: Single choice, Multiple choice, Short answer, Cloze, Question set, True/False, Matching, Essay."
       },
       "TYPE_NOT_IMPORTABLE": {
         "message": "Type “{value}” cannot be imported from a file yet",
-        "fix": "Create drag-and-drop questions on the Add question screen."
+        "fix": "Create Matching and Cloze questions on the Add question screen."
       },
       "SUBJECT_UNKNOWN": {
         "message": "Subject “{value}” is not in the catalog",
@@ -3209,9 +3247,13 @@
         "message": "Rubric criterion “{value}” has no points or invalid points",
         "fix": "Write each criterion as “Description: points” with points greater than 0, separated by ;."
       },
-      "RUBRIC_MISSING": {
-        "message": "The essay question has no rubric",
-        "fix": "The question is still imported as Draft; add a rubric before marking it Ready."
+      "GRADING_GUIDE_MISSING": {
+        "message": "The essay question has no grading guide",
+        "fix": "The question is still imported as Draft; add a grading guide before marking it Ready."
+      },
+      "POINTS_INVALID": {
+        "message": "Points “{value}” are not valid",
+        "fix": "Enter points as a number greater than 0, for example 1 or 0.75."
       }
     },
     "errorReport": {
@@ -3862,6 +3904,11 @@
       "SPT": "SPT",
       "SP2E": "SP2E",
       "THPTQG": "THPTQG"
+    },
+    "scope": {
+      "FULL": "Full exam",
+      "PART": "By part",
+      "SUBJECT": "By subject"
     },
     "format": {
       "FULL": "FULL",

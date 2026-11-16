@@ -89,7 +89,7 @@ function resolveEssayQuestion(questionId: string): ResolvedQuestion {
       subjectCode: question.subjectCode,
       content: question.content,
       passage,
-      maxPoints: body.maxPoints,
+      maxPoints: question.points,
       rubric: body.rubric,
       sampleAnswer: body.sampleAnswer,
       wordLimit: body.wordLimit,

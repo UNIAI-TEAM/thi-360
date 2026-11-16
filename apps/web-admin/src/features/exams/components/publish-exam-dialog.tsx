@@ -198,7 +198,7 @@ function PublishForm({
       setServerError(null);
       onSubmittingChange(true);
       publish.mutate(
-        { pathIds: values.pathIds, note: values.note.trim() || null },
+        { pathIds: values.pathIds, note: values.note.trim() || null, expectedRevision: exam.revision },
         {
           onSuccess: (response) => onPublished(response),
           onError: (error) => {

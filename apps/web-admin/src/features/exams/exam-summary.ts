@@ -1,8 +1,8 @@
 import type { ExamDetail, ExamPart, ExamSummary } from "./types";
 
 const SUMMARY_KEYS = [
-  "id", "code", "name", "kind", "format", "status", "servingVersion", "hasUnpublishedChanges", "totalQuestions",
-  "durationMinutes", "englishOption", "combinationCount", "singleSubjectCode", "subjectCode", "timing", "maxScore",
+  "id", "code", "name", "kind", "scope", "status", "revision", "servingVersion", "hasUnpublishedChanges", "totalQuestions",
+  "durationMinutes", "englishOption", "combinationCount", "partCode", "subjectCode", "timing", "maxScore", "referenceMax", "practiceScoring",
   "hasEssay", "check", "attemptCount", "updatedAt", "updatedBy",
 ] as const satisfies readonly (keyof ExamSummary)[];
 

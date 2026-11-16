@@ -75,9 +75,40 @@
     ],
     "rubric": [
       "Tiêu chí chấm",
-      "Hướng dẫn chấm",
       "Thang chấm",
       "Rubric"
+    ],
+    "points": [
+      "Điểm",
+      "Points"
+    ],
+    "options": [
+      "Lựa chọn",
+      "Options"
+    ],
+    "matchRight": [
+      "Lựa chọn phải",
+      "Right choices"
+    ],
+    "scoring": [
+      "Cách chấm",
+      "Scoring"
+    ],
+    "inputHint": [
+      "Hướng dẫn nhập",
+      "Input hint"
+    ],
+    "gradingGuide": [
+      "Hướng dẫn chấm",
+      "Grading guide"
+    ],
+    "commonMistakes": [
+      "Lỗi sai thường gặp",
+      "Common mistakes"
+    ],
+    "taskType": [
+      "Dạng bài",
+      "Task type"
     ]
   },
   "ignoreHeaders": [

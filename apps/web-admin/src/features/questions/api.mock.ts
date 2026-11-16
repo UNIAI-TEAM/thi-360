@@ -73,6 +73,7 @@ function matchesQuery(question: QuestionDetail, query: ListQuestionsQuery): bool
   if (query.type && question.type !== query.type) return false;
   if (query.status && question.status !== query.status) return false;
   if (query.competencyCode && question.competencyCode !== query.competencyCode) return false;
+  if (query.taskTypeCode && question.taskTypeCode !== query.taskTypeCode) return false;
   if (query.tagCode && !question.tagCodes.includes(query.tagCode)) return false;
   if (query.createdById && question.createdBy.id !== query.createdById) return false;
   if (query.hasSolution !== undefined && question.hasSolution !== query.hasSolution) return false;
@@ -155,10 +156,19 @@ export async function getQuestionReadiness(id: string): Promise<QuestionReadines
   return mockRequest(() => readinessOf(questionStore.require(id)));
 }
 
+/** Khóa lạc quan (D13): lệch `revision` thì 412 `QUESTION_REVISION_CONFLICT`. */
+export function assertQuestionRevision(question: Pick<QuestionDetail, "revision">, expectedRevision: number | undefined): void {
+  if (expectedRevision !== undefined && expectedRevision !== question.revision) {
+    throw new MockApiError(412, "QUESTION_REVISION_CONFLICT");
+  }
+}
+
+/** Mọi lần ghi (kể cả đổi trạng thái) tăng `revision`. */
 function setStatus(question: QuestionDetail, status: QuestionStatus): QuestionDetail {
   return questionStore.update(question.id, (current) => ({
     ...current,
     status,
+    revision: current.revision + 1,
     updatedAt: new Date().toISOString(),
   }));
 }
@@ -167,10 +177,11 @@ function setStatus(question: QuestionDetail, status: QuestionStatus): QuestionDe
  * Chuyển câu sang Sẵn sàng. 409 khi đã Sẵn sàng; 422 `QUESTION_NOT_READY` khi chưa đủ điều kiện (câu giữ nguyên
  * trạng thái). Câu Ngừng sử dụng đủ điều kiện thì được dùng lại.
  */
-export async function markQuestionReady({ id }: { id: string }): Promise<QuestionSummary> {
+export async function markQuestionReady({ id, expectedRevision }: { id: string; expectedRevision: number }): Promise<QuestionSummary> {
   return mockRequest(
     () => {
       const question = questionStore.require(id);
+      assertQuestionRevision(question, expectedRevision);
       if (question.status === "READY") throw new MockApiError(409, "QUESTION_ALREADY_READY");
       if (!readinessOf(question).ready) throw new MockApiError(422, "QUESTION_NOT_READY");
       return toQuestionSummary(setStatus(question, "READY"));
@@ -180,10 +191,11 @@ export async function markQuestionReady({ id }: { id: string }): Promise<Questio
 }
 
 /** Ngừng sử dụng: không xóa câu, lượt thi đang làm và kết quả cũ giữ nguyên (UniNote PBI-03 mục 9). */
-export async function retireQuestion({ id }: { id: string }): Promise<QuestionSummary> {
+export async function retireQuestion({ id, expectedRevision }: { id: string; expectedRevision: number }): Promise<QuestionSummary> {
   return mockRequest(
     () => {
       const question = questionStore.require(id);
+      assertQuestionRevision(question, expectedRevision);
       if (question.status === "RETIRED") throw new MockApiError(409, "QUESTION_ALREADY_RETIRED");
       return toQuestionSummary(setStatus(question, "RETIRED"));
     },

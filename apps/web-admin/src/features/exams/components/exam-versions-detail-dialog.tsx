@@ -84,8 +84,8 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
                   count: part.questionCount,
                   minutes: part.durationMinutes ?? 0,
                   hasMinutes: part.durationMinutes === null ? "no" : "yes",
-                  points: part.points ?? 0,
-                  hasPoints: part.points === null || part.points === undefined ? "no" : "yes",
+                  points: part.maxPoints ?? 0,
+                  hasPoints: part.maxPoints === null || part.maxPoints === undefined ? "no" : "yes",
                 })}
               </span>
             </h3>

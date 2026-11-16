@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { defaultExamsApiDeps, EXAMS_QUERY_KEYS, type ExamsApiDeps } from "./api";
 import type {
+  ApplyExamTemplateRequest,
   AvailableQuestionsQuery,
   CreateExamRequest,
   ListExamsQuery,
@@ -87,6 +88,14 @@ export function useUpdateExamStructure(id: string, deps: ExamsApiDeps = defaultE
   const invalidate = useInvalidateExams();
   return useMutation({
     mutationFn: (request: UpdateExamStructureRequest) => deps.updateExamStructure(id, request),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useApplyExamTemplate(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const invalidate = useInvalidateExams();
+  return useMutation({
+    mutationFn: (request: ApplyExamTemplateRequest) => deps.applyExamTemplate(id, request),
     onSuccess: () => invalidate(),
   });
 }

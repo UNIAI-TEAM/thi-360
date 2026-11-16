@@ -143,6 +143,7 @@ function nextQuestionNumber(): number {
  * chí (để hướng dẫn chấm khớp điểm của câu).
  */
 function draftPoints(draft: ImportQuestionDraft): number {
+  if (draft.points !== null) return draft.points;
   if (draft.type !== "ESSAY" || draft.rubric.length === 0) return DEFAULT_POINTS;
   return Math.round(draft.rubric.reduce((sum, criterion) => sum + criterion.points, 0) * 1000) / 1000;
 }
@@ -167,15 +168,17 @@ function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: s
           id: `${idPrefix}-s${index + 1}`,
           content: statement.content,
           answer: statement.answer ?? false,
+          points: null,
         })),
-        scoreTable: evenScoreTable(draft.statements.length, DEFAULT_POINTS),
+        scoringMethod: "COUNT_TABLE",
+        scoreTable: evenScoreTable(draft.statements.length, draftPoints(draft)),
       };
-    case "FILL_IN":
-      return { type: "FILL_IN", blanks: [{ id: `${idPrefix}-b1`, acceptedAnswers: draft.acceptedAnswers }] };
+    case "SHORT_ANSWER":
+      return { type: "SHORT_ANSWER", answers: draft.acceptedAnswers, inputHint: draft.inputHint };
     case "ESSAY":
       return {
         type: "ESSAY",
-        maxPoints: draftPoints(draft),
+        gradingGuide: draft.gradingGuide ?? "",
         rubric: draft.rubric.map((criterion, index) => ({ id: `${idPrefix}-r${index + 1}`, ...criterion })),
         sampleAnswer: draft.sampleAnswer,
         wordLimit: null,
@@ -201,6 +204,7 @@ function questionFromRow(
     code: identity.code,
     type: draft.type ?? "SINGLE_CHOICE",
     status: "DRAFT",
+    taskTypeCode: null,
     contentPreview: draft.content,
     subjectCode: draft.subjectCode ?? "",
     gradeCode: draft.gradeCode ?? "",
@@ -210,6 +214,7 @@ function questionFromRow(
     tagCodes: draft.tagCodes,
     hasSolution: Boolean(solution) || childQuestions.some((child) => child.hasSolution),
     version: 1,
+    revision: 0,
     usedInExamCount: 0,
     sourceCode: row.sourceCode,
     createdBy: MOCK_CURRENT_AUTHOR,
@@ -218,6 +223,8 @@ function questionFromRow(
     content: draft.content,
     body: bodyFromDraft(draft, identity.id, childQuestions.map((child) => child.id)),
     solution,
+    commonMistakes: null,
+    attachmentIds: [],
     children: childQuestions,
   };
 }

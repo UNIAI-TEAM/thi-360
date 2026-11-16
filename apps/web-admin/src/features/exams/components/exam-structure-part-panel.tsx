@@ -122,7 +122,7 @@ export function ExamStructurePartPanel({
             )}
           </FormField>
         )}
-        {part.points !== null && part.points !== undefined && (
+        {part.maxPoints !== null && part.maxPoints !== undefined && (
           <FormField
             label={t("points")}
             required
@@ -130,7 +130,7 @@ export function ExamStructurePartPanel({
             error={pointsInvalid ? t("pointsInvalid") : undefined}
           >
             {(controlProps) => (
-              <BlockNumberInput {...controlProps} allowDecimal value={part.points ?? 0} onValueChange={onPoints} />
+              <BlockNumberInput {...controlProps} allowDecimal value={part.maxPoints ?? 0} onValueChange={onPoints} />
             )}
           </FormField>
         )}

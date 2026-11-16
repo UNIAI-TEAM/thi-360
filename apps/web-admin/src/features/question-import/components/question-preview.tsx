@@ -112,7 +112,7 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
               </ul>
             )}
 
-            {draft.type === "FILL_IN" && (
+            {draft.type === "SHORT_ANSWER" && (
               <p className="text-body text-text">
                 <span className="font-semibold">{t("preview.acceptedAnswers")}: </span>
                 {draft.acceptedAnswers.length > 0 ? draft.acceptedAnswers.join(" | ") : none}

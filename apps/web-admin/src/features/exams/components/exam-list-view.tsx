@@ -41,7 +41,7 @@ import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
 import {
   EXAM_KINDS,
   type ExamCheckStatus,
-  type ExamFormat,
+  type ExamScope,
   type ExamKind,
   type ExamStatus,
   type ExamSummary,
@@ -52,7 +52,7 @@ import { ExamListRowActions } from "./exam-list-actions";
 
 const ALL = "ALL";
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const FORMATS: ExamFormat[] = ["FULL", "SINGLE"];
+const SCOPES: ExamScope[] = ["FULL", "PART", "SUBJECT"];
 const STATUSES: ExamStatus[] = ["DRAFT", "PUBLISHED", "DISCONTINUED"];
 const CHECK_STATUSES: ExamCheckStatus[] = ["UNCHECKED", "VALID", "INVALID", "NEEDS_RECHECK"];
 
@@ -93,7 +93,7 @@ export function ExamListView() {
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<ExamKind | typeof ALL>(ALL);
   const [subject, setSubject] = useState<string>(ALL);
-  const [examFormat, setExamFormat] = useState<ExamFormat | typeof ALL>(ALL);
+  const [examScope, setExamScope] = useState<ExamScope | typeof ALL>(ALL);
   const [status, setStatus] = useState<ExamStatus | typeof ALL>(ALL);
   const [checkStatus, setCheckStatus] = useState<ExamCheckStatus | typeof ALL>(ALL);
   const [unpublishedOnly, setUnpublishedOnly] = useState(false);
@@ -119,14 +119,14 @@ export function ExamListView() {
       ...(search ? { q: search } : {}),
       ...(kind !== ALL ? { kind } : {}),
       ...(subject !== ALL ? { subjectCode: subject } : {}),
-      ...(examFormat !== ALL ? { format: examFormat } : {}),
+      ...(examScope !== ALL ? { scope: examScope } : {}),
       ...(status !== ALL ? { status } : {}),
       ...(checkStatus !== ALL ? { checkStatus } : {}),
       ...(unpublishedOnly ? { hasUnpublishedChanges: true } : {}),
       page: page - 1,
       size: pageSize,
     }),
-    [search, kind, subject, examFormat, status, checkStatus, unpublishedOnly, page, pageSize],
+    [search, kind, subject, examScope, status, checkStatus, unpublishedOnly, page, pageSize],
   );
   const examsQuery = useExamList(query);
 
@@ -134,7 +134,7 @@ export function ExamListView() {
     search ||
       kind !== ALL ||
       subject !== ALL ||
-      examFormat !== ALL ||
+      examScope !== ALL ||
       status !== ALL ||
       checkStatus !== ALL ||
       unpublishedOnly,
@@ -145,7 +145,7 @@ export function ExamListView() {
     setSearch("");
     setKind(ALL);
     setSubject(ALL);
-    setExamFormat(ALL);
+    setExamScope(ALL);
     setStatus(ALL);
     setCheckStatus(ALL);
     setUnpublishedOnly(false);
@@ -168,7 +168,7 @@ export function ExamListView() {
        * (Tiếng Anh, tổ hợp, nhánh). Không có gì thì `null`.
        */
       choiceText: (exam: ExamSummary): string | null => {
-        if (exam.format === "SINGLE") return exam.singleSubjectCode ? scopeName(exam.singleSubjectCode) : null;
+        if (exam.scope === "PART") return exam.partCode ? scopeName(exam.partCode) : null;
         const options = [
           ...(exam.englishOption ? [t("list.choice.english")] : []),
           ...(exam.combinationCount > 0 ? [t("list.choice.combinations", { count: exam.combinationCount })] : []),
@@ -211,7 +211,7 @@ export function ExamListView() {
         enableSorting: false,
         cell: ({ row }) => (
           <span data-col="format" className="whitespace-nowrap">
-            {t(`format.${row.original.format}`)}
+            {t(`scope.${row.original.scope}`)}
           </span>
         ),
       },
@@ -297,7 +297,7 @@ export function ExamListView() {
           tags={
             <>
               <ListCardTag>{kindLabel(exam.kind)}</ListCardTag>
-              <ListCardTag>{t(`format.${exam.format}`)}</ListCardTag>
+              <ListCardTag>{t(`scope.${exam.scope}`)}</ListCardTag>
               {exam.hasEssay && <ListCardTag>{t("list.essay")}</ListCardTag>}
               {exam.hasUnpublishedChanges && <StatusChip tone="warning">{t("list.unpublished")}</StatusChip>}
             </>
@@ -389,12 +389,12 @@ export function ExamListView() {
               {(controlProps) => (
                 <Select
                   {...controlProps}
-                  value={examFormat}
+                  value={examScope}
                   onValueChange={(value) => {
-                    setExamFormat(value as ExamFormat | typeof ALL);
+                    setExamScope(value as ExamScope | typeof ALL);
                     setPage(1);
                   }}
-                  options={[allOption, ...FORMATS.map((value) => option(value, t(`format.${value}`)))]}
+                  options={[allOption, ...SCOPES.map((value) => option(value, t(`scope.${value}`)))]}
                 />
               )}
             </FormField>

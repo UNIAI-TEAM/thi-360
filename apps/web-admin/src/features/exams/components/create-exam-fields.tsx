@@ -13,6 +13,7 @@ import {
   EXAM_NAME_MAX,
   type CreateExamSchemaMessages,
   type ExamInfoFormValues,
+  type ExamFormat,
   type ExamInfoSchemaMessages,
   type ExamScope,
   formatsForKind,
@@ -27,7 +28,7 @@ import {
   yearsDiffer,
 } from "../create-exam-schema";
 import { sum } from "../matrix";
-import type { ExamFormat, ExamKind, ExamTemplate, ExamTiming } from "../types";
+import type { ExamKind, ExamTemplate, ExamTiming } from "../types";
 
 /** Chữ báo lỗi của Thông tin chung (`exams.create.validation`). */
 export function useExamInfoMessages(): ExamInfoSchemaMessages {

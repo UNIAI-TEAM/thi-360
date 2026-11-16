@@ -1,5 +1,7 @@
 import { examStore } from "@/features/exams/mock/store";
 import { createMockStore, MockApiError, mockId, mockRequest } from "@/lib/mock/content-mock";
+import { assertQuestionRevision } from "./api.mock";
+import { isChildQuestionType } from "./editor-types";
 import type {
   QuestionSnapshot,
   QuestionUsage,
@@ -94,6 +96,10 @@ function assertSaveRequest(request: SaveQuestionRequest): void {
   if (request.type === "QUESTION_SET" && request.children.length < 2) {
     throw new MockApiError(422, "QUESTION_SET_CHILDREN_MIN");
   }
+  // D19: Bộ câu hỏi và Điền khuyết không làm câu con.
+  if (request.children.some((child) => !isChildQuestionType(child.type))) {
+    throw new MockApiError(422, "QUESTION_BODY_INVALID");
+  }
 }
 
 /** Dựng các trường nội dung của câu từ yêu cầu; câu con thừa hưởng phân loại của câu cha. */
@@ -113,17 +119,21 @@ function applyRequest(
       status: base.status,
       contentPreview: previewOf(child.content),
       subjectCode: request.subjectCode,
-      gradeCode: request.gradeCode,
-      difficultyCode: request.difficultyCode,
+      gradeCode: child.gradeCode ?? request.gradeCode,
+      difficultyCode: child.difficultyCode ?? request.difficultyCode,
       competencyCode: request.competencyCode ?? null,
+      taskTypeCode: request.taskTypeCode ?? null,
       points: child.points,
       knowledge: structuredClone(request.knowledge),
       tagCodes: [...request.tagCodes],
       hasSolution: Boolean(child.solution),
       version: base.version,
+      revision: base.revision,
       content: child.content,
       body: structuredClone(child.body),
       solution: child.solution,
+      commonMistakes: null,
+      attachmentIds: [],
       children: [],
       createdAt: previous?.createdAt ?? now,
       updatedAt: now,
@@ -135,7 +145,11 @@ function applyRequest(
       ? { type: "QUESTION_SET" as const, passage: request.content, childIds: children.map((child) => child.id) }
       : structuredClone(request.body);
   const points =
-    request.type === "QUESTION_SET" ? children.reduce((sum, child) => sum + child.points, 0) : request.points;
+    request.type === "QUESTION_SET"
+      ? children.reduce((sum, child) => sum + child.points, 0)
+      : request.body.type === "CLOZE"
+        ? request.body.blanks.reduce((sum, blank) => sum + blank.points, 0)
+        : request.points;
   return {
     ...base,
     type: request.type,
@@ -144,6 +158,7 @@ function applyRequest(
     gradeCode: request.gradeCode,
     difficultyCode: request.difficultyCode,
     competencyCode: request.competencyCode ?? null,
+    taskTypeCode: request.taskTypeCode ?? null,
     points,
     knowledge: structuredClone(request.knowledge),
     tagCodes: [...request.tagCodes],
@@ -151,7 +166,10 @@ function applyRequest(
     content: request.content,
     body,
     solution: request.solution,
+    commonMistakes: request.commonMistakes,
+    attachmentIds: [...request.attachmentIds],
     children,
+    revision: base.revision + 1,
     updatedAt: now,
   };
 }
@@ -172,11 +190,13 @@ export async function createQuestion(request: SaveQuestionRequest): Promise<Ques
         subjectCode: "",
         gradeCode: "",
         difficultyCode: "",
+        taskTypeCode: null,
         points: 0,
         knowledge: [],
         tagCodes: [],
         hasSolution: false,
         version: 1,
+        revision: 0,
         usedInExamCount: 0,
         sourceCode: null,
         createdBy: MOCK_CURRENT_AUTHOR,
@@ -185,6 +205,8 @@ export async function createQuestion(request: SaveQuestionRequest): Promise<Ques
         content: "",
         body: request.body,
         solution: null,
+        commonMistakes: null,
+        attachmentIds: [],
         children: [],
       };
       const question = questionStore.insert(applyRequest(blankQuestion, request, now));
@@ -206,7 +228,7 @@ export async function updateQuestion(id: string, request: UpdateQuestionRequest)
   return mockRequest(
     () => {
       const current = questionStore.require(id);
-      if (request.expectedVersion !== current.version) throw new MockApiError(409, "QUESTION_VERSION_CONFLICT");
+      assertQuestionRevision(current, request.expectedRevision);
       if (request.type !== current.type) throw new MockApiError(422, "QUESTION_TYPE_IMMUTABLE");
       assertSaveRequest(request);
       const history = historyOf(current);
@@ -256,6 +278,7 @@ export async function duplicateQuestion(id: string): Promise<QuestionDetail> {
         code: `${code}-${index + 1}`,
         status: "DRAFT" as const,
         version: 1,
+        revision: 0,
         usedInExamCount: 0,
         createdBy: MOCK_CURRENT_AUTHOR,
         createdAt: now,
@@ -267,6 +290,7 @@ export async function duplicateQuestion(id: string): Promise<QuestionDetail> {
         code,
         status: "DRAFT",
         version: 1,
+        revision: 0,
         usedInExamCount: 0,
         sourceCode: null,
         createdBy: MOCK_CURRENT_AUTHOR,
@@ -340,21 +364,27 @@ export async function restoreQuestionVersion(
     gradeCode: snapshot.gradeCode,
     difficultyCode: snapshot.difficultyCode,
     competencyCode: snapshot.competencyCode ?? null,
+    taskTypeCode: snapshot.taskTypeCode ?? null,
     points: snapshot.points,
     knowledge: snapshot.knowledge,
     tagCodes: snapshot.tagCodes,
     content: snapshot.content,
     solution: snapshot.solution,
+    commonMistakes: snapshot.commonMistakes ?? null,
+    attachmentIds: snapshot.attachmentIds ?? [],
     body: snapshot.body,
     children: snapshot.children.map((child) => ({
       id: child.id,
-      type: child.type === "QUESTION_SET" ? "SINGLE_CHOICE" : child.type,
+      type: isChildQuestionType(child.type) ? child.type : "SINGLE_CHOICE",
       content: child.content,
       body: child.body,
       solution: child.solution,
       points: child.points,
+      gradeCode: child.gradeCode,
+      difficultyCode: child.difficultyCode,
+      knowledgeIds: child.knowledge.map((ref) => ref.nodeId),
     })),
-    expectedVersion: request.expectedVersion,
+    expectedRevision: request.expectedRevision,
   });
 }
 

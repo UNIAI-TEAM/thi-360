@@ -29,8 +29,9 @@ const BODY_TITLE_KEY: Record<QuestionType, string> = {
   SINGLE_CHOICE: "options",
   MULTIPLE_CHOICE: "options",
   TRUE_FALSE: "statements",
-  FILL_IN: "blanks",
-  DRAG_DROP: "dragDrop",
+  SHORT_ANSWER: "shortAnswer",
+  CLOZE: "blanks",
+  MATCHING: "dragDrop",
   QUESTION_SET: "children",
   ESSAY: "essay",
 };
@@ -85,7 +86,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
       return;
     }
     updateMutation.mutate(
-      { ...request, expectedVersion: question.version },
+      { ...request, expectedRevision: question.revision },
       {
         onSuccess: ({ question: saved, versionCreated }) => {
           notify.success(
@@ -204,7 +205,7 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
   const error = useEditorError("content");
   const key = type === "QUESTION_SET" ? "passage" : type === "TRUE_FALSE" ? "sharedContent" : "content";
   const hintKey =
-    type === "FILL_IN"
+    type === "CLOZE"
       ? "fillIn"
       : type === "TRUE_FALSE"
         ? "trueFalse"

@@ -8,6 +8,8 @@
  * thì chạy nhánh API thật (tới FE-1, FE-2 là `notWired`).
  */
 
+export type MockFlag = "content" | "grading";
+
 function readFlag(value: string | undefined): boolean {
   const flag = value?.trim().toLowerCase();
   if (flag === "true") return true;

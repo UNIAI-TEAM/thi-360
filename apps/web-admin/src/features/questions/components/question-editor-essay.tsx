@@ -38,6 +38,7 @@ export function EssayEditor({ prefix }: { prefix: BodyPath }) {
   const matches = pointsValid && samePoints(total, points);
   const groupError = useEditorError(`${prefix}.rubric`);
   const sampleError = useEditorError(`${prefix}.sampleAnswer`);
+  const guideError = useEditorError(`${prefix}.gradingGuide`);
   const wordLimitError = useEditorError(`${prefix}.wordLimit`);
 
   return (
@@ -51,6 +52,12 @@ export function EssayEditor({ prefix }: { prefix: BodyPath }) {
           {pointsValid ? t("maxPoints", { points: format.number(points) }) : t("maxPointsUnknown")}
         </span>
       </div>
+
+      <FormField label={t("gradingGuide")} required hint={t("gradingGuideHint")} error={guideError}>
+        {(controlProps) => (
+          <Textarea {...controlProps} rows={4} maxLength={SAMPLE_ANSWER_MAX} {...register(`${prefix}.gradingGuide`)} />
+        )}
+      </FormField>
 
       <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0" aria-describedby={`${groupId}-hint`}>
         <legend className="text-label font-semibold text-text">{t("rubricLegend")}</legend>

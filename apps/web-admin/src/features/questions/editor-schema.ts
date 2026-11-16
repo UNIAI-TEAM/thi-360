@@ -21,11 +21,11 @@ import { CHILD_QUESTION_TYPES } from "./editor-types";
  * - Trắc nghiệm nhiều đáp án: ít nhất 2 phương án, ít nhất một phương án đúng.
  * - Đúng/Sai: ít nhất 2 ý, mỗi ý chọn Đúng hoặc Sai. Bảng điểm theo số ý đúng: mỗi ô là số không âm, không giảm dần,
  *   ô cuối bằng điểm của câu (UNI-2599).
- * - Điền đáp án: ít nhất 1 ô, mỗi ô có ít nhất một đáp án chấp nhận, số chỗ trống `___` trong đề bài bằng số ô.
- * - Kéo thả: ít nhất 1 ô thả, mỗi ô có nhãn và thẻ đúng; thẻ nhiễu không rỗng.
+ * - Trả lời ngắn: ít nhất một đáp án. Điền khuyết: ít nhất 1 ô, mỗi ô có ít nhất một đáp án, số chỗ trống `___` trong đề
+ *   bài bằng số ô. Ghép đôi: ít nhất 1 mục trái, mỗi mục có nhãn và lựa chọn đúng; lựa chọn thừa không rỗng.
  * - Câu chùm: đoạn dẫn chung, ít nhất 2 câu con, mỗi câu con hợp lệ theo dạng của nó.
- * - Tự luận: ít nhất 1 tiêu chí chấm, mỗi tiêu chí có mô tả và điểm lớn hơn 0, tổng điểm tiêu chí bằng điểm của câu;
- *   số chữ gợi ý (nếu có) là số nguyên dương (UNI-2599, chấm tay).
+ * - Tự luận: hướng dẫn chấm bắt buộc; tiêu chí chấm tùy chọn, có thì mỗi tiêu chí có mô tả, điểm lớn hơn 0 và tổng bằng
+ *   điểm của câu (D20); số chữ gợi ý (nếu có) là số nguyên dương.
  */
 
 export const CONTENT_MAX = 10_000;
@@ -35,7 +35,6 @@ export const ANSWER_MAX = 200;
 export const MIN_OPTIONS = 2;
 export const MIN_STATEMENTS = 2;
 export const MIN_CHILDREN = 2;
-export const MIN_CRITERIA = 1;
 export const CRITERION_MAX = 1_000;
 export const SAMPLE_ANSWER_MAX = 10_000;
 
@@ -70,7 +69,7 @@ export type EditorErrorKey =
   | "scoreValueInvalid"
   | "scoreNotIncreasing"
   | "scoreLastMismatch"
-  | "rubricMin"
+  | "gradingGuideRequired"
   | "criterionRequired"
   | "criterionMax"
   | "criterionPointsInvalid"
@@ -139,7 +138,19 @@ export function validateBody(
       validateScoreTable(body.scoreTable, pointsValid ? questionPoints : null, [...prefix, "scoreTable"], issues);
       return;
     }
-    case "FILL_IN": {
+    case "SHORT_ANSWER": {
+      const answers = body.blanks[0]?.answers ?? [];
+      if (answers.every((answer) => blank(answer.value))) {
+        issues.push({ path: [...prefix, "blanks", 0, "answers"], message: "blankAnswerRequired" });
+      }
+      answers.forEach((answer, answerIndex) => {
+        if (answer.value.length > ANSWER_MAX) {
+          issues.push({ path: [...prefix, "blanks", 0, "answers", answerIndex, "value"], message: "answerMax" });
+        }
+      });
+      return;
+    }
+    case "CLOZE": {
       body.blanks.forEach((entry, index) => {
         if (entry.answers.every((answer) => blank(answer.value))) {
           issues.push({ path: [...prefix, "blanks", index, "answers"], message: "blankAnswerRequired" });
@@ -156,7 +167,7 @@ export function validateBody(
       }
       return;
     }
-    case "DRAG_DROP": {
+    case "MATCHING": {
       body.zones.forEach((zone, index) => {
         if (blank(zone.label)) issues.push({ path: [...prefix, "zones", index, "label"], message: "zoneLabelRequired" });
         if (blank(zone.itemContent)) {
@@ -174,6 +185,7 @@ export function validateBody(
     case "QUESTION_SET":
       return;
     case "ESSAY": {
+      if (blank(body.gradingGuide)) issues.push({ path: [...prefix, "gradingGuide"], message: "gradingGuideRequired" });
       body.rubric.forEach((criterion, index) => {
         const at = [...prefix, "rubric", index];
         if (blank(criterion.description)) issues.push({ path: [...at, "description"], message: "criterionRequired" });
@@ -183,8 +195,8 @@ export function validateBody(
         const value = parsePoints(criterion.points);
         if (!Number.isFinite(value) || value <= 0) issues.push({ path: [...at, "points"], message: "criterionPointsInvalid" });
       });
-      if (body.rubric.length < MIN_CRITERIA) issues.push({ path: [...prefix, "rubric"], message: "rubricMin" });
-      else if (
+      if (
+        body.rubric.length > 0 &&
         pointsValid &&
         body.rubric.every((criterion) => parsePoints(criterion.points) > 0) &&
         !samePoints(rubricTotal(body.rubric), questionPoints)
@@ -269,6 +281,8 @@ const bodySchema = z.object({
   distractors: z.array(z.object({ id: z.string(), content: z.string() })),
   scoringRule: z.enum(MULTIPLE_CHOICE_RULES),
   scoreTable: z.array(z.string()),
+  gradingGuide: z.string(),
+  inputHint: z.string(),
   rubric: z.array(z.object({ id: z.string(), description: z.string(), points: z.string() })),
   sampleAnswer: z.string(),
   wordLimit: z.string(),
@@ -282,11 +296,14 @@ export const questionEditorSchema = z
     gradeCode: z.string(),
     difficultyCode: z.string(),
     competencyCode: z.string(),
+    taskTypeCode: z.string(),
     points: z.string(),
     knowledge: z.array(z.object({ nodeId: z.string(), code: z.string(), name: z.string(), primary: z.boolean() })),
     tagCodes: z.array(z.string()),
     content: z.string(),
     solution: z.string(),
+    commonMistakes: z.string(),
+    attachmentIds: z.array(z.string()),
     body: bodySchema,
     children: z.array(
       z.object({
