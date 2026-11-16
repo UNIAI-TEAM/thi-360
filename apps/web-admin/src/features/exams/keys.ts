@@ -1,4 +1,4 @@
-import type { AvailableQuestionsQuery, ListExamsQuery, SuggestExamCodeQuery } from "./types";
+import type { AvailableQuestionsQuery, ListExamsQuery, SubjectAvailableQuestionsQuery, SuggestExamCodeQuery } from "./types";
 
 /** Khóa truy vấn của Bài thi: dùng chung bởi facade `api.ts` và bản mẫu `api.mock.ts`. */
 export const EXAMS_QUERY_KEYS = {
@@ -10,4 +10,5 @@ export const EXAMS_QUERY_KEYS = {
   templates: () => ["exams", "templates"] as const,
   suggestedCode: (query: SuggestExamCodeQuery) => ["exams", "suggested-code", query] as const,
   available: (query: AvailableQuestionsQuery) => ["exams", "available-questions", query] as const,
+  subjectAvailable: (query: SubjectAvailableQuestionsQuery) => ["exams", "available-questions", "subject", query] as const,
 };

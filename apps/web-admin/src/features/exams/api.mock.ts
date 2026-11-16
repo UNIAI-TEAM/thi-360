@@ -5,8 +5,8 @@ import { mockId, mockRequest, MockApiError, paginate, type MockPage } from "@/li
 import {
   combinationsForKind,
   findTemplate,
-  formatOfScope,
   initialParts,
+  latestTemplate as latestScopeTemplate,
   partInputsFromValues,
   yearsDiffer,
 } from "./create-exam-schema";
@@ -357,13 +357,12 @@ interface ScopeRequest {
 
 /** Mẫu mới nhất khớp kỳ thi, phạm vi, phần hoặc môn (bước 1 không chọn mẫu hay năm, spec 5.2). */
 function latestTemplate(request: ScopeRequest): ExamTemplate | undefined {
-  return MOCK_EXAM_TEMPLATES.filter(
-    (template) =>
-      template.kind === request.kind &&
-      template.scope === request.scope &&
-      (request.scope !== "PART" || template.partCode === request.partCode) &&
-      (request.scope !== "SUBJECT" || template.subjectCode === request.subjectCode),
-  ).sort((a, b) => (b.structureYear ?? 0) - (a.structureYear ?? 0))[0];
+  return latestScopeTemplate(MOCK_EXAM_TEMPLATES, {
+    kind: request.kind,
+    scope: request.scope,
+    partCode: request.partCode ?? "",
+    subjectCode: request.subjectCode ?? "",
+  });
 }
 
 /** Mẫu của phạm vi (mẫu đã chọn nếu có, không thì mẫu mới nhất) và cách tính thời lượng: theo mẫu, không có thì theo kỳ thi. */
@@ -380,16 +379,15 @@ function scopeTemplate(request: ScopeRequest, templateCode?: string | null): {
  * trang Tạo bài thi, gồm khối gợi ý của mẫu.
  */
 function buildParts(request: ScopeRequest, template: ExamTemplate | undefined, timing: ExamTiming): ExamPart[] {
-  const format = formatOfScope(request.scope);
   const inputs = initialParts({
     templates: MOCK_EXAM_TEMPLATES,
     kind: request.kind,
-    format,
-    singleScope: request.partCode ?? "",
+    scope: request.scope,
+    partCode: request.partCode ?? "",
     combinations: combinationsForKind(reference.combinations, request.kind),
     scopeName: (scope) => PART_NAMES[scope] ?? subjectName(scope),
     subjectName,
-    template: format === "FULL" ? (template ?? null) : undefined,
+    template: request.scope === "PART" ? undefined : (template ?? null),
     subjectCode: request.subjectCode ?? "",
   });
   const pointsByPart = inputs.some((part) => part.points !== null);
@@ -775,21 +773,23 @@ export async function duplicateExam(id: string, request: DuplicateExamRequest): 
 }
 
 /** Ngừng bán: không bán thêm, học viên đã mua vẫn làm được phiên bản đang phục vụ. */
-export async function discontinueExam(id: string, expectedRevision: number): Promise<ExamDetail> { return mockRequest(
-  () => {
-    const current = examStore.require(id);
-    assertExamRevision(current, expectedRevision);
-    if (current.status !== "PUBLISHED") throw new MockApiError(409, "EXAM_NOT_PUBLISHED");
-    return examStore.update(id, (exam) => ({
-      ...exam,
-      revision: exam.revision + 1,
-      status: "DISCONTINUED",
-      updatedAt: nowIso(),
-      updatedBy: MOCK_CURRENT_AUTHOR,
-    }));
-  },
-  { ignoreScenario: true },
-); }
+export async function discontinueExam(id: string, expectedRevision: number): Promise<ExamDetail> {
+  return mockRequest(
+    () => {
+      const current = examStore.require(id);
+      assertExamRevision(current, expectedRevision);
+      if (current.status !== "PUBLISHED") throw new MockApiError(409, "EXAM_NOT_PUBLISHED");
+      return examStore.update(id, (exam) => ({
+        ...exam,
+        revision: exam.revision + 1,
+        status: "DISCONTINUED",
+        updatedAt: nowIso(),
+        updatedBy: MOCK_CURRENT_AUTHOR,
+      }));
+    },
+    { ignoreScenario: true },
+  );
+}
 
 // ---------------------------------------------------------------- nguồn câu hỏi
 
