@@ -5,7 +5,8 @@
       "code": "HSA-F-001",
       "name": "HSA FULL · Đề luyện số 1",
       "kind": "HSA",
-      "format": "FULL",
+      "scope": "FULL",
+      "revision": 3,
       "status": "PUBLISHED",
       "servingVersion": 2,
       "hasUnpublishedChanges": true,
@@ -13,10 +14,12 @@
       "durationMinutes": 195,
       "englishOption": true,
       "combinationCount": 3,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": null,
       "timing": "PER_PART",
       "maxScore": 150,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "INVALID",
@@ -30,6 +33,7 @@
         "name": "Nguyễn Thị Ngọc"
       },
       "description": "Đề luyện tổng hợp theo cấu trúc HSA 2025, dùng cho gói luyện thi tháng 11.",
+      "instructions": null,
       "templateCode": "HSA_FULL",
       "structureYear": null,
       "matrixYear": null,
@@ -41,6 +45,12 @@
           "name": "Phần 1 · Tư duy định lượng (Toán)",
           "durationMinutes": 75,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -55,7 +65,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -108,11 +118,11 @@
                 {
                   "id": "blk-23",
                   "name": "Điền đáp án",
-                  "questionType": "FILL_IN",
+                  "questionType": "SHORT_ANSWER",
                   "questionCount": 20,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -204,6 +214,12 @@
           "name": "Phần 2 · Tư duy định tính (Ngữ văn)",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -218,7 +234,7 @@
                   "questionCount": 10,
                   "setCount": 2,
                   "setSize": 5,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -272,7 +288,7 @@
                   "questionCount": 40,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -330,6 +346,12 @@
           "name": "Phần 3 · Khoa học hoặc Tiếng Anh",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "CHOICE",
+            "choose": 1
+          },
           "mode": "CHOICE",
           "sections": [],
           "options": [
@@ -350,7 +372,7 @@
                       "questionCount": 50,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2E1",
@@ -419,7 +441,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2L1",
@@ -481,7 +503,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2H1",
@@ -543,7 +565,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2S1"
@@ -611,7 +633,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2L1",
@@ -673,7 +695,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2H1",
@@ -735,7 +757,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2SU1"
@@ -803,7 +825,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2SU1"
@@ -864,7 +886,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2DI1"
@@ -925,7 +947,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2S1"
@@ -1017,7 +1039,8 @@
       "code": "QDA-F-001",
       "name": "QDA FULL · Đề luyện số 1",
       "kind": "QDA",
-      "format": "FULL",
+      "scope": "FULL",
+      "revision": 4,
       "status": "PUBLISHED",
       "servingVersion": 3,
       "hasUnpublishedChanges": false,
@@ -1025,10 +1048,12 @@
       "durationMinutes": 195,
       "englishOption": true,
       "combinationCount": 2,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": null,
       "timing": "PER_PART",
       "maxScore": 150,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "VALID",
@@ -1042,6 +1067,7 @@
         "name": "Phạm Mai Lan"
       },
       "description": null,
+      "instructions": null,
       "templateCode": "QDA_FULL",
       "structureYear": null,
       "matrixYear": null,
@@ -1053,6 +1079,12 @@
           "name": "Phần 1 · Toán học",
           "durationMinutes": 80,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -1067,7 +1099,7 @@
                   "questionCount": 35,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -1120,11 +1152,11 @@
                 {
                   "id": "blk-40",
                   "name": "Điền đáp án",
-                  "questionType": "FILL_IN",
+                  "questionType": "SHORT_ANSWER",
                   "questionCount": 15,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -1185,6 +1217,12 @@
           "name": "Phần 2 · Ngữ văn",
           "durationMinutes": 55,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -1199,7 +1237,7 @@
                   "questionCount": 50,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -1257,6 +1295,12 @@
           "name": "Phần 3 · Khoa học hoặc Tiếng Anh",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "CHOICE",
+            "choose": 1
+          },
           "mode": "CHOICE",
           "sections": [],
           "options": [
@@ -1277,7 +1321,7 @@
                       "questionCount": 50,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2E1",
@@ -1346,7 +1390,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2L1",
@@ -1408,7 +1452,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2H1",
@@ -1477,7 +1521,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2SU1"
@@ -1538,7 +1582,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2DI1"
@@ -1633,7 +1677,8 @@
       "code": "QDA-F-002",
       "name": "QDA FULL · Đề luyện số 2",
       "kind": "QDA",
-      "format": "FULL",
+      "scope": "FULL",
+      "revision": 5,
       "status": "PUBLISHED",
       "servingVersion": 1,
       "hasUnpublishedChanges": false,
@@ -1641,10 +1686,12 @@
       "durationMinutes": 195,
       "englishOption": true,
       "combinationCount": 2,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": null,
       "timing": "PER_PART",
       "maxScore": 150,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "NEEDS_RECHECK",
@@ -1658,6 +1705,7 @@
         "name": "Phạm Mai Lan"
       },
       "description": null,
+      "instructions": null,
       "templateCode": "QDA_FULL",
       "structureYear": null,
       "matrixYear": null,
@@ -1669,6 +1717,12 @@
           "name": "Phần 1 · Toán học",
           "durationMinutes": 80,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -1683,7 +1737,7 @@
                   "questionCount": 35,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -1736,11 +1790,11 @@
                 {
                   "id": "blk-56",
                   "name": "Điền đáp án",
-                  "questionType": "FILL_IN",
+                  "questionType": "SHORT_ANSWER",
                   "questionCount": 15,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -1801,6 +1855,12 @@
           "name": "Phần 2 · Ngữ văn",
           "durationMinutes": 55,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -1815,7 +1875,7 @@
                   "questionCount": 50,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -1873,6 +1933,12 @@
           "name": "Phần 3 · Khoa học hoặc Tiếng Anh",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "CHOICE",
+            "choose": 1
+          },
           "mode": "CHOICE",
           "sections": [],
           "options": [
@@ -1893,7 +1959,7 @@
                       "questionCount": 50,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2E1",
@@ -1962,7 +2028,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2L1",
@@ -2024,7 +2090,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2H1",
@@ -2093,7 +2159,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2SU1"
@@ -2154,7 +2220,7 @@
                       "questionCount": 25,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2DI1"
@@ -2227,7 +2293,8 @@
       "code": "HSA-L-TOAN-001",
       "name": "HSA Toán · Bài lẻ số 1",
       "kind": "HSA",
-      "format": "SINGLE",
+      "scope": "PART",
+      "revision": 6,
       "status": "PUBLISHED",
       "servingVersion": 1,
       "hasUnpublishedChanges": false,
@@ -2235,10 +2302,12 @@
       "durationMinutes": 75,
       "englishOption": false,
       "combinationCount": 0,
-      "singleSubjectCode": "MATH",
+      "partCode": "MATH",
       "subjectCode": null,
       "timing": "PER_PART",
       "maxScore": 50,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "VALID",
@@ -2252,6 +2321,7 @@
         "name": "Nguyễn Thị Ngọc"
       },
       "description": null,
+      "instructions": null,
       "templateCode": "HSA_SINGLE",
       "structureYear": null,
       "matrixYear": null,
@@ -2263,6 +2333,12 @@
           "name": "Toán",
           "durationMinutes": 75,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -2277,7 +2353,7 @@
                   "questionCount": 50,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -2352,7 +2428,8 @@
       "code": "QDA-L-TA-001",
       "name": "QDA Tiếng Anh · Bài lẻ số 1",
       "kind": "QDA",
-      "format": "SINGLE",
+      "scope": "PART",
+      "revision": 7,
       "status": "PUBLISHED",
       "servingVersion": 2,
       "hasUnpublishedChanges": true,
@@ -2360,10 +2437,12 @@
       "durationMinutes": 60,
       "englishOption": false,
       "combinationCount": 0,
-      "singleSubjectCode": "ENGLISH",
+      "partCode": "ENGLISH",
       "subjectCode": null,
       "timing": "PER_PART",
       "maxScore": 50,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "VALID",
@@ -2377,6 +2456,7 @@
         "name": "Trần Văn Hùng"
       },
       "description": null,
+      "instructions": null,
       "templateCode": null,
       "structureYear": null,
       "matrixYear": null,
@@ -2388,6 +2468,12 @@
           "name": "Tiếng Anh",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -2402,7 +2488,7 @@
                   "questionCount": 50,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2E1",
@@ -2494,7 +2580,8 @@
       "code": "HSA-F-002",
       "name": "HSA FULL · Đề luyện số 2",
       "kind": "HSA",
-      "format": "FULL",
+      "scope": "FULL",
+      "revision": 8,
       "status": "DRAFT",
       "servingVersion": null,
       "hasUnpublishedChanges": true,
@@ -2502,10 +2589,12 @@
       "durationMinutes": 195,
       "englishOption": true,
       "combinationCount": 2,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": null,
       "timing": "PER_PART",
       "maxScore": 150,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "UNCHECKED",
@@ -2519,6 +2608,7 @@
         "name": "Nguyễn Thị Ngọc"
       },
       "description": null,
+      "instructions": null,
       "templateCode": "HSA_FULL",
       "structureYear": null,
       "matrixYear": null,
@@ -2530,6 +2620,12 @@
           "name": "Phần 1 · Tư duy định lượng (Toán)",
           "durationMinutes": 75,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -2544,7 +2640,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -2597,11 +2693,11 @@
                 {
                   "id": "blk-87",
                   "name": "Điền đáp án",
-                  "questionType": "FILL_IN",
+                  "questionType": "SHORT_ANSWER",
                   "questionCount": 20,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -2693,6 +2789,12 @@
           "name": "Phần 2 · Tư duy định tính (Ngữ văn)",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -2707,7 +2809,7 @@
                   "questionCount": 10,
                   "setCount": 2,
                   "setSize": 5,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -2761,7 +2863,7 @@
                   "questionCount": 40,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -2819,6 +2921,12 @@
           "name": "Phần 3 · Khoa học hoặc Tiếng Anh",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "CHOICE",
+            "choose": 1
+          },
           "mode": "CHOICE",
           "sections": [],
           "options": [
@@ -2839,7 +2947,7 @@
                       "questionCount": 50,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2E1",
@@ -2908,7 +3016,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2L1",
@@ -2970,7 +3078,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2H1",
@@ -3032,7 +3140,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2S1"
@@ -3100,7 +3208,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2SU1"
@@ -3161,7 +3269,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2DI1"
@@ -3222,7 +3330,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2S1"
@@ -3292,7 +3400,8 @@
       "code": "HSA-F-000",
       "name": "HSA FULL · Đề thử tháng 10",
       "kind": "HSA",
-      "format": "FULL",
+      "scope": "FULL",
+      "revision": 9,
       "status": "DISCONTINUED",
       "servingVersion": 1,
       "hasUnpublishedChanges": false,
@@ -3300,10 +3409,12 @@
       "durationMinutes": 195,
       "englishOption": true,
       "combinationCount": 3,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": null,
       "timing": "PER_PART",
       "maxScore": 150,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "VALID",
@@ -3317,6 +3428,7 @@
         "name": "Trần Văn Hùng"
       },
       "description": null,
+      "instructions": null,
       "templateCode": "HSA_FULL",
       "structureYear": null,
       "matrixYear": null,
@@ -3328,6 +3440,12 @@
           "name": "Phần 1 · Tư duy định lượng (Toán)",
           "durationMinutes": 75,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -3342,7 +3460,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -3395,11 +3513,11 @@
                 {
                   "id": "blk-120",
                   "name": "Điền đáp án",
-                  "questionType": "FILL_IN",
+                  "questionType": "SHORT_ANSWER",
                   "questionCount": 20,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -3491,6 +3609,12 @@
           "name": "Phần 2 · Tư duy định tính (Ngữ văn)",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -3505,7 +3629,7 @@
                   "questionCount": 10,
                   "setCount": 2,
                   "setSize": 5,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -3559,7 +3683,7 @@
                   "questionCount": 40,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -3617,6 +3741,12 @@
           "name": "Phần 3 · Khoa học hoặc Tiếng Anh",
           "durationMinutes": 60,
           "questionCount": 50,
+          "questionCountOnPaper": 50,
+          "questionCountRequired": 50,
+          "participation": {
+            "mode": "CHOICE",
+            "choose": 1
+          },
           "mode": "CHOICE",
           "sections": [],
           "options": [
@@ -3637,7 +3767,7 @@
                       "questionCount": 50,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2E1",
@@ -3706,7 +3836,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2L1",
@@ -3768,7 +3898,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2H1",
@@ -3830,7 +3960,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2S1"
@@ -3898,7 +4028,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2L1",
@@ -3960,7 +4090,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2H1",
@@ -4022,7 +4152,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2SU1"
@@ -4090,7 +4220,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2SU1"
@@ -4151,7 +4281,7 @@
                       "questionCount": 17,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2DI1"
@@ -4212,7 +4342,7 @@
                       "questionCount": 16,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [
                           "kn-2S1"
@@ -4285,7 +4415,8 @@
       "code": "BCA-F-001",
       "name": "BCA · Đề luyện số 1",
       "kind": "BCA",
-      "format": "FULL",
+      "scope": "FULL",
+      "revision": 10,
       "status": "DRAFT",
       "servingVersion": null,
       "hasUnpublishedChanges": true,
@@ -4293,10 +4424,12 @@
       "durationMinutes": 180,
       "englishOption": false,
       "combinationCount": 4,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": null,
       "timing": "SHARED",
       "maxScore": 100,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": true,
       "check": {
         "status": "UNCHECKED",
@@ -4310,6 +4443,7 @@
         "name": "Nguyễn Thị Ngọc"
       },
       "description": "Đề mẫu BCA: tự luận Ngữ văn, trắc nghiệm bắt buộc và một tổ hợp tự chọn; 180 phút chung, thang 100.",
+      "instructions": null,
       "templateCode": "BCA_FULL",
       "structureYear": null,
       "matrixYear": null,
@@ -4331,6 +4465,12 @@
           "name": "Phần 1 · Tự luận Ngữ văn",
           "durationMinutes": null,
           "questionCount": 1,
+          "questionCountOnPaper": 1,
+          "questionCountRequired": 1,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -4345,7 +4485,7 @@
                   "questionCount": 1,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 25,
+                  "requiredPointsPerQuestion": 25,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-2V1"
@@ -4376,7 +4516,7 @@
             }
           ],
           "options": [],
-          "points": 25
+          "maxPoints": 25
         },
         {
           "id": "part-b2",
@@ -4384,6 +4524,12 @@
           "name": "Phần 2 · Trắc nghiệm bắt buộc",
           "durationMinutes": null,
           "questionCount": 65,
+          "questionCountOnPaper": 65,
+          "questionCountRequired": 65,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -4398,7 +4544,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -4451,11 +4597,11 @@
                 {
                   "id": "blk-b2-2",
                   "name": "Trả lời ngắn",
-                  "questionType": "FILL_IN",
+                  "questionType": "SHORT_ANSWER",
                   "questionCount": 5,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [
                       "kn-0D1",
@@ -4550,7 +4696,7 @@
                   "questionCount": 10,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -4601,7 +4747,7 @@
                   "questionCount": 20,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 0.75,
+                  "requiredPointsPerQuestion": 0.75,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -4650,7 +4796,7 @@
             }
           ],
           "options": [],
-          "points": 60
+          "maxPoints": 60
         },
         {
           "id": "part-b3",
@@ -4658,6 +4804,12 @@
           "name": "Phần 3 · Tự chọn",
           "durationMinutes": null,
           "questionCount": 15,
+          "questionCountOnPaper": 15,
+          "questionCountRequired": 15,
+          "participation": {
+            "mode": "CHOICE",
+            "choose": 1
+          },
           "mode": "CHOICE",
           "sections": [],
           "options": [
@@ -4678,7 +4830,7 @@
                       "questionCount": 15,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [],
                         "match": "ANY",
@@ -4745,7 +4897,7 @@
                       "questionCount": 15,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [],
                         "match": "ANY",
@@ -4812,7 +4964,7 @@
                       "questionCount": 15,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [],
                         "match": "ANY",
@@ -4879,7 +5031,7 @@
                       "questionCount": 15,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [],
                         "match": "ANY",
@@ -4930,7 +5082,7 @@
               "expertConfirmed": false
             }
           ],
-          "points": 15
+          "maxPoints": 15
         }
       ]
     },
@@ -4939,7 +5091,8 @@
       "code": "VACT-F-001",
       "name": "V-ACT · Đề luyện số 1",
       "kind": "VACT",
-      "format": "FULL",
+      "scope": "FULL",
+      "revision": 11,
       "status": "DRAFT",
       "servingVersion": null,
       "hasUnpublishedChanges": true,
@@ -4947,10 +5100,12 @@
       "durationMinutes": 150,
       "englishOption": false,
       "combinationCount": 0,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": null,
       "timing": "SHARED",
       "maxScore": null,
+      "referenceMax": 1200,
+      "practiceScoring": "LINEAR",
       "hasEssay": false,
       "check": {
         "status": "UNCHECKED",
@@ -4964,6 +5119,7 @@
         "name": "Phạm Mai Lan"
       },
       "description": "Đề mẫu V-ACT: khối câu theo năng lực, Phần 3 chia 12 câu Logic và 18 câu Suy luận khoa học.",
+      "instructions": null,
       "templateCode": "VACT_FULL",
       "structureYear": null,
       "matrixYear": null,
@@ -4985,6 +5141,12 @@
           "name": "Phần 1 · Sử dụng ngôn ngữ",
           "durationMinutes": null,
           "questionCount": 60,
+          "questionCountOnPaper": 60,
+          "questionCountRequired": 60,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -4999,7 +5161,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -5053,7 +5215,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -5104,6 +5266,12 @@
           "name": "Phần 2 · Toán học",
           "durationMinutes": null,
           "questionCount": 30,
+          "questionCountOnPaper": 30,
+          "questionCountRequired": 30,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -5118,7 +5286,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -5181,6 +5349,12 @@
           "name": "Phần 3 · Tư duy khoa học",
           "durationMinutes": null,
           "questionCount": 30,
+          "questionCountOnPaper": 30,
+          "questionCountRequired": 30,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -5195,7 +5369,7 @@
                   "questionCount": 30,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -5258,7 +5432,8 @@
       "code": "THPTQG-TIN-001",
       "name": "THPTQG Tin học · Đề luyện số 1",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
+      "revision": 12,
       "status": "DRAFT",
       "servingVersion": null,
       "hasUnpublishedChanges": true,
@@ -5266,10 +5441,12 @@
       "durationMinutes": 50,
       "englishOption": false,
       "combinationCount": 0,
-      "singleSubjectCode": null,
+      "partCode": null,
       "subjectCode": "INFORMATICS",
       "timing": "SHARED",
       "maxScore": 10,
+      "referenceMax": null,
+      "practiceScoring": "RAW",
       "hasEssay": false,
       "check": {
         "status": "UNCHECKED",
@@ -5283,6 +5460,7 @@
         "name": "Trần Văn Hùng"
       },
       "description": "Đề in 30 câu, học viên làm 28: 24 trắc nghiệm, 2 đúng/sai chung và 2 đúng/sai của nhánh đã chọn.",
+      "instructions": null,
       "templateCode": "THPTQG_INFORMATICS_2025",
       "structureYear": 2025,
       "matrixYear": 2025,
@@ -5304,6 +5482,12 @@
           "name": "Phần I · Trắc nghiệm chọn một",
           "durationMinutes": null,
           "questionCount": 24,
+          "questionCountOnPaper": 24,
+          "questionCountRequired": 24,
+          "participation": {
+            "mode": "ALL",
+            "choose": null
+          },
           "mode": "FIXED",
           "sections": [
             {
@@ -5318,7 +5502,7 @@
                   "questionCount": 24,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 0.25,
+                  "requiredPointsPerQuestion": 0.25,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -5370,6 +5554,12 @@
           "name": "Phần II · Đúng/Sai",
           "durationMinutes": null,
           "questionCount": 4,
+          "questionCountOnPaper": 4,
+          "questionCountRequired": 4,
+          "participation": {
+            "mode": "CHOICE",
+            "choose": 1
+          },
           "mode": "CHOICE",
           "sections": [
             {
@@ -5384,7 +5574,7 @@
                   "questionCount": 2,
                   "setCount": null,
                   "setSize": null,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "knowledgeScope": {
                     "nodeIds": [],
                     "match": "ANY",
@@ -5460,6 +5650,7 @@
                     "byDifficulty": []
                   },
                   "expectedScoring": {
+                    "trueFalseMethod": "COUNT_TABLE",
                     "trueFalseTable": [
                       0.1,
                       0.25,
@@ -5490,7 +5681,7 @@
                       "questionCount": 2,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [],
                         "match": "ANY",
@@ -5566,6 +5757,7 @@
                         "byDifficulty": []
                       },
                       "expectedScoring": {
+                        "trueFalseMethod": "COUNT_TABLE",
                         "trueFalseTable": [
                           0.1,
                           0.25,
@@ -5596,7 +5788,7 @@
                       "questionCount": 2,
                       "setCount": null,
                       "setSize": null,
-                      "pointsPerQuestion": 1,
+                      "requiredPointsPerQuestion": 1,
                       "knowledgeScope": {
                         "nodeIds": [],
                         "match": "ANY",
@@ -5672,6 +5864,7 @@
                         "byDifficulty": []
                       },
                       "expectedScoring": {
+                        "trueFalseMethod": "COUNT_TABLE",
                         "trueFalseTable": [
                           0.1,
                           0.25,
@@ -5693,7 +5886,7 @@
     {
       "code": "HSA_FULL",
       "kind": "HSA",
-      "format": "FULL",
+      "scope": "FULL",
       "name": "HSA FULL · 3 phần · 150 câu · 195 phút",
       "timing": "PER_PART",
       "durationMinutes": 195,
@@ -5762,7 +5955,7 @@
     {
       "code": "HSA_SINGLE",
       "kind": "HSA",
-      "format": "SINGLE",
+      "scope": "PART",
       "name": "HSA bài lẻ · 1 môn · 50 câu",
       "timing": "PER_PART",
       "durationMinutes": 75,
@@ -5780,7 +5973,7 @@
     {
       "code": "QDA_FULL",
       "kind": "QDA",
-      "format": "FULL",
+      "scope": "FULL",
       "name": "QDA FULL · 3 phần · 150 câu · 195 phút",
       "timing": "PER_PART",
       "durationMinutes": 195,
@@ -5813,7 +6006,7 @@
     {
       "code": "BCA_FULL",
       "kind": "BCA",
-      "format": "FULL",
+      "scope": "FULL",
       "name": "BCA · 3 phần · 81 câu · 180 phút chung · thang 100",
       "timing": "SHARED",
       "durationMinutes": 180,
@@ -5832,7 +6025,7 @@
               "name": "Nghị luận xã hội (tối thiểu 500 chữ)",
               "questionType": "ESSAY",
               "questionCount": 1,
-              "pointsPerQuestion": 25
+              "requiredPointsPerQuestion": 25
             }
           ]
         },
@@ -5852,7 +6045,7 @@
                   "name": "Trắc nghiệm",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 35,
-                  "pointsPerQuestion": 1
+                  "requiredPointsPerQuestion": 1
                 }
               ]
             },
@@ -5864,7 +6057,7 @@
                   "name": "Trắc nghiệm",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 10,
-                  "pointsPerQuestion": 1
+                  "requiredPointsPerQuestion": 1
                 }
               ]
             },
@@ -5876,7 +6069,7 @@
                   "name": "Trắc nghiệm",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 20,
-                  "pointsPerQuestion": 0.75
+                  "requiredPointsPerQuestion": 0.75
                 }
               ]
             }
@@ -5901,7 +6094,7 @@
                   "name": "Trắc nghiệm",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 15,
-                  "pointsPerQuestion": 1
+                  "requiredPointsPerQuestion": 1
                 }
               ]
             },
@@ -5916,7 +6109,7 @@
                   "name": "Trắc nghiệm",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 15,
-                  "pointsPerQuestion": 1
+                  "requiredPointsPerQuestion": 1
                 }
               ]
             },
@@ -5931,7 +6124,7 @@
                   "name": "Trắc nghiệm",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 15,
-                  "pointsPerQuestion": 1
+                  "requiredPointsPerQuestion": 1
                 }
               ]
             },
@@ -5946,7 +6139,7 @@
                   "name": "Trắc nghiệm",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 15,
-                  "pointsPerQuestion": 1
+                  "requiredPointsPerQuestion": 1
                 }
               ]
             }
@@ -5957,7 +6150,7 @@
     {
       "code": "VACT_FULL",
       "kind": "VACT",
-      "format": "FULL",
+      "scope": "FULL",
       "name": "V-ACT 2026 · 3 phần · 120 câu · 150 phút chung · thang 1.200",
       "timing": "SHARED",
       "durationMinutes": 150,
@@ -5979,7 +6172,7 @@
                   "name": "Tiếng Việt",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 30,
-                  "pointsPerQuestion": 10,
+                  "requiredPointsPerQuestion": 10,
                   "competencyCode": "VACT-NN-TV"
                 }
               ]
@@ -5992,7 +6185,7 @@
                   "name": "Tiếng Anh",
                   "questionType": "SINGLE_CHOICE",
                   "questionCount": 30,
-                  "pointsPerQuestion": 10,
+                  "requiredPointsPerQuestion": 10,
                   "competencyCode": "VACT-NN-TA"
                 }
               ]
@@ -6011,7 +6204,7 @@
               "name": "Toán học",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 30,
-              "pointsPerQuestion": 10,
+              "requiredPointsPerQuestion": 10,
               "competencyCode": "VACT-TOAN"
             }
           ],
@@ -6028,14 +6221,14 @@
               "name": "Logic, phân tích số liệu",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 12,
-              "pointsPerQuestion": 10,
+              "requiredPointsPerQuestion": 10,
               "competencyCode": "VACT-TD-LOGIC"
             },
             {
               "name": "Suy luận khoa học",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 18,
-              "pointsPerQuestion": 10,
+              "requiredPointsPerQuestion": 10,
               "competencyCode": "VACT-TD-SL"
             }
           ],
@@ -6046,7 +6239,7 @@
     {
       "code": "SPT_MATH_2025",
       "kind": "SPT",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "SPT 2025 · Toán · 25 câu · 90 phút",
       "subjectCode": "MATH",
       "structureYear": 2025,
@@ -6067,14 +6260,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 16,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 2,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6085,15 +6279,15 @@
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 4,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Tự luận",
               "questionType": "ESSAY",
               "questionCount": 3,
-              "pointsPerQuestion": 1
+              "requiredPointsPerQuestion": 1
             }
           ]
         }
@@ -6102,7 +6296,7 @@
     {
       "code": "SP2E_MATH_2025",
       "kind": "SP2E",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "SP2E 2025 · Toán · 22 câu",
       "subjectCode": "MATH",
       "structureYear": 2025,
@@ -6123,14 +6317,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 12,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6141,9 +6336,9 @@
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 6,
-              "pointsPerQuestion": 0.5
+              "requiredPointsPerQuestion": 0.5
             }
           ]
         }
@@ -6152,7 +6347,7 @@
     {
       "code": "SP2E_MATH_2026",
       "kind": "SP2E",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "SP2E 2026 · Toán · 40 câu (ma trận 2025)",
       "subjectCode": "MATH",
       "structureYear": 2026,
@@ -6173,13 +6368,13 @@
               "name": "Lựa chọn một đáp án",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 20,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Lựa chọn nhiều đáp án",
               "questionType": "MULTIPLE_CHOICE",
               "questionCount": 5,
-              "pointsPerQuestion": 0.25,
+              "requiredPointsPerQuestion": 0.25,
               "expectedScoring": {
                 "multipleChoiceRule": "ALL_OR_NOTHING"
               }
@@ -6188,15 +6383,15 @@
               "name": "Dữ liệu tổng hợp",
               "questionType": "QUESTION_SET",
               "questionCount": 5,
-              "pointsPerQuestion": 0.25,
+              "requiredPointsPerQuestion": 0.25,
               "setCount": 1,
               "setSize": 5
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 10,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             }
           ]
         }
@@ -6205,7 +6400,7 @@
     {
       "code": "THPTQG_MATH_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Toán · 22 câu · 90 phút",
       "subjectCode": "MATH",
       "structureYear": 2025,
@@ -6225,14 +6420,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 12,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6243,9 +6439,9 @@
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 6,
-              "pointsPerQuestion": 0.5
+              "requiredPointsPerQuestion": 0.5
             }
           ]
         }
@@ -6254,7 +6450,7 @@
     {
       "code": "THPTQG_LITERATURE_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Ngữ văn · 7 câu · 120 phút",
       "subjectCode": "LITERATURE",
       "structureYear": 2025,
@@ -6275,7 +6471,7 @@
               "name": "Đọc hiểu",
               "questionType": "QUESTION_SET",
               "questionCount": 5,
-              "pointsPerQuestion": 0.8,
+              "requiredPointsPerQuestion": 0.8,
               "setCount": 1,
               "setSize": 5
             },
@@ -6283,13 +6479,13 @@
               "name": "Viết đoạn văn (khoảng 200 chữ)",
               "questionType": "ESSAY",
               "questionCount": 1,
-              "pointsPerQuestion": 2
+              "requiredPointsPerQuestion": 2
             },
             {
               "name": "Viết bài văn (khoảng 600 chữ)",
               "questionType": "ESSAY",
               "questionCount": 1,
-              "pointsPerQuestion": 4
+              "requiredPointsPerQuestion": 4
             }
           ]
         }
@@ -6298,7 +6494,7 @@
     {
       "code": "THPTQG_ENGLISH_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Tiếng Anh · 40 câu · 50 phút",
       "subjectCode": "ENGLISH",
       "structureYear": 2025,
@@ -6318,7 +6514,7 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 40,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             }
           ]
         }
@@ -6327,7 +6523,7 @@
     {
       "code": "THPTQG_PHYSICS_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Vật lí · 28 câu · 50 phút",
       "subjectCode": "PHYSICS",
       "structureYear": 2025,
@@ -6347,14 +6543,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 18,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6365,9 +6562,9 @@
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 6,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             }
           ]
         }
@@ -6376,7 +6573,7 @@
     {
       "code": "THPTQG_CHEMISTRY_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Hóa học · 28 câu · 50 phút",
       "subjectCode": "CHEMISTRY",
       "structureYear": 2025,
@@ -6396,14 +6593,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 18,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6414,9 +6612,9 @@
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 6,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             }
           ]
         }
@@ -6425,7 +6623,7 @@
     {
       "code": "THPTQG_BIOLOGY_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Sinh học · 28 câu · 50 phút",
       "subjectCode": "BIOLOGY",
       "structureYear": 2025,
@@ -6445,14 +6643,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 18,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6463,9 +6662,9 @@
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 6,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             }
           ]
         }
@@ -6474,7 +6673,7 @@
     {
       "code": "THPTQG_GEOGRAPHY_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Địa lí · 28 câu · 50 phút",
       "subjectCode": "GEOGRAPHY",
       "structureYear": 2025,
@@ -6494,14 +6693,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 18,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6512,9 +6712,9 @@
             },
             {
               "name": "Trả lời ngắn",
-              "questionType": "FILL_IN",
+              "questionType": "SHORT_ANSWER",
               "questionCount": 6,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             }
           ]
         }
@@ -6523,7 +6723,7 @@
     {
       "code": "THPTQG_HISTORY_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Lịch sử · 28 câu · 50 phút",
       "subjectCode": "HISTORY",
       "structureYear": 2025,
@@ -6543,14 +6743,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 24,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6566,7 +6767,7 @@
     {
       "code": "THPTQG_ECON_LAW_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Giáo dục kinh tế và pháp luật · 28 câu · 50 phút",
       "subjectCode": "ECON_LAW",
       "structureYear": 2025,
@@ -6586,14 +6787,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 24,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6609,7 +6811,7 @@
     {
       "code": "THPTQG_TECH_INDUSTRY_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Công nghệ (định hướng công nghiệp) · 28 câu · 50 phút",
       "subjectCode": "TECH_INDUSTRY",
       "structureYear": 2025,
@@ -6629,14 +6831,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 24,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6652,7 +6855,7 @@
     {
       "code": "THPTQG_TECH_AGRICULTURE_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Công nghệ (định hướng nông nghiệp) · 28 câu · 50 phút",
       "subjectCode": "TECH_AGRICULTURE",
       "structureYear": 2025,
@@ -6672,14 +6875,15 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 24,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             },
             {
               "name": "Đúng/Sai",
               "questionType": "TRUE_FALSE",
               "questionCount": 4,
-              "pointsPerQuestion": 1,
+              "requiredPointsPerQuestion": 1,
               "expectedScoring": {
+                "trueFalseMethod": "COUNT_TABLE",
                 "trueFalseTable": [
                   0.1,
                   0.25,
@@ -6695,7 +6899,7 @@
     {
       "code": "THPTQG_INFORMATICS_2025",
       "kind": "THPTQG",
-      "format": "FULL",
+      "scope": "SUBJECT",
       "name": "THPTQG 2025 · Tin học · 30 câu trên đề, làm 28 · 50 phút",
       "subjectCode": "INFORMATICS",
       "structureYear": 2025,
@@ -6716,7 +6920,7 @@
               "name": "Trắc nghiệm chọn một",
               "questionType": "SINGLE_CHOICE",
               "questionCount": 24,
-              "pointsPerQuestion": 0.25
+              "requiredPointsPerQuestion": 0.25
             }
           ]
         },
@@ -6735,8 +6939,9 @@
                   "name": "Đúng/Sai chung",
                   "questionType": "TRUE_FALSE",
                   "questionCount": 2,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "expectedScoring": {
+                    "trueFalseMethod": "COUNT_TABLE",
                     "trueFalseTable": [
                       0.1,
                       0.25,
@@ -6761,8 +6966,9 @@
                   "name": "Đúng/Sai Khoa học máy tính",
                   "questionType": "TRUE_FALSE",
                   "questionCount": 2,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "expectedScoring": {
+                    "trueFalseMethod": "COUNT_TABLE",
                     "trueFalseTable": [
                       0.1,
                       0.25,
@@ -6785,8 +6991,9 @@
                   "name": "Đúng/Sai Tin học ứng dụng",
                   "questionType": "TRUE_FALSE",
                   "questionCount": 2,
-                  "pointsPerQuestion": 1,
+                  "requiredPointsPerQuestion": 1,
                   "expectedScoring": {
+                    "trueFalseMethod": "COUNT_TABLE",
                     "trueFalseTable": [
                       0.1,
                       0.25,
@@ -6802,7 +7009,7 @@
       ]
     }
   ],
-  "singleScopeNames": {
+  "partNames": {
     "MATH": "Toán",
     "LITERATURE": "Văn",
     "SCIENCE": "Khoa học",

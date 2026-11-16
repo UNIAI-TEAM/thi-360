@@ -1,12 +1,14 @@
 import type {
-  ExamFormat,
+  ExamScope,
   ExamTiming,
   MultipleChoiceRule,
   PersonRef,
+  PracticeScoring,
   QuestionType,
+  TrueFalseMethod,
 } from "@/features/content/types";
 
-export type { ExamFormat, ExamTiming } from "@/features/content/types";
+export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
 /**
  * Bài thi và ma trận đề (PBI-04), dữ liệu mẫu. Ma trận nằm trong bài thi (UniNote PBI-04).
@@ -35,24 +37,31 @@ export interface ExamSummary {
   code: string;
   name: string;
   kind: ExamKind;
-  format: ExamFormat;
+  /** Phạm vi bài thi: Toàn bài, Theo phần, Theo môn (PBI-04 mục 4). */
+  scope: ExamScope;
   status: ExamStatus;
+  /** Khóa lạc quan (D13): tăng ở mọi lần ghi. Mọi lệnh ghi gửi lại làm `expectedRevision`. */
+  revision: number;
   /** Phiên bản học viên đang làm; `null` khi chưa công bố lần nào. */
   servingVersion: number | null;
   /** Có bản sửa chưa công bố (bản làm việc khác phiên bản đang phục vụ). */
   hasUnpublishedChanges: boolean;
   totalQuestions: number;
   durationMinutes: number;
-  /** Phần tự chọn: có nhánh Tiếng Anh không, và số tổ hợp khoa học. Bài lẻ: môn của bài. */
+  /** Phần tự chọn: có nhánh Tiếng Anh không, và số tổ hợp khoa học. */
   englishOption: boolean;
   combinationCount: number;
-  singleSubjectCode: string | null;
-  /** Môn của bài với kỳ thi có mẫu theo môn (SPT, SP2E, THPTQG); kỳ thi khác để `null`. */
+  /** Phần thi của bài Theo phần (HSA, QDA: `MATH`, `LITERATURE`, `SCIENCE`, `ENGLISH`); phạm vi khác để `null`. */
+  partCode: string | null;
+  /** Môn của bài Theo môn (SPT, SP2E, THPTQG); phạm vi khác để `null`. */
   subjectCode: string | null;
   /** `SHARED`: `durationMinutes` là thời lượng chung, các phần không có thời lượng riêng (BCA, V-ACT). */
   timing: ExamTiming;
-  /** Thang điểm; `null` khi chưa đặt (V-ACT đặt thang luyện tập lúc thiết lập). */
+  /** Thang điểm thô; `null` khi chưa đặt (V-ACT đặt thang luyện tập lúc thiết lập). */
   maxScore: number | null;
+  /** Thang tham chiếu hiển thị (V-ACT 1.200); `null` khi không có (D11). */
+  referenceMax: number | null;
+  practiceScoring: PracticeScoring;
   /** Có câu Tự luận: điểm phần tự luận có sau khi chấm tay. */
   hasEssay: boolean;
   /** Số nhánh nội dung của phần tự chọn (THPTQG Tin học: 2); bỏ trống coi như 0. Danh sách tính từ cấu trúc. */
@@ -107,12 +116,17 @@ export interface QuestionBlock {
   id: string;
   name: string;
   questionType: QuestionType;
-  /** Số câu tính điểm của khối; câu chùm tính theo câu con (`setCount × setSize`). */
+  /** Số câu tính điểm của khối; Bộ câu hỏi tính theo câu con (`setCount × setSize`). */
   questionCount: number;
-  /** Câu chùm: số bộ và số câu con mỗi bộ; dạng khác để `null`. */
+  /** Bộ câu hỏi: số bộ và số câu con mỗi bộ; dạng khác để `null`. */
   setCount: number | null;
   setSize: number | null;
-  pointsPerQuestion: number;
+  /**
+   * Điểm mỗi câu yêu cầu (B5), không bắt buộc. Là điều kiện lọc nguồn: đặt thì chỉ câu có `points` bằng giá trị này
+   * (Bộ câu hỏi và Điền khuyết: từng thành phần) vào nguồn của khối. Kỳ thi có thang cố định cần đặt ở mọi khối để
+   * kiểm tra cấu hình chứng minh được tổng điểm; `null`: không lọc.
+   */
+  requiredPointsPerQuestion: number | null;
   knowledgeScope: KnowledgeScope;
   tagCodes: string[];
   matrix: BlockMatrix;
@@ -126,7 +140,8 @@ export interface QuestionBlock {
 }
 
 export interface BlockExpectedScoring {
-  /** Khối Đúng/Sai: bảng điểm theo số ý đúng. */
+  /** Khối Đúng/Sai: cách chấm mong đợi; `COUNT_TABLE` kèm bảng điểm theo số ý đúng. */
+  trueFalseMethod?: TrueFalseMethod;
   trueFalseTable?: number[];
   /** Khối nhiều đáp án: đúng hết mới có điểm hay chấm từng phần. */
   multipleChoiceRule?: MultipleChoiceRule;
@@ -159,6 +174,13 @@ export interface ExamPartOption {
   expertConfirmed?: boolean;
 }
 
+/** Quy tắc tham gia của phần: làm tất cả (`ALL`), hoặc chọn `choose` trong các phương án (`CHOICE`). */
+export interface PartParticipation {
+  mode: "ALL" | "CHOICE";
+  /** Số phương án phải chọn khi `mode = CHOICE`; `null` khi `ALL`. */
+  choose: number | null;
+}
+
 export interface ExamPart {
   id: string;
   order: number;
@@ -167,8 +189,14 @@ export interface ExamPart {
   durationMinutes: number | null;
   /** Số câu học viên làm trong phần (câu chung cộng một lựa chọn). */
   questionCount: number;
+  /** Số câu in trên đề của phần (THPTQG Tin học in 30 câu, học viên làm 28). */
+  questionCountOnPaper: number;
+  /** Số câu học viên phải làm trong phần. */
+  questionCountRequired: number;
+  /** Quy tắc tham gia của phần (spec 5.2). */
+  participation: PartParticipation;
   /** Điểm tối đa của phần khi kỳ thi chia điểm theo phần (BCA: 25 / 60 / 15); `null` hoặc bỏ trống: không chia. */
-  points?: number | null;
+  maxPoints?: number | null;
   /**
    * `FIXED`: mọi học viên làm cùng `sections`; `CHOICE`: học viên chọn một trong `options`. Phần `CHOICE` có `sections`
    * không rỗng: các môn đó là phần chung mọi học viên làm, cộng với một lựa chọn (THPTQG Tin học).
@@ -192,7 +220,9 @@ export interface ExamVersion {
 
 export interface ExamDetail extends ExamSummary {
   description: string | null;
-  /** Mẫu cấu trúc đã nạp khi tạo bài, ví dụ `HSA_FULL`, `THPTQG_MATH_2025`. */
+  /** Hướng dẫn làm bài (HTML đã lọc, không nhận ảnh); `null`: chưa có. */
+  instructions: string | null;
+  /** Mẫu cấu trúc đã nạp, ví dụ `HSA_FULL`, `THPTQG_MATH_2025`. */
   templateCode: string | null;
   /** Năm cấu trúc và năm ma trận của mẫu (SP2E); `null` khi mẫu không ghi năm. */
   structureYear: number | null;
@@ -206,7 +236,7 @@ export interface ExamDetail extends ExamSummary {
 export interface ListExamsQuery {
   q?: string;
   kind?: ExamKind;
-  format?: ExamFormat;
+  scope?: ExamScope;
   subjectCode?: string;
   status?: ExamStatus;
   checkStatus?: ExamCheckStatus;
@@ -225,9 +255,11 @@ export interface ListExamsQuery {
 export interface ExamTemplate {
   code: string;
   kind: ExamKind;
-  format: ExamFormat;
+  scope: ExamScope;
   name: string;
-  /** Môn của mẫu theo môn; mẫu theo kỳ thi để `null`. */
+  /** Phần của mẫu Theo phần; phạm vi khác để `null`. */
+  partCode?: string | null;
+  /** Môn của mẫu Theo môn; phạm vi khác để `null`. */
   subjectCode?: string | null;
   structureYear?: number | null;
   matrixYear?: number | null;
@@ -247,7 +279,7 @@ export interface ExamTemplatePart {
   /** `null` khi `timing = SHARED` hoặc tài liệu chưa ghi. */
   durationMinutes: number | null;
   mode: "FIXED" | "CHOICE";
-  /** Môn của phần cố định một môn; phần tự chọn, phần nhiều môn và mẫu bài lẻ để `null`. */
+  /** Môn của phần cố định một môn; phần tự chọn, phần nhiều môn và mẫu Theo phần để `null`. */
   subjectCode?: string | null;
   points?: number | null;
   /**
@@ -273,61 +305,78 @@ export interface ExamTemplateBlock {
   name: string;
   questionType: QuestionType;
   questionCount: number;
-  pointsPerQuestion: number;
+  requiredPointsPerQuestion: number | null;
   setCount?: number | null;
   setSize?: number | null;
   competencyCode?: string | null;
   expectedScoring?: BlockExpectedScoring;
 }
 
+/**
+ * Bước 1 Tạo bài thi (PBI-04 mục 4). Không chọn mẫu hay năm: hệ thống nạp mẫu mới nhất khớp kỳ thi, phạm vi, phần hoặc
+ * môn; chọn phiên bản năm ở bước Cấu trúc (`applyExamTemplate`).
+ */
 export interface CreateExamRequest {
   name: string;
   code: string;
   kind: ExamKind;
-  format: ExamFormat;
-  templateCode: string | null;
-  singleSubjectCode: string | null;
-  /** Môn của bài với kỳ thi có mẫu theo môn; kỳ thi khác bỏ trống. */
+  scope: ExamScope;
+  /** Bắt buộc khi `scope = PART`. */
+  partCode?: string | null;
+  /** Bắt buộc khi `scope = SUBJECT`. */
   subjectCode?: string | null;
+  description: string | null;
+  /** Hướng dẫn làm bài; được để trống khi lưu nháp. */
+  instructions?: string | null;
   /** Thời lượng chung khi `timing = SHARED`. */
   durationMinutes?: number | null;
   maxScore?: number | null;
-  /** Năm cấu trúc khác năm ma trận của mẫu: chuyên gia đã xác nhận chỉ tiêu ma trận lúc tạo. */
-  yearsConfirmed?: boolean;
-  description: string | null;
-  /**
-   * Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi (UniNote PBI-04 mục 5.1–5.3). Bỏ trống thì nạp nguyên mẫu theo
-   * `templateCode`.
-   */
+  /** Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi. Bỏ trống thì nạp nguyên mẫu mới nhất. */
   parts?: CreateExamPartInput[];
 }
 
 /** Quy tắc đảo câu của khối: đảo thứ tự câu trong khối hoặc giữ thứ tự. */
 export type BlockShuffleRule = "SHUFFLE" | "KEEP_ORDER";
 
-/** Sửa Thông tin chung. Đổi kỳ thi, hình thức, mẫu hoặc môn của bài lẻ thì cấu trúc được nạp lại theo mẫu. */
+/**
+ * Sửa Thông tin chung. Đổi kỳ thi, phạm vi, phần hoặc môn thì cấu trúc được nạp lại theo mẫu (giao diện hỏi xác nhận
+ * trước, `confirmReplace`); bài đã công bố không đổi được (409 `EXAM_SCOPE_LOCKED`).
+ */
 export interface UpdateExamInfoRequest {
   name: string;
   code: string;
   kind: ExamKind;
-  format: ExamFormat;
-  templateCode: string | null;
-  singleSubjectCode: string | null;
+  scope: ExamScope;
+  partCode?: string | null;
   subjectCode?: string | null;
+  description: string | null;
+  instructions?: string | null;
   durationMinutes?: number | null;
   maxScore?: number | null;
   yearsConfirmed?: boolean;
-  description: string | null;
+  /** Cấu trúc đã sửa thì phải `true`, nếu không 409 `EXAM_STRUCTURE_REPLACE_CONFIRM`. */
+  confirmReplace?: boolean;
+  expectedRevision: number;
+}
+
+/** Nạp lại cấu trúc theo một mẫu (chọn phiên bản năm ở bước Cấu trúc). */
+export interface ApplyExamTemplateRequest {
+  templateCode: string;
+  /** Cấu trúc đã sửa thì phải `true`, nếu không 409 `EXAM_STRUCTURE_REPLACE_CONFIRM`. */
+  confirmReplace: boolean;
+  expectedRevision: number;
 }
 
 /** Bản làm việc của cấu trúc và ma trận (`GET/PUT /exams/{id}/structure`). */
 export interface ExamStructure {
   examId: string;
+  revision: number;
   parts: ExamPart[];
 }
 
 export interface UpdateExamStructureRequest {
   parts: ExamPart[];
+  expectedRevision: number;
 }
 
 export interface DuplicateExamRequest {
@@ -337,10 +386,10 @@ export interface DuplicateExamRequest {
 
 export interface SuggestExamCodeQuery {
   kind: ExamKind;
-  format: ExamFormat;
-  /** Phần/môn của bài lẻ, để mã có đoạn môn (`HSA-L-TOAN-002`). */
-  singleScope?: string | null;
-  /** Môn của bài với kỳ thi có mẫu theo môn, để mã có đoạn môn (`THPTQG-F-TOAN-001`). */
+  scope: ExamScope;
+  /** Phần của bài Theo phần, để mã có đoạn phần (`HSA-P-TOAN-002`). */
+  partCode?: string | null;
+  /** Môn của bài Theo môn, để mã có đoạn môn (`THPTQG-S-TOAN-001`). */
   subjectCode?: string | null;
 }
 
@@ -349,6 +398,12 @@ export interface AvailableQuestionsQuery {
   subjectCode: string;
   questionType: QuestionType;
   knowledgeScope: KnowledgeScope;
+  /** Dạng bài (`ContentReference.taskTypes`); bỏ trống: không lọc. */
+  taskTypeCode?: string;
+  tagCodes?: string[];
+  competencyCodes?: string[];
+  /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */
+  requiredPointsPerQuestion?: number | null;
 }
 
 /** Số câu Sẵn sàng khớp bộ lọc của khối, tổng và theo từng ô Lớp × Độ khó (câu chùm đếm theo câu con). */

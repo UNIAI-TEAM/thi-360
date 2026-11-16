@@ -5,19 +5,11 @@ import { ApiStatusError } from "@/lib/api/query-client";
  *
  * Quy ước (DESIGN.md mục 5.14):
  * - Giao diện chỉ gọi hook TanStack Query trong `features/<x>/queries.ts`; hook gọi hàm trong `features/<x>/api.ts`.
- * - Hàm trong `api.ts` hiện gọi `mockRequest(...)` đọc dữ liệu từ `features/<x>/mock/*.json` (dữ liệu tiếng Việt nằm
+ * - Hàm trong `api.mock.ts` gọi `mockRequest(...)` đọc dữ liệu từ `features/<x>/mock/*.json` (dữ liệu tiếng Việt nằm
  *   trong JSON vì test quét mã nguồn chặn chữ có dấu trong `.ts`/`.tsx`).
- * - Khi có API thật: thay phần thân hàm bằng lời gọi `@thi360/api-client`, giữ nguyên chữ ký; kiểu trong `types.ts`
- *   đổi thành bí danh của `components["schemas"][...]`. Hook và giao diện không phải sửa.
+ * - `api.ts` chọn giữa `api.mock.ts` và API thật theo cờ ở `lib/mock/flags.ts`. Khi nối API thật (FE-1, FE-2): thay nhánh
+ *   thật bằng lời gọi `@thi360/api-client`, giữ nguyên chữ ký; hook và giao diện không phải sửa.
  */
-
-/** Bật menu và các màn dữ liệu mẫu. Mặc định bật khi chạy dev, tắt khi build production trừ khi đặt cờ `true`. */
-export function isContentMockEnabled(): boolean {
-  const flag = process.env.NEXT_PUBLIC_THI360_CONTENT_MOCK?.trim().toLowerCase();
-  if (flag === "true") return true;
-  if (flag === "false") return false;
-  return process.env.NODE_ENV === "development";
-}
 
 export const MOCK_SCENARIOS = ["data", "empty", "error", "loading"] as const;
 export type MockScenario = (typeof MOCK_SCENARIOS)[number];

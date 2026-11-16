@@ -446,14 +446,22 @@ function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
   return sections.flatMap((section) => section.blocks);
 }
 
+/** Điểm mỗi câu mặc định (B5) khi khối không đặt điểm mỗi câu yêu cầu. */
+export const DEFAULT_POINTS_PER_QUESTION = 1;
+
+/** Điểm mỗi câu của khối: điểm mỗi câu yêu cầu nếu có, không thì mặc định 1 (điểm thật lấy từ phiên bản câu khi sinh đề). */
+export function blockPointsEach(block: Pick<QuestionBlock, "requiredPointsPerQuestion">): number {
+  return block.requiredPointsPerQuestion ?? DEFAULT_POINTS_PER_QUESTION;
+}
+
 /** Tổng điểm các khối của một nhóm môn (số câu × điểm mỗi câu). */
 export function sectionsPoints(sections: readonly ExamSection[]): number {
-  return roundPrecision(sum(blocksOf(sections).map((block) => block.questionCount * block.pointsPerQuestion)));
+  return roundPrecision(sum(blocksOf(sections).map((block) => block.questionCount * blockPointsEach(block))));
 }
 
 /** Điểm riêng của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
 export function partPoints(part: ExamPart): number | null {
-  return part.points ?? null;
+  return part.maxPoints ?? null;
 }
 
 export interface ValidateStructureOptions {
@@ -556,7 +564,7 @@ export function structureTotals(parts: readonly ExamPart[], options: StructureTo
     const counts = groups.map((blocks) => sum(blocks.map((block) => block.questionCount)));
     allocated += counts.length ? Math.min(...counts) : 0;
     const first = groups[0] ?? [];
-    totalPoints += sum(first.map((block) => block.questionCount * block.pointsPerQuestion));
+    totalPoints += sum(first.map((block) => block.questionCount * blockPointsEach(block)));
   }
   const totalQuestions = sum(parts.map((part) => part.questionCount));
   return {

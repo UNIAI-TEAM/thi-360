@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
+
 import { Suspense } from "react";
 import { GradingAttemptView } from "@/features/grading/components/grading-attempt-view";
-import { isContentMockEnabled } from "@/lib/mock/content-mock";
+
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("grading");
@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** Màn chấm một lượt thi. Câu đang mở đọc từ `?question=` nên cần Suspense cho `useSearchParams`. */
 export default async function GradingAttemptPage({ params }: { params: Promise<{ attemptId: string }> }) {
-  if (!isContentMockEnabled()) notFound();
+  
   const { attemptId } = await params;
   return (
     <Suspense>

@@ -1,4 +1,5 @@
 import type { PersonRef, QuestionType } from "@/features/content/types";
+import type { QuestionBody } from "@/features/questions/types";
 import type { ExamCheckStatus, ExamPart, ExamVersion, MatrixMode } from "./types";
 
 /**
@@ -213,11 +214,35 @@ export interface ExamCheckOutcome {
   maxScore: number | null;
 }
 
+/** Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi. */
+export type CheckInvalidReason = "STRUCTURE_CHANGED" | "CONFIG_CHANGED" | "SOURCE_CHANGED";
+
 export interface ExamCheckResult extends ExamCheckOutcome {
   examId: string;
   checkedAt: string;
   durationSeconds: number;
   timeLimitSeconds: number;
+  /** `true` khi bài đã đổi trong lúc kiểm tra: kết quả trả về nhưng không được lưu (spec 5.4). */
+  stale: boolean;
+  /** Kết quả đã lưu hết hiệu lực vì sao; `null` khi còn hiệu lực. */
+  invalidReason: CheckInvalidReason | null;
+}
+
+/**
+ * Lần kiểm tra kỹ chạy nền (spec 5.4: proxy web cắt ở 60 giây). `startDeepCheck` trả `runId`; web hỏi `getCheckRun` tới
+ * khi `state` khác `RUNNING`. `DONE` có `result`; `FAILED` có `errorCode` (ví dụ `CHECK_RUN_ABANDONED`).
+ */
+export type CheckRunState = "RUNNING" | "DONE" | "FAILED";
+
+export interface ExamCheckRun {
+  runId: string;
+  state: CheckRunState;
+  result: ExamCheckResult | null;
+  errorCode: string | null;
+}
+
+export interface StartDeepCheckResponse {
+  runId: string;
 }
 
 /* ---------- Đề xem trước ---------- */
@@ -242,11 +267,13 @@ export interface PreviewQuestion {
   knowledge: { nodeId: string; code: string; name: string } | null;
   points: number;
   options: PreviewOption[] | null;
-  /** Đáp án dạng chữ (điền đáp án, đúng sai); chỉ hiện trong chế độ quản trị. */
+  /** Đáp án dạng chữ (Trả lời ngắn, Điền khuyết, Đúng/Sai, Ghép đôi); chỉ hiện trong chế độ quản trị. */
   answer: string | null;
   solution: string | null;
-  /** Câu Tự luận: tiêu chí chấm (chấm tay); dạng khác để `null`. */
+  /** Câu Tự luận: tiêu chí chấm (chấm tay, tùy chọn); dạng khác để `null`. */
   rubric: Array<{ id: string; description: string; points: number }> | null;
+  /** Phần thân đủ để dựng Điền khuyết, Ghép đôi, Đúng/Sai; có đáp án vì là chế độ quản trị. `null` với câu mô phỏng. */
+  body: QuestionBody | null;
 }
 
 export type PreviewItem =
@@ -276,7 +303,8 @@ export interface PreviewBlock {
   questionType: QuestionType;
   /** Khối Tự luận: chấm tay, điểm có sau khi người chấm xong. */
   manualGrading: boolean;
-  pointsPerQuestion: number;
+  /** Điểm mỗi câu của khối trên đề đã sinh (điểm lấy từ phiên bản câu, B5). */
+  pointsEach: number;
   firstNumber: number;
   lastNumber: number;
   questionCount: number;
@@ -405,7 +433,7 @@ export interface ExamVersionDetail {
 
 export interface RunExamCheckRequest {
   examId: string;
-  /** Chạy với giới hạn xử lý dài hơn cho đường "Chưa xác nhận được". */
+  /** Chạy với giới hạn xử lý dài hơn; màn Kiểm tra hiện chạy bằng cờ này tới khi FE-3c chuyển sang `startDeepCheck`. */
   extendedTimeLimit?: boolean;
 }
 
@@ -420,6 +448,8 @@ export interface PublishExamRequest {
   examId: string;
   pathIds: string[];
   note: string | null;
+  /** `revision` của bài lúc mở màn (D13); lệch thì 412 `EXAM_REVISION_CONFLICT`. */
+  expectedRevision: number;
 }
 
 export interface PublishExamResponse {

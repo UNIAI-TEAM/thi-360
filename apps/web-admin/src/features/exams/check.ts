@@ -12,7 +12,7 @@ import type {
   PathCheck,
   PathChoice,
 } from "./review-types";
-import { apportionByPercent, printedPartQuestions } from "./matrix";
+import { apportionByPercent, blockPointsEach, printedPartQuestions } from "./matrix";
 import { CHECK_GROUPS } from "./review-types";
 import type { BlockMatrix, ExamDetail, ExamPart, ExamSection, MatrixDimensionValue, QuestionBlock } from "./types";
 
@@ -556,7 +556,7 @@ function roundPoints(value: number): number {
 }
 
 function pointsOf(blocks: readonly QuestionBlock[]): number {
-  return roundPoints(blocks.reduce((sum, block) => sum + block.questionCount * block.pointsPerQuestion, 0));
+  return roundPoints(blocks.reduce((sum, block) => sum + block.questionCount * blockPointsEach(block), 0));
 }
 
 export interface CheckExamOptions {
@@ -573,7 +573,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
   const timeLimitSeconds = options.timeLimitSeconds ?? CHECK_TIME_LIMIT_SECONDS;
   const parts = sortedParts(exam.parts);
   const examIssues: CheckIssue[] = [];
-  if (!exam.name.trim() || !exam.code.trim() || (exam.format === "SINGLE" && !exam.singleSubjectCode)) {
+  if (!exam.name.trim() || !exam.code.trim() || (exam.scope === "PART" && !exam.partCode)) {
     examIssues.push(makeIssue({ code: "INFO_MISSING" }));
   }
   if (yearsNeedConfirmation(exam)) {
@@ -605,16 +605,16 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     for (const group of pathSections(parts, path)) {
       const { part, optionId, sections } = group;
       totalMinutes += part.durationMinutes ?? 0;
-      if (part.points !== null && part.points !== undefined) {
+      if (part.maxPoints !== null && part.maxPoints !== undefined) {
         const points = pointsOf(sections.flatMap((section) => section.blocks));
-        if (Math.abs(points - part.points) > POINTS_TOLERANCE) {
+        if (Math.abs(points - part.maxPoints) > POINTS_TOLERANCE) {
           issues.push(
             makeIssue({
               code: "PART_POINTS_MISMATCH",
               partId: part.id,
               partName: part.name,
               optionId,
-              required: part.points,
+              required: part.maxPoints,
               available: points,
             }),
           );
@@ -664,7 +664,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
           blocks.push(checked);
           issues.push(...checked.issues);
           totalQuestions += block.questionCount;
-          totalPoints += block.questionCount * block.pointsPerQuestion;
+          totalPoints += block.questionCount * blockPointsEach(block);
         }
       }
     }

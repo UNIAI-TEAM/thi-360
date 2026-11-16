@@ -81,9 +81,9 @@ function rubricOf(question: QuestionDetail): PreviewQuestion["rubric"] {
 }
 
 function answerOf(question: QuestionDetail): string | null {
-  if (question.body.type === "FILL_IN") {
-    return question.body.blanks.map((blank) => blank.acceptedAnswers.join(" / ")).join(" · ") || null;
-  }
+  const { body } = question;
+  if (body.type === "SHORT_ANSWER") return body.answers.join(" / ") || null;
+  if (body.type === "CLOZE") return body.blanks.map((blank) => blank.answers.join(" / ")).join(" · ") || null;
   return null;
 }
 
@@ -124,7 +124,8 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     take(question.id);
     const primary = question.knowledge.find((ref) => ref.primary) ?? question.knowledge[0] ?? null;
     countKnowledge(primary?.nodeId ?? null);
-    totalPoints += block.pointsPerQuestion;
+    const points = block.requiredPointsPerQuestion ?? question.points;
+    totalPoints += points;
     return {
       number: number++,
       questionId: question.id,
@@ -136,11 +137,12 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       gradeCode: question.gradeCode,
       difficultyCode: question.difficultyCode,
       knowledge: primary ? { nodeId: primary.nodeId, code: primary.code, name: primary.name } : null,
-      points: block.pointsPerQuestion,
+      points,
       options: optionsOf(question),
       answer: answerOf(question),
       solution: question.solution,
       rubric: rubricOf(question),
+      body: structuredClone(question.body),
     };
   };
 
@@ -151,7 +153,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     const scopeIds = block.knowledgeScope.nodeIds;
     const nodeId = scopeIds.length ? scopeIds[simulatedSequence % scopeIds.length]! : null;
     countKnowledge(nodeId);
-    totalPoints += block.pointsPerQuestion;
+    totalPoints += blockPointsEach(block);
     return {
       number: number++,
       questionId: id,
@@ -163,11 +165,12 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       gradeCode: slot.gradeCode,
       difficultyCode: slot.difficultyCode,
       knowledge: nodeId ? knowledgeNode(nodeId) : null,
-      points: block.pointsPerQuestion,
+      points: blockPointsEach(block),
       options: null,
       answer: null,
       solution: null,
       rubric: null,
+      body: null,
     };
   };
 
@@ -279,7 +282,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       subjectCode,
       questionType: block.questionType,
       manualGrading: block.questionType === "ESSAY",
-      pointsPerQuestion: block.pointsPerQuestion,
+      pointsEach: blockPointsEach(block),
       firstNumber,
       lastNumber: number - 1,
       questionCount: questions.length,
@@ -308,7 +311,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       firstNumber,
       lastNumber: number - 1,
       points: roundPoints(totalPoints - pointsBefore),
-      maxPoints: part.points ?? null,
+      maxPoints: part.maxPoints ?? null,
       blocks,
     };
   });

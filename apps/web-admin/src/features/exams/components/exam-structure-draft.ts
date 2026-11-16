@@ -94,7 +94,7 @@ export function newBlock(name: string): QuestionBlock {
     questionCount: 0,
     setCount: null,
     setSize: null,
-    pointsPerQuestion: 1,
+    requiredPointsPerQuestion: null,
     knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
     tagCodes: [],
     matrix: emptyMatrix(),

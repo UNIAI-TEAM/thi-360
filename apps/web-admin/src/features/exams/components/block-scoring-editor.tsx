@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import type { MultipleChoiceRule, ScoringDefaults } from "@/features/content/types";
 import type { BlockExpectedScoring, QuestionBlock } from "../types";
+import { blockPointsEach } from "../matrix";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 
@@ -27,7 +28,7 @@ export function evenTrueFalseTable(statementCount: number, points: number): numb
  * 1); kỳ thi không có bảng thì chia đều 4 ý.
  */
 export function defaultTrueFalseTable(defaults: ScoringDefaults | null, points: number): number[] {
-  const table = defaults?.trueFalseTable;
+  const table = defaults?.trueFalse.table;
   if (!table?.length) return evenTrueFalseTable(4, points);
   const max = table.at(-1) || 1;
   return table.map((value) => round((value * points) / max));
@@ -52,7 +53,7 @@ export function expectedScoringFor(
   defaults: ScoringDefaults | null,
   points: number,
 ): BlockExpectedScoring | undefined {
-  if (questionType === "TRUE_FALSE" && defaults?.trueFalseTable?.length) {
+  if (questionType === "TRUE_FALSE" && defaults?.trueFalse.table.length) {
     return { trueFalseTable: defaultTrueFalseTable(defaults, points) };
   }
   if (questionType === "MULTIPLE_CHOICE" && defaults) return { multipleChoiceRule: defaults.multipleChoiceRule };
@@ -95,7 +96,7 @@ export function BlockScoringEditor({ block, defaults, onChange }: BlockScoringEd
   const table = block.expectedScoring?.trueFalseTable;
   const rule = block.expectedScoring?.multipleChoiceRule;
   const enabled = isTrueFalse ? Boolean(table?.length) : Boolean(rule);
-  const points = block.pointsPerQuestion;
+  const points = blockPointsEach(block);
 
   const toggle = (on: boolean) => {
     if (!on) onChange(undefined);
@@ -140,7 +141,7 @@ export function BlockScoringEditor({ block, defaults, onChange }: BlockScoringEd
                 {t("statementsHint", { min: MIN_STATEMENTS, max: MAX_STATEMENTS })}
               </span>
             </div>
-            {defaults?.trueFalseTable?.length ? (
+            {defaults?.trueFalse.table.length ? (
               <Button
                 type="button"
                 variant="secondary"

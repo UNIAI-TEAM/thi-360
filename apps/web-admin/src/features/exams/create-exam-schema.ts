@@ -4,8 +4,8 @@ import { splitEvenly, sum } from "./matrix";
 import type {
   CreateExamPartInput,
   CreateExamRequest,
-  ExamFormat,
   ExamKind,
+  ExamScope as ApiExamScope,
   ExamTemplate,
   ExamTemplateBlock,
   ExamTemplatePart,
@@ -17,6 +17,22 @@ import type {
  * `docs/specs/2026-11-16-mockup-7-ky-thi.md`) và tab Thông tin chung. Không phụ thuộc React để kiểm thử riêng; chữ báo
  * lỗi truyền vào từ `exams.create.validation`. Quy tắc theo kỳ thi đọc từ danh mục (`ExamKindOption`), không so mã.
  */
+
+/**
+ * Hình thức của bước 1 hiện tại (giao diện đang làm theo bản UniNote trước): `FULL` là Toàn bài hoặc Theo môn, `SINGLE`
+ * là Theo phần. API dùng phạm vi (`ExamScope`); hai hàm dưới đổi qua lại ở ranh giới. FE-3c đổi bước 1 sang phạm vi.
+ */
+export type ExamFormat = "FULL" | "SINGLE";
+
+export function formatOfScope(scope: ApiExamScope): ExamFormat {
+  return scope === "PART" ? "SINGLE" : "FULL";
+}
+
+/** Phạm vi gửi lên theo hình thức: bài lẻ là Theo phần; còn lại Theo môn với kỳ thi có mẫu theo môn, không thì Toàn bài. */
+export function scopeOfFormat(format: ExamFormat, kinds: readonly ExamKindOption[], kind: ExamKind): ApiExamScope {
+  if (format === "SINGLE") return "PART";
+  return kindOptionFor(kinds, kind)?.templateBy === "SUBJECT" ? "SUBJECT" : "FULL";
+}
 
 export const EXAM_NAME_MAX = 200;
 export const EXAM_CODE_MAX = 50;
@@ -47,13 +63,16 @@ export function isSubjectKind(kinds: readonly ExamKindOption[], kind: ExamKind):
   return kindOptionFor(kinds, kind)?.templateBy === "SUBJECT";
 }
 
-/** Hình thức kỳ thi cho phép (HSA, QDA có FULL và bài lẻ; kỳ thi khác chỉ FULL). Không có trong danh mục: cả hai. */
+/** Hình thức kỳ thi cho phép, suy từ phạm vi (HSA, QDA có Toàn bài và bài lẻ; kỳ thi khác chỉ Toàn bài). Không có trong danh mục: cả hai. */
 export function formatsForKind(kinds: readonly ExamKindOption[], kind: ExamKind): ExamFormat[] {
-  return kindOptionFor(kinds, kind)?.formats ?? ["FULL", "SINGLE"];
+  const option = kindOptionFor(kinds, kind);
+  if (!option) return ["FULL", "SINGLE"];
+  const formats = new Set(option.scopes.map(formatOfScope));
+  return (["FULL", "SINGLE"] as const).filter((format) => formats.has(format));
 }
 
 export function templateFor(templates: readonly ExamTemplate[], kind: ExamKind, format: ExamFormat): ExamTemplate | undefined {
-  return templates.find((template) => template.kind === kind && template.format === format);
+  return templates.find((template) => template.kind === kind && formatOfScope(template.scope) === format);
 }
 
 /** Mẫu theo môn của kỳ thi, năm cấu trúc mới nhất trước. */
@@ -64,7 +83,7 @@ export function subjectTemplates(
   subjectCode: string,
 ): ExamTemplate[] {
   return templates
-    .filter((template) => template.kind === kind && template.format === format && template.subjectCode === subjectCode)
+    .filter((template) => template.kind === kind && formatOfScope(template.scope) === format && template.subjectCode === subjectCode)
     .sort((a, b) => (b.structureYear ?? 0) - (a.structureYear ?? 0));
 }
 
@@ -76,7 +95,7 @@ export function templateCountBySubject(
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const template of templates) {
-    if (template.kind !== kind || template.format !== format || !template.subjectCode) continue;
+    if (template.kind !== kind || formatOfScope(template.scope) !== format || !template.subjectCode) continue;
     counts.set(template.subjectCode, (counts.get(template.subjectCode) ?? 0) + 1);
   }
   return counts;
@@ -760,21 +779,26 @@ export function partInputsFromValues(
   });
 }
 
-export function toCreateExamRequest(values: CreateExamFormValues, templates: readonly ExamTemplate[]): CreateExamRequest {
-  const template = findTemplate(templates, values.templateCode);
+/**
+ * Yêu cầu tạo bài (bước 1, PBI-04 mục 4). Mẫu và xác nhận năm không đi theo yêu cầu: máy chủ nạp mẫu mới nhất khớp
+ * phạm vi; mẫu khác hoặc xác nhận năm đi sau bằng `applyExamTemplate` và `updateExamInfo` (xem `useCreateExam`).
+ */
+export function toCreateExamRequest(
+  values: CreateExamFormValues,
+  kinds: readonly ExamKindOption[],
+): CreateExamRequest {
   const shared = values.timing === "SHARED";
   return {
     name: values.name.trim(),
     code: values.code.trim().toUpperCase(),
     kind: values.kind,
-    format: values.format,
-    templateCode: template?.code ?? null,
-    singleSubjectCode: values.format === "SINGLE" ? values.singleSubjectCode : null,
+    scope: scopeOfFormat(values.format, kinds, values.kind),
+    partCode: values.format === "SINGLE" ? values.singleSubjectCode : null,
     subjectCode: values.subjectCode || null,
     durationMinutes: shared ? values.sharedDuration : null,
     maxScore: values.maxScore,
-    ...(yearsDiffer(template) ? { yearsConfirmed: values.yearsConfirmed } : {}),
     description: values.description.trim() || null,
+    instructions: null,
     parts: partInputsFromValues(values.parts, values),
   };
 }

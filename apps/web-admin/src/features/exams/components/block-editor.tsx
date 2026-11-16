@@ -27,7 +27,7 @@ import {
   type ScoringDefaults,
 } from "@/features/content/types";
 import type { MatrixAxes } from "../matrix";
-import { validateBlock } from "../matrix";
+import { blockPointsEach, validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
 import type { BlockShuffleRule, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
@@ -104,7 +104,7 @@ export function BlockEditor({
   const update = (patch: Partial<QuestionBlock>) => onChange({ ...block, ...patch });
   const setType = (questionType: QuestionType) => {
     // Đổi dạng câu thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
-    const expectedScoring = expectedScoringFor(questionType, scoringDefaults, block.pointsPerQuestion);
+    const expectedScoring = expectedScoringFor(questionType, scoringDefaults, blockPointsEach(block));
     if (questionType === "QUESTION_SET") {
       const setSize = Math.max(block.questionCount, 1);
       update({ questionType, setCount: 1, setSize, questionCount: setSize, expectedScoring });
@@ -226,14 +226,14 @@ export function BlockEditor({
         <FormField
           label={t("points")}
           required
-          hint={t("pointsTotal", { points: Math.round(block.questionCount * block.pointsPerQuestion * 10_000) / 10_000 })}
+          hint={t("pointsTotal", { points: Math.round(block.questionCount * blockPointsEach(block) * 10_000) / 10_000 })}
         >
           {(controlProps) => (
             <BlockNumberInput
               {...controlProps}
               allowDecimal
-              value={block.pointsPerQuestion}
-              onValueChange={(pointsPerQuestion) => update({ pointsPerQuestion })}
+              value={blockPointsEach(block)}
+              onValueChange={(requiredPointsPerQuestion) => update({ requiredPointsPerQuestion })}
             />
           )}
         </FormField>
