@@ -6060,12 +6060,6 @@
               "kind": "SUBJECT_CHOICE",
               "code": "SCIENCE",
               "name": "Khoa học",
-              "subjectCounts": [
-                17,
-                17,
-                16
-              ],
-              "expertConfirmed": false,
               "subjectChoice": {
                 "sections": [
                   {
