@@ -248,29 +248,28 @@ class PaperSolverSpecCasesTest {
     @Test
     @DisplayName("R1-1: cầu nối U/q không dùng được không được gộp định danh hai nhóm")
     void unusableBridgeCandidate() {
-        // ứng viên x1 mang đơn vị (U, Q): gA chỉ nhận U nên x1 không dùng được (đơn vị Q sai
-        // dạng), gB chỉ nhận Q nên x1 cũng không dùng được; nguồn dùng được: u1 (gA), q1 (gB)
+        // Cầu nối không dùng được mang cả hai khóa U và q; hai câu độc lập vẫn được chọn.
         GroupQuota ga = new GroupQuota("gA", GroupQuota.GroupKind.SINGLE, 1, "U", null, null,
                 null, null, List.of(), List.of(), null, null);
         GroupQuota gb = new GroupQuota("gB", GroupQuota.GroupKind.SINGLE, 1, "Q", null, null,
                 null, null, List.of(), List.of(), null, null);
         SectionOnPath section = section("S", 2, List.of(ga, gb));
-        PathCandidate bridge = new PathCandidate("x1", 1, null, null, null, List.of(
+        PathCandidate bridge = new PathCandidate("U", 1, null, null, null, List.of(
                 new CountingUnit(null, "U", "G10", "NB", List.of(), List.of(),
                         BigDecimal.ONE),
-                new CountingUnit("cx", "Q", "G10", "NB", List.of(), List.of(),
+                new CountingUnit("q", "Q", "G10", "NB", List.of(), List.of(),
                         BigDecimal.ONE)));
-        PathCandidate u1 = PathCandidate.standalone("u1", 1, "U", "G10", "NB", BigDecimal.ONE);
-        PathCandidate q1 = PathCandidate.standalone("q1", 1, "Q", "G10", "NB", BigDecimal.ONE);
+        PathCandidate u1 = PathCandidate.standalone("U", 1, "U", "G10", "NB", BigDecimal.ONE);
+        PathCandidate q1 = PathCandidate.standalone("q", 1, "Q", "G10", "NB", BigDecimal.ONE);
         PathResult result = solver.solvePath(path(List.of(section)),
                 g -> g == ga ? List.of(bridge, u1) : List.of(bridge, q1), SolveMode.check());
         assertThat(result.status()).isEqualTo(SolveStatus.VALID);
         // đường VALID phải thành bằng hai ứng viên dùng được, không nhờ cầu nối
         for (GroupWitness gw : result.witness().get(0).groups()) {
             if (gw.groupId().equals("gA")) {
-                assertThat(gw.picks()).containsExactly(new QuestionPick("u1", 1));
+                assertThat(gw.picks()).containsExactly(new QuestionPick("U", 1));
             } else {
-                assertThat(gw.picks()).containsExactly(new QuestionPick("q1", 1));
+                assertThat(gw.picks()).containsExactly(new QuestionPick("q", 1));
             }
         }
     }
