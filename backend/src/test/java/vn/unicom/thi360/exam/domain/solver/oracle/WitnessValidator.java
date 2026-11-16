@@ -264,9 +264,15 @@ public final class WitnessValidator {
     }
 
     private List<Integer> expectedCounts(SubjectChoice choice, SubjectPick pick) {
+        // các mục của pick theo thứ tự cấu trúc của phương án (khóa theo sectionId, không theo
+        // mã môn — hai mục trong phương án có thể cùng môn)
+        Set<String> pickedIds = new HashSet<>();
+        for (SectionOnPath s : pick.sections()) {
+            pickedIds.add(s.sectionId());
+        }
         List<SectionOnPath> ordered = new ArrayList<>();
         for (SectionOnPath s : choice.sections()) {
-            if (pick.subjectCodes().contains(s.subjectCode())) {
+            if (pickedIds.contains(s.sectionId())) {
                 ordered.add(s);
             }
         }
