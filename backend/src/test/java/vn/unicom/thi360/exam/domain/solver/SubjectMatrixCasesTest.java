@@ -84,6 +84,12 @@ class SubjectMatrixCasesTest {
                 g -> g == g1 ? src1 : src2, SolveMode.check());
         assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
         assertThat(result.subjectCode()).isEqualTo("ENG");
+        // R2-23: kết quả nêu đúng chỉ tiêu bị lỗi — chiều GRADE G10 cần 2 nhưng hợp nguồn chỉ có 1
+        assertThat(result.failingQuota()).isNotNull();
+        assertThat(result.failingQuota().subjectCode()).isEqualTo("ENG");
+        assertThat(result.failingQuota().sectionId()).isEqualTo("sec-eng");
+        assertThat(result.failingQuota().kind()).isEqualTo("GRADE");
+        assertThat(result.failingQuota().key()).isEqualTo("G10");
     }
 
     @Test
