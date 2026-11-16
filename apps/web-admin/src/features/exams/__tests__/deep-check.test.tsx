@@ -10,9 +10,9 @@ import { reviewStore } from "../mock/review-store";
 import { examStore } from "../mock/store";
 import { defaultExamReviewApiDeps, type ExamReviewApiDeps, getExamCheck } from "../review-api";
 import type { ExamCheckResult, ExamCheckRun } from "../review-types";
-import { useInMemoryBackend } from "./in-memory-backend";
+import { pinInMemoryBackend } from "./in-memory-backend";
 
-useInMemoryBackend();
+pinInMemoryBackend();
 
 const HSA = "ex-hsa-f-001";
 const POLL_MS = 2000;

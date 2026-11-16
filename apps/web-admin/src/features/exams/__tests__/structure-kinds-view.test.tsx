@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { examStore } from "../mock/store";
-import { useInMemoryBackend } from "./in-memory-backend";
+import { pinInMemoryBackend } from "./in-memory-backend";
 
-useInMemoryBackend();
+pinInMemoryBackend();
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));

@@ -6,7 +6,7 @@ import { beforeEach, vi } from "vitest";
  * dù chạy với cờ nào (`NEXT_PUBLIC_THI360_CONTENT_MOCK=false pnpm test` cũng xanh). Nhánh API thật được kiểm ở
  * `*-real.test.ts` bằng `fetch` giả (`fake-exams-server.ts`), không dùng hàm này.
  */
-export function useInMemoryBackend(): void {
+export function pinInMemoryBackend(): void {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "true");
   });

@@ -3,9 +3,9 @@ import { MockApiError } from "@/lib/mock/content-mock";
 import { applyExamTemplate, createExam, listExams, suggestExamCode, updateExamInfo, updateExamStructure } from "../api";
 import { examStore } from "../mock/store";
 import type { CreateExamRequest } from "../types";
-import { useInMemoryBackend } from "./in-memory-backend";
+import { pinInMemoryBackend } from "./in-memory-backend";
 
-useInMemoryBackend();
+pinInMemoryBackend();
 
 afterEach(() => {
   examStore.reset();

@@ -15,9 +15,9 @@ import {
 import { examStore } from "../mock/store";
 import type { AvailableQuestionsQuery, CreateExamRequest } from "../types";
 import { MockApiError } from "@/lib/mock/content-mock";
-import { useInMemoryBackend } from "./in-memory-backend";
+import { pinInMemoryBackend } from "./in-memory-backend";
 
-useInMemoryBackend();
+pinInMemoryBackend();
 
 const NEW_EXAM: CreateExamRequest = {
   name: "Đề HSA thử",
