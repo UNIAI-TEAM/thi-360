@@ -127,6 +127,9 @@ final class SubproblemSolver {
                     int[] vec = ctx.contrib()[g][i];
                     // chỉ tiêu của nhóm (kể cả TỔNG): chỉ tính trên ứng viên usable của chính nhóm
                     for (int r = ctx.reqFrom()[g]; r < ctx.reqTo()[g]; r++) {
+                        if ((scans++ & 0x3FF) == 0) {
+                            deadlineCheck.run();
+                        }
                         supply[r] += vec[r];
                     }
                     // chỉ tiêu phía môn của section chứa nhóm g: hợp nguồn của các nhóm cùng
@@ -135,6 +138,9 @@ final class SubproblemSolver {
                             + java.util.Arrays.toString(ctx.keys()[g][i]))) {
                         int[] blk = ctx.subjectBlocks()[ctx.sectionOf()[g]];
                         for (int r = blk[0]; r < blk[1]; r++) {
+                            if ((scans++ & 0x3FF) == 0) {
+                                deadlineCheck.run();
+                            }
                             supply[r] += vec[r];
                         }
                     }

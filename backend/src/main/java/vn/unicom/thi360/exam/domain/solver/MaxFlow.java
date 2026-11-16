@@ -367,6 +367,9 @@ final class MaxFlow {
                 }
                 int u = q.poll();
                 for (int e : adj.get(u)) {
+                    if ((scans++ & 0x3FF) == 0) {
+                        deadlineCheck.run();
+                    }
                     int[] ed = edges.get(e);
                     if (ed[2] > 0 && level[ed[0]] < 0) {
                         level[ed[0]] = level[u] + 1;
@@ -384,6 +387,9 @@ final class MaxFlow {
             deadlineCheck.run();
             List<Integer> ad = adj.get(u);
             while (it[u] < ad.size()) {
+                if ((it[u] & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 int e = ad.get(it[u]);
                 int[] ed = edges.get(e);
                 if (ed[2] > 0 && level[ed[0]] == level[u] + 1) {

@@ -146,6 +146,9 @@ final class PathSearch {
             }
             int lastG = -1;
             for (int[] m : members.get(c)) {
+                if ((steps++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 if (m[0] != lastG) {
                     pairs.add(new int[]{m[0], c});
                     lastG = m[0];
@@ -192,6 +195,9 @@ final class PathSearch {
             pairVec[p] = masked;
             List<int[]> ms = new ArrayList<>();
             for (int[] m : members.get(c)) {
+                if ((steps++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 if (m[0] == g) {
                     ms.add(m);
                 }
@@ -222,6 +228,9 @@ final class PathSearch {
 
     private int unitsOfMember(int g, int c) {
         for (int[] m : members.get(c)) {
+            if ((steps++ & 0x3FF) == 0) {
+                deadlineCheck.run();
+            }
             if (m[0] == g) {
                 return ctx.units()[g][m[1]];
             }
