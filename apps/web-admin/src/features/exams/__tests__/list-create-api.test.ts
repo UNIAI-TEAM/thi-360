@@ -72,7 +72,7 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
     const exam = await createExam(request({ kind: "VACT", code: "VACT-T-001" }));
     expect(exam.maxScore).toBe(1200);
     expect(exam.parts.map((part) => part.maxPoints)).toEqual([600, 300, 300]);
-    expect(exam.parts[1]!.sections[0]!.blocks[0]!.knowledgeScope.competencyCodes).toEqual(["VACT-TOAN"]);
+    expect(exam.parts[1]!.sections[0]!.blocks[0]!.knowledgeScope?.competencyCodes).toEqual(["VACT-TOAN"]);
   });
 
   it("SP2E Toán: bước 1 nạp mẫu mới nhất (cấu trúc 2026, ma trận 2025, chưa xác nhận); năm cũ nạp ở bước Cấu trúc", async () => {

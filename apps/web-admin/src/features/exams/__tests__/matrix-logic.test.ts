@@ -41,7 +41,7 @@ function block(matrix: Partial<BlockMatrix>, overrides: Partial<QuestionBlock> =
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
+    knowledgeScope: { nodeIds: [], match: "ANY" },
     tagCodes: [],
     matrix: { mode: "COMBINED", unit: "COUNT", cells: [], byGrade: [], byDifficulty: [], ...matrix },
     ...overrides,

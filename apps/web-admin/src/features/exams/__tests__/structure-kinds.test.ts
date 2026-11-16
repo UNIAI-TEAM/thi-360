@@ -53,7 +53,7 @@ function competencyBlock(byCompetency: BlockMatrix["byCompetency"], unit: BlockM
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: true, competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
+    knowledgeScope: { nodeIds: [], match: "ANY", competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
     tagCodes: [],
     matrix: {
       mode: "SEPARATE",
@@ -111,7 +111,7 @@ describe("cấu trúc theo bảy kỳ thi: bài mẫu", () => {
       total: 30,
     });
     const math = exam.parts[1]!.sections[0]!.blocks[0]!;
-    expect(math.matrix.byGrade.find((item) => item.code === "GRADE_MIXED")?.value).toBe(6);
+    expect(math.matrix!.byGrade.find((item) => item.code === "GRADE_MIXED")?.value).toBe(6);
   });
 });
 
@@ -126,7 +126,18 @@ describe("thời lượng chung và theo phần", () => {
     questionCountRequired: 1,
     participation: { mode: "ALL", choose: null },
     mode: "FIXED",
-    sections: [{ id: "s1", subjectCode: "MATH", questionCount: 1, blocks: [] }],
+    sections: [
+      {
+        id: "s1",
+        subjectCode: "MATH",
+        questionCount: 1,
+        knowledgeScope: null,
+        answerQuotas: null,
+        matrix: null,
+        groupOrder: "SHUFFLE",
+        blocks: [],
+      },
+    ],
     options: [],
   };
 

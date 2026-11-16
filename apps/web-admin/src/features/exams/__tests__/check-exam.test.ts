@@ -24,8 +24,12 @@ function block(overrides: Partial<QuestionBlock> = {}): QuestionBlock {
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
+    knowledgeScope: { nodeIds: [], match: "ANY" },
     tagCodes: [],
+    taskTypeCode: null,
+    childAnswerType: null,
+    templateGroupCode: null,
+    answerTypeLocked: false,
     matrix: {
       mode: "SEPARATE",
       unit: "COUNT",
@@ -73,7 +77,18 @@ function singlePart(blocks: QuestionBlock[], questionCount = 10): ExamPart {
     questionCountRequired: questionCount,
     participation: { mode: "ALL", choose: null },
     mode: "FIXED",
-    sections: [{ id: "s1", subjectCode: "MATH", questionCount, blocks }],
+    sections: [
+      {
+        id: "s1",
+        subjectCode: "MATH",
+        questionCount,
+        knowledgeScope: null,
+        answerQuotas: null,
+        matrix: null,
+        groupOrder: "SHUFFLE",
+        blocks,
+      },
+    ],
     options: [],
   };
 }
@@ -119,7 +134,7 @@ describe("resolveBlockRequirement", () => {
 
   it("báo tổng tỷ lệ khác 100% và tổng số câu lệch chỉ tiêu", () => {
     const percent = resolveBlockRequirement(
-      block({ matrix: { ...block().matrix, unit: "PERCENT", byGrade: [{ code: "GRADE_10", value: 90 }] } }),
+      block({ matrix: { ...block().matrix!, unit: "PERCENT", byGrade: [{ code: "GRADE_10", value: 90 }] } }),
     );
     expect(percent.requirement).toBeNull();
     expect(percent.issues[0]).toMatchObject({ code: "PERCENT_TOTAL_INVALID", dimension: "GRADE", available: 90 });
@@ -156,9 +171,7 @@ describe("enumeratePaths", () => {
     const hsa = examStore.require("ex-hsa-f-001");
     expect(enumeratePaths(hsa.parts, mockChoiceName).map((path) => path.choices.map((c) => c.code).join())).toEqual([
       "ENGLISH",
-      "KH-1",
-      "KH-2",
-      "KH-3",
+      "SCIENCE",
     ]);
     expect(enumeratePaths(examStore.require("ex-hsa-l-toan-001").parts)).toEqual([{ pathId: "default", choices: [] }]);
     expect(

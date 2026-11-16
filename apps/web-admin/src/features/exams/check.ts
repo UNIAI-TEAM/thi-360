@@ -790,7 +790,10 @@ function checkSection(
         for (const item of requirement.byGrade) requiredByGrade.set(item.code, item.required);
         for (const item of requirement.byDifficulty) requiredByDifficulty.set(item.code, item.required);
         if (!allocateRequirement(requirement, capacity)) {
-          issues.push(makeIssue({ ...base, code: "SUBJECT_QUOTA_INFEASIBLE", required: count, available: availability?.total ?? 0 }));
+          // Nêu chiều hoặc ô thiếu nguồn như nhóm; mã là SUBJECT_QUOTA_INFEASIBLE (chỉ tiêu cấp môn, kèm số câu của môn).
+          for (const shortage of diagnoseSeparate(requirement, capacity, base)) {
+            issues.push(makeIssue({ ...shortage, code: "SUBJECT_QUOTA_INFEASIBLE" }));
+          }
         }
       }
       for (const [code, required] of requiredByGrade) {
@@ -1030,7 +1033,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
       blocks,
       subjects,
       selections,
-      issues,
+      issues: dedupe(issues),
     };
   });
 

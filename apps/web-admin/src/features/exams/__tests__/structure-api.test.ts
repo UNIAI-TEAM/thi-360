@@ -220,14 +220,14 @@ describe("nguồn câu hỏi của khối", () => {
     const all = await countAvailableQuestions({
       subjectCode: "MATH",
       questionType: "SINGLE_CHOICE",
-      knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
+      knowledgeScope: { nodeIds: [], match: "ANY" },
     });
     expect(all.total).toBeGreaterThan(0);
     expect(all.cells.reduce((total, cell) => total + cell.value, 0)).toBe(all.total);
     const none = await countAvailableQuestions({
       subjectCode: "MATH",
       questionType: "SINGLE_CHOICE",
-      knowledgeScope: { nodeIds: ["khong-co"], match: "ANY", includeDescendants: true },
+      knowledgeScope: { nodeIds: ["khong-co"], match: "ANY" },
     });
     expect(none.total).toBe(0);
   });
