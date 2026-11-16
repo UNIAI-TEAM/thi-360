@@ -14,7 +14,10 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import vn.unicom.thi360.questionbank.domain.importing.ImportFileException;
 import vn.unicom.thi360.questionbank.domain.importing.ImportIssueCode;
 import vn.unicom.thi360.shared.api.ApiError;
+import vn.unicom.thi360.shared.api.BusinessRuleException;
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.FieldError;
+import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
@@ -34,6 +37,29 @@ public class QuestionImportExceptionHandler {
                 ? HttpStatus.PAYLOAD_TOO_LARGE : HttpStatus.UNPROCESSABLE_ENTITY;
         String message = messages.getMessage("QUESTION_" + code, null, code, LocaleConfig.resolveLocale(request));
         return ResponseEntity.status(status).body(ApiError.of(code, message, List.of(), traceId(request)));
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiError> notFound(NotFoundException exception, HttpServletRequest request) {
+        return businessError(HttpStatus.NOT_FOUND, exception.getCode(), List.of(), request);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> conflict(ConflictException exception, HttpServletRequest request) {
+        return businessError(HttpStatus.CONFLICT, exception.getCode(), exception.getFieldErrors(), request);
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ApiError> business(BusinessRuleException exception, HttpServletRequest request) {
+        return businessError(HttpStatus.UNPROCESSABLE_ENTITY, exception.getCode(), exception.getFieldErrors(), request);
+    }
+
+    private ResponseEntity<ApiError> businessError(HttpStatus status, String code, List<FieldError> errors,
+            HttpServletRequest request) {
+        var locale = LocaleConfig.resolveLocale(request);
+        String fallback = messages.getMessage(code, null, code, locale);
+        String message = messages.getMessage("QUESTION_" + code, null, fallback, locale);
+        return ResponseEntity.status(status).body(ApiError.of(code, message, errors, traceId(request)));
     }
 
     @ExceptionHandler(MissingServletRequestPartException.class)
