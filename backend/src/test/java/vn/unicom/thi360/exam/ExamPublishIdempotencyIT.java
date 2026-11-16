@@ -187,6 +187,36 @@ class ExamPublishIdempotencyIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void validPathPublishesDespiteUnselectedOverflowQuota() throws Exception {
+        UUID question = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", question, "PUB-" + question, SUBJECT);
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", question);
+        String parts = """
+                {"parts":[{"id":"p","options":[
+                  {"id":"good","blocks":[{"id":"b","questionCount":2,"matrix":{"unit":"PERCENT",
+                    "byGrade":[{"grade":"A","value":50},{"grade":"B","value":50}]}}]},
+                  {"id":"bad","sections":[{"id":"bad-section","questionCount":1,
+                    "answerQuotas":{"unit":"COUNT","items":[{"value":2147483648}]}}]}]}]}
+                """;
+        jdbc.update("UPDATE exam.exam_structure SET parts = ?::jsonb WHERE exam_id = ?", parts, EXAM);
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", EXAM);
+        long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, EXAM);
+        saveCheck(EXAM, question, "VALID");
+        jdbc.update("UPDATE exam.exam_check_run SET result = jsonb_set(result, '{paths}', ?::jsonb), witness = jsonb_set(witness, '{0,path,chosen}', ?::jsonb) WHERE exam_id = ?",
+                "[{\"pathId\":\"good\",\"result\":\"VALID\"},{\"pathId\":\"bad\",\"result\":\"INVALID\"}]",
+                "[{\"optionId\":\"good\"}]", EXAM);
+        mockMvc.perform(post(url()).with(asUser(Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pathIds\":[\"good\"],\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+        var frozen = mapper.readTree(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id = ? AND version_no = 1", String.class, EXAM));
+        assertThat(frozen.at("/resolvedQuotas/good:blocks/2/blocks/b/byGrade/0/value").intValue()).isEqualTo(1);
+        assertThat(frozen.at("/resolvedQuotas/good:blocks/2/blocks/b/byGrade/1/value").intValue()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question_usage_ledger WHERE question_id = ? AND exam_id = ? AND kind = 'PUBLISH_WITNESS'", Long.class, question, EXAM)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT (parts #>> '{parts,0,options,1,sections,0,answerQuotas,items,0,value}')::bigint FROM exam.exam_version WHERE exam_id = ? AND version_no = 1", Long.class, EXAM)).isEqualTo(2147483648L);
+    }
+
+    @Test
     void staleSourceAndInvalidPathCannotPublish() throws Exception {
         jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", EXAM);
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, EXAM);

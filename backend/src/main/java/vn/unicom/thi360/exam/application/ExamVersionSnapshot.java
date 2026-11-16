@@ -17,14 +17,32 @@ final class ExamVersionSnapshot {
 
     ExamVersionSnapshot(ObjectMapper mapper) { this.mapper = mapper; }
 
-    ObjectNode resolvedQuotas(JsonNode document) {
+    ObjectNode resolvedQuotas(JsonNode document, Set<String> selectedPaths) {
+        Set<String> selectedOptions = new LinkedHashSet<>();
+        for (String path : selectedPaths) {
+            if (!"default".equals(path)) selectedOptions.addAll(List.of(path.split("\\+")));
+        }
         ObjectNode resolved = mapper.createObjectNode();
         for (JsonNode part : document.path("parts")) {
             sections(part.path("sections"), Set.of(), resolved);
             for (JsonNode option : part.path("options")) {
+                if (!selectedOptions.contains(option.path("id").asText())) continue;
                 Set<Integer> counts = new LinkedHashSet<>();
                 for (JsonNode count : option.path("countsByPick")) counts.add(count.intValue());
                 sections(option.path("sections"), counts, resolved);
+                if (option.path("blocks").isArray() && !option.path("blocks").isEmpty()) {
+                    int total = 0;
+                    for (JsonNode block : option.path("blocks")) {
+                        if (block.path("questionCount").isIntegralNumber()) total += block.path("questionCount").intValue();
+                        else if (block.path("setCount").isIntegralNumber() && block.path("setSize").isIntegralNumber())
+                            total += block.path("setCount").intValue() * block.path("setSize").intValue();
+                    }
+                    ObjectNode synthetic = mapper.createObjectNode();
+                    synthetic.put("id", option.path("id").asText() + ":blocks");
+                    synthetic.put("questionCount", total);
+                    synthetic.set("blocks", option.path("blocks"));
+                    sections(mapper.createArrayNode().add(synthetic), Set.of(), resolved);
+                }
             }
         }
         return resolved;

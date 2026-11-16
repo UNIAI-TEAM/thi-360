@@ -105,12 +105,12 @@ public class ExamPublishService {
         var versions = jdbc.query("SELECT version_no, serving_path_ids FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING' ORDER BY version_no",
                 (rs, n) -> new VersionPaths(rs.getInt(1), List.of((String[]) rs.getArray(2).getArray())), examId);
         String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
-        String quotas = new ExamVersionSnapshot(mapper).resolvedQuotas(json(structure)).toString();
+        String quotas = new ExamVersionSnapshot(mapper).resolvedQuotas(json(structure), selected).toString();
         String configSql = "jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), 'resolvedQuotas', ?::jsonb)";
         Set<Integer> matchingVersions = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT v.version_no FROM exam.exam_version v JOIN exam.exam e ON e.id = v.exam_id "
                 + "JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
-                + "WHERE v.config = " + configSql + " AND v.parts = s.parts AND e.id = ?",
+                + "WHERE (v.config - 'resolvedQuotas') = (" + configSql + " - 'resolvedQuotas') AND v.parts = s.parts AND e.id = ?",
                 Integer.class, quotas, examId));
         Set<String> alreadyServing = new LinkedHashSet<>();
         for (VersionPaths old : versions) {
@@ -153,7 +153,7 @@ public class ExamPublishService {
         Set<String> published = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT DISTINCT unnest(old.serving_path_ids) FROM exam.exam_version old "
                 + "JOIN exam.exam_version current ON current.exam_id = old.exam_id AND current.version_no = ? "
-                + "WHERE old.exam_id = ? AND old.config = current.config AND old.parts = current.parts",
+                + "WHERE old.exam_id = ? AND (old.config - 'resolvedQuotas') = (current.config - 'resolvedQuotas') AND old.parts = current.parts",
                 String.class, version, examId));
         jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED', serving_version = ?, has_unpublished_changes = ?, updated_at = ?, updated_by = ?, revision = revision + 1 WHERE id = ?",
                 version, !published.containsAll(allPaths), java.sql.Timestamp.from(now), actor, examId);
