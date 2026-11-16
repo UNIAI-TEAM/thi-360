@@ -6,8 +6,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -55,6 +59,51 @@ class QuestionImportUploadIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.QUESTION_MODIFY)))
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(jsonPath("$.code").value("IMPORT_FILE_TOO_LARGE"));
+    }
+
+    @Test
+    void macroPartAndRowLimitAreRejected() throws Exception {
+        byte[] macro;
+        try (var out = new ByteArrayOutputStream(); var zip = new ZipOutputStream(out)) {
+            zip.putNextEntry(new ZipEntry("xl/vbaProject.bin"));
+            zip.write(new byte[] {1, 2, 3});
+            zip.closeEntry();
+            zip.finish();
+            macro = out.toByteArray();
+        }
+        mockMvc.perform(multipart(URL)
+                        .file(new MockMultipartFile("file", "macro.xlsx", MediaType.APPLICATION_OCTET_STREAM_VALUE, macro))
+                        .with(asUser(Permissions.QUESTION_MODIFY)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("IMPORT_MACRO_NOT_ALLOWED"));
+        StringBuilder csv = new StringBuilder("type,content\n");
+        for (int i = 0; i < 2001; i++) csv.append("SHORT_ANSWER,question\n");
+        mockMvc.perform(multipart(URL)
+                        .file(new MockMultipartFile("file", "large.csv", "text/csv", csv.toString().getBytes(StandardCharsets.UTF_8)))
+                        .with(asUser(Permissions.QUESTION_MODIFY)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("IMPORT_ROW_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void zipBombRejected() throws Exception {
+        byte[] workbook;
+        try (var excel = new XSSFWorkbook(); var out = new ByteArrayOutputStream()) {
+            var sheet = excel.createSheet("Data");
+            var header = sheet.createRow(0);
+            var row = sheet.createRow(1);
+            for (int i = 0; i < 20; i++) {
+                header.createCell(i).setCellValue("column" + i);
+                row.createCell(i).setCellValue("A".repeat(30000) + i);
+            }
+            excel.write(out);
+            workbook = out.toByteArray();
+        }
+        mockMvc.perform(multipart(URL)
+                        .file(new MockMultipartFile("file", "bomb.xlsx", MediaType.APPLICATION_OCTET_STREAM_VALUE, workbook))
+                        .with(asUser(Permissions.QUESTION_MODIFY)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("IMPORT_INVALID_FILE"));
     }
 
     @Test

@@ -23,6 +23,19 @@ class QuestionImportEmptyCompositeIT extends AbstractIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
 
     @Test
+    void emptyClozeCanBeSavedWithZeroPoints() throws Exception {
+        String body = """
+                {"type":"CLOZE","subjectCode":"TOAN","gradeCode":"G10","difficultyCode":"NB",
+                 "content":"<p>Passage</p>","body":{"type":"CLOZE","passage":"<p>Passage</p>","blanks":[]}}
+                """;
+        mockMvc.perform(post("/api/v1/admin/questions").with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.summary.points").value(0))
+                .andExpect(jsonPath("$.summary.status").value("DRAFT"));
+    }
+
+    @Test
     void emptySetCanBeCreatedAndUpdatedButNotMarkedReady() throws Exception {
         String create = """
                 {"type":"QUESTION_SET","subjectCode":"TOAN","gradeCode":"G10","difficultyCode":"NB",
