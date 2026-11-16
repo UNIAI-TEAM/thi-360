@@ -2,8 +2,9 @@ package vn.unicom.thi360.exam.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
+import java.util.List;
 
-@Schema(description = "Một phiên bản của bài thi (bản làm việc hoặc bản đã chốt — BE-6 bổ sung)")
+@Schema(name = "ExamVersionResponse", description = "Một phiên bản của bài thi")
 public record ExamVersionResponse(
         @Schema(description = "Số phiên bản; null = bản làm việc")
         Integer version,
@@ -16,6 +17,8 @@ public record ExamVersionResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int attemptCount,
         @Schema(description = "Ghi chú phát hành")
-        String note
+        String note,
+        List<ExamVersionPath> publishedPaths,
+        List<ExamVersionPath> servingPaths
 ) {
 }

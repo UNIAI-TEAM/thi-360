@@ -311,7 +311,9 @@ public class QuestionMapper {
 
     public List<QuestionUsage.ExamSourceRef> sourceBlocksOf(UUID questionId) {
         return usageProvider.examUsagesOf(questionId).stream()
-                .map(ref -> new QuestionUsage.ExamSourceRef(ref.examId()))
+                .map(ref -> new QuestionUsage.ExamSourceRef(ref.examId(), ref.examCode(), ref.examName(),
+                        ref.examStatus(), ref.partId(), ref.partName(), ref.optionId(), ref.optionCode(),
+                        ref.optionName(), ref.sectionId(), ref.blockId(), ref.blockName()))
                 .toList();
     }
 

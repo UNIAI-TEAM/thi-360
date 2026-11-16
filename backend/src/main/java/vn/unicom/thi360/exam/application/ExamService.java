@@ -407,6 +407,7 @@ public class ExamService {
         exam.changeScope(kindItem.id(), scopeChoice.scope(), scopeChoice.partCode(),
                 scopeChoice.subjectItemId(), structureYear, matrixYear, yearsConfirmed,
                 templateCode, timing, duration, maxScore, actor, now);
+        exam.markStructureChanged(actor, now);
         try {
             exam = examRepository.saveAndFlush(exam);
         } catch (DataIntegrityViolationException ex) {
@@ -525,6 +526,7 @@ public class ExamService {
         if (request.yearsConfirmed() != null && !scopeChanged) {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
+        exam.markStructureChanged(actor, now);
         try {
             examRepository.flush();
         } catch (DataIntegrityViolationException ex) {
@@ -930,7 +932,8 @@ public class ExamService {
                         .map(u -> new PersonRef(u.id(), u.displayName()))
                         .orElseGet(() -> new PersonRef(exam.getUpdatedBy(), null));
         List<ExamVersionResponse> versions = new ArrayList<>();
-        versions.add(new ExamVersionResponse(null, "WORKING", null, null, 0, null));
+        versions.add(new ExamVersionResponse(null, "WORKING", null, null, 0, null, List.of(), List.of()));
+        versions.addAll(ExamVersionQueryService.publishedRows(jdbcTemplate, objectMapper, userDirectory, exam.getId()));
         return new ExamDetailResponse(
                 exam.getId(),
                 exam.getCode(),

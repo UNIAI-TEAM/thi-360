@@ -53,7 +53,6 @@ import vn.unicom.thi360.questionbank.infrastructure.QuestionVersionRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionAssetRefRepository;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
-import vn.unicom.thi360.questionbank.spi.QuestionUsageProvider;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.FieldError;
@@ -106,7 +105,6 @@ public class QuestionService {
     private final AuditRecorder auditRecorder;
     private final CurrentUserProvider currentUserProvider;
     private final IdempotentCommand idempotentCommand;
-    private final QuestionUsageProvider usageProvider;
     private final QuestionMapper mapper;
     private final AppMessages messages;
     private final EntityManager entityManager;
@@ -126,7 +124,6 @@ public class QuestionService {
             AuditRecorder auditRecorder,
             CurrentUserProvider currentUserProvider,
             IdempotentCommand idempotentCommand,
-            QuestionUsageProvider usageProvider,
             QuestionMapper mapper,
             AppMessages messages,
             EntityManager entityManager,
@@ -144,7 +141,6 @@ public class QuestionService {
         this.auditRecorder = auditRecorder;
         this.currentUserProvider = currentUserProvider;
         this.idempotentCommand = idempotentCommand;
-        this.usageProvider = usageProvider;
         this.mapper = mapper;
         this.messages = messages;
         this.entityManager = entityManager;
@@ -610,7 +606,7 @@ public class QuestionService {
         return mapper.toDetail(copy, mapper.batch());
     }
 
-    /** Xóa mềm câu độc lập; câu đã dùng (sổ hoặc nguồn bài) bị chặn 409 (spec 4.5). */
+    /** Xóa mềm câu độc lập; câu đã có trong sổ sử dụng bị chặn 409 (spec 4.5). */
     @Transactional
     public void delete(UUID id, String idempotencyKey, Long expectedRevision) {
         idempotentCommand.execute(idempotencyKey, "question.delete", id, expectedRevision, Void.class,
@@ -633,9 +629,6 @@ public class QuestionService {
             if (ledgerRepository.existsByQuestionId(child.getId())) {
                 inUseLabels.add(child.getCode());
             }
-        }
-        if (!usageProvider.examUsagesOf(id).isEmpty()) {
-            inUseLabels.add(question.getCode());
         }
         if (!inUseLabels.isEmpty()) {
             throw new ConflictException(ERR_IN_USE, null,

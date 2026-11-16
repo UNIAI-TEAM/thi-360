@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Serving question source for exam checks, preview and publication. */
@@ -83,12 +84,22 @@ public interface QuestionSourcePort {
         }
     }
 
+    /** Coarse serving-source metadata; children describe their serving root and retain their parent ID. */
+    record Description(UUID questionId, UUID parentId, UUID subjectId, QuestionType questionType,
+                       List<QuestionType> answerTypes, List<UUID> knowledgeIds) {}
+
+    /** Only READY, non-deleted questions with a serving root/version are returned. */
+    Map<UUID, Description> describe(Collection<UUID> questionIds);
+
     Counts count(Filter filter);
 
     /** Union of sources, counting each question and each of its units once. */
     Counts countUnion(List<Filter> filters);
 
     List<Candidate> findCandidates(Filter filter, int limit);
+
+    /** Requested root or child IDs belonging to candidates selected by the filter. */
+    Set<UUID> matching(Filter filter, Collection<UUID> questionIds);
 
     List<Version> loadVersions(List<VersionKey> versions);
 
