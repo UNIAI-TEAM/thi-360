@@ -1,7 +1,9 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -91,6 +93,25 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
             assertThat(response.path(field).toString()).contains("inherited", "choice-b", "draft-b", "Science")
                     .doesNotContain("wrong-type");
         }
+        UUID usedQuestion = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,1,1)",
+                usedQuestion, "USAGE-USED-" + usedQuestion, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", usedQuestion);
+        jdbc.update("insert into questionbank.question_usage_ledger(question_id,version_no,kind,exam_id) values (?,1,'PREVIEW',?)",
+                usedQuestion, exam);
+        mockMvc.perform(delete("/api/v1/admin/questions/{id}", usedQuestion)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .param("expectedRevision", "0")
+                        .header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("QUESTION_IN_USE"));
+        mockMvc.perform(delete("/api/v1/admin/questions/{id}", question)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .param("expectedRevision", "0")
+                        .header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("select deleted_at is not null from questionbank.question where id = ?",
+                Boolean.class, question)).isTrue();
     }
 
     @Test
