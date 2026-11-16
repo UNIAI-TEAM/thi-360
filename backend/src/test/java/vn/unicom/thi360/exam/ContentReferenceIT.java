@@ -141,6 +141,26 @@ class ContentReferenceIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.questionTypes[?(@.code=='MATCHING' && @.active==true)]").exists());
     }
 
+    @Test
+    void warmedCacheIsRebuiltAfterCatalogMutation() throws Exception {
+        // R1-4: đọc lần hai đảm bảo đã đi từ cache; đổi tên qua API quản trị làm revision
+        // tăng nên bản kế tiếp phải thấy tên mới thay vì bản cache cũ.
+        String leafId = "00000000-0000-7000-8200-000000001201";
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$..children[?(@.code=='0D1-1-1' && @.name=='Khái niệm mệnh đề và mệnh đề chứa biến')]").value(org.hamcrest.Matchers.hasSize(1)));
+        }
+
+        long version = readItemVersion(leafId);
+        patchItem(leafId, "{\"nameVi\":\"Khái niệm mệnh đề (đổi tên mẫu)\",\"version\":" + version + "}");
+
+        mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$..children[?(@.code=='0D1-1-1' && @.name=='Khái niệm mệnh đề (đổi tên mẫu)')]").value(org.hamcrest.Matchers.hasSize(1)));
+    }
+
     private long readItemVersion(String itemId) throws Exception {
         MvcResult item = mockMvc.perform(get("/api/v1/admin/catalog/items/" + itemId)
                         .with(asUser(Permissions.CATALOG_VIEW)))
