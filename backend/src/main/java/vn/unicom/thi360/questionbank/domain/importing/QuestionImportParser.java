@@ -57,7 +57,6 @@ public final class QuestionImportParser {
         ImportIssueCode.GRADING_GUIDE_MISSING,
         ImportIssueCode.SET_NO_CHILDREN,
         ImportIssueCode.KNOWLEDGE_MISSING,
-        ImportIssueCode.TAG_UNKNOWN,
         ImportIssueCode.CHILD_FIELD_IGNORED,
         ImportIssueCode.CHILD_SOURCE_CODE_IGNORED);
 

@@ -142,6 +142,21 @@ class QuestionImportParserTests {
     }
 
     @Test
+    void unknownCatalogValuesBlockWhileMissingGuideWarns() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "tags", "rubric"),
+            List.of("ESSAY", "Viết bài", "MATH", "GRADE_11", "RECOGNITION", "", "Mở bài: 0,25\nThân bài: 0,75"),
+            List.of("ESSAY", "Viết bài", "MATH", "GRADE_11", "RECOGNITION", "UNKNOWN", "")));
+        assertTrue(result.rows().get(0).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.GRADING_GUIDE_MISSING && !i.blocking()));
+        var body = (QuestionBody.EssayBody) result.rows().get(0).draft().body();
+        assertEquals(List.of(new BigDecimal("0.25"), new BigDecimal("0.75")),
+            body.rubric().stream().map(QuestionBody.EssayCriterion::points).toList());
+        assertTrue(result.rows().get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.TAG_UNKNOWN && i.blocking()));
+    }
+
+    @Test
     void plainTextEscapedButHtmlPreserved() {
         assertEquals("x &lt; 3<br>a &amp; b", ImportCellSyntax.processCell("x < 3\na & b"));
         assertEquals("<strong>x</strong>", ImportCellSyntax.processCell("<strong>x</strong>"));
