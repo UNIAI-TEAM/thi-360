@@ -77,6 +77,71 @@ SELECT child_id, 'SEED-MATH-SET-' || lpad(n::text, 3, '0') || '-' || pos, type,
        subject_id, grade_id, level_id, NULL, 1, '<p>Math child</p>', body, id, pos
 FROM children;
 
+-- Science and BCA practice: each grade/level cell has independent examples.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-seed-' || subject.code || '-' || grade.code || '-' || level.code || '-' || n)::uuid,
+       'SEED-' || subject.code || '-' || grade.code || '-' || level.code || '-' || lpad(n::text, 3, '0'),
+       'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL,
+       CASE WHEN subject.code = 'ANH' THEN 0.75 ELSE 1 END,
+       '<p>Practice example ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+           jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                             jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
+       NULL, NULL
+FROM catalog.catalog_item subject
+CROSS JOIN catalog.catalog_item grade
+CROSS JOIN catalog.catalog_item level
+CROSS JOIN generate_series(1, 6) n
+WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
+  AND subject.code IN ('LY', 'HOA', 'SINH', 'SU', 'DIA', 'ANH')
+  AND grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
+  AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC');
+
+-- BE-4 supplies these TASK_TYPE values. LEFT JOIN tolerates their absence;
+-- a fresh database seeded after BE-4 receives the corresponding classifications.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-seed-task-' || task.code || '-' || grade.code || '-' || level.code || '-' || n)::uuid,
+       'SEED-TASK-' || task.code || '-' || grade.code || '-' || level.code || '-' || n,
+       'SINGLE_CHOICE', subject.id, grade.id, level.id, task_item.id, 1,
+       '<p>Language example ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+           jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                             jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
+       NULL, NULL
+FROM (VALUES ('ANH', 'SYNONYM'), ('ANH', 'ANTONYM'), ('ANH', 'DIALOGUE_COMPLETION'),
+             ('ANH', 'READING_COMPREHENSION'), ('VAN', 'WORD_USAGE_ERROR'), ('VAN', 'PASSAGE_READING')) task(subject_code, code)
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = task.subject_code
+LEFT JOIN catalog.catalog_item task_item ON task_item.group_id = '00000000-0000-7000-8100-000000000006' AND task_item.code = task.code
+CROSS JOIN catalog.catalog_item grade
+CROSS JOIN catalog.catalog_item level
+CROSS JOIN generate_series(1, 2) n
+WHERE grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
+  AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC');
+
+-- BCA literature essay and THPTQG count-table scoring example.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-seed-special-' || kind.type || '-' || grade.code || '-' || level.code || '-' || n)::uuid,
+       'SEED-' || kind.type || '-' || grade.code || '-' || level.code || '-' || n,
+       kind.type, subject.id, grade.id, level.id, NULL,
+       CASE WHEN kind.type = 'ESSAY' THEN 25 ELSE 1 END,
+       '<p>Practice example ' || n || '</p>',
+       CASE WHEN kind.type = 'ESSAY' THEN
+           jsonb_build_object('type', kind.type, 'gradingGuide', '<p>Give credit for a clear argument.</p>', 'rubric', '[]'::jsonb, 'wordLimit', 500)
+       ELSE jsonb_build_object('type', kind.type, 'scoringMethod', 'COUNT_TABLE', 'scoreTable', jsonb_build_array(0.1, 0.25, 0.5, 1),
+           'statements', jsonb_build_array(
+               jsonb_build_object('id', 'a', 'content', '<p>First</p>', 'answer', true),
+               jsonb_build_object('id', 'b', 'content', '<p>Second</p>', 'answer', false),
+               jsonb_build_object('id', 'c', 'content', '<p>Third</p>', 'answer', true),
+               jsonb_build_object('id', 'd', 'content', '<p>Fourth</p>', 'answer', false))) END,
+       NULL, NULL
+FROM (VALUES ('ESSAY', 'VAN'), ('TRUE_FALSE', 'TOAN')) kind(type, subject_code)
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = kind.subject_code
+CROSS JOIN catalog.catalog_item grade
+CROSS JOIN catalog.catalog_item level
+CROSS JOIN generate_series(1, 2) n
+WHERE grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
+  AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC');
+
 -- Parents must exist before their child rows satisfy the self-reference.
 WITH inserted AS (
     INSERT INTO questionbank.question
@@ -87,10 +152,14 @@ WITH inserted AS (
            points, 1, NULL,
            CASE type WHEN 'SINGLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two'
                      WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' 1'
+                     WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
+                     WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
                      ELSE 'Math set Math context Math child One Two Math child 1' END,
            lower(code || ' ' ||
                CASE type WHEN 'SINGLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two'
                          WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' 1'
+                         WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
+                         WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
                          ELSE 'Math set Math context Math child One Two Math child 1' END)
     FROM seed_question_rows WHERE parent_id IS NULL
     ON CONFLICT DO NOTHING RETURNING subject_item_id
