@@ -4483,7 +4483,7 @@
   },
   "grading": {
     "status": {
-      "GRADING": "Đang chấm",
+      "GRADING": "Chờ chấm",
       "SCORED": "Đã có điểm"
     },
     "filters": {
@@ -4632,7 +4632,7 @@
         "save": "Lưu nháp",
         "saved": "Đã lưu nháp điểm chấm.",
         "unsaved": "Có điểm chưa lưu.",
-        "hint": "Lưu nháp để chấm tiếp sau; lượt thi vẫn ở trạng thái Đang chấm."
+        "hint": "Lưu nháp để chấm tiếp sau; lượt thi vẫn ở trạng thái Chờ chấm."
       },
       "finish": {
         "action": "Hoàn tất chấm",

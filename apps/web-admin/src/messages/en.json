@@ -4483,7 +4483,7 @@
   },
   "grading": {
     "status": {
-      "GRADING": "Grading",
+      "GRADING": "Awaiting grading",
       "SCORED": "Scored"
     },
     "filters": {
@@ -4632,7 +4632,7 @@
         "save": "Save draft",
         "saved": "Draft scores saved.",
         "unsaved": "You have unsaved scores.",
-        "hint": "Save a draft to continue later; the attempt stays in Grading."
+        "hint": "Save a draft to continue later; the attempt stays in Awaiting grading."
       },
       "finish": {
         "action": "Finish grading",
