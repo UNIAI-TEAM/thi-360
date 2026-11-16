@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,5 +76,45 @@ class ExamApiIT extends AbstractIntegrationTest {
                         .content("{\"parts\":[],\"expectedRevision\":9223372036854775807}"))
                 .andExpect(status().isPreconditionFailed())
                 .andExpect(jsonPath("$.code").value("EXAM_REVISION_CONFLICT"));
+    }
+
+    @Test
+    void instructionsImg422() throws Exception {
+        String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
+        String body = "{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"" + code
+                + "\",\"instructions\":\"<p>Doc ky</p><img src=\\\"x.png\\\">\"}";
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_INSTRUCTIONS_UNSAFE"));
+        long revision = mapper.readTree(mockMvc.perform(get(EXAM)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .path("revision").asLong();
+        mockMvc.perform(patch(EXAM).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"instructions\":\"<img src=\\\"x.png\\\" onerror=\\\"pwn()\\\"/>\","
+                                + "\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_INSTRUCTIONS_UNSAFE"));
+    }
+
+    @Test
+    void safeInstructionsAreStoredCleaned() throws Exception {
+        String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
+        String html = "<p><strong>Doc ky</strong> <em>de bai</em></p><ul><li>70 phut</li></ul>";
+        String result = mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\""
+                                + code + "\",\"instructions\":\"" + html.replace("\"", "\\\"") + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(result).path("id").asText();
+        String detail = mockMvc.perform(get("/api/v1/admin/exams/" + id)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(detail).path("instructions").asText()).isEqualTo(html);
     }
 }
