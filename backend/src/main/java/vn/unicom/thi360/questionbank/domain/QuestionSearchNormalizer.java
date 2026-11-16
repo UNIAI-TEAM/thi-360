@@ -65,7 +65,11 @@ public final class QuestionSearchNormalizer {
         switch (body) {
             case QuestionBody.SingleChoiceBody b -> b.options().forEach(o -> appendPlain(parts, o.content()));
             case QuestionBody.MultipleChoiceBody b -> b.options().forEach(o -> appendPlain(parts, o.content()));
-            case QuestionBody.ShortAnswerBody b -> b.answers().forEach(a -> appendPlain(parts, a));
+            case QuestionBody.ShortAnswerBody b -> b.answers().forEach(a -> {
+                if (a != null && !a.isBlank()) {
+                    parts.add(a);
+                }
+            });
             case QuestionBody.ClozeBody b -> appendPlain(parts, b.passage());
             case QuestionBody.QuestionSetBody b -> {
                 appendPlain(parts, b.passage());

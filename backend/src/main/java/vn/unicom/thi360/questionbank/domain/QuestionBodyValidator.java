@@ -415,7 +415,7 @@ public final class QuestionBodyValidator {
                         BigDecimal total = b.statements().stream()
                             .map(QuestionBody.TrueFalseStatement::points)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-                        if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) > 0) {
+                        if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) >= 0) {
                             errors.add(QuestionFieldError.of("SCORE_TABLE_INVALID", "body.statements"));
                         }
                     }
@@ -470,7 +470,7 @@ public final class QuestionBodyValidator {
                     .map(QuestionBody.MatchingPair::points)
                     .filter(p -> p != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-                if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) > 0) {
+                if (points != null && total.subtract(points).abs().compareTo(SCORE_TOLERANCE) >= 0) {
                     errors.add(QuestionFieldError.of("QUESTION_PAIR_POINTS_MISMATCH", "body.pairs"));
                 }
             }
@@ -493,7 +493,7 @@ public final class QuestionBodyValidator {
                         BigDecimal total = b.rubric().stream()
                             .map(QuestionBody.EssayCriterion::points)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-                        if (total.subtract(points).abs().compareTo(SCORE_TOLERANCE) > 0) {
+                        if (total.subtract(points).abs().compareTo(SCORE_TOLERANCE) >= 0) {
                             errors.add(QuestionFieldError.of("RUBRIC_TOTAL_MISMATCH", "body.rubric"));
                         }
                     }
@@ -587,7 +587,7 @@ public final class QuestionBodyValidator {
         if (points == null) {
             points = BigDecimal.ONE;
         }
-        return table.get(table.size() - 1).subtract(points).abs().compareTo(SCORE_TOLERANCE) <= 0;
+        return table.get(table.size() - 1).subtract(points).abs().compareTo(SCORE_TOLERANCE) < 0;
     }
 
     /**

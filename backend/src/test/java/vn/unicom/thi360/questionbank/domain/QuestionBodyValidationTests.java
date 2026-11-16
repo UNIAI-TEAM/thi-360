@@ -459,6 +459,14 @@ class QuestionBodyValidationTests {
         assertTrue(readyErrors(draft).stream().anyMatch(e ->
             e.code().equals("SCORE_TABLE_INVALID") && e.path().equals("body.scoreTable")));
     }
+    @Test
+    void exactToleranceBoundaryIsNotEqual() {
+        assertTrue(!QuestionBodyValidator.isValidScoreTable(
+            List.of(BigDecimal.ZERO, new BigDecimal("0.001")), 2, new BigDecimal("0.0005")));
+        assertTrue(QuestionBodyValidator.isValidScoreTable(
+            List.of(BigDecimal.ZERO, new BigDecimal("0.001")), 2, new BigDecimal("0.0006")));
+    }
+
 
 
     @Test
