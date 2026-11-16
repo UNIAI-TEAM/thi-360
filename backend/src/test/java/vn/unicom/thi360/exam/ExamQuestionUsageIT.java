@@ -52,7 +52,9 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                    "blocks":[{"id":"inherited","name":"Inherited","questionType":"SINGLE_CHOICE"},
                              {"id":"wrong-type","name":"Wrong type","questionType":"SHORT_ANSWER"}]}],
                   "options":[{"id":"choice","code":"SCIENCE","name":"Science","kind":"SUBJECT_CHOICE",
-                    "sections":[{"id":"choice-s","subjectCode":"TEST","blocks":[{"id":"choice-b","name":"Choice block","questionType":"SINGLE_CHOICE"}]}]}]}]}
+                    "sections":[{"id":"choice-s","subjectCode":"TEST","blocks":[{"id":"choice-b","name":"Choice block","questionType":"SINGLE_CHOICE"}]}]},
+                    {"id":"draft-option","name":"Draft","kind":"SUBJECT_CHOICE",
+                     "sections":[{"id":"draft-s","subjectCode":"TEST","blocks":[{"id":"draft-b","name":"Draft block","questionType":"SINGLE_CHOICE"}]}]}]}]}
                 """.formatted(parent.id());
         var document = new ExamStructureCodec(mapper).read(json);
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
@@ -71,7 +73,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
 
         var actual = provider.examUsagesOf(question);
         assertThat(actual).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
-                .containsExactlyInAnyOrder("inherited", "choice-b");
+                .containsExactlyInAnyOrder("inherited", "choice-b", "draft-b");
         assertThat(actual).filteredOn(ref -> ref.blockId().equals("choice-b")).singleElement().satisfies(ref -> {
             assertThat(ref.examId()).isEqualTo(exam);
             assertThat(ref.examName()).isEqualTo("Usage exam");
@@ -85,8 +87,8 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                     .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString());
             String field = endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks";
-            assertThat(response.path(field)).hasSize(2);
-            assertThat(response.path(field).toString()).contains("inherited", "choice-b", "Science")
+            assertThat(response.path(field)).hasSize(3);
+            assertThat(response.path(field).toString()).contains("inherited", "choice-b", "draft-b", "Science")
                     .doesNotContain("wrong-type");
         }
     }

@@ -51,7 +51,11 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
     @Override
     @Transactional(readOnly = true)
     public List<ExamUsageRef> examUsagesOf(UUID questionId) {
-        List<ExamBlockRef> blocks = candidateBlocks(questionId);
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        Map<UUID, CatalogItemView> knowledgeById = new HashMap<>();
+        knowledge.forEach(item -> knowledgeById.put(item.id(), item));
+        Map<UUID, List<UUID>> descendants = new HashMap<>();
+        List<ExamBlockRef> blocks = candidateBlocks(questionId, knowledge, knowledgeById, descendants);
         if (blocks.isEmpty()) return List.of();
         Map<UUID, Exam> examById = new HashMap<>();
         exams.findAllById(blocks.stream().map(ExamBlockRef::getExamId).distinct().toList())
@@ -59,10 +63,6 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         Map<UUID, List<ExamPart>> partsByExam = new HashMap<>();
         structures.findAllById(examById.keySet()).forEach(structure ->
                 partsByExam.put(structure.getExamId(), codec.read(structure.getParts()).parts()));
-        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
-        Map<UUID, CatalogItemView> knowledgeById = new HashMap<>();
-        knowledge.forEach(item -> knowledgeById.put(item.id(), item));
-        Map<UUID, List<UUID>> descendants = new HashMap<>();
         Map<QuestionSourcePort.Filter, Boolean> matches = new HashMap<>();
         List<ExamUsageRef> result = new ArrayList<>();
         for (ExamBlockRef ref : blocks) {
@@ -73,16 +73,15 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                 if (ref.getOptionCode() == null) {
                     addSections(result, questionId, exam, part, null, part.sections(), ref,
                             knowledge, knowledgeById, descendants, matches);
-                } else {
-                    for (ExamPartOption option : part.options()) {
-                        if (option == null || !Objects.equals(option.code(), ref.getOptionCode())) continue;
-                        addSections(result, questionId, exam, part, option, option.sections(), ref,
-                                knowledge, knowledgeById, descendants, matches);
-                        if (ref.getSectionId() == null) {
-                            for (QuestionBlock block : option.blocks()) {
-                                addBlock(result, questionId, exam, part, option, null, block, ref,
-                                        knowledge, knowledgeById, descendants, matches);
-                            }
+                }
+                for (ExamPartOption option : part.options()) {
+                    if (option == null || !Objects.equals(option.code(), ref.getOptionCode())) continue;
+                    addSections(result, questionId, exam, part, option, option.sections(), ref,
+                            knowledge, knowledgeById, descendants, matches);
+                    if (ref.getSectionId() == null) {
+                        for (QuestionBlock block : option.blocks()) {
+                            addBlock(result, questionId, exam, part, option, null, block, ref,
+                                    knowledge, knowledgeById, descendants, matches);
                         }
                     }
                 }
@@ -91,8 +90,33 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         return List.copyOf(result);
     }
 
-    private List<ExamBlockRef> candidateBlocks(UUID questionId) {
-        return refs.findByVersionNoIsNullAndSubjectItemIdIsNotNull();
+    private List<ExamBlockRef> candidateBlocks(UUID questionId, List<CatalogItemView> knowledge,
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+        var description = source.describe(List.of(questionId)).get(questionId);
+        if (description == null || description.subjectId() == null) return List.of();
+        return refs.findBySubjectItemIdAndVersionNoIsNull(description.subjectId()).stream()
+                .filter(ref -> {
+                    if (ref.getQuestionType() != null) {
+                        if (!ref.getQuestionType().equals(description.questionType().name())) return false;
+                    } else {
+                        if (description.questionType() == QuestionType.QUESTION_SET
+                                || description.questionType() == QuestionType.CLOZE) return false;
+                        if (ref.getAnswerTypes() != null && !ref.getAnswerTypes().isEmpty()
+                                && description.answerTypes().stream()
+                                    .noneMatch(type -> ref.getAnswerTypes().contains(type.name()))) return false;
+                    }
+                    List<UUID> ids = ref.getKnowledgeItemIds();
+                    if (ids == null || ids.isEmpty()) return true;
+                    var groups = ids.stream().map(id -> descendants.computeIfAbsent(id, key -> {
+                        CatalogItemView root = knowledgeById.get(key);
+                        if (root == null) return List.of();
+                        return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                                .map(CatalogItemView::id).toList();
+                    })).toList();
+                    return "ALL".equals(ref.getKnowledgeMode())
+                            ? groups.stream().allMatch(group -> group.stream().anyMatch(description.knowledgeIds()::contains))
+                            : groups.stream().anyMatch(group -> group.stream().anyMatch(description.knowledgeIds()::contains));
+                }).toList();
     }
 
     private void addSections(List<ExamUsageRef> result, UUID questionId, Exam exam, ExamPart part,
