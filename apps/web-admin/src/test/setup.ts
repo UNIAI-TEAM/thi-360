@@ -1,6 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
+
+// Mọi lời gọi API đi qua client giả (`@/test/fake-api`); test đăng ký phản hồi bằng `fakeApi`, lời gọi chưa đăng ký trả
+// 500 `UNSTUBBED`. Màn còn chạy dữ liệu mẫu (cờ bật) không đụng tới client.
+vi.mock("@/lib/api/client", async () => {
+  const fake = await import("@/test/fake-api");
+  return { createBrowserApiClient: fake.fakeBrowserApiClient };
+});
 
 // Các màn đợt 2 chạy trên dữ liệu mẫu trong test (`features/**/api.ts` chọn `api.mock.ts` theo cờ, plan B7). Test tách cờ
 // đặt lại từng cờ bằng `vi.stubEnv`.
