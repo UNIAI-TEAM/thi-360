@@ -98,20 +98,22 @@ export function EssayEditor({ prefix }: { prefix: BodyPath }) {
             <Plus aria-hidden />
             {t("add")}
           </Button>
-          <p className="flex items-center gap-1.5 text-caption font-medium text-text-secondary">
-            {pointsValid &&
-              (matches ? (
-                <CircleCheck aria-hidden className="size-4 text-success" />
-              ) : (
-                <CircleAlert aria-hidden className="size-4 text-warning" />
-              ))}
-            {pointsValid
-              ? t(matches ? "totalMatches" : "totalDiffers", {
-                  total: format.number(total),
-                  points: format.number(points),
-                })
-              : t("totalOnly", { total: format.number(total) })}
-          </p>
+          {rubric.length > 0 && (
+            <p className="flex items-center gap-1.5 text-caption font-medium text-text-secondary">
+              {pointsValid &&
+                (matches ? (
+                  <CircleCheck aria-hidden className="size-4 text-success" />
+                ) : (
+                  <CircleAlert aria-hidden className="size-4 text-warning" />
+                ))}
+              {pointsValid
+                ? t(matches ? "totalMatches" : "totalDiffers", {
+                    total: format.number(total),
+                    points: format.number(points),
+                  })
+                : t("totalOnly", { total: format.number(total) })}
+            </p>
+          )}
         </div>
       </fieldset>
 

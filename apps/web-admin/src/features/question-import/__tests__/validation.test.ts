@@ -83,7 +83,7 @@ describe("ánh xạ cột", () => {
 });
 
 describe("validateImportRows", () => {
-  // UNI-2599: dòng 19 (Tự luận) nay hợp lệ, nhập ở Nháp kèm cảnh báo chưa có tiêu chí chấm.
+  // UNI-2599: dòng 19 (Tự luận) nay hợp lệ, nhập ở Nháp kèm cảnh báo chưa có hướng dẫn chấm.
   it("bảng mẫu với ánh xạ gợi ý: 8 lỗi, 3 trùng, 15 hợp lệ (gồm 1 câu chùm, 2 câu con)", () => {
     const summary = summarizeImport(run(suggested));
     expect(summary).toEqual({ total: 26, valid: 15, error: 8, duplicate: 3, validSets: 1, validSetChildren: 2 });
@@ -231,7 +231,7 @@ describe("validateImportRows", () => {
     const essay = row(run(withKnowledge), 19);
     expect(essay.status).toBe("VALID");
     expect(essay.draft.type).toBe("ESSAY");
-    expect(codes(essay, "warning")).toEqual(["RUBRIC_MISSING"]);
+    expect(codes(essay, "warning")).toEqual(["GRADING_GUIDE_MISSING"]);
     expect(essay.draft.rubric).toEqual([]);
     expect(essay.draft.sampleAnswer).toMatch(/^Xét f\(x\)/);
   });

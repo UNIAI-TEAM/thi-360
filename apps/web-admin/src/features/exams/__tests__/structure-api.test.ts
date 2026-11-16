@@ -60,7 +60,7 @@ describe("tạo bài thi", () => {
   });
 
   it("mã gợi ý của bài lẻ có đoạn môn", async () => {
-    expect(await suggestExamCode({ kind: "HSA", scope: "PART", partCode: "MATH" })).toBe("HSA-P-TOAN-002");
+    expect(await suggestExamCode({ kind: "HSA", scope: "PART", partCode: "MATH" })).toBe("HSA-P-TOAN-001");
     expect(await suggestExamCode({ kind: "QDA", scope: "PART", partCode: "SCIENCE" })).toBe("QDA-P-KH-001");
   });
 

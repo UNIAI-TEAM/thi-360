@@ -64,18 +64,16 @@ describe("evaluateReadiness (UniNote PBI-03 muc 7.2)", () => {
     expect(evaluateReadiness(many).rules[1]!.issues[0]!.code).toBe("SINGLE_CHOICE_MANY_CORRECT");
   });
 
-  it("thieu khoi, do kho va kien thuc chinh", () => {
+  it("thieu khoi, do kho la dieu kien; thieu kien thuc chinh chi la canh bao (D20)", () => {
     const question = sample("MULTIPLE_CHOICE");
     question.gradeCode = "";
     question.difficultyCode = "";
     question.knowledge = question.knowledge.map((ref) => ({ ...ref, primary: false }));
     const classification = evaluateReadiness(question, { reference }).rules.find((r) => r.rule === "CLASSIFICATION")!;
-    expect(classification.issues.map((issue) => issue.code)).toEqual([
-      "GRADE_MISSING",
-      "DIFFICULTY_MISSING",
-      "PRIMARY_KNOWLEDGE_MISSING",
-    ]);
-    expect(classification.issues[2]!.field).toBe("knowledge");
+    expect(classification.issues.map((issue) => issue.code)).toEqual(["GRADE_MISSING", "DIFFICULTY_MISSING"]);
+    const noPrimary = evaluateReadiness({ ...question, gradeCode: "GRADE_12", difficultyCode: "APPLICATION" }, { reference });
+    expect(noPrimary.warnings).toEqual([{ code: "PRIMARY_KNOWLEDGE_MISSING", field: "knowledge" }]);
+    expect(noPrimary.rules.find((r) => r.rule === "CLASSIFICATION")!.passed).toBe(true);
   });
 
   it("gia tri phan loai ngoai danh muc hoac kien thuc mon khac", () => {

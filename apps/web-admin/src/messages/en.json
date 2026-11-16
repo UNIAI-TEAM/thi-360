@@ -2662,7 +2662,7 @@
       "rules": {
         "CONTENT": "All required content is filled in",
         "ANSWER": "Every graded item has a valid answer",
-        "CLASSIFICATION": "Grade, difficulty and primary knowledge are set",
+        "CLASSIFICATION": "Subject, grade and difficulty are set",
         "CATALOG_VALUES": "Classification values are valid and match the subject",
         "NO_GAPS": "No sub-question or position is missing an answer",
         "RESOURCES": "Images, formulas and passages render correctly",

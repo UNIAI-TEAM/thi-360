@@ -367,7 +367,7 @@
           {
             "id": "q-0006-o2",
             "content": "x = −1",
-            "correct": true
+            "correct": false
           },
           {
             "id": "q-0006-o3",

@@ -59,7 +59,7 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
     const choice = exam.parts[1]!;
     expect(choice.mode).toBe("CHOICE");
     expect(choice.sections).toMatchObject([{ subjectCode: "INFORMATICS", questionCount: 2 }]);
-    expect(choice.sections[0]!.blocks[0]!.expectedScoring).toEqual({ trueFalseTable: [0.1, 0.25, 0.5, 1] });
+    expect(choice.sections[0]!.blocks[0]!.expectedScoring).toEqual({ trueFalseMethod: "COUNT_TABLE", trueFalseTable: [0.1, 0.25, 0.5, 1] });
     expect(choice.options.map((option) => [option.kind, option.code, option.sections[0]?.subjectCode])).toEqual([
       ["BRANCH", "CS", "INFORMATICS"],
       ["BRANCH", "ICT", "INFORMATICS"],

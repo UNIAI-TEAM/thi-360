@@ -111,7 +111,7 @@ describe("Nhập câu hỏi từ tệp", () => {
     const essayPreview = await screen.findByRole("heading", { name: "Xem trước dòng 19" });
     const essaySection = essayPreview.closest("section");
     if (!essaySection) throw new Error("no essay preview section");
-    expect(within(essaySection).getByText(/Câu tự luận chưa có tiêu chí chấm/)).toBeInTheDocument();
+    expect(within(essaySection).getByText(/Câu tự luận chưa có hướng dẫn chấm/)).toBeInTheDocument();
     expect(within(essaySection).getByText("Chưa có tiêu chí chấm; câu sẽ ở Nháp tới khi bổ sung.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Trùng (3)" }));

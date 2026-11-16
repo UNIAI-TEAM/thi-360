@@ -88,7 +88,7 @@ describe("trang Tạo bài thi", () => {
     const user = await renderPage();
     await user.click(screen.getByRole("radio", { name: /Bài lẻ/ }));
     expect(screen.getByRole("radio", { name: "Toán" })).toBeChecked();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-L-TOAN-002"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
     await user.click(screen.getByRole("radio", { name: "Khoa học" }));
     expect(screen.getByRole("heading", { name: "Phần tự chọn · Phần 1" })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /Cho chọn Tiếng Anh/ })).not.toBeInTheDocument();
@@ -134,7 +134,7 @@ describe("trang Tạo bài thi", () => {
     expect(screen.getByRole("radio", { name: /^Cấu trúc 2026/ })).toBeChecked();
     expect(screen.getAllByText(/Cấu trúc 2026 dùng ma trận 2025/).length).toBeGreaterThan(0);
     expect(screen.getByRole("checkbox", { name: /Chuyên gia đã xác nhận/ })).not.toBeChecked();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("SP2E-F-TOAN-001"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("SP2E-S-TOAN-001"));
 
     await user.click(screen.getByRole("radio", { name: /^Cấu trúc 2025/ }));
     await waitFor(() => expect(screen.queryAllByText(/Cấu trúc 2026 dùng ma trận 2025/)).toHaveLength(0));
@@ -146,6 +146,6 @@ describe("trang Tạo bài thi", () => {
     await user.click(await screen.findByRole("combobox", { name: /Môn của bài thi/ }));
     await user.click(await screen.findByRole("option", { name: "Tiếng Việt" }));
     expect(await screen.findByText(/Tiếng Việt chưa có mẫu cấu trúc/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("THPTQG-F-TV-001"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("THPTQG-S-TV-001"));
   }, 20_000);
 });

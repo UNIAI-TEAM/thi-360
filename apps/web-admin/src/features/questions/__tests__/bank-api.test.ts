@@ -15,7 +15,7 @@ import { questionStore } from "../mock/store";
 
 afterEach(() => questionStore.reset());
 
-/** Cau Nhap du dieu kien va cau Nhap thieu kien thuc chinh trong du lieu mau. */
+/** Cau Nhap du dieu kien va cau Nhap chua chon dap an dung trong du lieu mau. */
 const READY_DRAFT = "q-0002";
 const NOT_READY_DRAFT = "q-0006";
 
@@ -44,7 +44,7 @@ describe("API Ngan hang cau hoi (du lieu mau)", () => {
   it("danh sach kem goi y dieu kien con thieu cho cau chua Sẵn sàng", async () => {
     const page = await listQuestions({ size: 100 });
     const draft = page.content.find((q) => q.id === NOT_READY_DRAFT)!;
-    expect(draft.readinessHint).toMatchObject({ code: "PRIMARY_KNOWLEDGE_MISSING" });
+    expect(draft.readinessHint).toMatchObject({ code: "NO_CORRECT_OPTION" });
     expect(page.content.find((q) => q.status === "READY")!.readinessHint).toBeNull();
   });
 

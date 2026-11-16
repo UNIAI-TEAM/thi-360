@@ -94,9 +94,11 @@ describe("soan cau Tu luan", () => {
     const first = emptyChild("ESSAY");
     first.content = "Cau 1";
     first.points = "0,5";
+    first.body.gradingGuide = "Huong dan 1";
     first.body.rubric = [{ id: "r1", description: "Nhan biet", points: "0,5" }];
     const second = emptyChild("ESSAY");
     second.content = "Cau 2";
+    second.body.gradingGuide = "Huong dan 2";
     second.body.rubric = [{ id: "r2", description: "Giai thich", points: "0,5" }];
     values.children = [first, second];
     const issues = validateQuestionEditor(values);
@@ -112,7 +114,7 @@ describe("soan cau Tu luan", () => {
     expect(request.competencyCode).toBe("VACT-NN-TV");
     expect(request.body).toEqual({
       type: "ESSAY",
-      maxPoints: 2,
+      gradingGuide: "Huong dan cham",
       rubric: [
         { id: "r0", description: "Mo bai", points: 0.5 },
         { id: "r1", description: "Than bai", points: 1.5 },
@@ -168,11 +170,14 @@ describe("dieu kien San sang cho quy tac cham", () => {
     expect(evaluateReadiness(questionStore.require("q-8003"), { reference }).ready).toBe(true);
   });
 
-  it("Tu luan chua co tieu chi, tieu chi trong mo ta", () => {
+  it("Tu luan can huong dan cham; tieu chi tuy chon, tieu chi trong mo ta thi bao loi (D20)", () => {
     const question = structuredClone(questionStore.require("q-8001"));
     if (question.body.type !== "ESSAY") throw new Error("not essay");
     question.body.rubric = [];
-    expect(ruleIssues(question)).toEqual(["NO_RUBRIC"]);
+    expect(ruleIssues(question)).toEqual([]);
+    question.body.gradingGuide = " ";
+    expect(ruleIssues(question)).toEqual(["NO_GRADING_GUIDE"]);
+    question.body.gradingGuide = "Huong dan";
     question.body.rubric = [{ id: "r1", description: " ", points: 2 }];
     expect(ruleIssues(question)).toEqual(["CRITERION_EMPTY"]);
   });

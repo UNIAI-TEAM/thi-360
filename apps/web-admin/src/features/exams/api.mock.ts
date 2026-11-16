@@ -14,7 +14,7 @@ import {
 import { splitEvenly, sum } from "./matrix";
 import examsFixture from "./mock/exams.json";
 import { toExamSummary } from "./exam-summary";
-import { examStore, MOCK_EXAM_TEMPLATES } from "./mock/store";
+import { examStore, MOCK_EXAM_TEMPLATES, structureEdited } from "./mock/store";
 import type {
   ApplyExamTemplateRequest,
   AvailableQuestionCounts,
@@ -370,9 +370,6 @@ export function assertExamRevision(exam: Pick<ExamDetail, "revision">, expectedR
     throw new MockApiError(412, "EXAM_REVISION_CONFLICT");
   }
 }
-
-/** Bài đã sửa cấu trúc tay trong phiên: nạp lại mẫu phải có `confirmReplace` (409 `EXAM_STRUCTURE_REPLACE_CONFIRM`). */
-const structureEdited = new Set<string>();
 
 /** Thang điểm dương; để trống chỉ khi kỳ thi không có thang cố định (V-ACT). */
 function assertMaxScore(maxScore: number | null, kind: ExamKind): void {

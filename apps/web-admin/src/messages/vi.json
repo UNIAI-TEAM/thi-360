@@ -2662,7 +2662,7 @@
       "rules": {
         "CONTENT": "Đầy đủ nội dung bắt buộc",
         "ANSWER": "Có đáp án hợp lệ cho mọi câu được chấm",
-        "CLASSIFICATION": "Đầy đủ khối lớp, độ khó và kiến thức chính",
+        "CLASSIFICATION": "Đầy đủ môn, khối lớp và độ khó",
         "CATALOG_VALUES": "Giá trị phân loại hợp lệ và phù hợp với môn học",
         "NO_GAPS": "Không có câu con hoặc vị trí khuyết thiếu đáp án",
         "RESOURCES": "Hình ảnh, công thức và ngữ liệu hiển thị được",
