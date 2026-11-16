@@ -3,12 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetCatalogLookup } from "@/features/content/catalog-lookup";
 import en from "@/messages/en.json";
-import { apiContentReference, fail, fakeApi, ok, useRealApi } from "@/test/fake-api";
+import { apiContentReference, fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import { renderWithProviders } from "@/test/render";
 import { QuestionImportView } from "../components/question-import-view";
 import templateFixture from "../mock/template.json";
 
-useRealApi();
+withRealApi();
 
 const BASE = "/api/v1/admin/question-imports";
 

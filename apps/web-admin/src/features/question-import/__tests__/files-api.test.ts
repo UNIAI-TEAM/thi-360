@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fail, fakeApi, ok, useRealApi } from "@/test/fake-api";
+import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import {
   commitImport,
   downloadQuestionTemplate,
@@ -9,11 +9,11 @@ import {
   validateImport,
 } from "../api";
 import { QuestionImportApiError } from "../api-real";
-import { buildErrorReportTable, collectErrorLines, errorReportFileName } from "../error-report";
+import { buildErrorReportTable, errorReportFileName } from "../error-report";
 import { checkImportFile, parseCsv, readFileText, sheetFromTable } from "../files";
 import type { ColumnMapping } from "../types";
 
-useRealApi();
+withRealApi();
 
 const BOM = String.fromCharCode(0xfeff);
 
