@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { allocateSubjectCounts, pickAllocation } from "../subject-choice";
-import { seededRandom } from "../review-preview";
+
+/** Số ngẫu nhiên có hạt giống (mulberry32) — từng là `seededRandom` của bộ sinh đề mock đã gỡ; test giữ bản sao cục bộ. */
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 const COUNTS = [17, 17, 16];
 
