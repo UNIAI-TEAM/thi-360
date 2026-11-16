@@ -43,7 +43,8 @@ import vn.unicom.thi360.exam.domain.solver.oracle.OracleSupport.ResolvedQuota;
  *       mục bằng {@code questionCount}, kể cả khi mục không có nhóm nào;
  *   <li>một câu / phiên bản / câu con chỉ xuất hiện một lần trong một bài toán con (đường con),
  *       kể cả lặp định danh ngay bên trong một ứng viên;
- *   <li>cách chọn môn của đường có {@link SubjectChoice} mang số câu theo thứ tự cấu trúc (D25).
+ *   <li>cách chọn môn của đường có {@link SubjectChoice} mang số câu theo phân bổ nhóm
+ *       {@code choiceGroup} (B10/D25).
  * </ul>
  *
  * <p>Đường có {@link SubjectChoice}: đề chứng minh lưu theo bài toán con — validator suy ra mọi
@@ -243,7 +244,7 @@ public final class WitnessValidator {
 
     // ------------------------------------------------------------ số câu của cách chọn
 
-    /** Mọi cách chọn môn trên đường phải nhận số câu theo thứ tự cấu trúc (D25). */
+    /** Mọi cách chọn môn trên đường phải nhận một phân bổ hợp lệ (B10/D25). */
     private List<Violation> checkPickCounts(
             vn.unicom.thi360.exam.domain.solver.SolvePath path) {
         List<Violation> out = new ArrayList<>();
@@ -253,32 +254,23 @@ public final class WitnessValidator {
                 continue;
             }
             for (SubjectPick pick : path.picks().get(i)) {
-                List<Integer> expected = expectedCounts(choice, pick);
-                if (!expected.equals(pick.counts())) {
+                boolean allowed = false;
+                for (List<Integer> counts : OracleSupport.allocationsOf(choice,
+                        pick.sections())) {
+                    if (counts.equals(pick.counts())) {
+                        allowed = true;
+                        break;
+                    }
+                }
+                if (!allowed) {
                     out.add(new Violation("PICK_COUNTS_MISMATCH",
-                            "pick " + OracleSupport.pickKey(pick) + " expects " + expected));
+                            "pick " + OracleSupport.pickKey(pick)
+                                    + " is not an allowed allocation"));
                 }
             }
         }
         return out;
     }
-
-    private List<Integer> expectedCounts(SubjectChoice choice, SubjectPick pick) {
-        // các mục của pick theo thứ tự cấu trúc của phương án (khóa theo sectionId, không theo
-        // mã môn — hai mục trong phương án có thể cùng môn)
-        Set<String> pickedIds = new HashSet<>();
-        for (SectionOnPath s : pick.sections()) {
-            pickedIds.add(s.sectionId());
-        }
-        List<SectionOnPath> ordered = new ArrayList<>();
-        for (SectionOnPath s : choice.sections()) {
-            if (pickedIds.contains(s.sectionId())) {
-                ordered.add(s);
-            }
-        }
-        return OracleSupport.structureOrderPick(choice, ordered).counts();
-    }
-
     // ------------------------------------------------------------ kiểm một bài toán con
 
     private List<Violation> checkInstance(Instance inst, SubjectWitness sw,

@@ -303,21 +303,87 @@ final class OracleSupport {
     }
 
     /**
-     * Cách chọn môn với số câu theo D25: môn thứ i theo thứ tự cấu trúc nhận
-     * {@code countsByPick[i]} (cài đặt lại quy tắc tạm của spec 12).
+     * Các phân bổ số câu cho một cách chọn môn, cài đặt độc lập từ B10/D25 (không dùng bộ gán
+     * của bộ giải):
+     *
+     * <ul>
+     *   <li>mọi môn được chọn có {@code choiceGroup}: {@code countsByPick} phải gồm đúng hai giá
+     *       trị với giá trị cao hơn lặp {@code choose - 1} lần (mẫu 17/17/16). Mỗi môn của nhóm
+     *       có nhiều môn hơn nhận giá trị cao; môn của nhóm thiểu số nhận giá trị thấp. Khi mọi
+     *       môn cùng một nhóm (không có nhóm nhiều hơn), phân bổ đối xứng {@code choose} phương
+     *       án: mỗi môn lần lượt nhận giá trị thấp, các môn còn lại giá trị cao. Hai nhóm bằng
+     *       số môn (chỉ xảy ra khi {@code choose} chẵn): spec không quy định → phân bổ theo thứ
+     *       tự cấu trúc như trường hợp không gắn nhóm;
+     *   <li>có môn không gắn {@code choiceGroup}: môn thứ i theo thứ tự cấu trúc nhận
+     *       {@code countsByPick[i]} (quy tắc trước B10).
+     * </ul>
      */
-    static SubjectPick structureOrderPick(SubjectChoice choice, List<SectionOnPath> picked) {
-        List<Integer> counts = new ArrayList<>(picked.size());
-        for (int i = 0; i < picked.size(); i++) {
+    static List<List<Integer>> allocationsOf(SubjectChoice choice, List<SectionOnPath> picked) {
+        boolean allGrouped = true;
+        for (SectionOnPath s : picked) {
+            if (s.choiceGroup() == null) {
+                allGrouped = false;
+                break;
+            }
+        }
+        int k = picked.size();
+        int hi = Integer.MIN_VALUE;
+        int lo = Integer.MAX_VALUE;
+        for (int v : choice.countsByPick()) {
+            hi = Math.max(hi, v);
+            lo = Math.min(lo, v);
+        }
+        int hiCount = 0;
+        for (int v : choice.countsByPick()) {
+            if (v == hi) {
+                hiCount++;
+            }
+        }
+        boolean twoValueShape = hi > lo && hiCount == k - 1 && k >= 2;
+        Map<String, Integer> groupCounts = new LinkedHashMap<>();
+        if (allGrouped && twoValueShape) {
+            for (SectionOnPath s : picked) {
+                groupCounts.merge(s.choiceGroup(), 1, Integer::sum);
+            }
+            String majority = null;
+            for (Map.Entry<String, Integer> e : groupCounts.entrySet()) {
+                if (majority == null || e.getValue() > groupCounts.get(majority)) {
+                    majority = e.getKey();
+                }
+            }
+            if (groupCounts.get(majority) > k - groupCounts.get(majority)) {
+                // có đúng một nhóm đông hơn: các môn của nó nhận hi, nhóm còn lại nhận lo
+                List<Integer> counts = new ArrayList<>(k);
+                for (SectionOnPath s : picked) {
+                    counts.add(s.choiceGroup().equals(majority) ? hi : lo);
+                }
+                return List.of(counts);
+            }
+            if (groupCounts.size() == 1) {
+                // mọi môn cùng một nhóm: chọn môn nhận lo, còn lại nhận hi (k phương án)
+                List<List<Integer>> out = new ArrayList<>(k);
+                for (int low = 0; low < k; low++) {
+                    List<Integer> counts = new ArrayList<>(k);
+                    for (int i = 0; i < k; i++) {
+                        counts.add(i == low ? lo : hi);
+                    }
+                    out.add(counts);
+                }
+                return out;
+            }
+        }
+        // không gắn nhóm (hoặc dạng countsByPick ngoài quy tắc): thứ tự cấu trúc
+        List<Integer> counts = new ArrayList<>(k);
+        for (int i = 0; i < k; i++) {
             counts.add(choice.countsByPick().get(i));
         }
-        return new SubjectPick(choice.optionId(), picked, counts);
+        return List.of(counts);
     }
 
     /**
      * Mọi cách chọn {@code choose} môn của phương án, theo thứ tự tổ hợp ổn định (từ điển trên
-     * chỉ số theo thứ tự cấu trúc), mỗi cách nhận số câu theo D25 qua {@link #structureOrderPick}
-     * — cài lại độc lập từ spec, không dùng bộ gán số câu của bộ giải.
+     * chỉ số theo thứ tự cấu trúc), mỗi cách chọn sinh một {@link SubjectPick} trên mỗi phân
+     * bổ của {@link #allocationsOf} — cài lại độc lập từ spec, không dùng bộ gán của bộ giải.
      */
     static List<SubjectPick> picksOf(SubjectChoice choice) {
         List<SectionOnPath> sections = choice.sections();
@@ -333,7 +399,9 @@ final class OracleSupport {
             for (int i : idx) {
                 picked.add(sections.get(i));
             }
-            out.add(structureOrderPick(choice, picked));
+            for (List<Integer> counts : allocationsOf(choice, picked)) {
+                out.add(new SubjectPick(choice.optionId(), picked, counts));
+            }
             int p = k - 1;
             while (p >= 0 && idx[p] == n - k + p) {
                 p--;
@@ -347,19 +415,6 @@ final class OracleSupport {
             }
         }
         return out;
-    }
-
-    /**
-     * Cách chọn môn với các môn được chỉ định bằng mã (đầu vào của {@code solvePick}): giữ thứ tự
-     * cấu trúc của {@code choice.sections}, môn thứ i trong thứ tự đó nhận {@code countsByPick[i]}.
-     */
-    static SubjectPick pickFor(SubjectChoice choice, List<String> subjectCodes) {
-        List<SectionOnPath> picked = choice.sections().stream()
-                .filter(s -> subjectCodes.contains(s.subjectCode())).toList();
-        if (picked.size() != subjectCodes.size()) {
-            throw new IllegalArgumentException("subjectCodes not a subset of choice sections");
-        }
-        return structureOrderPick(choice, picked);
     }
 
     /** Khóa chuỗi của một cách chọn: {@code S1=c1+S2=c2}, đủ để đối chiếu selections. */
