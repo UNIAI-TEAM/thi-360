@@ -3994,6 +3994,11 @@
       "toPreview": "Sinh đề xem trước",
       "lastRun": "Kiểm tra lúc {time} trên nguồn câu hỏi hiện tại · mất {seconds, number} giây · giới hạn xử lý {limit, number} giây",
       "stale": "Nguồn câu hỏi hoặc cấu hình đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+      "staleReason": {
+        "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố."
+      },
       "runError": "Không chạy được kiểm tra. Thử lại.",
       "live": {
         "running": "Đang kiểm tra cấu hình",
@@ -4170,6 +4175,11 @@
         "SUBJECT_QUOTA_COUNT_VARIES": "Môn {subject} nhận từ {required, number} đến {available, number} câu: chỉ tiêu cấp môn phải khai theo tỉ lệ, không khai theo số câu.",
         "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: chỉ tiêu dạng {answerType} cần {required, number} câu, hiện có {available, number} câu phù hợp.",
         "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: không đủ nguồn cho chỉ tiêu cấp môn, cần {required, number} câu {dimension, select, GRADE {{level}} DIFFICULTY {{level}} other {{grade}/{difficulty}}}, hiện có {available, number} câu phù hợp.",
+        "MATRIX_NON_INTEGER": "Khối {block} có chỉ tiêu không phải số nguyên.",
+        "MATRIX_INCOMPLETE": "Khối {block} chưa chọn cách áp dụng ma trận (chung hay riêng).",
+        "PART_EMPTY": "{part} chưa có câu hỏi nào.",
+        "SHARED_PART_DURATION": "{part}: bài thi tính thời gian chung nên phần thi không đặt thời lượng riêng.",
+        "ANSWER_QUOTA_DUPLICATE": "Môn {subject}: dạng {answerType} bị khai hai lần trong chỉ tiêu dạng trả lời.",
         "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
       }
     },

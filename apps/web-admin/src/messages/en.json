@@ -3994,6 +3994,11 @@
       "toPreview": "Generate preview paper",
       "lastRun": "Checked at {time} against the current question source · took {seconds, number} s · processing limit {limit, number} s",
       "stale": "The question source or the configuration changed after this check. Check again before publishing.",
+      "staleReason": {
+        "STRUCTURE_CHANGED": "The exam structure changed after this check. Check again before publishing.",
+        "CONFIG_CHANGED": "The exam configuration changed after this check. Check again before publishing.",
+        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing."
+      },
       "runError": "The check could not run. Try again.",
       "live": {
         "running": "Checking the configuration",
@@ -4170,6 +4175,11 @@
         "SUBJECT_QUOTA_COUNT_VARIES": "Subject {subject} receives {required, number} to {available, number} questions: subject quotas must be set as percentages, not as question counts.",
         "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: the {answerType} quota needs {required, number} questions; {available, number} matching questions are available.",
         "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: not enough source for the subject quota; it needs {required, number} questions at {dimension, select, GRADE {{level}} DIFFICULTY {{level}} other {{grade}/{difficulty}}}; {available, number} matching questions are available.",
+        "MATRIX_NON_INTEGER": "Block {block} has a quota that is not a whole number.",
+        "MATRIX_INCOMPLETE": "Block {block} has not chosen how its matrix applies (combined or separate).",
+        "PART_EMPTY": "{part} has no questions yet.",
+        "SHARED_PART_DURATION": "{part}: the exam uses a shared timer, so a part must not set its own duration.",
+        "ANSWER_QUOTA_DUPLICATE": "Subject {subject}: the {answerType} answer type appears twice in the answer-type quotas.",
         "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
       }
     },
