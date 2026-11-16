@@ -148,6 +148,22 @@ describe("phân bổ của một khối", () => {
   });
 });
 
+describe("tổng điểm của cấu trúc (G1)", () => {
+  it("nhóm lấy phần còn lại nhận phần chênh của môn và tính điểm, không tính 0", () => {
+    const part = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!.parts[0]!);
+    part.mode = "FIXED";
+    part.options = [];
+    const section = part.sections[0]!;
+    section.questionCount = 10;
+    section.blocks = [
+      block({}, { id: "fixed", questionCount: 4, requiredPointsPerQuestion: 2 }),
+      block({}, { id: "rest", questionCount: null, requiredPointsPerQuestion: 1 }),
+    ];
+    part.sections = [section];
+    expect(structureTotals([part]).totalPoints).toBe(4 * 2 + 6 * 1);
+  });
+});
+
 describe("cấu trúc của bài mẫu", () => {
   const exams = EXAMS_FIXTURE.exams;
 

@@ -463,6 +463,16 @@ export function countOf(item: { questionCount: number | null }): number {
   return item.questionCount ?? 0;
 }
 
+/**
+ * Số câu từng nhóm khi môn nhận `count` câu: nhóm câu đơn `questionCount = null` ("lấy phần còn lại") nhận phần chênh
+ * giữa số câu của môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được (báo `REMAINDER_GROUP_INVALID`).
+ */
+export function groupCounts(section: ExamSection, count: number): number[] {
+  const remainderGroups = section.blocks.filter((block) => block.questionCount === null);
+  const remainder = remainderGroups.length === 1 ? Math.max(0, count - sum(section.blocks.map(countOf))) : 0;
+  return section.blocks.map((block) => block.questionCount ?? remainder);
+}
+
 function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
   return sections.flatMap((section) => section.blocks);
 }
@@ -611,8 +621,14 @@ export function structureTotals(parts: readonly ExamPart[], options: StructureTo
       return sum(blocks.map(countOf));
     });
     allocated += counts.length ? Math.min(...counts) : 0;
-    const first = groups[0]?.blocks ?? [];
-    totalPoints += sum(first.map((block) => countOf(block) * blockPointsEach(block)));
+    const first = groups[0]?.group.sections ?? [];
+    // G1: nhóm "lấy phần còn lại" nhận phần chênh của môn (cùng cách chia với kiểm tra), không tính 0 điểm.
+    totalPoints += sum(
+      first.flatMap((section) => {
+        const perGroup = section.questionCount === null ? section.blocks.map(countOf) : groupCounts(section, section.questionCount);
+        return section.blocks.map((block, index) => perGroup[index]! * blockPointsEach(block));
+      }),
+    );
   }
   const totalQuestions = sum(parts.map((part) => part.questionCount));
   return {

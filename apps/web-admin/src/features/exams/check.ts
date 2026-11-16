@@ -15,7 +15,7 @@ import type {
   SectionAvailability,
   SubjectCheck,
 } from "./review-types";
-import { apportionByPercent, blockPointsEach, countOf, isSetBlock, printedPartQuestions, sum } from "./matrix";
+import { apportionByPercent, blockPointsEach, countOf, groupCounts, isSetBlock, printedPartQuestions, sum } from "./matrix";
 import { CHECK_GROUPS } from "./review-types";
 import type {
   BlockMatrix,
@@ -588,16 +588,6 @@ export function checkBlock(
 }
 
 /* ---------- Môn: chỉ tiêu cấp môn, nhóm lấy phần còn lại, SUBJECT_CHOICE (B9, D25) ---------- */
-
-/**
- * Số câu từng nhóm khi môn nhận `count` câu: nhóm câu đơn `questionCount = null` ("lấy phần còn lại") nhận phần chênh
- * giữa số câu của môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được (báo `REMAINDER_GROUP_INVALID`).
- */
-export function groupCounts(section: ExamSection, count: number): number[] {
-  const remainderGroups = section.blocks.filter((block) => block.questionCount === null);
-  const remainder = remainderGroups.length === 1 ? Math.max(0, count - sum(section.blocks.map(countOf))) : 0;
-  return section.blocks.map((block) => block.questionCount ?? remainder);
-}
 
 /**
  * Một trường hợp chọn môn của `SUBJECT_CHOICE`: các môn xếp theo thứ tự trong cấu trúc, môn thứ i nhận `counts[i]` theo

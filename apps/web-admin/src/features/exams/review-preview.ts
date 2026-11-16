@@ -4,7 +4,6 @@ import {
   allocateRequirement,
   availabilityLookup,
   cellKey,
-  groupCounts,
   largestRemainder,
   pathSections,
   resolveBlockRequirement,
@@ -26,7 +25,7 @@ import type {
   PreviewSubject,
   PreviewSubjectQuota,
 } from "./review-types";
-import { blockPointsEach, countOf, isSetBlock, sum } from "./matrix";
+import { blockPointsEach, countOf, groupCounts, isSetBlock, sum } from "./matrix";
 import type { ExamPart, ExamSection, QuestionBlock } from "./types";
 import { allocateSubjectCounts, pickAllocation } from "./subject-choice";
 import { effectiveScope } from "./subject-matrix";
