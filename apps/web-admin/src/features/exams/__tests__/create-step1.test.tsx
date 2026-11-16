@@ -154,7 +154,9 @@ describe("trang Tạo bài thi", () => {
     await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
     await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA Toán · Đề thử");
-    await user.type(screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }), "Đọc kỹ đề trước khi làm.");
+    // Trình soạn TipTap: jsdom không có elementFromPoint nên không gõ qua click; focus rồi dán văn bản thuần.
+    screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }).focus();
+    await user.paste("Đọc kỹ đề trước khi làm.");
     const score = screen.getByRole("textbox", { name: /Thang điểm/ });
     await user.clear(score);
     await user.type(score, "50");

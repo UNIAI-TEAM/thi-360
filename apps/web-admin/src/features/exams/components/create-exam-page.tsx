@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, get, useForm, useWatch } from "react-hook-form";
+import { RichTextEditor } from "@/components/rich-text";
 import { MockDataBanner } from "@/components/mock-data-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
@@ -37,7 +38,6 @@ import {
   type CreateSectionValues,
   EXAM_CODE_MAX,
   EXAM_DESCRIPTION_MAX,
-  EXAM_INSTRUCTIONS_MAX,
   EXAM_NAME_MAX,
   emptyPart,
   initialParts,
@@ -596,12 +596,19 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
             <div data-field="instructions">
               <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={formState.errors.instructions?.message}>
                 {(controlProps) => (
-                  <Textarea
-                    {...controlProps}
-                    {...register("instructions")}
-                    rows={4}
-                    maxLength={EXAM_INSTRUCTIONS_MAX}
-                    placeholder={t("instructionsPlaceholder")}
+                  <Controller
+                    control={control}
+                    name="instructions"
+                    render={({ field }) => (
+                      <RichTextEditor
+                        {...controlProps}
+                        value={field.value}
+                        onChange={field.onChange}
+                        allowImages={false}
+                        invalid={Boolean(formState.errors.instructions)}
+                        placeholder={t("instructionsPlaceholder")}
+                      />
+                    )}
                   />
                 )}
               </FormField>

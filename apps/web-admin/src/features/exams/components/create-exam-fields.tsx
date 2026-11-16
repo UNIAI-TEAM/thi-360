@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import type { CatalogOption, ExamKindOption } from "@/features/content/types";
+import { RichTextEditor } from "@/components/rich-text";
 import {
   createExamInfoSchema,
   EXAM_CODE_MAX,
@@ -764,12 +765,19 @@ export function ExamInfoFields({
       </FormField>
       <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={errors.instructions?.message}>
         {(controlProps) => (
-          <Textarea
-            {...controlProps}
-            {...register("instructions")}
-            rows={4}
-            maxLength={EXAM_INSTRUCTIONS_MAX}
-            placeholder={t("instructionsPlaceholder")}
+          <Controller
+            control={control}
+            name="instructions"
+            render={({ field }) => (
+              <RichTextEditor
+                {...controlProps}
+                value={field.value}
+                onChange={field.onChange}
+                allowImages={false}
+                invalid={Boolean(errors.instructions)}
+                placeholder={t("instructionsPlaceholder")}
+              />
+            )}
           />
         )}
       </FormField>
