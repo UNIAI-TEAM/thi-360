@@ -2713,7 +2713,7 @@ export interface components {
         KnowledgeNode: {
             /** @description Nút đang có hiệu lực */
             active: boolean;
-            children?: components["schemas"]["KnowledgeNode"][];
+            children: components["schemas"]["KnowledgeNode"][];
             /** @description Mã nút (MAPID) */
             code: string;
             /** @description Mã khối lớp liên kết hiệu lực; null với nút cấp môn */

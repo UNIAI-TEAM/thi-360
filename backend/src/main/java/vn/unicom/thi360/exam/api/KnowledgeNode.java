@@ -5,7 +5,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.UUID;
 
-@Schema(description = "Nút trong cây kiến thức (danh mục KNOWLEDGE)")
+@Schema(description = "Nút trong cây kiến thức (danh mục KNOWLEDGE)",
+        // @ArraySchema của children không mang requiredMode lên được schema cha (R2-3) nên
+        // liệt kê bắt buộc ở cấp class; springdoc gộp với requiredMode của từng field.
+        requiredProperties = {"id", "code", "name", "level", "active", "children"})
 public record KnowledgeNode(
         @Schema(description = "ID nút danh mục", requiredMode = Schema.RequiredMode.REQUIRED)
         UUID id,
@@ -25,8 +28,7 @@ public record KnowledgeNode(
         // Đệ quy: implementation= làm springdoc mở rộng vô hạn (StackOverflow khi sinh
         // /v3/api-docs); items trỏ thẳng tới chính schema KnowledgeNode.
         @ArraySchema(schema = @Schema(ref = "#/components/schemas/KnowledgeNode"),
-                arraySchema = @Schema(description = "Các nút con trực tiếp",
-                        requiredMode = Schema.RequiredMode.REQUIRED))
+                arraySchema = @Schema(description = "Các nút con trực tiếp"))
         List<KnowledgeNode> children
 ) {
     public KnowledgeNode {

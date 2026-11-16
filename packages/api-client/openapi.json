@@ -2343,7 +2343,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "active", "code", "id", "level", "name" ],
+        "required" : [ "active", "children", "code", "id", "level", "name" ],
         "type" : "object"
       },
       "LoginRequest" : {
