@@ -2253,7 +2253,8 @@
         "moreAria": "Thao tác khác với câu hỏi {code}",
         "moreTooltip": "Thao tác khác",
         "markReady": "Chuyển sang Sẵn sàng",
-        "retire": "Ngừng sử dụng"
+        "retire": "Ngừng sử dụng",
+        "preview": "Xem trước"
       }
     },
     "detail": {
@@ -2270,6 +2271,7 @@
       "tabsLabel": "Thông tin câu hỏi",
       "tabs": {
         "content": "Nội dung",
+        "preview": "Xem trước",
         "usage": "Nơi đang dùng",
         "versions": "Lịch sử phiên bản"
       },
@@ -3001,6 +3003,79 @@
           "tagCodes": "nhãn",
           "competencyCode": "năng lực"
         }
+      }
+    },
+    "preview": {
+      "noContent": "Chưa có đề bài.",
+      "attachments": "{count, number} tệp đính kèm",
+      "hintSingle": "Chọn một đáp án.",
+      "hintMultiple": "Chọn một hoặc nhiều đáp án.",
+      "shortAnswerLabel": "Câu trả lời",
+      "blankLabel": "Ô {number}",
+      "blankPlaceholder": "({number})",
+      "statementLegend": "Ý {letter}",
+      "true": "Đúng",
+      "false": "Sai",
+      "matchReuse": "Một lựa chọn được dùng cho nhiều mục.",
+      "matchOnce": "Mỗi lựa chọn chỉ dùng một lần.",
+      "matchPlaceholder": "Chưa chọn",
+      "matchItem": "Mục {number}",
+      "matchSelectLabel": "Lựa chọn ghép với mục {number}",
+      "childTitle": "Câu {number}",
+      "points": "{points} điểm",
+      "essayLabel": "Bài làm",
+      "essayWords": "{count, plural, other {# chữ}}",
+      "essayWordsLimit": "{count, number} chữ, giới hạn {limit} chữ",
+      "deviceLabel": "Khung hiển thị",
+      "device": {
+        "web": "Web",
+        "phone": "Điện thoại"
+      },
+      "frame": {
+        "web": "Xem trước trên trình duyệt máy tính",
+        "phone": "Xem trước trên màn hình điện thoại"
+      },
+      "actions": {
+        "fillCorrect": "Điền đáp án đúng",
+        "reset": "Làm lại",
+        "grade": "Chấm thử"
+      },
+      "essay": {
+        "title": "Đối chiếu với hướng dẫn chấm",
+        "yourAnswer": "Bài làm thử",
+        "sampleAnswer": "Bài làm mẫu",
+        "noAnswer": "Chưa có bài làm.",
+        "noSample": "Câu chưa có bài làm mẫu.",
+        "guide": "Hướng dẫn chấm",
+        "noGuide": "Câu chưa có hướng dẫn chấm.",
+        "criterionPoints": "{points} điểm"
+      },
+      "result": {
+        "title": "Kết quả chấm thử",
+        "idle": "Chọn, đổi hoặc bỏ trống đáp án rồi bấm Chấm thử để xem điểm từng ý và cả câu.",
+        "score": "{earned} / {max} điểm",
+        "manualPending": "Chờ chấm: phần Tự luận do người chấm cho điểm, chưa tính vào điểm này.",
+        "correct": "Đúng",
+        "wrong": "Sai",
+        "blank": "Bỏ trống",
+        "partPoints": "{earned}/{max} điểm",
+        "correctOption": "Đáp án đúng",
+        "wrongPick": "Bạn chọn sai",
+        "standardAnswer": "Đáp án chuẩn: {answer}",
+        "statementKey": "Đáp án: {answer}",
+        "matchKey": "Ghép đúng với: {answer}",
+        "state": {
+          "correct": "Đúng hết",
+          "partial": "Đúng một phần",
+          "wrong": "Sai",
+          "blank": "Bỏ trống",
+          "manual": "Chờ chấm"
+        },
+        "rowChild": "Câu {number}",
+        "rowBlank": "Ô {number}",
+        "rowPair": "Mục {number}",
+        "rowStatement": "Ý {letter}",
+        "childPoints": "{earned}/{max} điểm"
       }
     },
     "usage": {

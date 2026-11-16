@@ -18,8 +18,8 @@ import type { QuestionDetail } from "../types";
 import { ManualGradingBadge } from "./question-detail-body";
 import { MarkReadyDialog, RetireQuestionDialog } from "./question-status-dialogs";
 
-/** Ba trang con của chi tiết câu hỏi, mỗi trang một đường dẫn (NavTabs, DESIGN.md 5.5). */
-export const QUESTION_DETAIL_TABS = ["content", "usage", "versions"] as const;
+/** Bốn trang con của chi tiết câu hỏi, mỗi trang một đường dẫn (NavTabs, DESIGN.md 5.5). */
+export const QUESTION_DETAIL_TABS = ["content", "preview", "usage", "versions"] as const;
 export type QuestionDetailTab = (typeof QUESTION_DETAIL_TABS)[number];
 
 export function questionTabHref(questionId: string, tab: QuestionDetailTab): string {
@@ -29,7 +29,7 @@ export function questionTabHref(questionId: string, tab: QuestionDetailTab): str
 
 export function questionTabFromPathname(pathname: string): QuestionDetailTab {
   const last = pathname.replace(/\/+$/, "").split("/").at(-1);
-  return last === "usage" || last === "versions" ? last : "content";
+  return last === "preview" || last === "usage" || last === "versions" ? last : "content";
 }
 
 export function questionEditHref(questionId: string): string {

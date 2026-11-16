@@ -563,7 +563,7 @@ function KnowledgeCell({ item }: { item: QuestionSummary }) {
   );
 }
 
-/** Sửa và menu "⋯" (Chuyển sang Sẵn sàng, Ngừng sử dụng) của một câu, dùng chung cho bảng và thẻ. */
+/** Sửa và menu "⋯" (Xem trước, Chuyển sang Sẵn sàng, Ngừng sử dụng) của một câu, dùng chung cho bảng và thẻ. */
 function RowActions({
   item,
   onOpen,
@@ -586,6 +586,10 @@ function RowActions({
           <IconButton icon={<MoreHorizontal />} aria-label={t("moreAria", { code: item.code })} tooltip={t("moreTooltip")} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => router.push(`/questions/${encodeURIComponent(item.id)}/preview`)}>
+            <Eye />
+            <span>{t("preview")}</span>
+          </DropdownMenuItem>
           {item.status !== "READY" && (
             <DropdownMenuItem onSelect={() => onOpen("ready", item)}>
               <CircleCheck />

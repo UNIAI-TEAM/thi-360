@@ -2253,7 +2253,8 @@
         "moreAria": "More actions for question {code}",
         "moreTooltip": "More actions",
         "markReady": "Mark as ready",
-        "retire": "Retire"
+        "retire": "Retire",
+        "preview": "Preview"
       }
     },
     "detail": {
@@ -2270,6 +2271,7 @@
       "tabsLabel": "Question details",
       "tabs": {
         "content": "Content",
+        "preview": "Preview",
         "usage": "Where used",
         "versions": "Version history"
       },
@@ -3001,6 +3003,79 @@
           "tagCodes": "tags",
           "competencyCode": "competency"
         }
+      }
+    },
+    "preview": {
+      "noContent": "This question has no prompt yet.",
+      "attachments": "{count, plural, one {# attachment} other {# attachments}}",
+      "hintSingle": "Choose one answer.",
+      "hintMultiple": "Choose one or more answers.",
+      "shortAnswerLabel": "Your answer",
+      "blankLabel": "Blank {number}",
+      "blankPlaceholder": "({number})",
+      "statementLegend": "Statement {letter}",
+      "true": "True",
+      "false": "False",
+      "matchReuse": "One choice can be used for several items.",
+      "matchOnce": "Each choice can be used only once.",
+      "matchPlaceholder": "Not chosen",
+      "matchItem": "Item {number}",
+      "matchSelectLabel": "Choice matched to item {number}",
+      "childTitle": "Question {number}",
+      "points": "{points} points",
+      "essayLabel": "Your answer",
+      "essayWords": "{count, plural, one {# word} other {# words}}",
+      "essayWordsLimit": "{count, plural, one {# word} other {# words}}, limit {limit}",
+      "deviceLabel": "Display frame",
+      "device": {
+        "web": "Web",
+        "phone": "Phone"
+      },
+      "frame": {
+        "web": "Preview in a desktop browser",
+        "phone": "Preview on a phone screen"
+      },
+      "actions": {
+        "fillCorrect": "Fill in correct answers",
+        "reset": "Start over",
+        "grade": "Try grading"
+      },
+      "essay": {
+        "title": "Compare with the grading guide",
+        "yourAnswer": "Trial answer",
+        "sampleAnswer": "Sample answer",
+        "noAnswer": "No answer yet.",
+        "noSample": "This question has no sample answer.",
+        "guide": "Grading guide",
+        "noGuide": "This question has no grading guide.",
+        "criterionPoints": "{points} points"
+      },
+      "result": {
+        "title": "Trial grading result",
+        "idle": "Choose, change or leave answers blank, then press Try grading to see the score of each part and of the whole question.",
+        "score": "{earned} / {max} points",
+        "manualPending": "Awaiting grading: the Essay part is scored by a grader and is not included in this score.",
+        "correct": "Correct",
+        "wrong": "Wrong",
+        "blank": "Blank",
+        "partPoints": "{earned}/{max} points",
+        "correctOption": "Correct answer",
+        "wrongPick": "Wrong choice",
+        "standardAnswer": "Standard answer: {answer}",
+        "statementKey": "Answer: {answer}",
+        "matchKey": "Correct match: {answer}",
+        "state": {
+          "correct": "All correct",
+          "partial": "Partly correct",
+          "wrong": "Wrong",
+          "blank": "Blank",
+          "manual": "Awaiting grading"
+        },
+        "rowChild": "Question {number}",
+        "rowBlank": "Blank {number}",
+        "rowPair": "Item {number}",
+        "rowStatement": "Statement {letter}",
+        "childPoints": "{earned}/{max} points"
       }
     },
     "usage": {
