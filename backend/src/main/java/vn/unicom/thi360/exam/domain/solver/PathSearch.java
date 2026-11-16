@@ -172,7 +172,16 @@ final class PathSearch {
             int c = pairs.get(p)[1];
             pairGroup[p] = g;
             pairClass[p] = c;
-            pairVec[p] = classVecs.get(c);
+            // vector charge của cặp: chỉ chỉ tiêu phía môn + chỉ tiêu của chính nhóm — đóng góp
+            // vào TỔNG của nhóm khác (matcher khớp mọi đơn vị) không được trừ ở cặp này
+            int[] full = classVecs.get(c);
+            int[] masked = new int[full.length];
+            for (int r = 0; r < full.length; r++) {
+                if (r < ctx.subjectReqs() || (r >= ctx.reqFrom()[g] && r < ctx.reqTo()[g])) {
+                    masked[r] = full[r];
+                }
+            }
+            pairVec[p] = masked;
             List<int[]> ms = new ArrayList<>();
             for (int[] m : members.get(c)) {
                 if (m[0] == g) {
