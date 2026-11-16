@@ -35,6 +35,8 @@ public final class RandomCaseGenerator {
             {"SINGLE_CHOICE", "SHORT_ANSWER", "TRUE_FALSE", "MULTIPLE_CHOICE"};
     private static final String[] GRADES = {"G10", "G11", "G12"};
     private static final String[] DIFFICULTIES = {"NB", "TH", "VD"};
+    /** Quy tắc chấm giả lập cho bộ lọc {@code expectedScoringRule} của nhóm (R2-17). */
+    private static final String[] SCORING_RULES = {"ALL_OR_NOTHING", "PARTIAL_CREDIT", "PER_ITEM"};
 
     private final Random random;
     private int nextId;
@@ -94,7 +96,7 @@ public final class RandomCaseGenerator {
         int q = 0;
         for (int s = 0; s < subjects; s++) {
             int count = 1 + random.nextInt(3); // 1..3 câu
-            GroupQuota group = GroupQuota.single("g-" + nextId + "-" + s, count);
+            GroupQuota group = filtered(GroupQuota.single("g-" + nextId + "-" + s, count));
             int poolSize = count + random.nextInt(6);
             List<PathCandidate> pool = new ArrayList<>();
             String answerType = pick(ANSWER_TYPES);
@@ -108,7 +110,7 @@ public final class RandomCaseGenerator {
                     pool.remove(pool.size() - 1);
                 }
             }
-            sources.put(group, pool);
+            sources.put(group, applyFilters(group, pool));
             sections.add(section("S" + s, count, SubjectQuota.NONE, List.of(group)));
         }
         return new OracleCase(nextId++, Category.BASIC_SINGLE,
@@ -125,7 +127,7 @@ public final class RandomCaseGenerator {
         for (int g = 0; g < groups; g++) {
             int take = g == groups - 1 ? remaining : 1 + random.nextInt(Math.max(1, remaining - 1));
             remaining -= take;
-            groupList.add(GroupQuota.single("g-" + nextId + "-" + g, take));
+            groupList.add(filtered(GroupQuota.single("g-" + nextId + "-" + g, take)));
         }
         SubjectQuota quota = randomSubjectQuota(count, false);
         String banned = random.nextInt(3) == 0 ? pickBannedValue(quota) : null;
@@ -139,7 +141,7 @@ public final class RandomCaseGenerator {
                 src.removeIf(c -> random.nextInt(4) == 0);
             }
             cap(src);
-            sources.put(groupList.get(g), src);
+            sources.put(groupList.get(g), applyFilters(groupList.get(g), src));
         }
         SectionOnPath section = section("MATH", count, quota, groupList);
         return new OracleCase(nextId++, Category.SUBJECT_QUOTA,
@@ -152,15 +154,15 @@ public final class RandomCaseGenerator {
         int setCount = 1 + random.nextInt(2);
         List<GroupQuota> groups = new ArrayList<>();
         Map<GroupQuota, List<PathCandidate>> sources = new LinkedHashMap<>();
-        GroupQuota setGroup = GroupQuota.set("gs-" + nextId, setCount, setSize,
-                random.nextInt(3) == 0 ? pick(ANSWER_TYPES) : null);
+        GroupQuota setGroup = filtered(GroupQuota.set("gs-" + nextId, setCount, setSize,
+                random.nextInt(3) == 0 ? pick(ANSWER_TYPES) : null));
         groups.add(setGroup);
         int total = setCount * setSize;
         int singles = 0;
         if (random.nextBoolean()) {
             singles = 1 + random.nextInt(2);
             total += singles;
-            groups.add(GroupQuota.single("g-" + nextId, singles));
+            groups.add(filtered(GroupQuota.single("g-" + nextId, singles)));
         }
         String childType = setGroup.childAnswerType();
         List<PathCandidate> pool = new ArrayList<>();
@@ -173,7 +175,7 @@ public final class RandomCaseGenerator {
             // chùm không đúng kích thước/dạng con → không dùng được
             pool.add(setCandidate("bad" + nextId, setSize == 2 ? 3 : 2, null));
         }
-        sources.put(setGroup, pool);
+        sources.put(setGroup, applyFilters(setGroup, pool));
         if (singles > 0) {
             List<PathCandidate> singles0 = new ArrayList<>();
             boolean singleShort = random.nextInt(4) == 0;
@@ -181,7 +183,7 @@ public final class RandomCaseGenerator {
             for (int i = 0; i < ns; i++) {
                 singles0.add(standalone("s" + nextId + "-" + i, pick(ANSWER_TYPES)));
             }
-            sources.put(groups.get(1), singles0);
+            sources.put(groups.get(1), applyFilters(groups.get(1), singles0));
         }
         return new OracleCase(nextId++, Category.SETS,
                 List.of(SolvePart.Fixed.of("p1",
@@ -193,16 +195,21 @@ public final class RandomCaseGenerator {
      * nhóm chùm + một nhóm câu đơn — trọng tâm của contract (≥ 200 ca).
      */
     private OracleCase subjectQuotaSets() {
+        if (random.nextInt(4) == 0) {
+            // hai mục cùng mã môn trên một đường (R2-3/R2-4): mỗi mục giữ chỉ tiêu, nhóm và
+            // phần còn lại của riêng nó
+            return repeatedSubjectSections();
+        }
         int setSize = 2 + random.nextInt(2);
         int setCount = 1 + random.nextInt(2);
         int singles = 1 + random.nextInt(3);
         int total = setCount * setSize + singles;
         List<GroupQuota> groups = new ArrayList<>();
         Map<GroupQuota, List<PathCandidate>> sources = new LinkedHashMap<>();
-        GroupQuota setGroup = GroupQuota.set("gs-" + nextId, setCount, setSize, null);
-        GroupQuota singleGroup = random.nextInt(4) == 0
+        GroupQuota setGroup = filtered(GroupQuota.set("gs-" + nextId, setCount, setSize, null));
+        GroupQuota singleGroup = filtered(random.nextInt(4) == 0
                 ? GroupQuota.remainder("gr-" + nextId)
-                : GroupQuota.single("g-" + nextId, singles);
+                : GroupQuota.single("g-" + nextId, singles));
         groups.add(setGroup);
         groups.add(singleGroup);
         boolean percent = random.nextInt(4) == 0;
@@ -218,16 +225,69 @@ public final class RandomCaseGenerator {
             // một chùm lệch chỉ tiêu: lấy thì vượt chỉ tiêu môn
             setPool.add(setCandidate("bad" + nextId, setSize, null));
         }
-        sources.put(setGroup, setPool);
+        sources.put(setGroup, applyFilters(setGroup, setPool));
 
         List<PathCandidate> singlePool = new ArrayList<>();
         for (int i = 0; i < singles + random.nextInt(5); i++) {
             singlePool.add(candidateForQuota("q" + nextId + "-" + i, quota, banned));
         }
         cap(singlePool);
-        sources.put(singleGroup, singlePool);
+        sources.put(singleGroup, applyFilters(singleGroup, singlePool));
         return new OracleCase(nextId++, Category.SUBJECT_QUOTA_SETS,
                 List.of(SolvePart.Fixed.of("p1", section("MATH", total, quota, groups))),
+                sources);
+    }
+
+    /**
+     * Hai {@link SectionOnPath} cùng {@code subjectCode} trên một đường: mục A có nhóm chùm
+     * (+ nhóm câu đơn/phần còn lại), mục B một nhóm câu đơn; mỗi mục khai chỉ tiêu cấp môn và
+     * nhận phần còn lại của riêng nó (R2-3, R2-4). Nguồn từng nhóm độc lập.
+     */
+    private OracleCase repeatedSubjectSections() {
+        int setSize = 2 + random.nextInt(2);
+        int singlesA = 1 + random.nextInt(3);
+        int countA = setSize + singlesA; // mục A: 1 chùm + câu đơn
+        int countB = 1 + random.nextInt(4);
+        List<GroupQuota> groupsA = new ArrayList<>();
+        List<GroupQuota> groupsB = new ArrayList<>();
+        Map<GroupQuota, List<PathCandidate>> sources = new LinkedHashMap<>();
+        GroupQuota setGroup = filtered(GroupQuota.set("gs-" + nextId, 1, setSize, null));
+        GroupQuota gA = filtered(random.nextInt(3) == 0
+                ? GroupQuota.remainder("gra-" + nextId)
+                : GroupQuota.single("ga-" + nextId, singlesA));
+        GroupQuota gB = filtered(random.nextInt(3) == 0
+                ? GroupQuota.remainder("grb-" + nextId)
+                : GroupQuota.single("gb-" + nextId, countB));
+        groupsA.add(setGroup);
+        groupsA.add(gA);
+        groupsB.add(gB);
+        SubjectQuota quotaA = randomSubjectQuota(countA, random.nextInt(3) == 0);
+        SubjectQuota quotaB = randomSubjectQuota(countB, random.nextInt(3) == 0);
+        String bannedA = random.nextInt(4) == 0 ? pickBannedValue(quotaA) : null;
+        String bannedB = random.nextInt(5) == 0 ? pickBannedValue(quotaB) : null;
+
+        List<PathCandidate> setPool = new ArrayList<>();
+        for (int i = 0; i < 1 + random.nextInt(3); i++) {
+            setPool.add(setCandidateForQuota("set" + nextId + "-" + i, setSize, quotaA, bannedA));
+        }
+        sources.put(setGroup, applyFilters(setGroup, setPool));
+        List<PathCandidate> poolA = new ArrayList<>();
+        for (int i = 0; i < singlesA + random.nextInt(4); i++) {
+            poolA.add(candidateForQuota("qa" + nextId + "-" + i, quotaA, bannedA));
+        }
+        cap(poolA);
+        sources.put(gA, applyFilters(gA, poolA));
+        List<PathCandidate> poolB = new ArrayList<>();
+        for (int i = 0; i < countB + random.nextInt(4); i++) {
+            poolB.add(candidateForQuota("qb" + nextId + "-" + i, quotaB, bannedB));
+        }
+        cap(poolB);
+        sources.put(gB, applyFilters(gB, poolB));
+        return new OracleCase(nextId++, Category.SUBJECT_QUOTA_SETS,
+                List.of(new SolvePart.Fixed("p1", List.of(
+                        new SectionOnPath("MATH", "sec-" + nextId + "-a", countA, quotaA, groupsA),
+                        new SectionOnPath("MATH", "sec-" + nextId + "-b", countB, quotaB,
+                                groupsB)))),
                 sources);
     }
 
@@ -250,8 +310,8 @@ public final class RandomCaseGenerator {
             }
             String banned = random.nextInt(5) == 0 ? pickBannedValue(quota) : null;
             if (hasSet) {
-                GroupQuota sg = GroupQuota.set("gs-" + nextId + "-" + s, 1, 2, null);
-                GroupQuota rg = GroupQuota.remainder("gr-" + nextId + "-" + s);
+                GroupQuota sg = filtered(GroupQuota.set("gs-" + nextId + "-" + s, 1, 2, null));
+                GroupQuota rg = filtered(GroupQuota.remainder("gr-" + nextId + "-" + s));
                 groups.add(sg);
                 groups.add(rg);
                 List<PathCandidate> setPool = new ArrayList<>();
@@ -259,16 +319,16 @@ public final class RandomCaseGenerator {
                     setPool.add(setCandidateForQuota("set" + nextId + "-" + s + "-" + i, 2,
                             quota, banned));
                 }
-                sources.put(sg, setPool);
+                sources.put(sg, applyFilters(sg, setPool));
                 List<PathCandidate> pool = new ArrayList<>();
                 int shortfall = random.nextInt(4) == 0 ? 1 + random.nextInt(2) : 0;
                 for (int i = 0; i < needed - 2 - shortfall + 3; i++) {
                     pool.add(candidateForQuota("q" + nextId + "-" + s + "-" + i, quota, banned));
                 }
                 cap(pool);
-                sources.put(rg, pool);
+                sources.put(rg, applyFilters(rg, pool));
             } else {
-                GroupQuota g = GroupQuota.remainder("g-" + nextId + "-" + s);
+                GroupQuota g = filtered(GroupQuota.remainder("g-" + nextId + "-" + s));
                 groups.add(g);
                 List<PathCandidate> pool = new ArrayList<>();
                 int shortfall = random.nextInt(4) == 0 ? 1 + random.nextInt(2) : 0;
@@ -276,7 +336,7 @@ public final class RandomCaseGenerator {
                     pool.add(candidateForQuota("q" + nextId + "-" + s + "-" + i, quota, banned));
                 }
                 cap(pool);
-                sources.put(g, pool);
+                sources.put(g, applyFilters(g, pool));
             }
             sections.add(new SectionOnPath("CS" + s, "sec-cs" + s, null, quota, groups));
         }
@@ -289,8 +349,8 @@ public final class RandomCaseGenerator {
     private OracleCase sharedSource() {
         int countA = 1 + random.nextInt(2);
         int countB = 1 + random.nextInt(2);
-        GroupQuota a = GroupQuota.single("ga-" + nextId, countA);
-        GroupQuota b = GroupQuota.single("gb-" + nextId, countB);
+        GroupQuota a = filtered(GroupQuota.single("ga-" + nextId, countA));
+        GroupQuota b = filtered(GroupQuota.single("gb-" + nextId, countB));
         boolean starve = random.nextInt(3) == 0; // ~1/3 ca: tổng nguồn < tổng câu cần
         int poolSize = starve ? Math.max(1, countA + countB - 1) : countA + countB + 1;
         List<PathCandidate> shared = new ArrayList<>();
@@ -306,8 +366,8 @@ public final class RandomCaseGenerator {
             srcB.remove(srcB.size() - 1);
         }
         Map<GroupQuota, List<PathCandidate>> sources = new LinkedHashMap<>();
-        sources.put(a, srcA);
-        sources.put(b, srcB);
+        sources.put(a, applyFilters(a, srcA));
+        sources.put(b, applyFilters(b, srcB));
         SectionOnPath section = section("PHY", countA + countB, SubjectQuota.NONE,
                 List.of(a, b));
         return new OracleCase(nextId++, Category.SHARED_SOURCE,
@@ -319,6 +379,75 @@ public final class RandomCaseGenerator {
     private SectionOnPath section(String subject, int count, SubjectQuota quota,
             List<GroupQuota> groups) {
         return new SectionOnPath(subject, "sec-" + subject + "-" + nextId, count, quota, groups);
+    }
+
+    /**
+     * Đôi khi gắn {@code expectedScoringRule} và/hoặc {@code requiredPointsPerUnit} cho nhóm
+     * (R2-17): ~1/4 ca mỗi loại, độc lập — cùng {@link #applyFilters} bên dưới sinh nguồn có cả
+     * ứng viên hợp lệ lẫn vi phạm.
+     */
+    private GroupQuota filtered(GroupQuota group) {
+        String rule = random.nextInt(4) == 0 ? SCORING_RULES[random.nextInt(3)] : null;
+        BigDecimal points = random.nextInt(4) == 0 ? BigDecimal.valueOf(2) : null;
+        if (rule == null && points == null) {
+            return group;
+        }
+        return new GroupQuota(group.groupId(), group.kind(), group.questionCount(),
+                group.answerType(), group.setCount(), group.setSize(), group.childAnswerType(),
+                group.matrix(), group.competencies(), group.mapidGroups(), points, rule);
+    }
+
+    /**
+     * Nguồn của nhóm có bộ lọc quy tắc chấm/điểm: ~70% ứng viên hợp lệ, ~30% vi phạm (sai quy
+     * tắc, thiếu hoặc sai điểm) — nhóm không lọc thì giữ nguyên nguồn.
+     */
+    private List<PathCandidate> applyFilters(GroupQuota group, List<PathCandidate> pool) {
+        if (group.expectedScoringRule() == null && group.requiredPointsPerUnit() == null) {
+            return pool;
+        }
+        List<PathCandidate> out = new ArrayList<>(pool.size());
+        for (PathCandidate c : pool) {
+            out.add(random.nextInt(10) < 7 ? comply(c, group) : violating(c, group));
+        }
+        return out;
+    }
+
+    private PathCandidate comply(PathCandidate c, GroupQuota group) {
+        String rule = group.expectedScoringRule() != null ? group.expectedScoringRule()
+                : c.scoringRule();
+        BigDecimal points = group.requiredPointsPerUnit() != null ? group.requiredPointsPerUnit()
+                : BigDecimal.ONE;
+        return new PathCandidate(c.questionId(), c.versionNo(), c.setId(), c.taskTypeCode(), rule,
+                unitsWithPoints(c, points));
+    }
+
+    private PathCandidate violating(PathCandidate c, GroupQuota group) {
+        String rule = c.scoringRule();
+        if (group.expectedScoringRule() != null) {
+            // sai quy tắc chấm: một quy tắc khác hoặc không khai
+            rule = random.nextBoolean() ? null
+                    : SCORING_RULES[(random.nextInt(2) + 1
+                            + java.util.Arrays.asList(SCORING_RULES)
+                                    .indexOf(group.expectedScoringRule()))
+                            % SCORING_RULES.length];
+        }
+        BigDecimal points = c.units().isEmpty() ? null : c.units().get(0).points();
+        if (group.requiredPointsPerUnit() != null) {
+            // thiếu điểm hoặc sai điểm yêu cầu
+            points = random.nextBoolean() ? null
+                    : group.requiredPointsPerUnit().add(BigDecimal.ONE);
+        }
+        return new PathCandidate(c.questionId(), c.versionNo(), c.setId(), c.taskTypeCode(), rule,
+                unitsWithPoints(c, points));
+    }
+
+    private List<CountingUnit> unitsWithPoints(PathCandidate c, BigDecimal points) {
+        List<CountingUnit> out = new ArrayList<>(c.units().size());
+        for (CountingUnit u : c.units()) {
+            out.add(new CountingUnit(u.childId(), u.answerType(), u.gradeCode(),
+                    u.difficultyCode(), u.mapidIds(), u.competencyCodes(), points));
+        }
+        return out;
     }
 
     private PathCandidate standalone(String id, String answerType) {

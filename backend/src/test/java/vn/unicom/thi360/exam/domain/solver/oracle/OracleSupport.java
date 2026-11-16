@@ -32,9 +32,10 @@ final class OracleSupport {
 
     /**
      * Quy dãy tỉ lệ ra số câu nguyên theo phần dư lớn nhất (PBI-04 7.3), cùng quy tắc hòa của web
-     * ({@code apportionByPercent} trong {@code apps/web-admin/src/features/exams/matrix.ts}): phần
-     * nguyên trước, phần còn thiếu ({@code round(tổng lý thuyết) - tổng phần nguyên}) đi tới mục có
-     * phần thập phân lớn nhất, hòa thì theo thứ tự khai báo.
+     * ({@code apportionByPercent} trong {@code apps/web-admin/src/features/exams/matrix.ts}):
+     * giá trị lý thuyết làm tròn 1e-9, phần nguyên của {@code floor(t + 1e-9)}, phần thập phân
+     * cũng làm tròn 1e-9 trước khi so — nên các phần dư bằng nhau về toán nhưng khác biểu diễn
+     * nhị phân vẫn hòa và phân theo thứ tự khai báo.
      */
     static int[] apportion(List<Integer> percents, int total) {
         int n = percents.size();
@@ -43,7 +44,7 @@ final class OracleSupport {
         double theoSum = 0;
         int floorSum = 0;
         for (int i = 0; i < n; i++) {
-            theoretical[i] = percents.get(i) * total / 100.0;
+            theoretical[i] = roundPrecision(percents.get(i) * total / 100.0);
             floors[i] = (int) Math.floor(theoretical[i] + 1e-9);
             theoSum += theoretical[i];
             floorSum += floors[i];
@@ -55,8 +56,8 @@ final class OracleSupport {
             ranked.add(i);
         }
         ranked.sort((a, b) -> {
-            double fa = theoretical[a] - floors[a];
-            double fb = theoretical[b] - floors[b];
+            double fa = roundPrecision(theoretical[a] - floors[a]);
+            double fb = roundPrecision(theoretical[b] - floors[b]);
             if (fa != fb) {
                 return Double.compare(fb, fa);
             }
@@ -67,6 +68,11 @@ final class OracleSupport {
             result[ranked.get(k)]++;
         }
         return result;
+    }
+
+    /** {@code Math.round(v * 1e9) / 1e9} — chuẩn hóa số học thập phân của web trước khi so sánh. */
+    private static double roundPrecision(double value) {
+        return Math.round(value * 1e9) / 1e9;
     }
 
     // ------------------------------------------------------------ chỉ tiêu đã quy
@@ -159,8 +165,6 @@ final class OracleSupport {
         return resolveMatrix(group.matrix(), groupUnits);
     }
 
-    // ------------------------------------------------------------ tập id đụng nhau
-
     /** Các id mà một ứng viên chiếm trên đường: id câu cộng mọi childId khác null (B9, spec 5.4). */
     static Set<String> occupiedIds(PathCandidate candidate) {
         Set<String> ids = new HashSet<>();
@@ -171,6 +175,22 @@ final class OracleSupport {
             }
         }
         return ids;
+    }
+
+    /**
+     * Ứng viên lặp định danh ngay trong chính nó (id câu trùng một childId, hoặc một childId
+     * xuất hiện hai lần): "mỗi câu con chỉ dùng một lần trên cả đường" (spec 5.4) nên ứng viên
+     * như vậy không bao giờ vào được đề — kiểm trước khi gom {@link #occupiedIds} thành Set.
+     */
+    static boolean hasInternalIdentityRepeat(PathCandidate candidate) {
+        Set<String> ids = new HashSet<>();
+        ids.add(candidate.questionId());
+        for (CountingUnit unit : candidate.units()) {
+            if (unit.childId() != null && !ids.add(unit.childId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static int unitCount(PathCandidate candidate) {
