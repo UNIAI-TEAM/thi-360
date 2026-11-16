@@ -300,17 +300,19 @@ function ClozeInputs({
       <p className="text-body leading-10 wrap-break-word whitespace-pre-wrap text-text">
         {segments.map((segment, index) => {
           if (index % 2 === 0) return <Fragment key={index}>{segment}</Fragment>;
-          const blank = body.blanks.find((item) => item.id === segment);
-          const number = blankOrder.indexOf(segment) + 1;
-          const part = partOf(result, segment);
+          // Nhập tệp và kiểm tra sẵn sàng đều cắt khoảng trắng quanh mã ô (`[[ b1 ]]` là ô b1).
+          const blankId = segment.trim();
+          const blank = body.blanks.find((item) => item.id === blankId);
+          const number = blankOrder.indexOf(blankId) + 1;
+          const part = partOf(result, blankId);
           return (
             <Input
               key={index}
-              id={`${name}-${segment}`}
+              id={`${name}-${blankId}`}
               aria-label={t("blankLabel", { number })}
               placeholder={t("blankPlaceholder", { number })}
-              value={values[segment] ?? ""}
-              onChange={(event) => onChange({ ...values, [segment]: event.target.value })}
+              value={values[blankId] ?? ""}
+              onChange={(event) => onChange({ ...values, [blankId]: event.target.value })}
               disabled={blank === undefined}
               autoComplete="off"
               className={cn(

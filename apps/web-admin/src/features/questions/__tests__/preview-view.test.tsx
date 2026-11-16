@@ -131,6 +131,48 @@ describe("xem trước câu hỏi", () => {
     expect(screen.getByText("Đáp án chuẩn: Việt Nam / VN")).toBeInTheDocument();
   });
 
+  function insertCloze(passage: string, points: number): QuestionDetail {
+    const cloze: QuestionDetail = {
+      ...questionStore.require("q-0004"),
+      id: "q-cloze-pad",
+      type: "CLOZE",
+      points,
+      content: "",
+      body: { type: "CLOZE", passage, blanks: [{ id: "b1", answers: ["Hà Nội"], points }] },
+    };
+    questionStore.insert(cloze);
+    return cloze;
+  }
+
+  it("Điền khuyết nhập từ tệp có mã ô viết `[[ b1 ]]`: ô vẫn nhập và chấm được như `[[b1]]`", async () => {
+    insertCloze("Thủ đô là [[ b1 ]].", 1);
+    renderWithProviders(<QuestionPreviewView questionId="q-cloze-pad" />);
+    await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
+
+    const input = screen.getByRole("textbox", { name: "Ô 1" });
+    expect(input).toBeEnabled();
+    await userEvent.type(input, "Hà Nội");
+    await userEvent.click(grade());
+    const panel = screen.getByRole("heading", { name: "Kết quả chấm thử" }).closest("div")!;
+    expect(within(panel).getByText("Đúng hết")).toBeInTheDocument();
+  });
+
+  it("điểm làm tròn nửa lên 2 chữ số: 1,125 hiện 1,13 (vi) và 1.13 (en)", async () => {
+    insertCloze("Thủ đô là [[b1]].", 1.125);
+    const viewVi = renderWithProviders(<QuestionPreviewView questionId="q-cloze-pad" />);
+    await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
+    await userEvent.click(screen.getByRole("button", { name: "Điền đáp án đúng" }));
+    await userEvent.click(grade());
+    expect(screen.getByText("1,13 / 1,13 điểm")).toBeInTheDocument();
+    viewVi.unmount();
+
+    renderWithProviders(<QuestionPreviewView questionId="q-cloze-pad" />, { locale: "en", messages: en });
+    await screen.findByRole("group", { name: "Preview in a desktop browser" });
+    await userEvent.click(screen.getByRole("button", { name: "Fill in correct answers" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try grading" }));
+    expect(screen.getByText("1.13 / 1.13 points")).toBeInTheDocument();
+  });
+
   it("Tự luận: không có điểm tự động, hiện Chờ chấm và bảng đối chiếu với hướng dẫn chấm và bài mẫu", async () => {
     renderWithProviders(<QuestionPreviewView questionId="q-8001" />);
     await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
