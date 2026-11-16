@@ -155,6 +155,123 @@ class QuestionImportParserTests {
     }
 
     @Test
+    void singleChoiceRejectsTwoAnswersAndTrueFalseNeedsMatchingCount() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "options", "correctAnswer"),
+            List.of("SINGLE_CHOICE", "Hai đáp án", "MATH", "GRADE_11", "RECOGNITION", "1\n2", "A, B"),
+            List.of("TRUE_FALSE", "Thiếu ý", "MATH", "GRADE_11", "RECOGNITION", "a. x\nb. y", "Đ")));
+        assertTrue(result.rows().get(0).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.ANSWER_INVALID && i.blocking()));
+        assertTrue(result.rows().get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.ANSWER_INVALID && i.blocking()));
+    }
+
+    @Test
+    void rubricReadsColonDescriptionAndRejectsZeroPoints() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "rubric"),
+            List.of("ESSAY", "Bài 1", "MATH", "GRADE_11", "RECOGNITION", "Ý 1: nêu luận điểm: 0,5"),
+            List.of("ESSAY", "Bài 2", "MATH", "GRADE_11", "RECOGNITION", "Ý 1: 0"),
+            List.of("ESSAY", "Bài 3", "MATH", "GRADE_11", "RECOGNITION", "Mở bài; Thân bài: 1")));
+        var body = (QuestionBody.EssayBody) result.rows().get(0).draft().body();
+        assertEquals("Ý 1: nêu luận điểm", body.rubric().getFirst().description());
+        assertEquals(new BigDecimal("0.5"), body.rubric().getFirst().points());
+        assertTrue(result.rows().get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.RUBRIC_INVALID && i.blocking()));
+        assertTrue(result.rows().get(2).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.RUBRIC_INVALID && i.blocking()));
+    }
+
+    @Test
+    void bracesBalanceChecks() {
+        assertTrue(ImportCellSyntax.bracesBalanced("$\\frac{1}{2}$"));
+        assertFalse(ImportCellSyntax.bracesBalanced("$\\frac{1}{x$"));
+        assertFalse(ImportCellSyntax.bracesBalanced("}{"));
+        assertTrue(ImportCellSyntax.bracesBalanced("\\{ a"));
+        assertTrue(ImportCellSyntax.bracesBalanced(""));
+    }
+
+    @Test
+    void essayReadsAnswerCellAsSample() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "correctAnswer"),
+            List.of("ESSAY", "Viết bài", "MATH", "GRADE_11", "RECOGNITION", "Xét f(x) = x^2")));
+        var body = (QuestionBody.EssayBody) result.rows().getFirst().draft().body();
+        assertEquals("Xét f(x) = x^2", body.sampleAnswer());
+        assertTrue(result.rows().getFirst().issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.GRADING_GUIDE_MISSING && !i.blocking()));
+    }
+
+    @Test
+    void badPassageDropsChildrenAndDuplicatePassageDuplicatesChildren() throws Exception {
+        var header = List.of("sourceCode", "type", "content", "subject", "grade", "difficulty", "setCode", "options", "correctAnswer");
+        var invalidPassage = parse(List.of(header,
+            List.of("S-1", "QUESTION_SET", "Ngữ liệu", "NOPE", "GRADE_11", "RECOGNITION", "S", "", ""),
+            List.of("", "SINGLE_CHOICE", "Câu con", "", "", "", "S", "1\n2", "A"),
+            List.of("T-1", "QUESTION_SET", "Ngữ liệu 2", "MATH", "GRADE_11", "RECOGNITION", "T", "", ""),
+            List.of("", "SINGLE_CHOICE", "Câu con lỗi", "", "", "", "T", "1\n2", "Z")));
+        var rows = invalidPassage.rows();
+        assertTrue(rows.get(0).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.SUBJECT_UNKNOWN));
+        assertEquals(ImportRowStatus.ERROR, rows.get(1).status());
+        assertTrue(rows.get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.SET_PASSAGE_INVALID));
+        assertTrue(rows.get(1).dropped());
+        assertTrue(rows.get(2).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.SET_CHILD_INVALID));
+        assertEquals(ImportRowStatus.ERROR, rows.get(3).status());
+        assertTrue(rows.get(3).dropped());
+
+        var sheet2 = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(header,
+            List.of("OLD-SET", "QUESTION_SET", "Ngữ liệu", "MATH", "GRADE_11", "RECOGNITION", "S", "", ""),
+            List.of("", "SINGLE_CHOICE", "Câu con", "", "", "", "S", "1\n2", "A")), ImportLimits.DEFAULT);
+        var existing = new ExistingQuestionRef(UUID.randomUUID(), "CH-9", QuestionType.QUESTION_SET, "old-set");
+        var dupResult = QuestionImportParser.parse(sheet2,
+            ImportColumnMapper.suggestMapping(sheet2.columns(), DICTIONARY), CATALOG, List.of(existing), DICTIONARY);
+        assertEquals(List.of(ImportRowStatus.DUPLICATE, ImportRowStatus.DUPLICATE),
+            dupResult.rows().stream().map(ImportRowResult::status).toList());
+    }
+
+    @Test
+    void sourceDuplicateMarksRowAndTypeMismatchBlocks() throws Exception {
+        var header = List.of("sourceCode", "type", "content", "subject", "grade", "difficulty", "options", "correctAnswer");
+        var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(header,
+            List.of("dup", "SINGLE_CHOICE", "Một", "MATH", "GRADE_11", "RECOGNITION", "1\n2", "A"),
+            List.of("dup2", "SINGLE_CHOICE", "Hai", "MATH", "GRADE_11", "RECOGNITION", "1\n2", "B")), ImportLimits.DEFAULT);
+        var existing = List.of(
+            new ExistingQuestionRef(UUID.randomUUID(), "CH-1", QuestionType.SINGLE_CHOICE, " DUP "),
+            new ExistingQuestionRef(UUID.randomUUID(), "CH-2", QuestionType.ESSAY, "dup2"));
+        var result = QuestionImportParser.parse(sheet,
+            ImportColumnMapper.suggestMapping(sheet.columns(), DICTIONARY), CATALOG, existing, DICTIONARY);
+        assertEquals(ImportRowStatus.DUPLICATE, result.rows().get(0).status());
+        assertEquals("CH-1", result.rows().get(0).duplicateOf().code());
+        assertTrue(result.rows().get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.IMPORT_SOURCE_TYPE_MISMATCH && i.blocking()));
+    }
+
+    @Test
+    void childLeavesEmptyClassificationNullForInheritance() throws Exception {
+        var nodes = List.of(
+            new ImportKnowledgeNode(UUID.randomUUID(), "1D4-3-1", "MATH", true, true));
+        var catalog = new ImportCatalog(CATALOG.subjects(), CATALOG.grades(), CATALOG.difficulties(),
+            CATALOG.taskTypes(), CATALOG.tags(), nodes);
+        var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "setCode", "knowledge", "options", "correctAnswer"),
+            List.of("QUESTION_SET", "Ngữ liệu", "MATH", "GRADE_11", "RECOGNITION", "S", "1D4-3-1", "", ""),
+            List.of("SINGLE_CHOICE", "Câu con", "", "", "", "S", "", "1\n2", "A")), ImportLimits.DEFAULT);
+        var result = QuestionImportParser.parse(sheet,
+            ImportColumnMapper.suggestMapping(sheet.columns(), DICTIONARY), catalog, List.of(), DICTIONARY);
+        var child = result.rows().get(1).draft();
+        assertNull(child.subjectCode());
+        assertNull(child.gradeCode());
+        assertNull(child.difficultyCode());
+        assertTrue(child.knowledge().isEmpty());
+        var setDraft = result.rows().get(0).draft();
+        assertEquals(1, setDraft.children().size());
+        assertEquals(child, setDraft.children().getFirst());
+    }
+
+    @Test
     void unknownCatalogValuesBlockWhileMissingGuideWarns() throws Exception {
         var result = parse(List.of(
             List.of("type", "content", "subject", "grade", "difficulty", "tags", "rubric"),

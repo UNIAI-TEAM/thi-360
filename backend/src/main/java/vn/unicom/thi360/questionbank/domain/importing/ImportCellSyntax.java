@@ -25,7 +25,6 @@ public final class ImportCellSyntax {
     private static final Pattern LETTERED_LINE = Pattern.compile("^([A-Za-z])\\s*[.)]\\s*(.*)$");
     private static final Pattern NUMBERED_LINE = Pattern.compile("^(\\d{1,3})\\s*[.)]\\s*(.*)$");
     private static final Pattern ASSIGNMENT = Pattern.compile("^([A-Za-z]\\w{0,15})\\s*=\\s*(.*)$");
-    private static final Pattern OPTION_PREFIX = Pattern.compile("^[A-Ja-j]\\s*[.)].*$");
 
     /** So khớp tên tiếng Việt: NFC, bỏ khoảng trắng đầu cuối, không phân biệt hoa thường. */
     public static boolean sameText(String left, String right) {
@@ -98,11 +97,6 @@ public final class ImportCellSyntax {
             unlabeled[0] = sawLabeled && sawPlain;
         }
         return items;
-    }
-
-    /** {@code true} khi dòng trông như đã mang nhãn phương án ({@code A. …}, {@code b) …}). */
-    static boolean looksLettered(String line) {
-        return OPTION_PREFIX.matcher(line).matches();
     }
 
     /**
