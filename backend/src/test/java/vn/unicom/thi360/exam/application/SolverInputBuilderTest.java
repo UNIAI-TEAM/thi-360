@@ -45,7 +45,8 @@ class SolverInputBuilderTest {
                 List.of(new MatrixCell("G10", "NB", BigDecimal.valueOf(100))),
                 List.of(), List.of(), List.of(new MatrixDimensionValue("C1", BigDecimal.valueOf(100))));
         var block = new QuestionBlock("set", "Set", QuestionType.QUESTION_SET, 2, 1, 2,
-                null, matrix, null, null, null, false, BigDecimal.ONE, null, List.of("TAG"), null);
+                null, matrix, null, null, null, false, BigDecimal.ONE, null, List.of("TAG"),
+                new BlockExpectedScoring(null, null, "ALL_OR_NOTHING"));
         var section = new ExamSection("math", "TOAN", 2, scope, null, null, null, null, List.of(block));
         var part = new ExamPart("p", 1, "Part", 20, 2, 2, 2,
                 new PartParticipation(ParticipationMode.ALL, null), null, List.of(section), List.of());
@@ -55,6 +56,7 @@ class SolverInputBuilderTest {
         GroupQuota group = fixed.sections().getFirst().groups().getFirst();
         assertThat(group.matrix()).isInstanceOf(MatrixQuota.Combined.class);
         assertThat(group.competencies()).containsExactly(new CompetencyQuota("C1", 100, QuotaUnit.PERCENT));
+        assertThat(group.expectedScoringRule()).isNull();
         input.candidates().candidatesFor(group);
         var filter = ArgumentCaptor.forClass(QuestionSourcePort.Filter.class);
         verify(source).findCandidates(filter.capture(), eq(8));

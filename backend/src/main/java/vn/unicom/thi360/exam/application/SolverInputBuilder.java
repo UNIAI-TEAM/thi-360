@@ -189,16 +189,12 @@ public class SolverInputBuilder {
                 competencies.add(new CompetencyQuota(item.code(), integer(item.value()), unit(block.matrix())));
             }
         }
-        String scoring = null;
-        if (block.expectedScoring() != null) {
-            scoring = block.expectedScoring().trueFalseMethod() != null
-                    ? block.expectedScoring().trueFalseMethod() : block.expectedScoring().multipleChoiceRule();
-        }
+        // expectedScoring is NOT a source filter: SCORING_MISMATCH is a warning, it never blocks solve/preview.
         return new GroupQuota(block.id(), set ? GroupQuota.GroupKind.SET : GroupQuota.GroupKind.SINGLE,
                 set ? null : block.questionCount(), set || block.questionType() == null ? null : block.questionType().name(),
                 set ? block.setCount() : null, set ? block.setSize() : null,
                 set && block.childAnswerType() != null ? block.childAnswerType().name() : null,
-                matrix(block.matrix()), competencies, List.of(), block.requiredPointsPerQuestion(), scoring);
+                matrix(block.matrix()), competencies, List.of(), block.requiredPointsPerQuestion(), null);
     }
 
     private static SubjectQuota subjectQuota(ExamSection section) {
