@@ -294,8 +294,13 @@ public final class RandomCaseGenerator {
     /**
      * {@code SUBJECT_CHOICE} 3 môn chọn 2, countsByPick bằng nhau hoặc lệch (3,2); các môn có
      * nhóm câu đơn (đôi khi có chùm) và có thể kèm chỉ tiêu cấp môn theo tỉ lệ.
+     * Khoảng 1/3 ca là dạng B10: 5 môn chọn 3 gắn {@code choiceGroup} (NATURAL/SOCIAL) —
+     * phân bổ số câu theo nhóm, kể cả ca mọi môn cùng một nhóm (3 phương án).
      */
     private OracleCase subjectChoice() {
+        if (random.nextInt(3) == 0) {
+            return choiceGroupChoice();
+        }
         boolean uneven = random.nextInt(3) == 0;
         int needed = uneven ? 3 : 4;
         List<Integer> countsByPick = uneven ? List.of(3, 2) : List.of(4, 4);
@@ -341,6 +346,39 @@ public final class RandomCaseGenerator {
             sections.add(new SectionOnPath("CS" + s, "sec-cs" + s, null, quota, groups));
         }
         SubjectChoice choice = new SubjectChoice("opt-sc", sections, 2, countsByPick);
+        List<SolvePart> parts = List.of(SolvePart.Choice.of("p1", List.of(choice)));
+        return new OracleCase(nextId++, Category.SUBJECT_CHOICE, parts, sources);
+    }
+
+    /**
+     * Dạng B10 của {@code SUBJECT_CHOICE}: 5 môn chọn 3, mỗi môn gắn {@code choiceGroup}
+     * NATURAL hoặc SOCIAL, {@code countsByPick} = [hi, hi, lo] — số câu quyết bởi nhóm có
+     * nhiều môn được chọn hơn; mọi môn cùng nhóm sinh 3 phương án đối xứng (đúng một môn lo).
+     * Nhóm câu đơn "lấy phần còn lại"; nguồn đủ cho hi hoặc thiếu có chủ đích.
+     */
+    private OracleCase choiceGroupChoice() {
+        int hi = 3 + random.nextInt(2); // 3..4
+        int lo = 2;
+        List<SectionOnPath> sections = new ArrayList<>();
+        Map<GroupQuota, List<PathCandidate>> sources = new LinkedHashMap<>();
+        // ~25% ca: mọi môn NATURAL (tối đa đối xứng); còn lại gắn ngẫu nhiên hai nhóm
+        boolean allSame = random.nextInt(4) == 0;
+        for (int s = 0; s < 5; s++) {
+            String cg = allSame ? "NATURAL" : (random.nextBoolean() ? "NATURAL" : "SOCIAL");
+            GroupQuota g = filtered(GroupQuota.remainder("g-cg" + nextId + "-" + s));
+            List<PathCandidate> pool = new ArrayList<>();
+            int shortfall = random.nextInt(4) == 0 ? 1 + random.nextInt(2) : 0;
+            for (int i = 0; i < hi - shortfall + 2; i++) {
+                pool.add(standalone("cq" + nextId + "-" + s + "-" + i,
+                        pick(ANSWER_TYPES)));
+            }
+            cap(pool);
+            sources.put(g, applyFilters(g, pool));
+            sections.add(new SectionOnPath("CG" + s, "sec-cg" + s, null, SubjectQuota.NONE,
+                    List.of(g), cg));
+        }
+        SubjectChoice choice = new SubjectChoice("opt-cg", sections, 3,
+                List.of(hi, hi, lo));
         List<SolvePart> parts = List.of(SolvePart.Choice.of("p1", List.of(choice)));
         return new OracleCase(nextId++, Category.SUBJECT_CHOICE, parts, sources);
     }

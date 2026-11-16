@@ -148,22 +148,25 @@ class SubjectMatrixCasesTest {
     }
 
     @Test
-    @DisplayName("SUBJECT_CHOICE 5 chọn 3, 17/17/16 theo thứ tự cấu trúc; một môn đủ 16 thiếu 17 → INVALID đúng selections, ≤10 bài toán con")
-    void subjectChoice171716() {
-        // D25: môn thứ i trong 3 môn được chọn (thứ tự cấu trúc) nhận countsByPick[i].
-        // CS2 (môn thứ 3) chỉ đủ nguồn cho 16 → mọi cách chọn có CS2 ở vị trí 1 hoặc 2 lỗi.
+    @DisplayName("SUBJECT_CHOICE 5 chọn 3 gắn choiceGroup: nhóm đông nhận 17, thiểu số 16; ba NATURAL ra 3 phương án → 12 bài toán con đường, ≤10 bài toán con")
+    void subjectChoiceGroupSplit() {
+        // B10/D25: PHYS, CHEM, BIO = NATURAL; HIS, GEO = SOCIAL. countsByPick [17,17,16].
+        // 10 bộ ba: 9 bộ 2-1 nhóm → 1 phân bổ mỗi bộ; bộ {PHYS,CHEM,BIO} → 3 phân bổ = 12 ca.
+        // CHEM chỉ có 16 câu trong nguồn → mọi ca CHEM nhận 17 lỗi.
+        String[] subjects = {"PHYS", "CHEM", "BIO", "HIS", "GEO"};
+        String[] groups = {"NATURAL", "NATURAL", "NATURAL", "SOCIAL", "SOCIAL"};
         List<SectionOnPath> sections = new ArrayList<>();
         List<List<PathCandidate>> pools = new ArrayList<>();
         for (int s = 0; s < 5; s++) {
             GroupQuota g = GroupQuota.remainder("g-cs" + s);
             List<PathCandidate> pool = new ArrayList<>();
-            int poolSize = s == 2 ? 16 : 20;
+            int poolSize = s == 1 ? 16 : 20; // CHEM thiếu 1 câu cho nhịp 17
             for (int i = 0; i < poolSize; i++) {
                 pool.add(typed("s" + s + "q" + i, "SINGLE_CHOICE"));
             }
             pools.add(pool);
-            sections.add(new SectionOnPath("CS" + s, "sec-cs" + s, null, SubjectQuota.NONE,
-                    List.of(g)));
+            sections.add(new SectionOnPath(subjects[s], "sec-cs" + s, null,
+                    SubjectQuota.NONE, List.of(g), groups[s]));
         }
         SubjectChoice choice = new SubjectChoice("opt-sc", sections, 3,
                 List.of(17, 17, 16));
@@ -179,19 +182,31 @@ class SubjectMatrixCasesTest {
                 List.of(SolvePart.Choice.of("p1", List.of(choice))), source,
                 SolveMode.check());
         assertThat(outcome.status()).isEqualTo(SolveStatus.INVALID);
-        // các cách chọn lỗi = cách chọn có CS2 ở vị trí 1-2 của thứ tự cấu trúc: CS2 nhận 17
+        // ca lỗi = mọi ca CHEM nhận 17:
+        //   {PHYS,CHEM,HIS}=17-17-16, {PHYS,CHEM,GEO}=17-17-16, {CHEM,BIO,HIS}=17-17-16,
+        //   {CHEM,BIO,GEO}=17-17-16, {CHEM,HIS,GEO}=17-16-17,
+        //   và 2/3 phương án của bộ toàn NATURAL có CHEM ở nhịp 17.
         Set<String> expectedFailing = Set.of(
-                "CS0=17+CS2=17+CS3=16", "CS0=17+CS2=17+CS4=16",
-                "CS1=17+CS2=17+CS3=16", "CS1=17+CS2=17+CS4=16",
-                "CS2=17+CS3=17+CS4=16");
+                "PHYS=17+CHEM=17+HIS=16", "PHYS=17+CHEM=17+GEO=16",
+                "CHEM=17+BIO=17+HIS=16", "CHEM=17+BIO=17+GEO=16",
+                "CHEM=17+HIS=17+GEO=16",
+                "PHYS=17+CHEM=17+BIO=16", "PHYS=16+CHEM=17+BIO=17");
         Set<String> actualFailing = new HashSet<>();
+        Set<String> allResults = new HashSet<>();
         for (PathResult r : outcome.results()) {
+            for (List<SubjectPick> pickList : r.path().picks()) {
+                for (SubjectPick p : pickList) {
+                    allResults.add(pickKeyOf(p));
+                }
+            }
             for (SubjectPick p : r.failingSelections()) {
                 actualFailing.add(pickKeyOf(p));
             }
         }
         assertThat(actualFailing).isEqualTo(expectedFailing);
-        // tối đa 5 môn × 2 giá trị số câu = 10 bài toán con (spec 5.4)
+        // đúng 12 ca cho 10 bộ ba (bộ toàn NATURAL bung thành 3 phương án)
+        assertThat(allResults).hasSize(12);
+        // tối đa 5 môn × 2 giá trị số câu = 10 bài toán con (B10)
         assertThat(outcome.stats().subproblemsSolved()).isLessThanOrEqualTo(10);
     }
 
