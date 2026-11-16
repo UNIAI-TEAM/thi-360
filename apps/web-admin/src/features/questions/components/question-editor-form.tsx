@@ -15,6 +15,7 @@ import { getErrorStatus } from "@/lib/api/query-client";
 import { applyServerFieldErrors } from "../editor-field-errors";
 import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
+import { useUiLocale } from "../use-ui-locale";
 import { questionEditorSchema } from "../editor-schema";
 import { editCreatesNewVersion } from "../editor-versioning";
 import type { QuestionDetail } from "../types";
@@ -77,9 +78,10 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const question = props.question ?? null;
   const type = question?.type ?? props.type ?? "SINGLE_CHOICE";
 
+  const locale = useUiLocale();
   const methods = useForm<QuestionEditorValues>({
     resolver: zodResolver(questionEditorSchema),
-    defaultValues: question ? toEditorValues(question) : emptyEditorValues(type),
+    defaultValues: question ? toEditorValues(question, locale) : emptyEditorValues(type),
     mode: "onTouched",
     shouldFocusError: false,
   });

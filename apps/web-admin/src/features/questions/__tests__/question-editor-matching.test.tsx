@@ -50,16 +50,16 @@ describe("trinh soan Ghep doi", () => {
 
     expect(await screen.findByText("Left column: 3 items; right column: 4 choices (1 spare).")).toBeInTheDocument();
     expect(screen.getByText("Points total: 1 / 1")).toBeInTheDocument();
-    expect(pairPoints()).toEqual(["0,33", "0,33", "0,34"]);
+    expect(pairPoints()).toEqual(["0.33", "0.33", "0.34"]);
 
     await user.click(screen.getByRole("button", { name: "Add pair" }));
-    expect(pairPoints()).toEqual(["0,25", "0,25", "0,25", "0,25"]);
+    expect(pairPoints()).toEqual(["0.25", "0.25", "0.25", "0.25"]);
     expect(screen.getByText("Points total: 1 / 1")).toBeInTheDocument();
     // Cặp mới chưa chọn lựa chọn đúng nên lựa chọn thứ tư vẫn dư.
     expect(screen.getByText("Left column: 4 items; right column: 4 choices (1 spare).")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Delete pair 4" }));
-    expect(pairPoints()).toEqual(["0,33", "0,33", "0,34"]);
+    expect(pairPoints()).toEqual(["0.33", "0.33", "0.34"]);
   });
 
   it("xoa lua chon dang la dap an thi muc do phai chon lai, luu khong duoc cho toi khi chon", async () => {
@@ -132,7 +132,7 @@ describe("trinh soan Ghep doi", () => {
     expect(navigation.push).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Split evenly" }));
-    expect(pairPoints()).toEqual(["0,33", "0,33", "0,34"]);
+    expect(pairPoints()).toEqual(["0.33", "0.33", "0.34"]);
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalled());
   });

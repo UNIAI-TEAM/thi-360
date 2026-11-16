@@ -44,7 +44,7 @@ describe("trinh soan Dien khuyet", () => {
     expect(screen.queryByRole("textbox", { name: /^Points$/ })).not.toBeInTheDocument();
 
     const second = screen.getByRole("textbox", { name: "Points of blank 2" });
-    expect(second).toHaveValue("1,5");
+    expect(second).toHaveValue("1.5");
     await user.clear(second);
     await user.type(second, "2");
     expect(total).toHaveValue("3");

@@ -76,18 +76,18 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     await user.click(screen.getByRole("button", { name: "Add statement" }));
     await user.click(screen.getByRole("button", { name: "Add statement" }));
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,25",
-      "0,5",
-      "0,75",
+      "0.25",
+      "0.5",
+      "0.75",
       "1",
     ]);
 
     await user.click(within(table).getByRole("button", { name: "From exam template…" }));
     await user.click(await screen.findByRole("menuitem", { name: /THPTQG/ }));
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,1",
-      "0,25",
-      "0,5",
+      "0.1",
+      "0.25",
+      "0.5",
       "1",
     ]);
   });
@@ -100,8 +100,8 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     await user.clear(points);
     await user.type(points, "2");
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,2",
-      "0,5",
+      "0.2",
+      "0.5",
       "1",
       "2",
     ]);
