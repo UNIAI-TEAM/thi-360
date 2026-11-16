@@ -55,6 +55,8 @@ Chưa đưa vào dữ liệu mẫu:
 
 ## 2. Quyết định (M.Trường, 2026-11-16)
 
+> Sau khi BA sửa UniNote chiều 2026-11-16, M.Trường chốt thêm: điểm nằm ở câu hỏi, 8 dạng câu theo BA, Trả lời ngắn khớp đúng kèm đáp án được chấp nhận, bước 1 Tạo bài thi theo phạm vi bài thi. Mockup chưa sửa; việc sửa ghi ở `docs/specs/2026-11-16-be-pbi-03-04.md` mục 1 (B5–B8) và 9.1, làm trong đợt backend.
+
 1. **Tự luận chấm tay.** Câu Tự luận có điểm tối đa và tiêu chí chấm (rubric). Phần trắc nghiệm được chấm ngay khi nộp. Phần tự luận hiện "Đang chấm" tới khi người chấm xong; khi đó lượt thi mới có điểm. Admin có màn hàng chờ chấm.
 2. **Đúng/Sai nhiều ý chấm theo bảng điểm.** Điểm tính theo số ý đúng. Mặc định THPTQG, 4 ý: đúng 1 ý được 0,1; 2 ý 0,25; 3 ý 0,5; 4 ý 1 điểm. Bảng mặc định lấy từ mẫu của kỳ thi và sửa được.
 3. **Nhiều đáp án đúng có hai quy tắc.** "Đúng hết mới có điểm" (mặc định), hoặc "Chấm từng phần": điểm theo tỉ lệ phương án đúng đã chọn, chọn sai một phương án là 0 điểm.
