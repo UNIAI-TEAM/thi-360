@@ -74,8 +74,9 @@ public record SubjectChoice(
             for (int i : idx) {
                 picked.add(sections.get(i));
             }
-            out.add(new SubjectPick(optionId, picked, allocator.allocate(this,
-                    picked.stream().map(SectionOnPath::subjectCode).toList())));
+            for (int[] counts : allocator.allocations(this, picked)) {
+                out.add(new SubjectPick(optionId, picked, counts));
+            }
             // tổ hợp kế tiếp theo thứ tự từ điển
             int p = k - 1;
             while (p >= 0 && idx[p] == n - k + p) {

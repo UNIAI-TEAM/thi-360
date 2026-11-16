@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -23,7 +25,7 @@ class PaperSolverPerfTest {
             SolverTestFixtures.G12};
     private static final String[] DIFFS = {SolverTestFixtures.NB, SolverTestFixtures.TH,
             SolverTestFixtures.VD};
-    private static final String[] SCIENCE = {"PHYS", "CHEM", "BIO", "GEO", "TECH"};
+    private static final String[] SCIENCE = {"PHYS", "CHEM", "BIO", "HIST", "GEO"};
 
     @Test
     @DisplayName("HSA: 150 câu, 3 phần, SUBJECT_CHOICE 5 chọn 3, 2.000 ứng viên/nhóm, 11 đường < 10 s")
@@ -50,7 +52,7 @@ class PaperSolverPerfTest {
         SectionOnPath lit = SolverTestFixtures.section("LIT", 50,
                 SolverTestFixtures.group("L-G1", 50));
 
-        // Phần 3 — SUBJECT_CHOICE 5 môn chọn 3, countsByPick 17-17-16 (D25) + nhánh Tiếng Anh 10 câu.
+        // Phần 3 — 10 bộ ba, 12 cách phân bổ B10; Tiếng Anh cũng đủ 50 câu.
         List<SectionOnPath> scienceSections = new ArrayList<>();
         for (String code : SCIENCE) {
             scienceSections.add(new SectionOnPath(code, "SEC-" + code, null,
@@ -63,12 +65,13 @@ class PaperSolverPerfTest {
                                             SolverTestFixtures.dim(SolverTestFixtures.VD, 30)),
                                     QuotaUnit.PERCENT)),
                     List.of(SolverTestFixtures.group(code + "-G1", 8),
-                            GroupQuota.remainder(code + "-REM"))));
+                            GroupQuota.remainder(code + "-REM")),
+                    List.of("PHYS", "CHEM", "BIO").contains(code) ? "NATURAL" : "SOCIAL"));
         }
         SubjectChoice science = new SubjectChoice("OPT-SCI", scienceSections, 3,
                 List.of(17, 17, 16));
-        SectionOnPath eng = SolverTestFixtures.section("ENG", 10,
-                SolverTestFixtures.group("E-G1", 10));
+        SectionOnPath eng = SolverTestFixtures.section("ENG", 50,
+                SolverTestFixtures.group("E-G1", 50));
 
         List<SolvePart> parts = List.of(
                 SolverTestFixtures.part("P1", math),
@@ -77,16 +80,38 @@ class PaperSolverPerfTest {
                         List.of(eng)))));
 
         Random rng = new Random(261116L);
-        CandidateSource source = group -> generatePool(rng, 2_000, group);
+        Map<String, List<PathCandidate>> pools = new HashMap<>();
+        CandidateSource source = group -> pools.computeIfAbsent(group.groupId(),
+                ignored -> generatePool(rng, 2_000, group));
         PaperSolver solver = new PaperSolver();
         long t0 = System.nanoTime();
         SolveOutcome out = solver.solveAll(parts, source, SolveMode.check());
         long ms = (System.nanoTime() - t0) / 1_000_000;
         System.out.println("PERF PaperSolver HSA11 ms=" + ms);
 
-        assertThat(out.results()).hasSize(2); // đường Khoa học (10 cách chọn) + đường Tiếng Anh
+        assertThat(out.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(out.results()).hasSize(2);
         assertThat(out.stats().pathsEnumerated()).isEqualTo(11);
-        assertThat(out.stats().subproblemsSolved()).isLessThanOrEqualTo(10);
+        assertThat(out.stats().subproblemsSolved()).isLessThanOrEqualTo(13);
+        for (PathResult result : out.results()) {
+            assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+            for (SubjectWitness witness : result.witness()) {
+                int units = 0;
+                for (GroupWitness group : witness.groups()) {
+                    Map<String, PathCandidate> byId = new HashMap<>();
+                    for (PathCandidate candidate : pools.get(group.groupId())) {
+                        byId.put(candidate.questionId(), candidate);
+                    }
+                    for (QuestionPick pick : group.picks()) {
+                        assertThat(byId).containsKey(pick.questionId());
+                        units += byId.get(pick.questionId()).units().size();
+                    }
+                }
+                assertThat(units).as("witness %s", witness.subjectCode())
+                        .isEqualTo(witness.resolvedCount());
+            }
+        }
+        assertThat(out.results().get(0).path().picks().get(0)).hasSize(12);
         assertThat(ms).isLessThan(10_000);
     }
 
@@ -101,11 +126,13 @@ class PaperSolverPerfTest {
                 int size = group.setSize();
                 List<CountingUnit> units = new ArrayList<>(size);
                 for (int k = 0; k < size; k++) {
-                    units.add(SolverTestFixtures.unit("u" + k, type, grade, diff));
+                    units.add(SolverTestFixtures.unit(group.groupId() + "-" + i + "-u" + k,
+                            k % 5 < 3 ? SolverTestFixtures.SC : SolverTestFixtures.SA, grade, diff));
                 }
-                out.add(new PathCandidate("q" + i, 1, "s" + i, null, null, units));
+                out.add(new PathCandidate(group.groupId() + "-q" + i, 1,
+                        group.groupId() + "-s" + i, null, null, units));
             } else {
-                out.add(new PathCandidate("q" + i, 1, null, null, null,
+                out.add(new PathCandidate(group.groupId() + "-q" + i, 1, null, null, null,
                         List.of(new CountingUnit(null, type, grade, diff, List.of(), List.of(),
                                 BigDecimal.ONE))));
             }

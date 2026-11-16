@@ -44,13 +44,13 @@ public final class PaperSolver {
 
     /** Bộ giải với giới hạn mặc định của spec (200 đường, 20.000 ứng viên/nhóm, 30 giây, 8 môn). */
     public PaperSolver() {
-        this(SolverLimits.defaults(), Clock.systemUTC(), new StructureOrderAllocator(),
+        this(SolverLimits.defaults(), Clock.systemUTC(), new ChoiceGroupAllocator(),
                 new LargestRemainderApportioner());
     }
 
     /** Bộ giải với giới hạn và đồng hồ cho trước (test dùng đồng hồ điều khiển được). */
     public PaperSolver(SolverLimits limits, Clock clock) {
-        this(limits, clock, new StructureOrderAllocator(), new LargestRemainderApportioner());
+        this(limits, clock, new ChoiceGroupAllocator(), new LargestRemainderApportioner());
     }
 
     /**
@@ -153,6 +153,30 @@ public final class PaperSolver {
         }
     }
 
+    /** Giải riêng một phần, loại các câu đã phát trong những phần trước. */
+    public PathResult solvePartExcluding(SolvePath part, CandidateSource source, SolveMode mode,
+            Set<String> excludedQuestionIds) {
+        Set<String> excluded = Set.copyOf(excludedQuestionIds);
+        CandidateSource filtered = group -> {
+            List<PathCandidate> candidates = source.candidatesFor(group);
+            if (candidates == null) {
+                return List.of();
+            }
+            return candidates.stream().filter(candidate -> {
+                if (excluded.contains(candidate.questionId())) {
+                    return false;
+                }
+                for (CountingUnit unit : candidate.units()) {
+                    if (unit.childId() != null && excluded.contains(unit.childId())) {
+                        return false;
+                    }
+                }
+                return true;
+            }).toList();
+        };
+        return solvePath(part, filtered, mode);
+    }
+
     /**
      * Chế độ xem trước: giải đúng một cách chọn môn của một {@link SubjectChoice} — các môn trong
      * {@code subjectCodes} (tập con đúng {@code choice.choose} môn, số câu gán theo
@@ -190,8 +214,7 @@ public final class PaperSolver {
                 throw new IllegalArgumentException(
                         "subjectCodes must be a subset of the choice's sections");
             }
-            int[] counts = allocator.allocate(choice,
-                    picked.stream().map(SectionOnPath::subjectCode).toList());
+            int[] counts = allocator.select(choice, picked, seed);
             SubjectPick pick = new SubjectPick(choice.optionId(), picked,
                     toList(counts));
             SolvePath path = new SolvePath(0,
@@ -229,10 +252,11 @@ public final class PaperSolver {
             }
             List<SubjectPick> picks = i < path.picks().size() && !path.picks().get(i).isEmpty()
                     ? path.picks().get(i) : choice.picks(allocator);
-            if (picks.size() > limits.maxPaths() / combinations) {
+            long triples = picks.stream().map(SubjectPick::subjectCodes).distinct().count();
+            if (triples > limits.maxPaths() / combinations) {
                 return PathResult.unconfirmed(path, SolveReason.PATH_LIMIT_EXCEEDED, null, null);
             }
-            combinations *= picks.size();
+            combinations *= triples;
             expanded.add(picks);
         }
         List<List<SubjectPick>> tuples = new ArrayList<>();
