@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
+import { getErrorStatus } from "@/lib/api/query-client";
 import { yearsNeedConfirmation } from "../check";
 import { examTabHref } from "../editor-tabs";
 import { combinationsForKind } from "../create-exam-schema";
@@ -251,9 +252,12 @@ function StructureEditor({
           notify.success(message);
           announce(message);
         },
-        onError: () => {
-          notify.error(t("saveError"));
-          announce(t("saveError"));
+        onError: (error) => {
+          // 412: bài đã được người khác sửa (không tự nạp lại để không mất bản nháp); 422: dữ liệu sai kiểu.
+          const status = getErrorStatus(error);
+          const message = status === 412 ? t("saveConflict") : status === 422 ? t("saveInvalid") : t("saveError");
+          notify.error(message);
+          announce(message);
         },
       },
     );

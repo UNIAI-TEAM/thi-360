@@ -3621,6 +3621,9 @@
       "discard": "Undo changes",
       "saved": "General information saved.",
       "saveError": "Could not save the general information. Try again later.",
+      "saveConflict": "Someone else just changed this exam. Reload the page to see the latest version; your unsaved changes are still on screen.",
+      "saveInvalid": "The exam information has an invalid value. Check the fields and save again.",
+      "fieldInvalid": "Invalid value.",
       "scopeLocked": "This exam has been published, so its exam type, scope, part and subject cannot change: scope changes must respect access already sold (UniNote 11.2).",
       "replaceTitle": "Reload the structure from the new template?",
       "replaceDescription": "Changing the exam type, scope, part or subject replaces the current structure with that of the latest template, with the parts below. Configured blocks and matrices will be lost.",
@@ -3682,6 +3685,8 @@
       "saved": "Structure and matrix saved.",
       "savedRecheck": "Structure and matrix saved. The exam needs to be checked again before publishing.",
       "saveError": "Could not save the structure. Your changes are still on screen; try again later.",
+      "saveConflict": "Someone else just changed this exam. Reload the page to see the latest version; your unsaved changes are still on screen.",
+      "saveInvalid": "The structure has an invalid value (questions, duration or points). Fix it and save again.",
       "workingNote": "Saving updates the working copy; version v{version} keeps serving learners until a new version is published.",
       "draftNote": "This exam has not been published. Save often and check the configuration before publishing.",
       "version": {

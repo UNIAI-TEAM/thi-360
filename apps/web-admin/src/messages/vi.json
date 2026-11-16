@@ -3621,6 +3621,9 @@
       "discard": "Hoàn tác",
       "saved": "Đã lưu thông tin chung.",
       "saveError": "Không lưu được thông tin chung. Thử lại sau.",
+      "saveConflict": "Bài thi vừa được người khác sửa. Tải lại trang để xem bản mới nhất; thay đổi chưa lưu của bạn vẫn còn trên màn hình.",
+      "saveInvalid": "Thông tin bài thi có giá trị không hợp lệ. Kiểm tra lại các ô rồi lưu.",
+      "fieldInvalid": "Giá trị không hợp lệ.",
       "scopeLocked": "Bài đã công bố nên không đổi được kỳ thi, phạm vi, phần và môn: thay đổi phạm vi phải xử lý theo quyền đã bán (UniNote mục 11.2).",
       "replaceTitle": "Nạp lại cấu trúc theo mẫu mới?",
       "replaceDescription": "Đổi kỳ thi, phạm vi, phần hoặc môn sẽ thay cấu trúc hiện tại bằng cấu trúc của mẫu mới nhất, gồm các phần dưới đây. Các khối và ma trận đã khai báo sẽ mất.",
@@ -3682,6 +3685,8 @@
       "saved": "Đã lưu cấu trúc và ma trận.",
       "savedRecheck": "Đã lưu cấu trúc và ma trận. Bài thi cần kiểm tra lại trước khi công bố.",
       "saveError": "Không lưu được cấu trúc. Thay đổi vẫn còn trên màn hình; thử lại sau.",
+      "saveConflict": "Bài thi vừa được người khác sửa. Tải lại trang để xem bản mới nhất; thay đổi chưa lưu của bạn vẫn còn trên màn hình.",
+      "saveInvalid": "Cấu trúc có giá trị không hợp lệ (số câu, thời lượng hoặc điểm). Sửa lại rồi lưu.",
       "workingNote": "Lưu tạo bản làm việc; phiên bản v{version} vẫn phục vụ học viên tới khi công bố bản mới.",
       "draftNote": "Bài chưa công bố. Lưu thường xuyên; kiểm tra cấu hình trước khi công bố.",
       "version": {

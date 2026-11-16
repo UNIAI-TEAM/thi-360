@@ -4,9 +4,11 @@ import { listExams } from "@/features/exams/api";
 import { getGradingAttempt, getGradingFilterOptions, listGradingAttempts } from "@/features/grading/api";
 import { listQuestions } from "@/features/questions/api";
 import { isContentMockEnabled, isGradingMockEnabled, notWired } from "@/lib/mock/flags";
+import { FakeServer } from "@/features/exams/__tests__/fake-exams-server";
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 const NOT_WIRED = "ch\u01b0a n\u1ed1i API";
@@ -34,7 +36,12 @@ describe("cờ dữ liệu mẫu của đợt 2 (plan B7)", () => {
     vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "true");
 
     await expect(listQuestions({})).rejects.toThrow(NOT_WIRED);
-    await expect(listExams({})).rejects.toThrow(NOT_WIRED);
+    // Bài thi đã nối API (UNI-2620): cờ tắt thì gọi máy chủ, không còn NOT_WIRED và không đọc dữ liệu mẫu.
+    const server = new FakeServer()
+      .on("GET", "/api/v1/admin/exams", { status: 200, body: { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 } })
+      .install();
+    await expect(listExams({})).resolves.toMatchObject({ content: [], totalElements: 0 });
+    expect(server.calls("GET", "/api/v1/admin/exams")).toHaveLength(1);
 
     // Danh sách chờ chấm, bộ lọc và màn chấm đọc đề từ kho câu hỏi mẫu (`questionStore`) nên vẫn chạy.
     const page = await listGradingAttempts({});

@@ -4,7 +4,7 @@ import { afterEach } from "vitest";
 
 // Các màn đợt 2 chạy trên dữ liệu mẫu trong test (`features/**/api.ts` chọn `api.mock.ts` theo cờ, plan B7). Test tách cờ
 // đặt lại từng cờ bằng `vi.stubEnv`.
-process.env.NEXT_PUBLIC_THI360_CONTENT_MOCK = "true";
+process.env.NEXT_PUBLIC_THI360_CONTENT_MOCK ??= "true";
 process.env.NEXT_PUBLIC_THI360_GRADING_MOCK = "true";
 
 afterEach(() => {
