@@ -320,9 +320,11 @@ export class ExamsBackend {
   readonly server = new FakeServer();
   private readonly exams = new Map<string, WireDetail>();
   private readonly checks = new Map<string, WireCheck>();
-  private readonly runs = new Map<string, RunReply[]>();
+  private readonly runs = new Map<string, { examId: string; queue: RunReply[] }>();
   private readonly edits = new Set<string>();
   private readonly seeds = new Map<string, { versions?: WireVersionsList }>();
+  /** Đường đã được ít nhất một phiên bản phục vụ (kể cả bản mẫu đầy đủ) — cho `unpublishedPaths`. */
+  private readonly servedPaths = new Map<string, Set<string>>();
   private sequence = 0;
   private readonly countsByPath = new Map<string, Reply>();
   /** Mã gợi ý tùy biến theo truy vấn; mặc định `<KIND>-<F|P|S>-[SLUG-]<NNN>` số tiếp theo chưa dùng. */
@@ -375,7 +377,8 @@ export class ExamsBackend {
 
   /** Xếp các trạng thái `getCheckRun` cho một lần chạy (gọi sau khi `startDeepCheck` trả `runId`). */
   queueRun(runId: string, ...replies: RunReply[]): this {
-    this.runs.set(runId, [...replies]);
+    const current = this.runs.get(runId);
+    this.runs.set(runId, { examId: current?.examId ?? "", queue: [...replies] });
     return this;
   }
 
@@ -713,8 +716,11 @@ export class ExamsBackend {
     const seeded = this.seeds.get(exam.id)?.versions;
     if (seeded) return { status: 200, body: seeded };
     const items = exam.versions.filter((version) => version.version !== undefined);
+    const known = this.pathIds(exam);
+    const served = this.servedPaths.get(exam.id);
+    const unpublished = served ? known.filter((id) => !served.has(id)) : known;
     const working: WireVersionsList["workingCopy"] = exam.hasUnpublishedChanges
-      ? { baseVersion: exam.servingVersion ?? items[0]?.version ?? 0, unpublishedPaths: this.pathIds(exam).map((pathId) => ({ pathId })), check: exam.check, savedAt: exam.updatedAt, editedBy: exam.updatedBy }
+      ? { baseVersion: exam.servingVersion ?? items[0]?.version ?? 0, unpublishedPaths: unpublished.map((pathId) => ({ pathId })), check: exam.check, savedAt: exam.updatedAt, editedBy: exam.updatedBy }
       : undefined;
     return { status: 200, body: { examId: exam.id, items, workingCopy: working, changes: [] } satisfies WireVersionsList };
   }
@@ -726,17 +732,20 @@ export class ExamsBackend {
   }
 
   private publish(exam: WireDetail, body: Record<string, unknown>): Reply {
+    if (!exam.hasUnpublishedChanges) return err(409, "NOTHING_TO_PUBLISH");
     if (body.expectedRevision !== exam.revision) return REVISION_CONFLICT();
     const pathIds = (body.pathIds ?? []) as string[];
     const known = this.pathIds(exam);
     if (pathIds.some((id) => !known.includes(id))) return err(404, "PATH_NOT_FOUND");
-    if (!pathIds.length) return err(409, "NO_PATH_SELECTED");
+    if (!pathIds.length) return err(422, "NO_PATH_SELECTED");
     const check = this.checks.get(exam.id);
-    if (!check) return err(409, "CHECK_REQUIRED");
+    if (!check || exam.check.status === "NEEDS_RECHECK") return err(409, "CHECK_REQUIRED");
     const results = new Map((check.paths ?? []).map((path) => [path.pathId ?? "", path.result ?? "INVALID"]));
     if (pathIds.some((id) => results.get(id) !== "VALID")) return err(422, "PATH_NOT_VALID");
     const nextVersion = Math.max(exam.servingVersion ?? 0, ...exam.versions.map((version) => version.version ?? 0)) + 1;
     const all = known.every((id) => pathIds.includes(id));
+    const alreadyServed = this.servedPaths.get(exam.id) ?? new Set<string>();
+    this.servedPaths.set(exam.id, new Set([...alreadyServed, ...pathIds]));
     const row: WireVersion = {
       version: nextVersion,
       state: "SERVING",
@@ -751,7 +760,10 @@ export class ExamsBackend {
     for (const version of exam.versions) {
       if (version.state === "SERVING" && all) version.state = "RETIRED";
     }
-    exam.versions = [row, ...exam.versions.filter((version) => version.version !== row.version)];
+    // Bản làm việc (WORKING) giữ đầu danh sách như chi tiết màn hình; bản mới đứng trước lịch sử đã công bố.
+    const workingRows = exam.versions.filter((version) => version.state === "WORKING");
+    const history = exam.versions.filter((version) => version.state !== "WORKING" && version.version !== row.version);
+    exam.versions = [...workingRows, row, ...history];
     const previousServing = exam.servingVersion ?? nextVersion;
     exam.status = "PUBLISHED";
     exam.servingVersion = nextVersion;
@@ -769,7 +781,7 @@ export class ExamsBackend {
   private handleCheckPost(exam: WireDetail, request: Recorded): Reply {
     if (request.url.searchParams.get("deep") === "true") {
       const runId = this.nextId("run");
-      this.runs.set(runId, []);
+      this.runs.set(runId, { examId: exam.id, queue: [] });
       return { status: 202, body: { runId } };
     }
     const queued = this.checkReplies.get(exam.id);
@@ -785,15 +797,15 @@ export class ExamsBackend {
     const segments = request.url.pathname.split("/");
     const runId = segments[segments.length - 1]!;
     const examId = segments[segments.indexOf("exams") + 1]!;
-    const queue = this.runs.get(runId);
-    if (!queue || examId !== this.exams.get(examId)?.id) return err(404, "CHECK_RUN_NOT_FOUND");
-    const next = queue.length > 1 ? queue.shift()! : queue[0] ?? { state: "DONE" as const, result: this.checks.get(examId) ?? defaultCheck(examId) };
+    const run = this.runs.get(runId);
+    if (!run || run.examId !== examId) return err(404, "CHECK_RUN_NOT_FOUND");
+    const next = run.queue.length > 1 ? run.queue.shift()! : run.queue[0] ?? { state: "DONE" as const, result: this.checks.get(examId) ?? defaultCheck(examId) };
     if (next.state === "DONE" && next.result) {
       this.checks.set(examId, next.result);
       const exam = this.exams.get(examId)!;
       exam.check = { status: next.result.status ?? "VALID", issueCount: next.result.issueCount ?? 0, checkedAt: next.result.checkedAt };
     }
-    return { status: 200, body: { runId, state: next.state, result: next.result ?? null, errorCode: next.errorCode } };
+    return { status: 200, body: { runId, state: next.state, result: next.result ?? null, errorCode: next.errorCode ?? null } };
   }
 
   /** Đăng ký mọi đường mặc định sau các handler của test (`server.on` trước `install` thắng). */
