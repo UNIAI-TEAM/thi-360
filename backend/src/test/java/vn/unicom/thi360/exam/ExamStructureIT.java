@@ -281,4 +281,62 @@ class ExamStructureIT extends AbstractIntegrationTest {
         assertThat(savedExtra.path("answerTypeLocked").asBoolean()).isFalse();
         assertThat(savedExtra.path("shuffle").isMissingNode()).isTrue();
     }
+
+    @Test
+    void pathLimitRejectsPutWithoutMutation() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = mapper.createArrayNode();
+        for (int i = 0; i < 8; i++) {
+            var part = parts.addObject();
+            part.set("participation", mapper.readTree("{\"mode\":\"CHOICE\",\"choose\":1}"));
+            var options = part.putArray("options");
+            options.addObject().put("kind", "BRANCH").put("code", "A");
+            options.addObject().put("kind", "BRANCH").put("code", "B");
+        }
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", before.path("revision").asLong());
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_PATH_LIMIT_EXCEEDED"));
+        JsonNode after = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after).isEqualTo(before);
+    }
+
+    @Test
+    void templateReplacementRequiresConfirmationAndMatchingKind() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode edited = mapper.readTree(mockMvc.perform(put(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"parts\":[],\"expectedRevision\":" + before.path("revision").asLong() + "}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        long revision = edited.path("revision").asLong();
+        String url = EXAM + "/structure/template";
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"HSA_FULL\",\"confirmReplace\":false,\"expectedRevision\":"
+                                + revision + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_REPLACE_CONFIRM"));
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"QDA_FULL\",\"confirmReplace\":true,\"expectedRevision\":"
+                                + revision + "}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_TEMPLATE_MISMATCH"));
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"HSA_FULL\",\"confirmReplace\":true,\"expectedRevision\":"
+                                + revision + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.templateCode").value("HSA_FULL"))
+                .andExpect(jsonPath("$.parts[0].sections[0].subjectCode").value("TOAN"));
+    }
 }

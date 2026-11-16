@@ -65,4 +65,32 @@ class ExamTemplateIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/exam-templates"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void hsaTemplateExposesChoiceGroupsAndPassageSets() throws Exception {
+        var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "HSA"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        com.fasterxml.jackson.databind.JsonNode hsa = null;
+        for (var template : response) {
+            if ("HSA_FULL".equals(template.path("code").asText())) {
+                hsa = template;
+                break;
+            }
+        }
+        assertThat(hsa).isNotNull();
+        var science = hsa.at("/structure/parts/2/options/0/sections");
+        java.util.Map<String, String> groups = new java.util.HashMap<>();
+        science.forEach(section -> groups.put(section.path("subjectCode").asText(),
+                section.path("choiceGroup").asText()));
+        assertThat(groups).containsExactlyInAnyOrderEntriesOf(java.util.Map.of(
+                "LY", "NATURAL", "HOA", "NATURAL", "SINH", "NATURAL",
+                "SU", "SOCIAL", "DIA", "SOCIAL"));
+        var literature = hsa.at("/structure/parts/1/sections/0/blocks/1");
+        assertThat(literature.path("setCount").asInt()).isEqualTo(5);
+        assertThat(literature.path("setSize").asInt()).isEqualTo(5);
+        var english = hsa.at("/structure/parts/2/options/1/sections/0/blocks/3");
+        assertThat(english.path("setCount").asInt()).isEqualTo(3);
+        assertThat(english.path("setSize").asInt()).isEqualTo(5);
+    }
 }
