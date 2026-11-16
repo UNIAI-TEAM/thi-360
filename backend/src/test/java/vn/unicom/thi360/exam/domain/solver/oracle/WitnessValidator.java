@@ -438,7 +438,7 @@ public final class WitnessValidator {
             counts.merge("D:" + u.difficultyCode(), 1, Integer::sum);
         }
         if (u.gradeCode() != null && u.difficultyCode() != null) {
-            counts.merge("C:" + u.gradeCode() + " " + u.difficultyCode(), 1,
+            counts.merge("C:" + OracleSupport.cellKey(u.gradeCode(), u.difficultyCode()), 1,
                     Integer::sum);
         }
         for (String comp : u.competencyCodes()) {

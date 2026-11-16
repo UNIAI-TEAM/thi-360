@@ -145,9 +145,19 @@ final class OracleSupport {
         Map<String, Integer> out = new LinkedHashMap<>();
         for (int i = 0; i < cells.size(); i++) {
             CellQuota cell = cells.get(i);
-            out.put(cell.gradeCode() + "" + cell.difficultyCode(), values[i]);
+            out.put(cellKey(cell.gradeCode(), cell.difficultyCode()), values[i]);
         }
         return out;
+    }
+
+    /**
+     * Khóa một ô lớp × độ khó của chỉ tiêu Combined (dạng {@code "G10 NB"}): một mã hóa duy
+     * nhất dùng chung bởi chỉ tiêu đã quy ({@link #resolveCells}), bộ lọc đơn vị
+     * ({@link #admissibleInSubject}) và bộ đếm của {@code BruteForceOracle} lẫn
+     * {@code WitnessValidator} — không thể tách thành hai dạng khác nhau (R3-3).
+     */
+    static String cellKey(String gradeCode, String difficultyCode) {
+        return gradeCode + " " + difficultyCode;
     }
 
     /** Quy bộ chỉ tiêu cấp môn của một {@link SectionOnPath} theo số câu đã quyết của môn. */
@@ -265,7 +275,8 @@ final class OracleSupport {
                 return false;
             }
             if (!q.cells().isEmpty() && (unit.gradeCode() == null || unit.difficultyCode() == null
-                    || !q.cells().containsKey(unit.gradeCode() + "" + unit.difficultyCode()))) {
+                    || !q.cells().containsKey(cellKey(unit.gradeCode(),
+                            unit.difficultyCode())))) {
                 return false;
             }
         }
