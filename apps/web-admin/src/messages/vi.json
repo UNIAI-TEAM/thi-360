@@ -2791,7 +2791,8 @@
       "chipCreatedTo": "Ngày tạo đến {value}",
       "remove": "Bỏ lọc {label}",
       "clearAll": "Xóa tất cả bộ lọc",
-      "competency": "Năng lực"
+      "competency": "Năng lực",
+      "taskType": "Dạng bài"
     },
     "bulk": {
       "groupLabel": "Thao tác hàng loạt",

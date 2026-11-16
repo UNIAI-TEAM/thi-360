@@ -2791,7 +2791,8 @@
       "chipCreatedTo": "Created to {value}",
       "remove": "Remove filter {label}",
       "clearAll": "Clear all filters",
-      "competency": "Competency"
+      "competency": "Competency",
+      "taskType": "Task type"
     },
     "bulk": {
       "groupLabel": "Bulk actions",
