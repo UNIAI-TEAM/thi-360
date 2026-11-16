@@ -1,0 +1,106 @@
+import { describe, expect, it } from "vitest";
+import { withIdempotencyKey, resetIdempotencyKeys } from "@/features/content/idempotency";
+import { fromApiDetail, fromApiSummary } from "../api-mapping";
+import { toFormPath } from "../editor-field-errors";
+import { formatPoints } from "../editor-form";
+import { fromApiReadiness } from "../readiness-mapping";
+
+const summary = {
+  id: "q1",
+  code: "CH-000001",
+  type: "SINGLE_CHOICE" as const,
+  status: "READY" as const,
+  contentPreview: "x",
+  points: 1,
+  knowledge: [],
+  tagCodes: [],
+  hasSolution: false,
+  version: 2,
+  revision: 5,
+  usedInExamCount: 0,
+  createdAt: "2026-11-17T00:00:00Z",
+  updatedAt: "2026-11-17T00:00:00Z",
+};
+
+describe("đổi phản hồi API câu hỏi sang kiểu của web", () => {
+  it("bản đang phục vụ là version, bản Nháp riêng là workingVersion; câu chưa từng Sẵn sàng lấy bản Nháp", () => {
+    expect(fromApiSummary({ ...summary, workingVersion: 3 })).toMatchObject({ version: 2, workingVersion: 3 });
+    expect(fromApiSummary({ ...summary, status: "DRAFT", version: 0, workingVersion: 1 })).toMatchObject({
+      version: 1,
+      workingVersion: null,
+    });
+  });
+
+  it("chi tiết: lỗi sai thường gặp ghép thành một ô, câu con và id câu con của bộ", () => {
+    const detail = fromApiDetail({
+      summary: { ...summary, type: "QUESTION_SET" },
+      content: "<p>Đoạn</p>",
+      commonMistakes: ["<p>a</p>", "<p>b</p>"],
+      attachmentIds: [],
+      body: { type: "QUESTION_SET", passage: "<p>Đoạn</p>", children: [] } as never,
+      children: [{ summary: { ...summary, id: "c1" }, content: "x", commonMistakes: [], attachmentIds: [], body: { type: "SINGLE_CHOICE", options: [] } as never, children: [], hasDraft: false }],
+      hasDraft: false,
+    });
+    expect(detail.commonMistakes).toBe("<p>a</p><p>b</p>");
+    expect(detail.body).toMatchObject({ type: "QUESTION_SET", childIds: ["c1"] });
+    expect(detail.children[0]).toMatchObject({ id: "c1", body: { type: "SINGLE_CHOICE", shuffleOptions: false } });
+  });
+
+  it("điều kiện Sẵn sàng: nhóm theo điều kiện, vị trí tính từ 1 và câu con", () => {
+    const result = fromApiReadiness({
+      ready: false,
+      errors: [
+        { code: "OPTION_EMPTY", path: "body.options[2].content" },
+        { code: "MATCHING_SIDE_EMPTY", path: "body.right[0].content" },
+        { code: "NO_CORRECT_OPTION", path: "body.children[1].body.options" },
+        { code: "SOMETHING_NEW", path: "x" },
+      ],
+      warnings: [{ code: "PRIMARY_KNOWLEDGE_MISSING", path: "knowledge" }],
+    });
+    const byRule = Object.fromEntries(result.rules.map((rule) => [rule.rule, rule.issues]));
+    expect(byRule.CONTENT).toEqual([
+      { code: "OPTION_EMPTY", field: "content", position: 3 },
+      { code: "MATCH_RIGHT_EMPTY", field: "content", position: 1 },
+    ]);
+    expect(byRule.ANSWER).toEqual([{ code: "NO_CORRECT_OPTION", field: "answers", child: 2 }]);
+    expect(byRule.STRUCTURE).toEqual([{ code: "READINESS_OTHER", field: "structure", value: "SOMETHING_NEW" }]);
+    expect(result.failedCount).toBe(3);
+    expect(result.warnings).toEqual([{ code: "PRIMARY_KNOWLEDGE_MISSING", field: "knowledge" }]);
+  });
+});
+
+describe("lỗi 422 theo trường", () => {
+  it("đường dẫn của máy chủ đổi sang tên trường của biểu mẫu", () => {
+    expect(toFormPath("body.options[0].content")).toBe("body.options.0.content");
+    expect(toFormPath("body.children[1].body.blanks[0].answers")).toBe("children.1.body.blanks.0.answers");
+    expect(toFormPath("body.children[0].content")).toBe("children.0.content");
+    expect(toFormPath("commonMistakes[0]")).toBe("commonMistakes");
+    expect(toFormPath("body.type")).toBe("body");
+  });
+});
+
+describe("khóa idempotency", () => {
+  it("thử lại sau lỗi dùng lại khóa, lệnh mới sau khi thành công có khóa mới", async () => {
+    resetIdempotencyKeys();
+    const seen: string[] = [];
+    await expect(
+      withIdempotencyKey("create:a", async (key) => {
+        seen.push(key);
+        throw new Error("mạng");
+      }),
+    ).rejects.toThrow();
+    await withIdempotencyKey("create:a", async (key) => void seen.push(key));
+    await withIdempotencyKey("create:a", async (key) => void seen.push(key));
+    expect(seen[1]).toBe(seen[0]);
+    expect(seen[2]).not.toBe(seen[0]);
+  });
+});
+
+describe("điểm theo ngôn ngữ", () => {
+  it("vi dùng dấu phẩy, en dùng dấu chấm", () => {
+    expect(formatPoints(0.25)).toBe("0,25");
+    expect(formatPoints(0.25, "vi")).toBe("0,25");
+    expect(formatPoints(0.25, "en")).toBe("0.25");
+    expect(formatPoints(1, "en")).toBe("1");
+  });
+});
