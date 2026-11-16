@@ -45,7 +45,6 @@ import { summarizeImport, validateImportRows } from "./validation";
 const dictionary = dictionaryFixture as ImportDictionary;
 const reference = referenceFixture as ContentReference;
 
-
 interface StoredSheet {
   upload: ImportUpload;
   rows: ImportSheetRow[];

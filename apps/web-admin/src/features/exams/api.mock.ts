@@ -58,7 +58,6 @@ import type {
 
 export type PageResponseExamSummary = MockPage<ExamSummary>;
 
-
 /** Lọc danh sách: chữ trong tên hoặc mã; kỳ thi; hình thức; môn của bài (môn theo mẫu hoặc môn của bài lẻ); trạng thái. */
 function matches(exam: ExamDetail, query: ListExamsQuery): boolean {
   const text = query.q?.trim().toLocaleLowerCase("vi");

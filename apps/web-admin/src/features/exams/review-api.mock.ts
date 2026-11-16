@@ -39,7 +39,6 @@ import type { ExamDetail, ExamPart, ExamVersion } from "./types";
  * `@thi360/api-client`, giữ nguyên chữ ký; lỗi nghiệp vụ trả `MockApiError` cùng `status` và `code` như API thật.
  */
 
-
 function nowIso(): string {
   return new Date().toISOString();
 }

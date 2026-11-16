@@ -26,7 +26,6 @@ import type {
  * giữ nguyên chữ ký; hook trong `queries.ts` và giao diện không đổi.
  */
 
-
 const reference = referenceFixture as ContentReference;
 
 /**

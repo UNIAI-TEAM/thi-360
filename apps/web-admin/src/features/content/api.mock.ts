@@ -9,7 +9,6 @@ import type { ContentReference } from "./types";
  */
 const reference = referenceFixture as ContentReference;
 
-
 export async function getContentReference(): Promise<ContentReference> {
   return mockRequest(() => reference);
 }

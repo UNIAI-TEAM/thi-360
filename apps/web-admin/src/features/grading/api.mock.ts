@@ -33,10 +33,6 @@ import {
 
 export type PageResponseGradingAttempt = MockPage<GradingAttemptSummary>;
 
-
-/** Mã lỗi nghiệp vụ của lưu nháp và hoàn tất chấm (`MockApiError.code`); chữ ở `grading.detail.errors`. */
-
-
 // ---------------------------------------------------------------- Đề và tiêu chí của câu tự luận
 
 type ResolvedQuestion = Pick<
