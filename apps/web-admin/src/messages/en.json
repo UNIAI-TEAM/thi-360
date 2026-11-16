@@ -2399,11 +2399,17 @@
       },
       "saveErrors": {
         "generic": "The question could not be saved. Try again in a moment.",
+        "fieldErrors": "Not saved: the server rejected some fields. Fix the fields marked below.",
         "QUESTION_REVISION_CONFLICT": "The data was changed by someone else. Reload the page to edit the latest version.",
         "QUESTION_TYPE_IMMUTABLE": "A saved question cannot change type. Create a new question instead.",
         "QUESTION_SET_CHILDREN_MIN": "A question set needs at least 2 sub-questions.",
         "QUESTION_BODY_TYPE_MISMATCH": "The answer section does not match the question type.",
         "NOT_FOUND": "The question no longer exists."
+      },
+      "conflict": {
+        "title": "Someone else has changed this data",
+        "description": "This question was just saved elsewhere, so your save was not applied. Reload the latest version to keep editing; what you typed here will not be kept.",
+        "reload": "Reload latest version"
       },
       "leave": {
         "title": "Discard unsaved changes?",
@@ -2647,7 +2653,35 @@
         "criterionPointsInvalid": "Criterion points must be a number greater than 0.",
         "rubricTotalMismatch": "The criteria must add up to the question points.",
         "sampleAnswerMax": "The sample answer is too long.",
-        "wordLimitInvalid": "The length must be a whole number greater than 0."
+        "wordLimitInvalid": "The length must be a whole number greater than 0.",
+        "server": {
+          "QUESTION_CONTENT_UNSAFE": "The content has parts that are not allowed (formatting or images outside the allowed list). Remove them and save again.",
+          "QUESTION_BODY_INVALID": "The answer section is not valid.",
+          "QUESTION_BODY_TYPE_MISMATCH": "The answer section does not match the question type.",
+          "QUESTION_TYPE_MISSING": "No question type is chosen.",
+          "QUESTION_DUPLICATE_ID": "Some items have the same id. Reload the page and enter them again.",
+          "QUESTION_OPTIONS_TOO_MANY": "At most 10 options.",
+          "QUESTION_STATEMENTS_TOO_MANY": "At most 8 statements.",
+          "QUESTION_BLANKS_TOO_MANY": "At most 30 blanks.",
+          "QUESTION_ANSWERS_TOO_MANY": "At most 20 answers.",
+          "QUESTION_CHILDREN_TOO_MANY": "At most 20 sub-questions.",
+          "QUESTION_CHILD_TYPE_NOT_ALLOWED": "This type cannot be a sub-question of a question set.",
+          "QUESTION_BLANK_MARKER_MISMATCH": "The blank markers in the passage do not match the list of blanks.",
+          "QUESTION_PAIR_UNKNOWN_LEFT": "A pair points to a left item that does not exist.",
+          "QUESTION_PAIR_UNKNOWN_RIGHT": "A pair points to a right choice that does not exist.",
+          "QUESTION_PAIR_DUPLICATE_LEFT": "A left item is matched twice.",
+          "QUESTION_ATTACHMENT_UNKNOWN": "The attachment no longer exists. Upload it again.",
+          "QUESTION_WORD_LIMIT_INVALID": "The suggested word count must be greater than 0.",
+          "QUESTION_SCORING_METHOD_MISSING": "No scoring method is chosen.",
+          "QUESTION_SCORING_RULE_MISSING": "No scoring rule is chosen.",
+          "POINTS_NOT_POSITIVE": "Points must be greater than 0.",
+          "POINTS_TOO_MANY_DECIMALS": "Points allow at most 4 decimal places.",
+          "POINTS_TOO_LARGE": "Points are too large.",
+          "SCORE_TABLE_INVALID": "The score table is not valid.",
+          "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
+          "CATALOG_VALUE_UNKNOWN": "The value is not in the catalog or has been retired.",
+          "UNKNOWN": "The server did not accept this value."
+        }
       },
       "pointsTotal": {
         "matches": "Points total: {total, number} / {points, number}",
@@ -2792,7 +2826,13 @@
         "PAIR_INVALID": "A pair points to a missing item, a left item is matched twice, or a choice is reused although each choice may be used only once.",
         "PAIR_POINTS_MISMATCH": "The pair points do not add up to the question points.",
         "NO_GRADING_GUIDE": "The essay question has no grading guide.",
-        "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points."
+        "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points.",
+        "TOO_FEW_CORRECT_OPTIONS": "A multiple-choice question needs at least 2 correct options.",
+        "STATEMENT_ANSWER_REQUIRED": "Statement {position, number} has no true or false answer.",
+        "POINTS_INVALID": "Points are not valid: they must be greater than 0 with at most 4 decimal places.",
+        "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
+        "CATALOG_VALUE_UNKNOWN": "A classification value is not in the catalog or has been retired.",
+        "READINESS_OTHER": "A check was not met ({value})."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
       "moreIssues": "and {count, plural, one {# more place} other {# more places}}",
@@ -2958,7 +2998,7 @@
         "descriptionDraft": "The content of v{version} overwrites draft v{current}. Older versions and the attempts that used them stay unchanged.",
         "confirm": "Restore",
         "done": "Copied the content of v{version} into draft v{current}.",
-        "conflict": "The question was just saved elsewhere. Reload the page and try again.",
+        "conflict": "Someone else has changed this data. The latest version has been reloaded; try again.",
         "failed": "Could not restore. Try again in a moment."
       },
       "view": {

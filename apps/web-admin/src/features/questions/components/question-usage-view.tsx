@@ -31,7 +31,8 @@ function usageFormatters(t: ReturnType<typeof useTranslations>, subjectName: (co
       if (used.length === 0) return t("noAttempts");
       return used.map((entry) => t("versionAttempts", { version: entry.version, count: entry.attemptCount })).join(" · ");
     },
-    location: (exam: QuestionUsageExam) => [exam.partName, subjectName(exam.subjectCode), exam.blockName].join(" › "),
+    location: (exam: QuestionUsageExam) =>
+      [exam.partName, subjectName(exam.subjectCode), exam.blockName].filter(Boolean).join(" › "),
   };
 }
 

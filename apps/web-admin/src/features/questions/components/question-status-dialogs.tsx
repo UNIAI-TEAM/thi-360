@@ -24,9 +24,9 @@ import { Check, CircleAlert, Info, Lock, PowerOff, TriangleAlert, X } from "luci
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useId, useMemo, type ReactNode } from "react";
+import { apiErrorCode, isRevisionConflict } from "@/features/content/api-error";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { MockApiError } from "@/lib/mock/content-mock";
 import { QUESTION_STATUS_ERROR_CODES, type QuestionStatusErrorCode } from "../api";
 import { useMarkQuestionReady, useQuestionReadiness, useQuestionRetireImpact, useRetireQuestion } from "../queries";
 import {
@@ -69,10 +69,9 @@ export function useReadinessIssueText() {
 }
 
 function errorCodeOf(error: unknown): QuestionStatusErrorCode | "UNKNOWN" {
-  if (error instanceof MockApiError && error.code) {
-    const code = error.code;
-    if ((QUESTION_STATUS_ERROR_CODES as readonly string[]).includes(code)) return code as QuestionStatusErrorCode;
-  }
+  if (isRevisionConflict(error)) return "QUESTION_REVISION_CONFLICT";
+  const code = apiErrorCode(error);
+  if (code && (QUESTION_STATUS_ERROR_CODES as readonly string[]).includes(code)) return code as QuestionStatusErrorCode;
   return getErrorStatus(error) === 404 ? "NOT_FOUND" : "UNKNOWN";
 }
 
@@ -513,7 +512,9 @@ function UsageTable({ question, exams }: { question: QuestionSummary; exams: Que
   );
   const impactChip = useCallback(
     (exam: QuestionUsageExam): ReactNode =>
-      exam.needed !== null && exam.available < exam.needed ? (
+      exam.needed === null ? (
+        <span className="text-text-muted">—</span>
+      ) : exam.available < exam.needed ? (
         <StatusChip tone="warning" className="h-auto min-h-6 py-0.5 whitespace-normal">
           {t("impactShortfall", {
             needed: exam.needed,

@@ -9,8 +9,8 @@ import type { QuestionDetail } from "./types";
  * - Sửa câu Sẵn sàng (hoặc Ngừng sử dụng): tạo phiên bản mới ở trạng thái Nháp; phiên bản Sẵn sàng trước đó vẫn
  *   dùng cho lượt thi mới tới khi bản mới được chuyển sang Sẵn sàng. Lượt thi đã làm giữ phiên bản đã dùng.
  */
-export function editCreatesNewVersion(question: { status: QuestionStatus }): boolean {
-  return question.status !== "DRAFT";
+export function editCreatesNewVersion(question: { status: QuestionStatus; workingVersion?: number | null }): boolean {
+  return question.status !== "DRAFT" && !question.workingVersion;
 }
 
 export const SNAPSHOT_FIELDS = [

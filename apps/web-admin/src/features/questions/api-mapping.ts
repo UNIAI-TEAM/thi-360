@@ -44,8 +44,9 @@ export function fromApiSummary(summary: ApiSummary): QuestionSummary {
     taskTypeCode: summary.taskTypeCode ?? null,
     tagCodes: summary.tagCodes,
     hasSolution: summary.hasSolution,
-    // Số phiên bản mới nhất: bản Nháp đang sửa nếu có, không thì bản đang phục vụ; câu mới có bản 1.
-    version: Math.max(summary.version, summary.workingVersion ?? 0, 1),
+    // Bản đang phục vụ (0 khi câu chưa từng Sẵn sàng: hiện bản Nháp đang sửa, mặc định bản 1).
+    version: summary.version > 0 ? summary.version : (summary.workingVersion ?? 1),
+    workingVersion: summary.version > 0 ? (summary.workingVersion ?? null) : null,
     revision: summary.revision,
     usedInExamCount: summary.usedInExamCount,
     sourceCode: summary.sourceCode ?? null,

@@ -10,7 +10,9 @@ import { useId, useState, type FormEvent } from "react";
 import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
 import { MockDataBanner } from "@/components/mock-data-banner";
 import type { ContentReference, QuestionType } from "@/features/content/types";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
+import { getErrorStatus } from "@/lib/api/query-client";
+import { applyServerFieldErrors } from "../editor-field-errors";
 import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
 import { questionEditorSchema } from "../editor-schema";
@@ -23,9 +25,15 @@ import { QuestionSetEditor } from "./question-editor-set";
 import { RichTextField } from "./question-editor-rich-field";
 import { EditorAnnounceProvider, EditorSection, FieldErrorText, useEditorError } from "./question-editor-shared";
 
+interface EditorFormCommon {
+  reference: ContentReference;
+  /** Nạp lại câu hỏi mới nhất và dựng lại biểu mẫu (lời mời ở thông báo xung đột 412); chỉ khi sửa. */
+  onReload?: () => void | Promise<unknown>;
+}
+
 export type QuestionEditorFormProps =
-  | { mode: "create"; type: QuestionType; question?: undefined; reference: ContentReference }
-  | { mode: "edit"; question: QuestionDetail; type?: undefined; reference: ContentReference };
+  | (EditorFormCommon & { mode: "create"; type: QuestionType; question?: undefined })
+  | (EditorFormCommon & { mode: "edit"; question: QuestionDetail; type?: undefined });
 
 const BODY_TITLE_KEY: Record<QuestionType, string> = {
   SINGLE_CHOICE: "options",
@@ -63,6 +71,8 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const formId = useId();
   const [liveMessage, setLiveMessage] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const question = props.question ?? null;
   const type = question?.type ?? props.type ?? "SINGLE_CHOICE";
@@ -81,8 +91,32 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
 
   const leaveHref = question ? `/questions/${encodeURIComponent(question.id)}` : "/questions";
 
+  const focusFirstInvalid = () => {
+    // Đợi câu con có lỗi mở ra rồi mới tìm ô sai đầu tiên theo thứ tự trên màn hình.
+    requestAnimationFrame(() => {
+      document
+        .getElementById(formId)
+        ?.querySelector<HTMLElement>('[aria-invalid="true"], [data-editor-error]')
+        ?.focus();
+    });
+  };
+
+  /** 412: người khác đã sửa câu này; 422: lỗi theo trường đặt lên ô tương ứng; còn lại: thông báo chung theo mã. */
   const showError = (error: unknown) => {
-    const code = error instanceof MockApiError ? error.code : undefined;
+    if (isRevisionConflict(error)) {
+      setSubmitError(null);
+      setConflict(true);
+      setLiveMessage(t("conflict.title"));
+      return;
+    }
+    const fieldErrors = getErrorStatus(error) === 422 ? apiFieldErrors(error) : [];
+    if (applyServerFieldErrors(fieldErrors, methods.setError) > 0) {
+      setSubmitError(t("saveErrors.fieldErrors"));
+      setLiveMessage(t("invalidSubmit"));
+      focusFirstInvalid();
+      return;
+    }
+    const code = apiErrorCode(error);
     setSubmitError(code && t.has(`saveErrors.${code}`) ? t(`saveErrors.${code}`) : t("saveErrors.generic"));
   };
 
@@ -127,6 +161,11 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
     void handleSubmit(onValid, onInvalid)(event);
   };
 
+  const reload = () => {
+    setReloading(true);
+    void Promise.resolve(props.onReload?.()).finally(() => setReloading(false));
+  };
+
   const cancel = () => {
     if (formState.isDirty) setConfirmLeave(true);
     else router.push(leaveHref);
@@ -166,6 +205,22 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
           />
           <MockDataBanner />
           {question && <VersionNotice question={question} />}
+          {conflict && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-warning/30 bg-warning-bg px-3.5 py-2.5 text-body text-warning"
+            >
+              <div className="flex flex-col gap-1">
+                <strong className="font-semibold">{t("conflict.title")}</strong>
+                <span>{t("conflict.description")}</span>
+              </div>
+              {props.onReload && (
+                <Button type="button" variant="secondary" size="sm" loading={reloading} onClick={reload}>
+                  {t("conflict.reload")}
+                </Button>
+              )}
+            </div>
+          )}
           {submitError && (
             <p role="alert" className="rounded-lg border border-danger bg-danger-bg px-3.5 py-2.5 text-body text-danger">
               {submitError}
@@ -285,9 +340,11 @@ function VersionNotice({ question }: { question: QuestionDetail }) {
   const t = useTranslations("questions.editor.versionNotice");
   const next = question.version + 1;
   const createsVersion = editCreatesNewVersion(question);
+  // Có bản Nháp riêng của câu đã Sẵn sàng: lưu ghi đè bản đó; câu Nháp: ghi đè khi đã qua bản 1.
+  const draftVersion = question.workingVersion ?? question.version;
   const message = !createsVersion
-    ? question.version > 1
-      ? t("draftOverwrite", { version: question.version })
+    ? draftVersion > 1
+      ? t("draftOverwrite", { version: draftVersion })
       : null
     : question.status === "RETIRED"
       ? t("retired", { version: question.version, next })
