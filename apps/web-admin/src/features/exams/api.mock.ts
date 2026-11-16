@@ -1,7 +1,6 @@
 import referenceFixture from "@/features/content/mock/reference.json";
-import type { ContentReference, ExamKindOption, KnowledgeNode } from "@/features/content/types";
-import { MOCK_CURRENT_AUTHOR, questionStore } from "@/features/questions/mock/store";
-import type { QuestionDetail } from "@/features/questions/types";
+import type { ContentReference, ExamKindOption } from "@/features/content/types";
+import { MOCK_CURRENT_AUTHOR } from "@/features/questions/mock/store";
 import { mockId, mockRequest, MockApiError, paginate, type MockPage } from "@/lib/mock/content-mock";
 import {
   combinationsForKind,
@@ -11,10 +10,12 @@ import {
   partInputsFromValues,
   yearsDiffer,
 } from "./create-exam-schema";
-import { splitEvenly, sum } from "./matrix";
+import { countOf, emptyMatrix, splitEvenly, sum } from "./matrix";
 import examsFixture from "./mock/exams.json";
 import { toExamSummary } from "./exam-summary";
 import { examStore, MOCK_EXAM_TEMPLATES, structureEdited } from "./mock/store";
+import { countForQuery, countForSubject } from "./mock/source-count";
+import { SUBJECT_CHOICE_MAX_SECTIONS } from "./check";
 import type {
   ApplyExamTemplateRequest,
   AvailableQuestionCounts,
@@ -32,9 +33,11 @@ import type {
   ExamSummary,
   ExamTemplate,
   ExamTemplateBlock,
+  ExamTemplateSection,
   ExamTiming,
   ListExamsQuery,
   QuestionBlock,
+  SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
   UpdateExamStructureRequest,
@@ -130,19 +133,29 @@ function subjectName(code: string): string {
   return reference.subjects.find((subject) => subject.code === code)?.name ?? code;
 }
 
-function emptySections(subjectCodes: readonly string[], questionCount: number): ExamSection[] {
-  const counts = splitEvenly(questionCount, subjectCodes.length);
-  return subjectCodes.map((subjectCode, index) => ({
+/** Môn mới chưa có chỉ tiêu cấp môn (D26: kỳ thi ngoài HSA giữ môn không có chỉ tiêu). */
+function newSection(subjectCode: string, questionCount: number | null): ExamSection {
+  return {
     id: mockId("sec"),
     subjectCode,
-    questionCount: counts[index] ?? 0,
+    questionCount,
+    knowledgeScope: null,
+    answerQuotas: null,
+    matrix: null,
+    groupOrder: "SHUFFLE",
     blocks: [],
-  }));
+  };
+}
+
+function emptySections(subjectCodes: readonly string[], questionCount: number): ExamSection[] {
+  const counts = splitEvenly(questionCount, subjectCodes.length);
+  return subjectCodes.map((subjectCode, index) => newSection(subjectCode, counts[index] ?? 0));
 }
 
 /**
- * Khối câu hỏi từ khối gợi ý của mẫu: dạng câu, số câu, điểm mỗi câu, câu chùm, năng lực (lọc nguồn theo năng lực)
- * và quy tắc chấm mong đợi. Phạm vi kiến thức và ma trận để trống, soạn ở Cấu trúc và ma trận.
+ * Nhóm lấy câu từ nhóm của mẫu (B9): dạng trả lời, số câu, điểm mỗi câu, câu chùm, mã nhóm của mẫu, năng lực (lọc
+ * nguồn theo năng lực) và quy tắc chấm mong đợi. Mẫu không ghi chỉ tiêu riêng (`matrix` bỏ trống) thì nhóm có ma trận
+ * trống để soạn ở Cấu trúc và ma trận; `matrix = null` là nhóm không có chỉ tiêu riêng.
  */
 function blockFromTemplate(block: ExamTemplateBlock): QuestionBlock {
   return {
@@ -153,21 +166,37 @@ function blockFromTemplate(block: ExamTemplateBlock): QuestionBlock {
     setCount: block.setCount ?? null,
     setSize: block.setSize ?? null,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
-    knowledgeScope: {
-      nodeIds: [],
-      match: "ANY",
-      includeDescendants: false,
-      ...(block.competencyCode ? { competencyCodes: [block.competencyCode] } : {}),
-    },
+    knowledgeScope:
+      block.knowledgeScope !== undefined
+        ? structuredClone(block.knowledgeScope)
+        : block.competencyCode
+          ? { nodeIds: [], match: "ANY", competencyCodes: [block.competencyCode] }
+          : null,
     tagCodes: [],
-    matrix: { mode: "COMBINED", unit: "COUNT", cells: [], byGrade: [], byDifficulty: [] },
-    shuffle: "SHUFFLE",
+    matrix: block.matrix !== undefined ? structuredClone(block.matrix) : emptyMatrix(),
+    taskTypeCode: block.taskTypeCode ?? null,
+    childAnswerType: block.childAnswerType ?? null,
+    templateGroupCode: block.templateGroupCode ?? null,
+    answerTypeLocked: block.answerTypeLocked ?? false,
+    shuffle: block.shuffle ?? "SHUFFLE",
     ...(block.expectedScoring ? { expectedScoring: structuredClone(block.expectedScoring) } : {}),
   };
 }
 
 function blocksFromTemplate(blocks: readonly ExamTemplateBlock[] | undefined): QuestionBlock[] {
   return (blocks ?? []).map(blockFromTemplate);
+}
+
+/** Môn từ môn của mẫu: nhóm khởi tạo sẵn, phạm vi MAPID và chỉ tiêu cấp môn (bỏ trống là `null`). */
+function sectionFromTemplate(section: ExamTemplateSection): ExamSection {
+  return {
+    ...newSection(section.subjectCode, section.questionCount),
+    knowledgeScope: structuredClone(section.knowledgeScope ?? null),
+    answerQuotas: structuredClone(section.answerQuotas ?? null),
+    matrix: structuredClone(section.matrix ?? null),
+    groupOrder: section.groupOrder ?? "SHUFFLE",
+    blocks: blocksFromTemplate(section.blocks),
+  };
 }
 
 /**
@@ -188,7 +217,23 @@ function buildPartOption(
     kind: combination ? "COMBINATION" : "SUBJECT",
     code,
     sections,
+    chooseSubjects: null,
+    countsByPick: null,
     ...(extra.expertConfirmed !== undefined ? { expertConfirmed: extra.expertConfirmed } : {}),
+  };
+}
+
+/** Phương án `SUBJECT_CHOICE` (HSA Khoa học): các môn khai nhóm và nguồn một lần, số câu theo `countsByPick` (D25). */
+function subjectChoiceOption(choice: NonNullable<CreateExamPartInput["subjectChoice"]>): ExamPartOption {
+  return {
+    id: mockId("opt"),
+    kind: "SUBJECT_CHOICE",
+    code: choice.code,
+    name: choice.name ?? null,
+    sections: choice.sections.map(sectionFromTemplate),
+    chooseSubjects: choice.chooseSubjects,
+    countsByPick: [...choice.countsByPick],
+    expertConfirmed: choice.expertConfirmed,
   };
 }
 
@@ -200,13 +245,8 @@ function buildPartOption(
 function partsFromInput(inputs: readonly CreateExamPartInput[], examSubjectCode: string | null = null): ExamPart[] {
   return inputs.map((input, index) => {
     const choice = input.mode === "CHOICE";
-    const common: ExamSection[] = (input.sections ?? []).map((section) => ({
-      id: mockId("sec"),
-      subjectCode: section.subjectCode,
-      questionCount: section.questionCount,
-      blocks: blocksFromTemplate(section.blocks),
-    }));
-    const target = input.questionCount - sum(common.map((section) => section.questionCount));
+    const common: ExamSection[] = (input.sections ?? []).map(sectionFromTemplate);
+    const target = input.questionCount - sum(common.map(countOf));
     const branchSubject = common[0]?.subjectCode ?? examSubjectCode ?? "";
     const options: ExamPartOption[] = choice
       ? [
@@ -221,6 +261,7 @@ function partsFromInput(inputs: readonly CreateExamPartInput[], examSubjectCode:
               })),
             };
           }),
+          ...(input.subjectChoice ? [subjectChoiceOption(input.subjectChoice)] : []),
           ...(input.branches ?? []).map(
             (branch): ExamPartOption => ({
               id: mockId("opt"),
@@ -229,20 +270,18 @@ function partsFromInput(inputs: readonly CreateExamPartInput[], examSubjectCode:
               name: branch.name.trim(),
               sections: [
                 {
-                  id: mockId("sec"),
-                  subjectCode: branchSubject,
-                  questionCount: branch.questionCount,
+                  ...newSection(branchSubject, branch.questionCount),
                   blocks: blocksFromTemplate(branch.blocks),
                 },
               ],
+              chooseSubjects: null,
+              countsByPick: null,
             }),
           ),
         ]
       : [];
     const singleSubject: ExamSection = {
-      id: mockId("sec"),
-      subjectCode: input.subjectCode ?? "",
-      questionCount: input.questionCount,
+      ...newSection(input.subjectCode ?? "", input.questionCount),
       blocks: blocksFromTemplate(input.blocks),
     };
     return {
@@ -280,14 +319,29 @@ function assertInputParts(inputs: readonly CreateExamPartInput[], timing: ExamTi
         input.points === undefined || input.points === null || (Number.isFinite(input.points) && input.points > 0);
       if (!input.name.trim() || !positive(input.questionCount) || !durationOk || !pointsOk) return true;
       const sections = input.sections ?? [];
-      if (!sections.every((section) => section.subjectCode && positive(section.questionCount))) return true;
-      const common = sum(sections.map((section) => section.questionCount));
+      if (!sections.every((section) => section.subjectCode && section.questionCount !== null && positive(section.questionCount))) {
+        return true;
+      }
+      const common = sum(sections.map(countOf));
       if (input.mode === "FIXED") return sections.length > 0 ? common !== input.questionCount : !input.subjectCode;
       const target = input.questionCount - common;
       const branches = input.branches ?? [];
       if (target <= 0) return true;
-      if (!input.englishOption && input.combinations.length === 0 && branches.length === 0) return true;
+      const choice = input.subjectChoice ?? null;
+      if (!input.englishOption && input.combinations.length === 0 && branches.length === 0 && !choice) return true;
       if (branches.some((branch) => !branch.code || !branch.name.trim() || branch.questionCount !== target)) return true;
+      if (
+        choice &&
+        (choice.sections.length === 0 ||
+          choice.sections.length > SUBJECT_CHOICE_MAX_SECTIONS ||
+          !positive(choice.chooseSubjects) ||
+          choice.chooseSubjects > choice.sections.length ||
+          choice.countsByPick.length !== choice.chooseSubjects ||
+          !choice.countsByPick.every(positive) ||
+          sum(choice.countsByPick) !== target)
+      ) {
+        return true;
+      }
       return input.combinations.some((item) => {
         const combination = reference.combinations.find((entry) => entry.code === item.code);
         return (
@@ -383,11 +437,11 @@ function assertSharedDuration(minutes: number | null): asserts minutes is number
   if (minutes === null || !Number.isInteger(minutes) || minutes <= 0) throw new MockApiError(422, "EXAM_STRUCTURE_INVALID");
 }
 
-/** Số câu Tự luận trong cấu trúc có lớn hơn 0 không (khối dạng `ESSAY`). */
+/** Số câu Tự luận trong cấu trúc có lớn hơn 0 không (nhóm dạng `ESSAY`). */
 function partsHaveEssay(parts: readonly ExamPart[]): boolean {
   return parts.some((part) =>
     [...part.sections, ...part.options.flatMap((option) => option.sections)].some((section) =>
-      section.blocks.some((block) => block.questionType === "ESSAY" && block.questionCount > 0),
+      section.blocks.some((block) => block.questionType === "ESSAY" && countOf(block) > 0),
     ),
   );
 }
@@ -751,65 +805,19 @@ export async function discontinueExam(id: string, expectedRevision?: number): Pr
 
 // ---------------------------------------------------------------- nguồn câu hỏi
 
-function indexDescendants(nodes: readonly KnowledgeNode[]): Map<string, Set<string>> {
-  const index = new Map<string, Set<string>>();
-  const visit = (node: KnowledgeNode): Set<string> => {
-    const ids = new Set<string>([node.id]);
-    for (const child of node.children) for (const id of visit(child)) ids.add(id);
-    index.set(node.id, ids);
-    return ids;
-  };
-  nodes.forEach(visit);
-  return index;
-}
-
-let descendantsIndex: Map<string, Set<string>> | null = null;
-
-function matchesScope(question: QuestionDetail, scope: AvailableQuestionsQuery["knowledgeScope"]): boolean {
-  if (scope.nodeIds.length === 0) return true;
-  descendantsIndex ??= indexDescendants(reference.knowledgeTree);
-  const attached = new Set(question.knowledge.map((ref) => ref.nodeId));
-  const covers = (nodeId: string) => {
-    const targets = scope.includeDescendants ? (descendantsIndex?.get(nodeId) ?? new Set([nodeId])) : new Set([nodeId]);
-    for (const id of attached) if (targets.has(id)) return true;
-    return false;
-  };
-  return scope.match === "ALL" ? scope.nodeIds.every(covers) : scope.nodeIds.some(covers);
+/**
+ * Đếm nguồn Sẵn sàng khớp bộ lọc của một nhóm (môn, dạng trả lời, dạng bài, phạm vi MAPID có hiệu lực), theo từng ô
+ * Lớp × Độ khó và theo dạng trả lời. Câu chùm đếm theo câu con. Chỉ là gợi ý khi soạn; kết luận đủ nguồn cho cả đề
+ * thuộc bước Kiểm tra cấu hình.
+ */
+export async function countAvailableQuestions(query: AvailableQuestionsQuery): Promise<AvailableQuestionCounts> {
+  return mockRequest(() => countForQuery(query), { empty: () => ({ total: 0, cells: [], byAnswerType: [] }) });
 }
 
 /**
- * Đếm nguồn Sẵn sàng khớp bộ lọc của khối (môn, dạng câu, phạm vi kiến thức), theo từng ô Lớp × Độ khó. Câu chùm đếm
- * theo câu con. Chỉ là gợi ý từng ô; kết luận đủ nguồn cho cả đề thuộc bước Kiểm tra cấu hình.
+ * Đếm nguồn cho cả môn (spec 5.3 `count-subject`): hợp nguồn của các nhóm trong môn, mỗi câu đếm một lần dù nằm trong
+ * nguồn của hai nhóm; dùng để soạn chỉ tiêu cấp môn.
  */
-export async function countAvailableQuestions(query: AvailableQuestionsQuery): Promise<AvailableQuestionCounts> {
-  return mockRequest(
-    () => {
-      const counted = new Map<string, number>();
-      const byCompetency = new Map<string, number>();
-      const competencies = query.knowledgeScope.competencyCodes ?? [];
-      let total = 0;
-      for (const question of questionStore.all()) {
-        if (question.status !== "READY" || question.subjectCode !== query.subjectCode) continue;
-        if (question.type !== query.questionType || !matchesScope(question, query.knowledgeScope)) continue;
-        if (competencies.length && !competencies.includes(question.competencyCode ?? "")) continue;
-        const units = question.type === "QUESTION_SET" && question.children.length ? question.children : [question];
-        for (const unit of units) {
-          const key = `${unit.gradeCode}|${unit.difficultyCode}`;
-          counted.set(key, (counted.get(key) ?? 0) + 1);
-          const competency = unit.competencyCode ?? question.competencyCode;
-          if (competency) byCompetency.set(competency, (byCompetency.get(competency) ?? 0) + 1);
-          total += 1;
-        }
-      }
-      return {
-        total,
-        cells: [...counted].map(([key, value]) => {
-          const [gradeCode = "", difficultyCode = ""] = key.split("|");
-          return { gradeCode, difficultyCode, value };
-        }),
-        ...(byCompetency.size ? { byCompetency: [...byCompetency].map(([code, value]) => ({ code, value })) } : {}),
-      };
-    },
-    { empty: () => ({ total: 0, cells: [] }) },
-  );
+export async function countSubjectAvailableQuestions(query: SubjectAvailableQuestionsQuery): Promise<AvailableQuestionCounts> {
+  return mockRequest(() => countForSubject(query), { empty: () => ({ total: 0, cells: [], byAnswerType: [] }) });
 }

@@ -190,8 +190,17 @@ function competencyAllocation(matrix: BlockMatrix, questionCount: number): Block
   };
 }
 
-export function computeAllocation(block: Pick<QuestionBlock, "questionCount" | "matrix">, axes: MatrixAxes): BlockAllocation {
-  const { matrix, questionCount } = block;
+/** Nhóm câu chùm (B9): lấy nguyên chùm, số câu là `setCount × setSize`. */
+export function isSetBlock(block: Pick<QuestionBlock, "questionType">): boolean {
+  return block.questionType === "QUESTION_SET" || block.questionType === "CLOZE";
+}
+
+export function computeAllocation(
+  block: { questionCount: number | null; matrix: BlockMatrix | null },
+  axes: MatrixAxes,
+): BlockAllocation {
+  const matrix = block.matrix ?? emptyMatrix();
+  const questionCount = block.questionCount ?? 0;
   const percent = matrix.unit === "PERCENT";
   if (matrix.mode === "COMBINED") {
     const input = combinedGrid(matrix, axes);
@@ -371,14 +380,19 @@ const PERCENT_TOLERANCE = 1e-6;
 /** Kiểm tra một khối với số câu của nó (UniNote PBI-04 mục 6.2, 7.3). */
 export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssue[] {
   const issues: BlockIssue[] = [];
-  if (!Number.isInteger(block.questionCount) || block.questionCount <= 0) issues.push({ code: "COUNT_NOT_POSITIVE" });
-  if (block.questionType === "QUESTION_SET") {
+  // `questionCount = null`: nhóm "lấy phần còn lại" của môn, số câu do môn quyết định (REMAINDER_GROUP_INVALID).
+  if (block.questionCount !== null && (!Number.isInteger(block.questionCount) || block.questionCount <= 0)) {
+    issues.push({ code: "COUNT_NOT_POSITIVE" });
+  }
+  if (isSetBlock(block) && block.questionCount !== null) {
     const expected = (block.setCount ?? 0) * (block.setSize ?? 0);
     if (expected !== block.questionCount) {
       issues.push({ code: "SET_SIZE_MISMATCH", expected, actual: block.questionCount });
     }
   }
   const { matrix } = block;
+  // Chỉ tiêu riêng của nhóm là tùy chọn; chỉ tiêu theo % không cần số câu của nhóm khi nhóm lấy phần còn lại.
+  if (!matrix || block.questionCount === null) return issues;
   const values = matrixValues(matrix);
   if (values.some((value) => value < 0 || !Number.isFinite(value) || (matrix.unit === "COUNT" && !Number.isInteger(value)))) {
     issues.push({ code: "INVALID_VALUE" });
@@ -442,6 +456,11 @@ export function choiceGroups(part: ExamPart): Array<{ optionId: string | null; s
   return part.options.map((option) => ({ optionId: option.id, sections: [...part.sections, ...option.sections] }));
 }
 
+/** Số câu của môn hoặc nhóm; `null` (môn của `SUBJECT_CHOICE`, nhóm lấy phần còn lại) tính 0 ở tổng cố định. */
+export function countOf(item: { questionCount: number | null }): number {
+  return item.questionCount ?? 0;
+}
+
 function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
   return sections.flatMap((section) => section.blocks);
 }
@@ -456,7 +475,7 @@ export function blockPointsEach(block: Pick<QuestionBlock, "requiredPointsPerQue
 
 /** Tổng điểm các khối của một nhóm môn (số câu × điểm mỗi câu). */
 export function sectionsPoints(sections: readonly ExamSection[]): number {
-  return roundPrecision(sum(blocksOf(sections).map((block) => block.questionCount * blockPointsEach(block))));
+  return roundPrecision(sum(blocksOf(sections).map((block) => countOf(block) * blockPointsEach(block))));
 }
 
 /** Điểm riêng của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
@@ -492,7 +511,11 @@ export function validateStructure(
     if (part.mode === "CHOICE" && part.options.length === 0) issues.push({ code: "NO_OPTIONS", partId: part.id });
     const expectedPoints = partPoints(part);
     for (const group of choiceGroups(part)) {
-      const sectionsTotal = sum(group.sections.map((section) => section.questionCount));
+      const option = part.options.find((item) => item.id === group.optionId);
+      const sectionsTotal =
+        option?.kind === "SUBJECT_CHOICE"
+          ? sum(option.countsByPick ?? []) + sum(part.sections.map(countOf))
+          : sum(group.sections.map(countOf));
       if (sectionsTotal !== part.questionCount) {
         issues.push({
           code: "SECTIONS_TOTAL",
@@ -502,7 +525,7 @@ export function validateStructure(
           actual: sectionsTotal,
         });
       }
-      if (expectedPoints !== null) {
+      if (expectedPoints !== null && option?.kind !== "SUBJECT_CHOICE") {
         const actual = sectionsPoints(group.sections);
         if (Math.abs(actual - expectedPoints) > PERCENT_TOLERANCE) {
           issues.push({ code: "PART_POINTS", partId: part.id, optionId: group.optionId, expected: expectedPoints, actual });
@@ -512,9 +535,12 @@ export function validateStructure(
     for (const group of sectionGroups(part)) {
       for (const section of group.sections) {
         const location = { partId: part.id, optionId: group.optionId, sectionId: section.id };
-        const blocksTotal = sum(section.blocks.map((block) => block.questionCount));
-        if (blocksTotal !== section.questionCount) {
-          issues.push({ code: "BLOCKS_TOTAL", location, expected: section.questionCount, actual: blocksTotal });
+        // Môn của `SUBJECT_CHOICE` không có số câu cố định (D25): tổng nhóm do kiểm tra cấu hình báo theo từng cách chọn.
+        if (section.questionCount !== null) {
+          const blocksTotal = sum(section.blocks.map(countOf));
+          if (blocksTotal !== section.questionCount) {
+            issues.push({ code: "BLOCKS_TOTAL", location, expected: section.questionCount, actual: blocksTotal });
+          }
         }
         for (const block of section.blocks) {
           for (const issue of validateBlock(block, axes)) {
@@ -553,18 +579,23 @@ export interface StructureTotalsOptions {
 /** Số câu in trên đề của một phần (xem `StructureTotals.printedQuestions`). */
 export function printedPartQuestions(part: ExamPart): number {
   if (part.mode !== "CHOICE" || !part.options.some((option) => option.kind === "BRANCH")) return part.questionCount;
-  return sum([...part.sections, ...part.options.flatMap((option) => option.sections)].map((section) => section.questionCount));
+  return sum([...part.sections, ...part.options.flatMap((option) => option.sections)].map(countOf));
 }
 
 export function structureTotals(parts: readonly ExamPart[], options: StructureTotalsOptions = {}): StructureTotals {
   let allocated = 0;
   let totalPoints = 0;
   for (const part of parts) {
-    const groups = choiceGroups(part).map((group) => blocksOf(group.sections));
-    const counts = groups.map((blocks) => sum(blocks.map((block) => block.questionCount)));
+    const groups = choiceGroups(part).map((group) => ({ group, blocks: blocksOf(group.sections) }));
+    const counts = groups.map(({ group, blocks }) => {
+      const option = part.options.find((item) => item.id === group.optionId);
+      // `SUBJECT_CHOICE`: số câu từng môn tính theo `countsByPick`, không có trên môn (D25).
+      if (option?.kind === "SUBJECT_CHOICE") return sum(option.countsByPick ?? []) + sum(part.sections.map(countOf));
+      return sum(blocks.map(countOf));
+    });
     allocated += counts.length ? Math.min(...counts) : 0;
-    const first = groups[0] ?? [];
-    totalPoints += sum(first.map((block) => block.questionCount * blockPointsEach(block)));
+    const first = groups[0]?.blocks ?? [];
+    totalPoints += sum(first.map((block) => countOf(block) * blockPointsEach(block)));
   }
   const totalQuestions = sum(parts.map((part) => part.questionCount));
   return {

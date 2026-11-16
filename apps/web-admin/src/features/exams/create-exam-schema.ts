@@ -9,6 +9,8 @@ import type {
   ExamTemplate,
   ExamTemplateBlock,
   ExamTemplatePart,
+  ExamTemplateSection,
+  TemplateSubjectChoice,
   ExamTiming,
 } from "./types";
 
@@ -336,7 +338,15 @@ export interface CreateSectionValues {
   subjectCode: string;
   questionCount: number;
   blocks: ExamTemplateBlock[];
+  /** Phạm vi MAPID và chỉ tiêu cấp môn của mẫu (B9); bỏ trống: môn không có chỉ tiêu. Giữ nguyên khi gửi lên. */
+  knowledgeScope?: ExamTemplateSection["knowledgeScope"];
+  answerQuotas?: ExamTemplateSection["answerQuotas"];
+  matrix?: ExamTemplateSection["matrix"];
+  groupOrder?: ExamTemplateSection["groupOrder"];
 }
+
+/** Phương án chọn môn của mẫu (HSA Khoa học) giữ nguyên từ mẫu; chưa có ô soạn ở trang Tạo bài thi (FE-3c). */
+export type CreateSubjectChoiceValues = { code: string; name?: string | null } & TemplateSubjectChoice;
 
 /** Nhánh nội dung của phần tự chọn (THPTQG Tin học: Khoa học máy tính, Tin học ứng dụng). */
 export interface CreateBranchValues {
@@ -362,6 +372,8 @@ export interface CreatePartValues {
   /** Phần tự chọn cho bật nhánh Tiếng Anh (mẫu không gắn sẵn lựa chọn, hoặc gắn sẵn Tiếng Anh). Không gửi lên. */
   englishAvailable: boolean;
   combinations: CreateCombinationValues[];
+  /** Phần tự chọn có phương án chọn môn (HSA Khoa học, thay cho 10 tổ hợp KH-n); `null`: không có. */
+  subjectChoice: CreateSubjectChoiceValues | null;
   /** Phần cố định nhiều môn, hoặc phần chung của phần tự chọn. */
   sections: CreateSectionValues[];
   branches: CreateBranchValues[];
@@ -431,7 +443,10 @@ export function createExamSchema(
         expertConfirmed: z.boolean().optional(),
       }),
     ),
-    sections: z.array(z.object({ subjectCode: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) })),
+    subjectChoice: z.custom<CreateSubjectChoiceValues>((value) => typeof value === "object").nullable(),
+    sections: z.array(
+      z.looseObject({ subjectCode: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) }),
+    ),
     branches: z.array(
       z.object({ code: z.string(), name: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) }),
     ),
@@ -471,7 +486,7 @@ export function createExamSchema(
           }
           return;
         }
-        if (!item.englishOption && item.combinations.length === 0 && item.branches.length === 0) {
+        if (!item.englishOption && item.combinations.length === 0 && item.branches.length === 0 && !item.subjectChoice) {
           issue([...base, "combinations"], messages.noOptions);
         }
         const expected = item.questionCount - common;
@@ -540,6 +555,7 @@ function basePart(overrides: Partial<CreatePartValues>): CreatePartValues {
     englishOption: false,
     englishAvailable: false,
     combinations: [],
+    subjectChoice: null,
     sections: [],
     branches: [],
     blocks: [],
@@ -557,8 +573,8 @@ const cloneBlocks = (blocks: readonly ExamTemplateBlock[] | undefined): ExamTemp
  */
 function partFromTemplate(part: ExamTemplatePart, combinations: readonly CombinationOption[]): CreatePartValues {
   const sections: CreateSectionValues[] = (part.sections ?? []).map((section) => ({
-    subjectCode: section.subjectCode,
-    questionCount: section.questionCount,
+    ...structuredClone(section),
+    questionCount: section.questionCount ?? 0,
     blocks: cloneBlocks(section.blocks),
   }));
   const common: CreatePartValues = basePart({
@@ -593,6 +609,12 @@ function partFromTemplate(part: ExamTemplatePart, combinations: readonly Combina
           ...(option.expertConfirmed !== undefined ? { expertConfirmed: option.expertConfirmed } : {}),
         };
       }),
+    subjectChoice: (() => {
+      const choice = options.find((option) => option.kind === "SUBJECT_CHOICE" && option.subjectChoice);
+      return choice?.subjectChoice
+        ? { code: choice.code, name: choice.name ?? null, ...structuredClone(choice.subjectChoice) }
+        : null;
+    })(),
     branches: options
       .filter((option) => option.kind === "BRANCH")
       .map((option) => ({
@@ -685,8 +707,10 @@ export interface CreateExamSummary {
 }
 
 /** Số đường lựa chọn của một phần tự chọn: nhánh Tiếng Anh, tổ hợp đã gắn và nhánh nội dung. */
-export function choicePathCount(part: Pick<CreatePartValues, "englishOption" | "combinations" | "branches">): number {
-  return (part.englishOption ? 1 : 0) + part.combinations.length + part.branches.length;
+export function choicePathCount(
+  part: Pick<CreatePartValues, "englishOption" | "combinations" | "branches" | "subjectChoice">,
+): number {
+  return (part.englishOption ? 1 : 0) + part.combinations.length + part.branches.length + (part.subjectChoice ? 1 : 0);
 }
 
 export function summarizeParts(
@@ -719,6 +743,7 @@ export function partsEdited(parts: readonly CreatePartValues[], baseline: readon
       part.points,
       part.englishOption,
       part.combinations.map((item) => [item.code, item.subjectCounts]),
+      part.subjectChoice ? [part.subjectChoice.code, part.subjectChoice.countsByPick] : null,
       part.sections.map((section) => [section.subjectCode, section.questionCount]),
       part.branches.map((branch) => [branch.code, branch.questionCount]),
     ]);
@@ -755,12 +780,12 @@ export function partInputsFromValues(
             ...(item.expertConfirmed !== undefined ? { expertConfirmed: item.expertConfirmed } : {}),
           }))
         : [],
+      ...(choice && part.subjectChoice ? { subjectChoice: part.subjectChoice } : {}),
       ...(multi
         ? {
             sections: part.sections.map((section) => ({
-              subjectCode: section.subjectCode,
-              questionCount: section.questionCount,
-              ...(section.blocks.length ? { blocks: section.blocks } : {}),
+              ...section,
+              blocks: section.blocks.length ? section.blocks : undefined,
             })),
           }
         : {}),

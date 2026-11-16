@@ -22,6 +22,7 @@ export const applyExamTemplate = contentApi(mock.applyExamTemplate);
 export const duplicateExam = contentApi(mock.duplicateExam);
 export const discontinueExam = contentApi(mock.discontinueExam);
 export const countAvailableQuestions = contentApi(mock.countAvailableQuestions);
+export const countSubjectAvailableQuestions = contentApi(mock.countSubjectAvailableQuestions);
 
 export interface ExamsApiDeps {
   listExams: typeof listExams;
@@ -36,6 +37,7 @@ export interface ExamsApiDeps {
   duplicateExam: typeof duplicateExam;
   discontinueExam: typeof discontinueExam;
   countAvailableQuestions: typeof countAvailableQuestions;
+  countSubjectAvailableQuestions: typeof countSubjectAvailableQuestions;
 }
 
 export const defaultExamsApiDeps: ExamsApiDeps = {
@@ -51,4 +53,5 @@ export const defaultExamsApiDeps: ExamsApiDeps = {
   duplicateExam,
   discontinueExam,
   countAvailableQuestions,
+  countSubjectAvailableQuestions,
 };

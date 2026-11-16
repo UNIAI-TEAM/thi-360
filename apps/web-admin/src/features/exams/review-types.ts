@@ -40,9 +40,19 @@ export interface BlockAvailability {
   missingRubric?: string[];
 }
 
-/** Nguồn theo từng khối, khóa là id khối. */
+/** Số câu Sẵn sàng của cả môn (hợp nguồn các nhóm, mỗi câu một lần): theo ô Lớp × Độ khó và theo dạng trả lời. */
+export interface SectionAvailability {
+  sectionId: string;
+  total: number;
+  cells: CellAvailability[];
+  byAnswerType: Array<{ answerType: QuestionType; count: number }>;
+}
+
+/** Nguồn theo từng khối (khóa là id khối) và theo từng môn (khóa là id môn trong cấu trúc). */
 export interface ExamAvailability {
   blocks: Record<string, BlockAvailability>;
+  /** Bỏ trống: mọi chỉ tiêu cấp môn coi như không có nguồn. */
+  sections?: Record<string, SectionAvailability>;
 }
 
 /* ---------- Đường lựa chọn ---------- */
@@ -140,6 +150,10 @@ export interface CheckIssue {
   dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | null;
   /** Năng lực của chỉ tiêu (chiều năng lực, V-ACT). */
   competencyCode: string | null;
+  /** Dạng trả lời của chỉ tiêu cấp môn (`ANSWER_TYPE_SHORTAGE`). */
+  answerType: QuestionType | null;
+  /** Số câu của môn trong trường hợp lỗi (môn của `SUBJECT_CHOICE` nhận 16 hoặc 17); `null` khi môn có số câu cố định. */
+  subjectCount: number | null;
   required: number | null;
   available: number | null;
   timeLimitSeconds: number | null;
@@ -332,7 +346,8 @@ export interface PreviewBlock {
   blockId: string;
   blockName: string;
   subjectCode: string;
-  questionType: QuestionType;
+  /** Dạng trả lời của nhóm; `null` khi nhóm lấy theo chỉ tiêu dạng trả lời của môn. */
+  questionType: QuestionType | null;
   /** Khối Tự luận: chấm tay, điểm có sau khi người chấm xong. */
   manualGrading: boolean;
   /** Điểm mỗi câu của khối trên đề đã sinh (điểm lấy từ phiên bản câu, B5). */

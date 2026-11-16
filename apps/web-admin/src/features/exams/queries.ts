@@ -56,7 +56,8 @@ export function useSuggestedExamCode(query: SuggestExamCodeQuery, enabled: boole
 export function useAvailableQuestions(query: AvailableQuestionsQuery | null, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({
     queryKey: query ? EXAMS_QUERY_KEYS.available(query) : ["exams", "available-questions", null],
-    queryFn: () => (query ? deps.countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [] })),
+    queryFn: () =>
+      query ? deps.countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
     enabled: query !== null,
     placeholderData: (previous) => previous,
   });

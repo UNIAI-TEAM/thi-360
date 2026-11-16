@@ -11,10 +11,21 @@ import type {
   ExamPathRef,
   PathCheck,
   PathChoice,
+  PathSelectionCheck,
+  SectionAvailability,
+  SubjectCheck,
 } from "./review-types";
-import { apportionByPercent, blockPointsEach, printedPartQuestions } from "./matrix";
+import { apportionByPercent, blockPointsEach, countOf, isSetBlock, printedPartQuestions, sum } from "./matrix";
 import { CHECK_GROUPS } from "./review-types";
-import type { BlockMatrix, ExamDetail, ExamPart, ExamSection, MatrixDimensionValue, QuestionBlock } from "./types";
+import type {
+  BlockMatrix,
+  ExamDetail,
+  ExamPart,
+  ExamPartOption,
+  ExamSection,
+  MatrixDimensionValue,
+  QuestionBlock,
+} from "./types";
 
 /**
  * Kiểm tra cấu hình bài thi (UniNote PBI-04 mục 7–9), hàm thuần: cùng bài thi và cùng nguồn cho cùng kết quả.
@@ -126,14 +137,16 @@ function resolveValues(
   return { counts: [...values], issues: [] };
 }
 
-/** Quy đổi ma trận của khối thành số câu nguyên; ma trận sai thì `requirement` là `null` kèm vấn đề. */
-export function resolveBlockRequirement(block: QuestionBlock): {
+/** Quy đổi một ma trận thành số câu nguyên cho `total` câu; ma trận sai thì `requirement` là `null` kèm vấn đề. */
+export function resolveMatrixRequirement(
+  matrix: BlockMatrix,
+  total: number,
+): {
   requirement: BlockRequirement | null;
   issues: MatrixIssue[];
 } {
-  const { matrix, questionCount } = block;
   const dimension = (values: readonly MatrixDimensionValue[], name: "GRADE" | "DIFFICULTY" | "COMPETENCY") => {
-    const resolved = resolveValues(questionCount, matrix.unit, values.map((item) => item.value), name);
+    const resolved = resolveValues(total, matrix.unit, values.map((item) => item.value), name);
     return {
       list: resolved.counts?.map((required, index) => ({ code: values[index]!.code, required })) ?? null,
       issues: resolved.issues,
@@ -144,7 +157,7 @@ export function resolveBlockRequirement(block: QuestionBlock): {
     ? dimension(matrix.byCompetency, "COMPETENCY")
     : { list: [], issues: [] };
   if (matrix.mode === "COMBINED") {
-    const resolved = resolveValues(questionCount, matrix.unit, matrix.cells.map((cell) => cell.value), null);
+    const resolved = resolveValues(total, matrix.unit, matrix.cells.map((cell) => cell.value), null);
     const issues = [...resolved.issues, ...competency.issues];
     if (!resolved.counts || !competency.list) return { requirement: null, issues };
     const counts = resolved.counts;
@@ -177,6 +190,23 @@ export function resolveBlockRequirement(block: QuestionBlock): {
     },
     issues,
   };
+}
+
+/**
+ * Chỉ tiêu nguyên của nhóm. Nhóm không có chỉ tiêu riêng (`matrix = null`) có chỉ tiêu rỗng: nhóm chỉ cần đủ số câu,
+ * chỉ tiêu của môn nằm ở cấp môn. `total` mặc định là `questionCount` (nhóm lấy phần còn lại truyền số câu đã tính).
+ */
+export function resolveBlockRequirement(
+  block: Pick<QuestionBlock, "questionCount" | "matrix">,
+  total: number = block.questionCount ?? 0,
+): {
+  requirement: BlockRequirement | null;
+  issues: MatrixIssue[];
+} {
+  if (!block.matrix) {
+    return { requirement: { mode: "COMBINED", cells: [], byGrade: [], byDifficulty: [], byCompetency: [] }, issues: [] };
+  }
+  return resolveMatrixRequirement(block.matrix, total);
 }
 
 /* ---------- Ma trận riêng: tìm phân bổ thỏa đồng thời hai chiều ---------- */
@@ -270,7 +300,7 @@ export function allocateRequirement(
   return solveSeparate(requirement.byGrade, requirement.byDifficulty, capacity);
 }
 
-export function availabilityLookup(availability: BlockAvailability | undefined) {
+export function availabilityLookup(availability: Pick<BlockAvailability, "cells"> | undefined) {
   const map = new Map((availability?.cells ?? []).map((cell) => [cellKey(cell.gradeCode, cell.difficultyCode), cell.count]));
   return (gradeCode: string, difficultyCode: string) => map.get(cellKey(gradeCode, difficultyCode)) ?? 0;
 }
@@ -299,6 +329,15 @@ const GROUP_OF: Record<CheckIssueCode, CheckGroup> = {
   COMPETENCY_SHORTAGE: "SOURCE",
   RUBRIC_MISSING: "SOURCE",
   SCORING_MISMATCH: "POINTS",
+  ANSWER_QUOTA_TOTAL_MISMATCH: "MATRIX",
+  SUBJECT_MATRIX_TOTAL_MISMATCH: "MATRIX",
+  GROUP_ANSWER_TYPE_MISSING: "STRUCTURE",
+  SUBJECT_CHOICE_COUNTS_INVALID: "STRUCTURE",
+  REMAINDER_GROUP_INVALID: "STRUCTURE",
+  SUBJECT_QUOTA_COUNT_VARIES: "MATRIX",
+  ANSWER_TYPE_SHORTAGE: "SOURCE",
+  SUBJECT_QUOTA_INFEASIBLE: "SOURCE",
+  PREVIEW_SUBJECTS_INVALID: "STRUCTURE",
 };
 
 /** Mức của từng mã: chưa xác nhận được (giới hạn xử lý), cảnh báo không chặn công bố; còn lại là lỗi. */
@@ -325,6 +364,8 @@ function makeIssue(input: IssueInput): CheckIssue {
     difficultyCode: input.difficultyCode ?? null,
     dimension: input.dimension ?? null,
     competencyCode: input.competencyCode ?? null,
+    answerType: input.answerType ?? null,
+    subjectCount: input.subjectCount ?? null,
     required: input.required ?? null,
     available: input.available ?? null,
     timeLimitSeconds: input.timeLimitSeconds ?? null,
@@ -338,6 +379,8 @@ function makeIssue(input: IssueInput): CheckIssue {
     issue.difficultyCode ?? "",
     issue.dimension ?? "",
     issue.competencyCode ?? "",
+    issue.answerType ?? "",
+    issue.subjectCount ?? "",
   ].join("|");
   return { key, ...issue };
 }
@@ -346,6 +389,8 @@ interface BlockContext {
   part: ExamPart;
   section: ExamSection;
   optionId: string | null;
+  /** Số câu của nhóm trong trường hợp đang kiểm (nhóm "lấy phần còn lại" nhận phần chênh); bỏ trống: `questionCount`. */
+  count?: number;
 }
 
 /** Thiếu nguồn ở ma trận riêng: nêu chiều thiếu; nguồn của chiều đó chỉ nằm ở một ô thì nêu đúng ô đó. */
@@ -403,6 +448,7 @@ export function checkBlock(
   timeLimitSeconds: number,
 ): BlockCheck {
   const { part, section, optionId } = context;
+  const count = context.count ?? block.questionCount ?? 0;
   const base: IssueInput = {
     code: "CELL_SHORTAGE",
     partId: part.id,
@@ -414,9 +460,13 @@ export function checkBlock(
     optionId,
   };
   const issues: CheckIssue[] = [];
-  const isSet = block.questionType === "QUESTION_SET";
+  const isSet = isSetBlock(block);
 
-  if (isSet && (block.setCount === null || block.setSize === null || block.setCount * block.setSize !== block.questionCount)) {
+  if (
+    isSet &&
+    block.questionCount !== null &&
+    (block.setCount === null || block.setSize === null || block.setCount * block.setSize !== block.questionCount)
+  ) {
     issues.push(
       makeIssue({
         ...base,
@@ -427,13 +477,16 @@ export function checkBlock(
     );
   }
 
-  const { requirement, issues: matrixIssues } = resolveBlockRequirement(block);
+  const { requirement, issues: matrixIssues } = resolveBlockRequirement(block, count);
   for (const issue of matrixIssues) issues.push(makeIssue({ ...base, ...issue }));
 
   const capacity = availabilityLookup(availability);
-  const available = (availability?.cells ?? []).reduce((sum, cell) => sum + cell.count, 0);
+  const available = (availability?.cells ?? []).reduce((total, cell) => total + cell.count, 0);
 
-  if (requirement?.mode === "COMBINED") {
+  if (!block.matrix) {
+    // Không có chỉ tiêu riêng: nhóm chỉ cần đủ số câu nguồn; chỉ tiêu của môn do kiểm tra cấp môn báo.
+    if (!isSet && available < count) issues.push(makeIssue({ ...base, code: "CELL_SHORTAGE", required: count, available }));
+  } else if (requirement?.mode === "COMBINED") {
     for (const cell of requirement.cells) {
       const have = capacity(cell.gradeCode, cell.difficultyCode);
       if (cell.required > have) {
@@ -518,7 +571,7 @@ export function checkBlock(
     blockId: block.id,
     blockName: block.name,
     questionType: block.questionType,
-    required: block.questionCount,
+    required: count,
     setCount: block.setCount,
     setSize: block.setSize,
     available,
@@ -527,6 +580,228 @@ export function checkBlock(
     result: hasError ? "NOT_FOUND" : hasUnconfirmed ? "UNCONFIRMED" : "FOUND",
     issues,
   };
+}
+
+/* ---------- Môn: chỉ tiêu cấp môn, nhóm lấy phần còn lại, SUBJECT_CHOICE (B9, D25) ---------- */
+
+/**
+ * Số câu từng nhóm khi môn nhận `count` câu: nhóm câu đơn `questionCount = null` ("lấy phần còn lại") nhận phần chênh
+ * giữa số câu của môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được (báo `REMAINDER_GROUP_INVALID`).
+ */
+export function groupCounts(section: ExamSection, count: number): number[] {
+  const remainderGroups = section.blocks.filter((block) => block.questionCount === null);
+  const remainder = remainderGroups.length === 1 ? Math.max(0, count - sum(section.blocks.map(countOf))) : 0;
+  return section.blocks.map((block) => block.questionCount ?? remainder);
+}
+
+/** Một cách chọn môn của `SUBJECT_CHOICE`: các môn xếp theo thứ tự trong cấu trúc, môn thứ i nhận `countsByPick[i]` (D25). */
+export interface SubjectPick {
+  sectionIds: string[];
+  subjectCodes: string[];
+  counts: number[];
+}
+
+/** Tối đa 8 môn trong một `SUBJECT_CHOICE` (spec 5.2). */
+export const SUBJECT_CHOICE_MAX_SECTIONS = 8;
+
+export function enumerateSubjectPicks(option: ExamPartOption): SubjectPick[] {
+  const pick = option.chooseSubjects ?? 0;
+  const { sections } = option;
+  if (pick <= 0 || pick > sections.length || sections.length > SUBJECT_CHOICE_MAX_SECTIONS) return [];
+  const picks: SubjectPick[] = [];
+  const walk = (start: number, chosen: number[]) => {
+    if (chosen.length === pick) {
+      picks.push({
+        sectionIds: chosen.map((index) => sections[index]!.id),
+        subjectCodes: chosen.map((index) => sections[index]!.subjectCode),
+        counts: chosen.map((_, position) => option.countsByPick?.[position] ?? 0),
+      });
+      return;
+    }
+    for (let index = start; index < sections.length; index += 1) walk(index + 1, [...chosen, index]);
+  };
+  walk(0, []);
+  return picks;
+}
+
+/** Các số câu một môn có thể nhận qua mọi cách chọn môn, theo thứ tự xuất hiện. */
+function possibleCountsBySection(picks: readonly SubjectPick[]): Map<string, number[]> {
+  const result = new Map<string, number[]>();
+  for (const pick of picks) {
+    pick.sectionIds.forEach((sectionId, index) => {
+      const counts = result.get(sectionId) ?? [];
+      if (!counts.includes(pick.counts[index]!)) counts.push(pick.counts[index]!);
+      result.set(sectionId, counts);
+    });
+  }
+  return result;
+}
+
+/** `countsByPick` sai số phần tử hoặc sai tổng (tổng bằng số câu của phương án), hoặc số môn chọn không hợp lệ. */
+function subjectChoiceCountsIssue(
+  option: ExamPartOption,
+  target: number,
+  context: { part: ExamPart; optionId: string | null },
+): CheckIssue | null {
+  const base: IssueInput = { code: "SUBJECT_CHOICE_COUNTS_INVALID", partId: context.part.id, partName: context.part.name, optionId: context.optionId };
+  const pick = option.chooseSubjects ?? 0;
+  if (pick < 1 || pick > option.sections.length || option.sections.length > SUBJECT_CHOICE_MAX_SECTIONS) {
+    return makeIssue({ ...base, required: pick, available: option.sections.length });
+  }
+  const counts = option.countsByPick ?? [];
+  if (counts.length !== pick) return makeIssue({ ...base, required: pick, available: counts.length });
+  const total = sum(counts);
+  if (counts.some((value) => !Number.isInteger(value) || value < 0) || total !== target) {
+    return makeIssue({ ...base, required: target, available: total });
+  }
+  return null;
+}
+
+interface SectionContext {
+  part: ExamPart;
+  optionId: string | null;
+  /** Số câu của môn trong trường hợp đang kiểm. */
+  count: number;
+  /** Mọi số câu môn có thể nhận (`SUBJECT_CHOICE`: 16 hoặc 17); phần cố định chỉ có một giá trị. */
+  possibleCounts: readonly number[];
+}
+
+/** Số câu theo từng ô và theo chiều Lớp, Độ khó của môn từ nguồn. */
+function sectionDimensionCapacity(availability: SectionAvailability | undefined) {
+  const byGrade = new Map<string, number>();
+  const byDifficulty = new Map<string, number>();
+  for (const cell of availability?.cells ?? []) {
+    byGrade.set(cell.gradeCode, (byGrade.get(cell.gradeCode) ?? 0) + cell.count);
+    byDifficulty.set(cell.difficultyCode, (byDifficulty.get(cell.difficultyCode) ?? 0) + cell.count);
+  }
+  return { byGrade, byDifficulty };
+}
+
+/**
+ * Kiểm tra cấp môn (B9): tổng nhóm và nhóm lấy phần còn lại, chỉ tiêu dạng trả lời, khối lớp, độ khó của môn và nguồn
+ * của từng chỉ tiêu. Chỉ tiêu theo `PERCENT` quy ra số câu bằng cùng hàm `largestRemainder` với nhóm; theo số câu chỉ
+ * hợp lệ khi môn luôn nhận cùng một số câu.
+ */
+function checkSection(
+  section: ExamSection,
+  context: SectionContext,
+  availability: SectionAvailability | undefined,
+): { issues: CheckIssue[]; subject: SubjectCheck } {
+  const { part, optionId, count, possibleCounts } = context;
+  const base: IssueInput = {
+    code: "SECTION_TOTAL_MISMATCH",
+    partId: part.id,
+    partName: part.name,
+    sectionId: section.id,
+    subjectCode: section.subjectCode,
+    optionId,
+    subjectCount: possibleCounts.length > 1 ? count : null,
+  };
+  const issues: CheckIssue[] = [];
+  const varies = new Set(possibleCounts).size > 1;
+  const remainderGroups = section.blocks.filter((block) => block.questionCount === null);
+  const fixed = sum(section.blocks.map(countOf));
+
+  const remainderInvalid =
+    remainderGroups.length > 1 ||
+    remainderGroups.some((block) => isSetBlock(block)) ||
+    (remainderGroups.length === 1 && fixed > Math.min(...possibleCounts)) ||
+    (varies && remainderGroups.length === 0);
+  if (remainderInvalid) {
+    issues.push(makeIssue({ ...base, code: "REMAINDER_GROUP_INVALID", required: Math.min(...possibleCounts), available: fixed }));
+  } else if (remainderGroups.length === 0 && fixed !== count) {
+    issues.push(makeIssue({ ...base, code: "SECTION_TOTAL_MISMATCH", required: count, available: fixed }));
+  }
+
+  if (!section.answerQuotas) {
+    for (const block of section.blocks) {
+      if (block.questionType === null && !isSetBlock(block)) {
+        issues.push(makeIssue({ ...base, code: "GROUP_ANSWER_TYPE_MISSING", blockId: block.id, blockName: block.name }));
+      }
+    }
+  }
+
+  const quotaCountVaries =
+    varies && (section.answerQuotas?.unit === "COUNT" || (section.matrix !== null && section.matrix.unit === "COUNT"));
+  if (quotaCountVaries) {
+    issues.push(makeIssue({ ...base, code: "SUBJECT_QUOTA_COUNT_VARIES", required: Math.min(...possibleCounts), available: Math.max(...possibleCounts) }));
+  }
+
+  const capacity = availabilityLookup(availability);
+  const dimensions = sectionDimensionCapacity(availability);
+  const subject: SubjectCheck = {
+    sectionId: section.id,
+    subjectCode: section.subjectCode,
+    optionId,
+    questionCount: section.questionCount,
+    answerQuotas: [],
+    byGrade: [],
+    byDifficulty: [],
+  };
+
+  if (section.answerQuotas) {
+    const { items, unit } = section.answerQuotas;
+    const resolved = resolveValues(count, unit, items.map((item) => item.value), null);
+    for (const issue of resolved.issues) {
+      if (issue.code === "MATRIX_TOTAL_MISMATCH" && quotaCountVaries) continue;
+      issues.push(
+        makeIssue({ ...base, ...issue, code: issue.code === "MATRIX_TOTAL_MISMATCH" ? "ANSWER_QUOTA_TOTAL_MISMATCH" : issue.code }),
+      );
+    }
+    resolved.counts?.forEach((required, index) => {
+      const answerType = items[index]!.answerType;
+      const have = availability?.byAnswerType.find((entry) => entry.answerType === answerType)?.count ?? 0;
+      subject.answerQuotas.push({ answerType, required, achieved: Math.min(required, have) });
+      if (have < required) {
+        issues.push(makeIssue({ ...base, code: "ANSWER_TYPE_SHORTAGE", answerType, required, available: have }));
+      }
+    });
+  }
+
+  if (section.matrix) {
+    const { requirement, issues: matrixIssues } = resolveMatrixRequirement(section.matrix, count);
+    for (const issue of matrixIssues) {
+      if (issue.code === "MATRIX_TOTAL_MISMATCH" && quotaCountVaries) continue;
+      issues.push(
+        makeIssue({ ...base, ...issue, code: issue.code === "MATRIX_TOTAL_MISMATCH" ? "SUBJECT_MATRIX_TOTAL_MISMATCH" : issue.code }),
+      );
+    }
+    if (requirement) {
+      const requiredByGrade = new Map<string, number>();
+      const requiredByDifficulty = new Map<string, number>();
+      if (requirement.mode === "COMBINED") {
+        for (const cell of requirement.cells) {
+          requiredByGrade.set(cell.gradeCode, (requiredByGrade.get(cell.gradeCode) ?? 0) + cell.required);
+          requiredByDifficulty.set(cell.difficultyCode, (requiredByDifficulty.get(cell.difficultyCode) ?? 0) + cell.required);
+          if (cell.required > capacity(cell.gradeCode, cell.difficultyCode)) {
+            issues.push(
+              makeIssue({
+                ...base,
+                code: "SUBJECT_QUOTA_INFEASIBLE",
+                gradeCode: cell.gradeCode,
+                difficultyCode: cell.difficultyCode,
+                required: cell.required,
+                available: capacity(cell.gradeCode, cell.difficultyCode),
+              }),
+            );
+          }
+        }
+      } else {
+        for (const item of requirement.byGrade) requiredByGrade.set(item.code, item.required);
+        for (const item of requirement.byDifficulty) requiredByDifficulty.set(item.code, item.required);
+        if (!allocateRequirement(requirement, capacity)) {
+          issues.push(makeIssue({ ...base, code: "SUBJECT_QUOTA_INFEASIBLE", required: count, available: availability?.total ?? 0 }));
+        }
+      }
+      for (const [code, required] of requiredByGrade) {
+        subject.byGrade.push({ code, required, achieved: Math.min(required, dimensions.byGrade.get(code) ?? 0) });
+      }
+      for (const [code, required] of requiredByDifficulty) {
+        subject.byDifficulty.push({ code, required, achieved: Math.min(required, dimensions.byDifficulty.get(code) ?? 0) });
+      }
+    }
+  }
+  return { issues, subject };
 }
 
 function dedupe(issues: readonly CheckIssue[]): CheckIssue[] {
@@ -555,8 +830,8 @@ function roundPoints(value: number): number {
   return Math.round(value * 1e6) / 1e6;
 }
 
-function pointsOf(blocks: readonly QuestionBlock[]): number {
-  return roundPoints(blocks.reduce((sum, block) => sum + block.questionCount * blockPointsEach(block), 0));
+function pointsOf(outcomes: readonly SectionOutcome[]): number {
+  return roundPoints(outcomes.reduce((total, outcome) => total + outcome.points, 0));
 }
 
 export interface CheckExamOptions {
@@ -564,10 +839,20 @@ export interface CheckExamOptions {
   nameOf?: ChoiceNameResolver;
 }
 
+/** Kết quả kiểm tra một môn khi nhận `count` câu: các nhóm, vấn đề cấp môn và nhóm, chỉ tiêu cấp môn. */
+interface SectionOutcome {
+  blocks: BlockCheck[];
+  issues: CheckIssue[];
+  subject: SubjectCheck;
+  questions: number;
+  points: number;
+}
+
 /**
  * Kiểm tra mọi đường lựa chọn của bài (không chỉ đường đầu tiên, AC-04.10): cấu trúc, ma trận, nguồn theo từng ô,
  * bộ câu hỏi, nguồn giao nhau. Đủ nguồn từng dòng không tự coi là hợp lệ: ma trận riêng phải tìm được phân bổ thỏa
- * cả hai chiều (AC-04.9).
+ * cả hai chiều (AC-04.9). Theo B9: chỉ tiêu cấp môn trải trên mọi nhóm của môn, phương án `SUBJECT_CHOICE` được kiểm
+ * cho mọi cách chọn môn (`PathCheck.selections`).
  */
 export function checkExam(exam: ExamDetail, availability: ExamAvailability, options: CheckExamOptions = {}): ExamCheckOutcome {
   const timeLimitSeconds = options.timeLimitSeconds ?? CHECK_TIME_LIMIT_SECONDS;
@@ -588,9 +873,43 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
   }
 
   const blockCache = new Map<string, BlockCheck>();
+  const sectionOutcome = (
+    part: ExamPart,
+    section: ExamSection,
+    optionId: string | null,
+    count: number,
+    possibleCounts: readonly number[],
+  ): SectionOutcome => {
+    const perGroup = groupCounts(section, count);
+    const blocks = section.blocks.map((block, index) => {
+      const key = `${block.id}:${perGroup[index]}`;
+      let checked = blockCache.get(key);
+      if (!checked) {
+        checked = checkBlock(
+          block,
+          { part, section, optionId, count: perGroup[index] },
+          availability.blocks[block.id],
+          timeLimitSeconds,
+        );
+        blockCache.set(key, checked);
+      }
+      return checked;
+    });
+    const sectionChecked = checkSection(section, { part, optionId, count, possibleCounts }, availability.sections?.[section.id]);
+    return {
+      blocks,
+      issues: [...sectionChecked.issues, ...blocks.flatMap((block) => block.issues)],
+      subject: sectionChecked.subject,
+      questions: sum(perGroup),
+      points: roundPoints(section.blocks.reduce((total, block, index) => total + perGroup[index]! * blockPointsEach(block), 0)),
+    };
+  };
+
   const paths: PathCheck[] = enumeratePaths(parts, options.nameOf).map((path) => {
     const issues: CheckIssue[] = [...examIssues];
     const blocks: BlockCheck[] = [];
+    const subjects: SubjectCheck[] = [];
+    const selections: PathSelectionCheck[] = [];
     let totalQuestions = 0;
     let totalMinutes = 0;
     let totalPoints = 0;
@@ -604,9 +923,68 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     }
     for (const group of pathSections(parts, path)) {
       const { part, optionId, sections } = group;
+      const subjectChoice = part.options.find((item) => item.id === optionId && item.kind === "SUBJECT_CHOICE") ?? null;
+      // Môn của `SUBJECT_CHOICE` không có số câu cố định: kiểm theo từng cách chọn bên dưới.
+      const fixedSections = subjectChoice ? part.sections : sections;
       totalMinutes += part.durationMinutes ?? 0;
+      const outcomes: SectionOutcome[] = [];
+      for (const section of fixedSections) {
+        const count = section.questionCount ?? sum(section.blocks.map(countOf));
+        const outcome = sectionOutcome(part, section, sectionOptionId(group, section), count, [count]);
+        outcomes.push(outcome);
+        blocks.push(...outcome.blocks);
+        subjects.push(outcome.subject);
+        issues.push(...outcome.issues);
+        totalQuestions += outcome.questions;
+      }
+      let sectionSum = sum(fixedSections.map(countOf));
+      if (subjectChoice) {
+        const target = part.questionCount - sectionSum;
+        const invalid = subjectChoiceCountsIssue(subjectChoice, target, { part, optionId });
+        if (invalid) {
+          issues.push(invalid);
+        } else {
+          const picks = enumerateSubjectPicks(subjectChoice);
+          const possible = possibleCountsBySection(picks);
+          for (const pick of picks) {
+            const pickIssues: CheckIssue[] = [];
+            pick.sectionIds.forEach((sectionId, index) => {
+              const section = subjectChoice.sections.find((item) => item.id === sectionId)!;
+              const outcome = sectionOutcome(part, section, optionId, pick.counts[index]!, possible.get(sectionId) ?? []);
+              pickIssues.push(...outcome.issues);
+            });
+            issues.push(...pickIssues);
+            selections.push({
+              subjectCodes: pick.subjectCodes,
+              counts: pick.counts,
+              result: pathResultOf(pickIssues),
+              issues: pickIssues,
+            });
+          }
+          // Mỗi môn hiện một lần ở số câu đầu tiên môn có thể nhận (bảng nhóm và chỉ tiêu của màn Kiểm tra).
+          const shown: SectionOutcome[] = [];
+          for (const section of subjectChoice.sections) {
+            const first = possible.get(section.id)?.[0];
+            if (first === undefined) continue;
+            const outcome = sectionOutcome(part, section, optionId, first, possible.get(section.id) ?? []);
+            shown.push(outcome);
+            blocks.push(...outcome.blocks);
+            subjects.push(outcome.subject);
+          }
+          const firstPick = picks[0];
+          if (firstPick) {
+            const pickOutcomes = firstPick.sectionIds.map((sectionId) => {
+              const index = subjectChoice.sections.findIndex((item) => item.id === sectionId);
+              return shown[index]!;
+            });
+            outcomes.push(...pickOutcomes);
+          }
+        }
+        totalQuestions += sum(subjectChoice.countsByPick ?? []);
+        sectionSum += sum(subjectChoice.countsByPick ?? []);
+      }
       if (part.maxPoints !== null && part.maxPoints !== undefined) {
-        const points = pointsOf(sections.flatMap((section) => section.blocks));
+        const points = pointsOf(outcomes);
         if (Math.abs(points - part.maxPoints) > POINTS_TOLERANCE) {
           issues.push(
             makeIssue({
@@ -620,7 +998,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
           );
         }
       }
-      const sectionSum = sections.reduce((sum, section) => sum + section.questionCount, 0);
+      totalPoints += pointsOf(outcomes);
       if (sectionSum !== part.questionCount) {
         issues.push(
           makeIssue({
@@ -632,40 +1010,6 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
             available: sectionSum,
           }),
         );
-      }
-      for (const section of sections) {
-        const sectionOption = sectionOptionId(group, section);
-        const blockSum = section.blocks.reduce((sum, block) => sum + block.questionCount, 0);
-        if (blockSum !== section.questionCount) {
-          issues.push(
-            makeIssue({
-              code: "SECTION_TOTAL_MISMATCH",
-              partId: part.id,
-              partName: part.name,
-              sectionId: section.id,
-              subjectCode: section.subjectCode,
-              optionId: sectionOption,
-              required: section.questionCount,
-              available: blockSum,
-            }),
-          );
-        }
-        for (const block of section.blocks) {
-          let checked = blockCache.get(block.id);
-          if (!checked) {
-            checked = checkBlock(
-              block,
-              { part, section, optionId: sectionOption },
-              availability.blocks[block.id],
-              timeLimitSeconds,
-            );
-            blockCache.set(block.id, checked);
-          }
-          blocks.push(checked);
-          issues.push(...checked.issues);
-          totalQuestions += block.questionCount;
-          totalPoints += block.questionCount * blockPointsEach(block);
-        }
       }
     }
     if (totalQuestions !== exam.totalQuestions) {
@@ -684,6 +1028,8 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
       totalMinutes: exam.timing === "SHARED" ? exam.durationMinutes : totalMinutes,
       totalPoints,
       blocks,
+      subjects,
+      selections,
       issues,
     };
   });
@@ -703,7 +1049,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     groups,
     partCount: parts.length,
     totalPoints: paths[0]?.totalPoints ?? 0,
-    printedQuestions: parts.reduce((sum, part) => sum + printedPartQuestions(part), 0),
+    printedQuestions: parts.reduce((total, part) => total + printedPartQuestions(part), 0),
     maxScore: exam.maxScore,
   };
 }

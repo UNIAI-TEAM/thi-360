@@ -1,6 +1,17 @@
 import type { QuestionDetail } from "@/features/questions/types";
-import { allocateRequirement, availabilityLookup, cellKey, pathSections, resolveBlockRequirement } from "./check";
+import type { QuestionType } from "@/features/content/types";
+import {
+  allocateRequirement,
+  availabilityLookup,
+  cellKey,
+  groupCounts,
+  largestRemainder,
+  pathSections,
+  resolveBlockRequirement,
+  resolveMatrixRequirement,
+} from "./check";
 import type {
+  BlockRequirement,
   ExamAvailability,
   ExamPathRef,
   PreviewAllocationCell,
@@ -13,8 +24,9 @@ import type {
   PreviewPart,
   PreviewQuestion,
 } from "./review-types";
-import { blockPointsEach } from "./matrix";
-import type { ExamPart, QuestionBlock } from "./types";
+import { blockPointsEach, countOf, isSetBlock, sum } from "./matrix";
+import type { ExamPart, ExamSection, QuestionBlock } from "./types";
+import { effectiveScope } from "./mock/source-count";
 
 /**
  * Bộ sinh đề xem trước (mô phỏng cơ chế sinh đề thật, UniNote PBI-04 mục 10, 12): cùng quy tắc với Kiểm tra cấu
@@ -36,8 +48,13 @@ export interface GeneratePaperInput {
   path: ExamPathRef;
   availability: ExamAvailability;
   seed: number;
-  /** Câu Sẵn sàng khớp khối (môn, dạng, nhãn, phạm vi). */
-  candidates: (block: QuestionBlock, subjectCode: string) => readonly QuestionDetail[];
+  /** Câu Sẵn sàng khớp nhóm (môn, dạng trả lời, nhãn, phạm vi MAPID có hiệu lực). */
+  candidates: (block: QuestionBlock, section: ExamSection) => readonly QuestionDetail[];
+  /** Mã lưới Lớp và Độ khó theo thứ tự danh mục. */
+  grades: readonly string[];
+  difficulties: readonly string[];
+  /** Đường có `SUBJECT_CHOICE`: các môn muốn xem, đúng `chooseSubjects` môn của phương án. */
+  subjectCodes?: readonly string[];
   knowledgeNode: (nodeId: string) => KnowledgeInfo | null;
   knowledgeChapter: (nodeId: string) => (KnowledgeInfo & { subjectCode: string }) | null;
   /** Thời lượng chung của bài (`timing = SHARED`); bỏ trống: cộng thời lượng các phần. */
@@ -97,8 +114,15 @@ interface Slot {
   difficultyCode: string;
 }
 
+/** Dạng trả lời còn chỉ tiêu nhiều nhất của môn, cho câu mô phỏng. */
+function nextQuotaType(quotas: ReadonlyMap<QuestionType, number>): QuestionType | null {
+  let best: QuestionType | null = null;
+  for (const [type, left] of quotas) if (left > 0 && (best === null || left > (quotas.get(best) ?? 0))) best = type;
+  return best;
+}
+
 export function generatePaper(input: GeneratePaperInput): PreviewPaper {
-  const { parts, path, availability, candidates, knowledgeNode, knowledgeChapter } = input;
+  const { parts, path, availability, candidates, knowledgeNode, knowledgeChapter, grades, difficulties } = input;
   const random = seededRandom(input.seed);
   const used = new Set<string>();
   let number = 1;
@@ -147,11 +171,11 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     };
   };
 
-  const simulated = (slot: Slot, block: QuestionBlock, type: PreviewQuestion["type"]): PreviewQuestion => {
+  const simulated = (slot: Slot, block: QuestionBlock, section: ExamSection, type: PreviewQuestion["type"]): PreviewQuestion => {
     simulatedSequence += 1;
     const id = `sim-${simulatedSequence}`;
     take(id);
-    const scopeIds = block.knowledgeScope.nodeIds;
+    const scopeIds = effectiveScope(block, section)?.nodeIds ?? [];
     const nodeId = scopeIds.length ? scopeIds[simulatedSequence % scopeIds.length]! : null;
     countKnowledge(nodeId);
     totalPoints += blockPointsEach(block);
@@ -175,17 +199,74 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     };
   };
 
-  const buildBlock = (block: QuestionBlock, subjectCode: string): PreviewBlock => {
-    const { requirement } = resolveBlockRequirement(block);
-    if (!requirement) throw new Error(`Block ${block.id} has no valid matrix`);
-    const capacity = availabilityLookup(availability.blocks[block.id]);
-    const allocation = allocateRequirement(requirement, capacity);
-    if (!allocation) throw new Error(`Block ${block.id} has no feasible allocation`);
-    const firstNumber = number;
-    const pool = shuffle(candidates(block, subjectCode), random).filter((question) => !used.has(question.id));
-    const items: PreviewItem[] = [];
+  /** Chỉ tiêu dạng trả lời còn lại của môn (D22): chùm trừ theo từng câu con. Rỗng khi môn không khai. */
+  const quotasOf = (section: ExamSection, count: number): Map<QuestionType, number> => {
+    const quotas = new Map<QuestionType, number>();
+    if (!section.answerQuotas) return quotas;
+    const { items, unit } = section.answerQuotas;
+    const counts = unit === "PERCENT" ? largestRemainder(count, items.map((item) => item.value)) : items.map((item) => item.value);
+    items.forEach((item, index) => quotas.set(item.answerType, counts[index] ?? 0));
+    return quotas;
+  };
 
-    if (block.questionType === "QUESTION_SET") {
+  /** Lấy `need` câu từ phân bổ còn lại của môn (chỉ tiêu lớp, độ khó cấp môn trải trên mọi nhóm). */
+  const takeFromSection = (remaining: Map<string, number>, need: number): Map<string, number> => {
+    const taken = new Map<string, number>();
+    let left = need;
+    for (const [key, value] of remaining) {
+      if (left === 0) break;
+      const take = Math.min(value, left);
+      if (take > 0) {
+        taken.set(key, take);
+        remaining.set(key, value - take);
+        left -= take;
+      }
+    }
+    return taken;
+  };
+
+  const buildBlock = (
+    block: QuestionBlock,
+    section: ExamSection,
+    count: number,
+    sectionRemaining: Map<string, number> | null,
+    quotas: Map<QuestionType, number>,
+  ): PreviewBlock => {
+    const subjectCode = section.subjectCode;
+    const capacity = availabilityLookup(availability.blocks[block.id]);
+    let allocation: Map<string, number> | null;
+    if (block.matrix) {
+      const { requirement: own } = resolveBlockRequirement(block, count);
+      if (!own) throw new Error(`Block ${block.id} has no valid matrix`);
+      allocation = allocateRequirement(own, capacity);
+    } else if (sectionRemaining) {
+      allocation = takeFromSection(sectionRemaining, count);
+    } else {
+      const free = new Map<string, number>();
+      for (const grade of grades) {
+        for (const difficulty of difficulties) free.set(cellKey(grade, difficulty), capacity(grade, difficulty));
+      }
+      allocation = takeFromSection(free, count);
+    }
+    if (!allocation) throw new Error(`Block ${block.id} has no feasible allocation`);
+    const requirement: BlockRequirement = block.matrix
+      ? resolveBlockRequirement(block, count).requirement!
+      : {
+          mode: "COMBINED",
+          cells: [...allocation].map(([key, required]) => {
+            const [gradeCode, difficultyCode] = key.split(":") as [string, string];
+            return { gradeCode, difficultyCode, required };
+          }),
+          byGrade: [],
+          byDifficulty: [],
+          byCompetency: [],
+        };
+    const firstNumber = number;
+    const pool = shuffle(candidates(block, section), random).filter((question) => !used.has(question.id));
+    const items: PreviewItem[] = [];
+    const useQuota = (type: QuestionType) => quotas.set(type, (quotas.get(type) ?? 0) - 1);
+
+    if (isSetBlock(block)) {
       hasSet = true;
       const remaining = new Map(allocation);
       const setCount = block.setCount ?? 0;
@@ -199,19 +280,20 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
           const key = cellKey(child.gradeCode, child.difficultyCode);
           need.set(key, (need.get(key) ?? 0) + 1);
         }
-        if ([...need].every(([key, count]) => (remaining.get(key) ?? 0) >= count)) {
-          for (const [key, count] of need) remaining.set(key, remaining.get(key)! - count);
+        if ([...need].every(([key, amount]) => (remaining.get(key) ?? 0) >= amount)) {
+          for (const [key, amount] of need) remaining.set(key, remaining.get(key)! - amount);
           sets.push(set);
         }
       }
-      const slots: Slot[] = [...remaining].flatMap(([key, count]) => {
+      const slots: Slot[] = [...remaining].flatMap(([key, amount]) => {
         const [gradeCode, difficultyCode] = key.split(":") as [string, string];
-        return Array.from({ length: count }, () => ({ gradeCode, difficultyCode }));
+        return Array.from({ length: amount }, () => ({ gradeCode, difficultyCode }));
       });
       while (sets.length < setCount) sets.push(null);
       for (const set of shuffle(sets, random)) {
         if (set) {
           take(set.id);
+          for (const child of set.children) useQuota(child.type);
           items.push({
             kind: "SET",
             setId: set.id,
@@ -232,24 +314,35 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
             version: null,
             simulated: true,
             passage: null,
-            children: slots.splice(0, setSize).map((slot) => simulated(slot, block, "SINGLE_CHOICE")),
+            children: slots.splice(0, setSize).map((slot) => {
+              const type = block.childAnswerType ?? nextQuotaType(quotas) ?? "SINGLE_CHOICE";
+              useQuota(type);
+              return simulated(slot, block, section, type);
+            }),
           });
         }
       }
     } else {
       const chosen: Array<{ slot: Slot; question: QuestionDetail | null }> = [];
-      for (const [key, count] of allocation) {
-        if (count === 0) continue;
+      const taken = new Set<string>();
+      for (const [key, amount] of allocation) {
+        if (amount === 0) continue;
         const [gradeCode, difficultyCode] = key.split(":") as [string, string];
-        const matches = pool.filter(
-          (question) => question.gradeCode === gradeCode && question.difficultyCode === difficultyCode,
-        );
-        for (let i = 0; i < count; i += 1) {
-          chosen.push({ slot: { gradeCode, difficultyCode }, question: matches[i] ?? null });
+        for (let i = 0; i < amount; i += 1) {
+          const matches = pool.filter(
+            (question) =>
+              !taken.has(question.id) && question.gradeCode === gradeCode && question.difficultyCode === difficultyCode,
+          );
+          // Chỉ tiêu dạng trả lời của môn: ưu tiên câu có dạng còn chỉ tiêu.
+          const match = quotas.size ? (matches.find((question) => (quotas.get(question.type) ?? 0) > 0) ?? matches[0]) : matches[0];
+          if (match) taken.add(match.id);
+          chosen.push({ slot: { gradeCode, difficultyCode }, question: match ?? null });
         }
       }
       for (const entry of shuffle(chosen, random)) {
-        const question = entry.question ? fromStore(entry.question, block) : simulated(entry.slot, block, block.questionType);
+        const type = entry.question?.type ?? block.questionType ?? nextQuotaType(quotas) ?? "SINGLE_CHOICE";
+        useQuota(type);
+        const question = entry.question ? fromStore(entry.question, block) : simulated(entry.slot, block, section, type);
         items.push({ kind: "QUESTION", question });
       }
     }
@@ -295,15 +388,36 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     };
   };
 
+  const buildSection = (section: ExamSection, count: number): PreviewBlock[] => {
+    if (section.subjectCode === "ENGLISH") hasEnglish = true;
+    const perGroup = groupCounts(section, count);
+    let sectionRemaining: Map<string, number> | null = null;
+    if (section.matrix) {
+      const { requirement } = resolveMatrixRequirement(section.matrix, count);
+      sectionRemaining = requirement ? allocateRequirement(requirement, availabilityLookup(availability.sections?.[section.id])) : null;
+      if (!sectionRemaining) throw new Error(`Section ${section.id} has no feasible allocation`);
+    }
+    const quotas = quotasOf(section, count);
+    return section.blocks.map((block, index) => buildBlock(block, section, perGroup[index]!, sectionRemaining, quotas));
+  };
+
+  /** Môn của một phần trên đường: môn cố định theo số câu của môn; `SUBJECT_CHOICE` chỉ các môn đã chọn, theo thứ tự cấu trúc (D25). */
+  const sectionsToBuild = (part: ExamPart, optionId: string | null, sections: readonly ExamSection[]) => {
+    const option = part.options.find((item) => item.id === optionId && item.kind === "SUBJECT_CHOICE");
+    if (!option) return sections.map((section) => ({ section, count: section.questionCount ?? sum(section.blocks.map(countOf)) }));
+    const chosen = option.sections.filter((section) => input.subjectCodes?.includes(section.subjectCode));
+    return [
+      ...part.sections.map((section) => ({ section, count: section.questionCount ?? sum(section.blocks.map(countOf)) })),
+      ...chosen.map((section, index) => ({ section, count: option.countsByPick?.[index] ?? 0 })),
+    ];
+  };
+
   let totalMinutes = 0;
-  const previewParts: PreviewPart[] = pathSections(parts, path).map(({ part, sections }) => {
+  const previewParts: PreviewPart[] = pathSections(parts, path).map(({ part, optionId, sections }) => {
     totalMinutes += part.durationMinutes ?? 0;
     const firstNumber = number;
     const pointsBefore = totalPoints;
-    const blocks = sections.flatMap((section) => {
-      if (section.subjectCode === "ENGLISH") hasEnglish = true;
-      return section.blocks.map((block) => buildBlock(block, section.subjectCode));
-    });
+    const blocks = sectionsToBuild(part, optionId, sections).flatMap(({ section, count }) => buildSection(section, count));
     return {
       partId: part.id,
       name: part.name,

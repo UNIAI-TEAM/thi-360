@@ -6,6 +6,8 @@ import { examStore } from "./mock/store";
 import {
   mockAvailability,
   mockBlockCandidates,
+  MOCK_DIFFICULTY_CODES,
+  MOCK_GRADE_CODES,
   mockCheckDuration,
   mockChoiceName,
   mockKnowledgeChapter,
@@ -154,7 +156,13 @@ function partsOf(exam: ExamDetail, version: number | null | undefined): ExamPart
  * Sinh đề xem trước cho một đường lựa chọn bằng cùng quy tắc với kiểm tra (AC-04.11). Đường không hợp lệ hoặc chưa
  * xác nhận được thì không trả đề thiếu câu, không nới ma trận: trả `FAILED` kèm vấn đề.
  */
-export async function generatePreview({ examId, pathId, seed, version = null }: GeneratePreviewRequest): Promise<PreviewResult> {
+export async function generatePreview({
+  examId,
+  pathId,
+  seed,
+  version = null,
+  subjectCodes,
+}: GeneratePreviewRequest): Promise<PreviewResult> {
   return mockRequest(
     () => {
       const exam = examStore.require(examId);
@@ -163,6 +171,17 @@ export async function generatePreview({ examId, pathId, seed, version = null }: 
       const outcome = checkExam({ ...exam, parts }, availability, { nameOf: mockChoiceName });
       const path = outcome.paths.find((item) => item.pathId === pathId);
       if (!path) throw new MockApiError(404, "PATH_NOT_FOUND");
+      // Đường có `SUBJECT_CHOICE`: bắt buộc gửi đúng `chooseSubjects` môn thuộc phương án (spec 5.2 "Xem trước").
+      for (const choice of path.choices.filter((item) => item.kind === "SUBJECT_CHOICE")) {
+        const option = parts.find((part) => part.id === choice.partId)?.options.find((item) => item.id === choice.optionId);
+        const valid =
+          option &&
+          subjectCodes !== undefined &&
+          subjectCodes.length === option.chooseSubjects &&
+          new Set(subjectCodes).size === subjectCodes.length &&
+          subjectCodes.every((code) => option.sections.some((section) => section.subjectCode === code));
+        if (!valid) throw new MockApiError(422, "PREVIEW_SUBJECTS_INVALID");
+      }
       const base = {
         examId,
         path: { pathId: path.pathId, choices: path.choices },
@@ -180,6 +199,9 @@ export async function generatePreview({ examId, pathId, seed, version = null }: 
         availability,
         seed,
         candidates: mockBlockCandidates,
+        grades: MOCK_GRADE_CODES,
+        difficulties: MOCK_DIFFICULTY_CODES,
+        subjectCodes,
         knowledgeNode: mockKnowledgeNode,
         knowledgeChapter: mockKnowledgeChapter,
         sharedDurationMinutes: exam.timing === "SHARED" ? exam.durationMinutes : null,

@@ -268,8 +268,9 @@ function findBlock(exam: ExamDetail, question: QuestionDetail): BlockMatch | nul
 /** Số câu khối cần ở ô Lớp × Độ khó của câu (ma trận gộp: ô; ma trận tách: chiều nhỏ hơn). */
 function neededFor(block: QuestionBlock, question: QuestionDetail): number | null {
   const { matrix } = block;
-  const toCount = (value: number) =>
-    matrix.unit === "PERCENT" ? Math.round((value * block.questionCount) / 100) : value;
+  if (!matrix || block.questionCount === null) return null;
+  const count = block.questionCount;
+  const toCount = (value: number) => (matrix.unit === "PERCENT" ? Math.round((value * count) / 100) : value);
   if (matrix.mode === "COMBINED") {
     const cell = matrix.cells.find(
       (item) => item.gradeCode === question.gradeCode && item.difficultyCode === question.difficultyCode,
