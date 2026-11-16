@@ -3553,8 +3553,6 @@
         "match": "Matching",
         "matchAny": "Match at least one (default)",
         "matchAll": "Match all",
-        "descendants": "Include child knowledge",
-        "descendantsHint": "Off by default; turn on to include child codes of the selected chapters and lessons",
         "pickerDescription": "Scope of block {name}: chapters, lessons or knowledge items can be chosen.",
         "moveUp": "Move block {name} up",
         "moveDown": "Move block {name} down",

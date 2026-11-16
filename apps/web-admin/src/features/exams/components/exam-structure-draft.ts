@@ -95,9 +95,13 @@ export function newBlock(name: string): QuestionBlock {
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: null,
-    knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
+    knowledgeScope: null,
     tagCodes: [],
     matrix: emptyMatrix(),
+    taskTypeCode: null,
+    childAnswerType: null,
+    templateGroupCode: null,
+    answerTypeLocked: false,
     shuffle: "SHUFFLE",
   };
 }
@@ -174,14 +178,20 @@ export function buildOption(
       id: draftId("sec"),
       subjectCode,
       questionCount: counts[index] ?? 0,
+      knowledgeScope: null,
+      answerQuotas: null,
+      matrix: null,
+      groupOrder: "SHUFFLE",
       blocks: [],
     })),
+    chooseSubjects: null,
+    countsByPick: null,
   };
 }
 
 /** Số câu một lựa chọn phải có: số câu của phần trừ phần chung (THPTQG Tin học: 4 − 2 = 2). */
 export function optionQuestionCount(part: ExamPart): number {
-  return Math.max(part.questionCount - part.sections.reduce((total, section) => total + section.questionCount, 0), 0);
+  return Math.max(part.questionCount - part.sections.reduce((total, section) => total + (section.questionCount ?? 0), 0), 0);
 }
 
 export function attachCombination(parts: readonly ExamPart[], partId: string, combination: CombinationOption): ExamPart[] {

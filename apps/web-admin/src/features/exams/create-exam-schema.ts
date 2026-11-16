@@ -445,7 +445,15 @@ export function createExamSchema(
     ),
     subjectChoice: z.custom<CreateSubjectChoiceValues>((value) => typeof value === "object").nullable(),
     sections: z.array(
-      z.looseObject({ subjectCode: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) }),
+      z.object({
+        subjectCode: z.string(),
+        questionCount: z.number(),
+        blocks: z.array(blockSchema),
+        knowledgeScope: z.custom<CreateSectionValues["knowledgeScope"]>().optional(),
+        answerQuotas: z.custom<CreateSectionValues["answerQuotas"]>().optional(),
+        matrix: z.custom<CreateSectionValues["matrix"]>().optional(),
+        groupOrder: z.enum(["FIXED", "SHUFFLE"]).optional(),
+      }),
     ),
     branches: z.array(
       z.object({ code: z.string(), name: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) }),

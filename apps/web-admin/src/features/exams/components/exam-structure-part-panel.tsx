@@ -4,7 +4,7 @@ import { Button, Card, cn, focusRing, FormField, Input } from "@thi360/ui";
 import { Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { CombinationOption } from "@/features/content/types";
-import { sectionsPoints, sum, type StructureIssue } from "../matrix";
+import { countOf, sectionsPoints, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamSection, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
@@ -195,7 +195,7 @@ function SectionsTable({
 }) {
   const t = useTranslations("exams.structure.part");
   const single = !common && part.sections.length === 1;
-  const total = sum(part.sections.map((section) => section.questionCount));
+  const total = sum(part.sections.map(countOf));
   const title = common ? t("commonTitle") : t("sectionsTitle");
   const totalMismatch = !common && total !== part.questionCount;
   return (
@@ -227,7 +227,7 @@ function SectionsTable({
           <tbody>
             {part.sections.map((section) => {
               const subject = names.subject(section.subjectCode);
-              const allocated = sum(section.blocks.map((block) => block.questionCount));
+              const allocated = sum(section.blocks.map(countOf));
               return (
                 <tr key={section.id}>
                   <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
@@ -238,11 +238,11 @@ function SectionsTable({
                   </th>
                   <td className="border-b border-border px-2 py-2 text-right">
                     {single ? (
-                      <span>{section.questionCount}</span>
+                      <span>{section.questionCount ?? 0}</span>
                     ) : (
                       <BlockNumberInput
                         className="ml-auto h-9 w-20"
-                        value={section.questionCount}
+                        value={section.questionCount ?? 0}
                         onValueChange={(value) => onSectionCount(null, section.id, value)}
                         aria-label={t("sectionCountAria", { subject })}
                       />
@@ -254,7 +254,7 @@ function SectionsTable({
                       allocated !== section.questionCount && "font-semibold text-danger",
                     )}
                   >
-                    {t("allocatedValue", { allocated, count: section.questionCount })}
+                    {t("allocatedValue", { allocated, count: section.questionCount ?? 0 })}
                   </td>
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button

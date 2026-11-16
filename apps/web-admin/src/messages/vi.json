@@ -3553,8 +3553,6 @@
         "match": "Cách đối chiếu",
         "matchAny": "Khớp ít nhất một (mặc định)",
         "matchAll": "Khớp tất cả",
-        "descendants": "Bao gồm kiến thức cấp dưới",
-        "descendantsHint": "Mặc định không; bật để lấy cả các mã con của Chương, Bài đã chọn",
         "pickerDescription": "Phạm vi của khối {name}: chọn được Chương, Bài hoặc Kiến thức.",
         "moveUp": "Đưa khối {name} lên trước",
         "moveDown": "Đưa khối {name} xuống sau",

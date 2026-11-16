@@ -193,7 +193,8 @@ export interface BlockCheck {
   blockId: string;
   blockName: string;
   questionType: QuestionType | null;
-  required: number | null;
+  /** Số câu của nhóm trong trường hợp đang kiểm (nhóm "lấy phần còn lại" nhận phần chênh của môn). */
+  required: number;
   setCount: number | null;
   setSize: number | null;
   /** Tổng nguồn phù hợp (câu); câu chùm thêm `availableSets`. */
