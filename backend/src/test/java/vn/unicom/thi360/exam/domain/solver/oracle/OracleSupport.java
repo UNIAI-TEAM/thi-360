@@ -151,13 +151,11 @@ final class OracleSupport {
     }
 
     /**
-     * Khóa một ô lớp × độ khó của chỉ tiêu Combined (dạng {@code "G10 NB"}): một mã hóa duy
-     * nhất dùng chung bởi chỉ tiêu đã quy ({@link #resolveCells}), bộ lọc đơn vị
-     * ({@link #admissibleInSubject}) và bộ đếm của {@code BruteForceOracle} lẫn
-     * {@code WitnessValidator} — không thể tách thành hai dạng khác nhau (R3-3).
+     * Khóa một ô Combined: tiền tố độ dài mã lớp phân biệt mọi cặp mã, kể cả mã chứa dấu cách.
+     * Dùng chung bởi chỉ tiêu đã quy, bộ lọc và bộ đếm của oracle lẫn validator (R3-3).
      */
     static String cellKey(String gradeCode, String difficultyCode) {
-        return gradeCode + " " + difficultyCode;
+        return gradeCode.length() + ":" + gradeCode + difficultyCode;
     }
 
     /** Quy bộ chỉ tiêu cấp môn của một {@link SectionOnPath} theo số câu đã quyết của môn. */
