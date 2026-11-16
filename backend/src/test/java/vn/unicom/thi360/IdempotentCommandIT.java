@@ -6,16 +6,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
+import vn.unicom.thi360.shared.security.Access;
+import vn.unicom.thi360.shared.security.CurrentUser;
+import vn.unicom.thi360.shared.security.CurrentUserAuthenticationToken;
+import vn.unicom.thi360.shared.security.PermissionSet;
+import vn.unicom.thi360.shared.security.Realm;
 
 /**
  * AC-7 (UNI-2607): quy ước {@code IdempotentCommand} trên endpoint thử
@@ -36,10 +50,26 @@ class IdempotentCommandIT extends AbstractIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private IdempotentCommand idempotentCommand;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @BeforeEach
+    void createProbeTable() {
+        // Bảng fixture cho test atomicity: DDL auto-commit, tồn tại ngoài transaction test.
+        jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS shared.be1_probe_row (id text PRIMARY KEY, note text NOT NULL)");
+    }
+
     @AfterEach
     void cleanKeys() {
         jdbcTemplate.update(
-                "DELETE FROM shared.idempotency_key WHERE scope LIKE '%:test.idempotent%'");
+                "DELETE FROM shared.idempotency_key WHERE scope LIKE '%:test.idempotent%'"
+                        + " OR scope LIKE '%:test.atomicity%'");
+        jdbcTemplate.update("DELETE FROM shared.be1_probe_row");
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -133,6 +163,86 @@ class IdempotentCommandIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"x\"}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rolledBackTransactionDropsBusinessChangeAndStoredResult_retryRunsOnce() {
+        // R1-5: nghiệp vụ của supplier và bản ghi idempotency phải cùng một transaction.
+        // Buộc transaction bọc ngoài rollback rồi kiểm cả dòng nghiệp vụ lẫn khóa đều mất;
+        // gửi lại cùng khóa phải chạy lại đúng một lần và replay được.
+        UUID userId = Ids.newId();
+        authenticateAs(userId, "atomic-user");
+
+        String key = "key-" + Ids.newId();
+        String probeId = "p-" + Ids.newId();
+        Map<String, Object> body = Map.of("name", "atomic");
+        AtomicInteger runs = new AtomicInteger();
+
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> {
+            Map<String, Object> result = idempotentCommand.execute(
+                    key, "test.atomicity", body, Map.class,
+                    () -> {
+                        runs.incrementAndGet();
+                        jdbcTemplate.update(
+                                "INSERT INTO shared.be1_probe_row (id, note) VALUES (?, ?)",
+                                probeId, "ran");
+                        return Map.of("probeId", probeId, "run", runs.get());
+                    });
+            assertThat(result.get("probeId")).isEqualTo(probeId);
+            status.setRollbackOnly();
+        });
+
+        // Cả hai mặt của lệnh đều lùi theo transaction: không dòng nghiệp vụ, không khóa.
+        assertThat(countProbeRows(probeId)).isZero();
+        assertThat(countKeys(key)).isZero();
+
+        Map<String, Object> first = idempotentCommand.execute(
+                key, "test.atomicity", body, Map.class,
+                () -> {
+                    runs.incrementAndGet();
+                    jdbcTemplate.update(
+                            "INSERT INTO shared.be1_probe_row (id, note) VALUES (?, ?)",
+                            probeId, "ran");
+                    return Map.of("probeId", probeId, "run", runs.get());
+                });
+        assertThat(first.get("probeId")).isEqualTo(probeId);
+        assertThat(runs.get()).isEqualTo(2);
+        assertThat(countProbeRows(probeId)).isEqualTo(1);
+        assertThat(countKeys(key)).isEqualTo(1);
+
+        Map<String, Object> replay = idempotentCommand.execute(
+                key, "test.atomicity", body, Map.class,
+                () -> {
+                    runs.incrementAndGet();
+                    throw new AssertionError("replay must not re-run the supplier");
+                });
+        assertThat(replay.get("probeId")).isEqualTo(probeId);
+        assertThat(runs.get()).isEqualTo(2);
+    }
+
+    private void authenticateAs(UUID userId, String username) {
+        CurrentUser user = new CurrentUser(
+                userId, username, Realm.APP, Access.MANAGE,
+                PermissionSet.ofCodes(List.of(Permissions.QUESTION_MODIFY)));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new CurrentUserAuthenticationToken(user, "test-sid"));
+    }
+
+    private int countProbeRows(String probeId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM shared.be1_probe_row WHERE id = ?",
+                Integer.class,
+                probeId);
+        return count == null ? 0 : count;
+    }
+
+    private int countKeys(String key) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM shared.idempotency_key WHERE \"key\" = ?",
+                Integer.class,
+                key);
+        return count == null ? 0 : count;
     }
 
     private int readRun(MvcResult result) throws Exception {
