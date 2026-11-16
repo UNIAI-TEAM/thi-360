@@ -61,7 +61,7 @@ WITH sets AS (
     CROSS JOIN LATERAL (VALUES (0, s.sc_id, 'SINGLE_CHOICE'), (1, s.sa_id, 'SHORT_ANSWER')) c(pos, child_id, type)
 ), parent_rows AS (
     SELECT s.id, 'SEED-MATH-SET-' || lpad(s.n::text, 3, '0') AS code, 'QUESTION_SET' AS type,
-           s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id, 1::numeric AS points,
+           s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id, 2::numeric AS points,
            '<p>Math set</p>' AS content,
            jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Math context</p>', 'children',
                jsonb_agg(jsonb_build_object('id', c.child_id, 'type', c.type, 'content', '<p>Math child</p>',
@@ -142,6 +142,43 @@ CROSS JOIN generate_series(1, 2) n
 WHERE grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
   AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC');
 
+-- Reading-comprehension groups select whole sets, rather than isolated items.
+WITH sets AS (
+    SELECT subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id,
+           task.code AS task_code, task_item.id AS task_type_id,
+           md5('thi360-seed-reading-' || task.code || grade.code || level.code)::uuid AS id,
+           'SEED-READING-' || task.code || '-' || grade.code || '-' || level.code AS code
+    FROM (VALUES ('ANH', 'READING_COMPREHENSION'), ('VAN', 'PASSAGE_READING')) task(subject_code, code)
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = task.subject_code
+    LEFT JOIN catalog.catalog_item task_item ON task_item.group_id = '00000000-0000-7000-8100-000000000006' AND task_item.code = task.code
+    CROSS JOIN catalog.catalog_item grade
+    CROSS JOIN catalog.catalog_item level
+    WHERE grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
+      AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC')
+), children AS (
+    SELECT s.*, n AS pos, md5(s.id::text || '-' || n)::uuid AS child_id,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
+    FROM sets s CROSS JOIN generate_series(0, 1) n
+), parents AS (
+    SELECT s.id, s.code, 'QUESTION_SET' AS type, s.subject_id, s.grade_id, s.level_id, s.task_type_id,
+           2::numeric AS points, '<p>Reading set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Reading context</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
+                   'content', '<p>Reading child</p>', 'body', c.body, 'points', 1,
+                   'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM sets s JOIN children c ON c.id = s.id
+    GROUP BY s.id, s.code, s.subject_id, s.grade_id, s.level_id, s.task_type_id
+)
+INSERT INTO seed_question_rows
+SELECT * FROM parents
+UNION ALL
+SELECT child_id, code || '-' || pos, 'SINGLE_CHOICE', subject_id, grade_id, level_id,
+       task_type_id, 1, '<p>Reading child</p>', body, id, pos
+FROM children;
+
 -- Parents must exist before their child rows satisfy the self-reference.
 WITH inserted AS (
     INSERT INTO questionbank.question
@@ -154,12 +191,16 @@ WITH inserted AS (
                      WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' 1'
                      WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
                      WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
+                     WHEN 'QUESTION_SET' THEN CASE WHEN code LIKE 'SEED-READING-%' THEN 'Reading set Reading context Reading child One Two Reading child One Two'
+                                                   ELSE 'Math set Math context Math child One Two Math child 1' END
                      ELSE 'Math set Math context Math child One Two Math child 1' END,
            lower(code || ' ' ||
                CASE type WHEN 'SINGLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two'
                          WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' 1'
                          WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
                          WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
+                         WHEN 'QUESTION_SET' THEN CASE WHEN code LIKE 'SEED-READING-%' THEN 'Reading set Reading context Reading child One Two Reading child One Two'
+                                                       ELSE 'Math set Math context Math child One Two Math child 1' END
                          ELSE 'Math set Math context Math child One Two Math child 1' END)
     FROM seed_question_rows WHERE parent_id IS NULL
     ON CONFLICT DO NOTHING RETURNING subject_item_id
@@ -175,8 +216,9 @@ INSERT INTO questionbank.question
      content_text, search_text)
 SELECT id, code, type, 'READY', parent_id, position, subject_id, grade_id, level_id, task_type_id,
        points, 1, NULL,
-       CASE type WHEN 'SINGLE_CHOICE' THEN 'Math child One Two' ELSE 'Math child 1' END,
-       lower(code || ' ' || CASE type WHEN 'SINGLE_CHOICE' THEN 'Math child One Two' ELSE 'Math child 1' END)
+       regexp_replace(content, '<[^>]+>', '', 'g') || CASE type WHEN 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END,
+       lower(code || ' ' || regexp_replace(content, '<[^>]+>', '', 'g') ||
+             CASE type WHEN 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END)
 FROM seed_question_rows WHERE parent_id IS NOT NULL
 ON CONFLICT DO NOTHING;
 
