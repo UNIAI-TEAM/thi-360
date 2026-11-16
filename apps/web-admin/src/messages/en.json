@@ -1251,6 +1251,7 @@
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "descriptionOrigin": "The server rejected this request because the admin address does not match its configuration (THI360_ADMIN_URL). Contact a system administrator; signing in again will not fix this.",
     "eyebrow": "ERROR 403",
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"

@@ -63,6 +63,16 @@ describe("ForbiddenView", () => {
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
   });
 
+  it("reason=origin (G9): nêu lỗi địa chỉ quản trị thay vì lời thiếu quyền", async () => {
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <ForbiddenView reason="origin" />
+      </SessionProvider>,
+    );
+    expect(await screen.findByText(/THI360_ADMIN_URL/)).toBeInTheDocument();
+    expect(screen.queryByText("ops.admin")).not.toBeInTheDocument();
+  });
+
   it("trang riêng /forbidden: tự dựng <main>, không đổi tiêu đề thẻ trình duyệt", async () => {
     document.title = "Bạn không có quyền vào trang này · Thi 360";
     renderWithProviders(

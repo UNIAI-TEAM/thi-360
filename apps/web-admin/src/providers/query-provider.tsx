@@ -11,6 +11,7 @@ import {
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
+import { apiErrorCode } from "@/features/content/api-error";
 import { clearSessionBestEffort, refreshSession } from "@/features/session/api";
 import { redirectToLogin } from "@/lib/auth-redirect";
 import { createQueryClient, getErrorStatus, subscribeApiErrors } from "@/lib/api/query-client";
@@ -83,8 +84,15 @@ export function QueryProvider({
       onUnauthenticated: () => {
         void recovery.handleUnauthorized();
       },
-      onForbidden: () => {
+      onForbidden: (error) => {
         if (!guard.claimForbidden()) return;
+        // G9: `ORIGIN_INVALID` là lỗi cấu hình origin của backend (`THI360_ADMIN_URL`), không phải thiếu quyền —
+        // refresh phiên sẽ lặp lại kết quả; đưa thẳng tới trang 403 có giải thích.
+        if (apiErrorCode(error) === "ORIGIN_INVALID") {
+          // Không toast "thiếu quyền": nội dung đó sai với lỗi này; trang 403 nói rõ nguyên nhân.
+          router.replace(`${FORBIDDEN_PATH}?reason=origin`);
+          return;
+        }
         const currentHref = typeof window !== "undefined" ? window.location.href : pathname;
         const alreadyRetried = readRetryMarker() === currentHref;
         if (alreadyRetried) {

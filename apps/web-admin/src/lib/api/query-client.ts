@@ -13,8 +13,8 @@ export class ApiStatusError extends Error {
 export interface ApiErrorHandlers {
   /** 401: phiên hết hạn hoặc chưa đăng nhập. */
   onUnauthenticated: () => void;
-  /** 403: có phiên nhưng thiếu quyền. */
-  onForbidden: () => void;
+  /** 403: có phiên nhưng thiếu quyền, hoặc origin của admin bị từ chối (`ORIGIN_INVALID`, G9) — đọc `apiErrorCode(error)`. */
+  onForbidden: (error: unknown) => void;
 }
 
 export function getErrorStatus(error: unknown): number | null {
@@ -26,7 +26,7 @@ export function getErrorStatus(error: unknown): number | null {
 export function handleApiError(error: unknown, handlers: ApiErrorHandlers): void {
   const status = getErrorStatus(error);
   if (status === 401) handlers.onUnauthenticated();
-  else if (status === 403) handlers.onForbidden();
+  else if (status === 403) handlers.onForbidden(error);
 }
 
 /** Không thử lại lỗi 4xx: lặp lại cũng cho kết quả đó, và 401/403 đã được xử lý chung. */

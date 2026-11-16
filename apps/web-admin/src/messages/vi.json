@@ -1251,6 +1251,7 @@
   "forbidden": {
     "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
+    "descriptionOrigin": "Máy chủ từ chối yêu cầu vì địa chỉ trang quản trị không khớp với cấu hình (THI360_ADMIN_URL). Hãy liên hệ quản trị hệ thống; đăng nhập lại không giải quyết được.",
     "eyebrow": "MÃ LỖI 403",
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
