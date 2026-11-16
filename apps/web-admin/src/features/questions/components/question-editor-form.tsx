@@ -83,7 +83,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const locale = useUiLocale();
   const methods = useForm<QuestionEditorValues>({
     resolver: zodResolver(questionEditorSchema),
-    defaultValues: question ? toEditorValues(question, locale) : emptyEditorValues(type),
+    defaultValues: question ? toEditorValues(question, locale) : emptyEditorValues(type, locale),
     mode: "onTouched",
     shouldFocusError: false,
   });

@@ -170,11 +170,11 @@ export function emptyCriterion(points = ""): EditorCriterion {
  * Phần thân trống theo dạng: 4 phương án, 2 ý Đúng/Sai (bảng điểm chia đều, điểm từng ý chia đều), 2 cặp ghép chia
  * đều điểm, 1 tiêu chí chấm mang đủ điểm mặc định; Điền đáp án thêm ô cùng lúc với chỗ trống.
  */
-export function emptyBody(type: QuestionType): EditorBody {
+export function emptyBody(type: QuestionType, locale: AppLocale = "vi"): EditorBody {
   const matchRight = type === "MATCHING" ? [emptyMatchRight(), emptyMatchRight()] : [];
-  const matchShare = evenSplitText(matchRight.length, DEFAULT_POINTS);
+  const matchShare = evenSplitText(matchRight.length, DEFAULT_POINTS, locale);
   const statements = type === "TRUE_FALSE" ? [emptyStatement(), emptyStatement()] : [];
-  const statementShare = evenSplitText(statements.length, DEFAULT_POINTS);
+  const statementShare = evenSplitText(statements.length, DEFAULT_POINTS, locale);
   return {
     options:
       type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE"
@@ -184,7 +184,7 @@ export function emptyBody(type: QuestionType): EditorBody {
     scoringRule: "ALL_OR_NOTHING",
     statements: statements.map((statement, index) => ({ ...statement, points: statementShare[index] ?? "" })),
     scoringMethod: "COUNT_TABLE",
-    scoreTable: type === "TRUE_FALSE" ? evenScoreTableText(2, DEFAULT_POINTS) : [],
+    scoreTable: type === "TRUE_FALSE" ? evenScoreTableText(2, DEFAULT_POINTS, locale) : [],
     blanks: type === "SHORT_ANSWER" ? [emptyBlank()] : [],
     left: matchRight.map((right, index) => emptyMatchLeft(right.id, matchShare[index] ?? "")),
     right: matchRight,
@@ -199,7 +199,7 @@ export function emptyBody(type: QuestionType): EditorBody {
   };
 }
 
-export function emptyChild(type: ChildQuestionType): EditorChild {
+export function emptyChild(type: ChildQuestionType, locale: AppLocale = "vi"): EditorChild {
   return {
     key: draftRowId("c"),
     existingId: null,
@@ -211,11 +211,11 @@ export function emptyChild(type: ChildQuestionType): EditorChild {
     difficultyCode: "",
     knowledgeOverride: false,
     knowledge: [],
-    body: emptyBody(type),
+    body: emptyBody(type, locale),
   };
 }
 
-export function emptyEditorValues(type: QuestionType): QuestionEditorValues {
+export function emptyEditorValues(type: QuestionType, locale: AppLocale = "vi"): QuestionEditorValues {
   return {
     type,
     subjectCode: "",
@@ -230,7 +230,7 @@ export function emptyEditorValues(type: QuestionType): QuestionEditorValues {
     solution: "",
     commonMistakes: "",
     attachmentIds: [],
-    body: emptyBody(type),
+    body: emptyBody(type, locale),
     children: [],
   };
 }

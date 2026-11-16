@@ -3,7 +3,7 @@ import { ContentApiError } from "@/features/content/api-error";
 import { withIdempotencyKey, resetIdempotencyKeys } from "@/features/content/idempotency";
 import { fromApiDetail, fromApiSummary } from "../api-mapping";
 import { resolveFormPath, toFormPath } from "../editor-field-errors";
-import { formatPoints } from "../editor-form";
+import { emptyChild, emptyEditorValues, formatPoints } from "../editor-form";
 import { fromApiReadiness } from "../readiness-mapping";
 
 const summary = {
@@ -156,5 +156,13 @@ describe("điểm theo ngôn ngữ", () => {
     expect(formatPoints(0.25, "vi")).toBe("0,25");
     expect(formatPoints(0.25, "en")).toBe("0.25");
     expect(formatPoints(1, "en")).toBe("1");
+  });
+
+  it("điểm mặc định của ý Đúng/Sai và cặp ghép theo ngôn ngữ (F-04)", () => {
+    expect(emptyEditorValues("TRUE_FALSE", "en").body.statements.map((row) => row.points)).toEqual(["0.5", "0.5"]);
+    expect(emptyEditorValues("TRUE_FALSE", "en").body.scoreTable).toEqual(["0.5", "1"]);
+    expect(emptyEditorValues("MATCHING", "en").body.left.map((row) => row.points)).toEqual(["0.5", "0.5"]);
+    expect(emptyEditorValues("TRUE_FALSE", "vi").body.statements.map((row) => row.points)).toEqual(["0,5", "0,5"]);
+    expect(emptyChild("TRUE_FALSE", "en").body.statements.map((row) => row.points)).toEqual(["0.5", "0.5"]);
   });
 });
