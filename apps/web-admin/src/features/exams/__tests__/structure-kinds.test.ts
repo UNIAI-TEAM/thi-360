@@ -25,11 +25,11 @@ import {
   validateStructure,
   type MatrixAxes,
 } from "../matrix";
-import fixture from "../mock/exams.json";
-import type { BlockMatrix, ExamDetail, ExamPart, ExamTemplate, QuestionBlock } from "../types";
+import { EXAMS_FIXTURE as fixture } from "./exam-fixture";
+import type { BlockMatrix, ExamDetail, ExamPart, QuestionBlock } from "../types";
 
 const reference = referenceFixture as ContentReference;
-const exams = (fixture as { exams: ExamDetail[] }).exams;
+const exams = fixture.exams;
 const AXES: MatrixAxes = {
   grades: reference.grades.map((grade) => grade.code),
   difficulties: reference.difficulties.map((difficulty) => difficulty.code),
@@ -194,7 +194,7 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
       expect(science.sections.every((section) => section.questionCount === null)).toBe(true);
     }
     // Mẫu cũng không còn 10 phương án KH-n: một SUBJECT_CHOICE, môn có nhóm tự nhiên, xã hội, không cờ chờ xác nhận.
-    const template = (fixture as { templates: ExamTemplate[] }).templates.find((item) => item.code === "HSA_FULL")!;
+    const template = fixture.templates.find((item) => item.code === "HSA_FULL")!;
     const options = template.parts[2]!.options!;
     expect(options.map((option) => option.kind)).toEqual(["SUBJECT", "SUBJECT_CHOICE"]);
     expect(options[1]!.subjectChoice).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16] });
