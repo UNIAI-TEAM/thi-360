@@ -3197,7 +3197,7 @@
       "heading": "Choose a question file",
       "dropzoneTitle": "Drag a file here or click to choose",
       "dropzoneHint": ".xlsx or .csv file, up to {maxRows, number} rows, no larger than {maxMb, number} MB",
-      "mockHint": "Sample mode: an .xlsx file is always read as a built-in sample sheet; a .csv file (for example the template) is read for real.",
+      "readNote": "Reading the file adds no questions to the bank: you check and preview the result before importing.",
       "chooseFile": "Choose file",
       "changeFile": "Choose another file",
       "selectedFileLabel": "Selected file",
@@ -3388,7 +3388,7 @@
       "issuesHeading": "Errors and warnings",
       "errorLabel": "Error",
       "warningLabel": "Warning",
-      "fixHint": "Fix it in the file and upload again. The question content in this example is sample data.",
+      "fixHint": "Fix it in the file and upload again.",
       "status": {
         "VALID": "Valid",
         "ERROR": "Has errors",

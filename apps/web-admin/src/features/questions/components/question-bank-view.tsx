@@ -38,7 +38,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { QUESTION_STATUS_TONE } from "@/features/content/status";
 import { defaultQuestionBankApiDeps, type QuestionBankApiDeps } from "../api";
@@ -398,7 +398,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
           </div>
         }
       />
-      <MockDataBanner />
+      <ContentMockBanner />
 
       <QuestionFiltersBar
         filters={filters}

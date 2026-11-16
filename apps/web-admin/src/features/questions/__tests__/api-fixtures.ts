@@ -221,7 +221,7 @@ export const apiVersionItem = (
   state,
   snapshot,
   savedAt: `2026-11-0${Math.min(versionNo, 9)}T09:00:00+07:00`,
-  savedBy: { id: "u-test", name: "Người kiểm thử" },
+  savedBy: { id: "u-test", name: "Tester" },
   ...overrides,
 });
 
@@ -488,7 +488,7 @@ export function installQuestionsApi(
       revision: 1,
       usedInExamCount: 0,
       sourceCode: (body.sourceCode as string | undefined) ?? null,
-      createdBy: { id: "u-test", name: "Người kiểm thử" },
+      createdBy: { id: "u-test", name: "Tester" },
       createdAt: "2026-11-17T00:00:00+07:00",
       updatedAt: "2026-11-17T00:00:00+07:00",
       content: String(body.content ?? ""),

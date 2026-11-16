@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import type { ContentReference, QuestionType } from "@/features/content/types";
 import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -205,7 +205,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
               </>
             }
           />
-          <MockDataBanner />
+          <ContentMockBanner />
           {question && <VersionNotice question={question} />}
           {conflict && (
             <div

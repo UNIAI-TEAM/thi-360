@@ -170,7 +170,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
           </label>
         </div>
 
-        <p className="text-caption text-text-muted">{t("upload.mockHint")}</p>
+        <p className="text-caption text-text-muted">{t("upload.readNote")}</p>
 
         {selectedFile && (
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-subtle px-3.5 py-2.5">

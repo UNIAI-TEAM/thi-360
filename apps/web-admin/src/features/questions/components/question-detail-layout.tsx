@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { QUESTION_STATUS_TONE } from "@/features/content/status";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -64,7 +64,7 @@ export function QuestionDetailLayout({ questionId, children }: { questionId: str
     return (
       <div className="flex flex-col gap-5">
         <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
-        <MockDataBanner />
+        <ContentMockBanner />
         <Card>
           <EmptyState
             icon={<TriangleAlert />}
@@ -91,7 +91,7 @@ export function QuestionDetailLayout({ questionId, children }: { questionId: str
   return (
     <div className="flex flex-col gap-5">
       <QuestionDetailHeader question={question} />
-      <MockDataBanner />
+      <ContentMockBanner />
       <NavTabs aria-label={t("tabsLabel")}>
         {QUESTION_DETAIL_TABS.map((tab) => (
           <NavTab key={tab} asChild current={tab === activeTab}>

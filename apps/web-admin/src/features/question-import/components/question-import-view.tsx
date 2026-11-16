@@ -4,7 +4,7 @@ import { Button, Card, EmptyState, LiveStatus, notify, PageHeader, Skeleton } fr
 import { Download, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference } from "@/features/content/queries";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { defaultQuestionImportApiDeps, importApiErrorCode, type QuestionImportApiDeps } from "../api";
@@ -224,7 +224,7 @@ export function QuestionImportView({ deps }: QuestionImportViewProps) {
           </Button>
         }
       />
-      <MockDataBanner />
+      <ContentMockBanner />
       <ImportStepper currentStep={step} />
       {body}
       <LiveStatus message={liveMessage} />

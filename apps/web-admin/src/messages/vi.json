@@ -3197,7 +3197,7 @@
       "heading": "Chọn tệp câu hỏi",
       "dropzoneTitle": "Kéo tệp vào đây hoặc bấm để chọn",
       "dropzoneHint": "Tệp .xlsx hoặc .csv, tối đa {maxRows, number} dòng, không quá {maxMb, number} MB",
-      "mockHint": "Bản mẫu: tệp .xlsx luôn được đọc thành một bảng mẫu có sẵn; tệp .csv (ví dụ tệp mẫu) được đọc thật.",
+      "readNote": "Đọc tệp chưa thêm câu nào vào ngân hàng: bạn kiểm tra và xem trước kết quả trước khi nhập.",
       "chooseFile": "Chọn tệp",
       "changeFile": "Chọn tệp khác",
       "selectedFileLabel": "Tệp đã chọn",
@@ -3388,7 +3388,7 @@
       "issuesHeading": "Lỗi và cảnh báo",
       "errorLabel": "Lỗi",
       "warningLabel": "Cảnh báo",
-      "fixHint": "Sửa trong tệp rồi tải lại. Nội dung câu hỏi trong ví dụ là dữ liệu mẫu.",
+      "fixHint": "Sửa trong tệp rồi tải lại.",
       "status": {
         "VALID": "Hợp lệ",
         "ERROR": "Có lỗi",
