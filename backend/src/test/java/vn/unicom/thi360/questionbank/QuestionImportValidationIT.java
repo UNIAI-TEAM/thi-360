@@ -90,6 +90,13 @@ class QuestionImportValidationIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rows[0].status").value("VALID"))
                 .andExpect(jsonPath("$.rows[1].status").value("VALID"));
+        Long before = jdbc.queryForObject("select count(*) from questionbank.question", Long.class);
+        mockMvc.perform(post(URL + "/{id}/commit", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", java.util.UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mapping\":{\"c0\":\"type\",\"c1\":\"content\",\"c2\":\"subject\",\"c3\":\"grade\",\"c4\":\"difficulty\",\"c5\":\"knowledge\"},\"duplicatePolicy\":\"SKIP\",\"skipErrors\":false}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.createdCount").value(2));
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question", Long.class)).isEqualTo(before + 2);
     }
 
     @Test
