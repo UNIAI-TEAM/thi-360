@@ -138,6 +138,19 @@ class ExamCheckerTests {
     }
 
     @Test
+    void sharedTimingAndEmptyPartsBlockTheirPaths() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        String timed = singleStructure(1, null, null).replace("\"name\":\"Part\"", "\"name\":\"Part\",\"durationMinutes\":30");
+        JsonNode result = check(exam, document(timed)).result();
+        assertThat(result.path("paths").get(0).path("result").asText()).isEqualTo("INVALID");
+        assertThat(issueCodes(result)).contains("SHARED_PART_DURATION");
+        JsonNode empty = check(exam(0, null, "RAW"), document("{\"parts\":[{\"id\":\"p\",\"questionCount\":0}]}")).result();
+        assertThat(empty.path("paths").get(0).path("result").asText()).isEqualTo("INVALID");
+        assertThat(issueCodes(empty)).contains("PART_EMPTY");
+    }
+
+    @Test
     void sectionAndPathTotalsUseActualGroupCounts() throws Exception {
         Exam exam = exam(12, null, "RAW");
         subject("MATH", 10);

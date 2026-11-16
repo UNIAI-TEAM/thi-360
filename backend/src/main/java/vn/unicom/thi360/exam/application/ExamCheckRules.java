@@ -85,6 +85,9 @@ public final class ExamCheckRules {
         }
         for (ExamPart part : document.parts()) {
             if (isChoice(part) && part.options().isEmpty()) found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));
+            if ("SHARED".equals(exam.getTiming()) && part.durationMinutes() != null && part.durationMinutes() != 0) {
+                found.add(issue("SHARED_PART_DURATION", "STRUCTURE", part, null, null));
+            }
         }
         return found;
     }
@@ -206,6 +209,7 @@ public final class ExamCheckRules {
         List<SectionOnPath> counted = new ArrayList<>(result.path().sections());
         for (SubjectPick pick : tuple) counted.addAll(pick.resolvedSections());
         Map<String, Integer> counts = new LinkedHashMap<>();
+        Map<String, Integer> actualCounts = new LinkedHashMap<>();
         Map<String, BigDecimal> points = new LinkedHashMap<>();
         Set<String> missingPoints = new LinkedHashSet<>();
         int total = 0;
@@ -219,7 +223,9 @@ public final class ExamCheckRules {
             if (subjectChoice) total += count;
             int fixed = context.section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
             for (QuestionBlock block : context.section.blocks()) {
-                int groupCount = block.questionCount() == null ? Math.max(0, count - fixed) : fixedCount(block);
+                int groupCount = isSet(block) || block.questionCount() != null
+                        ? fixedCount(block) : Math.max(0, count - fixed);
+                actualCounts.merge(context.part.id(), groupCount, Integer::sum);
                 if (!subjectChoice) total += groupCount;
                 if (block.requiredPointsPerQuestion() == null) {
                     missingPoints.add(context.part.id());
@@ -237,6 +243,9 @@ public final class ExamCheckRules {
         BigDecimal totalPoints = BigDecimal.ZERO;
         for (ExamPart part : document.parts()) {
             int count = counts.getOrDefault(part.id(), 0);
+            if (actualCounts.getOrDefault(part.id(), 0) == 0) {
+                found.add(issue("PART_EMPTY", "STRUCTURE", part, null, null));
+            }
             if (part.questionCount() != null && part.questionCount() != count) {
                 ObjectNode issue = issue("PART_TOTAL_MISMATCH", "STRUCTURE", part, null, null);
                 issue.put("required", part.questionCount()); issue.put("available", count); found.add(issue);
