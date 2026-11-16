@@ -114,6 +114,38 @@ class ExamCheckerTests {
     }
 
     @Test
+    void unrepresentableOptionDoesNotHideValidAlternative() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        for (String bad : List.of(
+                "{\"id\":\"bad-b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":0,\"setCount\":0,\"setSize\":2}",
+                "{\"id\":\"bad-b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":0,\"setCount\":1,\"setSize\":0}")) {
+            String doc = """
+                    {"parts":[{"id":"p","questionCount":1,"participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"id":"valid","kind":"SUBJECT","code":"MATH","sections":[{"id":"good","subjectCode":"MATH","questionCount":1,"blocks":[{"id":"good-b","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                    {"id":"bad","kind":"SUBJECT","code":"MATH","sections":[{"id":"bad-s","subjectCode":"MATH","questionCount":0,"blocks":[%s]}]}
+                    ]}]}
+                    """.formatted(bad);
+            JsonNode paths = check(exam, document(doc)).result().path("paths");
+            assertThat(paths.get(0).path("result").asText()).isEqualTo("VALID");
+            assertThat(paths.get(1).path("issues").findValuesAsText("code")).contains("SET_SIZE_MISMATCH");
+        }
+        String duplicate = singleStructure(1, null, "\"answerQuotas\":{\"unit\":\"COUNT\",\"items\":["
+                + "{\"answerType\":\"SINGLE_CHOICE\",\"value\":1},{\"answerType\":\"SINGLE_CHOICE\",\"value\":0}]},");
+        assertThat(issueCodes(check(exam, document(duplicate)).result())).contains("ANSWER_QUOTA_DUPLICATE");
+        String duplicateOption = """
+                {"parts":[{"id":"p","questionCount":1,"participation":{"mode":"CHOICE","choose":1},"options":[
+                {"id":"valid","kind":"SUBJECT","code":"MATH","sections":[{"id":"good","subjectCode":"MATH","questionCount":1,"blocks":[{"id":"good-b","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                {"id":"bad","kind":"SUBJECT","code":"MATH","sections":[{"id":"bad-s","subjectCode":"MATH","questionCount":1,
+                "answerQuotas":{"unit":"COUNT","items":[{"answerType":"SINGLE_CHOICE","value":1},{"answerType":"SINGLE_CHOICE","value":0}]},
+                "blocks":[{"id":"bad-b","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}]}
+                """;
+        JsonNode paths = check(exam, document(duplicateOption)).result().path("paths");
+        assertThat(paths.get(0).path("result").asText()).isEqualTo("VALID");
+        assertThat(paths.get(1).path("issues").findValuesAsText("code")).contains("ANSWER_QUOTA_DUPLICATE");
+    }
+
+    @Test
     void fractionalLegacyMatrixIsReportedWithoutCallingTheSource() throws Exception {
         Exam exam = exam(1, null, "RAW");
         String matrix = "\"matrix\":{\"mode\":\"SEPARATE\",\"unit\":\"PERCENT\",\"byGrade\":[{\"code\":\"G\",\"value\":50.5}],\"byDifficulty\":[{\"code\":\"D\",\"value\":100}]},";

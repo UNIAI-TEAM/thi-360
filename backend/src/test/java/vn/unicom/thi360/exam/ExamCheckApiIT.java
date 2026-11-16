@@ -72,6 +72,28 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void savedUnrepresentableDraftsReturnActionableSyncIssues() throws Exception {
+        for (String[] fixture : draftFixtures()) {
+            jdbc.update("UPDATE exam.exam_structure SET parts=?::jsonb WHERE exam_id=?", fixture[0], examId);
+            entityManager.clear();
+            String response = mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("INVALID"))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(mapper.readTree(response).path("groups").findValuesAsText("code")).contains(fixture[1]);
+        }
+    }
+
+    static String[][] draftFixtures() {
+        String prefix = "{\"parts\":[{\"id\":\"p\",\"questionCount\":1,\"sections\":[{\"id\":\"s\",\"subjectCode\":\"MATH\",\"questionCount\":1,";
+        String suffix = "}]}]}";
+        return new String[][] {
+            {prefix + "\"blocks\":[{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":0,\"setCount\":0,\"setSize\":2}]" + suffix, "SET_SIZE_MISMATCH"},
+            {prefix + "\"blocks\":[{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":0,\"setCount\":1,\"setSize\":0}]" + suffix, "SET_SIZE_MISMATCH"},
+            {prefix + "\"answerQuotas\":{\"unit\":\"COUNT\",\"items\":[{\"answerType\":\"SINGLE_CHOICE\",\"value\":1},{\"answerType\":\"SINGLE_CHOICE\",\"value\":0}]},\"blocks\":[{\"id\":\"b\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]" + suffix, "ANSWER_QUOTA_DUPLICATE"}
+        };
+    }
+
+    @Test
     void openApiDescribesSyncAndBackgroundResults() throws Exception {
         var response = mockMvc.perform(get("/v3/api-docs").with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse();

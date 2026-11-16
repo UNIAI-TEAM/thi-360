@@ -104,6 +104,22 @@ class ExamDeepCheckIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void savedUnrepresentableDraftsCompleteWithCheckIssues() throws Exception {
+        gate.release.countDown();
+        for (String[] fixture : ExamCheckApiIT.draftFixtures()) {
+            jdbc.update("UPDATE exam.exam_structure SET parts=?::jsonb WHERE exam_id=?", fixture[0], examId);
+            String response = mockMvc.perform(post(url).param("deep", "true").with(asUser(Permissions.EXAM_MODIFY)))
+                    .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+            UUID runId = UUID.fromString(mapper.readTree(response).path("runId").asText());
+            await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertThat(state(runId)).isEqualTo("DONE"));
+            String completed = mockMvc.perform(get(url + "/runs/" + runId).with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.result.status").value("INVALID"))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(mapper.readTree(completed).path("result").path("groups").findValuesAsText("code")).contains(fixture[1]);
+        }
+    }
+
+    @Test
     void editingWhileWorkerRunsReturnsStaleWithoutSavingCheck() throws Exception {
         String response = mockMvc.perform(post(url).param("deep", "true").with(asUser(Permissions.EXAM_MODIFY)))
                 .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();

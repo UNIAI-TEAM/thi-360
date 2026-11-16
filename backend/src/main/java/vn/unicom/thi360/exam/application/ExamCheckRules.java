@@ -122,8 +122,14 @@ public final class ExamCheckRules {
             long remainders = section.blocks().stream().filter(block -> block.questionCount() == null && !isSet(block)).count();
             if (remainders > 1) found.add(issue("REMAINDER_GROUP_INVALID", "STRUCTURE", context.part, context.optionId, section));
             if (section.answerQuotas() != null) {
+                Set<QuestionType> answerTypes = new LinkedHashSet<>();
                 for (var value : section.answerQuotas().items()) {
                     if (value.answerType() == null) found.add(issue("INFO_MISSING", "INFO", context.part, context.optionId, section));
+                    if (value.answerType() != null && !answerTypes.add(value.answerType())) {
+                        ObjectNode duplicate = sectionIssue("ANSWER_QUOTA_DUPLICATE", "MATRIX", context, null);
+                        duplicate.put("answerType", value.answerType().name());
+                        found.add(issues.key(duplicate));
+                    }
                     if (value.value() != null && value.value().signum() < 0) found.add(negative(context, null, value.value(), null));
                     if (notInteger(value.value())) found.add(nonInteger(context, null, value.value(), null));
                 }
@@ -131,7 +137,8 @@ public final class ExamCheckRules {
             fractionalMatrix(found, context, null, section.matrix());
             for (QuestionBlock block : section.blocks()) {
                 if (block.id() == null) found.add(issue("OPTION_EMPTY", "STRUCTURE", context.part, context.optionId, section));
-                if (isSet(block) && (block.setCount() == null || block.setSize() == null)) {
+                if (isSet(block) && (block.setCount() == null || block.setCount() <= 0
+                        || block.setSize() == null || block.setSize() <= 0)) {
                     ObjectNode invalid = sectionIssue("SET_SIZE_MISMATCH", "QUESTION_SET", context, null);
                     blockContext(invalid, block); found.add(issues.key(invalid));
                 }
