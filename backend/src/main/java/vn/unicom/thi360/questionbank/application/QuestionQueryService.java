@@ -30,7 +30,6 @@ import vn.unicom.thi360.questionbank.domain.QuestionInput;
 import vn.unicom.thi360.questionbank.domain.QuestionSnapshot;
 import vn.unicom.thi360.questionbank.domain.QuestionStatus;
 import vn.unicom.thi360.questionbank.domain.QuestionVersion;
-import vn.unicom.thi360.questionbank.infrastructure.QuestionKnowledgeRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionVersionRepository;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
@@ -47,7 +46,6 @@ public class QuestionQueryService {
 
     private final QuestionRepository questionRepository;
     private final QuestionVersionRepository versionRepository;
-    private final QuestionKnowledgeRepository knowledgeRepository;
     private final QuestionSearchDao searchDao;
     private final QuestionSupportDao supportDao;
     private final CatalogLookup catalogLookup;
@@ -58,7 +56,6 @@ public class QuestionQueryService {
     public QuestionQueryService(
             QuestionRepository questionRepository,
             QuestionVersionRepository versionRepository,
-            QuestionKnowledgeRepository knowledgeRepository,
             QuestionSearchDao searchDao,
             QuestionSupportDao supportDao,
             CatalogLookup catalogLookup,
@@ -67,7 +64,6 @@ public class QuestionQueryService {
             QuestionMapper mapper) {
         this.questionRepository = questionRepository;
         this.versionRepository = versionRepository;
-        this.knowledgeRepository = knowledgeRepository;
         this.searchDao = searchDao;
         this.supportDao = supportDao;
         this.catalogLookup = catalogLookup;
@@ -195,8 +191,8 @@ public class QuestionQueryService {
                 snapshot.subjectItemId() != null,
                 snapshot.gradeItemId() != null,
                 snapshot.levelItemId() != null);
-        boolean hasPrimary = knowledgeRepository.findByQuestionId(id).stream()
-                .anyMatch(k -> k.isPrimary());
+        boolean hasPrimary = snapshot.knowledge().stream()
+                .anyMatch(QuestionSnapshot.KnowledgeRef::primary);
         var result = QuestionBodyValidator.validateReady(
                 input, classification, hasPrimary, assetResolver);
         return new QuestionReadiness(result.errors().isEmpty(), result.errors(), result.warnings());
@@ -250,22 +246,25 @@ public class QuestionQueryService {
                 .orElse(new UUID(0L, 0L));
     }
 
-    /** MAPID: lọc theo nút bất kỳ khớp cả câu gắn nút con (D23 — mở rộng tới lá). */
+    /** MAPID: nút được chọn và mọi nút con, kể cả nút trung gian (D23). */
     private List<UUID> expandKnowledgeIds(List<UUID> knowledgeIds) {
         if (knowledgeIds == null || knowledgeIds.isEmpty()) {
             return null;
         }
+        List<CatalogItemView> nodes = catalogLookup.listGroupItems("KNOWLEDGE");
         List<UUID> expanded = new ArrayList<>(knowledgeIds.size() * 4);
         for (UUID id : knowledgeIds) {
             if (id == null) {
                 continue;
             }
-            List<UUID> leaves = catalogLookup.findLeafIdsUnder(id);
-            if (leaves.isEmpty()) {
-                expanded.add(id);
-            } else {
-                expanded.addAll(leaves);
-            }
+            expanded.add(id);
+            nodes.stream().filter(node -> node.id().equals(id)).findFirst()
+                    .map(CatalogItemView::path)
+                    .ifPresent(path -> nodes.stream()
+                            .filter(node -> node.path() != null && node.path().startsWith(path))
+                            .map(CatalogItemView::id)
+                            .filter(descendant -> !descendant.equals(id))
+                            .forEach(expanded::add));
         }
         return expanded;
     }

@@ -3,6 +3,7 @@ package vn.unicom.thi360.questionbank;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -110,13 +111,17 @@ class QuestionSearchIT extends AbstractIntegrationTest {
                 + ",\"knowledge\":[{\"nodeId\":\"" + QuestionTestSupport.KNOWLEDGE_LEAF_ID
                 + "\",\"primary\":true}]}";
         createQuestion(request);
+        createQuestion(request.replace(QuestionTestSupport.KNOWLEDGE_LEAF_ID.toString(),
+                QuestionTestSupport.KNOWLEDGE_CHAPTER_ID.toString()));
+        createQuestion(request.replace(QuestionTestSupport.KNOWLEDGE_LEAF_ID.toString(),
+                "00000000-0000-7000-8200-000000001101"));
 
         mockMvc.perform(get(BASE)
                         .param("createdBy", actorId.toString())
                         .param("knowledgeIds", QuestionTestSupport.KNOWLEDGE_CHAPTER_ID.toString())
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalItems").value(1));
+                .andExpect(jsonPath("$.totalItems").value(3));
 
         // Nút chương khác không khớp.
         mockMvc.perform(get(BASE)
@@ -125,6 +130,45 @@ class QuestionSearchIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)));
+    }
+
+    @Test
+    void readinessUsesWorkingKnowledgeRatherThanServingProjection() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        UUID id = createQuestion(objectMapper.writeValueAsString(request));
+        long revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, id);
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+        revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, id);
+        request.put("expectedRevision", revision);
+        request.putArray("knowledge").addObject()
+                .put("nodeId", QuestionTestSupport.KNOWLEDGE_LEAF_ID.toString()).put("primary", true);
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(BASE + "/{id}/readiness", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.warnings[?(@.code == 'PRIMARY_KNOWLEDGE_MISSING')]", hasSize(0)));
+        // Publish, then remove knowledge in a new working version while serving rows retain it.
+        revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, id);
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+        revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, id);
+        request.put("expectedRevision", revision);
+        request.putArray("knowledge");
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(BASE + "/{id}/readiness", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.warnings[?(@.code == 'PRIMARY_KNOWLEDGE_MISSING')]", hasSize(1)));
     }
 
     @Test
