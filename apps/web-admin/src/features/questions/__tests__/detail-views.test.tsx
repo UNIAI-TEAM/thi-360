@@ -1,15 +1,13 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/messages/en.json";
-import { renderWithProviders } from "@/test/render";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
+import { fail, fakeApi } from "@/test/fake-api";
 import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout, questionTabFromPathname } from "../components/question-detail-layout";
 import { QuestionUsageView } from "../components/question-usage-view";
 import { QuestionVersionsView } from "../components/question-versions-view";
-import { questionStore } from "../mock/store";
+import { questionStore, renderEn } from "./editor-test-kit";
+import { apiReferenceFromFixture } from "./api-fixtures";
 
 const navigation = vi.hoisted(() => ({ pathname: "/questions/q-0003", push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -17,20 +15,21 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: navigation.push, replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
-function renderEn(ui: ReactElement) {
-  return renderWithProviders(ui, { locale: "en", messages: en });
-}
+
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   navigation.pathname = "/questions/q-0003";
   navigation.push.mockReset();
+  questionStore.server().setUsage("q-0003", {
+    examIds: ["ex-1", "ex-2", "ex-3"],
+    ledger: [{ examId: "ex-1", kind: "ATTEMPT", versionNo: 1 }],
+  });
 });
 
 afterEach(() => {
   window.history.replaceState(null, "", "/");
-  questionStore.reset();
-  resetQuestionHistoryForTests();
+
 });
 
 describe("chi tiết câu hỏi", () => {
@@ -58,6 +57,25 @@ describe("chi tiết câu hỏi", () => {
     expect(screen.getByRole("heading", { name: "Details" })).toBeInTheDocument();
   });
 
+  it("giao diện en hiện tên kiến thức tiếng Anh từ dữ liệu tham chiếu, không phải tên tiếng Việt lưu trong câu (F-01)", async () => {
+    const reference = apiReferenceFromFixture("en");
+    const rename = (nodes: typeof reference.knowledgeTree): void => {
+      for (const node of nodes) {
+        if (node.id === "kn-1D4-3-1") node.name = "Continuous functions at a point";
+        rename(node.children);
+      }
+    };
+    rename(reference.knowledgeTree);
+    renderEn(
+      <QuestionDetailLayout questionId="q-0003">
+        <QuestionDetailContent questionId="q-0003" />
+      </QuestionDetailLayout>,
+      reference,
+    );
+    expect(await screen.findByText("1D4-3-1 · Continuous functions at a point")).toBeInTheDocument();
+    expect(screen.queryByText(/Hàm số liên tục tại một điểm/)).not.toBeInTheDocument();
+  });
+
   it("câu không tồn tại thì báo không tìm thấy", async () => {
     renderEn(
       <QuestionDetailLayout questionId="q-missing">
@@ -70,7 +88,7 @@ describe("chi tiết câu hỏi", () => {
   });
 
   it("lỗi tải thì có nút thử lại", async () => {
-    window.history.replaceState(null, "", "/?mockState=error");
+    fakeApi.get("/api/v1/admin/questions/{id}", fail(500, { code: "INTERNAL" }));
     renderEn(
       <QuestionDetailLayout questionId="q-0003">
         <p>content</p>
@@ -100,14 +118,21 @@ describe("nơi đang dùng", () => {
     expect(within(table).getAllByRole("row").length).toBeGreaterThan(1);
   });
 
-  it("câu chưa dùng thì hiện trạng thái trống", async () => {
-    renderEn(<QuestionUsageView questionId="q-0002" />);
-    expect(await screen.findByText("Not used in any exam")).toBeInTheDocument();
+  it("hiện phần, lựa chọn, khối và trạng thái bài từ dòng nguồn", async () => {
+    questionStore.server().setUsage("q-0003", {
+      examIds: [],
+      blocks: [
+        { examId: "ex-1", examCode: "HSA-01", examName: "HSA mẫu 1", examStatus: "PUBLISHED", partName: "Phần 3", optionName: "Tổ hợp A00", blockName: "Khối Lý" },
+      ],
+    });
+    renderEn(<QuestionUsageView questionId="q-0003" />);
+    expect(await screen.findByText("HSA mẫu 1")).toBeInTheDocument();
+    expect(screen.getByText(/Phần 3 › Tổ hợp A00 ›.*› Khối Lý/)).toBeInTheDocument();
+    expect(screen.getByText("HSA-01")).toBeInTheDocument();
   });
 
-  it("kịch bản empty cũng hiện trạng thái trống", async () => {
-    window.history.replaceState(null, "", "/?mockState=empty");
-    renderEn(<QuestionUsageView questionId="q-0003" />);
+  it("câu chưa dùng thì hiện trạng thái trống", async () => {
+    renderEn(<QuestionUsageView questionId="q-0002" />);
     expect(await screen.findByText("Not used in any exam")).toBeInTheDocument();
   });
 });

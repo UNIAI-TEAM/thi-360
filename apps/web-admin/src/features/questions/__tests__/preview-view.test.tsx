@@ -1,23 +1,21 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { questionTabFromPathname } from "../components/question-detail-layout";
 import { QuestionPreviewView } from "../preview/question-preview-view";
-import { questionStore } from "../mock/store";
 import type { QuestionDetail } from "../types";
+import { withQuestionsServer } from "./api-fixtures";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/questions/q-0001/preview",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
+const questionStore = withQuestionsServer();
+
 beforeEach(() => window.history.replaceState(null, "", "/"));
-afterEach(() => {
-  questionStore.reset();
-  window.history.replaceState(null, "", "/");
-});
 
 const grade = () => screen.getByRole("button", { name: "Chấm thử" });
 

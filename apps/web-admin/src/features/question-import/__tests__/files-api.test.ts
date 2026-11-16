@@ -1,17 +1,19 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { describe, expect, it } from "vitest";
+import { ContentApiError } from "@/features/content/api-error";
+import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import {
   commitImport,
   downloadQuestionTemplate,
+  importApiErrorCode,
   listImportHistory,
   uploadQuestionFile,
   validateImport,
 } from "../api";
-import { importHistoryStore } from "../api.mock";
-import { buildErrorReportTable, collectErrorLines, errorReportFileName } from "../error-report";
+import { buildErrorReportTable, errorReportFileName } from "../error-report";
 import { checkImportFile, parseCsv, readFileText, sheetFromTable } from "../files";
-import type { ColumnMapping, ImportUpload } from "../types";
+import type { ColumnMapping } from "../types";
+
+withRealApi();
 
 const BOM = String.fromCharCode(0xfeff);
 
@@ -63,150 +65,175 @@ describe("đọc tệp", () => {
   });
 });
 
-describe("API nhập câu hỏi (dữ liệu mẫu)", () => {
-  beforeEach(() => {
-    questionStore.reset();
-    importHistoryStore.reset();
-    window.history.replaceState(null, "", "/questions/import");
+describe("API nhập câu hỏi (nhánh thật, client giả)", () => {
+  const BASE = "/api/v1/admin/question-imports";
+  const callsTo = (method: string, path: string) =>
+    fakeApi.calls.filter((call) => call.method === method && call.path === path);
+
+  const apiUpload = {
+    id: "upl-1",
+    fileName: "ngan-hang-toan-11.xlsx",
+    fileType: "XLSX",
+    sheetName: "Câu hỏi",
+    rowCount: 26,
+    columns: [
+      { key: "c1", header: "Mã nguồn", example: "TOAN11-0001" },
+      { key: "c2", header: "Nội dung", example: "Tính giới hạn" },
+    ],
+    suggestedMapping: { c1: "sourceCode", c2: "content", c9: "KHONG-BIET" },
+  };
+
+  const history = (overrides: Record<string, unknown> = {}) => ({
+    id: "imp-1",
+    importedAt: "2026-11-17T01:00:00+07:00",
+    importedBy: { id: "u-lan", name: "Lan" },
+    fileName: "ngan-hang-toan-11.xlsx",
+    createdCount: 13,
+    singleCount: 12,
+    setCount: 1,
+    setChildCount: 2,
+    skippedDuplicateCount: 3,
+    newVersionCount: 0,
+    errorRowCount: 8,
+    missingKnowledgeCount: 13,
+    durationMs: 120,
+    errors: [{ rowNumber: 4, sourceCode: "TOAN11-0004", issue: { code: "REQUIRED", severity: "error" } }],
+    ...overrides,
   });
 
-  async function uploadSample(): Promise<ImportUpload> {
-    return uploadQuestionFile(file("ngan-hang-toan-11.xlsx"));
-  }
+  const mapping: ColumnMapping = { c1: "sourceCode", c2: "content" };
+  const commitParams = { uploadId: "upl-1", mapping, duplicatePolicy: "SKIP" as const, skipErrors: true };
+  const idempotencyKeys = () =>
+    callsTo("POST", `${BASE}/uploads/{id}/commit`).map(
+      (call) => (call.options as { params: { header: Record<string, string> } }).params.header["Idempotency-Key"],
+    );
 
-  it("tệp .xlsx đọc thành bảng mẫu kèm ánh xạ gợi ý", async () => {
-    const upload = await uploadSample();
-    expect(upload).toMatchObject({ fileName: "ngan-hang-toan-11.xlsx", fileType: "XLSX", sheetName: "Câu hỏi", rowCount: 26 });
-    expect(upload.columns).toHaveLength(16);
-    expect(Object.values(upload.suggestedMapping)).toContain("UNMAPPED");
+  it("tải tệp: gửi multipart, đổi sang kiểu của web, giá trị ánh xạ lạ thành UNMAPPED", async () => {
+    fakeApi.post(`${BASE}/uploads`, ok(apiUpload, { status: 201 }));
+    const upload = await uploadQuestionFile(file("ngan-hang-toan-11.xlsx"));
+    expect(upload).toMatchObject({ id: "upl-1", fileName: "ngan-hang-toan-11.xlsx", fileType: "XLSX", sheetName: "Câu hỏi", rowCount: 26 });
+    expect(upload.columns).toEqual([
+      { key: "c1", header: "Mã nguồn", example: "TOAN11-0001" },
+      { key: "c2", header: "Nội dung", example: "Tính giới hạn" },
+    ]);
+    expect(upload.suggestedMapping).toEqual({ c1: "sourceCode", c2: "content", c9: "UNMAPPED" });
+
+    const body = (fakeApi.calls[0]!.options as { bodySerializer: () => FormData }).bodySerializer();
+    expect(body).toBeInstanceOf(FormData);
+    expect((body.get("file") as File).name).toBe("ngan-hang-toan-11.xlsx");
   });
 
-  it("từ chối tệp sai loại với mã lỗi", async () => {
-    await expect(uploadQuestionFile(file("a.pdf"))).rejects.toMatchObject({ status: 422, code: "IMPORT_INVALID_FILE" });
-    await expect(uploadQuestionFile(file("a.csv", "Mã nguồn,Nội dung\n"))).rejects.toMatchObject({
-      code: "IMPORT_EMPTY_FILE",
-    });
+  it("tải tệp: lỗi 422 giữ mã nghiệp vụ, 413 không có thân lỗi thành IMPORT_FILE_TOO_LARGE", async () => {
+    fakeApi.post(`${BASE}/uploads`, fail(422, { code: "IMPORT_INVALID_FILE" }));
+    const rejected = uploadQuestionFile(file("a.pdf"));
+    await expect(rejected).rejects.toBeInstanceOf(ContentApiError);
+    await expect(rejected).rejects.toMatchObject({ status: 422, code: "IMPORT_INVALID_FILE" });
+    await expect(importApiErrorCode(await rejected.catch((error: unknown) => error))).toBe("IMPORT_INVALID_FILE");
+
+    fakeApi.post(`${BASE}/uploads`, fail(422, { code: "IMPORT_EMPTY_FILE" }));
+    await expect(uploadQuestionFile(file("a.csv", "Mã nguồn,Nội dung\n"))).rejects.toMatchObject({ code: "IMPORT_EMPTY_FILE" });
+
+    fakeApi.post(`${BASE}/uploads`, fail(413));
+    await expect(uploadQuestionFile(file("lon.xlsx"))).rejects.toMatchObject({ status: 413, code: "IMPORT_FILE_TOO_LARGE" });
+
+    fakeApi.post(`${BASE}/uploads`, fail(413, { code: "IMPORT_FILE_TOO_LARGE" }));
+    await expect(uploadQuestionFile(file("lon.xlsx"))).rejects.toMatchObject({ status: 413, code: "IMPORT_FILE_TOO_LARGE" });
   });
 
-  it("tệp mẫu tải về đọc lại được và nhập trọn vẹn", async () => {
+  it("tệp mẫu: lấy tên tệp từ Content-Disposition, thiếu thì dùng tên mặc định", async () => {
+    const blob = new Blob(["a,b"], { type: "text/csv" });
+    fakeApi.get(`${BASE}/template`, ok(blob, { headers: { "content-disposition": 'attachment; filename="mau-nhap-cau-hoi.csv"' } }));
     const template = await downloadQuestionTemplate();
     expect(template.filename).toBe("mau-nhap-cau-hoi.csv");
-    const text = await readFileText(template.blob);
-    const upload = await uploadQuestionFile(file(template.filename, text.replace(BOM, "")));
-    expect(upload).toMatchObject({ fileType: "CSV", sheetName: null, rowCount: 10 });
-    const validation = await validateImport({ uploadId: upload.id, mapping: upload.suggestedMapping });
-    expect(validation.summary).toMatchObject({ total: 10, valid: 10, error: 0, duplicate: 0, validSets: 1, validSetChildren: 2 });
-    const result = await commitImport({
-      uploadId: upload.id,
-      mapping: upload.suggestedMapping,
-      duplicatePolicy: "SKIP",
-      skipErrors: false,
-    });
-    expect(result.createdCount).toBe(8);
-    const byCode = (code: string) => questionStore.all().find((question) => question.sourceCode === code)!;
+    expect(await readFileText(template.blob)).toBe("a,b");
+    expect((fakeApi.calls[0]!.options as { parseAs: string }).parseAs).toBe("blob");
 
-    // Câu Tự luận: điểm theo cột Điểm, khớp tổng điểm tiêu chí chấm.
-    const essay = byCode("MAU-0007");
-    expect(essay).toMatchObject({ type: "ESSAY", points: 2 });
-    if (essay.body.type === "ESSAY") expect(essay.body.rubric.map((criterion) => criterion.points)).toEqual([0.25, 0.25, 1, 0.5]);
-
-    const single = byCode("MAU-0001");
-    expect(single).toMatchObject({ points: 0.75, taskTypeCode: "CALCULATION", commonMistakes: "Quên chia cho n nên chọn 3." });
-    expect(byCode("MAU-0002").body).toMatchObject({ type: "MULTIPLE_CHOICE", scoringRule: "PARTIAL" });
-
-    // Điền khuyết: điểm câu là tổng điểm các ô.
-    const cloze = byCode("MAU-0004");
-    expect(cloze.points).toBe(1.5);
-    expect(cloze.body).toMatchObject({
-      type: "CLOZE",
-      blanks: [
-        { id: "b1", answers: ["Hà Nội"], points: 1 },
-        { id: "b2", answers: ["Hồng", "sông Hồng"], points: 0.5 },
-      ],
-    });
-
-    expect(byCode("MAU-0005").body).toMatchObject({ type: "TRUE_FALSE", scoringMethod: "COUNT_TABLE", scoreTable: [0.1, 0.25, 0.5, 1] });
-
-    // Ghép đôi: điểm câu chia đều cho 3 cặp, tổng bằng điểm câu.
-    const matching = byCode("MAU-0006");
-    expect(matching.body).toMatchObject({ type: "MATCHING", reuseRight: false });
-    if (matching.body.type === "MATCHING") {
-      expect(matching.body.pairs).toHaveLength(3);
-      expect(matching.body.pairs.reduce((sum, pair) => sum + pair.points, 0)).toBeCloseTo(2, 6);
-      expect(matching.body.right).toHaveLength(4);
-    }
-
-    // Câu con Đúng/Sai của chùm chấm theo từng ý.
-    const set = byCode("MAU-0008");
-    const child = set.children.find((candidate) => candidate.type === "TRUE_FALSE");
-    expect(child?.body).toMatchObject({ scoringMethod: "PER_STATEMENT", scoreTable: [] });
-    expect(set.points).toBe(2);
+    fakeApi.get(`${BASE}/template`, ok(blob));
+    expect((await downloadQuestionTemplate()).filename).toBe("question-import-template.xlsx");
   });
 
-  it("nhập câu hợp lệ thành Nháp, bỏ qua câu trùng, ghi lịch sử", async () => {
-    const before = questionStore.all().length;
-    const upload = await uploadSample();
-    const result = await commitImport({
-      uploadId: upload.id,
-      mapping: upload.suggestedMapping,
-      duplicatePolicy: "SKIP",
-      skipErrors: true,
+  it("kiểm tra: gửi ánh xạ, đổi dòng và tổng hợp, điền mặc định cho trường thiếu", async () => {
+    fakeApi.post(
+      `${BASE}/uploads/{id}/validate`,
+      ok({
+        uploadId: "upl-1",
+        summary: { total: 2, valid: 1, error: 1, duplicate: 0, validSets: 0, validSetChildren: 0 },
+        rows: [
+          {
+            rowNumber: 2,
+            sourceCode: "TOAN11-0001",
+            status: "VALID",
+            issues: [],
+            draft: { type: "SINGLE_CHOICE", content: "<p>x</p>", options: [{ letter: "A", content: "1", correct: true }], points: 0.75 },
+          },
+          { rowNumber: 3, status: "ERROR", issues: [{ code: "REQUIRED", severity: "error", field: "content" }] },
+        ],
+      }),
+    );
+    const validation = await validateImport({ uploadId: "upl-1", mapping });
+    const call = fakeApi.calls[0]!;
+    expect(call.options).toMatchObject({ params: { path: { id: "upl-1" } }, body: { uploadId: "upl-1", mapping } });
+    expect(validation.summary).toEqual({ total: 2, valid: 1, error: 1, duplicate: 0, validSets: 0, validSetChildren: 0 });
+    expect(validation.rows[0]).toMatchObject({
+      rowNumber: 2,
+      sourceCode: "TOAN11-0001",
+      status: "VALID",
+      draft: { type: "SINGLE_CHOICE", points: 0.75, options: [{ letter: "A", content: "1", correct: true }], knowledge: [] },
+      isSetPassage: false,
+      parentRowNumber: null,
+      duplicateOf: null,
     });
-    // 15 dòng hợp lệ = 12 câu đơn (gồm 1 câu Tự luận chưa có tiêu chí chấm, UNI-2599) + 1 câu chùm có 2 câu con.
+    expect(validation.rows[1]).toMatchObject({ status: "ERROR", sourceCode: null, issues: [{ code: "REQUIRED", severity: "error" }] });
+  });
+
+  it("nhập: gửi Idempotency-Key, đổi lịch sử sang kiểu của web", async () => {
+    fakeApi.post(`${BASE}/uploads/{id}/commit`, ok(history(), { status: 201 }));
+    const result = await commitImport(commitParams);
     expect(result).toMatchObject({
+      id: "imp-1",
       createdCount: 13,
-      singleCount: 12,
-      setCount: 1,
-      setChildCount: 2,
       skippedDuplicateCount: 3,
-      newVersionCount: 0,
       errorRowCount: 8,
-      missingKnowledgeCount: 13,
+      importedBy: { id: "u-lan", name: "Lan" },
+      errors: [{ rowNumber: 4, sourceCode: "TOAN11-0004", issue: { code: "REQUIRED" } }],
     });
-    expect(result.errors).toHaveLength(8);
-    expect(questionStore.all().length).toBe(before + 13);
-    const essay = questionStore.all().find((question) => question.sourceCode === "TOAN11-0016");
-    expect(essay).toMatchObject({ type: "ESSAY", status: "DRAFT", points: 1 });
-    expect(essay?.body).toMatchObject({ type: "ESSAY", rubric: [] });
-    expect(essay?.points).toBe(1);
-    const imported = questionStore.all().filter((question) => question.sourceCode?.startsWith("TOAN11-"));
-    expect(imported.length).toBeGreaterThan(0);
-    expect(imported.every((question) => question.status === "DRAFT" && question.version === 1)).toBe(true);
-    const set = questionStore.all().find((question) => question.sourceCode === "CH-01");
-    expect(set?.type).toBe("QUESTION_SET");
-    expect(set?.children).toHaveLength(2);
-    expect(set?.body).toMatchObject({ type: "QUESTION_SET", childIds: set?.children.map((child) => child.id) });
-    const history = await listImportHistory();
-    expect(history[0]?.id).toBe(result.id);
-    expect(collectErrorLines([])).toEqual([]);
-  });
-
-  it("chọn tạo phiên bản mới thì câu trùng lên phiên bản, về Nháp", async () => {
-    const upload = await uploadSample();
-    const mapping: ColumnMapping = upload.suggestedMapping;
-    const result = await commitImport({ uploadId: upload.id, mapping, duplicatePolicy: "NEW_VERSION", skipErrors: true });
-    expect(result.newVersionCount).toBe(3);
-    const updated = questionStore.get("q-0006");
-    expect(updated).toMatchObject({ status: "DRAFT", sourceCode: "NGUON-0006", code: "CH-000006" });
-    expect(updated?.version).toBeGreaterThan(1);
-  });
-
-  it("không bỏ qua dòng lỗi thì máy chủ từ chối 422 IMPORT_HAS_ERRORS", async () => {
-    const upload = await uploadSample();
-    const promise = commitImport({
-      uploadId: upload.id,
-      mapping: upload.suggestedMapping,
-      duplicatePolicy: "SKIP",
-      skipErrors: false,
+    expect(fakeApi.calls[0]!.options).toMatchObject({
+      params: { path: { id: "upl-1" } },
+      body: { uploadId: "upl-1", mapping, duplicatePolicy: "SKIP", skipErrors: true },
     });
-    await expect(promise).rejects.toBeInstanceOf(MockApiError);
-    await expect(promise).rejects.toMatchObject({ status: 422, code: "IMPORT_HAS_ERRORS" });
+    expect(idempotencyKeys()).toHaveLength(1);
+    expect(idempotencyKeys()[0]).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it("lịch sử theo ?mockState", async () => {
-    window.history.replaceState(null, "", "/questions/import?mockState=empty");
+  it("nhập: thử lại cùng lệnh sau lỗi chưa rõ kết quả dùng lại khóa; sau thành công hoặc lỗi nghiệp vụ thì khóa mới", async () => {
+    const post = `${BASE}/uploads/{id}/commit`;
+    fakeApi.post(post, fail(503, { code: "UNAVAILABLE" }));
+    await expect(commitImport(commitParams)).rejects.toMatchObject({ status: 503 });
+    fakeApi.post(post, ok(history()));
+    await commitImport(commitParams);
+    const [first, retry] = idempotencyKeys();
+    expect(retry).toBe(first);
+
+    await commitImport(commitParams);
+    expect(idempotencyKeys()[2]).not.toBe(first);
+
+    fakeApi.post(post, fail(422, { code: "IMPORT_HAS_ERRORS" }));
+    const different = { ...commitParams, skipErrors: false };
+    await expect(commitImport(different)).rejects.toMatchObject({ status: 422, code: "IMPORT_HAS_ERRORS" });
+    await expect(commitImport(different)).rejects.toMatchObject({ code: "IMPORT_HAS_ERRORS" });
+    const keys = idempotencyKeys();
+    expect(keys[3]).not.toBe(keys[4]);
+  });
+
+  it("lịch sử nhập: đổi từng dòng, lỗi 500 ném đúng trạng thái", async () => {
+    fakeApi.get(BASE, ok([history(), history({ id: "imp-2", errors: undefined, importedBy: undefined })]));
+    const entries = await listImportHistory();
+    expect(entries.map((entry) => entry.id)).toEqual(["imp-1", "imp-2"]);
+    expect(entries[1]).toMatchObject({ errors: [], importedBy: { id: "", name: "" } });
+
+    fakeApi.get(BASE, ok([]));
     expect(await listImportHistory()).toEqual([]);
-    window.history.replaceState(null, "", "/questions/import?mockState=error");
+    fakeApi.get(BASE, fail(500, { code: "INTERNAL" }));
     await expect(listImportHistory()).rejects.toMatchObject({ status: 500 });
   });
 });

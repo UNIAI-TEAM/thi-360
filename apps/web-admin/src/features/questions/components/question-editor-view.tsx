@@ -4,7 +4,8 @@ import { Button, Card, EmptyState, PageHeader, Skeleton } from "@thi360/ui";
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { useState } from "react";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference } from "@/features/content/queries";
 import type { QuestionType } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -36,6 +37,7 @@ function CreateView({ type }: { type: QuestionType }) {
 }
 
 function EditView({ questionId }: { questionId: string }) {
+  const [reloadToken, setReloadToken] = useState(0);
   const t = useTranslations("questions.editor");
   const questionQuery = useQuestion(questionId);
   const referenceQuery = useContentReference();
@@ -67,10 +69,15 @@ function EditView({ questionId }: { questionId: string }) {
   const question = questionQuery.data;
   return (
     <QuestionEditorForm
-      key={`${question.id}-${question.version}`}
+      key={`${question.id}-${question.version}-${reloadToken}`}
       mode="edit"
       question={question}
       reference={referenceQuery.data}
+      onReload={async () => {
+        // Xung đột 412: nạp lại câu mới nhất rồi dựng lại biểu mẫu từ bản đó (bỏ phần đã nhập, theo lựa chọn của người dùng).
+        await questionQuery.refetch();
+        setReloadToken((token) => token + 1);
+      }}
     />
   );
 }
@@ -80,7 +87,7 @@ function EditorSkeleton({ title }: { title: string }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={title} />
-      <MockDataBanner />
+      <ContentMockBanner />
       <div className="flex flex-col gap-4" aria-busy="true" aria-label={t("loading")}>
         <Skeleton className="h-40" />
         <Skeleton className="h-36" />
@@ -109,7 +116,7 @@ function EditorError({
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={title} />
-      <MockDataBanner />
+      <ContentMockBanner />
       <Card>
         <EmptyState
           icon={<TriangleAlert />}

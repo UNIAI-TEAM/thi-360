@@ -2399,11 +2399,18 @@
       },
       "saveErrors": {
         "generic": "The question could not be saved. Try again in a moment.",
+        "fieldErrors": "Not saved: the server rejected some fields. Fix the fields marked below.",
+        "VALIDATION_FAILED": "Not saved: the server rejected the question data as invalid but did not point to a specific field. Review the question and try saving again.",
         "QUESTION_REVISION_CONFLICT": "The data was changed by someone else. Reload the page to edit the latest version.",
         "QUESTION_TYPE_IMMUTABLE": "A saved question cannot change type. Create a new question instead.",
         "QUESTION_SET_CHILDREN_MIN": "A question set needs at least 2 sub-questions.",
         "QUESTION_BODY_TYPE_MISMATCH": "The answer section does not match the question type.",
         "NOT_FOUND": "The question no longer exists."
+      },
+      "conflict": {
+        "title": "Someone else has changed this data",
+        "description": "This question was just saved elsewhere, so your save was not applied. Reload the latest version to keep editing; what you typed here will not be kept.",
+        "reload": "Reload latest version"
       },
       "leave": {
         "title": "Discard unsaved changes?",
@@ -2610,11 +2617,8 @@
         "pointsInvalid": "Points must be a number greater than 0.",
         "contentRequired": "Enter the question text.",
         "passageRequired": "Enter the shared passage.",
-        "contentMax": "The text is too long.",
-        "solutionMax": "The solution is too long.",
         "optionsMin": "At least 2 options are required.",
         "optionRequired": "Enter the option text.",
-        "optionMax": "The text is too long.",
         "singleCorrectRequired": "Choose exactly one correct option.",
         "multipleCorrectRequired": "Choose at least one correct option.",
         "statementsMin": "At least 2 statements are required.",
@@ -2635,7 +2639,6 @@
         "statementPointsInvalid": "Statement points must be a number greater than 0.",
         "statementPointsMismatch": "The statement points must add up to the question points.",
         "childKnowledgeRequired": "Choose at least one own knowledge item or use the set's knowledge.",
-        "commonMistakesMax": "The common mistakes text is too long.",
         "childrenMin": "A question set needs at least 2 sub-questions.",
         "childContentRequired": "Enter the sub-question text.",
         "scoreValueInvalid": "Points must be a number of 0 or more.",
@@ -2643,11 +2646,37 @@
         "scoreLastMismatch": "The last cell must equal the question points.",
         "gradingGuideRequired": "Enter the grading guide.",
         "criterionRequired": "Enter the criterion description.",
-        "criterionMax": "The description is too long.",
         "criterionPointsInvalid": "Criterion points must be a number greater than 0.",
         "rubricTotalMismatch": "The criteria must add up to the question points.",
-        "sampleAnswerMax": "The sample answer is too long.",
-        "wordLimitInvalid": "The length must be a whole number greater than 0."
+        "wordLimitInvalid": "The length must be a whole number greater than 0.",
+        "server": {
+          "QUESTION_CONTENT_UNSAFE": "The content has parts that are not allowed (formatting or images outside the allowed list). Remove them and save again.",
+          "QUESTION_BODY_INVALID": "The answer section is not valid.",
+          "QUESTION_BODY_TYPE_MISMATCH": "The answer section does not match the question type.",
+          "QUESTION_TYPE_MISSING": "No question type is chosen.",
+          "QUESTION_DUPLICATE_ID": "Some items have the same id. Reload the page and enter them again.",
+          "QUESTION_OPTIONS_TOO_MANY": "At most 10 options.",
+          "QUESTION_STATEMENTS_TOO_MANY": "At most 8 statements.",
+          "QUESTION_BLANKS_TOO_MANY": "At most 30 blanks.",
+          "QUESTION_ANSWERS_TOO_MANY": "At most 20 answers.",
+          "QUESTION_CHILDREN_TOO_MANY": "At most 20 sub-questions.",
+          "QUESTION_CHILD_TYPE_NOT_ALLOWED": "This type cannot be a sub-question of a question set.",
+          "QUESTION_BLANK_MARKER_MISMATCH": "The blank markers in the passage do not match the list of blanks.",
+          "QUESTION_PAIR_UNKNOWN_LEFT": "A pair points to a left item that does not exist.",
+          "QUESTION_PAIR_UNKNOWN_RIGHT": "A pair points to a right choice that does not exist.",
+          "QUESTION_PAIR_DUPLICATE_LEFT": "A left item is matched twice.",
+          "QUESTION_ATTACHMENT_UNKNOWN": "The attachment no longer exists. Upload it again.",
+          "QUESTION_WORD_LIMIT_INVALID": "The suggested word count must be greater than 0.",
+          "QUESTION_SCORING_METHOD_MISSING": "No scoring method is chosen.",
+          "QUESTION_SCORING_RULE_MISSING": "No scoring rule is chosen.",
+          "POINTS_NOT_POSITIVE": "Points must be greater than 0.",
+          "POINTS_TOO_MANY_DECIMALS": "Points allow at most 4 decimal places.",
+          "POINTS_TOO_LARGE": "Points are too large.",
+          "SCORE_TABLE_INVALID": "The score table is not valid.",
+          "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
+          "CATALOG_VALUE_UNKNOWN": "The value is not in the catalog or has been retired.",
+          "UNKNOWN": "The server did not accept this value."
+        }
       },
       "pointsTotal": {
         "matches": "Points total: {total, number} / {points, number}",
@@ -2792,7 +2821,13 @@
         "PAIR_INVALID": "A pair points to a missing item, a left item is matched twice, or a choice is reused although each choice may be used only once.",
         "PAIR_POINTS_MISMATCH": "The pair points do not add up to the question points.",
         "NO_GRADING_GUIDE": "The essay question has no grading guide.",
-        "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points."
+        "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points.",
+        "TOO_FEW_CORRECT_OPTIONS": "A multiple-choice question needs at least 2 correct options.",
+        "STATEMENT_ANSWER_REQUIRED": "Statement {position, number} has no true or false answer.",
+        "POINTS_INVALID": "Points are not valid: they must be greater than 0 with at most 4 decimal places.",
+        "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
+        "CATALOG_VALUE_UNKNOWN": "A classification value is not in the catalog or has been retired.",
+        "READINESS_OTHER": "A check was not met ({value})."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
       "moreIssues": "and {count, plural, one {# more place} other {# more places}}",
@@ -2958,7 +2993,7 @@
         "descriptionDraft": "The content of v{version} overwrites draft v{current}. Older versions and the attempts that used them stay unchanged.",
         "confirm": "Restore",
         "done": "Copied the content of v{version} into draft v{current}.",
-        "conflict": "The question was just saved elsewhere. Reload the page and try again.",
+        "conflict": "Someone else has changed this data. The latest version has been reloaded; try again.",
         "failed": "Could not restore. Try again in a moment."
       },
       "view": {
@@ -3100,6 +3135,17 @@
       "errorTitle": "Could not load where this question is used",
       "errorDescription": "Try again in a moment.",
       "retry": "Try again"
+    },
+    "assets": {
+      "errors": {
+        "imageTooLarge": "The image is larger than 5 MB.",
+        "attachmentTooLarge": "The file is larger than 20 MB.",
+        "imageTypeNotAllowed": "Only PNG, JPEG or WebP images are accepted.",
+        "attachmentTypeNotAllowed": "This file type is not accepted.",
+        "rateLimited": "You uploaded too many files in a short time (up to 60 files per 10 minutes). Try again later.",
+        "forbidden": "You do not have permission to upload files for questions.",
+        "uploadFailed": "The file could not be uploaded. Try again."
+      }
     }
   },
   "questionImport": {
@@ -3152,7 +3198,7 @@
       "heading": "Choose a question file",
       "dropzoneTitle": "Drag a file here or click to choose",
       "dropzoneHint": ".xlsx or .csv file, up to {maxRows, number} rows, no larger than {maxMb, number} MB",
-      "mockHint": "Sample mode: an .xlsx file is always read as a built-in sample sheet; a .csv file (for example the template) is read for real.",
+      "readNote": "Reading the file adds no questions to the bank: you check and preview the result before importing.",
       "chooseFile": "Choose file",
       "changeFile": "Choose another file",
       "selectedFileLabel": "Selected file",
@@ -3213,7 +3259,8 @@
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
         "setCode": "A Question set row and its child questions share the same set code."
       },
-      "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2."
+      "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2.",
+      "colFileHeader": "Header in file"
     },
     "fileErrors": {
       "IMPORT_INVALID_FILE": "Only .xlsx or .csv files are accepted.",
@@ -3221,7 +3268,8 @@
       "IMPORT_EMPTY_FILE": "The file has no data rows.",
       "IMPORT_FILE_TOO_LARGE": "The file is larger than 5 MB.",
       "IMPORT_ROW_LIMIT_EXCEEDED": "The file has more than 2,000 data rows. Split it into several files.",
-      "IMPORT_INVALID_HEADER": "The first row of the file must hold the column names."
+      "IMPORT_INVALID_HEADER": "The first row of the file must hold the column names.",
+      "IMPORT_FORMULA_NOT_ALLOWED": "The file contains Excel formula cells. Convert them to values and choose the file again."
     },
     "mapping": {
       "heading": "Map columns",
@@ -3341,7 +3389,7 @@
       "issuesHeading": "Errors and warnings",
       "errorLabel": "Error",
       "warningLabel": "Warning",
-      "fixHint": "Fix it in the file and upload again. The question content in this example is sample data.",
+      "fixHint": "Fix it in the file and upload again.",
       "status": {
         "VALID": "Valid",
         "ERROR": "Has errors",
@@ -3480,6 +3528,54 @@
       "ENTRY_DUPLICATE": {
         "message": "“{value}” is repeated in the {column} column",
         "fix": "Write each label or blank code once per column; delete the repeated line or change the label."
+      },
+      "OPTIONS_MISSING": {
+        "message": "No option has any content",
+        "fix": "Fill the Options column, one option per line like “A. text”."
+      },
+      "KNOWLEDGE_AMBIGUOUS": {
+        "message": "Knowledge code {value} matches several nodes in the {subject} knowledge structure",
+        "fix": "Use the full code so it matches exactly one node."
+      },
+      "CELL_SYNTAX": {
+        "message": "The cell in column {column} has invalid syntax",
+        "fix": "Write the cell following the rules of this column in the template columns table."
+      },
+      "CLOZE_MARKER_MISMATCH": {
+        "message": "The blank markers in the content do not match the answers",
+        "fix": "Each [[b1]] marker in the content needs exactly one “b1 = answer” line and the other way round."
+      },
+      "BLANK_UNKNOWN": {
+        "message": "Blank {value} is not in the content",
+        "fix": "Use a blank code that appears in the content, like [[b1]]."
+      },
+      "SET_CHILD_INVALID": {
+        "message": "The set has an invalid child question, so the whole set is not imported",
+        "fix": "Fix the failing child rows that share this set code."
+      },
+      "CHILD_TYPE_NOT_ALLOWED": {
+        "message": "This question type cannot be a child question",
+        "fix": "A child question cannot be a Question set or Fill in the blanks."
+      },
+      "UNSAFE_CONTENT": {
+        "message": "The content in column {column} has elements that are not allowed",
+        "fix": "Remove unusual tags, attributes or links; keep only basic formatting and formulas."
+      },
+      "SAVE_VALIDATION": {
+        "message": "This row failed the checks made when saving",
+        "fix": "Review the content, answers and points of the row; if it still fails, contact support with the row number."
+      },
+      "IMPORT_SOURCE_TYPE_MISMATCH": {
+        "message": "Source code {value} already belongs to a question of another type",
+        "fix": "Change the source code, or use the type of the existing question."
+      },
+      "CHILD_FIELD_IGNORED": {
+        "message": "Column {column} of a child question is ignored",
+        "fix": "Leave this cell empty on child rows; the child follows the set row."
+      },
+      "CHILD_SOURCE_CODE_IGNORED": {
+        "message": "The child question source code is ignored",
+        "fix": "Only the set row carries a source code; leave it empty on child rows."
       }
     },
     "errorReport": {

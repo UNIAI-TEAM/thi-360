@@ -15,6 +15,7 @@ import {
   pointsTotal,
   type QuestionEditorValues,
 } from "../editor-form";
+import { useUiLocale } from "../use-ui-locale";
 import { PointsTotalLine } from "./question-editor-points-total";
 import { RichTextField } from "./question-editor-rich-field";
 import { ScoreTableEditor } from "./question-editor-score-table";
@@ -38,6 +39,7 @@ export function StatementsEditor({ prefix }: { prefix: BodyPath }) {
   const t = useTranslations("questions.editor.statements");
   const tTable = useTranslations("questions.editor.scoreTable");
   const announce = useAnnounce();
+  const locale = useUiLocale();
   const groupId = useId();
   const addRef = useRef<HTMLButtonElement>(null);
   const { control, getValues, setValue } = useFormContext<QuestionEditorValues>();
@@ -55,7 +57,7 @@ export function StatementsEditor({ prefix }: { prefix: BodyPath }) {
 
   /** Điểm từng ý chia đều theo điểm của câu. */
   const evenStatementPoints = (count: number) => {
-    evenSplitText(count, basePoints()).forEach((value, index) =>
+    evenSplitText(count, basePoints(), locale).forEach((value, index) =>
       setValue(`${prefix}.statements.${index}.points`, value, { shouldDirty: true }),
     );
   };
@@ -63,14 +65,14 @@ export function StatementsEditor({ prefix }: { prefix: BodyPath }) {
   /** Điểm từng ý và bảng điểm theo số ý mới, chia đều theo điểm của câu. */
   const reflow = (count: number) => {
     evenStatementPoints(count);
-    setValue(`${prefix}.scoreTable`, evenScoreTableText(count, basePoints()), { shouldDirty: true });
+    setValue(`${prefix}.scoreTable`, evenScoreTableText(count, basePoints(), locale), { shouldDirty: true });
     return method === "PER_STATEMENT" ? t("pointsReflowed", { count }) : tTable("reflowed", { count });
   };
 
   const chooseMethod = (next: TrueFalseMethod) => {
     if (next === "PER_STATEMENT") evenStatementPoints(fields.length);
     else if (getValues(`${prefix}.scoreTable`).length !== fields.length) {
-      setValue(`${prefix}.scoreTable`, evenScoreTableText(fields.length, basePoints()), { shouldDirty: true });
+      setValue(`${prefix}.scoreTable`, evenScoreTableText(fields.length, basePoints(), locale), { shouldDirty: true });
     }
     announce(t("methodChosen", { method: t(`method.${next}.label`) }));
   };

@@ -1,12 +1,10 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
-import { renderEn, rich } from "./editor-test-kit";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout } from "../components/question-detail-layout";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { questionStore } from "../mock/store";
+import { renderEn, rich } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ pathname: "/questions/new", push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -17,11 +15,6 @@ vi.mock("next/navigation", () => ({
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   navigation.push.mockReset();
-});
-
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
 });
 
 describe("soan cau Tu luan", () => {
@@ -67,7 +60,7 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="create" type="TRUE_FALSE" />);
     const table = await screen.findByRole("group", { name: "Score by number of correct statements" });
-    expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual(["0,5", "1"]);
+    expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual(["0.5", "1"]);
 
     await user.click(within(table).getByRole("button", { name: "From exam template…" }));
     expect(await screen.findByRole("menuitem", { name: /THPTQG/ })).toHaveAttribute("aria-disabled", "true");
@@ -76,18 +69,18 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     await user.click(screen.getByRole("button", { name: "Add statement" }));
     await user.click(screen.getByRole("button", { name: "Add statement" }));
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,25",
-      "0,5",
-      "0,75",
+      "0.25",
+      "0.5",
+      "0.75",
       "1",
     ]);
 
     await user.click(within(table).getByRole("button", { name: "From exam template…" }));
     await user.click(await screen.findByRole("menuitem", { name: /THPTQG/ }));
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,1",
-      "0,25",
-      "0,5",
+      "0.1",
+      "0.25",
+      "0.5",
       "1",
     ]);
   });
@@ -100,8 +93,8 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     await user.clear(points);
     await user.type(points, "2");
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,2",
-      "0,5",
+      "0.2",
+      "0.5",
       "1",
       "2",
     ]);
@@ -151,6 +144,6 @@ describe("chi tiet cau Tu luan va Dung/Sai", () => {
     navigation.pathname = "/questions/q-8008";
     renderEn(<QuestionDetailContent questionId="q-8008" />);
     expect(await screen.findByText("Competency")).toBeInTheDocument();
-    expect(await screen.findByText("Toán học")).toBeInTheDocument();
+    expect(await screen.findByText("Mathematical competence")).toBeInTheDocument();
   });
 });

@@ -25,7 +25,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { RichTextView } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { isRevisionConflict } from "@/features/content/api-error";
 import { QUESTIONS_QUERY_KEYS, toQuestionSummary } from "../api";
 import type { QuestionVersion, QuestionVersionList, QuestionVersionState } from "../editor-types";
 import { useQuestionVersions, useRestoreQuestionVersion } from "../editor-queries";
@@ -183,11 +183,10 @@ function VersionsContent({ list, question }: { list: QuestionVersionList; questi
                 setLiveMessage(message);
               },
               onError: (error) => {
-                setRestoreError(
-                  error instanceof MockApiError && error.code === "QUESTION_REVISION_CONFLICT"
-                    ? t("restore.conflict")
-                    : t("restore.failed"),
-                );
+                const conflict = isRevisionConflict(error);
+                // Câu đã được sửa ở nơi khác: nạp lại để lần thử sau dùng đúng `revision` mới.
+                if (conflict) void queryClient.invalidateQueries({ queryKey: QUESTIONS_QUERY_KEYS.detail(question.id) });
+                setRestoreError(conflict ? t("restore.conflict") : t("restore.failed"));
               },
             },
           );

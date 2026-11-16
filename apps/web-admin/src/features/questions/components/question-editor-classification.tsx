@@ -17,7 +17,7 @@ import { useTranslations } from "next-intl";
 import { useId, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
-import { indexKnowledge, knowledgePath } from "@/features/content/knowledge-tree";
+import { indexKnowledge, knowledgeName, knowledgePath } from "@/features/content/knowledge-tree";
 import type { ContentReference } from "@/features/content/types";
 import { pointsTotal, questionSetPoints, type QuestionEditorValues } from "../editor-form";
 import { EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
@@ -193,7 +193,7 @@ function KnowledgeField({
               <li key={ref.nodeId} className="flex flex-col gap-0.5 rounded-lg border border-border px-3 py-2">
                 <span className="flex flex-wrap items-center gap-2 font-medium text-text">
                   <span className="rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold">{ref.code}</span>
-                  {ref.name}
+                  {knowledgeName(index, ref)}
                   {ref.primary && <Badge>{t("primary")}</Badge>}
                 </span>
                 {entry && <span className="text-caption text-text-muted">{knowledgePath(entry)}</span>}

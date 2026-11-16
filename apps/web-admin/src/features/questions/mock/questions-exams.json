@@ -43,36 +43,36 @@
       },
       "createdAt": "2026-10-01T08:00:00+07:00",
       "updatedAt": "2026-10-03T09:00:00+07:00",
-      "content": "Viết bài văn nghị luận (khoảng 600 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của việc tự học trong thời đại số.",
+      "content": "<p>Viết bài văn nghị luận (khoảng 600 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của việc tự học trong thời đại số.</p>",
       "body": {
         "type": "ESSAY",
-        "gradingGuide": "Chấm theo các tiêu chí: Bảo đảm cấu trúc bài văn nghị luận; Xác định đúng vấn đề cần nghị luận; Triển khai luận điểm với lí lẽ và dẫn chứng thuyết phục; Chính tả, diễn đạt và sáng tạo.",
+        "gradingGuide": "<p>Chấm theo các tiêu chí: Bảo đảm cấu trúc bài văn nghị luận; Xác định đúng vấn đề cần nghị luận; Triển khai luận điểm với lí lẽ và dẫn chứng thuyết phục; Chính tả, diễn đạt và sáng tạo.</p>",
         "rubric": [
           {
             "id": "q-7001-r1",
-            "description": "Bảo đảm cấu trúc bài văn nghị luận",
+            "description": "<p>Bảo đảm cấu trúc bài văn nghị luận</p>",
             "points": 2.5
           },
           {
             "id": "q-7001-r2",
-            "description": "Xác định đúng vấn đề cần nghị luận",
+            "description": "<p>Xác định đúng vấn đề cần nghị luận</p>",
             "points": 2.5
           },
           {
             "id": "q-7001-r3",
-            "description": "Triển khai luận điểm với lí lẽ và dẫn chứng thuyết phục",
+            "description": "<p>Triển khai luận điểm với lí lẽ và dẫn chứng thuyết phục</p>",
             "points": 15
           },
           {
             "id": "q-7001-r4",
-            "description": "Chính tả, diễn đạt và sáng tạo",
+            "description": "<p>Chính tả, diễn đạt và sáng tạo</p>",
             "points": 5
           }
         ],
         "sampleAnswer": null,
         "wordLimit": 600
       },
-      "solution": "Hướng dẫn chấm: xem các tiêu chí.",
+      "solution": "<p>Hướng dẫn chấm: xem các tiêu chí.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -108,10 +108,10 @@
       },
       "createdAt": "2026-10-02T08:00:00+07:00",
       "updatedAt": "2026-10-04T09:00:00+07:00",
-      "content": "Viết bài văn nghị luận (khoảng 600 chữ) bàn về trách nhiệm của người trẻ với cộng đồng.",
+      "content": "<p>Viết bài văn nghị luận (khoảng 600 chữ) bàn về trách nhiệm của người trẻ với cộng đồng.</p>",
       "body": {
         "type": "ESSAY",
-        "gradingGuide": "Chấm theo ý chính của đề bài.",
+        "gradingGuide": "<p>Chấm theo ý chính của đề bài.</p>",
         "rubric": [],
         "sampleAnswer": null,
         "wordLimit": 600
@@ -152,35 +152,35 @@
       },
       "createdAt": "2026-10-01T08:00:00+07:00",
       "updatedAt": "2026-10-03T09:00:00+07:00",
-      "content": "Chọn các hàm số có đạo hàm bằng 2x.",
+      "content": "<p>Chọn các hàm số có đạo hàm bằng 2x.</p>",
       "body": {
         "type": "MULTIPLE_CHOICE",
         "options": [
           {
             "id": "q-7003-o1",
-            "content": "y = x²",
+            "content": "<p>y = x²</p>",
             "correct": true
           },
           {
             "id": "q-7003-o2",
-            "content": "y = x² + 3",
+            "content": "<p>y = x² + 3</p>",
             "correct": true
           },
           {
             "id": "q-7003-o3",
-            "content": "y = 2x",
+            "content": "<p>y = 2x</p>",
             "correct": false
           },
           {
             "id": "q-7003-o4",
-            "content": "y = x² − 1",
+            "content": "<p>y = x² − 1</p>",
             "correct": true
           }
         ],
         "shuffleOptions": true,
         "scoringRule": "ALL_OR_NOTHING"
       },
-      "solution": "(x² + c)' = 2x với mọi hằng số c.",
+      "solution": "<p>(x² + c)' = 2x với mọi hằng số c.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -216,28 +216,28 @@
       },
       "createdAt": "2026-10-03T08:00:00+07:00",
       "updatedAt": "2026-10-05T09:00:00+07:00",
-      "content": "Chọn các hàm số liên tục tại x = 0.",
+      "content": "<p>Chọn các hàm số liên tục tại x = 0.</p>",
       "body": {
         "type": "MULTIPLE_CHOICE",
         "options": [
           {
             "id": "q-7004-o1",
-            "content": "y = |x|",
+            "content": "<p>y = |x|</p>",
             "correct": true
           },
           {
             "id": "q-7004-o2",
-            "content": "y = 1/x",
+            "content": "<p>y = 1/x</p>",
             "correct": false
           },
           {
             "id": "q-7004-o3",
-            "content": "y = cos x",
+            "content": "<p>y = cos x</p>",
             "correct": true
           },
           {
             "id": "q-7004-o4",
-            "content": "y = ln x",
+            "content": "<p>y = ln x</p>",
             "correct": false
           }
         ],
@@ -273,34 +273,34 @@
       },
       "createdAt": "2026-10-01T08:00:00+07:00",
       "updatedAt": "2026-10-03T09:00:00+07:00",
-      "content": "Đơn vị nhỏ nhất dùng để biểu diễn thông tin trong máy tính là gì?",
+      "content": "<p>Đơn vị nhỏ nhất dùng để biểu diễn thông tin trong máy tính là gì?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-7005-o1",
-            "content": "Bit",
+            "content": "<p>Bit</p>",
             "correct": true
           },
           {
             "id": "q-7005-o2",
-            "content": "Byte",
+            "content": "<p>Byte</p>",
             "correct": false
           },
           {
             "id": "q-7005-o3",
-            "content": "Kilobyte",
+            "content": "<p>Kilobyte</p>",
             "correct": false
           },
           {
             "id": "q-7005-o4",
-            "content": "Hertz",
+            "content": "<p>Hertz</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Bit là đơn vị nhỏ nhất, nhận một trong hai giá trị 0 hoặc 1.",
+      "solution": "<p>Bit là đơn vị nhỏ nhất, nhận một trong hai giá trị 0 hoặc 1.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -329,34 +329,34 @@
       },
       "createdAt": "2026-10-01T08:00:00+07:00",
       "updatedAt": "2026-10-03T09:00:00+07:00",
-      "content": "Trong Python, biểu thức 7 // 2 cho kết quả nào?",
+      "content": "<p>Trong Python, biểu thức 7 // 2 cho kết quả nào?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-7006-o1",
-            "content": "3",
+            "content": "<p>3</p>",
             "correct": true
           },
           {
             "id": "q-7006-o2",
-            "content": "3.5",
+            "content": "<p>3.5</p>",
             "correct": false
           },
           {
             "id": "q-7006-o3",
-            "content": "4",
+            "content": "<p>4</p>",
             "correct": false
           },
           {
             "id": "q-7006-o4",
-            "content": "1",
+            "content": "<p>1</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Phép // chia lấy phần nguyên.",
+      "solution": "<p>Phép // chia lấy phần nguyên.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -385,31 +385,31 @@
       },
       "createdAt": "2026-10-04T08:00:00+07:00",
       "updatedAt": "2026-10-06T09:00:00+07:00",
-      "content": "Xét các phát biểu về mạng máy tính và Internet.",
+      "content": "<p>Xét các phát biểu về mạng máy tính và Internet.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-7007-s1",
-            "content": "Địa chỉ IP dùng để định danh thiết bị trong mạng.",
+            "content": "<p>Địa chỉ IP dùng để định danh thiết bị trong mạng.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7007-s2",
-            "content": "Giao thức HTTPS mã hóa dữ liệu trao đổi giữa trình duyệt và máy chủ.",
+            "content": "<p>Giao thức HTTPS mã hóa dữ liệu trao đổi giữa trình duyệt và máy chủ.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7007-s3",
-            "content": "Mạng LAN luôn có phạm vi toàn cầu.",
+            "content": "<p>Mạng LAN luôn có phạm vi toàn cầu.</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-7007-s4",
-            "content": "Tên miền được hệ thống DNS chuyển thành địa chỉ IP.",
+            "content": "<p>Tên miền được hệ thống DNS chuyển thành địa chỉ IP.</p>",
             "answer": true,
             "points": null
           }
@@ -451,31 +451,31 @@
       },
       "createdAt": "2026-10-04T08:00:00+07:00",
       "updatedAt": "2026-10-06T09:00:00+07:00",
-      "content": "Xét các phát biểu về trang web viết bằng HTML.",
+      "content": "<p>Xét các phát biểu về trang web viết bằng HTML.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-7008-s1",
-            "content": "Thẻ <a> dùng để tạo liên kết.",
+            "content": "<p>Thẻ &lt;a&gt; dùng để tạo liên kết.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7008-s2",
-            "content": "Thẻ <img> bắt buộc có thẻ đóng </img>.",
+            "content": "<p>Thẻ &lt;img&gt; bắt buộc có thẻ đóng &lt;/img&gt;.</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-7008-s3",
-            "content": "Thuộc tính alt mô tả nội dung ảnh cho người dùng trình đọc màn hình.",
+            "content": "<p>Thuộc tính alt mô tả nội dung ảnh cho người dùng trình đọc màn hình.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7008-s4",
-            "content": "CSS chỉ viết được bên trong thẻ <style>.",
+            "content": "<p>CSS chỉ viết được bên trong thẻ &lt;style&gt;.</p>",
             "answer": false,
             "points": null
           }
@@ -517,31 +517,31 @@
       },
       "createdAt": "2026-10-05T08:00:00+07:00",
       "updatedAt": "2026-10-07T09:00:00+07:00",
-      "content": "Cho đoạn chương trình Python sắp xếp danh sách bằng thuật toán sắp xếp nổi bọt. Xét các phát biểu sau.",
+      "content": "<p>Cho đoạn chương trình Python sắp xếp danh sách bằng thuật toán sắp xếp nổi bọt. Xét các phát biểu sau.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-7009-s1",
-            "content": "Sau lượt duyệt đầu tiên, phần tử lớn nhất nằm ở cuối danh sách.",
+            "content": "<p>Sau lượt duyệt đầu tiên, phần tử lớn nhất nằm ở cuối danh sách.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7009-s2",
-            "content": "Độ phức tạp thời gian trong trường hợp xấu nhất là O(n log n).",
+            "content": "<p>Độ phức tạp thời gian trong trường hợp xấu nhất là O(n log n).</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-7009-s3",
-            "content": "Thuật toán không cần thêm danh sách phụ.",
+            "content": "<p>Thuật toán không cần thêm danh sách phụ.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7009-s4",
-            "content": "Danh sách đã sắp xếp vẫn cần đúng n² phép so sánh.",
+            "content": "<p>Danh sách đã sắp xếp vẫn cần đúng n² phép so sánh.</p>",
             "answer": false,
             "points": null
           }
@@ -554,7 +554,7 @@
           1
         ]
       },
-      "solution": "Sắp xếp nổi bọt có độ phức tạp O(n²) trong trường hợp xấu nhất.",
+      "solution": "<p>Sắp xếp nổi bọt có độ phức tạp O(n²) trong trường hợp xấu nhất.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -583,31 +583,31 @@
       },
       "createdAt": "2026-10-05T08:00:00+07:00",
       "updatedAt": "2026-10-07T09:00:00+07:00",
-      "content": "Xét các phát biểu về phần mềm bảng tính.",
+      "content": "<p>Xét các phát biểu về phần mềm bảng tính.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-7010-s1",
-            "content": "Hàm SUM tính tổng các giá trị trong một vùng ô.",
+            "content": "<p>Hàm SUM tính tổng các giá trị trong một vùng ô.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7010-s2",
-            "content": "Địa chỉ $A$1 thay đổi khi sao chép công thức.",
+            "content": "<p>Địa chỉ $A$1 thay đổi khi sao chép công thức.</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-7010-s3",
-            "content": "Có thể lọc dữ liệu theo điều kiện trên một cột.",
+            "content": "<p>Có thể lọc dữ liệu theo điều kiện trên một cột.</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-7010-s4",
-            "content": "Biểu đồ không cập nhật khi dữ liệu nguồn thay đổi.",
+            "content": "<p>Biểu đồ không cập nhật khi dữ liệu nguồn thay đổi.</p>",
             "answer": false,
             "points": null
           }
@@ -651,28 +651,28 @@
       },
       "createdAt": "2026-09-30T08:00:00+07:00",
       "updatedAt": "2026-10-02T09:00:00+07:00",
-      "content": "Từ nào viết đúng chính tả?",
+      "content": "<p>Từ nào viết đúng chính tả?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-7011-o1",
-            "content": "sáng lạn",
+            "content": "<p>sáng lạn</p>",
             "correct": false
           },
           {
             "id": "q-7011-o2",
-            "content": "xán lạn",
+            "content": "<p>xán lạn</p>",
             "correct": true
           },
           {
             "id": "q-7011-o3",
-            "content": "sán lạn",
+            "content": "<p>sán lạn</p>",
             "correct": false
           },
           {
             "id": "q-7011-o4",
-            "content": "xáng lạn",
+            "content": "<p>xáng lạn</p>",
             "correct": false
           }
         ],
@@ -715,28 +715,28 @@
       },
       "createdAt": "2026-09-30T08:00:00+07:00",
       "updatedAt": "2026-10-02T09:00:00+07:00",
-      "content": "Choose the correct option: By the time we arrived, the film ___.",
+      "content": "<p>Choose the correct option: By the time we arrived, the film ___.</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-7012-o1",
-            "content": "has started",
+            "content": "<p>has started</p>",
             "correct": false
           },
           {
             "id": "q-7012-o2",
-            "content": "had started",
+            "content": "<p>had started</p>",
             "correct": true
           },
           {
             "id": "q-7012-o3",
-            "content": "starts",
+            "content": "<p>starts</p>",
             "correct": false
           },
           {
             "id": "q-7012-o4",
-            "content": "was starting",
+            "content": "<p>was starting</p>",
             "correct": false
           }
         ],
@@ -779,34 +779,34 @@
       },
       "createdAt": "2026-09-30T08:00:00+07:00",
       "updatedAt": "2026-10-02T09:00:00+07:00",
-      "content": "Một cửa hàng giảm giá 20% rồi giảm tiếp 10% trên giá mới. Tổng mức giảm so với giá ban đầu là bao nhiêu?",
+      "content": "<p>Một cửa hàng giảm giá 20% rồi giảm tiếp 10% trên giá mới. Tổng mức giảm so với giá ban đầu là bao nhiêu?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-7013-o1",
-            "content": "28%",
+            "content": "<p>28%</p>",
             "correct": true
           },
           {
             "id": "q-7013-o2",
-            "content": "30%",
+            "content": "<p>30%</p>",
             "correct": false
           },
           {
             "id": "q-7013-o3",
-            "content": "25%",
+            "content": "<p>25%</p>",
             "correct": false
           },
           {
             "id": "q-7013-o4",
-            "content": "18%",
+            "content": "<p>18%</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Giá còn lại 0,8 × 0,9 = 0,72 giá ban đầu, tức giảm 28%.",
+      "solution": "<p>Giá còn lại 0,8 × 0,9 = 0,72 giá ban đầu, tức giảm 28%.</p>",
       "children": [],
       "revision": 1,
       "commonMistakes": null,
@@ -836,34 +836,34 @@
       },
       "createdAt": "2026-09-29T08:00:00+07:00",
       "updatedAt": "2026-10-01T09:00:00+07:00",
-      "content": "Bảng số liệu cho thấy lượng mưa tháng 7 gấp đôi tháng 6 và bằng 3/4 tháng 8. Tháng 6 có 120 mm. Tháng 8 có bao nhiêu mm?",
+      "content": "<p>Bảng số liệu cho thấy lượng mưa tháng 7 gấp đôi tháng 6 và bằng 3/4 tháng 8. Tháng 6 có 120 mm. Tháng 8 có bao nhiêu mm?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-7014-o1",
-            "content": "320 mm",
+            "content": "<p>320 mm</p>",
             "correct": true
           },
           {
             "id": "q-7014-o2",
-            "content": "240 mm",
+            "content": "<p>240 mm</p>",
             "correct": false
           },
           {
             "id": "q-7014-o3",
-            "content": "180 mm",
+            "content": "<p>180 mm</p>",
             "correct": false
           },
           {
             "id": "q-7014-o4",
-            "content": "360 mm",
+            "content": "<p>360 mm</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Tháng 7: 240 mm; tháng 8: 240 : 3/4 = 320 mm.",
+      "solution": "<p>Tháng 7: 240 mm; tháng 8: 240 : 3/4 = 320 mm.</p>",
       "children": [],
       "revision": 1,
       "commonMistakes": null,
@@ -893,28 +893,28 @@
       },
       "createdAt": "2026-09-29T08:00:00+07:00",
       "updatedAt": "2026-10-01T09:00:00+07:00",
-      "content": "Một thí nghiệm cho thấy cây được chiếu sáng nhiều hơn thì lớn nhanh hơn. Thí nghiệm cần thêm điều kiện nào để kết luận ánh sáng là nguyên nhân?",
+      "content": "<p>Một thí nghiệm cho thấy cây được chiếu sáng nhiều hơn thì lớn nhanh hơn. Thí nghiệm cần thêm điều kiện nào để kết luận ánh sáng là nguyên nhân?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-7015-o1",
-            "content": "Giữ nguyên nước, đất và nhiệt độ giữa các nhóm cây",
+            "content": "<p>Giữ nguyên nước, đất và nhiệt độ giữa các nhóm cây</p>",
             "correct": true
           },
           {
             "id": "q-7015-o2",
-            "content": "Tăng thêm phân bón cho nhóm được chiếu sáng",
+            "content": "<p>Tăng thêm phân bón cho nhóm được chiếu sáng</p>",
             "correct": false
           },
           {
             "id": "q-7015-o3",
-            "content": "Chỉ dùng một cây duy nhất",
+            "content": "<p>Chỉ dùng một cây duy nhất</p>",
             "correct": false
           },
           {
             "id": "q-7015-o4",
-            "content": "Đo chiều cao cây một lần",
+            "content": "<p>Đo chiều cao cây một lần</p>",
             "correct": false
           }
         ],

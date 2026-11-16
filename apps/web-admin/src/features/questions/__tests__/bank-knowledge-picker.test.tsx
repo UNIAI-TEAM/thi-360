@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import type { KnowledgeRef } from "@/features/content/types";
 import { renderWithProviders } from "@/test/render";
+import { withQuestionsServer } from "./api-fixtures";
+
+// Cây kiến thức đến từ `GET /content-reference`: "máy chủ giả" nạp cây MAPID từ `content/mock/reference.json`.
+withQuestionsServer();
 
 const LIMIT_REF: KnowledgeRef = { nodeId: "kn-1D4-2-3", code: "1D4-2-3", name: "x", primary: true };
 

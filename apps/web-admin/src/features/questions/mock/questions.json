@@ -45,34 +45,34 @@
       },
       "createdAt": "2026-10-04T08:07:00+07:00",
       "updatedAt": "2026-11-04T10:11:00+07:00",
-      "content": "Tính giới hạn lim (2n + 1)/(n + 3).",
+      "content": "<p>Tính giới hạn lim (2n + 1)/(n + 3).</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0001-o1",
-            "content": "1",
+            "content": "<p>1</p>",
             "correct": false
           },
           {
             "id": "q-0001-o2",
-            "content": "2",
+            "content": "<p>2</p>",
             "correct": true
           },
           {
             "id": "q-0001-o3",
-            "content": "3",
+            "content": "<p>3</p>",
             "correct": false
           },
           {
             "id": "q-0001-o4",
-            "content": "0",
+            "content": "<p>0</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -110,34 +110,34 @@
       },
       "createdAt": "2026-10-07T08:14:00+07:00",
       "updatedAt": "2026-11-07T10:22:00+07:00",
-      "content": "Tính giới hạn của (x² − 4)/(x − 2) khi x tiến tới 2.",
+      "content": "<p>Tính giới hạn của (x² − 4)/(x − 2) khi x tiến tới 2.</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0002-o1",
-            "content": "0",
+            "content": "<p>0</p>",
             "correct": false
           },
           {
             "id": "q-0002-o2",
-            "content": "2",
+            "content": "<p>2</p>",
             "correct": false
           },
           {
             "id": "q-0002-o3",
-            "content": "4",
+            "content": "<p>4</p>",
             "correct": true
           },
           {
             "id": "q-0002-o4",
-            "content": "Không tồn tại",
+            "content": "<p>Không tồn tại</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -175,35 +175,35 @@
       },
       "createdAt": "2026-10-10T08:21:00+07:00",
       "updatedAt": "2026-11-10T10:33:00+07:00",
-      "content": "Chọn các hàm số liên tục trên ℝ.",
+      "content": "<p>Chọn các hàm số liên tục trên ℝ.</p>",
       "body": {
         "type": "MULTIPLE_CHOICE",
         "options": [
           {
             "id": "q-0003-o1",
-            "content": "y = x³ − 2x",
+            "content": "<p>y = x³ − 2x</p>",
             "correct": true
           },
           {
             "id": "q-0003-o2",
-            "content": "y = 1/x",
+            "content": "<p>y = 1/x</p>",
             "correct": false
           },
           {
             "id": "q-0003-o3",
-            "content": "y = sin x",
+            "content": "<p>y = sin x</p>",
             "correct": true
           },
           {
             "id": "q-0003-o4",
-            "content": "y = √x",
+            "content": "<p>y = √x</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true,
         "scoringRule": "ALL_OR_NOTHING"
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -241,7 +241,7 @@
       },
       "createdAt": "2026-10-13T08:28:00+07:00",
       "updatedAt": "2026-11-13T10:44:00+07:00",
-      "content": "Hệ số góc của tiếp tuyến với đồ thị y = x² tại điểm có hoành độ 3 là ___.",
+      "content": "<p>Hệ số góc của tiếp tuyến với đồ thị y = x² tại điểm có hoành độ 3 là ___.</p>",
       "body": {
         "type": "SHORT_ANSWER",
         "answers": [
@@ -293,25 +293,25 @@
       },
       "createdAt": "2026-10-02T08:35:00+07:00",
       "updatedAt": "2026-11-02T10:55:00+07:00",
-      "content": "Xét tính đúng sai của các mệnh đề về đạo hàm.",
+      "content": "<p>Xét tính đúng sai của các mệnh đề về đạo hàm.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-0005-s1",
-            "content": "(x²)' = 2x",
+            "content": "<p>(x²)' = 2x</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-0005-s2",
-            "content": "(sin x)' = −cos x",
+            "content": "<p>(sin x)' = −cos x</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-0005-s3",
-            "content": "(c)' = 0 với c là hằng số",
+            "content": "<p>(c)' = 0 với c là hằng số</p>",
             "answer": true,
             "points": null
           }
@@ -323,7 +323,7 @@
           1
         ]
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -355,34 +355,34 @@
       },
       "createdAt": "2026-10-05T08:42:00+07:00",
       "updatedAt": "2026-11-05T10:06:00+07:00",
-      "content": "Hàm số y = x³ − 3x + 1 đạt cực đại tại điểm nào?",
+      "content": "<p>Hàm số y = x³ − 3x + 1 đạt cực đại tại điểm nào?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0006-o1",
-            "content": "x = 1",
+            "content": "<p>x = 1</p>",
             "correct": false
           },
           {
             "id": "q-0006-o2",
-            "content": "x = −1",
+            "content": "<p>x = −1</p>",
             "correct": false
           },
           {
             "id": "q-0006-o3",
-            "content": "x = 0",
+            "content": "<p>x = 0</p>",
             "correct": false
           },
           {
             "id": "q-0006-o4",
-            "content": "x = 3",
+            "content": "<p>x = 3</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -420,7 +420,7 @@
       },
       "createdAt": "2026-10-08T08:49:00+07:00",
       "updatedAt": "2026-11-08T10:17:00+07:00",
-      "content": "Có bao nhiêu giá trị nguyên của m để hàm số y = x³ − 3mx² + 3 có hai điểm cực trị nằm về hai phía trục hoành? Đáp án: ___",
+      "content": "<p>Có bao nhiêu giá trị nguyên của m để hàm số y = x³ − 3mx² + 3 có hai điểm cực trị nằm về hai phía trục hoành? Đáp án: ___</p>",
       "body": {
         "type": "SHORT_ANSWER",
         "answers": [
@@ -428,7 +428,7 @@
         ],
         "inputHint": null
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -466,28 +466,28 @@
       },
       "createdAt": "2026-10-11T08:56:00+07:00",
       "updatedAt": "2026-11-11T10:28:00+07:00",
-      "content": "Tính tích phân ∫₀¹ 2x dx.",
+      "content": "<p>Tính tích phân ∫₀¹ 2x dx.</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0008-o1",
-            "content": "1",
+            "content": "<p>1</p>",
             "correct": true
           },
           {
             "id": "q-0008-o2",
-            "content": "2",
+            "content": "<p>2</p>",
             "correct": false
           },
           {
             "id": "q-0008-o3",
-            "content": "1/2",
+            "content": "<p>1/2</p>",
             "correct": false
           },
           {
             "id": "q-0008-o4",
-            "content": "0",
+            "content": "<p>0</p>",
             "correct": false
           }
         ],
@@ -531,35 +531,35 @@
       },
       "createdAt": "2026-10-14T08:03:00+07:00",
       "updatedAt": "2026-11-14T10:39:00+07:00",
-      "content": "Kéo nguyên hàm phù hợp vào từng hàm số.",
+      "content": "<p>Kéo nguyên hàm phù hợp vào từng hàm số.</p>",
       "body": {
         "type": "MATCHING",
         "left": [
           {
             "id": "q-0009-z1",
-            "content": "cos x"
+            "content": "<p>cos x</p>"
           },
           {
             "id": "q-0009-z2",
-            "content": "eˣ"
+            "content": "<p>eˣ</p>"
           },
           {
             "id": "q-0009-z3",
-            "content": "1/x"
+            "content": "<p>1/x</p>"
           }
         ],
         "right": [
           {
             "id": "q-0009-i1",
-            "content": "sin x + C"
+            "content": "<p>sin x + C</p>"
           },
           {
             "id": "q-0009-i2",
-            "content": "eˣ + C"
+            "content": "<p>eˣ + C</p>"
           },
           {
             "id": "q-0009-i3",
-            "content": "ln|x| + C"
+            "content": "<p>ln|x| + C</p>"
           }
         ],
         "pairs": [
@@ -583,7 +583,7 @@
         "shuffleLeft": false,
         "shuffleRight": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -627,34 +627,34 @@
       },
       "createdAt": "2026-10-03T08:10:00+07:00",
       "updatedAt": "2026-11-03T10:50:00+07:00",
-      "content": "Cho A = {1; 2; 3}, B = {2; 3; 4}. Tập A ∩ B là:",
+      "content": "<p>Cho A = {1; 2; 3}, B = {2; 3; 4}. Tập A ∩ B là:</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0010-o1",
-            "content": "{2; 3}",
+            "content": "<p>{2; 3}</p>",
             "correct": true
           },
           {
             "id": "q-0010-o2",
-            "content": "{1; 4}",
+            "content": "<p>{1; 4}</p>",
             "correct": false
           },
           {
             "id": "q-0010-o3",
-            "content": "{1; 2; 3; 4}",
+            "content": "<p>{1; 2; 3; 4}</p>",
             "correct": false
           },
           {
             "id": "q-0010-o4",
-            "content": "∅",
+            "content": "<p>∅</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -692,25 +692,25 @@
       },
       "createdAt": "2026-10-06T08:17:00+07:00",
       "updatedAt": "2026-11-06T10:01:00+07:00",
-      "content": "Cho hàm số y = x² − 4x + 3. Xét các mệnh đề sau.",
+      "content": "<p>Cho hàm số y = x² − 4x + 3. Xét các mệnh đề sau.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-0011-s1",
-            "content": "Đỉnh parabol là I(2; −1)",
+            "content": "<p>Đỉnh parabol là I(2; −1)</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-0011-s2",
-            "content": "Hàm số đồng biến trên (−∞; 2)",
+            "content": "<p>Hàm số đồng biến trên (−∞; 2)</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-0011-s3",
-            "content": "Đồ thị cắt trục tung tại (0; 3)",
+            "content": "<p>Đồ thị cắt trục tung tại (0; 3)</p>",
             "answer": true,
             "points": null
           }
@@ -722,7 +722,7 @@
           1
         ]
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -761,35 +761,35 @@
       },
       "createdAt": "2026-10-09T08:24:00+07:00",
       "updatedAt": "2026-11-09T10:12:00+07:00",
-      "content": "Hàm số y = −x³ + 3x nghịch biến trên những khoảng nào?",
+      "content": "<p>Hàm số y = −x³ + 3x nghịch biến trên những khoảng nào?</p>",
       "body": {
         "type": "MULTIPLE_CHOICE",
         "options": [
           {
             "id": "q-0012-o1",
-            "content": "(−∞; −1)",
+            "content": "<p>(−∞; −1)</p>",
             "correct": true
           },
           {
             "id": "q-0012-o2",
-            "content": "(−1; 1)",
+            "content": "<p>(−1; 1)</p>",
             "correct": false
           },
           {
             "id": "q-0012-o3",
-            "content": "(1; +∞)",
+            "content": "<p>(1; +∞)</p>",
             "correct": true
           },
           {
             "id": "q-0012-o4",
-            "content": "(0; 2)",
+            "content": "<p>(0; 2)</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true,
         "scoringRule": "ALL_OR_NOTHING"
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -827,34 +827,34 @@
       },
       "createdAt": "2026-10-12T08:31:00+07:00",
       "updatedAt": "2026-11-12T10:23:00+07:00",
-      "content": "Một vật dao động điều hòa với phương trình x = 5cos(4πt) cm. Biên độ dao động là:",
+      "content": "<p>Một vật dao động điều hòa với phương trình x = 5cos(4πt) cm. Biên độ dao động là:</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0013-o1",
-            "content": "5 cm",
+            "content": "<p>5 cm</p>",
             "correct": true
           },
           {
             "id": "q-0013-o2",
-            "content": "4 cm",
+            "content": "<p>4 cm</p>",
             "correct": false
           },
           {
             "id": "q-0013-o3",
-            "content": "4π cm",
+            "content": "<p>4π cm</p>",
             "correct": false
           },
           {
             "id": "q-0013-o4",
-            "content": "10 cm",
+            "content": "<p>10 cm</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -892,7 +892,7 @@
       },
       "createdAt": "2026-10-01T08:38:00+07:00",
       "updatedAt": "2026-11-01T10:34:00+07:00",
-      "content": "Con lắc lò xo có k = 100 N/m, biên độ 4 cm. Cơ năng của con lắc là ___ J.",
+      "content": "<p>Con lắc lò xo có k = 100 N/m, biên độ 4 cm. Cơ năng của con lắc là ___ J.</p>",
       "body": {
         "type": "SHORT_ANSWER",
         "answers": [
@@ -901,7 +901,7 @@
         ],
         "inputHint": null
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -932,34 +932,34 @@
       },
       "createdAt": "2026-10-04T08:45:00+07:00",
       "updatedAt": "2026-11-04T10:45:00+07:00",
-      "content": "Lực tương tác giữa hai điện tích điểm tăng mấy lần khi khoảng cách giảm một nửa?",
+      "content": "<p>Lực tương tác giữa hai điện tích điểm tăng mấy lần khi khoảng cách giảm một nửa?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0015-o1",
-            "content": "2 lần",
+            "content": "<p>2 lần</p>",
             "correct": false
           },
           {
             "id": "q-0015-o2",
-            "content": "4 lần",
+            "content": "<p>4 lần</p>",
             "correct": true
           },
           {
             "id": "q-0015-o3",
-            "content": "Giảm 2 lần",
+            "content": "<p>Giảm 2 lần</p>",
             "correct": false
           },
           {
             "id": "q-0015-o4",
-            "content": "Không đổi",
+            "content": "<p>Không đổi</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -997,28 +997,28 @@
       },
       "createdAt": "2026-10-07T08:52:00+07:00",
       "updatedAt": "2026-11-07T10:56:00+07:00",
-      "content": "Công thức tổng quát của este no, đơn chức, mạch hở là:",
+      "content": "<p>Công thức tổng quát của este no, đơn chức, mạch hở là:</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0016-o1",
-            "content": "CₙH₂ₙO₂ (n ≥ 2)",
+            "content": "<p>CₙH₂ₙO₂ (n ≥ 2)</p>",
             "correct": true
           },
           {
             "id": "q-0016-o2",
-            "content": "CₙH₂ₙ₊₂O",
+            "content": "<p>CₙH₂ₙ₊₂O</p>",
             "correct": false
           },
           {
             "id": "q-0016-o3",
-            "content": "CₙH₂ₙO (n ≥ 1)",
+            "content": "<p>CₙH₂ₙO (n ≥ 1)</p>",
             "correct": false
           },
           {
             "id": "q-0016-o4",
-            "content": "CₙH₂ₙ₋₂O₂",
+            "content": "<p>CₙH₂ₙ₋₂O₂</p>",
             "correct": false
           }
         ],
@@ -1062,34 +1062,34 @@
       },
       "createdAt": "2026-10-10T08:59:00+07:00",
       "updatedAt": "2026-11-10T10:07:00+07:00",
-      "content": "Điện phân dung dịch CuSO₄ với điện cực trơ, ở catot thu được:",
+      "content": "<p>Điện phân dung dịch CuSO₄ với điện cực trơ, ở catot thu được:</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0017-o1",
-            "content": "Cu",
+            "content": "<p>Cu</p>",
             "correct": true
           },
           {
             "id": "q-0017-o2",
-            "content": "O₂",
+            "content": "<p>O₂</p>",
             "correct": false
           },
           {
             "id": "q-0017-o3",
-            "content": "H₂",
+            "content": "<p>H₂</p>",
             "correct": false
           },
           {
             "id": "q-0017-o4",
-            "content": "SO₂",
+            "content": "<p>SO₂</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -1128,19 +1128,19 @@
       },
       "createdAt": "2026-10-13T08:06:00+07:00",
       "updatedAt": "2026-11-13T10:18:00+07:00",
-      "content": "Xét các phát biểu về phản ứng thủy phân este.",
+      "content": "<p>Xét các phát biểu về phản ứng thủy phân este.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-0018-s1",
-            "content": "Thủy phân trong môi trường kiềm là phản ứng một chiều",
+            "content": "<p>Thủy phân trong môi trường kiềm là phản ứng một chiều</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-0018-s2",
-            "content": "Thủy phân trong môi trường axit luôn hoàn toàn",
+            "content": "<p>Thủy phân trong môi trường axit luôn hoàn toàn</p>",
             "answer": false,
             "points": null
           }
@@ -1151,7 +1151,7 @@
           1
         ]
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -1189,34 +1189,34 @@
       },
       "createdAt": "2026-10-02T08:13:00+07:00",
       "updatedAt": "2026-11-02T10:29:00+07:00",
-      "content": "Quá trình nhân đôi ADN diễn ra theo nguyên tắc:",
+      "content": "<p>Quá trình nhân đôi ADN diễn ra theo nguyên tắc:</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0019-o1",
-            "content": "Bổ sung và bán bảo toàn",
+            "content": "<p>Bổ sung và bán bảo toàn</p>",
             "correct": true
           },
           {
             "id": "q-0019-o2",
-            "content": "Chỉ bổ sung",
+            "content": "<p>Chỉ bổ sung</p>",
             "correct": false
           },
           {
             "id": "q-0019-o3",
-            "content": "Bảo toàn",
+            "content": "<p>Bảo toàn</p>",
             "correct": false
           },
           {
             "id": "q-0019-o4",
-            "content": "Ngẫu nhiên",
+            "content": "<p>Ngẫu nhiên</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -1260,35 +1260,35 @@
       },
       "createdAt": "2026-10-05T08:20:00+07:00",
       "updatedAt": "2026-11-05T10:40:00+07:00",
-      "content": "Những thành phần nào tham gia trực tiếp vào dịch mã?",
+      "content": "<p>Những thành phần nào tham gia trực tiếp vào dịch mã?</p>",
       "body": {
         "type": "MULTIPLE_CHOICE",
         "options": [
           {
             "id": "q-0020-o1",
-            "content": "mARN",
+            "content": "<p>mARN</p>",
             "correct": true
           },
           {
             "id": "q-0020-o2",
-            "content": "tARN",
+            "content": "<p>tARN</p>",
             "correct": true
           },
           {
             "id": "q-0020-o3",
-            "content": "Ribôxôm",
+            "content": "<p>Ribôxôm</p>",
             "correct": true
           },
           {
             "id": "q-0020-o4",
-            "content": "ADN",
+            "content": "<p>ADN</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true,
         "scoringRule": "ALL_OR_NOTHING"
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -1326,34 +1326,34 @@
       },
       "createdAt": "2026-10-08T08:27:00+07:00",
       "updatedAt": "2026-11-08T10:51:00+07:00",
-      "content": "Chiến dịch Điện Biên Phủ kết thúc thắng lợi vào năm nào?",
+      "content": "<p>Chiến dịch Điện Biên Phủ kết thúc thắng lợi vào năm nào?</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0021-o1",
-            "content": "1954",
+            "content": "<p>1954</p>",
             "correct": true
           },
           {
             "id": "q-0021-o2",
-            "content": "1950",
+            "content": "<p>1950</p>",
             "correct": false
           },
           {
             "id": "q-0021-o3",
-            "content": "1947",
+            "content": "<p>1947</p>",
             "correct": false
           },
           {
             "id": "q-0021-o4",
-            "content": "1975",
+            "content": "<p>1975</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 3,
@@ -1391,34 +1391,34 @@
       },
       "createdAt": "2026-10-11T08:34:00+07:00",
       "updatedAt": "2026-11-11T10:02:00+07:00",
-      "content": "Vị trí địa lí nước ta tạo điều kiện thuận lợi cho:",
+      "content": "<p>Vị trí địa lí nước ta tạo điều kiện thuận lợi cho:</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0022-o1",
-            "content": "Giao lưu kinh tế với các nước",
+            "content": "<p>Giao lưu kinh tế với các nước</p>",
             "correct": true
           },
           {
             "id": "q-0022-o2",
-            "content": "Phát triển nông nghiệp ôn đới",
+            "content": "<p>Phát triển nông nghiệp ôn đới</p>",
             "correct": false
           },
           {
             "id": "q-0022-o3",
-            "content": "Khai thác dầu khí ở mọi vùng",
+            "content": "<p>Khai thác dầu khí ở mọi vùng</p>",
             "correct": false
           },
           {
             "id": "q-0022-o4",
-            "content": "Tránh hoàn toàn thiên tai",
+            "content": "<p>Tránh hoàn toàn thiên tai</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -1456,34 +1456,34 @@
       },
       "createdAt": "2026-10-14T08:41:00+07:00",
       "updatedAt": "2026-11-14T10:13:00+07:00",
-      "content": "She ___ in Hanoi since 2019.",
+      "content": "<p>She ___ in Hanoi since 2019.</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0023-o1",
-            "content": "has lived",
+            "content": "<p>has lived</p>",
             "correct": true
           },
           {
             "id": "q-0023-o2",
-            "content": "lived",
+            "content": "<p>lived</p>",
             "correct": false
           },
           {
             "id": "q-0023-o3",
-            "content": "is living",
+            "content": "<p>is living</p>",
             "correct": false
           },
           {
             "id": "q-0023-o4",
-            "content": "lives",
+            "content": "<p>lives</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -1522,34 +1522,34 @@
       },
       "createdAt": "2026-10-03T08:48:00+07:00",
       "updatedAt": "2026-11-03T10:24:00+07:00",
-      "content": "By the time we arrived, the film ___.",
+      "content": "<p>By the time we arrived, the film ___.</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0024-o1",
-            "content": "had started",
+            "content": "<p>had started</p>",
             "correct": true
           },
           {
             "id": "q-0024-o2",
-            "content": "has started",
+            "content": "<p>has started</p>",
             "correct": false
           },
           {
             "id": "q-0024-o3",
-            "content": "starts",
+            "content": "<p>starts</p>",
             "correct": false
           },
           {
             "id": "q-0024-o4",
-            "content": "was start",
+            "content": "<p>was start</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 2,
@@ -1593,7 +1593,7 @@
       },
       "createdAt": "2026-10-06T08:55:00+07:00",
       "updatedAt": "2026-11-06T10:35:00+07:00",
-      "content": "Choose the word closest in meaning to “rapid”: ___",
+      "content": "<p>Choose the word closest in meaning to “rapid”: ___</p>",
       "body": {
         "type": "SHORT_ANSWER",
         "answers": [
@@ -1602,7 +1602,7 @@
         ],
         "inputHint": null
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -1640,34 +1640,34 @@
       },
       "createdAt": "2026-10-09T08:02:00+07:00",
       "updatedAt": "2026-11-09T10:46:00+07:00",
-      "content": "Biện pháp tu từ chính trong câu “Mặt trời của bắp thì nằm trên đồi” là:",
+      "content": "<p>Biện pháp tu từ chính trong câu “Mặt trời của bắp thì nằm trên đồi” là:</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-0026-o1",
-            "content": "Ẩn dụ",
+            "content": "<p>Ẩn dụ</p>",
             "correct": true
           },
           {
             "id": "q-0026-o2",
-            "content": "So sánh",
+            "content": "<p>So sánh</p>",
             "correct": false
           },
           {
             "id": "q-0026-o3",
-            "content": "Hoán dụ",
+            "content": "<p>Hoán dụ</p>",
             "correct": false
           },
           {
             "id": "q-0026-o4",
-            "content": "Liệt kê",
+            "content": "<p>Liệt kê</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Lời giải: xem các bước biến đổi chi tiết.",
+      "solution": "<p>Lời giải: xem các bước biến đổi chi tiết.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -1705,10 +1705,10 @@
       },
       "createdAt": "2026-10-20T09:00:00+07:00",
       "updatedAt": "2026-11-02T09:00:00+07:00",
-      "content": "Đọc đoạn trích: “Đất nước là nơi ta hò hẹn / Đất nước là nơi em đánh rơi chiếc khăn trong nỗi nhớ thầm…” (Nguyễn Khoa Điềm) và trả lời các câu hỏi.",
+      "content": "<p>Đọc đoạn trích: “Đất nước là nơi ta hò hẹn / Đất nước là nơi em đánh rơi chiếc khăn trong nỗi nhớ thầm…” (Nguyễn Khoa Điềm) và trả lời các câu hỏi.</p>",
       "body": {
         "type": "QUESTION_SET",
-        "passage": "Đọc đoạn trích: “Đất nước là nơi ta hò hẹn / Đất nước là nơi em đánh rơi chiếc khăn trong nỗi nhớ thầm…” (Nguyễn Khoa Điềm) và trả lời các câu hỏi.",
+        "passage": "<p>Đọc đoạn trích: “Đất nước là nơi ta hò hẹn / Đất nước là nơi em đánh rơi chiếc khăn trong nỗi nhớ thầm…” (Nguyễn Khoa Điềm) và trả lời các câu hỏi.</p>",
         "childIds": [
           "q-0027-c1",
           "q-0027-c2",
@@ -1748,34 +1748,34 @@
           },
           "createdAt": "2026-10-20T09:00:00+07:00",
           "updatedAt": "2026-11-02T09:00:00+07:00",
-          "content": "Đoạn trích được viết theo thể thơ nào?",
+          "content": "<p>Đoạn trích được viết theo thể thơ nào?</p>",
           "body": {
             "type": "SINGLE_CHOICE",
             "options": [
               {
                 "id": "q-0027-c1-o1",
-                "content": "Tự do",
+                "content": "<p>Tự do</p>",
                 "correct": true
               },
               {
                 "id": "q-0027-c1-o2",
-                "content": "Lục bát",
+                "content": "<p>Lục bát</p>",
                 "correct": false
               },
               {
                 "id": "q-0027-c1-o3",
-                "content": "Bảy chữ",
+                "content": "<p>Bảy chữ</p>",
                 "correct": false
               },
               {
                 "id": "q-0027-c1-o4",
-                "content": "Năm chữ",
+                "content": "<p>Năm chữ</p>",
                 "correct": false
               }
             ],
             "shuffleOptions": true
           },
-          "solution": "Lời giải ngắn cho câu con.",
+          "solution": "<p>Lời giải ngắn cho câu con.</p>",
           "children": [],
           "taskTypeCode": null,
           "revision": 1,
@@ -1813,34 +1813,34 @@
           },
           "createdAt": "2026-10-20T09:00:00+07:00",
           "updatedAt": "2026-11-02T09:00:00+07:00",
-          "content": "Biện pháp tu từ nổi bật trong đoạn trích là:",
+          "content": "<p>Biện pháp tu từ nổi bật trong đoạn trích là:</p>",
           "body": {
             "type": "SINGLE_CHOICE",
             "options": [
               {
                 "id": "q-0027-c2-o1",
-                "content": "Điệp ngữ",
+                "content": "<p>Điệp ngữ</p>",
                 "correct": true
               },
               {
                 "id": "q-0027-c2-o2",
-                "content": "Nói quá",
+                "content": "<p>Nói quá</p>",
                 "correct": false
               },
               {
                 "id": "q-0027-c2-o3",
-                "content": "Nói giảm",
+                "content": "<p>Nói giảm</p>",
                 "correct": false
               },
               {
                 "id": "q-0027-c2-o4",
-                "content": "Hoán dụ",
+                "content": "<p>Hoán dụ</p>",
                 "correct": false
               }
             ],
             "shuffleOptions": true
           },
-          "solution": "Lời giải ngắn cho câu con.",
+          "solution": "<p>Lời giải ngắn cho câu con.</p>",
           "children": [],
           "taskTypeCode": null,
           "revision": 1,
@@ -1878,34 +1878,34 @@
           },
           "createdAt": "2026-10-20T09:00:00+07:00",
           "updatedAt": "2026-11-02T09:00:00+07:00",
-          "content": "Nội dung chính của đoạn trích là:",
+          "content": "<p>Nội dung chính của đoạn trích là:</p>",
           "body": {
             "type": "SINGLE_CHOICE",
             "options": [
               {
                 "id": "q-0027-c3-o1",
-                "content": "Định nghĩa đất nước từ đời sống riêng tư",
+                "content": "<p>Định nghĩa đất nước từ đời sống riêng tư</p>",
                 "correct": true
               },
               {
                 "id": "q-0027-c3-o2",
-                "content": "Miêu tả thiên nhiên",
+                "content": "<p>Miêu tả thiên nhiên</p>",
                 "correct": false
               },
               {
                 "id": "q-0027-c3-o3",
-                "content": "Kể một trận đánh",
+                "content": "<p>Kể một trận đánh</p>",
                 "correct": false
               },
               {
                 "id": "q-0027-c3-o4",
-                "content": "Ca ngợi lao động",
+                "content": "<p>Ca ngợi lao động</p>",
                 "correct": false
               }
             ],
             "shuffleOptions": true
           },
-          "solution": "Lời giải ngắn cho câu con.",
+          "solution": "<p>Lời giải ngắn cho câu con.</p>",
           "children": [],
           "taskTypeCode": null,
           "revision": 1,
@@ -1947,36 +1947,36 @@
       },
       "createdAt": "2026-10-05T08:30:00+07:00",
       "updatedAt": "2026-10-21T15:10:00+07:00",
-      "content": "Viết đoạn văn nghị luận (khoảng 200 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của lòng biết ơn trong cuộc sống.",
+      "content": "<p>Viết đoạn văn nghị luận (khoảng 200 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của lòng biết ơn trong cuộc sống.</p>",
       "body": {
         "type": "ESSAY",
-        "gradingGuide": "Chấm theo các tiêu chí: Đảm bảo hình thức đoạn văn khoảng 200 chữ; Xác định đúng vấn đề nghị luận: ý nghĩa của lòng biết ơn; Triển khai vấn đề: lí lẽ rõ ràng, dẫn chứng phù hợp; Chính tả, ngữ pháp; cách diễn đạt mới mẻ, sáng tạo.",
+        "gradingGuide": "<p>Chấm theo các tiêu chí: Đảm bảo hình thức đoạn văn khoảng 200 chữ; Xác định đúng vấn đề nghị luận: ý nghĩa của lòng biết ơn; Triển khai vấn đề: lí lẽ rõ ràng, dẫn chứng phù hợp; Chính tả, ngữ pháp; cách diễn đạt mới mẻ, sáng tạo.</p>",
         "rubric": [
           {
             "id": "q-8001-r1",
-            "description": "Đảm bảo hình thức đoạn văn khoảng 200 chữ",
+            "description": "<p>Đảm bảo hình thức đoạn văn khoảng 200 chữ</p>",
             "points": 0.25
           },
           {
             "id": "q-8001-r2",
-            "description": "Xác định đúng vấn đề nghị luận: ý nghĩa của lòng biết ơn",
+            "description": "<p>Xác định đúng vấn đề nghị luận: ý nghĩa của lòng biết ơn</p>",
             "points": 0.25
           },
           {
             "id": "q-8001-r3",
-            "description": "Triển khai vấn đề: lí lẽ rõ ràng, dẫn chứng phù hợp",
+            "description": "<p>Triển khai vấn đề: lí lẽ rõ ràng, dẫn chứng phù hợp</p>",
             "points": 1
           },
           {
             "id": "q-8001-r4",
-            "description": "Chính tả, ngữ pháp; cách diễn đạt mới mẻ, sáng tạo",
+            "description": "<p>Chính tả, ngữ pháp; cách diễn đạt mới mẻ, sáng tạo</p>",
             "points": 0.5
           }
         ],
-        "sampleAnswer": "Lòng biết ơn là sự ghi nhớ và trân trọng những gì người khác đã làm cho mình. Biết ơn giúp ta sống tử tế, gắn kết với gia đình, thầy cô, cộng đồng và có thêm động lực để sống tốt hơn…",
+        "sampleAnswer": "<p>Lòng biết ơn là sự ghi nhớ và trân trọng những gì người khác đã làm cho mình. Biết ơn giúp ta sống tử tế, gắn kết với gia đình, thầy cô, cộng đồng và có thêm động lực để sống tốt hơn…</p>",
         "wordLimit": 200
       },
-      "solution": "Chấp nhận nhiều cách triển khai, miễn hợp lí và thuyết phục.",
+      "solution": "<p>Chấp nhận nhiều cách triển khai, miễn hợp lí và thuyết phục.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -2012,24 +2012,24 @@
       },
       "createdAt": "2026-10-08T09:00:00+07:00",
       "updatedAt": "2026-10-22T10:45:00+07:00",
-      "content": "Viết bài văn nghị luận (khoảng 600 chữ) phân tích một truyện ngắn hiện đại Việt Nam mà anh/chị đã học, làm rõ giá trị nhân đạo của tác phẩm.",
+      "content": "<p>Viết bài văn nghị luận (khoảng 600 chữ) phân tích một truyện ngắn hiện đại Việt Nam mà anh/chị đã học, làm rõ giá trị nhân đạo của tác phẩm.</p>",
       "body": {
         "type": "ESSAY",
-        "gradingGuide": "Chấm theo các tiêu chí: Đảm bảo cấu trúc bài văn nghị luận: mở bài, thân bài, kết bài; Xác định đúng vấn đề: giá trị nhân đạo của tác phẩm; Phân tích giá trị nhân đạo qua nhân vật, chi tiết, tình huống.",
+        "gradingGuide": "<p>Chấm theo các tiêu chí: Đảm bảo cấu trúc bài văn nghị luận: mở bài, thân bài, kết bài; Xác định đúng vấn đề: giá trị nhân đạo của tác phẩm; Phân tích giá trị nhân đạo qua nhân vật, chi tiết, tình huống.</p>",
         "rubric": [
           {
             "id": "q-8002-r1",
-            "description": "Đảm bảo cấu trúc bài văn nghị luận: mở bài, thân bài, kết bài",
+            "description": "<p>Đảm bảo cấu trúc bài văn nghị luận: mở bài, thân bài, kết bài</p>",
             "points": 0.5
           },
           {
             "id": "q-8002-r2",
-            "description": "Xác định đúng vấn đề: giá trị nhân đạo của tác phẩm",
+            "description": "<p>Xác định đúng vấn đề: giá trị nhân đạo của tác phẩm</p>",
             "points": 0.5
           },
           {
             "id": "q-8002-r3",
-            "description": "Phân tích giá trị nhân đạo qua nhân vật, chi tiết, tình huống",
+            "description": "<p>Phân tích giá trị nhân đạo qua nhân vật, chi tiết, tình huống</p>",
             "points": 2
           }
         ],
@@ -2072,10 +2072,10 @@
       },
       "createdAt": "2026-10-10T09:00:00+07:00",
       "updatedAt": "2026-10-23T09:00:00+07:00",
-      "content": "Đọc đoạn trích: “Mỗi ngày đọc vài trang sách là cách ta trò chuyện với những người đi trước. Sách không cho ta câu trả lời có sẵn, nhưng giúp ta biết đặt câu hỏi đúng.” và trả lời các câu hỏi.",
+      "content": "<p>Đọc đoạn trích: “Mỗi ngày đọc vài trang sách là cách ta trò chuyện với những người đi trước. Sách không cho ta câu trả lời có sẵn, nhưng giúp ta biết đặt câu hỏi đúng.” và trả lời các câu hỏi.</p>",
       "body": {
         "type": "QUESTION_SET",
-        "passage": "Đọc đoạn trích: “Mỗi ngày đọc vài trang sách là cách ta trò chuyện với những người đi trước. Sách không cho ta câu trả lời có sẵn, nhưng giúp ta biết đặt câu hỏi đúng.” và trả lời các câu hỏi.",
+        "passage": "<p>Đọc đoạn trích: “Mỗi ngày đọc vài trang sách là cách ta trò chuyện với những người đi trước. Sách không cho ta câu trả lời có sẵn, nhưng giúp ta biết đặt câu hỏi đúng.” và trả lời các câu hỏi.</p>",
         "childIds": [
           "q-8003-c1",
           "q-8003-c2"
@@ -2112,18 +2112,18 @@
           },
           "createdAt": "2026-10-10T09:00:00+07:00",
           "updatedAt": "2026-10-23T09:00:00+07:00",
-          "content": "Xác định phương thức biểu đạt chính của đoạn trích.",
+          "content": "<p>Xác định phương thức biểu đạt chính của đoạn trích.</p>",
           "body": {
             "type": "ESSAY",
-            "gradingGuide": "Chấm theo các tiêu chí: Nêu đúng phương thức biểu đạt chính: nghị luận.",
+            "gradingGuide": "<p>Chấm theo các tiêu chí: Nêu đúng phương thức biểu đạt chính: nghị luận.</p>",
             "rubric": [
               {
                 "id": "q-8003-c1-r1",
-                "description": "Nêu đúng phương thức biểu đạt chính: nghị luận",
+                "description": "<p>Nêu đúng phương thức biểu đạt chính: nghị luận</p>",
                 "points": 0.5
               }
             ],
-            "sampleAnswer": "Nghị luận.",
+            "sampleAnswer": "<p>Nghị luận.</p>",
             "wordLimit": null
           },
           "solution": null,
@@ -2162,23 +2162,23 @@
           },
           "createdAt": "2026-10-10T09:00:00+07:00",
           "updatedAt": "2026-10-23T09:00:00+07:00",
-          "content": "Theo anh/chị, thông điệp ý nghĩa nhất của đoạn trích là gì? Vì sao?",
+          "content": "<p>Theo anh/chị, thông điệp ý nghĩa nhất của đoạn trích là gì? Vì sao?</p>",
           "body": {
             "type": "ESSAY",
-            "gradingGuide": "Chấm theo các tiêu chí: Nêu được một thông điệp phù hợp với đoạn trích; Lí giải hợp lí, thuyết phục.",
+            "gradingGuide": "<p>Chấm theo các tiêu chí: Nêu được một thông điệp phù hợp với đoạn trích; Lí giải hợp lí, thuyết phục.</p>",
             "rubric": [
               {
                 "id": "q-8003-c2-r1",
-                "description": "Nêu được một thông điệp phù hợp với đoạn trích",
+                "description": "<p>Nêu được một thông điệp phù hợp với đoạn trích</p>",
                 "points": 0.5
               },
               {
                 "id": "q-8003-c2-r2",
-                "description": "Lí giải hợp lí, thuyết phục",
+                "description": "<p>Lí giải hợp lí, thuyết phục</p>",
                 "points": 0.5
               }
             ],
-            "sampleAnswer": "Thông điệp: đọc sách giúp ta biết đặt câu hỏi đúng, vì…",
+            "sampleAnswer": "<p>Thông điệp: đọc sách giúp ta biết đặt câu hỏi đúng, vì…</p>",
             "wordLimit": 100
           },
           "solution": null,
@@ -2223,31 +2223,31 @@
       },
       "createdAt": "2026-10-06T10:00:00+07:00",
       "updatedAt": "2026-10-24T14:20:00+07:00",
-      "content": "Cho hàm số y = x³ − 3x. Xét tính đúng sai của các khẳng định sau.",
+      "content": "<p>Cho hàm số y = x³ − 3x. Xét tính đúng sai của các khẳng định sau.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-8004-s1",
-            "content": "Hàm số đồng biến trên khoảng (1; +∞)",
+            "content": "<p>Hàm số đồng biến trên khoảng (1; +∞)</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-8004-s2",
-            "content": "Hàm số nghịch biến trên khoảng (−1; 1)",
+            "content": "<p>Hàm số nghịch biến trên khoảng (−1; 1)</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-8004-s3",
-            "content": "Hàm số đạt cực đại tại x = 1",
+            "content": "<p>Hàm số đạt cực đại tại x = 1</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-8004-s4",
-            "content": "Đồ thị hàm số đi qua gốc tọa độ",
+            "content": "<p>Đồ thị hàm số đi qua gốc tọa độ</p>",
             "answer": true,
             "points": null
           }
@@ -2260,7 +2260,7 @@
           1
         ]
       },
-      "solution": "y' = 3x² − 3, y' = 0 khi x = ±1; lập bảng biến thiên.",
+      "solution": "<p>y' = 3x² − 3, y' = 0 khi x = ±1; lập bảng biến thiên.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -2296,31 +2296,31 @@
       },
       "createdAt": "2026-10-07T08:15:00+07:00",
       "updatedAt": "2026-10-25T09:40:00+07:00",
-      "content": "Một vật dao động điều hòa với phương trình x = 4cos(2πt) cm. Xét tính đúng sai của các khẳng định sau.",
+      "content": "<p>Một vật dao động điều hòa với phương trình x = 4cos(2πt) cm. Xét tính đúng sai của các khẳng định sau.</p>",
       "body": {
         "type": "TRUE_FALSE",
         "statements": [
           {
             "id": "q-8005-s1",
-            "content": "Biên độ dao động là 4 cm",
+            "content": "<p>Biên độ dao động là 4 cm</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-8005-s2",
-            "content": "Chu kì dao động là 2 s",
+            "content": "<p>Chu kì dao động là 2 s</p>",
             "answer": false,
             "points": null
           },
           {
             "id": "q-8005-s3",
-            "content": "Tại t = 0 vật ở vị trí biên dương",
+            "content": "<p>Tại t = 0 vật ở vị trí biên dương</p>",
             "answer": true,
             "points": null
           },
           {
             "id": "q-8005-s4",
-            "content": "Tốc độ cực đại của vật là 8π cm/s",
+            "content": "<p>Tốc độ cực đại của vật là 8π cm/s</p>",
             "answer": true,
             "points": null
           }
@@ -2333,7 +2333,7 @@
           1
         ]
       },
-      "solution": "ω = 2π rad/s nên T = 1 s; vmax = ωA = 8π cm/s.",
+      "solution": "<p>ω = 2π rad/s nên T = 1 s; vmax = ωA = 8π cm/s.</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -2369,35 +2369,35 @@
       },
       "createdAt": "2026-10-09T13:00:00+07:00",
       "updatedAt": "2026-10-26T11:05:00+07:00",
-      "content": "Hàm số y = x³ − 3x + 2 có những tính chất nào sau đây? (Có thể có nhiều đáp án đúng.)",
+      "content": "<p>Hàm số y = x³ − 3x + 2 có những tính chất nào sau đây? (Có thể có nhiều đáp án đúng.)</p>",
       "body": {
         "type": "MULTIPLE_CHOICE",
         "options": [
           {
             "id": "q-8006-o1",
-            "content": "Đạt cực đại tại x = −1",
+            "content": "<p>Đạt cực đại tại x = −1</p>",
             "correct": true
           },
           {
             "id": "q-8006-o2",
-            "content": "Đạt cực tiểu tại x = 1",
+            "content": "<p>Đạt cực tiểu tại x = 1</p>",
             "correct": true
           },
           {
             "id": "q-8006-o3",
-            "content": "Đồng biến trên ℝ",
+            "content": "<p>Đồng biến trên ℝ</p>",
             "correct": false
           },
           {
             "id": "q-8006-o4",
-            "content": "Giá trị cực đại bằng 2",
+            "content": "<p>Giá trị cực đại bằng 2</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true,
         "scoringRule": "PARTIAL"
       },
-      "solution": "y' = 3x² − 3; cực đại tại x = −1 (y = 4), cực tiểu tại x = 1 (y = 0).",
+      "solution": "<p>y' = 3x² − 3; cực đại tại x = −1 (y = 4), cực tiểu tại x = 1 (y = 0).</p>",
       "children": [],
       "taskTypeCode": null,
       "revision": 1,
@@ -2435,34 +2435,34 @@
       },
       "createdAt": "2026-10-11T09:30:00+07:00",
       "updatedAt": "2026-10-27T16:00:00+07:00",
-      "content": "Choose the word closest in meaning to “abundant” in the sentence: “The region has abundant natural resources.”",
+      "content": "<p>Choose the word closest in meaning to “abundant” in the sentence: “The region has abundant natural resources.”</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-8007-o1",
-            "content": "plentiful",
+            "content": "<p>plentiful</p>",
             "correct": true
           },
           {
             "id": "q-8007-o2",
-            "content": "scarce",
+            "content": "<p>scarce</p>",
             "correct": false
           },
           {
             "id": "q-8007-o3",
-            "content": "expensive",
+            "content": "<p>expensive</p>",
             "correct": false
           },
           {
             "id": "q-8007-o4",
-            "content": "hidden",
+            "content": "<p>hidden</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "“Abundant” nghĩa là dồi dào, phong phú.",
+      "solution": "<p>“Abundant” nghĩa là dồi dào, phong phú.</p>",
       "children": [],
       "revision": 1,
       "commonMistakes": null,
@@ -2499,34 +2499,34 @@
       },
       "createdAt": "2026-10-12T10:10:00+07:00",
       "updatedAt": "2026-10-28T08:50:00+07:00",
-      "content": "Tập xác định của hàm số y = √(x − 1) + 1/(x − 3) là",
+      "content": "<p>Tập xác định của hàm số y = √(x − 1) + 1/(x − 3) là</p>",
       "body": {
         "type": "SINGLE_CHOICE",
         "options": [
           {
             "id": "q-8008-o1",
-            "content": "[1; +∞) \\ {3}",
+            "content": "<p>[1; +∞) \\ {3}</p>",
             "correct": true
           },
           {
             "id": "q-8008-o2",
-            "content": "(1; +∞)",
+            "content": "<p>(1; +∞)</p>",
             "correct": false
           },
           {
             "id": "q-8008-o3",
-            "content": "[1; 3)",
+            "content": "<p>[1; 3)</p>",
             "correct": false
           },
           {
             "id": "q-8008-o4",
-            "content": "ℝ \\ {3}",
+            "content": "<p>ℝ \\ {3}</p>",
             "correct": false
           }
         ],
         "shuffleOptions": true
       },
-      "solution": "Điều kiện x − 1 ≥ 0 và x ≠ 3.",
+      "solution": "<p>Điều kiện x − 1 ≥ 0 và x ≠ 3.</p>",
       "children": [],
       "revision": 1,
       "commonMistakes": null,

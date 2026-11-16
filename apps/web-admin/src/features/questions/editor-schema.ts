@@ -30,15 +30,10 @@ import { CHILD_QUESTION_TYPES } from "./editor-types";
  *   điểm của câu (D20); số chữ gợi ý (nếu có) là số nguyên dương.
  */
 
-export const CONTENT_MAX = 10_000;
-export const OPTION_MAX = 1_000;
-export const SOLUTION_MAX = 10_000;
 export const ANSWER_MAX = 200;
 export const MIN_OPTIONS = 2;
 export const MIN_STATEMENTS = 2;
 export const MIN_CHILDREN = 2;
-export const CRITERION_MAX = 1_000;
-export const SAMPLE_ANSWER_MAX = 10_000;
 
 export type EditorErrorKey =
   | "subjectRequired"
@@ -48,11 +43,8 @@ export type EditorErrorKey =
   | "pointsInvalid"
   | "contentRequired"
   | "passageRequired"
-  | "contentMax"
-  | "solutionMax"
   | "optionsMin"
   | "optionRequired"
-  | "optionMax"
   | "singleCorrectRequired"
   | "multipleCorrectRequired"
   | "statementsMin"
@@ -73,7 +65,6 @@ export type EditorErrorKey =
   | "statementPointsInvalid"
   | "statementPointsMismatch"
   | "childKnowledgeRequired"
-  | "commonMistakesMax"
   | "childrenMin"
   | "childContentRequired"
   | "scoreValueInvalid"
@@ -81,10 +72,8 @@ export type EditorErrorKey =
   | "scoreLastMismatch"
   | "gradingGuideRequired"
   | "criterionRequired"
-  | "criterionMax"
   | "criterionPointsInvalid"
   | "rubricTotalMismatch"
-  | "sampleAnswerMax"
   | "wordLimitInvalid";
 
 export interface EditorIssue {
@@ -121,9 +110,6 @@ export function validateBody(
     case "MULTIPLE_CHOICE": {
       body.options.forEach((option, index) => {
         if (blankHtml(option.content)) issues.push({ path: [...prefix, "options", index, "content"], message: "optionRequired" });
-        else if (option.content.length > OPTION_MAX) {
-          issues.push({ path: [...prefix, "options", index, "content"], message: "optionMax" });
-        }
       });
       const correct = body.options.filter((option) => option.correct).length;
       if (body.options.length < MIN_OPTIONS) issues.push({ path: [...prefix, "options"], message: "optionsMin" });
@@ -138,8 +124,6 @@ export function validateBody(
       body.statements.forEach((statement, index) => {
         if (blankHtml(statement.content)) {
           issues.push({ path: [...prefix, "statements", index, "content"], message: "statementRequired" });
-        } else if (statement.content.length > OPTION_MAX) {
-          issues.push({ path: [...prefix, "statements", index, "content"], message: "optionMax" });
         }
         if (statement.answer === "") {
           issues.push({ path: [...prefix, "statements", index, "answer"], message: "statementAnswerRequired" });
@@ -204,7 +188,6 @@ export function validateBody(
       body.left.forEach((item, index) => {
         const at = [...prefix, "left", index];
         if (blankHtml(item.content)) issues.push({ path: [...at, "content"], message: "matchLeftRequired" });
-        else if (item.content.length > OPTION_MAX) issues.push({ path: [...at, "content"], message: "optionMax" });
         if (!item.rightId || !rightIds.has(item.rightId)) {
           issues.push({ path: [...at, "rightId"], message: "matchAnswerRequired" });
         } else {
@@ -217,7 +200,6 @@ export function validateBody(
       body.right.forEach((item, index) => {
         const at = [...prefix, "right", index, "content"];
         if (blankHtml(item.content)) issues.push({ path: at, message: "matchRightRequired" });
-        else if (item.content.length > OPTION_MAX) issues.push({ path: at, message: "optionMax" });
       });
       if (body.left.length < 1) issues.push({ path: [...prefix, "left"], message: "matchLeftMin" });
       else if (
@@ -236,9 +218,6 @@ export function validateBody(
       body.rubric.forEach((criterion, index) => {
         const at = [...prefix, "rubric", index];
         if (blankHtml(criterion.description)) issues.push({ path: [...at, "description"], message: "criterionRequired" });
-        else if (criterion.description.length > CRITERION_MAX) {
-          issues.push({ path: [...at, "description"], message: "criterionMax" });
-        }
         const value = parsePoints(criterion.points);
         if (!Number.isFinite(value) || value <= 0) issues.push({ path: [...at, "points"], message: "criterionPointsInvalid" });
       });
@@ -249,9 +228,6 @@ export function validateBody(
         !samePoints(rubricTotal(body.rubric), questionPoints)
       ) {
         issues.push({ path: [...prefix, "rubric"], message: "rubricTotalMismatch" });
-      }
-      if (body.sampleAnswer.length > SAMPLE_ANSWER_MAX) {
-        issues.push({ path: [...prefix, "sampleAnswer"], message: "sampleAnswerMax" });
       }
       const wordLimit = body.wordLimit.trim();
       if (wordLimit && (!/^\d+$/.test(wordLimit) || Number(wordLimit) <= 0)) {
@@ -298,7 +274,6 @@ export function validateQuestionEditor(values: QuestionEditorValues): EditorIssu
   if (values.knowledge.length === 0) issues.push({ path: ["knowledge"], message: "knowledgeRequired" });
 
   if (blankHtml(values.content)) issues.push({ path: ["content"], message: isSet ? "passageRequired" : "contentRequired" });
-  else if (values.content.length > CONTENT_MAX) issues.push({ path: ["content"], message: "contentMax" });
 
   validateBody(values.type, values.body, values.content, ["body"], issues, values.points);
 
@@ -306,19 +281,14 @@ export function validateQuestionEditor(values: QuestionEditorValues): EditorIssu
     values.children.forEach((child, index) => {
       const prefix = ["children", index];
       if (blankHtml(child.content)) issues.push({ path: [...prefix, "content"], message: "childContentRequired" });
-      else if (child.content.length > CONTENT_MAX) issues.push({ path: [...prefix, "content"], message: "contentMax" });
       validateBody(child.type, child.body, child.content, [...prefix, "body"], issues, child.points);
       validatePoints(child.points, [...prefix, "points"], issues);
-      if (child.solution.length > SOLUTION_MAX) issues.push({ path: [...prefix, "solution"], message: "solutionMax" });
       if (child.knowledgeOverride && child.knowledge.length === 0) {
         issues.push({ path: [...prefix, "knowledge"], message: "childKnowledgeRequired" });
       }
     });
     if (values.children.length < MIN_CHILDREN) issues.push({ path: ["children"], message: "childrenMin" });
-  } else if (values.solution.length > SOLUTION_MAX) {
-    issues.push({ path: ["solution"], message: "solutionMax" });
   }
-  if (values.commonMistakes.length > SOLUTION_MAX) issues.push({ path: ["commonMistakes"], message: "commonMistakesMax" });
   return issues;
 }
 

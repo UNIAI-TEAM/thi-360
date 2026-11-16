@@ -4,11 +4,13 @@ import { listExams } from "@/features/exams/api";
 import { getGradingAttempt, getGradingFilterOptions, listGradingAttempts } from "@/features/grading/api";
 import { listQuestions } from "@/features/questions/api";
 import { isContentMockEnabled, isGradingMockEnabled, notWired } from "@/lib/mock/flags";
-import { FakeServer } from "@/features/exams/__tests__/fake-exams-server";
+
+const get = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/api/client", () => ({ createBrowserApiClient: () => ({ GET: get }) }));
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
+  get.mockReset();
 });
 
 const NOT_WIRED = "ch\u01b0a n\u1ed1i API";
@@ -35,13 +37,16 @@ describe("cờ dữ liệu mẫu của đợt 2 (plan B7)", () => {
     vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
     vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "true");
 
-    await expect(listQuestions({})).rejects.toThrow(NOT_WIRED);
+    get.mockResolvedValueOnce({ data: undefined, error: { code: "UNAVAILABLE" }, response: { ok: false, status: 503 } });
+    await expect(listQuestions({})).rejects.toMatchObject({ status: 503, code: "UNAVAILABLE" });
     // Bài thi đã nối API (UNI-2620): cờ tắt thì gọi máy chủ, không còn NOT_WIRED và không đọc dữ liệu mẫu.
-    const server = new FakeServer()
-      .on("GET", "/api/v1/admin/exams", { status: 200, body: { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 } })
-      .install();
+    get.mockResolvedValueOnce({
+      data: { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 },
+      error: undefined,
+      response: { ok: true, status: 200 },
+    });
     await expect(listExams({})).resolves.toMatchObject({ content: [], totalElements: 0 });
-    expect(server.calls("GET", "/api/v1/admin/exams")).toHaveLength(1);
+    expect(get).toHaveBeenCalledWith("/api/v1/admin/exams", expect.anything());
 
     // Danh sách chờ chấm, bộ lọc và màn chấm đọc đề từ kho câu hỏi mẫu (`questionStore`) nên vẫn chạy.
     const page = await listGradingAttempts({});
@@ -65,9 +70,53 @@ describe("cờ dữ liệu mẫu của đợt 2 (plan B7)", () => {
     expect((await listExams({})).totalElements).toBeGreaterThan(0);
   });
 
-  it("cả hai cờ tắt: danh mục dùng chung cũng chưa nối", async () => {
+  it("cả hai cờ tắt: danh mục dùng chung gọi API thật và đổi sang kiểu của web", async () => {
     vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
     vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "false");
-    await expect(getContentReference()).rejects.toThrow(NOT_WIRED);
+    get.mockResolvedValueOnce({
+      data: {
+        subjects: [{ code: "MATH", name: "Mathematics" }],
+        grades: [],
+        difficulties: [],
+        tags: [],
+        taskTypes: [],
+        questionTypes: [{ code: "ESSAY", name: "Essay", active: true }],
+        examKinds: [
+          {
+            code: "HSA",
+            itemId: "kind-1",
+            name: "HSA",
+            practiceScoring: "RAW",
+            profileSet: true,
+            scopes: ["FULL", "PART"],
+            templateBy: "KIND",
+            timing: "PER_PART",
+            maxScore: 150,
+            trueFalseScoring: { method: "COUNT_TABLE", table: [0.1, 0.25, 0.5, 1] },
+            multipleChoiceRule: "PARTIAL",
+          },
+        ],
+        combinations: [],
+        competencies: [{ code: "C1", name: "Competency", examKindCodes: ["VACT"] }],
+        knowledgeTree: [{ id: "n1", code: "TOAN", name: "Mathematics", level: "SUBJECT", active: true, children: [] }],
+      },
+      response: { ok: true, status: 200 },
+    });
+
+    const reference = await getContentReference();
+
+    expect(get).toHaveBeenCalledWith("/api/v1/admin/content-reference");
+    expect(reference.subjects).toEqual([{ code: "MATH", name: "Mathematics" }]);
+    expect(reference.examKinds[0]).toMatchObject({
+      scopes: ["FULL", "PART"],
+      maxScore: 150,
+      referenceMax: null,
+      scoringDefaults: {
+        trueFalse: { method: "COUNT_TABLE", table: [0.1, 0.25, 0.5, 1], statementPoints: null },
+        multipleChoiceRule: "PARTIAL",
+      },
+    });
+    expect(reference.competencies[0]).toMatchObject({ subjectCode: null });
+    expect(reference.knowledgeTree[0]).toMatchObject({ subjectCode: "", gradeCode: null });
   });
 });

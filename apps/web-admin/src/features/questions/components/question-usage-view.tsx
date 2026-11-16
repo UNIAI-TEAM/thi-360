@@ -31,7 +31,16 @@ function usageFormatters(t: ReturnType<typeof useTranslations>, subjectName: (co
       if (used.length === 0) return t("noAttempts");
       return used.map((entry) => t("versionAttempts", { version: entry.version, count: entry.attemptCount })).join(" · ");
     },
-    location: (exam: QuestionUsageExam) => [exam.partName, subjectName(exam.subjectCode), exam.blockName].join(" › "),
+    /** Mỗi khối của bài một dòng: phần › lựa chọn › môn › khối. */
+    locations: (exam: QuestionUsageExam): string[] => {
+      const subject = subjectName(exam.subjectCode);
+      const blocks = exam.blocks?.length ? exam.blocks : [{ partName: exam.partName, optionCode: null, optionName: "", blockName: exam.blockName }];
+      return blocks
+        .map((block) =>
+          [block.partName, block.optionName || block.optionCode, subject, block.blockName].filter(Boolean).join(" › "),
+        )
+        .filter(Boolean);
+    },
   };
 }
 
@@ -48,7 +57,7 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
   const usage = usageQuery.data;
 
   const columns = useMemo<ColumnDef<QuestionUsageExam>[]>(() => {
-    const { attemptsText, location } = usageFormatters(t, lookup.subject);
+    const { attemptsText, locations } = usageFormatters(t, lookup.subject);
     return [
       {
         id: "exam",
@@ -74,7 +83,13 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
       {
         id: "location",
         header: t("columns.location"),
-        cell: ({ row }) => <span className="block min-w-48 whitespace-normal">{location(row.original)}</span>,
+        cell: ({ row }) => (
+          <div className="flex min-w-48 flex-col gap-0.5 whitespace-normal">
+            {locations(row.original).map((line, index) => (
+              <span key={index}>{line}</span>
+            ))}
+          </div>
+        ),
       },
       {
         id: "attempts",
@@ -85,7 +100,7 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
   }, [t, tExamStatus, lookup]);
 
   const cards = useMemo<TableCards<QuestionUsageExam>>(() => {
-    const { attemptsText, location } = usageFormatters(t, lookup.subject);
+    const { attemptsText, locations } = usageFormatters(t, lookup.subject);
     return {
       render: (exam) => (
         <ListCard
@@ -97,7 +112,7 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
           caption={exam.examCode}
           status={<StatusChip tone={EXAM_STATUS_TONE[exam.examStatus]}>{tExamStatus(exam.examStatus)}</StatusChip>}
           meta={[
-            { label: t("columns.location"), value: location(exam) },
+            { label: t("columns.location"), value: locations(exam).join("; ") },
             { label: t("columns.attempts"), value: attemptsText(exam) },
           ]}
         />
