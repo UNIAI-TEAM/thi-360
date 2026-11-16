@@ -196,7 +196,7 @@ public sealed interface QuestionBody {
         UUID id) {
 
         public ChildQuestion {
-            knowledgeItemIds = knowledgeItemIds == null ? List.of() : List.copyOf(knowledgeItemIds);
+            knowledgeItemIds = knowledgeItemIds == null ? null : List.copyOf(knowledgeItemIds);
         }
     }
 

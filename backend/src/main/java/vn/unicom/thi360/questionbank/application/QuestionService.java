@@ -227,11 +227,20 @@ public class QuestionService {
             versionCreated = true;
         }
 
+        QuestionBody snapshotBody = sanitized.body();
         // Câu con của bộ: đồng bộ dòng trước để bản chụp của bộ mang id câu con.
         if (type == QuestionType.QUESTION_SET
                 && sanitized.body() instanceof QuestionBody.QuestionSetBody setBody) {
-            syncChildren(question, setBody, classification, knowledge,
+            List<UUID> children = syncChildren(question, setBody, classification, knowledge,
                     targetVersion, now, actorId);
+            List<QuestionBody.ChildQuestion> withIds = new ArrayList<>(children.size());
+            for (int i = 0; i < children.size(); i++) {
+                QuestionBody.ChildQuestion child = setBody.children().get(i);
+                withIds.add(new QuestionBody.ChildQuestion(child.type(), child.content(), child.body(),
+                        child.solution(), child.points(), child.gradeItemId(), child.levelItemId(),
+                        child.knowledgeItemIds(), children.get(i)));
+            }
+            snapshotBody = new QuestionBody.QuestionSetBody(setBody.type(), setBody.passage(), withIds);
         }
 
         QuestionSnapshot snapshot = new QuestionSnapshot(
@@ -240,7 +249,7 @@ public class QuestionService {
                 classification.competencyItemId(), input.points(),
                 toSnapshotKnowledge(knowledge), tagItemIds,
                 sanitized.content(), sanitized.solution(), sanitized.commonMistakes(),
-                sanitized.attachmentIds(), sanitized.body());
+                sanitized.attachmentIds(), snapshotBody);
         upsertVersion(question.getId(), targetVersion, snapshot, actorId, now);
 
         question.setSubjectItemId(classification.subjectItemId());
@@ -610,14 +619,13 @@ public class QuestionService {
 
     // ---------------------------------------------------------------- câu con
 
-    private record ChildPersisted(Question row, QuestionSnapshot snapshot) {}
 
     /**
      * Đồng bộ dòng câu con với {@code children[]} của thân: tạo câu con mới (id do máy chủ
      * hoặc client cung cấp), cập nhật câu con có sẵn, xóa mềm câu con bị bỏ ra khỏi bộ (chặn
      * khi câu con đã dùng — 409 {@code QUESTION_IN_USE}).
      */
-    private List<ChildPersisted> syncChildren(
+    private List<UUID> syncChildren(
             Question parent,
             QuestionBody.QuestionSetBody setBody,
             ResolvedClassification parentClassification,
@@ -642,7 +650,6 @@ public class QuestionService {
             existing.put(row.getId(), row);
         }
         List<UUID> kept = new ArrayList<>(children.size());
-        List<ChildPersisted> persisted = new ArrayList<>(children.size());
         List<UUID> parentKnowledgeIds = parentKnowledge.stream().map(KnowledgeResolved::itemId).toList();
 
         for (int i = 0; i < children.size(); i++) {
@@ -650,7 +657,6 @@ public class QuestionService {
             UUID childId = child.id() != null ? child.id() : UUID.randomUUID();
             kept.add(childId);
             Question row = existing.get(childId);
-            boolean isNew = row == null || row.getDeletedAt() != null;
             if (row == null) {
                 row = Question.create(
                         childId, parent.getCode() + "." + (i + 1), child.type(),
@@ -671,7 +677,7 @@ public class QuestionService {
             UUID effectiveLevel = child.levelItemId() != null
                     ? child.levelItemId()
                     : parentClassification.levelItemId();
-            List<UUID> effectiveKnowledge = child.knowledgeItemIds().isEmpty()
+            List<UUID> effectiveKnowledge = child.knowledgeItemIds() == null
                     ? parentKnowledgeIds
                     : child.knowledgeItemIds();
             QuestionSnapshot childSnapshot = new QuestionSnapshot(
@@ -683,13 +689,12 @@ public class QuestionService {
                     List.of(), child.content(), child.solution(),
                     List.of(), List.of(), child.body());
 
-            applyChildRow(row, child, childSnapshot, isNew ? 1 : targetVersion,
+            applyChildRow(row, child, childSnapshot, targetVersion,
                     parentClassification.subjectItemId(), now, actorId);
             questionRepository.save(row);
-            upsertVersion(childId, isNew ? 1 : targetVersion, childSnapshot, actorId, now);
+            upsertVersion(childId, targetVersion, childSnapshot, actorId, now);
             knowledgeRepository.deleteByQuestionId(childId);
             saveKnowledgeIds(childId, effectiveKnowledge);
-            persisted.add(new ChildPersisted(row, childSnapshot));
         }
         for (Map.Entry<UUID, Question> entry : existing.entrySet()) {
             Question leftover = entry.getValue();
@@ -702,7 +707,7 @@ public class QuestionService {
                 leftover.touch(now, actorId);
             }
         }
-        return persisted;
+        return kept;
     }
 
     private void restoreChildren(
@@ -735,34 +740,24 @@ public class QuestionService {
                 row.setCode(parent.getCode() + "." + (i + 1));
                 row.setType(child.type());
             }
-            // Bản chụp câu con mang giá trị đã quy hồi: chuyển lại thành ghi đè khi bằng của bộ.
-            UUID gradeOverride = Objects.equals(child.gradeItemId(), parentSnapshot.gradeItemId())
-                    ? null
-                    : child.gradeItemId();
-            UUID levelOverride = Objects.equals(child.levelItemId(), parentSnapshot.levelItemId())
-                    ? null
-                    : child.levelItemId();
-            List<UUID> knowledgeIds = child.knowledgeItemIds();
-            boolean sameAsParent = new HashSet<>(knowledgeIds).equals(new HashSet<>(parentKnowledgeIds));
-            List<UUID> knowledgeOverride = sameAsParent ? List.of() : knowledgeIds;
-            List<UUID> effectiveKnowledge = knowledgeIds.isEmpty() ? parentKnowledgeIds : knowledgeIds;
+            UUID effectiveGrade = child.gradeItemId() == null ? parentSnapshot.gradeItemId() : child.gradeItemId();
+            UUID effectiveLevel = child.levelItemId() == null ? parentSnapshot.levelItemId() : child.levelItemId();
+            List<UUID> effectiveKnowledge = child.knowledgeItemIds() == null
+                    ? parentKnowledgeIds : child.knowledgeItemIds();
 
             QuestionSnapshot childSnapshot = new QuestionSnapshot(
                     parentSnapshot.subjectItemId(),
-                    child.gradeItemId(), child.levelItemId(),
+                    effectiveGrade, effectiveLevel,
                     parentSnapshot.taskTypeItemId(), parentSnapshot.competencyItemId(),
                     child.points() != null ? child.points() : BigDecimal.ONE,
                     effectiveKnowledge.stream()
                             .map(k -> new QuestionSnapshot.KnowledgeRef(k, false)).toList(),
                     List.of(), child.content(), child.solution(),
                     List.of(), List.of(), child.body());
-            applyChildRow(row, new QuestionBody.ChildQuestion(
-                            child.type(), child.content(), child.body(), child.solution(),
-                            child.points(), gradeOverride, levelOverride, knowledgeOverride, childId),
-                    childSnapshot, isNew ? 1 : targetVersion,
+            applyChildRow(row, child, childSnapshot, targetVersion,
                     parentSnapshot.subjectItemId(), now, actorId);
             questionRepository.save(row);
-            upsertVersion(childId, isNew ? 1 : targetVersion, childSnapshot, actorId, now);
+            upsertVersion(childId, targetVersion, childSnapshot, actorId, now);
             knowledgeRepository.deleteByQuestionId(childId);
             saveKnowledgeIds(childId, effectiveKnowledge);
         }
@@ -808,7 +803,7 @@ public class QuestionService {
             QuestionBody.ChildQuestion child, QuestionSnapshot parent, BigDecimal parentPoints) {
         UUID grade = child.gradeItemId() != null ? child.gradeItemId() : parent.gradeItemId();
         UUID level = child.levelItemId() != null ? child.levelItemId() : parent.levelItemId();
-        List<UUID> knowledgeIds = child.knowledgeItemIds().isEmpty()
+        List<UUID> knowledgeIds = child.knowledgeItemIds() == null
                 ? parent.knowledge().stream().map(QuestionSnapshot.KnowledgeRef::itemId).toList()
                 : child.knowledgeItemIds();
         return new QuestionSnapshot(
