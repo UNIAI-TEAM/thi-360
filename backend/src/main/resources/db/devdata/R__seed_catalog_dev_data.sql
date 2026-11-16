@@ -9,7 +9,7 @@ VALUES
     ('00000000-0000-7000-8200-000000000102', '00000000-0000-7000-8100-000000000001', 'QDA', 'qda', 2, 'Đánh giá năng lực ĐHSPHN (QDA)', 'QDA Competency Assessment', NULL, 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000102/')
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
--- 2. SUBJECT (TOAN, VAN, ANH, LY, HOA, SINH, SU, DIA)
+-- 2. SUBJECT: 12 môn của kỳ thi tốt nghiệp THPT (TOAN, VAN, ANH, LY, HOA, SINH, SU, DIA, TIN, GDKTPL, CNCN, CNNN)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
     ('00000000-0000-7000-8200-000000000201', '00000000-0000-7000-8100-000000000002', 'TOAN', 'toan', 1, 'Toán học', 'Mathematics', NULL, 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000201/'),
@@ -19,7 +19,11 @@ VALUES
     ('00000000-0000-7000-8200-000000000205', '00000000-0000-7000-8100-000000000002', 'HOA', 'hoa', 5, 'Hóa học', 'Chemistry', NULL, 4, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000205/'),
     ('00000000-0000-7000-8200-000000000206', '00000000-0000-7000-8100-000000000002', 'SINH', 'sinh', 6, 'Sinh học', 'Biology', NULL, 5, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000206/'),
     ('00000000-0000-7000-8200-000000000207', '00000000-0000-7000-8100-000000000002', 'SU', 'su', 7, 'Lịch sử', 'History', NULL, 6, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000207/'),
-    ('00000000-0000-7000-8200-000000000208', '00000000-0000-7000-8100-000000000002', 'DIA', 'dia', 8, 'Địa lí', 'Geography', NULL, 7, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000208/')
+    ('00000000-0000-7000-8200-000000000208', '00000000-0000-7000-8100-000000000002', 'DIA', 'dia', 8, 'Địa lí', 'Geography', NULL, 7, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000208/'),
+    ('00000000-0000-7000-8200-000000000209', '00000000-0000-7000-8100-000000000002', 'TIN', 'tin', 9, 'Tin học', 'Informatics', NULL, 8, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000209/'),
+    ('00000000-0000-7000-8200-000000000210', '00000000-0000-7000-8100-000000000002', 'GDKTPL', 'gdktpl', 10, 'Giáo dục kinh tế và pháp luật', 'Economic and Legal Education', NULL, 9, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000210/'),
+    ('00000000-0000-7000-8200-000000000211', '00000000-0000-7000-8100-000000000002', 'CNCN', 'cncn', 11, 'Công nghệ (định hướng công nghiệp)', 'Technology (industrial)', NULL, 10, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000211/'),
+    ('00000000-0000-7000-8200-000000000212', '00000000-0000-7000-8100-000000000002', 'CNNN', 'cnnn', 12, 'Công nghệ (định hướng nông nghiệp)', 'Technology (agricultural)', NULL, 11, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000212/')
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- 3. GRADE (G10, G11, G12)

@@ -290,7 +290,7 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "SUBJECT").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(8)));
+                .andExpect(jsonPath("$", hasSize(12)));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "GRADE").with(asStudent()))
                 .andExpect(status().isOk())

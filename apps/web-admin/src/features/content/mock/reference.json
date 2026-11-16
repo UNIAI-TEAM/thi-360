@@ -46,11 +46,11 @@
     },
     {
       "code": "TECH_INDUSTRY",
-      "name": "Công nghệ (Công nghiệp)"
+      "name": "Công nghệ (định hướng công nghiệp)"
     },
     {
       "code": "TECH_AGRICULTURE",
-      "name": "Công nghệ (Nông nghiệp)"
+      "name": "Công nghệ (định hướng nông nghiệp)"
     },
     {
       "code": "SCIENTIFIC_THINKING",
@@ -133,7 +133,7 @@
     },
     {
       "code": "QDA",
-      "name": "Đánh giá năng lực ĐHQG TP.HCM (QDA)",
+      "name": "Đánh giá năng lực Bộ Quốc phòng (QDA)",
       "formats": [
         "FULL",
         "SINGLE"

@@ -5139,7 +5139,7 @@
       "code": "THPTQG_TECH_INDUSTRY_2025",
       "kind": "THPTQG",
       "format": "FULL",
-      "name": "THPTQG 2025 · Công nghệ (Công nghiệp) · 28 câu · 50 phút",
+      "name": "THPTQG 2025 · Công nghệ (định hướng công nghiệp) · 28 câu · 50 phút",
       "subjectCode": "TECH_INDUSTRY",
       "structureYear": 2025,
       "matrixYear": 2025,
@@ -5148,7 +5148,7 @@
       "maxScore": 10,
       "parts": [
         {
-          "name": "Công nghệ (Công nghiệp)",
+          "name": "Công nghệ (định hướng công nghiệp)",
           "questionCount": 28,
           "durationMinutes": 50,
           "mode": "FIXED",
@@ -5182,7 +5182,7 @@
       "code": "THPTQG_TECH_AGRICULTURE_2025",
       "kind": "THPTQG",
       "format": "FULL",
-      "name": "THPTQG 2025 · Công nghệ (Nông nghiệp) · 28 câu · 50 phút",
+      "name": "THPTQG 2025 · Công nghệ (định hướng nông nghiệp) · 28 câu · 50 phút",
       "subjectCode": "TECH_AGRICULTURE",
       "structureYear": 2025,
       "matrixYear": 2025,
@@ -5191,7 +5191,7 @@
       "maxScore": 10,
       "parts": [
         {
-          "name": "Công nghệ (Nông nghiệp)",
+          "name": "Công nghệ (định hướng nông nghiệp)",
           "questionCount": 28,
           "durationMinutes": 50,
           "mode": "FIXED",
