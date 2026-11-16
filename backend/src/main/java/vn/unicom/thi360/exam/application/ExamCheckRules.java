@@ -28,7 +28,7 @@ import vn.unicom.thi360.exam.domain.solver.SubjectPick;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /** Structural and exact-quota checks; source feasibility remains the solver's responsibility. */
-final class ExamCheckRules {
+public final class ExamCheckRules {
     private final Exam exam;
     private final ExamStructureDocument document;
     private final ExamCheckIssues issues;
@@ -54,6 +54,21 @@ final class ExamCheckRules {
                 }
             }
         }
+    }
+
+    /** Static checks applicable to one resolved path, without validating unrelated options. */
+    public static List<ObjectNode> issuesForPath(ObjectMapper mapper, Exam exam,
+                                                 ExamStructureDocument document, PathResult result) {
+        ExamCheckRules rules = new ExamCheckRules(mapper, exam, document);
+        List<ObjectNode> found = new ArrayList<>(rules.common());
+        Set<String> selected = new LinkedHashSet<>();
+        result.path().chosen().forEach(choice -> selected.add(choice.optionId()));
+        for (ObjectNode issue : rules.unrepresentable()) {
+            String optionId = issue.path("optionId").asText(null);
+            if (optionId == null || selected.contains(optionId)) found.add(issue);
+        }
+        found.addAll(rules.path(result));
+        return dedupe(found);
     }
 
     List<ObjectNode> common() {
