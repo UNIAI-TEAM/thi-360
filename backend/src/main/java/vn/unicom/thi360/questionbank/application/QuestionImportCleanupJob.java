@@ -3,6 +3,7 @@ package vn.unicom.thi360.questionbank.application;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -37,20 +38,36 @@ public class QuestionImportCleanupJob {
         var candidates = uploads.findByStatusInAndExpiresAtBefore(
                 List.of(QuestionImportUpload.Status.UPLOADED, QuestionImportUpload.Status.COMMITTED), now);
         for (var candidate : candidates) {
-            String key = transactions.execute(status -> uploads.findByIdForUpdate(candidate.getId())
-                    .filter(row -> row.getStatus() != QuestionImportUpload.Status.COMMITTING
-                            && !row.getExpiresAt().isAfter(now))
-                    .map(row -> {
-                        uploads.delete(row);
-                        return row.getObjectKey();
-                    }).orElse(null));
-            if (key != null) {
-                try {
-                    storage.delete(key);
-                } catch (RuntimeException e) {
-                    log.warn("Could not delete expired import source object {}", key, e);
-                }
+            String key = claim(candidate.getId(), now);
+            if (key == null) {
+                continue;
             }
+            // MinIO call outside the row lock; the expired row stays discoverable until the
+            // object is actually gone, so a failed delete is retried on the next run (R1-7).
+            try {
+                storage.delete(key);
+            } catch (RuntimeException e) {
+                log.warn("Could not delete expired import source object {}", key, e);
+                continue;
+            }
+            forget(candidate.getId(), now);
         }
+    }
+
+    /** Short transaction: re-check under the row lock and return the object key to delete. */
+    private String claim(UUID id, Instant now) {
+        return transactions.execute(status -> uploads.findByIdForUpdate(id)
+                .filter(row -> row.getStatus() != QuestionImportUpload.Status.COMMITTING
+                        && !row.getExpiresAt().isAfter(now))
+                .map(QuestionImportUpload::getObjectKey)
+                .orElse(null));
+    }
+
+    /** Short transaction after the object is gone: drop the row only if still eligible. */
+    private void forget(UUID id, Instant now) {
+        transactions.executeWithoutResult(status -> uploads.findByIdForUpdate(id)
+                .filter(row -> row.getStatus() != QuestionImportUpload.Status.COMMITTING
+                        && !row.getExpiresAt().isAfter(now))
+                .ifPresent(uploads::delete));
     }
 }
