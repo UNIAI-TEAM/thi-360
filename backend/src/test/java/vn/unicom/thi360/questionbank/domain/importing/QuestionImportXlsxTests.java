@@ -8,6 +8,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
 class QuestionImportXlsxTests {
@@ -36,6 +37,40 @@ class QuestionImportXlsxTests {
             assertThrows(ImportFileException.class, () -> reader.read("a.xlsx", file, new ImportLimits(5, 2000))).code());
         assertEquals(ImportIssueCode.IMPORT_ROW_LIMIT_EXCEEDED,
             assertThrows(ImportFileException.class, () -> reader.read("a.xlsx", file, new ImportLimits(5_000_000, 1))).code());
+    }
+
+    @Test
+    void sparseSheetStaysBounded() throws Exception {
+        // Tệp thưa: ô tiêu đề ở cột xa (XFD) bị chặn bởi giới hạn cột; ô dữ liệu ở dòng
+        // 1_048_575 không bung thành ma trận — chỉ các dòng vật lý được đọc, giữ số dòng gốc.
+        byte[] wide = sparseXlsx(16_383, false, 0);
+        assertEquals(ImportIssueCode.IMPORT_INVALID_HEADER,
+            assertThrows(ImportFileException.class, () -> reader.read("a.xlsx", wide, ImportLimits.DEFAULT)).code());
+
+        byte[] deep = sparseXlsx(0, true, 1_048_575);
+        ImportSheet sheet = reader.read("a.xlsx", deep, ImportLimits.DEFAULT);
+        assertEquals(1, sheet.rows().size());
+        assertEquals(1_048_576, sheet.rows().getFirst().rowNumber());
+        assertEquals("far", sheet.rows().getFirst().cell("c0"));
+    }
+
+    private static byte[] sparseXlsx(int headerCol, boolean farDataRow, int dataRowIndex) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("S");
+            org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("type");
+            if (headerCol > 0) {
+                header.createCell(headerCol).setCellValue("far-header");
+            }
+            if (farDataRow) {
+                sheet.createRow(dataRowIndex).createCell(0).setCellValue("far");
+            } else {
+                sheet.createRow(1).createCell(0).setCellValue("x");
+            }
+            workbook.write(out);
+            return out.toByteArray();
+        }
     }
 
     private static byte[] rewrite(byte[] input, boolean bomb, boolean macro) throws Exception {

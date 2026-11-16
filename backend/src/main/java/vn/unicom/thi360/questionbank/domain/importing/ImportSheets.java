@@ -17,6 +17,20 @@ public final class ImportSheets {
     public static ImportSheet fromTable(
         ImportFileType fileType, String sheetName, List<List<String>> table, ImportLimits limits)
         throws ImportFileException {
+        int[] rowNumbers = new int[table.size()];
+        for (int i = 0; i < table.size(); i++) {
+            rowNumbers[i] = i + 1;
+        }
+        return fromTable(fileType, sheetName, table, rowNumbers, limits);
+    }
+
+    /**
+     * Như {@link #fromTable(ImportFileType, String, List, ImportLimits)} nhưng nhận số dòng
+     * gốc của từng phần tử {@code table} (reader XLSX chỉ gom các dòng vật lý không trống).
+     */
+    public static ImportSheet fromTable(
+        ImportFileType fileType, String sheetName, List<List<String>> table, int[] rowNumbers,
+        ImportLimits limits) throws ImportFileException {
 
         List<String> header = table.isEmpty() ? List.of() : table.get(0);
         if (header.isEmpty() || header.stream().allMatch(value -> value == null || value.isBlank())) {
@@ -31,13 +45,12 @@ public final class ImportSheets {
         for (int i = 1; i < table.size(); i++) {
             List<String> values = table.get(i);
             boolean blank = true;
-            Map<String, String> cells = new LinkedHashMap<>();
             for (int c = 0; c < keys.size(); c++) {
-                String value = c < values.size() && values.get(c) != null ? values.get(c) : "";
-                if (!value.isBlank()) {
+                String value = c < values.size() ? values.get(c) : null;
+                if (value != null && !value.isBlank()) {
                     blank = false;
+                    break;
                 }
-                cells.put(keys.get(c), value);
             }
             if (blank) {
                 continue;
@@ -47,7 +60,12 @@ public final class ImportSheets {
                     ImportIssueCode.IMPORT_ROW_LIMIT_EXCEEDED,
                     "Số dòng dữ liệu vượt quá giới hạn tối đa " + limits.maxRows() + " dòng");
             }
-            rows.add(new ImportSheetRow(i + 1, cells));
+            Map<String, String> cells = new LinkedHashMap<>();
+            for (int c = 0; c < keys.size(); c++) {
+                String value = c < values.size() && values.get(c) != null ? values.get(c) : "";
+                cells.put(keys.get(c), value);
+            }
+            rows.add(new ImportSheetRow(rowNumbers[i], cells));
         }
         if (rows.isEmpty()) {
             throw new ImportFileException(ImportIssueCode.IMPORT_EMPTY_FILE, "Tệp không có dòng dữ liệu");

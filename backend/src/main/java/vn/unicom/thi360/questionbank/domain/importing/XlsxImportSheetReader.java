@@ -34,6 +34,7 @@ public final class XlsxImportSheetReader implements ImportSheetReader {
     private static final double ZIP_MIN_INFLATE_RATIO = 0.01d;
     private static final long ZIP_MAX_ENTRY_SIZE = 10L * 1024L * 1024L;
     private static final long ZIP_MAX_TEXT_SIZE = 10L * 1024L * 1024L;
+    private static final int MAX_COLUMNS = 256;
 
     @Override
     public ImportSheet read(String fileName, byte[] fileBytes, ImportLimits limits) throws ImportFileException {
@@ -77,31 +78,67 @@ public final class XlsxImportSheetReader implements ImportSheetReader {
     }
 
     private ImportSheet parseSheet(Sheet sheet, ImportLimits limits) throws ImportFileException {
-        Row headerRow = sheet.getRow(sheet.getFirstRowNum());
-        if (headerRow == null) {
-            throw error(ImportIssueCode.IMPORT_INVALID_HEADER, "Thiếu dòng tiêu đề");
-        }
+        // Chỉ duyệt các dòng vật lý: tệp thưa (ô XFD1 / A1048576) không được bung thành
+        // ma trận đầy; giữ số dòng gốc của trang tính (R1-1).
         DataFormatter formatter = new DataFormatter(Locale.ROOT);
         List<List<String>> table = new ArrayList<>();
-        int lastCell = headerRow.getLastCellNum();
-        List<String> header = new ArrayList<>(Math.max(lastCell, 0));
-        for (int c = 0; c < lastCell; c++) {
-            header.add(readCellAsText(headerRow, c, formatter));
-        }
-        if (header.stream().allMatch(String::isBlank)) {
-            throw error(ImportIssueCode.IMPORT_INVALID_HEADER, "Thiếu dòng tiêu đề");
-        }
-        table.add(header);
-        int firstData = sheet.getFirstRowNum() + 1;
-        for (int i = firstData; i <= sheet.getLastRowNum(); i++) {
-            Row row = sheet.getRow(i);
-            List<String> values = new ArrayList<>(Math.max(lastCell, 0));
-            for (int c = 0; c < lastCell; c++) {
-                values.add(row == null ? "" : readCellAsText(row, c, formatter));
+        List<Integer> rowNumbers = new ArrayList<>();
+        int headerCols = -1;
+        int acceptedRows = 0;
+        for (Row row : sheet) {
+            int last = row.getLastCellNum();
+            if (headerCols < 0) {
+                if (last <= 0) {
+                    throw error(ImportIssueCode.IMPORT_INVALID_HEADER, "Thiếu dòng tiêu đề");
+                }
+                if (last > MAX_COLUMNS) {
+                    throw error(ImportIssueCode.IMPORT_INVALID_HEADER,
+                        "Số cột vượt quá giới hạn tối đa " + MAX_COLUMNS);
+                }
+                headerCols = last;
+                List<String> header = new ArrayList<>(headerCols);
+                for (int c = 0; c < headerCols; c++) {
+                    header.add(readCellAsText(row, c, formatter));
+                }
+                if (header.stream().allMatch(String::isBlank)) {
+                    throw error(ImportIssueCode.IMPORT_INVALID_HEADER, "Thiếu dòng tiêu đề");
+                }
+                table.add(header);
+                rowNumbers.add(row.getRowNum() + 1);
+                continue;
+            }
+            List<String> values = null;
+            boolean blank = true;
+            for (int c = 0; c < Math.min(last, headerCols); c++) {
+                String text = readCellAsText(row, c, formatter);
+                if (values == null) {
+                    values = new ArrayList<>(headerCols);
+                }
+                values.add(text);
+                if (!text.isBlank()) {
+                    blank = false;
+                }
+            }
+            if (blank) {
+                continue;
+            }
+            if (acceptedRows >= limits.maxRows()) {
+                throw error(ImportIssueCode.IMPORT_ROW_LIMIT_EXCEEDED,
+                    "Số dòng dữ liệu vượt quá giới hạn tối đa " + limits.maxRows() + " dòng");
+            }
+            acceptedRows++;
+            for (int c = values == null ? 0 : values.size(); c < headerCols; c++) {
+                values.add("");
             }
             table.add(values);
+            rowNumbers.add(row.getRowNum() + 1);
         }
-        return ImportSheets.fromTable(ImportFileType.XLSX, sheet.getSheetName(), table, limits);
+        if (headerCols < 0) {
+            throw error(ImportIssueCode.IMPORT_EMPTY_FILE, "Tệp Excel trống");
+        }
+        return ImportSheets.fromTable(
+            ImportFileType.XLSX, sheet.getSheetName(), table,
+            rowNumbers.stream().mapToInt(Integer::intValue).toArray(), limits);
     }
 
     private static String readCellAsText(Row row, int colIndex, DataFormatter formatter) {
