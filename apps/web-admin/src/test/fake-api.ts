@@ -123,7 +123,7 @@ export function fieldErrors(code: string, errors: { field: string; message?: str
  * Cài cho một file test: cả hai cờ dữ liệu mẫu tắt (nhánh API thật chạy, như trong production; danh mục dùng chung
  * cũng đọc dữ liệu mẫu khi `GRADING_MOCK` bật) và dọn registry trước mỗi test. Gọi sau `vi.mock("@/lib/api/client", …)`.
  */
-export function useRealApi(): void {
+export function withRealApi(): void {
   beforeEach(() => {
     fakeApi.reset();
     vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");

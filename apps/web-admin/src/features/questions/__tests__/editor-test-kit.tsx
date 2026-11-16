@@ -8,7 +8,10 @@ import { renderWithProviders } from "@/test/render";
 import { getQuestion } from "../api";
 import { createQuestion } from "../editor-api";
 import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
-import { questionStore } from "../mock/store";
+import { apiReferenceFromFixture, stubContentReference, withQuestionsServer } from "./api-fixtures";
+
+/** Kho đọc/ghi vào "máy chủ" câu hỏi giả của file test (nạp lại bộ câu mẫu trước mỗi test). */
+export const questionStore = withQuestionsServer();
 
 // Mỗi ô nội dung HTML là một trình soạn TipTap; biểu mẫu nhiều ô (phương án, cặp ghép, ý đúng/sai) dựng chậm trong jsdom.
 vi.setConfig({ testTimeout: 20_000 });
@@ -17,7 +20,9 @@ if (typeof document.elementFromPoint !== "function") document.elementFromPoint =
 
 /** Dựng chung cho test của từng trình soạn dạng câu (`question-editor-<dạng>.test.tsx`). */
 
+/** Giao diện tiếng Anh: máy chủ trả tên danh mục tiếng Anh (như `Accept-Language: en` qua proxy). */
 export function renderEn(ui: ReactElement) {
+  stubContentReference(apiReferenceFromFixture("en"));
   return renderWithProviders(ui, { locale: "en", messages: en });
 }
 

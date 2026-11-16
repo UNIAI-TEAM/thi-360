@@ -1,12 +1,10 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
-import { renderEn, rich } from "./editor-test-kit";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout } from "../components/question-detail-layout";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { questionStore } from "../mock/store";
+import { renderEn, rich } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ pathname: "/questions/new", push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -17,11 +15,6 @@ vi.mock("next/navigation", () => ({
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   navigation.push.mockReset();
-});
-
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
 });
 
 describe("soan cau Tu luan", () => {

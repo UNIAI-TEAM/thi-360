@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { describe, expect, it } from "vitest";
+import { ContentApiError } from "@/features/content/api-error";
 import { getQuestion } from "../api";
 import {
   createQuestion,
@@ -9,15 +9,21 @@ import {
   restoreQuestionVersion,
   updateQuestion,
 } from "../editor-api";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { toEditorValues, toSaveRequest } from "../editor-form";
 import { deriveVersionStates, diffSnapshots, servingVersion, toSnapshot } from "../editor-versioning";
 import type { UpdateQuestionRequest } from "../editor-types";
-import { questionStore } from "../mock/store";
+import { withQuestionsServer } from "./api-fixtures";
 
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
+withQuestionsServer({
+  usage: {
+    "q-0003": {
+      examIds: ["ex-1", "ex-2", "ex-3"],
+      ledger: [
+        { examId: "ex-1", kind: "ATTEMPT", versionNo: 1 },
+        { examId: "ex-2", kind: "ATTEMPT", versionNo: 2 },
+      ],
+    },
+  },
 });
 
 async function editRequest(id: string, change: (request: UpdateQuestionRequest) => void): Promise<UpdateQuestionRequest> {
@@ -79,7 +85,7 @@ describe("trạng thái phiên bản", () => {
   });
 });
 
-describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
+describe("API soạn câu hỏi (nhánh thật, client giả)", () => {
   it("tạo câu mới luôn ở trạng thái Nháp, phiên bản 1, có một mục lịch sử", async () => {
     const source = await getQuestion("q-0001");
     const created = await createQuestion(toSaveRequest(toEditorValues(source)));
@@ -96,7 +102,7 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     });
     const { question, versionCreated } = await updateQuestion("q-0021", request);
     expect(versionCreated).toBe(true);
-    expect(question).toMatchObject({ version: 4, status: "DRAFT", content: "Đề bài đã sửa" });
+    expect(question).toMatchObject({ version: 3, workingVersion: 4, status: "READY", content: "Đề bài đã sửa" });
 
     const versions = await listQuestionVersions("q-0021");
     expect(versions.versions.map((entry) => [entry.version, entry.state])).toEqual([
@@ -117,7 +123,8 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     expect(versionCreated).toBe(false);
     expect(question.version).toBe(2);
     const versions = await listQuestionVersions("q-0006");
-    expect(versions.versions.map((entry) => entry.state)).toEqual(["WORKING", "CURRENT"]);
+    // Câu Nháp chưa từng Sẵn sàng không có bản đang phục vụ: bản 1 đã được thay thế.
+    expect(versions.versions.map((entry) => entry.state)).toEqual(["WORKING", "SUPERSEDED"]);
     expect(versions.versions[0]?.snapshot.content).toBe("Bản nháp mới");
   });
 
@@ -141,14 +148,14 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
       expectedRevision: (await getQuestion("q-0021")).revision,
     });
     expect(versionCreated).toBe(true);
-    expect(question.status).toBe("DRAFT");
+    expect(question).toMatchObject({ status: "READY", workingVersion: before.latestVersion + 1 });
     expect(question.content).toBe(oldest.snapshot.content);
     const after = await listQuestionVersions("q-0021");
     expect(after.latestVersion).toBe(before.latestVersion + 1);
 
-    await expect(restoreQuestionVersion("q-0021", { version: 42, expectedRevision: (await getQuestion("q-0021")).revision })).rejects.toBeInstanceOf(
-      MockApiError,
-    );
+    await expect(
+      restoreQuestionVersion("q-0021", { version: 42, expectedRevision: (await getQuestion("q-0021")).revision }),
+    ).rejects.toBeInstanceOf(ContentApiError);
   });
 
   it("nhân bản câu chùm tạo câu Nháp mới với câu con mới", async () => {

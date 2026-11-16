@@ -1,15 +1,12 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/messages/en.json";
-import { renderWithProviders } from "@/test/render";
-import { resetQuestionHistoryForTests } from "../editor-api.mock";
+import { fail, fakeApi } from "@/test/fake-api";
 import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout, questionTabFromPathname } from "../components/question-detail-layout";
 import { QuestionUsageView } from "../components/question-usage-view";
 import { QuestionVersionsView } from "../components/question-versions-view";
-import { questionStore } from "../mock/store";
+import { questionStore, renderEn } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ pathname: "/questions/q-0003", push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -17,20 +14,21 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: navigation.push, replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
-function renderEn(ui: ReactElement) {
-  return renderWithProviders(ui, { locale: "en", messages: en });
-}
+
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   navigation.pathname = "/questions/q-0003";
   navigation.push.mockReset();
+  questionStore.server().setUsage("q-0003", {
+    examIds: ["ex-1", "ex-2", "ex-3"],
+    ledger: [{ examId: "ex-1", kind: "ATTEMPT", versionNo: 1 }],
+  });
 });
 
 afterEach(() => {
   window.history.replaceState(null, "", "/");
-  questionStore.reset();
-  resetQuestionHistoryForTests();
+
 });
 
 describe("chi tiết câu hỏi", () => {
@@ -70,7 +68,7 @@ describe("chi tiết câu hỏi", () => {
   });
 
   it("lỗi tải thì có nút thử lại", async () => {
-    window.history.replaceState(null, "", "/?mockState=error");
+    fakeApi.get("/api/v1/admin/questions/{id}", fail(500, { code: "INTERNAL" }));
     renderEn(
       <QuestionDetailLayout questionId="q-0003">
         <p>content</p>
@@ -102,12 +100,6 @@ describe("nơi đang dùng", () => {
 
   it("câu chưa dùng thì hiện trạng thái trống", async () => {
     renderEn(<QuestionUsageView questionId="q-0002" />);
-    expect(await screen.findByText("Not used in any exam")).toBeInTheDocument();
-  });
-
-  it("kịch bản empty cũng hiện trạng thái trống", async () => {
-    window.history.replaceState(null, "", "/?mockState=empty");
-    renderEn(<QuestionUsageView questionId="q-0003" />);
     expect(await screen.findByText("Not used in any exam")).toBeInTheDocument();
   });
 });

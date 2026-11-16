@@ -2,9 +2,12 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
+import { fail, fakeApi, ok } from "@/test/fake-api";
 import { renderWithProviders } from "@/test/render";
 import { QuestionBankView } from "../components/question-bank-view";
-import { questionStore } from "../mock/store";
+import { apiCounts, apiPage, withQuestionsServer } from "./api-fixtures";
+
+const questionStore = withQuestionsServer();
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -32,7 +35,6 @@ function setUrl(search: string) {
 beforeEach(() => setUrl(""));
 
 afterEach(() => {
-  questionStore.reset();
   routerMock.push.mockReset();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -40,11 +42,10 @@ afterEach(() => {
 });
 
 describe("QuestionBankView", () => {
-  it("hien danh sach, so cau theo trang thai, dai du lieu mau va lien ket tao/nhap", async () => {
+  it("hien danh sach, so cau theo trang thai va lien ket tao/nhap", async () => {
     renderWithProviders(<QuestionBankView />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Ngân hàng câu hỏi" })).toBeInTheDocument();
-    expect(screen.getByRole("note")).toHaveTextContent("Dữ liệu mẫu.");
     expect(screen.getByRole("link", { name: "Tạo câu hỏi" })).toHaveAttribute("href", "/questions/new");
     expect(screen.getByRole("link", { name: "Nhập từ tệp" })).toHaveAttribute("href", "/questions/import");
 
@@ -57,19 +58,16 @@ describe("QuestionBankView", () => {
     await waitFor(() =>
       expect(within(statusGroup).getByRole("radio", { name: new RegExp(`Tất cả\\s*${total}`) })).toBeChecked(),
     );
-
-    // Cau Nhap chua chon dap an dung: dong goi y vi tri can sua.
-    expect(screen.getAllByText("Chưa chọn đáp án đúng.").length).toBeGreaterThan(0);
   });
 
   it("loc theo trang thai ghi len URL va giu tham so khac", async () => {
-    setUrl("?mockState=data");
+    setUrl("?extra=1");
     renderWithProviders(<QuestionBankView />);
     await screen.findByRole("table", { name: "Danh sách câu hỏi khớp bộ lọc" });
 
     await userEvent.click(screen.getByRole("radio", { name: /^Nháp/ }));
     await waitFor(() => expect(window.location.search).toContain("status=DRAFT"));
-    expect(window.location.search).toContain("mockState=data");
+    expect(window.location.search).toContain("extra=1");
     await expectCount(`${countWhere((question) => question.status === "DRAFT")} câu hỏi khớp bộ lọc`);
     // Chip "Dang loc" bo duoc dieu kien.
     await userEvent.click(screen.getByRole("button", { name: "Bỏ lọc Trạng thái: Nháp" }));
@@ -84,14 +82,15 @@ describe("QuestionBankView", () => {
     expect(screen.getByRole("radio", { name: /^Sẵn sàng/ })).toBeChecked();
   });
 
-  it("trang thai rong theo ?mockState=empty", async () => {
-    setUrl("?mockState=empty");
+  it("trang thai rong khi may chu khong co cau nao", async () => {
+    fakeApi.get("/api/v1/admin/questions", ok(apiPage([])));
+    fakeApi.get("/api/v1/admin/questions/status-counts", ok(apiCounts(0, 0, 0)));
     renderWithProviders(<QuestionBankView />);
     expect(await screen.findByText("Ngân hàng chưa có câu hỏi")).toBeInTheDocument();
   });
 
-  it("trang thai loi theo ?mockState=error co nut Thu lai", async () => {
-    setUrl("?mockState=error");
+  it("trang thai loi khi may chu tra 500, co nut Thu lai", async () => {
+    fakeApi.get("/api/v1/admin/questions", fail(500, { code: "INTERNAL" }));
     renderWithProviders(<QuestionBankView />);
     expect(await screen.findByText("Không tải được ngân hàng câu hỏi")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
