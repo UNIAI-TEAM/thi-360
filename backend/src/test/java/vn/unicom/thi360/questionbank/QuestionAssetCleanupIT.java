@@ -126,30 +126,22 @@ class QuestionAssetCleanupIT extends AbstractIntegrationTest {
 
     @Test
     void oldVersionAssetKept() throws Exception {
-        // Asset chỉ còn ref của phiên bản cũ (đã READY): worker không đụng tới.
+        // Asset chỉ còn ref ở v1 sau khi v2 (không ảnh) được đăng thay thế: worker không
+        // đụng tới dòng lẫn bytes, ref chỉ thuộc v1 (R1-6).
         UUID asset = newAsset(Instant.now().minus(30, ChronoUnit.HOURS));
-        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
-                        .header("Idempotency-Key", UUID.randomUUID().toString())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"SINGLE_CHOICE\",\"subjectCode\":\""
-                                + QuestionTestSupport.SUBJECT_TOAN + "\",\"gradeCode\":\""
-                                + QuestionTestSupport.GRADE_G10 + "\",\"difficultyCode\":\""
-                                + QuestionTestSupport.LEVEL_NB
-                                + "\",\"content\":\"<p><img data-asset-id='" + asset
-                                + "'/></p>\",\"body\":"
-                                + QuestionTestSupport.singleChoiceBody() + "}"))
-                .andExpect(status().isCreated()).andReturn();
-        UUID questionId = UUID.fromString(
-                mapper.readTree(created.getResponse().getContentAsString()).at("/summary/id").asText());
-        long revision = jdbc.queryForObject(
-                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, questionId);
-        mockMvc.perform(post(BASE + "/{id}/ready", questionId)
-                        .with(asUser(Permissions.QUESTION_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedRevision\":" + revision + "}"))
-                .andExpect(status().isOk());
+        String key = objectKeyOf(asset);
+        UUID questionId = createQuestion("<p><img data-asset-id='" + asset + "'/></p>");
+        markReady(questionId); // v1 → bản phục vụ
+        updateContent(questionId, "<p>No image anymore</p>"); // v2 làm việc không dùng asset
+        markReady(questionId); // v2 thay thế v1
+        assertThat(jdbc.queryForObject(
+                "SELECT current_version_no FROM questionbank.question WHERE id = ?",
+                Integer.class, questionId)).isEqualTo(2);
+        assertThat(refsOf(questionId, 2)).isEmpty();
+        assertThat(refsOf(questionId, 1)).containsExactly(asset);
         assertThat(cleanupJob.run()).isZero();
         assertThat(assetExists(asset)).isTrue();
+        assertThat(objectStorage.get(key)).contains(new byte[] {1, 2, 3});
     }
 
     @Test
@@ -199,6 +191,53 @@ class QuestionAssetCleanupIT extends AbstractIntegrationTest {
                 Integer.class, objectKey);
     }
 
+
+    private List<UUID> refsOf(UUID questionId, int versionNo) {
+        return jdbc.queryForList(
+                "SELECT asset_id FROM questionbank.question_asset_ref"
+                        + " WHERE question_id = ? AND version_no = ? ORDER BY asset_id",
+                UUID.class, questionId, versionNo);
+    }
+
+    private UUID createQuestion(String content) throws Exception {
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"SINGLE_CHOICE\",\"subjectCode\":\""
+                                + QuestionTestSupport.SUBJECT_TOAN + "\",\"gradeCode\":\""
+                                + QuestionTestSupport.GRADE_G10 + "\",\"difficultyCode\":\""
+                                + QuestionTestSupport.LEVEL_NB + "\",\"content\":\"" + content
+                                + "\",\"body\":" + QuestionTestSupport.singleChoiceBody() + "}"))
+                .andExpect(status().isCreated()).andReturn();
+        return UUID.fromString(mapper.readTree(created.getResponse().getContentAsString())
+                .at("/summary/id").asText());
+    }
+
+    private void markReady(UUID questionId) throws Exception {
+        long revision = jdbc.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, questionId);
+        mockMvc.perform(post(BASE + "/{id}/ready", questionId)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+    }
+
+    private void updateContent(UUID questionId, String content) throws Exception {
+        long revision = jdbc.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, questionId);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put(BASE + "/{id}", questionId)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + revision
+                                + ",\"type\":\"SINGLE_CHOICE\",\"subjectCode\":\""
+                                + QuestionTestSupport.SUBJECT_TOAN + "\",\"gradeCode\":\""
+                                + QuestionTestSupport.GRADE_G10 + "\",\"difficultyCode\":\""
+                                + QuestionTestSupport.LEVEL_NB + "\",\"content\":\"" + content
+                                + "\",\"body\":" + QuestionTestSupport.singleChoiceBody() + "}"))
+                .andExpect(status().isOk());
+    }
 
     @Test
     void raceWithSave() throws Exception {
