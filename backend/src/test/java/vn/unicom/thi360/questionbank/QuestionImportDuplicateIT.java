@@ -67,16 +67,19 @@ class QuestionImportDuplicateIT extends AbstractIntegrationTest {
         var childrenBefore = jdbc.queryForList("select id, content_text, position from questionbank.question where parent_id = ? and deleted_at is null order by position", questionId);
         Long sourceRevision = jdbc.queryForObject("select revision from questionbank.question_source_revision where subject_item_id = ?",
                 Long.class, QuestionTestSupport.SUBJECT_TOAN_ID);
-        String csv = "sourceCode,type,content,subject,grade,difficulty,correctAnswer,setCode\n"
-                + source + ",QUESTION_SET,New passage,TOAN,G10,NB,,set\n"
-                + ",SHORT_ANSWER,New child one,,,,42,set\n"
-                + ",SHORT_ANSWER,New child two,,,,42,set\n";
+        String csv = "sourceCode,type,content,subject,grade,difficulty,points,correctAnswer,setCode\n"
+                + source + ",QUESTION_SET,New passage,TOAN,G10,NB,,,set\n"
+                + ",SHORT_ANSWER,New child one,,G11,TH,0.5,42,set\n"
+                + java.util.stream.IntStream.range(0, 14)
+                    .mapToObj(i -> ",SHORT_ANSWER,Standalone " + i + ",ANH,G10,NB,1,42,\n")
+                    .collect(java.util.stream.Collectors.joining())
+                + ",SHORT_ANSWER,New child two,,,,0.75,42,set\n";
         var uploaded = mockMvc.perform(multipart("/api/v1/admin/question-imports/uploads")
                         .file(new MockMultipartFile("file", "new-set.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8)))
                         .with(asUser(Permissions.QUESTION_MODIFY))).andExpect(status().isOk()).andReturn();
         String uploadId = mapper.readTree(uploaded.getResponse().getContentAsByteArray()).get("id").asText();
         String body = """
-                {"uploadId":"%s","mapping":{"c0":"sourceCode","c1":"type","c2":"content","c3":"subject","c4":"grade","c5":"difficulty","c6":"correctAnswer","c7":"setCode"},"duplicatePolicy":"NEW_VERSION","skipErrors":false}
+                {"uploadId":"%s","mapping":{"c0":"sourceCode","c1":"type","c2":"content","c3":"subject","c4":"grade","c5":"difficulty","c6":"points","c7":"correctAnswer","c8":"setCode"},"duplicatePolicy":"NEW_VERSION","skipErrors":false}
                 """.formatted(uploadId);
         mockMvc.perform(post("/api/v1/admin/question-imports/uploads/{id}/commit", uploadId)
                         .with(asUser(Permissions.QUESTION_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
@@ -90,6 +93,49 @@ class QuestionImportDuplicateIT extends AbstractIntegrationTest {
         assertThat(row.get("status")).isEqualTo("READY");
         assertThat(row.get("working_version_no")).isNotNull();
         assertThat(row.get("current_version_no")).isNotEqualTo(row.get("working_version_no"));
+
+        // R1-9: bản working mới phải chứa câu con đúng thứ tự tệp và điểm tổng — không chỉ là
+        // con trỏ version mới (mapper bỏ trống children phải làm test đỏ).
+        var snapshot = mapper.readTree(jdbc.queryForObject(
+                "select snapshot::text from questionbank.question_version where question_id = ? and version_no = ?",
+                String.class, questionId, row.get("working_version_no")));
+        assertThat(snapshot.at("/points").decimalValue()).isEqualByComparingTo("1.25");
+        var importedChildren = snapshot.at("/body/children");
+        assertThat(importedChildren.size()).isEqualTo(2);
+        assertThat(importedChildren.get(0).at("/content").asText()).isEqualTo("New child one");
+        assertThat(importedChildren.get(1).at("/content").asText()).isEqualTo("New child two");
+        assertThat(importedChildren.get(0).at("/body/answers").toString()).contains("42");
+        assertThat(importedChildren.get(1).at("/body/answers").toString()).contains("42");
+        assertThat(importedChildren.get(0).at("/gradeItemId").asText()).isEqualTo(
+                jdbc.queryForObject("select id::text from catalog.catalog_item where code = 'G11'", String.class));
+        assertThat(importedChildren.get(0).at("/levelItemId").asText()).isEqualTo(
+                jdbc.queryForObject("select id::text from catalog.catalog_item where code = 'TH'", String.class));
+        assertThat(importedChildren.get(0).at("/points").decimalValue()).isEqualByComparingTo("0.5");
+        assertThat(importedChildren.get(1).at("/points").decimalValue()).isEqualByComparingTo("0.75");
+
+        // §8.2: lần nhập sau khi đã có working -> ghi đè tại chỗ (cùng version_no, snapshot mới).
+        String csv2 = csv.replace("New child one", "Replaced child one").replace("New child two", "Replaced child two");
+        var uploaded2 = mockMvc.perform(multipart("/api/v1/admin/question-imports/uploads")
+                        .file(new MockMultipartFile("file", "new-set-2.csv", "text/csv", csv2.getBytes(StandardCharsets.UTF_8)))
+                        .with(asUser(Permissions.QUESTION_MODIFY))).andExpect(status().isOk()).andReturn();
+        String uploadId2 = mapper.readTree(uploaded2.getResponse().getContentAsByteArray()).get("id").asText();
+        String body2 = """
+                {"uploadId":"%s","mapping":{"c0":"sourceCode","c1":"type","c2":"content","c3":"subject","c4":"grade","c5":"difficulty","c6":"points","c7":"correctAnswer","c8":"setCode"},"duplicatePolicy":"NEW_VERSION","skipErrors":false}
+                """.formatted(uploadId2);
+        mockMvc.perform(post("/api/v1/admin/question-imports/uploads/{id}/commit", uploadId2)
+                        .with(asUser(Permissions.QUESTION_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body2))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.newVersionCount").value(1));
+        var row2 = jdbc.queryForMap("select status, current_version_no, working_version_no from questionbank.question where id = ?", questionId);
+        assertThat(row2.get("working_version_no")).isEqualTo(row.get("working_version_no"));
+        var snapshot2 = mapper.readTree(jdbc.queryForObject(
+                "select snapshot::text from questionbank.question_version where question_id = ? and version_no = ?",
+                String.class, questionId, row2.get("working_version_no")));
+        assertThat(snapshot2.at("/body/children").size()).isEqualTo(2);
+        assertThat(snapshot2.at("/body/children").get(0).at("/content").asText()).isEqualTo("Replaced child one");
+        assertThat(snapshot2.at("/body/children").get(1).at("/content").asText()).isEqualTo("Replaced child two");
+        assertThat(jdbc.queryForList("select id, content_text, position from questionbank.question where parent_id = ? and deleted_at is null order by position", questionId))
+                .isEqualTo(childrenBefore);
     }
 
     @Test
