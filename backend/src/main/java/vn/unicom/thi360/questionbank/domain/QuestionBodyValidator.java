@@ -286,11 +286,6 @@ public final class QuestionBodyValidator {
                 errors.add(QuestionFieldError.of("QUESTION_BLANK_MARKER_MISMATCH", prefix + ".passage"));
             }
         }
-        for (String blankId : blankIds) {
-            if (!markerCounts.containsKey(blankId)) {
-                errors.add(QuestionFieldError.of("QUESTION_BLANK_MARKER_MISMATCH", prefix + ".blanks"));
-            }
-        }
     }
 
     private static void validateAttachments(List<java.util.UUID> attachmentIds, QuestionAssetResolver assets, List<QuestionFieldError> errors) {
@@ -366,6 +361,16 @@ public final class QuestionBodyValidator {
                 }
                 if (b.blanks().isEmpty()) {
                     errors.add(QuestionFieldError.of("NO_BLANKS", "body.blanks"));
+                }
+                Set<String> markers = new HashSet<>();
+                Matcher matcher = BLANK_MARKER.matcher(QuestionHtmlSanitizer.textOf(b.passage()));
+                while (matcher.find()) {
+                    markers.add(matcher.group(1).trim());
+                }
+                for (QuestionBody.ClozeBlank blank : b.blanks()) {
+                    if (!markers.contains(blank.id())) {
+                        errors.add(QuestionFieldError.of("QUESTION_BLANK_MARKER_MISMATCH", "body.blanks"));
+                    }
                 }
                 for (int i = 0; i < b.blanks().size(); i++) {
                     QuestionBody.ClozeBlank blank = b.blanks().get(i);

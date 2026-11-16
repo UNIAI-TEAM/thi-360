@@ -239,6 +239,20 @@ class QuestionBodyValidationTests {
             QuestionBodyValidator.validateSave(input(QuestionType.CLOZE, body), null);
         assertTrue(codes(errors).contains("QUESTION_BLANK_MARKER_MISMATCH"));
     }
+    @Test
+    void clozeBlankMayWaitForMarkerInDraft() {
+        QuestionBody body = new QuestionBody.ClozeBody(QuestionType.CLOZE, "<p>draft</p>",
+            List.of(new ClozeBlank("b1", List.of("answer"), BigDecimal.ONE)));
+        QuestionInput draft = input(QuestionType.CLOZE, body);
+        assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+        assertTrue(readyErrors(draft).stream().anyMatch(e ->
+            e.code().equals("QUESTION_BLANK_MARKER_MISMATCH") && e.path().equals("body.blanks")));
+        QuestionBody dangling = new QuestionBody.ClozeBody(QuestionType.CLOZE, "[[missing]]",
+            List.of(new ClozeBlank("b1", List.of("answer"), BigDecimal.ONE)));
+        assertTrue(QuestionBodyValidator.validateSave(input(QuestionType.CLOZE, dangling), null).stream()
+            .anyMatch(e -> e.code().equals("QUESTION_BLANK_MARKER_MISMATCH") && e.path().equals("body.passage")));
+    }
+
 
     @Test
     void clozeDuplicateMarkerRejected() {
