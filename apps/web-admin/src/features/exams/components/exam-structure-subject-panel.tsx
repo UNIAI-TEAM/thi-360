@@ -92,6 +92,8 @@ export function ExamStructureSubjectPanel({
   const quotaMismatch = quotas !== null && quotaExpected !== null && quotas.items.length > 0 && quotaTotal !== quotaExpected;
   const quotaVaries = quotas?.unit === "COUNT" && varies;
   const usedTypes = new Set(quotaTypes);
+  // Dạng mà nhóm dùng nhưng môn chưa khai chỉ tiêu: hiện thành hàng riêng, đã phân bổ vượt chỉ tiêu 0 (R1-6).
+  const undeclaredRows = allocation.answerTypes?.filter((row) => !usedTypes.has(row.key as QuestionType)) ?? [];
 
   const matrixBlock: QuestionBlock | null = section.matrix
     ? { ...newBlock(subjectName), id: section.id, questionCount: count ?? 0, matrix: section.matrix }
@@ -231,6 +233,22 @@ export function ExamStructureSubjectPanel({
                         </tr>
                       );
                     })}
+                    {undeclaredRows.map((row) => (
+                      <tr key={row.key}>
+                        <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
+                          {typeLabel(row.key as QuestionType)}
+                          <span className="block text-caption font-normal text-warning">{t("answerTypes.undeclared")}</span>
+                        </th>
+                        <td className="border-b border-border px-2 py-2 text-right text-text-muted">—</td>
+                        <td className="border-b border-border px-2 py-2 text-right">{row.quota}</td>
+                        <td className="border-b border-border px-2 py-2 text-right">{row.allocated}</td>
+                        <td className="border-b border-border px-2 py-2 text-right font-semibold text-warning">{row.missing}</td>
+                        <td className="border-b border-border px-2 py-2 text-right text-text-muted">
+                          {availableState === "ready" && sourceOf(row.key) !== undefined ? sourceOf(row.key) : "—"}
+                        </td>
+                        <td className="border-b border-border px-3 py-1" />
+                      </tr>
+                    ))}
                   </tbody>
                   <tfoot>
                     <tr className="font-semibold text-text">
@@ -442,7 +460,7 @@ function GroupList({
                   <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{countText(block)}</td>
                   <td className="border-b border-border px-2 py-2 text-text-secondary">{scopeText(block)}</td>
                   <td className="border-b border-border px-3 py-1 text-right">
-                    <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name })} onClick={() => onSelectBlock(block.id)}>
+                    <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name || t("untitled") })} onClick={() => onSelectBlock(block.id)}>
                       {t("open")}
                     </Button>
                   </td>

@@ -78,6 +78,7 @@ export function ExamStructurePartPanel({
   const paperInvalid = partIssues.some((issue) => issue.code === "PART_PAPER_COUNT");
   const chooseInvalid = partIssues.some((issue) => issue.code === "PART_CHOOSE_INVALID");
   const blockPoints = part.mode === "FIXED" ? sectionsPoints(part.sections) : null;
+  const onlySubjectChoice = part.mode === "CHOICE" && part.options.length === 1 && part.options[0]?.kind === "SUBJECT_CHOICE";
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -157,7 +158,12 @@ export function ExamStructurePartPanel({
 
       <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
         <h3 className="text-title font-semibold text-text">{t("participation.title")}</h3>
-        {part.mode === "CHOICE" ? (
+        {part.mode !== "CHOICE" ? (
+          <p className="text-body text-text">{t("participation.all")}</p>
+        ) : onlySubjectChoice ? (
+          // Phương án duy nhất là chọn môn (HSA Khoa học): luật chọn k môn nằm ở thẻ phương án, không lặp ô k ở đây (R1-10).
+          <p className="text-body text-text">{t("participation.subjectChoice")}</p>
+        ) : (
           <div className="flex flex-wrap items-center gap-2 text-body text-text">
             <span>{t("participation.choosePrefix")}</span>
             <BlockNumberInput
@@ -169,10 +175,8 @@ export function ExamStructurePartPanel({
             />
             <span>{t("participation.chooseSuffix", { count: part.options.length })}</span>
           </div>
-        ) : (
-          <p className="text-body text-text">{t("participation.all")}</p>
         )}
-        <p className="text-caption text-text-muted">{t("participation.hint")}</p>
+        {!onlySubjectChoice && <p className="text-caption text-text-muted">{t("participation.hint")}</p>}
       </section>
 
       {partIssues.length > 0 && (

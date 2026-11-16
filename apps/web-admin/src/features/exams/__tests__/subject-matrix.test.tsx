@@ -32,7 +32,7 @@ function mathSection() {
   return examStore.require("ex-hsa-f-001").parts[0]!.sections[0]!;
 }
 
-function tableRow(table: HTMLElement, name: string) {
+function tableRow(table: HTMLElement, name: string | RegExp) {
   const row = within(table).getByRole("rowheader", { name }).closest("tr");
   if (!row) throw new Error(`khong thay dong ${name}`);
   return within(row);
@@ -162,6 +162,23 @@ describe("màn môn (Toán HSA)", () => {
     const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
     expect(tableRow(groups, "Tiếng Việt").queryByText(/kiến thức riêng/)).not.toBeInTheDocument();
   }, 20_000);
+
+  it("nhóm dùng dạng chưa khai chỉ tiêu: bảng hiện hàng riêng, đã phân bổ 10, thiếu -10 (R1-6)", async () => {
+    mathSection().blocks.find((block) => block.questionType === "QUESTION_SET")!.childAnswerType = "MULTIPLE_CHOICE";
+    openStructure("ex-hsa-f-001");
+    const quota = await screen.findByRole("region", { name: "Dạng trả lời" });
+    const extra = tableRow(quota, /^Nhiều đáp án/);
+    expect(extra.getByText("Chưa khai chỉ tiêu")).toBeInTheDocument();
+    expect(extra.getAllByRole("cell").map((cell) => cell.textContent)).toEqual(expect.arrayContaining(["10", "-10"]));
+    expect(within(quota).queryByRole("textbox", { name: "Chỉ tiêu Nhiều đáp án" })).not.toBeInTheDocument();
+  }, 20_000);
+
+  it("nhóm chưa đặt tên: nút mở nhóm có tên 'Mở nhóm Chưa đặt tên' (R1-9)", async () => {
+    mathSection().blocks[0]!.name = "";
+    openStructure("ex-hsa-f-001");
+    const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
+    expect(within(groups).getByRole("button", { name: "Mở nhóm Chưa đặt tên" })).toBeInTheDocument();
+  }, 20_000);
 });
 
 describe("HSA Khoa học: một phương án chọn môn", () => {
@@ -182,6 +199,20 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
     expect(screen.queryByRole("button", { name: "Sinh tổ hợp" })).not.toBeInTheDocument();
     expect(screen.queryByText("Chờ chuyên gia xác nhận")).not.toBeInTheDocument();
     expect(screen.queryByText("chờ chuyên gia xác nhận")).not.toBeInTheDocument();
+  });
+
+  it("phần Khoa học chỉ có phương án chọn môn: quy tắc tham gia chỉ đọc, không có ô 'chọn k trong 1 phương án'; phần có hai phương án giữ ô chọn (R1-10)", async () => {
+    const { unmount } = openStructure("ex-hsa-f-001", "?part=part-33");
+    expect(await screen.findByRole("textbox", { name: "Số phương án phải chọn" })).toHaveValue("1");
+    unmount();
+    const part = examStore.require("ex-hsa-f-001").parts[2]!;
+    part.options = part.options.filter((option) => option.kind === "SUBJECT_CHOICE");
+    openStructure("ex-hsa-f-001", "?part=part-33");
+    expect(await screen.findByRole("heading", { name: "Quy tắc tham gia" })).toBeInTheDocument();
+    expect(screen.getByText("Học viên làm phương án chọn môn bên dưới.")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Số phương án phải chọn" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/trong 1 phương án/)).not.toBeInTheDocument();
+    expect(screen.getByText("Học viên chọn 3 trong 5 môn")).toBeInTheDocument();
   });
 
   it("mở một môn: số câu 16 hoặc 17 theo lựa chọn, nhóm 'phần còn lại' nhận 6 hoặc 7 câu", async () => {
