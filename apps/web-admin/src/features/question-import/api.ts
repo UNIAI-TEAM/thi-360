@@ -1,24 +1,33 @@
-import { contentApi } from "@/lib/mock/flags";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { isContentMockEnabled } from "@/lib/mock/flags";
 import * as mock from "./api.mock";
+import * as real from "./api-real";
 
 /**
- * API nhập câu hỏi từ tệp. Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy dữ liệu mẫu (`api.mock.ts`); tắt thì nhánh
- * API thật, chưa nối (FE-1).
+ * API nhập câu hỏi từ tệp. Cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy dữ liệu mẫu (`api.mock.ts`); tắt thì gọi
+ * API thật (`api-real.ts`: tải tệp, kiểm tra, nhập với `Idempotency-Key`, lịch sử). Cờ đọc mỗi lần gọi.
  */
 
 export { QUESTION_IMPORT_QUERY_KEYS } from "./keys";
-export type { DownloadedFile } from "./api.mock";
+export type { DownloadedFile } from "./api-real";
 
-export const downloadQuestionTemplate = contentApi(mock.downloadQuestionTemplate);
-export const uploadQuestionFile = contentApi(mock.uploadQuestionFile);
-export const validateImport = contentApi(mock.validateImport);
-export const commitImport = contentApi(mock.commitImport);
-export const listImportHistory = contentApi(mock.listImportHistory);
+type AsyncFn<A extends unknown[], R> = (...args: A) => Promise<R>;
+
+function selectApi<A extends unknown[], R>(mockFn: AsyncFn<A, R>, realFn: AsyncFn<A, R>): AsyncFn<A, R> {
+  return (...args) => (isContentMockEnabled() ? mockFn(...args) : realFn(...args));
+}
+
+export const downloadQuestionTemplate = selectApi(mock.downloadQuestionTemplate, real.downloadQuestionTemplate);
+export const uploadQuestionFile = selectApi(mock.uploadQuestionFile, real.uploadQuestionFile);
+export const validateImport = selectApi(mock.validateImport, real.validateImport);
+export const commitImport = selectApi(mock.commitImport, real.commitImport);
+export const listImportHistory = selectApi(mock.listImportHistory, real.listImportHistory);
 
 /** Mã lỗi nghiệp vụ của lời gọi API (ví dụ `IMPORT_EMPTY_FILE`), để màn hình dịch; không có thì `undefined`. */
 export function importApiErrorCode(error: unknown): string | undefined {
-  return error instanceof MockApiError ? error.code : undefined;
+  if (typeof error === "object" && error !== null && "code" in error && typeof error.code === "string") {
+    return error.code;
+  }
+  return undefined;
 }
 
 export interface QuestionImportApiDeps {
