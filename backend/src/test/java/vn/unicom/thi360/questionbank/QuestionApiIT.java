@@ -54,12 +54,11 @@ class QuestionApiIT extends AbstractIntegrationTest {
     // ---------------------------------------------------------------- quyền & tồn tại
 
     @Test
-    void anonymousGets403OnAdminEndpoints() throws Exception {
-        // Bề mặt /api/v1/admin/** từ chối ẩn danh ở tầng lọc (403) — như mọi admin IT khác.
-        mockMvc.perform(get(BASE)).andExpect(status().isForbidden());
+    void anonymousGets401OnAdminEndpoints() throws Exception {
+        mockMvc.perform(get(BASE)).andExpect(status().isUnauthorized());
         mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                         .content(QuestionTestSupport.createSingleChoiceRequest()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -137,7 +136,7 @@ class QuestionApiIT extends AbstractIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(row.get("subject_item_id"))
                 .isEqualTo(QuestionTestSupport.SUBJECT_TOAN_ID);
         org.assertj.core.api.Assertions.assertThat(row.get("search_text").toString())
-                .contains("noi dung cau hoi");
+                .contains("2+2=?");
 
         // GET chi tiết trả cùng nội dung.
         mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
@@ -195,7 +194,8 @@ class QuestionApiIT extends AbstractIntegrationTest {
         String body = """
                 {"type":"SINGLE_CHOICE","content":"<p>Q?</p>",
                  "body":{"type":"SINGLE_CHOICE","options":[
-                    {"id":"o1","content":"<p>Chi mot</p>","correct":true}]}}""";
+                    {"id":"o1","content":"<p>Mot</p>","correct":true},
+                    {"id":"o1","content":"<p>Trung id</p>","correct":false}]}}""";
         mockMvc.perform(post(BASE)
                         .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
                         .header("Idempotency-Key", "k-invalid-" + UUID.randomUUID())
@@ -267,6 +267,8 @@ class QuestionApiIT extends AbstractIntegrationTest {
     @Test
     void duplicateCopiesAsNewDraftWithNewCode() throws Exception {
         UUID id = createQuestion();
+        String originalCode = jdbcTemplate.queryForObject(
+                "SELECT code FROM questionbank.question WHERE id = ?", String.class, id);
         MvcResult result = mockMvc.perform(post(BASE + "/{id}/duplicate", id)
                         .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
                         .header("Idempotency-Key", "k-dup-" + UUID.randomUUID()))
@@ -277,7 +279,7 @@ class QuestionApiIT extends AbstractIntegrationTest {
         UUID copyId = UUID.fromString(json.at("/summary/id").asText());
         org.assertj.core.api.Assertions.assertThat(copyId).isNotEqualTo(id);
         org.assertj.core.api.Assertions.assertThat(json.at("/summary/code").asText())
-                .isNotEqualTo(json.at("/summary/code").asText());
+                .isNotEqualTo(originalCode);
         verify(auditRecorder).record(argThat((AuditEvent e) ->
                 "QUESTION.DUPLICATE".equals(e.action()) && copyId.toString().equals(e.targetId())));
     }

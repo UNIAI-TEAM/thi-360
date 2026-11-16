@@ -26,6 +26,12 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class QuestionIdempotencyIT extends AbstractIntegrationTest {
 
     private static final String BASE = "/api/v1/admin/questions";
+    private final UUID actorId = UUID.randomUUID();
+
+    @Override
+    protected org.springframework.test.web.servlet.request.RequestPostProcessor asUser(String... permissions) {
+        return asUser(actorId, "question-it", permissions);
+    }
 
     @Autowired
     private ObjectMapper objectMapper;

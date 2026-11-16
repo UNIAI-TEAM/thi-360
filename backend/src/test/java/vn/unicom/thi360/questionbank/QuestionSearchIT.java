@@ -161,11 +161,25 @@ class QuestionSearchIT extends AbstractIntegrationTest {
 
     @Test
     void authorsListsCreators() throws Exception {
-        createQuestion(QuestionTestSupport.createSingleChoiceRequest());
-        mockMvc.perform(get(BASE + "/authors").with(asUser(Permissions.QUESTION_VIEW)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(org.hamcrest.Matchers.greaterThanOrEqualTo(1))))
-                .andExpect(jsonPath("$[0].id").exists());
+        UUID author = UUID.randomUUID();
+        String username = "question-it-" + author;
+        jdbcTemplate.update(
+                "INSERT INTO identity.user_account (id, code, username, username_normalized, full_name,"
+                        + " source, status, must_change_password) VALUES (?, ?, ?, ?, ?, 1, 2, false)",
+                author, "U" + author.toString().substring(0, 8), username, username, "Question author");
+        try {
+            mockMvc.perform(post(BASE)
+                            .with(asUser(author, username, Permissions.QUESTION_MODIFY))
+                            .header("Idempotency-Key", "k-author-" + UUID.randomUUID())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(QuestionTestSupport.createSingleChoiceRequest()))
+                    .andExpect(status().isCreated());
+            mockMvc.perform(get(BASE + "/authors").with(asUser(Permissions.QUESTION_VIEW)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(author), hasSize(1)));
+        } finally {
+            jdbcTemplate.update("DELETE FROM identity.user_account WHERE id = ?", author);
+        }
     }
 
     // ---------------------------------------------------------------- trợ giúp
