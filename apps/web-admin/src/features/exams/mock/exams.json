@@ -14,6 +14,10 @@
       "englishOption": true,
       "combinationCount": 3,
       "singleSubjectCode": null,
+      "subjectCode": null,
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "hasEssay": false,
       "check": {
         "status": "INVALID",
         "issueCount": 2,
@@ -27,6 +31,9 @@
       },
       "description": "Đề luyện tổng hợp theo cấu trúc HSA 2025, dùng cho gói luyện thi tháng 11.",
       "templateCode": "HSA_FULL",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
       "parts": [
         {
           "id": "part-25",
@@ -1019,6 +1026,10 @@
       "englishOption": true,
       "combinationCount": 2,
       "singleSubjectCode": null,
+      "subjectCode": null,
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "hasEssay": false,
       "check": {
         "status": "VALID",
         "issueCount": 0,
@@ -1032,6 +1043,9 @@
       },
       "description": null,
       "templateCode": "QDA_FULL",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
       "parts": [
         {
           "id": "part-42",
@@ -1318,7 +1332,7 @@
             {
               "id": "part-49-kh4",
               "kind": "COMBINATION",
-              "code": "KH-4",
+              "code": "QD01",
               "sections": [
                 {
                   "id": "sec-44",
@@ -1449,7 +1463,7 @@
             {
               "id": "part-49-kh6",
               "kind": "COMBINATION",
-              "code": "KH-6",
+              "code": "QD04",
               "sections": [
                 {
                   "id": "sec-48",
@@ -1628,6 +1642,10 @@
       "englishOption": true,
       "combinationCount": 2,
       "singleSubjectCode": null,
+      "subjectCode": null,
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "hasEssay": false,
       "check": {
         "status": "NEEDS_RECHECK",
         "issueCount": 0,
@@ -1641,6 +1659,9 @@
       },
       "description": null,
       "templateCode": "QDA_FULL",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
       "parts": [
         {
           "id": "part-58",
@@ -1927,7 +1948,7 @@
             {
               "id": "part-65-kh4",
               "kind": "COMBINATION",
-              "code": "KH-4",
+              "code": "QD01",
               "sections": [
                 {
                   "id": "sec-60",
@@ -2058,7 +2079,7 @@
             {
               "id": "part-65-kh6",
               "kind": "COMBINATION",
-              "code": "KH-6",
+              "code": "QD04",
               "sections": [
                 {
                   "id": "sec-64",
@@ -2215,6 +2236,10 @@
       "englishOption": false,
       "combinationCount": 0,
       "singleSubjectCode": "MATH",
+      "subjectCode": null,
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "hasEssay": false,
       "check": {
         "status": "VALID",
         "issueCount": 0,
@@ -2228,6 +2253,9 @@
       },
       "description": null,
       "templateCode": "HSA_SINGLE",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
       "parts": [
         {
           "id": "part-68",
@@ -2333,6 +2361,10 @@
       "englishOption": false,
       "combinationCount": 0,
       "singleSubjectCode": "ENGLISH",
+      "subjectCode": null,
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "hasEssay": false,
       "check": {
         "status": "VALID",
         "issueCount": 0,
@@ -2346,6 +2378,9 @@
       },
       "description": null,
       "templateCode": null,
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
       "parts": [
         {
           "id": "part-71",
@@ -2468,6 +2503,10 @@
       "englishOption": true,
       "combinationCount": 2,
       "singleSubjectCode": null,
+      "subjectCode": null,
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "hasEssay": false,
       "check": {
         "status": "UNCHECKED",
         "issueCount": 0,
@@ -2481,6 +2520,9 @@
       },
       "description": null,
       "templateCode": "HSA_FULL",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
       "parts": [
         {
           "id": "part-89",
@@ -3259,6 +3301,10 @@
       "englishOption": true,
       "combinationCount": 3,
       "singleSubjectCode": null,
+      "subjectCode": null,
+      "timing": "PER_PART",
+      "maxScore": 150,
+      "hasEssay": false,
       "check": {
         "status": "VALID",
         "issueCount": 0,
@@ -3272,6 +3318,9 @@
       },
       "description": null,
       "templateCode": "HSA_FULL",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
       "parts": [
         {
           "id": "part-122",
@@ -4238,6 +4287,10 @@
       "kind": "HSA",
       "format": "FULL",
       "name": "HSA FULL · 3 phần · 150 câu · 195 phút",
+      "timing": "PER_PART",
+      "durationMinutes": 195,
+      "maxScore": 150,
+      "expertNote": "Khoa học chọn 3 trong 5 môn (Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí); số câu từng môn mặc định 17–17–16, cần chuyên gia xác nhận trước khi bán.",
       "parts": [
         {
           "name": "Phần 1 · Tư duy định lượng (Toán)",
@@ -4267,6 +4320,9 @@
       "kind": "HSA",
       "format": "SINGLE",
       "name": "HSA bài lẻ · 1 môn · 50 câu",
+      "timing": "PER_PART",
+      "durationMinutes": 75,
+      "maxScore": 50,
       "parts": [
         {
           "name": "Bài lẻ",
@@ -4282,6 +4338,10 @@
       "kind": "QDA",
       "format": "FULL",
       "name": "QDA FULL · 3 phần · 150 câu · 195 phút",
+      "timing": "PER_PART",
+      "durationMinutes": 195,
+      "maxScore": 150,
+      "expertNote": "Phần lựa chọn: QĐ01 Lí–Hóa, QĐ02 Hóa–Sinh, QĐ03 Lí–Sinh, QĐ04 Sử–Địa (mỗi môn 25 câu), QĐ05 Tiếng Anh 50 câu. Kiểm tra riêng từng mã trước khi bán.",
       "parts": [
         {
           "name": "Phần 1 · Toán học",
@@ -4303,6 +4363,970 @@
           "durationMinutes": 60,
           "mode": "CHOICE",
           "subjectCode": null
+        }
+      ]
+    },
+    {
+      "code": "BCA_FULL",
+      "kind": "BCA",
+      "format": "FULL",
+      "name": "BCA · 3 phần · 81 câu · 180 phút chung · thang 100",
+      "timing": "SHARED",
+      "durationMinutes": 180,
+      "maxScore": 100,
+      "expertNote": "Điểm từng câu Phần 2 quy từ 60 điểm cho 65 câu; hướng dẫn chấm tự luận Phần 1 phải có trước khi công bố.",
+      "parts": [
+        {
+          "name": "Phần 1 · Tự luận Ngữ văn",
+          "questionCount": 1,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": "LITERATURE",
+          "points": 25,
+          "blocks": [
+            {
+              "name": "Bài nghị luận",
+              "questionType": "ESSAY",
+              "questionCount": 1,
+              "pointsPerQuestion": 25
+            }
+          ]
+        },
+        {
+          "name": "Phần 2 · Trắc nghiệm bắt buộc",
+          "questionCount": 65,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": null,
+          "points": 60,
+          "sections": [
+            {
+              "subjectCode": "MATH",
+              "questionCount": 35
+            },
+            {
+              "subjectCode": "HISTORY",
+              "questionCount": 10
+            },
+            {
+              "subjectCode": "ENGLISH",
+              "questionCount": 20
+            }
+          ]
+        },
+        {
+          "name": "Phần 3 · Tự chọn",
+          "questionCount": 15,
+          "durationMinutes": null,
+          "mode": "CHOICE",
+          "subjectCode": null,
+          "points": 15,
+          "options": [
+            {
+              "kind": "COMBINATION",
+              "code": "CA1",
+              "subjectCounts": [
+                15
+              ],
+              "blocks": [
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 15,
+                  "pointsPerQuestion": 1
+                }
+              ]
+            },
+            {
+              "kind": "COMBINATION",
+              "code": "CA2",
+              "subjectCounts": [
+                15
+              ],
+              "blocks": [
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 15,
+                  "pointsPerQuestion": 1
+                }
+              ]
+            },
+            {
+              "kind": "COMBINATION",
+              "code": "CA3",
+              "subjectCounts": [
+                15
+              ],
+              "blocks": [
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 15,
+                  "pointsPerQuestion": 1
+                }
+              ]
+            },
+            {
+              "kind": "COMBINATION",
+              "code": "CA4",
+              "subjectCounts": [
+                15
+              ],
+              "blocks": [
+                {
+                  "name": "Trắc nghiệm",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 15,
+                  "pointsPerQuestion": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "VACT_FULL",
+      "kind": "VACT",
+      "format": "FULL",
+      "name": "V-ACT 2026 · 3 phần · 120 câu · 150 phút chung",
+      "timing": "SHARED",
+      "durationMinutes": 150,
+      "maxScore": null,
+      "expertNote": "Thang điểm luyện tập đặt lúc thiết lập bài; chấm theo IRT làm sau.",
+      "parts": [
+        {
+          "name": "Phần 1 · Sử dụng ngôn ngữ",
+          "questionCount": 60,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": null,
+          "sections": [
+            {
+              "subjectCode": "VIETNAMESE",
+              "questionCount": 30,
+              "blocks": [
+                {
+                  "name": "Tiếng Việt",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 30,
+                  "pointsPerQuestion": 1,
+                  "competencyCode": "VACT-NN-TV"
+                }
+              ]
+            },
+            {
+              "subjectCode": "ENGLISH",
+              "questionCount": 30,
+              "blocks": [
+                {
+                  "name": "Tiếng Anh",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 30,
+                  "pointsPerQuestion": 1,
+                  "competencyCode": "VACT-NN-TA"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Phần 2 · Toán học",
+          "questionCount": 30,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": "MATH",
+          "blocks": [
+            {
+              "name": "Toán học",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 30,
+              "pointsPerQuestion": 1,
+              "competencyCode": "VACT-TOAN"
+            }
+          ]
+        },
+        {
+          "name": "Phần 3 · Tư duy khoa học",
+          "questionCount": 30,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": "SCIENTIFIC_THINKING",
+          "blocks": [
+            {
+              "name": "Logic, phân tích số liệu",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12,
+              "pointsPerQuestion": 1,
+              "competencyCode": "VACT-TD-LOGIC"
+            },
+            {
+              "name": "Suy luận khoa học",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18,
+              "pointsPerQuestion": 1,
+              "competencyCode": "VACT-TD-SL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SPT_MATH_2025",
+      "kind": "SPT",
+      "format": "FULL",
+      "name": "SPT 2025 · Toán · 25 câu · 90 phút",
+      "subjectCode": "MATH",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 90,
+      "maxScore": 10,
+      "expertNote": "Điểm từng câu là tạm, cần nhập theo tài liệu SPT 2025. 11 môn còn lại chưa có mẫu trong dữ liệu mẫu.",
+      "parts": [
+        {
+          "name": "Toán",
+          "questionCount": 25,
+          "durationMinutes": 90,
+          "mode": "FIXED",
+          "subjectCode": "MATH",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 2,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 4,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Tự luận",
+              "questionType": "ESSAY",
+              "questionCount": 3,
+              "pointsPerQuestion": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SP2E_MATH_2025",
+      "kind": "SP2E",
+      "format": "FULL",
+      "name": "SP2E 2025 · Toán · 22 câu",
+      "subjectCode": "MATH",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": 10,
+      "expertNote": "Chia dạng câu 12–4–6 và điểm là tạm; thời lượng chưa có trong bản tóm tắt.",
+      "parts": [
+        {
+          "name": "Toán",
+          "questionCount": 22,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": "MATH",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 6,
+              "pointsPerQuestion": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SP2E_MATH_2026",
+      "kind": "SP2E",
+      "format": "FULL",
+      "name": "SP2E 2026 · Toán · 40 câu (ma trận 2025)",
+      "subjectCode": "MATH",
+      "structureYear": 2026,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": 10,
+      "expertNote": "Cấu trúc 2026 dùng ma trận 2025: chuyên gia xác nhận chỉ tiêu trước khi bán. Điểm là tạm.",
+      "parts": [
+        {
+          "name": "Toán",
+          "questionCount": 40,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": "MATH",
+          "blocks": [
+            {
+              "name": "Lựa chọn một đáp án",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Lựa chọn nhiều đáp án",
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5,
+              "pointsPerQuestion": 0.25,
+              "expectedScoring": {
+                "multipleChoiceRule": "ALL_OR_NOTHING"
+              }
+            },
+            {
+              "name": "Dữ liệu tổng hợp",
+              "questionType": "QUESTION_SET",
+              "questionCount": 5,
+              "pointsPerQuestion": 0.25,
+              "setCount": 1,
+              "setSize": 5
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 10,
+              "pointsPerQuestion": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_MATH_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Toán · 22 câu · 90 phút",
+      "subjectCode": "MATH",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 90,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Toán",
+          "questionCount": 22,
+          "durationMinutes": 90,
+          "mode": "FIXED",
+          "subjectCode": "MATH",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 6,
+              "pointsPerQuestion": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_LITERATURE_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Ngữ văn · 7 câu · 120 phút",
+      "subjectCode": "LITERATURE",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 120,
+      "maxScore": 10,
+      "expertNote": "Đọc hiểu là câu chùm có 5 câu con Tự luận, tổng 4 điểm; điểm từng câu con theo hướng dẫn chấm.",
+      "parts": [
+        {
+          "name": "Ngữ văn",
+          "questionCount": 7,
+          "durationMinutes": 120,
+          "mode": "FIXED",
+          "subjectCode": "LITERATURE",
+          "blocks": [
+            {
+              "name": "Đọc hiểu",
+              "questionType": "QUESTION_SET",
+              "questionCount": 5,
+              "pointsPerQuestion": 0.8,
+              "setCount": 1,
+              "setSize": 5
+            },
+            {
+              "name": "Viết đoạn văn (khoảng 200 chữ)",
+              "questionType": "ESSAY",
+              "questionCount": 1,
+              "pointsPerQuestion": 2
+            },
+            {
+              "name": "Viết bài văn (khoảng 600 chữ)",
+              "questionType": "ESSAY",
+              "questionCount": 1,
+              "pointsPerQuestion": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_ENGLISH_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Tiếng Anh · 40 câu · 50 phút",
+      "subjectCode": "ENGLISH",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Tiếng Anh",
+          "questionCount": 40,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "ENGLISH",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 40,
+              "pointsPerQuestion": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_PHYSICS_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Vật lí · 28 câu · 50 phút",
+      "subjectCode": "PHYSICS",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Vật lí",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "PHYSICS",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 6,
+              "pointsPerQuestion": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_CHEMISTRY_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Hóa học · 28 câu · 50 phút",
+      "subjectCode": "CHEMISTRY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Hóa học",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "CHEMISTRY",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 6,
+              "pointsPerQuestion": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_BIOLOGY_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Sinh học · 28 câu · 50 phút",
+      "subjectCode": "BIOLOGY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Sinh học",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "BIOLOGY",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 6,
+              "pointsPerQuestion": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_GEOGRAPHY_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Địa lí · 28 câu · 50 phút",
+      "subjectCode": "GEOGRAPHY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Địa lí",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "GEOGRAPHY",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            {
+              "name": "Trả lời ngắn",
+              "questionType": "FILL_IN",
+              "questionCount": 6,
+              "pointsPerQuestion": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_HISTORY_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Lịch sử · 28 câu · 50 phút",
+      "subjectCode": "HISTORY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Lịch sử",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "HISTORY",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_ECON_LAW_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Giáo dục kinh tế và pháp luật · 28 câu · 50 phút",
+      "subjectCode": "ECON_LAW",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Giáo dục kinh tế và pháp luật",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "ECON_LAW",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_TECH_INDUSTRY_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Công nghệ (Công nghiệp) · 28 câu · 50 phút",
+      "subjectCode": "TECH_INDUSTRY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Công nghệ (Công nghiệp)",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "TECH_INDUSTRY",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_TECH_AGRICULTURE_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Công nghệ (Nông nghiệp) · 28 câu · 50 phút",
+      "subjectCode": "TECH_AGRICULTURE",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "parts": [
+        {
+          "name": "Công nghệ (Nông nghiệp)",
+          "questionCount": 28,
+          "durationMinutes": 50,
+          "mode": "FIXED",
+          "subjectCode": "TECH_AGRICULTURE",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24,
+              "pointsPerQuestion": 0.25
+            },
+            {
+              "name": "Đúng/Sai",
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4,
+              "pointsPerQuestion": 1,
+              "expectedScoring": {
+                "trueFalseTable": [
+                  0.1,
+                  0.25,
+                  0.5,
+                  1
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_INFORMATICS_2025",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "name": "THPTQG 2025 · Tin học · 30 câu trên đề, làm 28 · 50 phút",
+      "subjectCode": "INFORMATICS",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "SHARED",
+      "durationMinutes": 50,
+      "maxScore": 10,
+      "expertNote": "Đề in 30 câu; học viên làm 24 trắc nghiệm, 2 đúng/sai chung và 2 đúng/sai của nhánh đã chọn.",
+      "parts": [
+        {
+          "name": "Phần I · Trắc nghiệm chọn một",
+          "questionCount": 24,
+          "durationMinutes": null,
+          "mode": "FIXED",
+          "subjectCode": "INFORMATICS",
+          "blocks": [
+            {
+              "name": "Trắc nghiệm chọn một",
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24,
+              "pointsPerQuestion": 0.25
+            }
+          ]
+        },
+        {
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "durationMinutes": null,
+          "mode": "CHOICE",
+          "subjectCode": null,
+          "sections": [
+            {
+              "subjectCode": "INFORMATICS",
+              "questionCount": 2,
+              "blocks": [
+                {
+                  "name": "Đúng/Sai chung",
+                  "questionType": "TRUE_FALSE",
+                  "questionCount": 2,
+                  "pointsPerQuestion": 1,
+                  "expectedScoring": {
+                    "trueFalseTable": [
+                      0.1,
+                      0.25,
+                      0.5,
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": [
+            {
+              "kind": "BRANCH",
+              "code": "CS",
+              "name": "Khoa học máy tính",
+              "subjectCounts": [
+                2
+              ],
+              "blocks": [
+                {
+                  "name": "Đúng/Sai Khoa học máy tính",
+                  "questionType": "TRUE_FALSE",
+                  "questionCount": 2,
+                  "pointsPerQuestion": 1,
+                  "expectedScoring": {
+                    "trueFalseTable": [
+                      0.1,
+                      0.25,
+                      0.5,
+                      1
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "BRANCH",
+              "code": "ICT",
+              "name": "Tin học ứng dụng",
+              "subjectCounts": [
+                2
+              ],
+              "blocks": [
+                {
+                  "name": "Đúng/Sai Tin học ứng dụng",
+                  "questionType": "TRUE_FALSE",
+                  "questionCount": 2,
+                  "pointsPerQuestion": 1,
+                  "expectedScoring": {
+                    "trueFalseTable": [
+                      0.1,
+                      0.25,
+                      0.5,
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     }

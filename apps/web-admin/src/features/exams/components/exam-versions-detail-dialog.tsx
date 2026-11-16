@@ -73,7 +73,7 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
             <h3 className="font-semibold text-text">
               {part.name}{" "}
               <span className="font-normal text-text-muted">
-                · {t("detail.partMeta", { count: part.questionCount, minutes: part.durationMinutes })}
+                · {t("detail.partMeta", { count: part.questionCount, minutes: part.durationMinutes ?? 0 })}
               </span>
             </h3>
             {part.mode === "FIXED" ? (

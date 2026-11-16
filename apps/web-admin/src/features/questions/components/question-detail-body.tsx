@@ -187,6 +187,8 @@ export function describeBody(body: QuestionBody, t: (key: string, values?: Recor
       return body.statements.map(
         (statement, index) => `${statementLetter(index)}) ${statement.content}: ${statement.answer ? t("true") : t("false")}`,
       );
+    case "ESSAY":
+      return body.rubric.map((criterion, index) => `${index + 1}. ${criterion.description} (${criterion.points})`);
     case "FILL_IN":
       return body.blanks.map(
         (blank, index) => `${t("blankLabel", { number: index + 1 })}: ${blank.acceptedAnswers.join(" / ") || t("noAnswer")}`,

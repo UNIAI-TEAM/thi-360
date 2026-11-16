@@ -1,13 +1,24 @@
-import type { PersonRef, QuestionType } from "@/features/content/types";
+import type {
+  ExamFormat,
+  ExamTiming,
+  MultipleChoiceRule,
+  PersonRef,
+  QuestionType,
+} from "@/features/content/types";
+
+export type { ExamFormat, ExamTiming } from "@/features/content/types";
 
 /**
  * Bài thi và ma trận đề (PBI-04), dữ liệu mẫu. Ma trận nằm trong bài thi (UniNote PBI-04).
  * Khi có OpenAPI của backend, đổi các kiểu dưới đây thành bí danh của `components["schemas"][...]`.
  */
 
-export type ExamKind = "HSA" | "QDA";
-/** `FULL`: đủ ba phần; `SINGLE`: bài lẻ một môn. */
-export type ExamFormat = "FULL" | "SINGLE";
+/**
+ * Mã kỳ thi trong danh mục (`ContentReference.examKinds`): HSA, QDA, BCA, VACT, SPT, SP2E, THPTQG. Là chuỗi vì danh
+ * mục quyết định; `EXAM_KINDS` là danh sách của dữ liệu mẫu.
+ */
+export type ExamKind = string;
+export const EXAM_KINDS = ["HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG"] as const;
 /** `PUBLISHED`: đang phục vụ một phiên bản; `DISCONTINUED`: ngừng bán, học viên đã mua vẫn làm được. */
 export type ExamStatus = "DRAFT" | "PUBLISHED" | "DISCONTINUED";
 /** Kết quả kiểm tra cấu hình gần nhất; `NEEDS_RECHECK`: nguồn câu hỏi đã đổi sau lần kiểm tra. */
@@ -36,6 +47,14 @@ export interface ExamSummary {
   englishOption: boolean;
   combinationCount: number;
   singleSubjectCode: string | null;
+  /** Môn của bài với kỳ thi có mẫu theo môn (SPT, SP2E, THPTQG); kỳ thi khác để `null`. */
+  subjectCode: string | null;
+  /** `SHARED`: `durationMinutes` là thời lượng chung, các phần không có thời lượng riêng (BCA, V-ACT). */
+  timing: ExamTiming;
+  /** Thang điểm; `null` khi chưa đặt (V-ACT đặt thang luyện tập lúc thiết lập). */
+  maxScore: number | null;
+  /** Có câu Tự luận: điểm phần tự luận có sau khi chấm tay. */
+  hasEssay: boolean;
   check: ExamCheckSummary;
   /** Tổng lượt làm của mọi phiên bản đã công bố. */
   attemptCount: number;
@@ -50,6 +69,8 @@ export interface KnowledgeScope {
   match: "ANY" | "ALL";
   /** Tính cả nút con của nút đã chọn. Mặc định tắt (UniNote PBI-04). */
   includeDescendants: boolean;
+  /** Lọc thêm theo năng lực (V-ACT); bỏ trống hoặc rỗng: không lọc. */
+  competencyCodes?: string[];
 }
 
 export type MatrixMode = "COMBINED" | "SEPARATE";
@@ -76,6 +97,8 @@ export interface BlockMatrix {
   cells: MatrixCell[];
   byGrade: MatrixDimensionValue[];
   byDifficulty: MatrixDimensionValue[];
+  /** Chiều năng lực (V-ACT), cộng thêm vào ma trận; bỏ trống: không dùng. */
+  byCompetency?: MatrixDimensionValue[];
 }
 
 export interface QuestionBlock {
@@ -93,6 +116,18 @@ export interface QuestionBlock {
   matrix: BlockMatrix;
   /** Quy tắc đảo (bản vẽ BaiThiCauTruc). Bỏ trống coi như `SHUFFLE`. */
   shuffle?: BlockShuffleRule;
+  /**
+   * Quy tắc chấm khối mong đợi, lấy từ mẫu của kỳ thi. Quy tắc thật nằm trên từng câu; kiểm tra cấu hình báo câu có quy
+   * tắc khác khối. Bỏ trống: không so.
+   */
+  expectedScoring?: BlockExpectedScoring;
+}
+
+export interface BlockExpectedScoring {
+  /** Khối Đúng/Sai: bảng điểm theo số ý đúng. */
+  trueFalseTable?: number[];
+  /** Khối nhiều đáp án: đúng hết mới có điểm hay chấm từng phần. */
+  multipleChoiceRule?: MultipleChoiceRule;
 }
 
 /** Một môn trong phần thi (hoặc trong một tổ hợp). */
@@ -103,22 +138,39 @@ export interface ExamSection {
   blocks: QuestionBlock[];
 }
 
-/** Một lựa chọn của phần tự chọn: một môn (Tiếng Anh) hoặc một mã tổ hợp (KH-1, ...). */
+/**
+ * Một lựa chọn của phần tự chọn: một môn (Tiếng Anh), một mã tổ hợp (KH-1, QD01, CA1) hoặc một nhánh nội dung
+ * (THPTQG Tin học: Khoa học máy tính, Tin học ứng dụng).
+ */
 export interface ExamPartOption {
   id: string;
-  kind: "SUBJECT" | "COMBINATION";
-  /** Mã môn (`ENGLISH`) hoặc mã tổ hợp (`KH-1`). */
+  kind: "SUBJECT" | "COMBINATION" | "BRANCH";
+  /** Mã môn (`ENGLISH`), mã tổ hợp (`KH-1`) hoặc mã nhánh (`CS`, `ICT`). */
   code: string;
+  /** Tên hiển thị của nhánh; môn và tổ hợp lấy tên từ danh mục nên để `null`. */
+  name?: string | null;
   sections: ExamSection[];
+  /**
+   * Số câu từng môn đã được chuyên gia xác nhận (HSA chia 17–17–16 đang chờ xác nhận). `false`: kiểm tra cấu hình nhắc
+   * trước khi công bố; bỏ trống: không cần xác nhận.
+   */
+  expertConfirmed?: boolean;
 }
 
 export interface ExamPart {
   id: string;
   order: number;
   name: string;
-  durationMinutes: number;
+  /** Thời lượng riêng của phần; `null` khi bài dùng thời lượng chung (`timing = SHARED`). */
+  durationMinutes: number | null;
+  /** Số câu học viên làm trong phần (câu chung cộng một lựa chọn). */
   questionCount: number;
-  /** `FIXED`: mọi học viên làm cùng `sections`; `CHOICE`: học viên chọn một trong `options`. */
+  /** Điểm tối đa của phần khi kỳ thi chia điểm theo phần (BCA: 25 / 60 / 15); `null` hoặc bỏ trống: không chia. */
+  points?: number | null;
+  /**
+   * `FIXED`: mọi học viên làm cùng `sections`; `CHOICE`: học viên chọn một trong `options`. Phần `CHOICE` có `sections`
+   * không rỗng: các môn đó là phần chung mọi học viên làm, cộng với một lựa chọn (THPTQG Tin học).
+   */
   mode: "FIXED" | "CHOICE";
   sections: ExamSection[];
   options: ExamPartOption[];
@@ -138,8 +190,13 @@ export interface ExamVersion {
 
 export interface ExamDetail extends ExamSummary {
   description: string | null;
-  /** Mẫu cấu trúc đã nạp khi tạo bài, ví dụ `HSA_FULL`. */
+  /** Mẫu cấu trúc đã nạp khi tạo bài, ví dụ `HSA_FULL`, `THPTQG_MATH_2025`. */
   templateCode: string | null;
+  /** Năm cấu trúc và năm ma trận của mẫu (SP2E); `null` khi mẫu không ghi năm. */
+  structureYear: number | null;
+  matrixYear: number | null;
+  /** Năm cấu trúc khác năm ma trận: chuyên gia đã xác nhận chỉ tiêu ma trận chưa. Năm trùng nhau thì luôn `true`. */
+  yearsConfirmed: boolean;
   parts: ExamPart[];
   versions: ExamVersion[];
 }
@@ -148,6 +205,7 @@ export interface ListExamsQuery {
   q?: string;
   kind?: ExamKind;
   format?: ExamFormat;
+  subjectCode?: string;
   status?: ExamStatus;
   checkStatus?: ExamCheckStatus;
   /** Chỉ bài có bản sửa chưa công bố (ô đánh dấu của bản vẽ BaiThi). */
@@ -157,20 +215,67 @@ export interface ListExamsQuery {
   sort?: string;
 }
 
-/** Mẫu cấu trúc nạp sẵn khi tạo bài thi (HSA FULL: Toán 50/75, Văn 50/60, KH hoặc TA 50/60; QDA: 80/55/60). */
+/**
+ * Mẫu cấu trúc nạp sẵn khi tạo bài thi. Kỳ thi `templateBy = KIND` có một mẫu FULL (và mẫu bài lẻ); kỳ thi
+ * `templateBy = SUBJECT` có mẫu theo môn và năm (`subjectCode`, `structureYear`). Xem
+ * `docs/specs/2026-11-16-mockup-7-ky-thi.md`.
+ */
 export interface ExamTemplate {
   code: string;
   kind: ExamKind;
   format: ExamFormat;
   name: string;
-  parts: Array<{
-    name: string;
-    questionCount: number;
-    durationMinutes: number;
-    mode: "FIXED" | "CHOICE";
-    /** Môn của phần cố định; phần tự chọn và mẫu bài lẻ để `null` (môn do người tạo chọn). */
-    subjectCode?: string | null;
+  /** Môn của mẫu theo môn; mẫu theo kỳ thi để `null`. */
+  subjectCode?: string | null;
+  structureYear?: number | null;
+  matrixYear?: number | null;
+  timing: ExamTiming;
+  /** Thời lượng chung khi `timing = SHARED`, hoặc tổng thời lượng để hiển thị; `null` khi tài liệu chưa ghi. */
+  durationMinutes: number | null;
+  maxScore: number | null;
+  /** Điều cần chuyên gia xác nhận trước khi bán (ví dụ HSA chia 17–17–16), hiện cạnh mẫu; `null` khi không có. */
+  expertNote?: string | null;
+  parts: ExamTemplatePart[];
+}
+
+export interface ExamTemplatePart {
+  name: string;
+  /** Số câu học viên làm trong phần. */
+  questionCount: number;
+  /** `null` khi `timing = SHARED` hoặc tài liệu chưa ghi. */
+  durationMinutes: number | null;
+  mode: "FIXED" | "CHOICE";
+  /** Môn của phần cố định một môn; phần tự chọn, phần nhiều môn và mẫu bài lẻ để `null`. */
+  subjectCode?: string | null;
+  points?: number | null;
+  /**
+   * Các môn của phần cố định nhiều môn (BCA Phần 2: Toán 35, Lịch sử 10, Tiếng Anh 20) hoặc phần chung của phần tự
+   * chọn (THPTQG Tin học).
+   */
+  sections?: Array<{ subjectCode: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
+  /** Phần tự chọn: lựa chọn gắn sẵn (mã tổ hợp, `ENGLISH`, hoặc nhánh có tên) và số câu từng môn. */
+  options?: Array<{
+    kind: ExamPartOption["kind"];
+    code: string;
+    name?: string | null;
+    subjectCounts?: number[];
+    expertConfirmed?: boolean;
+    blocks?: ExamTemplateBlock[];
   }>;
+  /** Khối câu gợi ý theo dạng câu khi phần một môn (THPTQG Toán: 12 chọn một, 4 đúng/sai, 6 trả lời ngắn). */
+  blocks?: ExamTemplateBlock[];
+}
+
+/** Khối gợi ý trong mẫu: dạng câu, số câu, điểm mỗi câu, quy tắc chấm mong đợi. */
+export interface ExamTemplateBlock {
+  name: string;
+  questionType: QuestionType;
+  questionCount: number;
+  pointsPerQuestion: number;
+  setCount?: number | null;
+  setSize?: number | null;
+  competencyCode?: string | null;
+  expectedScoring?: BlockExpectedScoring;
 }
 
 export interface CreateExamRequest {
@@ -180,6 +285,11 @@ export interface CreateExamRequest {
   format: ExamFormat;
   templateCode: string | null;
   singleSubjectCode: string | null;
+  /** Môn của bài với kỳ thi có mẫu theo môn; kỳ thi khác bỏ trống. */
+  subjectCode?: string | null;
+  /** Thời lượng chung khi `timing = SHARED`. */
+  durationMinutes?: number | null;
+  maxScore?: number | null;
   description: string | null;
   /**
    * Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi (UniNote PBI-04 mục 5.1–5.3). Bỏ trống thì nạp nguyên mẫu theo
@@ -199,6 +309,10 @@ export interface UpdateExamInfoRequest {
   format: ExamFormat;
   templateCode: string | null;
   singleSubjectCode: string | null;
+  subjectCode?: string | null;
+  durationMinutes?: number | null;
+  maxScore?: number | null;
+  yearsConfirmed?: boolean;
   description: string | null;
 }
 
@@ -241,7 +355,9 @@ export interface AvailableQuestionCounts {
 export interface CreateExamPartInput {
   name: string;
   questionCount: number;
-  durationMinutes: number;
+  /** `null` khi bài dùng thời lượng chung. */
+  durationMinutes: number | null;
+  points?: number | null;
   mode: "FIXED" | "CHOICE";
   /** Môn của phần cố định; phần tự chọn để `null`. */
   subjectCode: string | null;

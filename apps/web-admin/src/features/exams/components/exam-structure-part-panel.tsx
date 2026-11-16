@@ -56,7 +56,7 @@ export function ExamStructurePartPanel({
         <h2 className="text-h3 font-bold wrap-break-word text-text">{part.name}</h2>
         <p className="text-caption text-text-muted">
           {part.mode === "CHOICE"
-            ? t("choiceHint", { count: part.questionCount, minutes: part.durationMinutes })
+            ? t("choiceHint", { count: part.questionCount, minutes: part.durationMinutes ?? 0 })
             : t("fixedHint")}
         </p>
       </div>
@@ -85,7 +85,7 @@ export function ExamStructurePartPanel({
           {(controlProps) => (
             <BlockNumberInput
               {...controlProps}
-              value={part.durationMinutes}
+              value={part.durationMinutes ?? 0}
               onValueChange={(durationMinutes) => onChange((current) => ({ ...current, durationMinutes }))}
             />
           )}

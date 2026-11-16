@@ -278,7 +278,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
 
   let totalMinutes = 0;
   const previewParts: PreviewPart[] = pathSections(parts, path).map(({ part, sections }) => {
-    totalMinutes += part.durationMinutes;
+    totalMinutes += part.durationMinutes ?? 0;
     const firstNumber = number;
     const blocks = sections.flatMap((section) => {
       if (section.subjectCode === "ENGLISH") hasEnglish = true;

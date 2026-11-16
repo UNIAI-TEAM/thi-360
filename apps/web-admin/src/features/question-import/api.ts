@@ -2,6 +2,7 @@ import referenceFixture from "@/features/content/mock/reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { MOCK_CURRENT_AUTHOR, questionStore } from "@/features/questions/mock/store";
 import type { QuestionBody, QuestionDetail } from "@/features/questions/types";
+import { DEFAULT_POINTS, evenScoreTable } from "@/features/questions/editor-form";
 import { createMockStore, MockApiError, mockId, mockRequest } from "@/lib/mock/content-mock";
 import {
   checkImportFile,
@@ -140,16 +141,16 @@ function nextQuestionNumber(): number {
 function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: string[]): QuestionBody {
   switch (draft.type) {
     case "MULTIPLE_CHOICE":
-    case "SINGLE_CHOICE":
-      return {
-        type: draft.type,
-        shuffleOptions: true,
-        options: draft.options.map((option, index) => ({
-          id: `${idPrefix}-o${index + 1}`,
-          content: option.content,
-          correct: option.correct,
-        })),
-      };
+    case "SINGLE_CHOICE": {
+      const options = draft.options.map((option, index) => ({
+        id: `${idPrefix}-o${index + 1}`,
+        content: option.content,
+        correct: option.correct,
+      }));
+      return draft.type === "SINGLE_CHOICE"
+        ? { type: "SINGLE_CHOICE", shuffleOptions: true, options }
+        : { type: "MULTIPLE_CHOICE", shuffleOptions: true, options, scoringRule: "ALL_OR_NOTHING" };
+    }
     case "TRUE_FALSE":
       return {
         type: "TRUE_FALSE",
@@ -158,6 +159,7 @@ function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: s
           content: statement.content,
           answer: statement.answer ?? false,
         })),
+        scoreTable: evenScoreTable(draft.statements.length, DEFAULT_POINTS),
       };
     case "FILL_IN":
       return { type: "FILL_IN", blanks: [{ id: `${idPrefix}-b1`, acceptedAnswers: draft.acceptedAnswers }] };

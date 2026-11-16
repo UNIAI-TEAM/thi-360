@@ -79,7 +79,7 @@ describe("trang Tạo bài thi", () => {
     await user.click(within(prompt).getByRole("button", { name: "Nạp lại mẫu" }));
     expect(screen.getByRole("radio", { name: /QDA/ })).toBeChecked();
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("QDA-F-003"));
-    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(3);
+    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(4);
     expect(screen.getAllByRole("textbox", { name: "1. Vật lí" })[0]).toHaveValue("25");
     expect(within(summary()).getByText("195 phút")).toBeInTheDocument();
   }, 20_000);

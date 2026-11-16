@@ -54,7 +54,13 @@ export function enumeratePaths(parts: readonly ExamPart[], nameOf: ChoiceNameRes
     combos = combos.flatMap((prefix) =>
       part.options.map((option) => [
         ...prefix,
-        { partId: part.id, optionId: option.id, kind: option.kind, code: option.code, name: nameOf(option.kind, option.code) },
+        {
+          partId: part.id,
+          optionId: option.id,
+          kind: option.kind,
+          code: option.code,
+          name: option.kind === "BRANCH" ? (option.name ?? option.code) : nameOf(option.kind, option.code),
+        },
       ]),
     );
   }
@@ -488,7 +494,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     let totalPoints = 0;
     for (const group of pathSections(parts, path)) {
       const { part, optionId, sections } = group;
-      totalMinutes += part.durationMinutes;
+      totalMinutes += part.durationMinutes ?? 0;
       const sectionSum = sections.reduce((sum, section) => sum + section.questionCount, 0);
       if (sectionSum !== part.questionCount) {
         issues.push(

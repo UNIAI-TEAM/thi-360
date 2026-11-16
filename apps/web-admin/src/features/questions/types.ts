@@ -1,4 +1,10 @@
-import type { KnowledgeRef, PersonRef, QuestionStatus, QuestionType } from "@/features/content/types";
+import type {
+  KnowledgeRef,
+  MultipleChoiceRule,
+  PersonRef,
+  QuestionStatus,
+  QuestionType,
+} from "@/features/content/types";
 
 /**
  * Câu hỏi trong ngân hàng (PBI-03), dữ liệu mẫu. Khi có OpenAPI của backend, đổi các kiểu dưới đây thành bí danh
@@ -16,8 +22,11 @@ export interface QuestionSummary {
   subjectCode: string;
   gradeCode: string;
   difficultyCode: string;
+  /** Điểm tối đa của câu. Câu Tự luận: bằng `body.maxPoints`. */
   points: number;
   knowledge: KnowledgeRef[];
+  /** Năng lực (V-ACT), mã trong `ContentReference.competencies`; bỏ trống hoặc `null`: không gắn. */
+  competencyCode?: string | null;
   tagCodes: string[];
   hasSolution: boolean;
   /** Phiên bản hiện hành, tính từ 1. */
@@ -61,14 +70,36 @@ export interface DropZone {
   correctItemId: string;
 }
 
-/** Phần riêng theo dạng câu. */
+/** Một tiêu chí của hướng dẫn chấm câu Tự luận. */
+export interface EssayCriterion {
+  id: string;
+  description: string;
+  /** Điểm tối đa của tiêu chí; tổng các tiêu chí bằng `maxPoints` của câu. */
+  points: number;
+}
+
+/**
+ * Phần riêng theo dạng câu.
+ *
+ * - Nhiều đáp án: `scoringRule` (mặc định của kỳ thi, sửa được trên câu).
+ * - Đúng/Sai: `scoreTable[i]` là điểm khi đúng `i + 1` ý, độ dài bằng số ý, phần tử cuối bằng điểm của câu
+ *   (THPTQG 4 ý: 0,1 / 0,25 / 0,5 / 1).
+ * - Tự luận: chấm tay theo `rubric`; `wordLimit` là số chữ gợi ý (đoạn văn 200 chữ), `null` khi không giới hạn.
+ */
 export type QuestionBody =
   | { type: "SINGLE_CHOICE"; options: ChoiceOption[]; shuffleOptions: boolean }
-  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; shuffleOptions: boolean }
-  | { type: "TRUE_FALSE"; statements: TrueFalseStatement[] }
+  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; shuffleOptions: boolean; scoringRule: MultipleChoiceRule }
+  | { type: "TRUE_FALSE"; statements: TrueFalseStatement[]; scoreTable: number[] }
   | { type: "FILL_IN"; blanks: FillInBlank[] }
   | { type: "DRAG_DROP"; items: DragItem[]; zones: DropZone[] }
-  | { type: "QUESTION_SET"; passage: string; childIds: string[] };
+  | { type: "QUESTION_SET"; passage: string; childIds: string[] }
+  | {
+      type: "ESSAY";
+      maxPoints: number;
+      rubric: EssayCriterion[];
+      sampleAnswer: string | null;
+      wordLimit: number | null;
+    };
 
 export interface QuestionDetail extends QuestionSummary {
   /** Đề bài. Mockup lưu chữ thuần; trình soạn thảo đầy đủ (canvas trang 07) chưa làm. */
@@ -86,6 +117,7 @@ export interface ListQuestionsQuery {
   difficultyCode?: string;
   type?: QuestionType;
   status?: QuestionStatus;
+  competencyCode?: string;
   /** Lọc theo MAPID (id nút kiến thức); câu khớp khi gắn một trong các nút. */
   knowledgeIds?: string[];
   tagCode?: string;

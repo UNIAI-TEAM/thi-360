@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { QUESTION_TYPES } from "@/features/content/types";
+import { MULTIPLE_CHOICE_RULES, QUESTION_TYPES } from "@/features/content/types";
 import { countBlankMarkers, parsePoints, type EditorBody, type QuestionEditorValues } from "./editor-form";
 import { CHILD_QUESTION_TYPES } from "./editor-types";
 
@@ -143,6 +143,9 @@ export function validateBody(
     }
     case "QUESTION_SET":
       return;
+    case "ESSAY":
+      // Kiểm tra tiêu chí chấm (tổng điểm bằng điểm của câu) do nhánh soạn Tự luận thêm (UNI-2603).
+      return;
   }
 }
 
@@ -185,6 +188,11 @@ const bodySchema = z.object({
   blanks: z.array(z.object({ id: z.string(), answers: z.array(z.object({ id: z.string(), value: z.string() })) })),
   zones: z.array(z.object({ id: z.string(), label: z.string(), itemId: z.string(), itemContent: z.string() })),
   distractors: z.array(z.object({ id: z.string(), content: z.string() })),
+  scoringRule: z.enum(MULTIPLE_CHOICE_RULES),
+  scoreTable: z.array(z.string()),
+  rubric: z.array(z.object({ id: z.string(), description: z.string(), points: z.string() })),
+  sampleAnswer: z.string(),
+  wordLimit: z.string(),
 });
 
 /** Lược đồ của biểu mẫu: kiểu dữ liệu ở `z.object`, quy tắc nghiệp vụ trong `validateQuestionEditor`. */

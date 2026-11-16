@@ -46,8 +46,8 @@ describe("Cấu trúc và ma trận", () => {
   it("phần tự chọn QDA: Tiếng Anh và hai tổ hợp 2 môn 25–25", async () => {
     openStructure("ex-qda-f-001", "?part=part-49");
     expect(await screen.findByRole("heading", { name: "Phần 3 · Khoa học hoặc Tiếng Anh" })).toBeInTheDocument();
-    expect(screen.getAllByText(/KH-4/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/KH-6/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/QD01/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/QD04/).length).toBeGreaterThan(0);
   });
 
   it("trạng thái rỗng và lỗi theo ?mockState", async () => {

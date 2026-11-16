@@ -161,7 +161,7 @@ describe("enumeratePaths", () => {
       enumeratePaths(examStore.require("ex-qda-f-001").parts, mockChoiceName).map((path) =>
         path.choices.map((c) => c.code).join(),
       ),
-    ).toEqual(["ENGLISH", "KH-4", "KH-6"]);
+    ).toEqual(["ENGLISH", "QD01", "QD04"]);
   });
 });
 

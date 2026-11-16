@@ -56,7 +56,7 @@ const infoShape = (messages: ExamInfoSchemaMessages, takenCodes: TakenCodes) => 
     .transform((value) => value.toUpperCase())
     .refine((value) => CODE_PATTERN.test(value), messages.codeInvalid)
     .refine((value) => !takenCodes.has(value), messages.codeTaken),
-  kind: z.enum(["HSA", "QDA"]),
+  kind: z.string().min(1),
   format: z.enum(["FULL", "SINGLE"]),
   singleSubjectCode: z.string(),
   description: z.string().max(EXAM_DESCRIPTION_MAX, messages.descriptionMax),
@@ -178,13 +178,9 @@ export function templateFor(templates: readonly ExamTemplate[], kind: ExamKind, 
   return templates.find((template) => template.kind === kind && template.format === format);
 }
 
-/**
- * Tổ hợp dùng được cho kỳ thi (bản vẽ TaoBaiThi): HSA dùng tổ hợp 3 môn, QDA dùng tổ hợp 2 môn. Danh mục mẫu chưa có
- * trường kỳ thi nên tạm theo số môn; khi nối backend, danh mục trả kèm kỳ thi.
- */
+/** Tổ hợp dùng được cho kỳ thi (bản vẽ TaoBaiThi): theo kỳ thi của tổ hợp trong danh mục (KH-n, QĐ01–QĐ04, CA1–CA4). */
 export function combinationsForKind(combinations: readonly CombinationOption[], kind: ExamKind): CombinationOption[] {
-  const size = kind === "HSA" ? 3 : 2;
-  return combinations.filter((combination) => combination.subjectCodes.length === size);
+  return combinations.filter((combination) => combination.examKindCode === kind);
 }
 
 /** Phần/môn áp dụng của bài lẻ (bản vẽ TaoBaiThi): Toán, Văn, Khoa học (theo tổ hợp), Tiếng Anh. */
@@ -262,7 +258,7 @@ export function initialParts({ templates, kind, format, singleScope, combination
     mode: part.mode,
     subjectCode: part.mode === "FIXED" ? (part.subjectCode ?? "") : "",
     questionCount: part.questionCount,
-    durationMinutes: part.durationMinutes,
+    durationMinutes: part.durationMinutes ?? 0,
     englishOption: part.mode === "CHOICE",
     combinations: part.mode === "CHOICE" ? defaultCombinations(combinations, part.questionCount) : [],
   }));

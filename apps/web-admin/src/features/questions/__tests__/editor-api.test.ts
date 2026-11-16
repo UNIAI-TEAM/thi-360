@@ -128,7 +128,7 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     await expect(updateQuestion("q-0001", stale)).rejects.toMatchObject({ status: 409, code: "QUESTION_VERSION_CONFLICT" });
     const retyped = await editRequest("q-0001", (r) => {
       r.type = "MULTIPLE_CHOICE";
-      if (r.body.type === "SINGLE_CHOICE") r.body = { ...r.body, type: "MULTIPLE_CHOICE" };
+      if (r.body.type === "SINGLE_CHOICE") r.body = { ...r.body, type: "MULTIPLE_CHOICE", scoringRule: "ALL_OR_NOTHING" };
     });
     await expect(updateQuestion("q-0001", retyped)).rejects.toMatchObject({ status: 422, code: "QUESTION_TYPE_IMMUTABLE" });
   });

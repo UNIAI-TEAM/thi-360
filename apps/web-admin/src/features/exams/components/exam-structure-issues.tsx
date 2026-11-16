@@ -3,7 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback } from "react";
 import type { BlockIssue, StructureIssue } from "../matrix";
-import type { ExamPart } from "../types";
+import type { ExamPart, ExamPartOption } from "../types";
 import type { StructureSelection } from "./exam-structure-draft";
 
 export interface StructureNames {
@@ -11,8 +11,15 @@ export interface StructureNames {
   combination: (code: string) => string;
 }
 
-/** Tên một lựa chọn của phần tự chọn: "Tiếng Anh" hoặc "KH-1 · Vật lí – Hóa học – Sinh học". */
-export function optionLabel(option: { kind: "SUBJECT" | "COMBINATION"; code: string }, names: StructureNames): string {
+/**
+ * Tên một lựa chọn của phần tự chọn: "Tiếng Anh", "KH-1 · Vật lí – Hóa học – Sinh học", hoặc tên nhánh ("Khoa học máy
+ * tính").
+ */
+export function optionLabel(
+  option: { kind: ExamPartOption["kind"]; code: string; name?: string | null },
+  names: StructureNames,
+): string {
+  if (option.kind === "BRANCH") return option.name ?? option.code;
   return option.kind === "SUBJECT" ? names.subject(option.code) : `${option.code} · ${names.combination(option.code)}`;
 }
 

@@ -192,7 +192,8 @@
             "correct": false
           }
         ],
-        "shuffleOptions": true
+        "shuffleOptions": true,
+        "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
       "children": []
@@ -299,6 +300,11 @@
             "content": "(c)' = 0 với c là hằng số",
             "answer": true
           }
+        ],
+        "scoreTable": [
+          0.3333,
+          0.6667,
+          1.0
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
@@ -652,6 +658,11 @@
             "content": "Đồ thị cắt trục tung tại (0; 3)",
             "answer": true
           }
+        ],
+        "scoreTable": [
+          0.3333,
+          0.6667,
+          1.0
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
@@ -714,7 +725,8 @@
             "correct": false
           }
         ],
-        "shuffleOptions": true
+        "shuffleOptions": true,
+        "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
       "children": []
@@ -1049,6 +1061,10 @@
             "content": "Thủy phân trong môi trường axit luôn hoàn toàn",
             "answer": false
           }
+        ],
+        "scoreTable": [
+          0.5,
+          1.0
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
@@ -1177,7 +1193,8 @@
             "correct": false
           }
         ],
-        "shuffleOptions": true
+        "shuffleOptions": true,
+        "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
       "children": []

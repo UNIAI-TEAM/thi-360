@@ -41,7 +41,7 @@ export interface ExamAvailability {
 export interface PathChoice {
   partId: string;
   optionId: string;
-  kind: "SUBJECT" | "COMBINATION";
+  kind: "SUBJECT" | "COMBINATION" | "BRANCH";
   code: string;
   name: string;
 }
@@ -253,7 +253,8 @@ export interface PreviewPart {
   partId: string;
   name: string;
   order: number;
-  durationMinutes: number;
+  /** `null` khi bài dùng thời lượng chung. */
+  durationMinutes: number | null;
   firstNumber: number;
   lastNumber: number;
   blocks: PreviewBlock[];

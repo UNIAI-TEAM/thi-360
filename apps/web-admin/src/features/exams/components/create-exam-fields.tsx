@@ -395,7 +395,7 @@ export function TemplatePreview({
                   {t("questionsValue", { count: row.questionCount })}
                 </td>
                 <td className="border-b border-border py-2 pl-2 text-right whitespace-nowrap">
-                  {t("durationValue", { count: row.durationMinutes })}
+                  {t("durationValue", { count: row.durationMinutes ?? 0 })}
                 </td>
               </tr>
             ))}
@@ -409,7 +409,7 @@ export function TemplatePreview({
                 {t("questionsValue", { count: sum(rows.map((row) => row.questionCount)) })}
               </td>
               <td className="py-2 pl-2 text-right whitespace-nowrap">
-                {t("durationValue", { count: sum(rows.map((row) => row.durationMinutes)) })}
+                {t("durationValue", { count: sum(rows.map((row) => row.durationMinutes ?? 0)) })}
               </td>
             </tr>
           </tfoot>

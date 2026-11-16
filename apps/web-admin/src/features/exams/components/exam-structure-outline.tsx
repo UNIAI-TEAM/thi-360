@@ -92,7 +92,7 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
               <OutlineButton
                 current={selection?.kind === "part" && selection.partId === part.id}
                 onClick={() => onSelect({ kind: "part", partId: part.id })}
-                meta={t("partMeta", { count: part.questionCount, minutes: part.durationMinutes })}
+                meta={t("partMeta", { count: part.questionCount, minutes: part.durationMinutes ?? 0 })}
                 warning={partHasIssue(part.id) ? t("hasIssue") : null}
                 strong
               >

@@ -1,4 +1,4 @@
-import type { KnowledgeRef, QuestionType } from "@/features/content/types";
+import type { KnowledgeRef, MultipleChoiceRule, QuestionType } from "@/features/content/types";
 import { normalizePrimary } from "@/features/content/knowledge-tree";
 import type { ChildQuestionType, SaveChildQuestionRequest, SaveQuestionRequest } from "./editor-types";
 import type { QuestionBody, QuestionDetail } from "./types";
@@ -44,13 +44,28 @@ export interface EditorDistractor {
   content: string;
 }
 
+/** Một tiêu chí chấm của câu Tự luận; điểm là chuỗi như ô Điểm của câu. */
+export interface EditorCriterion {
+  id: string;
+  description: string;
+  points: string;
+}
+
 export interface EditorBody {
   options: EditorOption[];
   shuffleOptions: boolean;
+  /** Nhiều đáp án: đúng hết mới có điểm hay chấm từng phần. */
+  scoringRule: MultipleChoiceRule;
   statements: EditorStatement[];
+  /** Đúng/Sai: điểm khi đúng 1, 2, … ý (chuỗi như ô Điểm); rỗng: chia đều theo ý. */
+  scoreTable: string[];
   blanks: EditorBlank[];
   zones: EditorZone[];
   distractors: EditorDistractor[];
+  /** Tự luận: tiêu chí chấm, bài làm mẫu, số chữ gợi ý (chuỗi rỗng: không giới hạn). */
+  rubric: EditorCriterion[];
+  sampleAnswer: string;
+  wordLimit: string;
 }
 
 export interface EditorChild {
@@ -126,10 +141,15 @@ export function emptyBody(type: QuestionType): EditorBody {
         ? [emptyOption(), emptyOption(), emptyOption(), emptyOption()]
         : [],
     shuffleOptions: true,
+    scoringRule: "ALL_OR_NOTHING",
     statements: type === "TRUE_FALSE" ? [emptyStatement(), emptyStatement()] : [],
+    scoreTable: [],
     blanks: [],
     zones: type === "DRAG_DROP" ? [emptyZone(), emptyZone()] : [],
     distractors: [],
+    rubric: [],
+    sampleAnswer: "",
+    wordLimit: "",
   };
 }
 
@@ -176,11 +196,17 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
   const base = emptyBody("QUESTION_SET");
   switch (body.type) {
     case "SINGLE_CHOICE":
+      return {
+        ...base,
+        options: body.options.map((option) => ({ ...option })),
+        shuffleOptions: body.shuffleOptions,
+      };
     case "MULTIPLE_CHOICE":
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
         shuffleOptions: body.shuffleOptions,
+        scoringRule: body.scoringRule,
       };
     case "TRUE_FALSE":
       return {
@@ -190,6 +216,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
           content: statement.content,
           answer: statement.answer ? "TRUE" : "FALSE",
         })),
+        scoreTable: body.scoreTable.map(formatPoints),
       };
     case "FILL_IN":
       return {
@@ -215,6 +242,17 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
     }
     case "QUESTION_SET":
       return base;
+    case "ESSAY":
+      return {
+        ...base,
+        rubric: body.rubric.map((criterion) => ({
+          id: criterion.id,
+          description: criterion.description,
+          points: formatPoints(criterion.points),
+        })),
+        sampleAnswer: body.sampleAnswer ?? "",
+        wordLimit: body.wordLimit === null ? "" : String(body.wordLimit),
+      };
   }
 }
 
@@ -246,14 +284,24 @@ function trimmed(value: string): string {
   return value.trim();
 }
 
-export function editorToBody(type: QuestionType, body: EditorBody, content: string): QuestionBody {
+/**
+ * Phần thân gửi lên theo dạng câu. `points` là điểm của câu: Đúng/Sai không có bảng điểm thì chia đều theo ý; Tự luận
+ * lấy làm điểm tối đa.
+ */
+export function editorToBody(type: QuestionType, body: EditorBody, content: string, points: number = DEFAULT_POINTS): QuestionBody {
   switch (type) {
     case "SINGLE_CHOICE":
+      return {
+        type,
+        options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
+        shuffleOptions: body.shuffleOptions,
+      };
     case "MULTIPLE_CHOICE":
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
         shuffleOptions: body.shuffleOptions,
+        scoringRule: body.scoringRule,
       };
     case "TRUE_FALSE":
       return {
@@ -263,6 +311,10 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
           content: trimmed(statement.content),
           answer: statement.answer === "TRUE",
         })),
+        scoreTable:
+          body.scoreTable.length === body.statements.length
+            ? body.scoreTable.map(parsePoints)
+            : evenScoreTable(body.statements.length, points),
       };
     case "FILL_IN":
       return {
@@ -283,7 +335,26 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
       };
     case "QUESTION_SET":
       return { type, passage: trimmed(content), childIds: [] };
+    case "ESSAY": {
+      const wordLimit = Number.parseInt(body.wordLimit.trim(), 10);
+      return {
+        type,
+        maxPoints: points,
+        rubric: body.rubric.map((criterion) => ({
+          id: criterion.id,
+          description: trimmed(criterion.description),
+          points: parsePoints(criterion.points),
+        })),
+        sampleAnswer: trimmed(body.sampleAnswer) || null,
+        wordLimit: Number.isInteger(wordLimit) && wordLimit > 0 ? wordLimit : null,
+      };
+    }
   }
+}
+
+/** Bảng điểm Đúng/Sai chia đều: đúng `i + 1` ý được `(i + 1) / n` điểm của câu, làm tròn 2 chữ số. */
+export function evenScoreTable(statementCount: number, points: number): number[] {
+  return Array.from({ length: statementCount }, (_, index) => Math.round((points * (index + 1) * 100) / statementCount) / 100);
 }
 
 function toChildRequest(child: EditorChild): SaveChildQuestionRequest {
@@ -291,7 +362,7 @@ function toChildRequest(child: EditorChild): SaveChildQuestionRequest {
     id: child.existingId,
     type: child.type,
     content: trimmed(child.content),
-    body: editorToBody(child.type, child.body, child.content),
+    body: editorToBody(child.type, child.body, child.content, parsePoints(child.points)),
     solution: trimmed(child.solution) || null,
     points: parsePoints(child.points),
   };
@@ -311,7 +382,7 @@ export function toSaveRequest(values: QuestionEditorValues): SaveQuestionRequest
     tagCodes: [...values.tagCodes],
     content: trimmed(values.content),
     solution: isSet ? null : trimmed(values.solution) || null,
-    body: editorToBody(values.type, values.body, values.content),
+    body: editorToBody(values.type, values.body, values.content, parsePoints(values.points)),
     children,
   };
 }

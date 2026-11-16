@@ -177,7 +177,8 @@ function assertInputParts(inputs: readonly CreateExamPartInput[]): void {
   const invalid =
     inputs.length === 0 ||
     inputs.some((input) => {
-      if (!input.name.trim() || !positive(input.questionCount) || !positive(input.durationMinutes)) return true;
+      const durationOk = input.durationMinutes === null || positive(input.durationMinutes);
+      if (!input.name.trim() || !positive(input.questionCount) || !durationOk) return true;
       if (input.mode === "FIXED") return !input.subjectCode;
       if (!input.englishOption && input.combinations.length === 0) return true;
       return input.combinations.some((item) => {
@@ -222,12 +223,25 @@ function buildParts(request: { kind: ExamKind; format: ExamFormat; singleSubject
   );
 }
 
-/** Số liệu tóm tắt của bài tính lại từ cấu trúc (số câu, thời lượng, phần tự chọn). */
-function summaryFromParts(parts: readonly ExamPart[]) {
+/** Số câu Tự luận trong cấu trúc có lớn hơn 0 không (khối dạng `ESSAY`). */
+function partsHaveEssay(parts: readonly ExamPart[]): boolean {
+  return parts.some((part) =>
+    [...part.sections, ...part.options.flatMap((option) => option.sections)].some((section) =>
+      section.blocks.some((block) => block.questionType === "ESSAY" && block.questionCount > 0),
+    ),
+  );
+}
+
+/**
+ * Số liệu tóm tắt của bài tính lại từ cấu trúc (số câu, thời lượng, phần tự chọn). Bài dùng thời lượng chung
+ * (`sharedDuration` khác `null`) giữ thời lượng chung thay vì cộng các phần.
+ */
+function summaryFromParts(parts: readonly ExamPart[], sharedDuration: number | null = null) {
   const options = parts.filter((part) => part.mode === "CHOICE").flatMap((part) => part.options);
   return {
     totalQuestions: sum(parts.map((part) => part.questionCount)),
-    durationMinutes: sum(parts.map((part) => part.durationMinutes)),
+    durationMinutes: sharedDuration ?? sum(parts.map((part) => part.durationMinutes ?? 0)),
+    hasEssay: partsHaveEssay(parts),
     englishOption: options.some((option) => option.kind === "SUBJECT" && option.code === ENGLISH),
     combinationCount: options.filter((option) => option.kind === "COMBINATION").length,
   };
@@ -305,6 +319,8 @@ export async function createExam(request: CreateExamRequest): Promise<ExamDetail
       assertScope(request);
       if (request.parts) assertInputParts(request.parts);
       const parts = request.parts ? partsFromInput(request.parts) : buildParts(request);
+      const template = MOCK_EXAM_TEMPLATES.find((item) => item.code === request.templateCode);
+      const timing = template?.timing ?? "PER_PART";
       const exam: ExamDetail = {
         id: mockId("ex"),
         code,
@@ -314,8 +330,14 @@ export async function createExam(request: CreateExamRequest): Promise<ExamDetail
         status: "DRAFT",
         servingVersion: null,
         hasUnpublishedChanges: true,
-        ...summaryFromParts(parts),
+        ...summaryFromParts(parts, timing === "SHARED" ? (request.durationMinutes ?? template?.durationMinutes ?? null) : null),
         singleSubjectCode: request.format === "SINGLE" ? request.singleSubjectCode : null,
+        subjectCode: request.subjectCode ?? template?.subjectCode ?? null,
+        timing,
+        maxScore: request.maxScore ?? template?.maxScore ?? null,
+        structureYear: template?.structureYear ?? null,
+        matrixYear: template?.matrixYear ?? null,
+        yearsConfirmed: (template?.structureYear ?? null) === (template?.matrixYear ?? null),
         check: { status: "UNCHECKED", issueCount: 0, checkedAt: null },
         attemptCount: 0,
         updatedAt: nowIso(),
@@ -362,8 +384,14 @@ export async function updateExamInfo(id: string, request: UpdateExamInfoRequest)
           format: request.format,
           templateCode: request.templateCode,
           singleSubjectCode: request.format === "SINGLE" ? request.singleSubjectCode : null,
+          subjectCode: request.subjectCode === undefined ? exam.subjectCode : request.subjectCode,
+          maxScore: request.maxScore === undefined ? exam.maxScore : request.maxScore,
+          yearsConfirmed: request.yearsConfirmed ?? exam.yearsConfirmed,
           parts,
-          ...summaryFromParts(parts),
+          ...summaryFromParts(
+            parts,
+            exam.timing === "SHARED" ? (request.durationMinutes ?? exam.durationMinutes) : null,
+          ),
           check: scopeChanged ? recheck(exam) : exam.check,
         };
       });
@@ -380,7 +408,7 @@ export async function updateExamStructure(id: string, request: UpdateExamStructu
         ...exam,
         ...markWorking(exam),
         parts: structuredClone(request.parts),
-        ...summaryFromParts(request.parts),
+        ...summaryFromParts(request.parts, exam.timing === "SHARED" ? exam.durationMinutes : null),
         check: recheck(exam),
       })),
     { ignoreScenario: true },

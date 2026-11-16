@@ -386,7 +386,10 @@ export function validateStructure(parts: readonly ExamPart[], axes: MatrixAxes):
     if (!Number.isInteger(part.questionCount) || part.questionCount <= 0) {
       issues.push({ code: "PART_COUNT_NOT_POSITIVE", partId: part.id });
     }
-    if (!(part.durationMinutes > 0)) issues.push({ code: "PART_DURATION_NOT_POSITIVE", partId: part.id });
+    // Thời lượng `null`: bài dùng thời lượng chung (BCA, V-ACT), phần không có thời lượng riêng.
+    if (part.durationMinutes !== null && !(part.durationMinutes > 0)) {
+      issues.push({ code: "PART_DURATION_NOT_POSITIVE", partId: part.id });
+    }
     if (part.mode === "CHOICE" && part.options.length === 0) issues.push({ code: "NO_OPTIONS", partId: part.id });
     for (const group of sectionGroups(part)) {
       const sectionsTotal = sum(group.sections.map((section) => section.questionCount));
@@ -445,7 +448,7 @@ export function structureTotals(parts: readonly ExamPart[]): StructureTotals {
   return {
     partCount: parts.length,
     totalQuestions,
-    totalMinutes: sum(parts.map((part) => part.durationMinutes)),
+    totalMinutes: sum(parts.map((part) => part.durationMinutes ?? 0)),
     totalPoints: roundPrecision(totalPoints),
     allocated,
     missing: Math.max(0, totalQuestions - allocated),

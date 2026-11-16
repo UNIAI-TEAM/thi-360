@@ -2146,7 +2146,8 @@
       "TRUE_FALSE": "Đúng / Sai",
       "FILL_IN": "Điền đáp án",
       "DRAG_DROP": "Kéo thả",
-      "QUESTION_SET": "Câu chùm"
+      "QUESTION_SET": "Câu chùm",
+      "ESSAY": "Tự luận"
     },
     "questionStatus": {
       "DRAFT": "Nháp",
@@ -2356,7 +2357,8 @@
         "statements": "Các ý",
         "blanks": "Đáp án từng ô trống",
         "dragDrop": "Ô thả và thẻ",
-        "children": "Câu con"
+        "children": "Câu con",
+        "essay": "Tiêu chí chấm"
       },
       "toast": {
         "created": "Đã lưu câu hỏi {code} ở trạng thái Nháp.",
@@ -2394,7 +2396,8 @@
           "TRUE_FALSE": "Một đề bài, mỗi ý chọn Đúng hoặc Sai.",
           "FILL_IN": "Học viên gõ số hoặc chữ vào ô trống.",
           "DRAG_DROP": "Học viên kéo thẻ vào ô trống trong câu.",
-          "QUESTION_SET": "Một đoạn dẫn chung cho nhiều câu con."
+          "QUESTION_SET": "Một đoạn dẫn chung cho nhiều câu con.",
+          "ESSAY": "Câu trả lời viết, chấm tay theo tiêu chí chấm."
         },
         "cancel": "Hủy",
         "continue": "Tiếp tục"

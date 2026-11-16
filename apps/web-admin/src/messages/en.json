@@ -2146,7 +2146,8 @@
       "TRUE_FALSE": "True / False",
       "FILL_IN": "Fill in the answer",
       "DRAG_DROP": "Drag and drop",
-      "QUESTION_SET": "Question set"
+      "QUESTION_SET": "Question set",
+      "ESSAY": "Essay"
     },
     "questionStatus": {
       "DRAFT": "Draft",
@@ -2356,7 +2357,8 @@
         "statements": "Statements",
         "blanks": "Answers for each blank",
         "dragDrop": "Drop zones and cards",
-        "children": "Sub-questions"
+        "children": "Sub-questions",
+        "essay": "Rubric"
       },
       "toast": {
         "created": "Saved question {code} as Draft.",
@@ -2394,7 +2396,8 @@
           "TRUE_FALSE": "One stem; each statement is True or False.",
           "FILL_IN": "Learners type a number or text into blanks.",
           "DRAG_DROP": "Learners drag cards into the gaps of a sentence.",
-          "QUESTION_SET": "One shared passage for several sub-questions."
+          "QUESTION_SET": "One shared passage for several sub-questions.",
+          "ESSAY": "A written answer, graded by hand against the rubric."
         },
         "cancel": "Cancel",
         "continue": "Continue"

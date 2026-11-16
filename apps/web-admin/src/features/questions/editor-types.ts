@@ -12,7 +12,7 @@ export function isQuestionType(value: string | undefined | null): value is Quest
   return (QUESTION_TYPES as readonly string[]).includes(value ?? "");
 }
 
-/** Dạng của câu con trong câu chùm: mọi dạng trừ câu chùm. */
+/** Dạng của câu con trong câu chùm: mọi dạng trừ câu chùm (Tự luận dùng cho đọc hiểu Ngữ văn THPTQG). */
 export type ChildQuestionType = Exclude<QuestionType, "QUESTION_SET">;
 
 export const CHILD_QUESTION_TYPES = [
@@ -21,6 +21,7 @@ export const CHILD_QUESTION_TYPES = [
   "TRUE_FALSE",
   "FILL_IN",
   "DRAG_DROP",
+  "ESSAY",
 ] as const satisfies readonly ChildQuestionType[];
 
 /** Câu con gửi lên khi lưu câu chùm. Phân loại (môn, khối, mức độ, kiến thức, nhãn) lấy theo câu cha. */

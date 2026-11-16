@@ -24,7 +24,7 @@ export function ExamPreviewPaper({ paper }: { paper: PreviewPaper }) {
           <h3 id={`preview-part-${part.partId}`} className="text-title font-semibold text-text">
             {part.name}{" "}
             <span className="font-normal text-text-muted">
-              · {t("partRange", { first: part.firstNumber, last: part.lastNumber, minutes: part.durationMinutes })}
+              · {t("partRange", { first: part.firstNumber, last: part.lastNumber, minutes: part.durationMinutes ?? 0 })}
             </span>
           </h3>
           {part.blocks.map((block) => (

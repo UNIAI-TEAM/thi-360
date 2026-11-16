@@ -94,9 +94,10 @@ describe("mẫu cấu trúc khởi tạo", () => {
       [50, 60],
     ]);
     expect(qda[2]!.combinations.map((item) => [item.code, item.subjectCounts])).toEqual([
-      ["KH-4", [25, 25]],
-      ["KH-5", [25, 25]],
-      ["KH-6", [25, 25]],
+      ["QD01", [25, 25]],
+      ["QD02", [25, 25]],
+      ["QD03", [25, 25]],
+      ["QD04", [25, 25]],
     ]);
   });
 

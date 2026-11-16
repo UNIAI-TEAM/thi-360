@@ -32,6 +32,7 @@ const BODY_TITLE_KEY: Record<QuestionType, string> = {
   FILL_IN: "blanks",
   DRAG_DROP: "dragDrop",
   QUESTION_SET: "children",
+  ESSAY: "essay",
 };
 
 /**
