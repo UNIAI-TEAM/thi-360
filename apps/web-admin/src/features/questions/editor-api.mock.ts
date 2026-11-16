@@ -1,3 +1,6 @@
+import { indexKnowledge } from "@/features/content/knowledge-tree";
+import referenceFixture from "@/features/content/mock/reference.json";
+import type { ContentReference, KnowledgeRef } from "@/features/content/types";
 import { examStore } from "@/features/exams/mock/store";
 import { createMockStore, MockApiError, mockId, mockRequest } from "@/lib/mock/content-mock";
 import { assertQuestionRevision } from "./api.mock";
@@ -17,6 +20,17 @@ import { deriveVersionStates, editCreatesNewVersion, toSnapshot, type QuestionHi
 import { MOCK_CURRENT_AUTHOR, questionStore } from "./mock/store";
 import versionsFixture from "./mock/versions.json";
 import type { QuestionDetail } from "./types";
+
+const knowledgeIndex = indexKnowledge((referenceFixture as ContentReference).knowledgeTree);
+
+/** Kiến thức riêng của câu con theo id nút; `null` là kế thừa của bộ. Id không có trong cây thì bỏ qua. */
+function childKnowledge(ids: readonly string[] | null, inherited: readonly KnowledgeRef[]): KnowledgeRef[] {
+  if (ids === null) return structuredClone([...inherited]);
+  return ids.flatMap((id, position) => {
+    const entry = knowledgeIndex.get(id);
+    return entry ? [{ nodeId: id, code: entry.node.code, name: entry.node.name, primary: position === 0 }] : [];
+  });
+}
 
 /**
  * API soạn câu hỏi, nhân bản, lịch sử phiên bản và nơi đang dùng (UNI-2593). Hiện ghi vào kho mẫu `questionStore`.
@@ -109,36 +123,36 @@ function applyRequest(
   now: string,
 ): QuestionDetail {
   const buildChild = (child: SaveChildQuestionRequest, index: number): QuestionDetail => {
-    const id = child.id ?? mockId(`${base.id}-c`);
-    const previous = base.children.find((existing) => existing.id === child.id);
-    return {
-      ...(previous ?? base),
-      id,
-      code: `${base.code}-${index + 1}`,
-      type: child.type,
-      status: base.status,
-      contentPreview: previewOf(child.content),
-      subjectCode: request.subjectCode,
-      gradeCode: child.gradeCode ?? request.gradeCode,
-      difficultyCode: child.difficultyCode ?? request.difficultyCode,
-      competencyCode: request.competencyCode ?? null,
-      taskTypeCode: request.taskTypeCode ?? null,
-      points: child.points,
-      knowledge: structuredClone(request.knowledge),
-      tagCodes: [...request.tagCodes],
-      hasSolution: Boolean(child.solution),
-      version: base.version,
-      revision: base.revision,
-      content: child.content,
-      body: structuredClone(child.body),
-      solution: child.solution,
-      commonMistakes: null,
-      attachmentIds: [],
-      children: [],
-      createdAt: previous?.createdAt ?? now,
-      updatedAt: now,
+      const id = child.id ?? mockId(`${base.id}-c`);
+      const previous = base.children.find((existing) => existing.id === child.id);
+      return {
+        ...(previous ?? base),
+        id,
+        code: `${base.code}-${index + 1}`,
+        type: child.type,
+        status: base.status,
+        contentPreview: previewOf(child.content),
+        subjectCode: request.subjectCode,
+        gradeCode: child.gradeCode ?? request.gradeCode,
+        difficultyCode: child.difficultyCode ?? request.difficultyCode,
+        competencyCode: request.competencyCode ?? null,
+        taskTypeCode: request.taskTypeCode ?? null,
+        points: child.points,
+        knowledge: childKnowledge(child.knowledgeIds, request.knowledge),
+        tagCodes: [...request.tagCodes],
+        hasSolution: Boolean(child.solution),
+        version: base.version,
+        revision: base.revision,
+        content: child.content,
+        body: structuredClone(child.body),
+        solution: child.solution,
+        commonMistakes: null,
+        attachmentIds: [],
+        children: [],
+        createdAt: previous?.createdAt ?? now,
+        updatedAt: now,
+      };
     };
-  };
   const children = request.type === "QUESTION_SET" ? request.children.map(buildChild) : [];
   const body =
     request.body.type === "QUESTION_SET"

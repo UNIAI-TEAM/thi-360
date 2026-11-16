@@ -34,6 +34,8 @@ import vn.unicom.thi360.questionbank.api.UpdateQuestionResponse;
 import vn.unicom.thi360.questionbank.domain.Question;
 import vn.unicom.thi360.questionbank.domain.QuestionBody;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator;
+import vn.unicom.thi360.questionbank.domain.QuestionAssetRef;
+import vn.unicom.thi360.questionbank.domain.QuestionAssetRefCollector;
 import vn.unicom.thi360.questionbank.domain.QuestionFieldError;
 import vn.unicom.thi360.questionbank.spi.HtmlContentSanitizer;
 import vn.unicom.thi360.questionbank.domain.QuestionInput;
@@ -48,6 +50,7 @@ import vn.unicom.thi360.questionbank.infrastructure.QuestionRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionTagRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionUsageLedgerRepository;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionVersionRepository;
+import vn.unicom.thi360.questionbank.infrastructure.QuestionAssetRefRepository;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageProvider;
@@ -90,13 +93,12 @@ public class QuestionService {
     private static final String ERR_DUPLICATE_ID = "QUESTION_DUPLICATE_ID";
     private static final String ERR_CATALOG_UNKNOWN = "CATALOG_VALUE_UNKNOWN";
 
-    private static final int CHILD_MIN = 2;
-
     private final QuestionRepository questionRepository;
     private final QuestionVersionRepository versionRepository;
     private final QuestionKnowledgeRepository knowledgeRepository;
     private final QuestionTagRepository tagRepository;
     private final QuestionUsageLedgerRepository ledgerRepository;
+    private final QuestionAssetRefRepository assetRefRepository;
     private final QuestionSupportDao supportDao;
     private final HtmlContentSanitizer sanitizer;
     private final QuestionAssetResolver assetResolver;
@@ -117,6 +119,7 @@ public class QuestionService {
             QuestionTagRepository tagRepository,
             QuestionUsageLedgerRepository ledgerRepository,
             QuestionSupportDao supportDao,
+            QuestionAssetRefRepository assetRefRepository,
             HtmlContentSanitizer sanitizer,
             QuestionAssetResolver assetResolver,
             CatalogLookup catalogLookup,
@@ -134,6 +137,7 @@ public class QuestionService {
         this.tagRepository = tagRepository;
         this.ledgerRepository = ledgerRepository;
         this.supportDao = supportDao;
+        this.assetRefRepository = assetRefRepository;
         this.sanitizer = sanitizer;
         this.assetResolver = assetResolver;
         this.catalogLookup = catalogLookup;
@@ -195,6 +199,38 @@ public class QuestionService {
         return new UpdateQuestionResponse(mapper.toDetail(question, mapper.batch()), versionCreated);
     }
 
+    /** Catalog references already validated from one batch snapshot for an import transaction. */
+    record ImportClassification(UUID subjectItemId, UUID gradeItemId, UUID levelItemId,
+            UUID taskTypeItemId, List<vn.unicom.thi360.questionbank.api.KnowledgeRef> knowledge,
+            List<UUID> tagItemIds) {}
+
+    /**
+     * Save one imported question through the normal version/projection path. The caller locks
+     * existing targets in id order, validates every catalog reference against its batch snapshot,
+     * and records the single batch audit event in the surrounding transaction.
+     */
+    void saveImported(Question existing, SaveQuestionRequest request, ImportClassification resolved) {
+        UUID actorId = currentUserProvider.requireCurrentUser().id();
+        Instant now = Instant.now();
+        Question question = existing;
+        if (question == null) {
+            question = Question.create(UUID.randomUUID(), supportDao.nextQuestionCode(),
+                    request.type(), null, null, now, actorId);
+            questionRepository.save(question);
+        } else if (question.getDeletedAt() != null || question.getParentId() != null
+                || question.getType() != request.type()) {
+            throw new BusinessRuleException("IMPORT_SOURCE_TYPE_MISMATCH");
+        }
+        ResolvedClassification classification = new ResolvedClassification(resolved.subjectItemId(),
+                resolved.gradeItemId(), resolved.levelItemId(), resolved.taskTypeItemId(), null);
+        List<KnowledgeResolved> knowledge = resolved.knowledge().stream()
+                .map(ref -> new KnowledgeResolved(ref.nodeId(), ref.primary())).toList();
+        applySaveResolved(question, request, now, actorId, classification, knowledge,
+                resolved.tagItemIds(), false);
+        questionRepository.save(question);
+    }
+
+
     private static SaveQuestionRequest toSaveRequest(UpdateQuestionRequest request) {
         return new SaveQuestionRequest(
                 request.type(), request.subjectCode(), request.gradeCode(), request.difficultyCode(),
@@ -215,9 +251,17 @@ public class QuestionService {
         ResolvedClassification classification = resolveClassification(request);
         List<KnowledgeResolved> knowledge = resolveKnowledge(request == null ? null : request.knowledge());
         List<UUID> tagItemIds = resolveTagIds(request == null ? null : request.tagCodes());
+        return applySaveResolved(question, request, now, actorId, classification, knowledge, tagItemIds, true);
+    }
 
+    private boolean applySaveResolved(Question question, SaveQuestionRequest request, Instant now, UUID actorId,
+            ResolvedClassification classification, List<KnowledgeResolved> knowledge,
+            List<UUID> tagItemIds, boolean validateChildCatalog) {
+        QuestionType type = question.getType();
         Sanitized sanitized = sanitize(request);
-        validateChildOverrides(sanitized.body());
+        if (validateChildCatalog) {
+            validateChildOverrides(sanitized.body());
+        }
         QuestionInput input = new QuestionInput(
                 type, sanitized.body(), effectivePoints(type, request == null ? null : request.points(), sanitized.body()),
                 sanitized.content(), sanitized.solution(), sanitized.commonMistakes(), sanitized.attachmentIds());
@@ -268,6 +312,9 @@ public class QuestionService {
         supportDao.reserveSourceCodes(question.getId(),
                 question.getCurrentVersionNo() == null ? null : question.getSourceCode(), snapshot.sourceCode());
         upsertVersion(question.getId(), targetVersion, snapshot, actorId, now);
+        if (question.getCurrentVersionNo() != null && snapshot.body() instanceof QuestionBody.QuestionSetBody) {
+            saveWorkingChildren(question, snapshot, targetVersion, now, actorId);
+        }
 
         if (question.getCurrentVersionNo() == null) {
             projectRow(question, snapshot, targetVersion, now, actorId);
@@ -541,6 +588,7 @@ public class QuestionService {
         questionRepository.save(copy);
         applyRowFields(copy, copySnapshot, null, 1, now, actorId);
         versionRepository.save(new QuestionVersion(copy.getId(), 1, copySnapshot, actorId, now));
+        writeAssetRefs(copy.getId(), 1, copySnapshot);
         saveKnowledgeRows(copy.getId(), fromSnapshotKnowledge(copySnapshot.knowledge()));
         for (UUID tagItemId : copySnapshot.tagItemIds()) {
             tagRepository.save(new QuestionTag(copy.getId(), tagItemId));
@@ -643,6 +691,9 @@ public class QuestionService {
         supportDao.reserveSourceCodes(id, question.getCurrentVersionNo() == null ? null : question.getSourceCode(),
                 snapshot.sourceCode() == null ? question.getSourceCode() : snapshot.sourceCode());
         upsertVersion(id, targetVersion, snapshot, actorId, now);
+        if (question.getCurrentVersionNo() != null && snapshot.body() instanceof QuestionBody.QuestionSetBody) {
+            saveWorkingChildren(question, snapshot, targetVersion, now, actorId);
+        }
 
         if (question.getCurrentVersionNo() == null) {
             projectSnapshot(question, snapshot, targetVersion, now, actorId);
@@ -678,6 +729,37 @@ public class QuestionService {
         }
         return ids;
     }
+    /** Save child-version refs without modifying the serving projection. */
+    private void saveWorkingChildren(Question parent, QuestionSnapshot snapshot, int versionNo,
+            Instant now, UUID actorId) {
+        QuestionBody.QuestionSetBody body = (QuestionBody.QuestionSetBody) snapshot.body();
+        List<Question> existing = questionRepository.findAllByParentId(parent.getId());
+        Map<UUID, Question> byId = new HashMap<>();
+        Set<String> codes = new HashSet<>();
+        for (Question row : existing) {
+            byId.put(row.getId(), row);
+            codes.add(row.getCode());
+        }
+        Set<UUID> kept = new HashSet<>();
+        for (int i = 0; i < body.children().size(); i++) {
+            QuestionBody.ChildQuestion child = body.children().get(i);
+            UUID childId = child.id();
+            kept.add(childId);
+            if (!byId.containsKey(childId)) {
+                Question row = Question.create(childId, nextChildCode(parent, codes), child.type(),
+                        parent.getId(), i, now, actorId);
+                row.setDeletedAt(now);
+                questionRepository.save(row);
+            }
+            upsertVersion(childId, versionNo, childSnapshot(child, snapshot, snapshot.points()), actorId, now);
+        }
+        for (Question row : existing) {
+            if (!kept.contains(row.getId())) {
+                assetRefRepository.deleteByQuestionIdAndVersionNo(row.getId(), versionNo);
+            }
+        }
+    }
+
 
     /**
      * Đồng bộ dòng câu con với {@code children[]} của thân: tạo câu con mới (id do máy chủ
@@ -693,10 +775,6 @@ public class QuestionService {
             Instant now,
             UUID actorId) {
         List<QuestionBody.ChildQuestion> children = setBody.children();
-        if (children.size() < CHILD_MIN) {
-            throw new BusinessRuleException(ERR_BODY_INVALID, null,
-                    List.of(new FieldError("body.children", "QUESTION_SET_CHILDREN_MIN", null)));
-        }
         Set<UUID> ids = new HashSet<>();
         for (QuestionBody.ChildQuestion child : children) {
             if (child.id() != null && !ids.add(child.id())) {
@@ -869,6 +947,7 @@ public class QuestionService {
             Question row, QuestionSnapshot snapshot, int versionNo, Instant now, UUID actorId) {
         questionRepository.save(row);
         versionRepository.save(new QuestionVersion(row.getId(), versionNo, snapshot, actorId, now));
+        writeAssetRefs(row.getId(), versionNo, snapshot);
         saveKnowledgeIds(row.getId(),
                 snapshot.knowledge().stream().map(QuestionSnapshot.KnowledgeRef::itemId).toList());
     }
@@ -1234,6 +1313,12 @@ public class QuestionService {
                 .orElse(null);
     }
 
+    /**
+     * Ghi/ghi đè một phiên bản câu (model note 3): lưu tại chỗ thay thế chỉ các ref của
+     * chính phiên bản đó; phiên bản mới thêm dòng. Tài nguyên dùng bởi phiên bản đọc từ
+     * HTML đã lọc của snapshot + {@code attachmentIds} — cùng transaction, cùng dòng câu
+     * dùng tài nguyên (quyết định lane 8.4).
+     */
     private void upsertVersion(
             UUID questionId, int versionNo, QuestionSnapshot snapshot, UUID actorId, Instant now) {
         QuestionVersion version = versionRepository
@@ -1246,6 +1331,14 @@ public class QuestionService {
             version.setSnapshot(snapshot);
             version.setReadyAt(null);
             versionRepository.save(version);
+        }
+        writeAssetRefs(questionId, versionNo, snapshot);
+    }
+
+    private void writeAssetRefs(UUID questionId, int versionNo, QuestionSnapshot snapshot) {
+        assetRefRepository.deleteByQuestionIdAndVersionNo(questionId, versionNo);
+        for (UUID assetId : QuestionAssetRefCollector.assetIdsOf(snapshot)) {
+            assetRefRepository.save(new QuestionAssetRef(assetId, questionId, versionNo));
         }
     }
 

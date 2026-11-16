@@ -2,12 +2,13 @@
 
 import { Button, Card, cn, PageHeader } from "@thi360/ui";
 import {
+  ArrowLeftRight,
   ArrowRight,
+  Brackets,
   Check,
   CircleDot,
   Layers,
   ListChecks,
-  Move,
   PenLine,
   SquareCheckBig,
   TextCursorInput,
@@ -25,8 +26,8 @@ const TYPE_ICON: Record<QuestionType, LucideIcon> = {
   MULTIPLE_CHOICE: SquareCheckBig,
   TRUE_FALSE: ListChecks,
   SHORT_ANSWER: TextCursorInput,
-  CLOZE: TextCursorInput,
-  MATCHING: Move,
+  CLOZE: Brackets,
+  MATCHING: ArrowLeftRight,
   QUESTION_SET: Layers,
   ESSAY: PenLine,
 };
@@ -37,7 +38,7 @@ export function questionCreateHref(type: QuestionType): string {
 
 /**
  * Bước chọn dạng câu của `/questions/new` (canvas `CauHoiChonDang`). Bản vẽ là hộp thoại trên danh sách; mockup làm
- * thành trang riêng vì `/questions/new` là một đường dẫn (mở được ở tab mới, nút Back đúng nghĩa). Chọn một trong sáu
+ * thành trang riêng vì `/questions/new` là một đường dẫn (mở được ở tab mới, nút Back đúng nghĩa). Chọn một trong tám
  * dạng là một nhóm radio (DESIGN.md 5.2), "Tiếp tục" mở biểu mẫu `?type=…`.
  */
 export function QuestionTypePicker({ initialType = "SINGLE_CHOICE" }: { initialType?: QuestionType }) {

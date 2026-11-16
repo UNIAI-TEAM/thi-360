@@ -2220,6 +2220,17 @@
         "required" : [ "fullName", "password", "username" ],
         "type" : "object"
       },
+      "Criterion" : {
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
       "DeactivateUserRequest" : {
         "description" : "Yêu cầu ngừng hoạt động tài khoản",
         "properties" : {
@@ -2261,6 +2272,109 @@
           }
         },
         "required" : [ "blockers", "deletable" ],
+        "type" : "object"
+      },
+      "Draft" : {
+        "properties" : {
+          "acceptedAnswers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "body" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ClozeBody"
+            }, {
+              "$ref" : "#/components/schemas/EssayBody"
+            }, {
+              "$ref" : "#/components/schemas/MatchingBody"
+            }, {
+              "$ref" : "#/components/schemas/MultipleChoiceBody"
+            }, {
+              "$ref" : "#/components/schemas/QuestionSetBody"
+            }, {
+              "$ref" : "#/components/schemas/ShortAnswerBody"
+            }, {
+              "$ref" : "#/components/schemas/SingleChoiceBody"
+            }, {
+              "$ref" : "#/components/schemas/TrueFalseBody"
+            } ]
+          },
+          "commonMistakes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "difficultyCode" : {
+            "type" : "string"
+          },
+          "gradeCode" : {
+            "type" : "string"
+          },
+          "gradingGuide" : {
+            "type" : "string"
+          },
+          "inputHint" : {
+            "type" : "string"
+          },
+          "knowledge" : {
+            "items" : {
+              "$ref" : "#/components/schemas/KnowledgeRef"
+            },
+            "type" : "array"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Option"
+            },
+            "type" : "array"
+          },
+          "points" : {
+            "type" : "number"
+          },
+          "rubric" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Criterion"
+            },
+            "type" : "array"
+          },
+          "sampleAnswer" : {
+            "type" : "string"
+          },
+          "setCode" : {
+            "type" : "string"
+          },
+          "solution" : {
+            "type" : "string"
+          },
+          "statements" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Statement"
+            },
+            "type" : "array"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          },
+          "tagCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "taskTypeCode" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "DuplicateExamRequest" : {
@@ -2947,6 +3061,25 @@
         "required" : [ "attemptCount", "state" ],
         "type" : "object"
       },
+      "ExistingQuestionRef" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "sourceCode" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "FieldError" : {
         "description" : "Chi tiết lỗi của một trường dữ liệu",
         "properties" : {
@@ -3069,6 +3202,20 @@
         "required" : [ "canConfirm", "createdAt", "createdRows", "failedRows", "hasErrors", "hasGeneratedPasswords", "id", "invalidRows", "mustChangePassword", "resultAvailable", "sourceAvailable", "status", "totalRows", "updatedAt", "validRows", "version" ],
         "type" : "object"
       },
+      "ImportColumn" : {
+        "properties" : {
+          "example" : {
+            "type" : "string"
+          },
+          "header" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ImportRowError" : {
         "description" : "Lỗi kiểm tra dữ liệu theo từng dòng và cột",
         "properties" : {
@@ -3167,6 +3314,65 @@
           }
         },
         "required" : [ "errors", "id", "passwordGenerated", "rowNo", "status" ],
+        "type" : "object"
+      },
+      "ImportSummary" : {
+        "properties" : {
+          "duplicate" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "error" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "valid" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "validSetChildren" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "validSets" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "Issue" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "column" : {
+            "type" : "string"
+          },
+          "field" : {
+            "type" : "string"
+          },
+          "questionType" : {
+            "type" : "string"
+          },
+          "relatedRow" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "JsonNode" : {
@@ -3513,6 +3719,20 @@
           },
           "type" : "object"
         } ]
+      },
+      "Option" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "correct" : {
+            "type" : "boolean"
+          },
+          "letter" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
       },
       "PageResponseAuditEventResponse" : {
         "description" : "Kết quả phân trang",
@@ -4116,6 +4336,25 @@
         "required" : [ "status", "time" ],
         "type" : "object"
       },
+      "QuestionAssetUploadResponse" : {
+        "properties" : {
+          "fileName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "size" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "QuestionBlock" : {
         "properties" : {
           "answerTypeLocked" : {
@@ -4259,6 +4498,100 @@
             "type" : "string"
           },
           "path" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "QuestionImportErrorLine" : {
+        "properties" : {
+          "issue" : {
+            "$ref" : "#/components/schemas/Issue"
+          },
+          "rowNumber" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sourceCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "QuestionImportHistoryEntry" : {
+        "properties" : {
+          "createdCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "durationMs" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "errorRowCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionImportErrorLine"
+            },
+            "type" : "array"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "importedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "importedBy" : {
+            "$ref" : "#/components/schemas/PersonRef"
+          },
+          "missingKnowledgeCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "newVersionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "setChildCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "setCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "singleCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "skippedDuplicateCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "QuestionImportValidationResponse" : {
+        "properties" : {
+          "rows" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Row"
+            },
+            "type" : "array"
+          },
+          "summary" : {
+            "$ref" : "#/components/schemas/ImportSummary"
+          },
+          "uploadId" : {
+            "format" : "uuid",
             "type" : "string"
           }
         },
@@ -4631,6 +4964,28 @@
         "required" : [ "itemIds" ],
         "type" : "object"
       },
+      "Request" : {
+        "properties" : {
+          "duplicatePolicy" : {
+            "enum" : [ "SKIP", "NEW_VERSION" ],
+            "type" : "string"
+          },
+          "mapping" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "skipErrors" : {
+            "type" : "boolean"
+          },
+          "uploadId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ResetAppearanceRequest" : {
         "description" : "Yêu cầu khôi phục cấu hình giao diện mặc định",
         "properties" : {
@@ -4810,6 +5165,41 @@
         "required" : [ "access", "code", "createdAt", "id", "name", "permissionCount", "status", "system", "updatedAt", "userCount", "version" ],
         "type" : "object"
       },
+      "Row" : {
+        "properties" : {
+          "draft" : {
+            "$ref" : "#/components/schemas/Draft"
+          },
+          "duplicateOf" : {
+            "$ref" : "#/components/schemas/ExistingQuestionRef"
+          },
+          "isSetPassage" : {
+            "type" : "boolean"
+          },
+          "issues" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Issue"
+            },
+            "type" : "array"
+          },
+          "parentRowNumber" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "rowNumber" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sourceCode" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "VALID", "ERROR", "DUPLICATE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "SaveQuestionRequest" : {
         "description" : "Thân yêu cầu tạo hoặc sửa câu hỏi (spec 4.5, 9.2)",
         "properties" : {
@@ -4952,6 +5342,20 @@
           }
         },
         "required" : [ "questionId", "reason" ],
+        "type" : "object"
+      },
+      "Statement" : {
+        "properties" : {
+          "answer" : {
+            "type" : "boolean"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "letter" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "StudentLearningResponse" : {
@@ -5716,6 +6120,41 @@
         "required" : [ "roleIds" ],
         "type" : "object"
       },
+      "Upload" : {
+        "properties" : {
+          "columns" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ImportColumn"
+            },
+            "type" : "array"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "fileType" : {
+            "enum" : [ "XLSX", "CSV" ],
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "rowCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sheetName" : {
+            "type" : "string"
+          },
+          "suggestedMapping" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "type" : "object"
+      },
       "UserClassHistoryResponse" : {
         "description" : "Bản ghi lịch sử tham gia, rời hoặc chuyển lớp của tài khoản",
         "properties" : {
@@ -6401,6 +6840,21 @@
           }
         },
         "required" : [ "available" ],
+        "type" : "object"
+      },
+      "ValidateRequest" : {
+        "properties" : {
+          "mapping" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "uploadId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
         "type" : "object"
       }
     }
@@ -15963,6 +16417,1012 @@
         "tags" : [ "Admin Permissions" ]
       }
     },
+    "/api/v1/admin/question-assets" : {
+      "post" : {
+        "operationId" : "upload_1",
+        "parameters" : [ {
+          "description" : "IMAGE cho ảnh trong nội dung; ATTACHMENT cho tệp đính kèm",
+          "in" : "query",
+          "name" : "kind",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "IMAGE", "ATTACHMENT" ],
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "description" : "Tệp tải lên; loại kiểm theo chữ ký byte, không theo Content-Type",
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuestionAssetUploadResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải ảnh (≤5 MB, PNG/JPEG/WebP) hoặc tệp đính kèm (≤20 MB) của câu hỏi",
+        "tags" : [ "Admin Question Assets" ]
+      }
+    },
+    "/api/v1/admin/question-assets/{id}" : {
+      "get" : {
+        "operationId" : "download",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Phục vụ nội dung tài nguyên (inline cho ảnh, attachment cho tệp)",
+        "tags" : [ "Admin Question Assets" ]
+      }
+    },
+    "/api/v1/admin/question-imports" : {
+      "get" : {
+        "description" : "Trả tối đa 200 lần nhập mới nhất.",
+        "operationId" : "history",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/QuestionImportHistoryEntry"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Lịch sử nhập mới nhất trước",
+        "tags" : [ "Question imports" ]
+      }
+    },
+    "/api/v1/admin/question-imports/template" : {
+      "get" : {
+        "operationId" : "template",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Tệp mẫu XLSX"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải tệp mẫu nhập câu hỏi XLSX",
+        "tags" : [ "Question imports" ]
+      }
+    },
+    "/api/v1/admin/question-imports/uploads" : {
+      "post" : {
+        "operationId" : "upload",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Upload"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải tệp câu hỏi lên để kiểm tra; tệp được giữ 24 giờ",
+        "tags" : [ "Question imports" ]
+      }
+    },
+    "/api/v1/admin/question-imports/uploads/{id}/commit" : {
+      "post" : {
+        "operationId" : "commit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Request"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuestionImportHistoryEntry"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Nhập câu hỏi; Idempotency-Key bắt buộc",
+        "tags" : [ "Question imports" ]
+      }
+    },
+    "/api/v1/admin/question-imports/uploads/{id}/validate" : {
+      "post" : {
+        "operationId" : "validate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ValidateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuestionImportValidationResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Kiểm tra tệp nhập mà không ghi câu hỏi",
+        "tags" : [ "Question imports" ]
+      }
+    },
     "/api/v1/admin/questions" : {
       "get" : {
         "description" : "Từ khóa bỏ dấu trên search_text (dưới 2 ký tự chỉ so mã); lọc MAPID khớp cả nút con (D23). Sort: createdAt, updatedAt, code, points, type, status.",
@@ -24116,8 +25576,14 @@
     "description" : "Bài thi, cấu trúc và mẫu",
     "name" : "Exam"
   }, {
+    "description" : "Nhập câu hỏi từ Excel hoặc CSV",
+    "name" : "Question imports"
+  }, {
     "description" : "Gán hoặc gỡ vai trò, quyền trực tiếp hàng loạt",
     "name" : "Admin Bulk Authz"
+  }, {
+    "description" : "Ảnh và tệp đính kèm của ngân hàng câu hỏi",
+    "name" : "Admin Question Assets"
   }, {
     "description" : "Cấu hình giao diện toàn hệ thống",
     "name" : "Appearance"

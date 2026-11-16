@@ -136,4 +136,29 @@ describe("QuestionBankView", () => {
     expect(link).toHaveAttribute("href", "/questions/q-0001");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
+
+  it("loc theo Dang bai tu URL, hien chip va doi duoc trong Bo loc khac", async () => {
+    questionStore.update("q-0001", (question) => ({ ...question, taskTypeCode: "CALCULATION" }));
+    questionStore.update("q-0002", (question) => ({ ...question, taskTypeCode: "CALCULATION" }));
+    questionStore.update("q-0003", (question) => ({ ...question, taskTypeCode: "REASONING" }));
+    setUrl("?taskType=CALCULATION");
+    renderWithProviders(<QuestionBankView />);
+
+    await expectCount("2 câu hỏi khớp bộ lọc");
+    expect(screen.getByRole("button", { name: "Bỏ lọc Dạng bài: Tính toán" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Dạng bài" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Lập luận" }));
+    await waitFor(() => expect(window.location.search).toContain("taskType=REASONING"));
+    await expectCount("1 câu hỏi khớp bộ lọc");
+  });
+
+  it("bang co cot Diem va dong hien diem cua cau", async () => {
+    setUrl("?q=CH-000001");
+    renderWithProviders(<QuestionBankView />);
+    const table = await screen.findByRole("table", { name: "Danh sách câu hỏi khớp bộ lọc" });
+    expect(await within(table).findByRole("columnheader", { name: /Điểm/ })).toBeInTheDocument();
+    const row = within(table).getByRole("link", { name: "Tính giới hạn lim (2n + 1)/(n + 3)." }).closest("tr")!;
+    expect(row).toHaveTextContent(`${questionStore.require("q-0001").points}`);
+  });
 });
