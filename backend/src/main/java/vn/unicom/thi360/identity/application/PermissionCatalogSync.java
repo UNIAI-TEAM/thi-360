@@ -2,6 +2,7 @@ package vn.unicom.thi360.identity.application;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import vn.unicom.thi360.identity.domain.Normalizer;
 import vn.unicom.thi360.identity.domain.PermissionEntity;
 import vn.unicom.thi360.identity.domain.Role;
 import vn.unicom.thi360.identity.domain.RolePermission;
+import vn.unicom.thi360.identity.domain.RolePermissionId;
 import vn.unicom.thi360.identity.infrastructure.PermissionRepository;
 import vn.unicom.thi360.identity.infrastructure.RolePermissionRepository;
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
@@ -40,6 +42,7 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
     private final RoleRepository roleRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final TransactionTemplate transactionTemplate;
+    private final AuthzSnapshotService authzSnapshotService;
     private final Clock clock;
 
     public PermissionCatalogSync(
@@ -47,11 +50,13 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
             RoleRepository roleRepository,
             RolePermissionRepository rolePermissionRepository,
             TransactionTemplate transactionTemplate,
+            AuthzSnapshotService authzSnapshotService,
             Clock clock) {
         this.permissionRepository = Objects.requireNonNull(permissionRepository);
         this.roleRepository = Objects.requireNonNull(roleRepository);
         this.rolePermissionRepository = Objects.requireNonNull(rolePermissionRepository);
         this.transactionTemplate = Objects.requireNonNull(transactionTemplate);
+        this.authzSnapshotService = Objects.requireNonNull(authzSnapshotService);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -71,6 +76,7 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
             }
 
             Map<String, UUID> idByCode = new HashMap<>();
+            List<Permission> createdPermissions = new ArrayList<>();
             for (Permission p : Permission.values()) {
                 PermissionEntity existing = existingByCode.get(p.code());
                 if (existing != null) {
@@ -111,12 +117,50 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
                             now);
                     permissionRepository.save(created);
                     idByCode.put(p.code(), created.getId());
+                    createdPermissions.add(p);
                 }
             }
 
             permissionRepository.flush();
             seedSystemRoleDefaults(idByCode, now);
+            grantNewPermissionsToSystemRoles(createdPermissions, idByCode, now);
         });
+    }
+
+    /**
+     * Khi sync() tạo mới một dòng quyền (ví dụ nâng cấp từ đợt 1), gán ngay quyền đó cho các vai
+     * trò hệ thống đã tồn tại mà SYSTEM_ROLE_DEFAULTS liệt kê quyền này — kể cả vai trò đã bị
+     * chỉnh sửa. Quyền tồn tại từ trước thì không đụng (giữ lựa chọn của quản trị viên, kể cả
+     * việc đã gỡ một quyền khỏi vai trò). Sau khi gán, xóa ảnh chụp quyền của người dùng thuộc
+     * vai trò để thay đổi có hiệu lực ở request kế tiếp (spec đợt 1 mục 5.7).
+     */
+    private void grantNewPermissionsToSystemRoles(
+            List<Permission> createdPermissions, Map<String, UUID> idByCode, Instant now) {
+        if (createdPermissions.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Set<Permission>> entry : SYSTEM_ROLE_DEFAULTS.entrySet()) {
+            Role role = roleRepository.findByCodeNormalized(Normalizer.normalize(entry.getKey())).orElse(null);
+            if (role == null || !role.isSystem()) {
+                continue;
+            }
+            List<RolePermission> newLinks = new ArrayList<>();
+            for (Permission p : createdPermissions) {
+                if (!entry.getValue().contains(p)) {
+                    continue;
+                }
+                UUID permissionId = Objects.requireNonNull(idByCode.get(p.code()));
+                RolePermissionId linkId = new RolePermissionId(role.getId(), permissionId);
+                if (!rolePermissionRepository.existsById(linkId)) {
+                    newLinks.add(new RolePermission(role.getId(), permissionId, null, now));
+                }
+            }
+            if (!newLinks.isEmpty()) {
+                rolePermissionRepository.saveAll(newLinks);
+                rolePermissionRepository.flush();
+                authzSnapshotService.evictByRole(role.getId());
+            }
+        }
     }
 
     private void seedSystemRoleDefaults(Map<String, UUID> permissionIdByCode, Instant now) {
