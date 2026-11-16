@@ -51,7 +51,7 @@ export interface ExamAvailability {
 export interface PathChoice {
   partId: string;
   optionId: string;
-  kind: "SUBJECT" | "COMBINATION" | "BRANCH";
+  kind: "SUBJECT" | "COMBINATION" | "BRANCH" | "SUBJECT_CHOICE";
   code: string;
   name: string;
 }
@@ -101,7 +101,16 @@ export type CheckIssueCode =
   | "POINTS_TOTAL_MISMATCH"
   | "COMPETENCY_SHORTAGE"
   | "RUBRIC_MISSING"
-  | "SCORING_MISMATCH";
+  | "SCORING_MISMATCH"
+  | "ANSWER_QUOTA_TOTAL_MISMATCH"
+  | "SUBJECT_MATRIX_TOTAL_MISMATCH"
+  | "GROUP_ANSWER_TYPE_MISSING"
+  | "SUBJECT_CHOICE_COUNTS_INVALID"
+  | "REMAINDER_GROUP_INVALID"
+  | "SUBJECT_QUOTA_COUNT_VARIES"
+  | "ANSWER_TYPE_SHORTAGE"
+  | "SUBJECT_QUOTA_INFEASIBLE"
+  | "PREVIEW_SUBJECTS_INVALID";
 
 /**
  * Mức của vấn đề. `ERROR`: lỗi xác định (Không hợp lệ). `UNCONFIRMED`: chưa tìm được phương án trong giới hạn xử lý.
@@ -169,8 +178,8 @@ export interface BlockCheck {
   optionId: string | null;
   blockId: string;
   blockName: string;
-  questionType: QuestionType;
-  required: number;
+  questionType: QuestionType | null;
+  required: number | null;
   setCount: number | null;
   setSize: number | null;
   /** Tổng nguồn phù hợp (câu); câu chùm thêm `availableSets`. */
@@ -181,6 +190,25 @@ export interface BlockCheck {
   issues: CheckIssue[];
 }
 
+/** Kết quả một cách chọn môn của đường có `SUBJECT_CHOICE`: các môn, số câu từng môn và kết luận. */
+export interface PathSelectionCheck {
+  subjectCodes: string[];
+  counts: number[];
+  result: PathCheckResult;
+  issues: CheckIssue[];
+}
+
+/** Chỉ tiêu cấp môn yêu cầu và đạt, theo từng môn trên đường (kèm số câu của môn). */
+export interface SubjectCheck {
+  sectionId: string;
+  subjectCode: string;
+  optionId: string | null;
+  questionCount: number | null;
+  answerQuotas: Array<{ answerType: QuestionType; required: number; achieved: number }>;
+  byGrade: Array<{ code: string; required: number; achieved: number }>;
+  byDifficulty: Array<{ code: string; required: number; achieved: number }>;
+}
+
 export interface PathCheck extends ExamPathRef {
   result: PathCheckResult;
   partIds: string[];
@@ -189,6 +217,10 @@ export interface PathCheck extends ExamPathRef {
   totalMinutes: number;
   totalPoints: number;
   blocks: BlockCheck[];
+  /** Kết quả theo môn: chỉ tiêu cấp môn yêu cầu và đạt (đường có `SUBJECT_CHOICE`: theo từng cách chọn trong `selections`). */
+  subjects: SubjectCheck[];
+  /** Từng cách chọn môn của đường có `SUBJECT_CHOICE`; rỗng khi đường không có. */
+  selections: PathSelectionCheck[];
   /** Mọi vấn đề của đường (cấu trúc và của các khối). */
   issues: CheckIssue[];
 }
@@ -442,6 +474,11 @@ export interface GeneratePreviewRequest {
   pathId: string;
   seed: number;
   version?: number | null;
+  /**
+   * Đường có `SUBJECT_CHOICE`: đúng `chooseSubjects` môn thuộc phương án muốn xem; thiếu hoặc sai thì 422
+   * `PREVIEW_SUBJECTS_INVALID`.
+   */
+  subjectCodes?: string[];
 }
 
 export interface PublishExamRequest {

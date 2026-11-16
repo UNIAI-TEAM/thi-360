@@ -73,13 +73,14 @@ export interface ExamSummary {
   updatedBy: PersonRef;
 }
 
-/** Phạm vi kiến thức của khối câu hỏi theo MAPID. */
+/**
+ * Phạm vi kiến thức theo MAPID của môn hoặc của nhóm lấy câu. Nút đã chọn khớp câu gắn nút đó hoặc nút con của nó
+ * (D23): không còn công tắc "Bao gồm cấp dưới".
+ */
 export interface KnowledgeScope {
   nodeIds: string[];
   /** `ANY`: câu gắn một trong các nút; `ALL`: câu gắn đủ các nút. */
   match: "ANY" | "ALL";
-  /** Tính cả nút con của nút đã chọn. Mặc định tắt (UniNote PBI-04). */
-  includeDescendants: boolean;
   /** Lọc thêm theo năng lực (V-ACT); bỏ trống hoặc rỗng: không lọc. */
   competencyCodes?: string[];
 }
@@ -112,13 +113,21 @@ export interface BlockMatrix {
   byCompetency?: MatrixDimensionValue[];
 }
 
+/**
+ * Nhóm lấy câu của môn (B9, D21). Nhóm câu đơn: `questionCount` và phạm vi nguồn; `questionType` là dạng trả lời của
+ * nhóm, `null` khi nhóm lấy theo chỉ tiêu dạng trả lời của môn (Toán HSA). Nhóm câu chùm (`QUESTION_SET`, `CLOZE`):
+ * `setCount × setSize`, luôn lấy nguyên chùm.
+ */
 export interface QuestionBlock {
   id: string;
   name: string;
-  questionType: QuestionType;
-  /** Số câu tính điểm của khối; Bộ câu hỏi tính theo câu con (`setCount × setSize`). */
-  questionCount: number;
-  /** Bộ câu hỏi: số bộ và số câu con mỗi bộ; dạng khác để `null`. */
+  questionType: QuestionType | null;
+  /**
+   * Số câu của nhóm; nhóm chùm tính theo câu con (`setCount × setSize`). `null`: nhóm câu đơn "lấy phần còn lại" của
+   * môn (môn có số câu thay đổi, HSA Khoa học); môn có tối đa một nhóm như vậy.
+   */
+  questionCount: number | null;
+  /** Nhóm chùm: số chùm và số câu con mỗi chùm; dạng khác để `null`. */
   setCount: number | null;
   setSize: number | null;
   /**
@@ -127,10 +136,20 @@ export interface QuestionBlock {
    * kiểm tra cấu hình chứng minh được tổng điểm; `null`: không lọc.
    */
   requiredPointsPerQuestion: number | null;
-  knowledgeScope: KnowledgeScope;
+  /** Phạm vi riêng của nhóm; `null`: kế thừa phạm vi của môn. Phạm vi riêng không giao với phạm vi của môn. */
+  knowledgeScope: KnowledgeScope | null;
   tagCodes: string[];
-  matrix: BlockMatrix;
-  /** Quy tắc đảo (bản vẽ BaiThiCauTruc). Bỏ trống coi như `SHUFFLE`. */
+  /** Chỉ tiêu riêng của nhóm (tùy chọn); câu của nhóm vẫn tính vào chỉ tiêu của môn. `null`: không có. */
+  matrix: BlockMatrix | null;
+  /** Dạng bài (`ContentReference.taskTypes`); `null`: không lọc. */
+  taskTypeCode: string | null;
+  /** Nhóm chùm: giới hạn dạng của câu con; `null`: không giới hạn. */
+  childAnswerType: QuestionType | null;
+  /** Mã nhóm của mẫu cấu trúc; `null` với nhóm thêm tay. */
+  templateGroupCode: string | null;
+  /** Mẫu đã điền sẵn dạng trả lời và khóa: màn không cho đổi. */
+  answerTypeLocked: boolean;
+  /** Đảo câu trong nhóm: do mẫu quy định, không sửa trên màn (D24). Bỏ trống coi như `SHUFFLE`. */
   shuffle?: BlockShuffleRule;
   /**
    * Quy tắc chấm khối mong đợi, lấy từ mẫu của kỳ thi. Quy tắc thật nằm trên từng câu; kiểm tra cấu hình báo câu có quy
@@ -147,26 +166,50 @@ export interface BlockExpectedScoring {
   multipleChoiceRule?: MultipleChoiceRule;
 }
 
-/** Một môn trong phần thi (hoặc trong một tổ hợp). */
+/** Chỉ tiêu dạng trả lời của môn, tính trên mọi đơn vị đếm kể cả câu con của chùm (D22). */
+export interface AnswerQuotas {
+  /** `COUNT`: tổng bằng số câu của môn; `PERCENT`: tổng 100, quy ra số câu bằng phần dư lớn nhất. */
+  unit: MatrixUnit;
+  items: Array<{ answerType: QuestionType; value: number }>;
+}
+
+/** Một môn trong phần thi (hoặc trong một phương án) cùng các nhóm lấy câu của môn (B9). */
 export interface ExamSection {
   id: string;
   subjectCode: string;
-  questionCount: number;
+  /** Số câu của môn; `null` trong phương án `SUBJECT_CHOICE`: hệ thống tính theo `countsByPick` (D25). */
+  questionCount: number | null;
+  /** Phạm vi MAPID của môn; nhóm không có phạm vi riêng dùng phạm vi này. `null`: không giới hạn. */
+  knowledgeScope: KnowledgeScope | null;
+  /** Chỉ tiêu dạng trả lời của môn; `null`: không kiểm soát. */
+  answerQuotas: AnswerQuotas | null;
+  /** Chỉ tiêu khối lớp, độ khó của môn (tính trên mọi nhóm); `null`: không kiểm soát. */
+  matrix: BlockMatrix | null;
+  /** Thứ tự nhóm do mẫu quy định (D24): `SHUFFLE` đảo cả nhóm, câu cùng nhóm vẫn liền nhau. */
+  groupOrder: "FIXED" | "SHUFFLE";
   blocks: QuestionBlock[];
 }
 
 /**
- * Một lựa chọn của phần tự chọn: một môn (Tiếng Anh), một mã tổ hợp (KH-1, QD01, CA1) hoặc một nhánh nội dung
- * (THPTQG Tin học: Khoa học máy tính, Tin học ứng dụng).
+ * Một lựa chọn của phần tự chọn: một môn (Tiếng Anh), một mã tổ hợp (KH-1, QD01, CA1), một nhánh nội dung (THPTQG Tin
+ * học: Khoa học máy tính, Tin học ứng dụng), hoặc `SUBJECT_CHOICE`: học viên chọn `chooseSubjects` trong các môn của
+ * `sections` (HSA Khoa học: 5 môn, chọn 3).
  */
 export interface ExamPartOption {
   id: string;
-  kind: "SUBJECT" | "COMBINATION" | "BRANCH";
-  /** Mã môn (`ENGLISH`), mã tổ hợp (`KH-1`) hoặc mã nhánh (`CS`, `ICT`). */
+  kind: "SUBJECT" | "COMBINATION" | "BRANCH" | "SUBJECT_CHOICE";
+  /** Mã môn (`ENGLISH`), mã tổ hợp (`KH-1`), mã nhánh (`CS`, `ICT`) hoặc mã phương án chọn môn (`SCIENCE`). */
   code: string;
-  /** Tên hiển thị của nhánh; môn và tổ hợp lấy tên từ danh mục nên để `null`. */
+  /** Tên hiển thị của nhánh và của phương án chọn môn; môn và tổ hợp lấy tên từ danh mục nên để `null`. */
   name?: string | null;
   sections: ExamSection[];
+  /** `SUBJECT_CHOICE`: số môn học viên chọn; kind khác `null`. */
+  chooseSubjects: number | null;
+  /**
+   * `SUBJECT_CHOICE`: số câu của môn thứ i trong các môn đã chọn, xếp theo thứ tự môn trong cấu trúc, không theo thứ
+   * tự bấm chọn (D25); tổng bằng số câu của phương án. Kind khác `null`.
+   */
+  countsByPick: number[] | null;
   /**
    * Số câu từng môn đã được chuyên gia xác nhận (HSA chia 17–17–16 đang chờ xác nhận). `false`: kiểm tra cấu hình nhắc
    * trước khi công bố; bỏ trống: không cần xác nhận.
@@ -286,8 +329,8 @@ export interface ExamTemplatePart {
    * Các môn của phần cố định nhiều môn (BCA Phần 2: Toán 35, Lịch sử 10, Tiếng Anh 20) hoặc phần chung của phần tự
    * chọn (THPTQG Tin học).
    */
-  sections?: Array<{ subjectCode: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
-  /** Phần tự chọn: lựa chọn gắn sẵn (mã tổ hợp, `ENGLISH`, hoặc nhánh có tên) và số câu từng môn. */
+  sections?: ExamTemplateSection[];
+  /** Phần tự chọn: lựa chọn gắn sẵn (mã tổ hợp, `ENGLISH`, nhánh có tên, hoặc `SUBJECT_CHOICE`) và số câu từng môn. */
   options?: Array<{
     kind: ExamPartOption["kind"];
     code: string;
@@ -295,21 +338,58 @@ export interface ExamTemplatePart {
     subjectCounts?: number[];
     expertConfirmed?: boolean;
     blocks?: ExamTemplateBlock[];
+    /** `SUBJECT_CHOICE`: môn, số môn chọn và số câu theo thứ tự môn; mỗi môn khai nhóm và nguồn một lần. */
+    subjectChoice?: TemplateSubjectChoice;
   }>;
   /** Khối câu gợi ý theo dạng câu khi phần một môn (THPTQG Toán: 12 chọn một, 4 đúng/sai, 6 trả lời ngắn). */
   blocks?: ExamTemplateBlock[];
 }
 
-/** Khối gợi ý trong mẫu: dạng câu, số câu, điểm mỗi câu, quy tắc chấm mong đợi. */
+/**
+ * Môn của mẫu cùng nhóm khởi tạo sẵn và chỉ tiêu cấp môn (B9). Trường chỉ tiêu bỏ trống nghĩa là `null`: mẫu của
+ * QDA, BCA, V-ACT, SPT, SP2E, THPTQG giữ cấu trúc cũ, môn không có chỉ tiêu (D26).
+ */
+export interface ExamTemplateSection {
+  subjectCode: string;
+  /** `null` trong `SUBJECT_CHOICE`. */
+  questionCount: number | null;
+  blocks?: ExamTemplateBlock[];
+  knowledgeScope?: KnowledgeScope | null;
+  answerQuotas?: AnswerQuotas | null;
+  matrix?: BlockMatrix | null;
+  groupOrder?: ExamSection["groupOrder"];
+}
+
+/** Phương án chọn môn của mẫu (HSA Khoa học): 5 môn, chọn 3, số câu 17, 17, 16 chờ chuyên gia xác nhận (D25). */
+export interface TemplateSubjectChoice {
+  sections: ExamTemplateSection[];
+  chooseSubjects: number;
+  countsByPick: number[];
+  expertConfirmed: boolean;
+}
+
+/**
+ * Nhóm lấy câu trong mẫu (`ExamTemplateBlock` theo `QuestionBlock`, B9): dạng trả lời, số câu, điểm mỗi câu yêu cầu,
+ * quy tắc chấm mong đợi. Trường bỏ trống nghĩa là `null` (`answerTypeLocked`: `false`).
+ */
 export interface ExamTemplateBlock {
   name: string;
-  questionType: QuestionType;
-  questionCount: number;
+  /** Dạng trả lời; `null`: nhóm lấy theo chỉ tiêu dạng trả lời của môn. */
+  questionType: QuestionType | null;
+  /** `null`: nhóm "lấy phần còn lại" của môn. */
+  questionCount: number | null;
   requiredPointsPerQuestion: number | null;
   setCount?: number | null;
   setSize?: number | null;
   competencyCode?: string | null;
   expectedScoring?: BlockExpectedScoring;
+  taskTypeCode?: string | null;
+  childAnswerType?: QuestionType | null;
+  templateGroupCode?: string | null;
+  answerTypeLocked?: boolean;
+  knowledgeScope?: KnowledgeScope | null;
+  matrix?: BlockMatrix | null;
+  shuffle?: BlockShuffleRule;
 }
 
 /**
@@ -393,23 +473,40 @@ export interface SuggestExamCodeQuery {
   subjectCode?: string | null;
 }
 
-/** Bộ lọc nguồn của một khối: môn của phần, dạng câu, phạm vi kiến thức. Chỉ đếm câu Sẵn sàng. */
+/**
+ * Bộ lọc nguồn của một nhóm: môn, dạng trả lời, phạm vi kiến thức có hiệu lực (của nhóm, hoặc của môn khi nhóm kế
+ * thừa). Chỉ đếm câu Sẵn sàng.
+ */
 export interface AvailableQuestionsQuery {
   subjectCode: string;
-  questionType: QuestionType;
-  knowledgeScope: KnowledgeScope;
+  /** Dạng trả lời của nhóm; `null`: nhóm lấy theo chỉ tiêu dạng trả lời của môn (xem `answerTypes`). */
+  questionType: QuestionType | null;
+  /** Các dạng trả lời nhóm nhận (dạng của nhóm, hoặc các dạng trong chỉ tiêu của môn); rỗng: theo `questionType`. */
+  answerTypes: QuestionType[];
+  /** Nhóm chùm: dạng của câu con; `null`: không giới hạn. */
+  childAnswerType: QuestionType | null;
+  /** Phạm vi có hiệu lực; `null`: không giới hạn MAPID. */
+  knowledgeScope: KnowledgeScope | null;
   /** Dạng bài (`ContentReference.taskTypes`); bỏ trống: không lọc. */
-  taskTypeCode?: string;
+  taskTypeCode?: string | null;
   tagCodes?: string[];
   competencyCodes?: string[];
   /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */
   requiredPointsPerQuestion?: number | null;
 }
 
-/** Số câu Sẵn sàng khớp bộ lọc của khối, tổng và theo từng ô Lớp × Độ khó (câu chùm đếm theo câu con). */
+/** Đếm nguồn cho cả môn: hợp nguồn của các nhóm trong môn, mỗi câu đếm một lần. */
+export interface SubjectAvailableQuestionsQuery {
+  subjectCode: string;
+  groups: AvailableQuestionsQuery[];
+}
+
+/** Số câu Sẵn sàng khớp bộ lọc, tổng và theo từng ô Lớp × Độ khó (câu chùm đếm theo câu con). */
 export interface AvailableQuestionCounts {
   total: number;
   cells: MatrixCell[];
+  /** Số câu theo dạng trả lời của đơn vị đếm (D22): câu con của chùm theo dạng câu con, vị trí Điền khuyết là `CLOZE`. */
+  byAnswerType: Array<{ answerType: QuestionType; value: number }>;
   /** Số câu theo năng lực (V-ACT), cho chiều năng lực của ma trận; bỏ trống khi không có câu gắn năng lực. */
   byCompetency?: MatrixDimensionValue[];
 }
@@ -432,10 +529,15 @@ export interface CreateExamPartInput {
    */
   combinations: Array<{ code: string; subjectCounts: number[]; blocks?: ExamTemplateBlock[]; expertConfirmed?: boolean }>;
   /**
+   * Phần tự chọn có phương án chọn môn (HSA Khoa học, thay cho 10 tổ hợp KH-n): mã, tên, các môn kèm nhóm, số môn
+   * chọn, số câu theo thứ tự môn, xác nhận của chuyên gia. `null` hoặc bỏ trống: không có.
+   */
+  subjectChoice?: ({ code: string; name?: string | null } & TemplateSubjectChoice) | null;
+  /**
    * Phần cố định nhiều môn (BCA Phần 2: Toán 35, Lịch sử 10, Tiếng Anh 20; tổng bằng số câu của phần) hoặc phần chung
    * của phần tự chọn (THPTQG Tin học). Bỏ trống: phần một môn theo `subjectCode`.
    */
-  sections?: Array<{ subjectCode: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
+  sections?: ExamTemplateSection[];
   /** Khối gợi ý từ mẫu của phần cố định một môn. */
   blocks?: ExamTemplateBlock[];
   /** Phần tự chọn: nhánh nội dung (THPTQG Tin học), số câu của nhánh bằng số câu của phần trừ phần chung. */
