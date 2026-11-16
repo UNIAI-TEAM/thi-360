@@ -27,6 +27,16 @@ class QuestionImportCsvTests {
     }
 
     @Test
+    void malformedQuotingIsInvalidFileNot500() throws Exception {
+        // Iterator của Commons CSV ném UncheckedIOException khi ô ngoặc kép không đóng
+        // (R1-2): vẫn phải là IMPORT_INVALID_FILE (422 tại endpoint upload).
+        assertEquals(ImportIssueCode.IMPORT_INVALID_FILE,
+            assertThrows(ImportFileException.class, () -> reader.read("a.csv",
+                "type,content\nSHORT_ANSWER,\"unterminated".getBytes(StandardCharsets.UTF_8),
+                ImportLimits.DEFAULT)).code());
+    }
+
+    @Test
     void fileAndRowLimitsAndMacros() {
         assertEquals(ImportIssueCode.IMPORT_MACRO_NOT_ALLOWED,
             assertThrows(ImportFileException.class, () -> reader.read("a.xlsm", new byte[] {1}, ImportLimits.DEFAULT)).code());

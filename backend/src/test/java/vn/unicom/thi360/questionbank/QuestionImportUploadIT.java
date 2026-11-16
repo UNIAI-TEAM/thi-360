@@ -62,6 +62,18 @@ class QuestionImportUploadIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void malformedCsvReturns422Not500() throws Exception {
+        // Ô ngoặc kép không đóng: iterator của Commons CSV ném UncheckedIOException (R1-2)
+        // — endpoint vẫn trả IMPORT_INVALID_FILE/422.
+        byte[] bytes = "type,content\nSHORT_ANSWER,\"unterminated".getBytes(StandardCharsets.UTF_8);
+        mockMvc.perform(multipart(URL)
+                        .file(new MockMultipartFile("file", "bad.csv", "text/csv", bytes))
+                        .with(asUser(Permissions.QUESTION_MODIFY)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("IMPORT_INVALID_FILE"));
+    }
+
+    @Test
     void macroPartAndRowLimitAreRejected() throws Exception {
         byte[] macro;
         try (var out = new ByteArrayOutputStream(); var zip = new ZipOutputStream(out)) {

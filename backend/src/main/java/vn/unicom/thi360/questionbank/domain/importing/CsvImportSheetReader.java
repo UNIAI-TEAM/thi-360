@@ -39,7 +39,9 @@ public final class CsvImportSheetReader implements ImportSheetReader {
                 }
                 table.add(row);
             }
-        } catch (IOException | IllegalArgumentException ex) {
+        } catch (IOException | IllegalArgumentException | java.io.UncheckedIOException ex) {
+            // Commons CSV gói lỗi đọc của iterator trong UncheckedIOException (ngoặc kép chưa
+            // đóng, hàng lỗi cuối tệp) — vẫn là lỗi tệp 422, không phải 500.
             throw new ImportFileException(
                 ImportIssueCode.IMPORT_INVALID_FILE, "Tệp CSV không hợp lệ", ex);
         }
