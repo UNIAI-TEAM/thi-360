@@ -32,6 +32,20 @@ class ExamTemplateIT extends AbstractIntegrationTest {
         assertThat(science.sections()).hasSize(5);
         assertThat(science.chooseSubjects()).isEqualTo(3);
     }
+
+    @Test
+    void qdaBcaCombinationsKept() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "QDA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.code=='QDA_FULL')].structure.parts[*].options[?(@.kind=='COMBINATION')].code",
+                        Matchers.hasItems("QD01", "QD02", "QD03", "QD04")));
+        mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "BCA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.code=='BCA_FULL')].structure.parts[*].options[?(@.kind=='COMBINATION')].code",
+                        Matchers.hasItems("CA1", "CA2", "CA3", "CA4")));
+    }
     @Test
     void hsaContainsFiveSubjectChoiceWithoutScienceCombinations() throws Exception {
         mockMvc.perform(get("/api/v1/admin/exam-templates")
