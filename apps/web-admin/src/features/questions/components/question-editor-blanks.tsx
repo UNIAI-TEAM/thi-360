@@ -97,15 +97,32 @@ function BlankRow({ prefix, index, onRemove }: { prefix: BodyPath; index: number
     keyName: "rowKey",
   });
   const error = useEditorError(`${prefix}.blanks.${index}.answers`);
+  const pointsError = useEditorError(`${prefix}.blanks.${index}.points`);
   const number = index + 1;
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id={`${rowId}-title`} className="text-label font-semibold text-text">
           {t("blankTitle", { number })}
         </h3>
-        <IconButton tone="danger" aria-label={t("remove", { number })} icon={<X />} onClick={onRemove} />
+        <div className="flex items-center gap-1">
+          <label htmlFor={`${rowId}-points`} className="text-caption font-medium text-text-secondary">
+            {t("pointsLabel")}
+          </label>
+          <Input
+            id={`${rowId}-points`}
+            inputMode="decimal"
+            autoComplete="off"
+            aria-label={t("pointsAria", { number })}
+            aria-invalid={pointsError ? true : undefined}
+            aria-describedby={pointsError ? `${rowId}-points-error` : undefined}
+            className="w-20"
+            {...register(`${prefix}.blanks.${index}.points`)}
+          />
+          <IconButton tone="danger" aria-label={t("remove", { number })} icon={<X />} onClick={onRemove} />
+        </div>
       </div>
+      <FieldErrorText id={`${rowId}-points-error`} message={pointsError} />
       <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0" aria-labelledby={`${rowId}-title`}>
         <legend className="sr-only">{t("answersLegend", { number })}</legend>
         <ul className="m-0 flex list-none flex-col gap-2 p-0">

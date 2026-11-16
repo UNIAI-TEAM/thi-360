@@ -338,18 +338,24 @@ Quy ước rút ra khi làm các màn đợt 2 (UNI-2590), áp dụng cho mọi 
 - **Tạo đối tượng có nhiều phần** (cấu trúc, phân bổ, nhiều quy tắc phụ thuộc nhau, ví dụ Tạo bài thi `/exams/new`) dùng **trang riêng**, không dùng hộp thoại: các khối đánh số theo thứ tự nhập, cột **Tóm tắt** bên phải dính khi cuộn (xuống dưới biểu mẫu khi khung hẹp) gồm các con số tính trực tiếp và danh sách "Cần xử lý" mà mỗi mục đưa focus tới ô lỗi. Hộp thoại chỉ cho biểu mẫu ngắn (mục 5.10).
 - **Đổi lựa chọn làm mất phần đã nhập** (nạp lại mẫu khi đổi kỳ thi, hình thức): hỏi xác nhận ngay trong trang, nêu rõ phần sẽ bị thay; chưa sửa gì thì nạp luôn.
 - **Danh sách có trạng thái** (Ngân hàng câu hỏi): dải trạng thái kèm số lượng mỗi trạng thái đứng đầu thanh lọc; bộ lọc ít dùng gom vào "Bộ lọc khác"; bộ lọc đang áp dụng hiện thành chip "Đang lọc" bỏ được từng cái, kèm "Xóa tất cả bộ lọc". Mọi bộ lọc nằm trên URL.
-- **Trang chi tiết có trang con** (câu hỏi: Nội dung, Nơi đang dùng, Lịch sử phiên bản; bài thi: bốn trang con) dùng layout chung của đoạn đường dẫn (nhóm route như `questions/[id]/(detail)/layout.tsx`) và `NavTabs`; trang Sửa nằm ngoài nhóm để không có thanh tab.
+- **Trang chi tiết có trang con** (câu hỏi: Nội dung, Xem trước, Nơi đang dùng, Lịch sử phiên bản; bài thi: bốn trang con) dùng layout chung của đoạn đường dẫn (nhóm route như `questions/[id]/(detail)/layout.tsx`) và `NavTabs`; trang Sửa nằm ngoài nhóm để không có thanh tab.
 - **Luồng nhiều bước** (Nhập câu hỏi từ tệp, Cấp tài khoản hàng loạt): đổi bước thì focus về tiêu đề bước; lỗi chặn bước tiếp hiện thành bảng tóm tắt lỗi nhận focus; báo cáo lỗi tải về là CSV tạo ở trình duyệt.
 - **Cột của `Table` phải ổn định** (`useMemo` hoặc khai báo ngoài component): mảng `columns` mới ở mỗi lần render làm bảng dựng lại ô, mất focus và hỏng việc trả focus khi đóng hộp thoại. Trạng thái của dòng (đang chạy, đang chọn) đưa vào ô qua context hoặc dữ liệu dòng, không qua closure của `columns`.
 
 Quy ước thêm ở đợt 7 kỳ thi và chấm tự luận (UNI-2599):
 
-- **Câu chấm tay:** câu và khối dạng Tự luận mang nhãn "Chấm tay" (icon kèm chữ, không chỉ màu) ở mọi nơi hiện câu: soạn, chi tiết, khối của cấu trúc, xem trước, phiên bản. Lượt thi còn câu chưa chấm ghi "Đang chấm", có điểm tự luận rồi mới ghi "Đã có điểm".
+- **Câu chấm tay:** câu và khối dạng Tự luận mang nhãn "Chấm tay" (icon kèm chữ, không chỉ màu) ở mọi nơi hiện câu: soạn, chi tiết, khối của cấu trúc, xem trước, phiên bản. Lượt thi còn câu chưa chấm ghi "Chờ chấm" (tiếng Anh "Awaiting grading"; mã trạng thái vẫn là `GRADING`), có điểm tự luận rồi mới ghi "Đã có điểm".
 - **Chờ chuyên gia xác nhận:** số liệu chờ chuyên gia (tổ hợp chia 17–17–16, năm cấu trúc khác năm ma trận) hiện chip trạng thái "Chờ chuyên gia xác nhận" kèm nút "Xác nhận"; xác nhận xong chip đổi thành "Chuyên gia đã xác nhận". Kiểm tra cấu hình chặn công bố khi còn mục chờ.
 - **Thời lượng chung:** bài dùng một thời lượng cho cả bài thì phần không có ô thời lượng; chỗ hiện thời lượng phần ghi chữ chỉ đọc "… phút, dùng chung cả bài", danh sách ghi "… phút chung".
 - **Bảng điểm sửa được** (bảng điểm câu Đúng/Sai, tiêu chí chấm): mỗi ô là một ô nhập số nhận dấu phẩy hoặc dấu chấm như ô Điểm; lỗi hiện ngay dưới ô sai (không phải số, nhỏ hơn ô trước, ô cuối khác điểm của câu), dòng tổng nói rõ đã khớp chưa.
 - **Chọn tệp:** không để lộ nút chọn tệp gốc của trình duyệt (chữ theo ngôn ngữ trình duyệt). Ẩn `input type="file"` bằng `sr-only` + `peer`, dùng `label` mang `buttonVariants` của kit làm nút, kèm dòng tên tệp đã chọn hoặc "Chưa chọn …"; vòng focus lấy từ `peer-focus-visible`.
 - **Màn chấm** (`/grading/[attemptId]`): đề và bài làm bên trái, tiêu chí chấm bên phải, xếp chồng khi khung hẹp (`@4xl`); thanh câu hỏi có điểm tạm từng câu; hoàn tất chấm hỏi xác nhận trong trang và đưa focus tới ô thiếu điểm đầu tiên.
+
+Quy ước thêm ở FE-3b (giao diện ngân hàng câu hỏi theo UniNote 2026-11-16):
+
+- **Xem trước câu hỏi** (`features/questions/preview`, tab Xem trước và mục "Xem trước" của menu dòng): câu hiện như học viên thấy trong **khung web** (cửa sổ trình duyệt, nội dung tối đa `max-w-3xl`) hoặc **khung điện thoại** (360px, `w-90`), chuyển bằng `Tabs` kiểu `segmented`. Bề rộng nội dung đo bằng container query của khung (`@container`), không theo cửa sổ admin. Phương án giữ thứ tự gốc (đảo thứ tự chỉ có ở lượt thi).
+- **Chấm thử:** nút "Chấm thử" mới hiện đáp án đúng và điểm; đổi đáp án sau khi chấm thì kết quả cũ ẩn tới lần chấm sau. Mỗi ý (ô trống, mệnh đề, cặp ghép, câu con) ghi Đúng, Sai hoặc Bỏ trống bằng chữ kèm icon, không chỉ màu; điểm hiển thị làm tròn nửa lên 2 chữ số ở bước cuối. Câu Tự luận không có điểm tự động: hiện "Chờ chấm" và bảng đối chiếu bài làm thử với hướng dẫn chấm, tiêu chí và bài mẫu.
+- **Cột nhiều dòng của tệp nhập** (Lựa chọn, Lựa chọn phải, Đáp án, Cách chấm, Tiêu chí chấm): mỗi mục một dòng trong ô; thiếu đáp án chỉ cảnh báo (câu vào Nháp), tham chiếu sai hoặc cách chấm sai là lỗi chặn dòng.
 
 ## 6. Icon và hình ảnh
 

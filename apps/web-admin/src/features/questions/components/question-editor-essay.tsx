@@ -49,7 +49,7 @@ export function EssayEditor({ prefix }: { prefix: BodyPath }) {
           {t("manualGrading")}
         </Badge>
         <span className="text-body text-text-muted">
-          {pointsValid ? t("maxPoints", { points: format.number(points) }) : t("maxPointsUnknown")}
+          {pointsValid ? t("maxPoints", { points }) : t("maxPointsUnknown")}
         </span>
       </div>
 
