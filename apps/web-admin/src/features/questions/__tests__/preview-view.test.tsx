@@ -174,11 +174,13 @@ describe("xem trước câu hỏi", () => {
   });
 
   it("câu con của Bộ câu hỏi và tiêu chí chấm: điểm 0,125 hiện 0,13 (vi) và 0.13 (en)", async () => {
+    const essayBase = questionStore.require("q-8001");
+    if (essayBase.body.type !== "ESSAY") throw new Error("fixture body type changed");
     const essay: QuestionDetail = {
-      ...questionStore.require("q-8001"),
+      ...essayBase,
       id: "q-tiny-essay",
       points: 0.125,
-      body: { ...questionStore.require("q-8001").body, rubric: [{ id: "r1", description: "Mở bài", points: 0.125 }] },
+      body: { ...essayBase.body, rubric: [{ id: "r1", description: "Mở bài", points: 0.125 }] },
     };
     questionStore.insert(essay);
     const set: QuestionDetail = {

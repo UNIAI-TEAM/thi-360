@@ -6,6 +6,7 @@ import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { downloadQuestionTemplate, importHistoryStore } from "../api.mock";
 import { QuestionImportView } from "../components/question-import-view";
+import templateFixture from "../mock/template.json";
 import { readFileText } from "../files";
 
 function setUrl(search = "") {
@@ -55,7 +56,7 @@ describe("Nhập câu hỏi từ tệp", () => {
       expect(viType).toHaveTextContent(name);
     }
     expect(rowOf(viTable, "Cách chấm")).toHaveTextContent("COUNT_TABLE");
-    expect(rowOf(viTable, "Lựa chọn bên phải")).toHaveTextContent("Ghép đôi");
+    expect(rowOf(viTable, "Lựa chọn phải")).toHaveTextContent("Ghép đôi");
     expect(within(viTable).queryByText("A, B, C, D")).not.toBeInTheDocument();
     unmount();
 
@@ -66,6 +67,14 @@ describe("Nhập câu hỏi từ tệp", () => {
     const enType = rowOf(enTable, "Question type");
     for (const name of ["Short answer", "Cloze", "Matching", "Essay", "Question set", "True / False"]) {
       expect(enType).toHaveTextContent(name);
+    }
+  });
+
+  it("bước 1: tên từng cột trong bảng hướng dẫn trùng đúng tên cột của tệp mẫu tải về", async () => {
+    renderWithProviders(<QuestionImportView />);
+    const viTable = await screen.findByRole("table", { name: "Các cột của tệp mẫu" });
+    for (const header of templateFixture.rows[0]!) {
+      expect(within(viTable).getByRole("rowheader", { name: header })).toBeInTheDocument();
     }
   });
 

@@ -113,7 +113,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
 
   const templateRows = TEMPLATE_ROWS.map((row) => ({
     ...row,
-    name: t(`fields.${row.key}`),
+    name: t(`upload.headers.${row.key}`),
     rules: t(`upload.rules.${row.key}`),
   }));
 
