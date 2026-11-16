@@ -122,18 +122,36 @@ describe("màn môn (Toán HSA)", () => {
     expect(screen.getByText("Ma trận lớp và độ khó riêng của nhóm").closest("details")).not.toHaveAttribute("open");
   });
 
-  it("nhóm của môn không có MAPID riêng hiện 'Theo phạm vi của môn'; đặt phạm vi riêng thì đổi được về phạm vi của môn", async () => {
+  it("nhóm của môn không có MAPID riêng hiện 'Theo phạm vi của môn'; hủy hộp chọn giữ nguyên kế thừa, không có thay đổi chưa lưu (R1-3)", async () => {
     const user = userEvent.setup();
     openStructure("ex-hsa-f-001", "?block=blk-22");
     const scope = (await screen.findByText("Phạm vi kiến thức (MAPID)")).closest("fieldset")!;
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
     await user.click(within(scope).getByRole("button", { name: "Đặt phạm vi riêng" }));
-    const picker = await screen.findByRole("dialog");
-    expect(picker).toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    await user.click(within(scope).getByRole("button", { name: "Dùng phạm vi của môn" }));
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
+    expect(within(scope).queryByRole("button", { name: "Dùng phạm vi của môn" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
+  }, 20_000);
+
+  it("nhóm V-ACT: bỏ chọn rồi chọn lại năng lực vẫn 'Theo phạm vi của môn', không thành phạm vi riêng 0 kiến thức (R1-4)", async () => {
+    const user = userEvent.setup();
+    openStructure("ex-vact-f-001", "?block=blk-v1-1");
+    const scope = (await screen.findByText("Phạm vi kiến thức (MAPID)")).closest("fieldset")!;
+    const competency = await screen.findByRole("checkbox", { name: "Sử dụng ngôn ngữ · Tiếng Việt" });
+    expect(competency).toBeChecked();
+    expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
+    await user.click(competency);
+    expect(competency).not.toBeChecked();
+    expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
+    await user.click(competency);
+    expect(competency).toBeChecked();
+    expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Về màn môn" }));
+    const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
+    expect(tableRow(groups, "Tiếng Việt").queryByText(/kiến thức riêng/)).not.toBeInTheDocument();
   }, 20_000);
 });
 

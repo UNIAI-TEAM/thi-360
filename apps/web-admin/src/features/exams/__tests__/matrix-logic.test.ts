@@ -14,7 +14,8 @@ import {
 } from "../matrix";
 import { questionStore } from "@/features/questions/mock/store";
 import fixture from "../mock/exams.json";
-import { candidatesFor, effectiveScope, matchesScope, queryOfBlock } from "../mock/source-count";
+import { candidatesFor, matchesScope, queryOfBlock } from "../mock/source-count";
+import { effectiveScope } from "../subject-matrix";
 import type { BlockMatrix, ExamDetail, ExamSection, QuestionBlock } from "../types";
 
 const AXES: MatrixAxes = {
@@ -218,6 +219,14 @@ describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
     const open = section(null);
     expect(effectiveScope(singles(null), open)).toBeNull();
     expect(codesOf(singles(null), open)).toEqual(expect.arrayContaining(["CH-000001", "CH-000010", "CH-008008"]));
+    // Phạm vi riêng chưa chọn nút (hủy hộp chọn, chỉ có năng lực) kế thừa nút của môn và giữ lọc năng lực (R1-3, R1-4).
+    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), math)).toEqual(math.knowledgeScope);
+    expect(effectiveScope(singles({ nodeIds: [], match: "ANY", competencyCodes: ["VACT-TOAN"] }), math)).toEqual({
+      nodeIds: ["kn-1D4"],
+      match: "ANY",
+      competencyCodes: ["VACT-TOAN"],
+    });
+    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), open)).toEqual({ nodeIds: [], match: "ANY" });
     // Nút cha đã chọn khớp nút con; nút con đã chọn không khớp câu chỉ gắn nút cha của nó.
     const byCode = (code: string) => questionStore.all().find((question) => question.code === code)!;
     expect(matchesScope(byCode("CH-000001"), { nodeIds: ["kn-1D4"], match: "ANY" })).toBe(true);

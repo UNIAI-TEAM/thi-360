@@ -28,8 +28,8 @@ import type {
 } from "./review-types";
 import { blockPointsEach, countOf, isSetBlock, sum } from "./matrix";
 import type { ExamPart, ExamSection, QuestionBlock } from "./types";
-import { effectiveScope } from "./mock/source-count";
 import { allocateSubjectCounts, pickAllocation } from "./subject-choice";
+import { effectiveScope } from "./subject-matrix";
 
 /**
  * Bộ sinh đề xem trước (mô phỏng cơ chế sinh đề thật, UniNote PBI-04 mục 10, 12): cùng quy tắc với Kiểm tra cấu

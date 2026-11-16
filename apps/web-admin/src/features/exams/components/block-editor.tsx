@@ -14,6 +14,7 @@ import {
 import type { MatrixAxes } from "../matrix";
 import { blockPointsEach, emptyMatrix, isSetBlock, validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
+import { effectiveScope } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
@@ -92,7 +93,7 @@ export function BlockEditor({
     questionType: block.questionType,
     answerTypes: block.questionType === null ? quotaTypes : [],
     childAnswerType: block.childAnswerType,
-    knowledgeScope: block.knowledgeScope ?? section.knowledgeScope,
+    knowledgeScope: effectiveScope(block, section),
     taskTypeCode: block.taskTypeCode,
     tagCodes: block.tagCodes,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
@@ -130,7 +131,13 @@ export function BlockEditor({
   const selectedCompetencies = block.knowledgeScope?.competencyCodes ?? [];
   const competencyName = (code: string) => competencies.find((item) => item.code === code)?.name ?? code;
   const setCompetencies = (codes: string[]) => {
-    const knowledgeScope = { nodeIds: [], match: "ANY" as const, ...block.knowledgeScope, competencyCodes: codes };
+    // Lọc năng lực sống trong `knowledgeScope.competencyCodes` nhưng tách khỏi kế thừa MAPID (R1-4): chọn năng lực
+    // trên nhóm chưa chọn nút nào vẫn kế thừa phạm vi của môn (`effectiveScope`); bỏ hết mã và chưa có nút riêng thì
+    // quy về `null` cho gọn.
+    const knowledgeScope =
+      codes.length === 0 && (block.knowledgeScope?.nodeIds.length ?? 0) === 0
+        ? null
+        : { nodeIds: [], match: "ANY" as const, ...block.knowledgeScope, competencyCodes: codes };
     // Chiều năng lực của ma trận đi theo năng lực đã chọn (giữ giá trị của năng lực còn lại).
     const byCompetency = matrix.byCompetency?.length
       ? (codes.length ? codes : competencyChoices.map((item) => item.code)).map((code) => ({

@@ -1,6 +1,6 @@
 import type { QuestionType } from "@/features/content/types";
 import { apportionByPercent, computeAllocation, type MatrixAxes, sum } from "./matrix";
-import type { AnswerQuotas, ExamPartOption, ExamSection, QuestionBlock } from "./types";
+import type { AnswerQuotas, ExamPartOption, ExamSection, KnowledgeScope, QuestionBlock } from "./types";
 
 /**
  * Số đã phân bổ và còn thiếu của một môn (spec 5.2 "Ma trận theo môn", B9). Chỉ để soạn: khả năng sinh đề do kiểm tra
@@ -138,11 +138,24 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
   };
 }
 
-/** Phạm vi MAPID có hiệu lực của nhóm: của nhóm, hoặc của môn khi nhóm kế thừa (`knowledgeScope = null`). */
+/** Phạm vi MAPID có hiệu lực của nhóm: riêng khi đã chọn nút; chưa chọn nút (`null` hoặc `nodeIds` rỗng) kế thừa môn. */
 export function effectiveScopeSource(
   block: Pick<QuestionBlock, "knowledgeScope">,
   section: Pick<ExamSection, "knowledgeScope">,
 ): "GROUP" | "SECTION" | "NONE" {
-  if (block.knowledgeScope !== null) return "GROUP";
+  if (block.knowledgeScope !== null && block.knowledgeScope.nodeIds.length > 0) return "GROUP";
   return section.knowledgeScope !== null && section.knowledgeScope.nodeIds.length > 0 ? "SECTION" : "NONE";
+}
+
+/**
+ * Phạm vi MAPID có hiệu lực của nhóm (D21; R1-3, R1-4): phạm vi riêng của nhóm khi nhóm đã chọn nút (không giao với
+ * phạm vi của môn); nhóm chưa chọn nút nào (`null` hoặc `nodeIds` rỗng) kế thừa nút và cách đối chiếu của môn và giữ lọc
+ * năng lực riêng (`competencyCodes`), nên đặt năng lực hay hủy hộp chọn không làm mất kế thừa. Cả hai trống: không giới hạn.
+ */
+export function effectiveScope(block: Pick<QuestionBlock, "knowledgeScope">, section: Pick<ExamSection, "knowledgeScope">): KnowledgeScope | null {
+  const own = block.knowledgeScope;
+  if (own && own.nodeIds.length > 0) return own;
+  const base = section.knowledgeScope;
+  if (!base) return own;
+  return own?.competencyCodes?.length ? { ...base, competencyCodes: own.competencyCodes } : base;
 }

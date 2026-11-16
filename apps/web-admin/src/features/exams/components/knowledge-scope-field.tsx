@@ -13,11 +13,11 @@ import { ChoiceCardGroup } from "./create-exam-fields";
 const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [], match: "ANY" };
 
 export interface KnowledgeScopeFieldProps {
-  /** Phạm vi riêng; `null`: nhóm kế thừa phạm vi của môn, môn không giới hạn MAPID. */
+  /** Phạm vi riêng; `null` hoặc `nodeIds` rỗng: nhóm kế thừa phạm vi của môn, môn không giới hạn MAPID. */
   value: KnowledgeScope | null;
   onChange: (scope: KnowledgeScope | null) => void;
   /**
-   * Chỉ nhóm có: phạm vi của môn mà nhóm kế thừa khi `value = null` (B9). Bỏ trống: môn, không có gì để kế thừa.
+   * Chỉ nhóm có: phạm vi của môn mà nhóm kế thừa khi nhóm chưa chọn nút nào (B9). Bỏ trống: môn, không có gì để kế thừa.
    * Nút đã chọn khớp câu gắn nút đó hoặc nút con của nó (D23), nên không có công tắc "cấp dưới".
    */
   inherited?: { scope: KnowledgeScope | null };
@@ -29,8 +29,9 @@ export interface KnowledgeScopeFieldProps {
 }
 
 /**
- * Phạm vi MAPID của môn hoặc của nhóm lấy câu (spec 5.2): nhóm không đặt phạm vi riêng hiện "Theo phạm vi của môn"; môn và
+ * Phạm vi MAPID của môn hoặc của nhóm lấy câu (spec 5.2): nhóm chưa chọn nút nào hiện "Theo phạm vi của môn"; môn và
  * nhóm cùng trống hiện "Không giới hạn MAPID". Phạm vi riêng của nhóm thay hẳn phạm vi của môn, không giao với nó.
+ * Mở hộp chọn không đổi `value` (R1-3): hủy/Esc giữ nguyên kế thừa, chỉ áp dụng mới đặt phạm vi riêng.
  */
 export function KnowledgeScopeField({ value, onChange, inherited, reference, subjectCode, name, fieldId }: KnowledgeScopeFieldProps) {
   const t = useTranslations("exams.scopeField");
@@ -44,15 +45,10 @@ export function KnowledgeScopeField({ value, onChange, inherited, reference, sub
   const own = refsOf(value);
   const inheritedCount = inherited?.scope?.nodeIds.length ?? 0;
 
-  const openPicker = () => {
-    if (value === null) onChange(EMPTY_SCOPE);
-    setPickerOpen(true);
-  };
-
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
       <legend className="px-1 text-label font-semibold text-text">{t("legend")}</legend>
-      {value === null ? (
+      {value === null || value.nodeIds.length === 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="flex flex-col text-body">
             {inherited ? (
@@ -66,7 +62,7 @@ export function KnowledgeScopeField({ value, onChange, inherited, reference, sub
               <span className="text-text-muted">{t("none")}</span>
             )}
           </p>
-          <Button type="button" variant="secondary" size="sm" onClick={openPicker}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
             <ListTree />
             <span>{inherited ? t("setOwn") : t("pick")}</span>
           </Button>
@@ -74,7 +70,6 @@ export function KnowledgeScopeField({ value, onChange, inherited, reference, sub
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            {own.length === 0 && <span className="text-body text-text-muted">{t("none")}</span>}
             {own.map((ref) => (
               <span
                 key={ref.nodeId}
@@ -95,9 +90,9 @@ export function KnowledgeScopeField({ value, onChange, inherited, reference, sub
               <ListTree />
               <span>{t("pick")}</span>
             </Button>
-            {(inherited || own.length === 0) && (
+            {inherited && (
               <Button type="button" variant="link" size="sm" onClick={() => onChange(null)}>
-                {inherited ? t("useSection") : t("clear")}
+                {t("useSection")}
               </Button>
             )}
           </div>
