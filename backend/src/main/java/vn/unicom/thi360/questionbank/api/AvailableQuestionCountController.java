@@ -28,21 +28,25 @@ public class AvailableQuestionCountController {
         this.service = service;
     }
 
-    @Schema(description = "Phạm vi kiến thức có hiệu lực của nhóm")
+    @Schema(name = "AvailableQuestionsKnowledgeScope", description = "Phạm vi kiến thức có hiệu lực của nhóm")
     public record KnowledgeScope(List<UUID> nodeIds, String match, List<String> competencyCodes) {}
 
-    @Schema(description = "Bộ lọc nguồn câu hỏi của một nhóm")
+    @Schema(name = "AvailableQuestionsQuery", description = "Bộ lọc nguồn câu hỏi của một nhóm")
     public record Query(@NotBlank String subjectCode, QuestionType questionType,
                         List<QuestionType> answerTypes, QuestionType childAnswerType,
                         KnowledgeScope knowledgeScope, String taskTypeCode, List<String> tagCodes,
                         List<String> competencyCodes, BigDecimal requiredPointsPerQuestion) {}
 
-    @Schema(description = "Các nhóm nguồn của một môn")
+    @Schema(name = "AvailableQuestionsSubjectQuery", description = "Các nhóm nguồn của một môn")
     public record SubjectQuery(@NotBlank String subjectCode, @NotNull List<@Valid Query> groups) {}
 
+    @Schema(name = "AvailableQuestionsCell")
     public record Cell(String gradeCode, String difficultyCode, long value) {}
+    @Schema(name = "AvailableQuestionsAnswerType")
     public record AnswerType(QuestionType answerType, long value) {}
+    @Schema(name = "AvailableQuestionsCompetency")
     public record Competency(String code, long value) {}
+    @Schema(name = "AvailableQuestionsResponse")
     public record Response(long total, List<Cell> cells, List<AnswerType> byAnswerType,
                            List<Competency> byCompetency) {}
 

@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,6 +35,7 @@ public class ExamPreviewController {
         this.preview = preview;
     }
 
+    @Schema(name = "ExamPreviewRequest")
     public record GeneratePreviewRequest(
             @NotBlank String pathId,
             @NotNull Long seed,
@@ -42,23 +44,29 @@ public class ExamPreviewController {
     }
 
     /** Một lựa chọn của phần tự chọn trên đường (PathChoice của web). */
+    @Schema(name = "ExamPreviewPathChoice")
     public record PathChoice(String partId, String optionId, String kind, String code,
                              String name) {
     }
 
+    @Schema(name = "ExamPreviewPathRef")
     public record PathRef(String pathId, List<PathChoice> choices) {
     }
 
+    @Schema(name = "ExamPreviewOption")
     public record PreviewOption(String id, String content, boolean correct) {
     }
 
+    @Schema(name = "ExamPreviewKnowledgeRef")
     public record KnowledgeRef(String nodeId, String code, String name) {
     }
 
+    @Schema(name = "ExamPreviewRubricItem")
     public record RubricItem(String id, String description, BigDecimal points) {
     }
 
     /** Một câu (câu đơn hoặc câu con của bộ) trong đề xem trước. */
+    @Schema(name = "ExamPreviewQuestion")
     public record PreviewQuestion(int number, String questionId, String code, Integer version,
                                   String type, boolean simulated, String content,
                                   String gradeCode, String difficultyCode, KnowledgeRef knowledge,
@@ -67,28 +75,34 @@ public class ExamPreviewController {
     }
 
     /** Một mục trên đề: câu đơn ({@code kind=QUESTION}) hoặc nguyên bộ ({@code kind=SET}). */
+    @Schema(name = "ExamPreviewItem")
     public record PreviewItem(String kind, PreviewQuestion question, String setId, String code,
                               Integer version, boolean simulated, String passage,
                               List<PreviewQuestion> children) {
     }
 
+    @Schema(name = "ExamPreviewAllocationCell")
     public record AllocationCell(String gradeCode, String difficultyCode, Integer required,
                                  int generated) {
     }
 
     /** Chỉ tiêu nguyên của khối (COMBINED dùng cells, SEPARATE dùng byGrade/byDifficulty). */
+    @Schema(name = "ExamPreviewRequirementCell")
     public record RequirementCell(String gradeCode, String difficultyCode, int required) {
     }
 
+    @Schema(name = "ExamPreviewRequirementDimension")
     public record RequirementDimension(String code, int required) {
     }
 
+    @Schema(name = "ExamPreviewBlockRequirement")
     public record BlockRequirement(String mode, List<RequirementCell> cells,
                                    List<RequirementDimension> byGrade,
                                    List<RequirementDimension> byDifficulty,
                                    List<RequirementDimension> byCompetency) {
     }
 
+    @Schema(name = "ExamPreviewBlock")
     public record PreviewBlock(String blockId, String blockName, String subjectCode,
                                String questionType, boolean manualGrading, BigDecimal pointsEach,
                                int firstNumber, int lastNumber, int questionCount,
@@ -96,26 +110,32 @@ public class ExamPreviewController {
                                List<AllocationCell> allocation, List<PreviewItem> items) {
     }
 
+    @Schema(name = "ExamPreviewPart")
     public record PreviewPart(String partId, String name, Integer order,
                               Integer durationMinutes, int firstNumber, int lastNumber,
                               BigDecimal points, BigDecimal maxPoints,
                               List<PreviewBlock> blocks) {
     }
 
+    @Schema(name = "ExamPreviewCheck")
     public record PreviewCheck(String code, String status, BigDecimal value) {
     }
 
+    @Schema(name = "ExamPreviewKnowledgeStat")
     public record KnowledgeStat(String nodeId, String code, String name, String subjectCode,
                                 int count) {
     }
 
     /** Chỉ tiêu cấp môn: yêu cầu đã quy ra số câu và đạt được trên đề sinh. */
+    @Schema(name = "ExamPreviewSubjectQuotaRow")
     public record SubjectQuotaRow(String answerType, int required, int achieved) {
     }
 
+    @Schema(name = "ExamPreviewSubjectDimensionRow")
     public record SubjectDimensionRow(String code, int required, int achieved) {
     }
 
+    @Schema(name = "ExamPreviewSubjectAllocation")
     public record SubjectAllocation(String sectionId, String subjectCode, String optionId,
                                     Integer questionCount, List<SubjectQuotaRow> answerQuotas,
                                     List<SubjectDimensionRow> byGrade,
@@ -123,6 +143,7 @@ public class ExamPreviewController {
                                     List<AllocationCell> cells) {
     }
 
+    @Schema(name = "ExamPreviewPaper")
     public record PreviewPaper(int totalQuestions, BigDecimal totalPoints, int totalMinutes,
                                boolean sharedDuration, boolean hasManualGrading,
                                List<PreviewPart> parts, List<PreviewCheck> checks,
@@ -131,6 +152,7 @@ public class ExamPreviewController {
     }
 
     /** Vấn đề của đường hỏng (hình dạng CheckIssue của web; một phần trường không áp dụng). */
+    @Schema(name = "ExamPreviewIssue")
     public record PreviewIssue(String key, String code, String severity, String group,
                                String partId, String partName, String sectionId, String subjectCode,
                                String blockId, String blockName, String optionId, String gradeCode,
@@ -141,6 +163,7 @@ public class ExamPreviewController {
     }
 
     /** {@code status=GENERATED} kèm {@code paper}; {@code status=FAILED} kèm {@code reason,issues}. */
+    @Schema(name = "ExamPreviewResult")
     public record PreviewResult(UUID examId, PathRef path, Integer version, long seed,
                                 Instant generatedAt, String status, PreviewPaper paper,
                                 String reason, List<PreviewIssue> issues) {

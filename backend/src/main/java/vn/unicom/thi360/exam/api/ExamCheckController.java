@@ -54,6 +54,7 @@ public class ExamCheckController {
         return result == null ? NullNode.getInstance() : result;
     }
 
+    @Schema(name = "ExamCheckStarted")
     public record Started(UUID runId) { }
 
     @PostMapping
