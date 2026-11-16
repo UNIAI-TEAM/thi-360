@@ -19,18 +19,22 @@ final class SubproblemSolver {
 
     /** Kết quả của một bài toán con. */
     record Outcome(SolveStatus status, SolveReason reason, String groupId,
-            List<GroupWitness> witness) {
+            List<GroupWitness> witness, QuotaRef failingQuota) {
 
         static Outcome valid(List<GroupWitness> witness) {
-            return new Outcome(SolveStatus.VALID, null, null, witness);
+            return new Outcome(SolveStatus.VALID, null, null, witness, null);
         }
 
         static Outcome invalid(SolveReason reason, String groupId) {
-            return new Outcome(SolveStatus.INVALID, reason, groupId, List.of());
+            return new Outcome(SolveStatus.INVALID, reason, groupId, List.of(), null);
+        }
+
+        static Outcome invalid(SolveReason reason, String groupId, QuotaRef quota) {
+            return new Outcome(SolveStatus.INVALID, reason, groupId, List.of(), quota);
         }
 
         static Outcome unconfirmed(SolveReason reason, String groupId) {
-            return new Outcome(SolveStatus.UNCONFIRMED, reason, groupId, List.of());
+            return new Outcome(SolveStatus.UNCONFIRMED, reason, groupId, List.of(), null);
         }
     }
 
@@ -52,9 +56,10 @@ final class SubproblemSolver {
             // chỉ tiêu không khớp số câu / nhóm đơn vị cần không có nguồn usable nào
             return Outcome.invalid(SolveReason.INSUFFICIENT_SOURCE, failGroup[0]);
         }
-        String shortage = insufficiencyReason(ctx);
+        Shortage shortage = insufficiencyReason(ctx);
         if (shortage != null) {
-            return Outcome.invalid(SolveReason.INSUFFICIENT_SOURCE, shortage);
+            return Outcome.invalid(SolveReason.INSUFFICIENT_SOURCE, shortage.groupId(),
+                    shortage.quota());
         }
         List<List<Integer>> picked;
         MaxFlow flow = new MaxFlow(deadlineCheck);
@@ -100,7 +105,9 @@ final class SubproblemSolver {
      * đơn vị của nó, hoặc nguồn usable của một chỉ tiêu nhỏ hơn quota. Trả id nhóm thiếu (cho
      * {@link PathResult#groupId}), null khi đủ.
      */
-    private String insufficiencyReason(Prep.SubproblemContext ctx) {
+    private record Shortage(String groupId, QuotaRef quota) {}
+
+    private Shortage insufficiencyReason(Prep.SubproblemContext ctx) {
         int nG = ctx.groups().size();
         List<Prep.Requirement> reqs = ctx.reqs();
         int rCount = reqs.size();
@@ -134,7 +141,7 @@ final class SubproblemSolver {
                 }
             }
             if (units < groupUnits) {
-                return ctx.groups().get(g).group().groupId();
+                return new Shortage(ctx.groups().get(g).group().groupId(), null);
             }
         }
         for (int r = 0; r < rCount; r++) {
@@ -147,7 +154,7 @@ final class SubproblemSolver {
                         break;
                     }
                 }
-                return owner;
+                return new Shortage(owner, ctx.reqRefs().get(r));
             }
         }
         return null;

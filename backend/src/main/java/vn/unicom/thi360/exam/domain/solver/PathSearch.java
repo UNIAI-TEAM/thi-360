@@ -1,7 +1,9 @@
 package vn.unicom.thi360.exam.domain.solver;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,7 +57,6 @@ final class PathSearch {
 
     private int[] rem;       // chỉ tiêu còn thiếu
     private int[] remUnits;  // đơn vị còn thiếu của từng nhóm
-    private int[] take;      // take[p] số thành viên đã lấy của cặp p
     private List<int[]>[] chosen; // thành viên đã chọn của từng cặp
     private final Set<String> usedKeys = new HashSet<>();
     private long steps;
@@ -84,11 +85,10 @@ final class PathSearch {
             remUnits[g] = ctx.groups().get(g).units();
         }
         consumed = new int[classVecs.size()];
-        take = new int[nPairs];
         @SuppressWarnings("unchecked")
         List<int[]>[] ch = new List[nPairs];
         chosen = ch;
-        if (!dfsPairs(0)) {
+        if (!search()) {
             return null;
         }
         List<List<Integer>> picked = new ArrayList<>(ctx.groups().size());
@@ -232,10 +232,143 @@ final class PathSearch {
     // ---------------------------------------------------------------- duyệt số theo lớp + câu cụ thể
 
     /**
-     * Duyệt cặp p: chọn số take rồi ngay tổ hợp thành viên; mọi lựa chọn đều có thể quay lui trước
-     * khi thử số take tiếp theo.
+     * Chữ ký trạng thái cụ thể của một nhánh duyệt (R2-10): đầy đủ trạng thái ảnh hưởng tới tính
+     * khả thi của cây con — cặp/vị trí duyệt, chỉ tiêu và đơn vị còn thiếu, số thành viên đã dùng
+     * của từng lớp, và tập khóa đã chiếm. Một trạng thái đã chứng minh bất khả thi không bao giờ
+     * được duyệt lại (không liệt kê lặp các thành viên tương đương trong một lớp).
      */
-    private boolean dfsPairs(int p) {
+    private record StateSig(int pair, int pos, int need, List<Integer> rem,
+            List<Integer> remUnits, List<Integer> consumed, List<String> usedKeys) {
+    }
+
+    /** Trạng thái đã duyệt hết mà không có lời giải. */
+    private final Set<StateSig> failed = new HashSet<>();
+
+    private StateSig sig(int pair, int pos, int need) {
+        List<Integer> r = new ArrayList<>(rem.length);
+        for (int v : rem) {
+            r.add(v);
+        }
+        List<Integer> ru = new ArrayList<>(remUnits.length);
+        for (int v : remUnits) {
+            ru.add(v);
+        }
+        List<Integer> cs = new ArrayList<>(consumed.length);
+        for (int v : consumed) {
+            cs.add(v);
+        }
+        return new StateSig(pair, pos, need, r, ru, cs, List.copyOf(usedKeys));
+    }
+
+    /** Khung duyệt một cặp (nhóm, lớp): thử số take từ lớn xuống, nhớ số take đang áp để thu hồi. */
+    private final class PairsFrame {
+        final int p;
+        final int g;
+        final int c;
+        final int[] vec;
+        final int perUnits;
+        int nextT;      // số take sẽ thử tiếp (giảm dần), -1 khi khung hết nhánh
+        int appliedT;   // số take đã áp lên trạng thái mà chưa thu hồi
+
+        PairsFrame(int p) {
+            this.p = p;
+            this.g = pairGroup[p];
+            this.c = pairClass[p];
+            this.vec = pairVec[p];
+            this.perUnits = pairUnits[p];
+            // số take tối đa: theo thành viên của cặp, thành viên còn lại của lớp, đơn vị còn
+            // thiếu của nhóm và từng chỉ tiêu còn thiếu
+            int maxTake = Math.min(pairMembers[p].size(), remUnits[g] / perUnits);
+            for (int r = 0; r < vec.length; r++) {
+                if (vec[r] > 0) {
+                    maxTake = Math.min(maxTake, rem[r] / vec[r]);
+                }
+            }
+            this.nextT = Math.min(maxTake, members.get(c).size() - consumed[c]);
+        }
+
+        void apply(int t) {
+            for (int r = 0; r < vec.length; r++) {
+                rem[r] -= vec[r] * t;
+            }
+            remUnits[g] -= perUnits * t;
+            consumed[c] += t;
+            appliedT = t;
+        }
+
+        void undo() {
+            if (appliedT <= 0) {
+                return;
+            }
+            for (int r = 0; r < vec.length; r++) {
+                rem[r] += vec[r] * appliedT;
+            }
+            remUnits[g] += perUnits * appliedT;
+            consumed[c] -= appliedT;
+            appliedT = 0;
+        }
+    }
+
+    /**
+     * Khung duyệt tổ hợp thành viên của một cặp: chọn {@code need} thành viên từ vị trí
+     * {@code pos} trở đi, không trùng khóa đã dùng. Thành viên bị bỏ qua (nhánh skip) không được
+     * chọn lại trong cùng lần duyệt — đúng ngữ nghĩa liệt kê tổ hợp của bản đệ quy.
+     */
+    private final class EnumFrame {
+        final int p;
+        int pos;
+        int need;
+        int[] pending; // thành viên đã lấy đang chờ kết quả nhánh con để hoàn tác
+
+        EnumFrame(int p, int pos, int need) {
+            this.p = p;
+            this.pos = pos;
+            this.need = need;
+        }
+    }
+
+    private void pushPairs(Deque<Object> stack, int p) {
+        if (p == nPairs) {
+            // đích: mọi chỉ tiêu còn thiếu đã về 0 và đơn vị của từng nhóm đủ đúng
+            for (int v : rem) {
+                if (v > 0) {
+                    return;
+                }
+            }
+            for (int v : remUnits) {
+                if (v != 0) {
+                    return;
+                }
+            }
+            terminalOk = true;
+            stack.clear();
+            return;
+        }
+        for (int r = 0; r < rem.length; r++) {
+            if (rem[r] > suffixMax[p][r]) {
+                return;
+            }
+        }
+        for (int g = 0; g < remUnits.length; g++) {
+            if (remUnits[g] > suffixUnits[p][g]) {
+                return;
+            }
+        }
+        if (failed.contains(sig(p, -1, 0))) {
+            return;
+        }
+        stack.push(new PairsFrame(p));
+    }
+
+    private void pushEnum(Deque<Object> stack, int p, int pos, int need) {
+        if (failed.contains(sig(p, pos, need))) {
+            return;
+        }
+        stack.push(new EnumFrame(p, pos, need));
+    }
+
+    /** Necessary feasibility check on contribution counts, ignoring identity conflicts. */
+    private boolean classFeasible(int p) {
         if ((steps++ & 0x3FF) == 0) {
             deadlineCheck.run();
         }
@@ -252,98 +385,127 @@ final class PathSearch {
             }
             return true;
         }
-        // cắt nhánh: chỉ tiêu còn thiếu vượt cung tối đa, đơn vị còn thiếu vượt cung của nhóm
-        int[] bound = suffixMax[p];
         for (int r = 0; r < rem.length; r++) {
-            if (rem[r] > 0 && bound[r] < rem[r]) {
+            if (rem[r] > suffixMax[p][r]) {
                 return false;
             }
         }
         int g = pairGroup[p];
-        if (remUnits[g] > 0 && remUnits[g] > suffixUnits[p][g]) {
+        if (remUnits[g] > suffixUnits[p][g]) {
             return false;
         }
-        int c = pairClass[p];
         int[] vec = pairVec[p];
-        int perUnits = pairUnits[p];
-        // số take tối đa: theo thành viên của cặp, theo thành viên còn lại của lớp, theo đơn vị
-        // còn thiếu của nhóm, và theo từng chỉ tiêu còn thiếu
-        int maxTake = Math.min(pairMembers[p].size(), remUnits[g] / perUnits);
+        int max = Math.min(pairMembers[p].size(), remUnits[g] / pairUnits[p]);
         for (int r = 0; r < vec.length; r++) {
             if (vec[r] > 0) {
-                maxTake = Math.min(maxTake, rem[r] / vec[r]);
+                max = Math.min(max, rem[r] / vec[r]);
             }
         }
-        maxTake = Math.min(maxTake, members.get(c).size() - consumed[c]);
-        for (int t = maxTake; t >= 0; t--) {
-            if (t > 0) {
-                for (int r = 0; r < vec.length; r++) {
-                    rem[r] -= vec[r] * t;
-                }
-                remUnits[g] -= perUnits * t;
-                consumed[c] += t;
-                take[p] = t;
-                chosen[p] = new ArrayList<>(t);
-                if (dfsMembers(p, 0, t)) {
-                    return true;
-                }
-                chosen[p] = null;
-            } else {
-                take[p] = 0;
-                if (dfsPairs(p + 1)) {
-                    return true;
-                }
+        for (int t = max; t >= 0; t--) {
+            for (int r = 0; r < vec.length; r++) {
+                rem[r] -= vec[r] * t;
             }
-            if (t > 0) {
-                for (int r = 0; r < vec.length; r++) {
-                    rem[r] += vec[r] * t;
-                }
-                remUnits[g] += perUnits * t;
-                consumed[c] -= t;
+            remUnits[g] -= pairUnits[p] * t;
+            boolean feasible = classFeasible(p + 1);
+            remUnits[g] += pairUnits[p] * t;
+            for (int r = 0; r < vec.length; r++) {
+                rem[r] += vec[r] * t;
             }
-            take[p] = 0;
+            if (feasible) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
-     * Chọn {@code need} thành viên của cặp p từ vị trí {@code pos}, không trùng khóa đã dùng; đủ số
-     * thì sang cặp tiếp theo. Thất bại ở cặp sau cũng quay lui để thử tổ hợp thành viên khác.
+     * Máy duyệt không đệ quy (R2-10): khung trên stack heap thay cho lời gọi đệ quy, nên độ sâu
+     * duyệt theo số thành viên của lớp không còn giới hạn bởi stack Java. Trạng thái đã thất bại
+     * được nhớ theo chữ ký đầy đủ (gồm tập khóa đã chiếm) để không liệt kê lặp các tổ hợp tương
+     * đương của một lớp.
+     *
+     * @return true khi tìm được phân công khớp mọi chỉ tiêu và đơn vị
      */
-    private boolean dfsMembers(int p, int pos, int need) {
-        if ((steps++ & 0x3FF) == 0) {
-            deadlineCheck.run();
-        }
-        if (need == 0) {
-            return dfsPairs(p + 1);
-        }
-        List<int[]> ms = pairMembers[p];
-        if (pos >= ms.size()) {
+    private boolean search() {
+        if (!classFeasible(0)) {
             return false;
         }
-        int g = pairGroup[p];
-        int i = ms.get(pos)[1];
-        String[] ks = ctx.keys()[g][i];
-        boolean free = true;
-        for (String k : ks) {
-            if (usedKeys.contains(k)) {
-                free = false;
-                break;
+        Deque<Object> stack = new ArrayDeque<>();
+        pushPairs(stack, 0);
+        while (!stack.isEmpty()) {
+            if ((steps++ & 0x3FF) == 0) {
+                deadlineCheck.run();
+            }
+            Object top = stack.peek();
+            if (top instanceof PairsFrame f) {
+                if (f.appliedT > 0) {
+                    // nhánh enum vừa thất bại: thu hồi rồi thử số take kế tiếp
+                    f.undo();
+                    chosen[f.p] = null;
+                }
+                if (f.nextT < 0) {
+                    stack.pop();
+                    failed.add(sig(f.p, -1, 0));
+                    continue;
+                }
+                int t = f.nextT--;
+                if (t == 0) {
+                    f.nextT = -1;
+                    pushPairs(stack, f.p + 1);
+                } else {
+                    f.apply(t);
+                    chosen[f.p] = new ArrayList<>(t);
+                    pushEnum(stack, f.p, 0, t);
+                }
+                continue;
+            }
+            EnumFrame f = (EnumFrame) top;
+            if (f.pending != null) {
+                // nhánh con của thành viên đã lấy thất bại: hoàn tác rồi đi tiếp đuôi skip
+                int g = pairGroup[f.p];
+                int i = f.pending[1];
+                for (String k : ctx.keys()[g][i]) {
+                    usedKeys.remove(k);
+                }
+                List<int[]> ch = chosen[f.p];
+                ch.remove(ch.size() - 1);
+                f.pending = null;
+                f.pos++;
+            }
+            List<int[]> ms = pairMembers[f.p];
+            if (f.need == 0 || f.pos >= ms.size()) {
+                stack.pop();
+                failed.add(sig(f.p, f.pos, f.need));
+                continue;
+            }
+            int g = pairGroup[f.p];
+            int i = ms.get(f.pos)[1];
+            String[] ks = ctx.keys()[g][i];
+            boolean free = true;
+            for (String k : ks) {
+                if (usedKeys.contains(k)) {
+                    free = false;
+                    break;
+                }
+            }
+            if (free) {
+                for (String k : ks) {
+                    usedKeys.add(k);
+                }
+                chosen[f.p].add(ms.get(f.pos));
+                f.pending = ms.get(f.pos);
+                if (f.need == 1) {
+                    pushPairs(stack, f.p + 1);
+                } else {
+                    pushEnum(stack, f.p, f.pos + 1, f.need - 1);
+                }
+            } else {
+                f.pos++;
             }
         }
-        if (free) {
-            for (String k : ks) {
-                usedKeys.add(k);
-            }
-            chosen[p].add(ms.get(pos));
-            if (dfsMembers(p, pos + 1, need - 1)) {
-                return true;
-            }
-            chosen[p].remove(chosen[p].size() - 1);
-            for (String k : ks) {
-                usedKeys.remove(k);
-            }
-        }
-        return dfsMembers(p, pos + 1, need);
+        return terminalOk;
     }
+
+    /** Cờ đích: mọi chỉ tiêu và đơn vị khớp đúng khi duyệt hết các cặp. */
+    private boolean terminalOk;
 }
