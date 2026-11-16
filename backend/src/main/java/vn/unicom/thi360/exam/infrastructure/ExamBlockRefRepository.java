@@ -9,4 +9,5 @@ public interface ExamBlockRefRepository extends JpaRepository<ExamBlockRef, UUID
     List<ExamBlockRef> findByExamIdAndVersionNo(UUID examId, Integer versionNo);
     void deleteByExamIdAndVersionNo(UUID examId, Integer versionNo);
     List<ExamBlockRef> findBySubjectItemId(UUID subjectItemId);
+    List<ExamBlockRef> findByVersionNoIsNullAndSubjectItemIdIsNotNull();
 }
