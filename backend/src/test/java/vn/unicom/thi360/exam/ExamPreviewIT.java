@@ -321,4 +321,61 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("PREVIEW_SUBJECTS_INVALID"));
     }
 
+    @Test
+    void publishedPreviewUsesVersionStructureAndDuration() throws Exception {
+        Subject subject = subject();
+        question(subject, "SINGLE_CHOICE", "old question", false);
+        String oldParts = part(subject.code(), "[{\"id\":\"old\",\"name\":\"Old group\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1,\"requiredPointsPerQuestion\":1}]", "null");
+        UUID id = exam(oldParts);
+        UUID actor = UUID.randomUUID();
+        jdbc.update("insert into exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by) "
+                + "values (?, ?, 1, cast(? as jsonb), cast(? as jsonb), array['default'], array['default'], ?, 'SERVING', 'PUBLISHED', now(), ?)",
+                UUID.randomUUID(), id, "{\"code\":\"OLD\",\"name\":\"Old exam\",\"scope\":\"FULL\",\"timing\":\"SHARED\",\"durationMinutes\":45,\"practiceScoring\":\"RAW\"}",
+                "{\"parts\":" + oldParts + "}", UUID.randomUUID(), actor);
+        jdbc.update("update exam.exam set duration_minutes=90, question_count=0 where id=?", id);
+        jdbc.update("update exam.exam_structure set parts='{\"parts\":[]}'::jsonb where exam_id=?", id);
+        JsonNode response = preview(id, "{\"pathId\":\"default\",\"seed\":1,\"version\":1}");
+        assertThat(response.path("version").asInt()).isEqualTo(1);
+        assertThat(response.path("paper").path("totalMinutes").asInt()).isEqualTo(45);
+        assertThat(response.path("paper").path("parts").get(0).path("blocks").get(0).path("blockId").asText()).isEqualTo("old");
+        String url = "/api/v1/admin/exams/" + id + "/preview";
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pathId\":\"default\",\"seed\":1,\"version\":2}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("VERSION_NOT_FOUND"));
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pathId\":\"unpublished\",\"seed\":1,\"version\":1}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PATH_NOT_FOUND"));
+    }
+
+    @Test
+    void unrepresentableSelectedChoiceValidatesSubjectSelectionBeforeReturningIssues() throws Exception {
+        Subject a = subject();
+        Subject b = subject();
+        UUID id = exam("""
+                [{"id":"p","questionCount":1,"participation":{"mode":"CHOICE","choose":1},"sections":[],
+                  "options":[{"id":"choice","kind":"SUBJECT_CHOICE","code":"CHOICE","chooseSubjects":1,
+                    "countsByPick":[1],"sections":[
+                    {"id":"a","subjectCode":"%s","choiceGroup":"NATURAL",
+                     "answerQuotas":{"unit":"COUNT","items":[{"answerType":"SINGLE_CHOICE","value":1},{"answerType":"SINGLE_CHOICE","value":0}]},
+                     "blocks":[{"id":"ga","questionType":"SINGLE_CHOICE"}]},
+                    {"id":"b","subjectCode":"%s","choiceGroup":"SOCIAL","blocks":[{"id":"gb","questionType":"SINGLE_CHOICE"}]}]}]}]
+                """.formatted(a.code(), b.code()));
+        String url = "/api/v1/admin/exams/" + id + "/preview";
+        String base = "{\"pathId\":\"choice\",\"seed\":1,\"subjectCodes\":";
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content(base + "[\"" + a.code() + "\"]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.reason").value("INVALID"))
+                .andExpect(jsonPath("$.issues[?(@.code == 'ANSWER_QUOTA_DUPLICATE')]").isNotEmpty())
+                .andExpect(jsonPath("$.paper").doesNotExist());
+        for (String subjects : List.of("[]", "[\"" + a.code() + "\",\"" + b.code() + "\"]")) {
+            mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                            .content(base + subjects + "}"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("PREVIEW_SUBJECTS_INVALID"));
+        }
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'",
+                Integer.class, id)).isZero();
+    }
+
 }

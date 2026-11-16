@@ -8,22 +8,16 @@ import java.util.UUID;
  * {@code questionbank} hỏi câu hỏi đang nằm trong nguồn của khối nào, ở bài nào — phục vụ màn
  * nơi đang dùng và ảnh hưởng khi ngừng câu (spec mục 3).
  *
- * <p>BE-6 (UNI-2618) cài bản thật lọc thô trên {@code exam_block_ref}; hình dạng
- * {@link ExamUsageRef} tối thiểu, BE-6 mở rộng thêm khi cần (block/part/option của bài).
+ * <p>Each result identifies one working exam block whose source includes the question.
  */
 public interface QuestionUsageProvider {
 
-    /**
-     * Các bài thi đang có câu này trong nguồn của một khối (phần exam của màn nơi đang dùng và
-     * ảnh hưởng khi ngừng). Cài đặt mặc định rỗng — an toàn để gọi trước khi BE-6 có mặt.
-     */
-    default List<ExamUsageRef> examUsagesOf(UUID questionId) {
-        return List.of();
-    }
+    /** Working exam blocks whose source contains the serving question. */
+    List<ExamUsageRef> examUsagesOf(UUID questionId);
 
-    /**
-     * Một khối bài thi đang lấy câu làm nguồn (hình dạng tối thiểu; BE-6 bổ sung
-     * block/part/option, trạng thái bài khi có).
-     */
-    record ExamUsageRef(UUID examId) {}
+    @io.swagger.v3.oas.annotations.media.Schema(name = "QuestionbankExamUsageRef")
+    record ExamUsageRef(
+            UUID examId, String examCode, String examName, String examStatus,
+            String partId, String partName, String optionId, String optionCode, String optionName,
+            String sectionId, String blockId, String blockName) {}
 }

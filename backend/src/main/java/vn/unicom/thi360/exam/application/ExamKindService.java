@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.spi.AuditEvent;
@@ -44,6 +45,7 @@ public class ExamKindService {
     private final AuditRecorder auditRecorder;
     private final CurrentUserProvider currentUserProvider;
     private final AppMessages messages;
+    private final JdbcTemplate jdbc;
 
     public ExamKindService(
             ExamKindProfileRepository profileRepository,
@@ -51,13 +53,14 @@ public class ExamKindService {
             ContentReferenceService contentReferenceService,
             AuditRecorder auditRecorder,
             CurrentUserProvider currentUserProvider,
-            AppMessages messages) {
+            AppMessages messages, JdbcTemplate jdbc) {
         this.profileRepository = profileRepository;
         this.catalogLookup = catalogLookup;
         this.contentReferenceService = contentReferenceService;
         this.auditRecorder = auditRecorder;
         this.currentUserProvider = currentUserProvider;
         this.messages = messages;
+        this.jdbc = jdbc;
     }
 
     /** Danh sách kỳ thi (giá trị nhóm EXAM đang hoạt động) kèm hồ sơ; chưa có hồ sơ → profileSet = false. */
@@ -131,6 +134,11 @@ public class ExamKindService {
                     request.trueFalseScoring(), request.multipleChoiceRule(), now, actor);
         }
         profile = profileRepository.saveAndFlush(profile);
+        jdbc.queryForList("SELECT id FROM exam.exam WHERE kind_item_id = ? ORDER BY id FOR UPDATE", UUID.class, itemId);
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true, "
+                + "check_status = CASE WHEN check_status = 'UNCHECKED' THEN 'UNCHECKED' ELSE 'NEEDS_RECHECK' END, "
+                + "revision = revision + 1, updated_at = ?, updated_by = ? WHERE kind_item_id = ?",
+                java.sql.Timestamp.from(now), actor, itemId);
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM_KIND_PROFILE.UPDATE")
                 .target("EXAM_KIND", itemId.toString(), item.code())
                 .before(before)

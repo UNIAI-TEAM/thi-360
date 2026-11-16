@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -37,6 +38,39 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         this.catalog = catalog;
         this.support = support;
         this.mapper = mapper;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, Description> describe(Collection<UUID> questionIds) {
+        if (questionIds.isEmpty()) return Map.of();
+        String sql = """
+                select q.id, q.parent_id, root.subject_item_id, root.type,
+                       array(select distinct x.type from questionbank.question x
+                             where ((root.type <> 'QUESTION_SET' and x.id = root.id)
+                                 or (root.type = 'QUESTION_SET' and x.parent_id = root.id))
+                                 and x.deleted_at is null) answer_types,
+                       array(select distinct k.knowledge_item_id from questionbank.question_knowledge k
+                             join questionbank.question x on x.id = k.question_id
+                             where (x.id = root.id or x.parent_id = root.id) and x.deleted_at is null) knowledge_ids
+                from questionbank.question q
+                join questionbank.question root on root.id = coalesce(q.parent_id, q.id)
+                join questionbank.question_version v on v.question_id = root.id
+                    and v.version_no = root.current_version_no
+                where q.id in (:ids) and q.deleted_at is null and root.deleted_at is null
+                    and root.parent_id is null and root.status = 'READY'
+                """;
+        Map<UUID, Description> result = new HashMap<>();
+        jdbc.query(sql, new MapSqlParameterSource("ids", questionIds), rs -> {
+            UUID id = rs.getObject("id", UUID.class);
+            String[] answerTypes = (String[]) rs.getArray("answer_types").getArray();
+            UUID[] knowledgeIds = (UUID[]) rs.getArray("knowledge_ids").getArray();
+            result.put(id, new Description(id, rs.getObject("parent_id", UUID.class),
+                    rs.getObject("subject_item_id", UUID.class), QuestionType.valueOf(rs.getString("type")),
+                    java.util.Arrays.stream(answerTypes).map(QuestionType::valueOf).toList(),
+                    List.of(knowledgeIds)));
+        });
+        return Map.copyOf(result);
     }
 
     @Override
@@ -138,6 +172,27 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 c.trueFalseTable(), c.multipleChoiceRule(), c.code())).toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Set<UUID> matching(Filter filter, Collection<UUID> questionIds) {
+        if (questionIds.isEmpty()) return Set.of();
+        var params = new MapSqlParameterSource("questionIds", questionIds);
+        String sql = roots(List.of(filter), params, null,
+                " and q.id in (select coalesce(parent_id, id) from questionbank.question where id in (:questionIds))")
+                + units()
+                + """
+                select distinct requested.id
+                from questionbank.question requested
+                join roots r on r.id = coalesce(requested.parent_id, requested.id)
+                where requested.id in (:questionIds) and requested.deleted_at is null
+                  and exists (select 1 from units u where u.root_id = r.id)
+                  and (requested.id = r.id or
+                       (r.type = 'QUESTION_SET' and exists
+                           (select 1 from units u where u.root_id = r.id and u.unit_id = requested.id)))
+                """;
+        return Set.copyOf(jdbc.queryForList(sql, params, UUID.class));
+    }
+
     private ScoringDetails scoring(String method, String tableJson, String multipleChoiceRule) throws SQLException {
         List<BigDecimal> table = null;
         if (tableJson != null) {
@@ -230,6 +285,10 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
     }
 
     private String roots(List<Filter> filters, MapSqlParameterSource params, Integer limit) {
+        return roots(filters, params, limit, "");
+    }
+
+    private String roots(List<Filter> filters, MapSqlParameterSource params, Integer limit, String restriction) {
         List<String> alternatives = new ArrayList<>();
         for (int i = 0; i < filters.size(); i++) alternatives.add(predicate(filters.get(i), i, params));
         String tail = "";
@@ -237,7 +296,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         return "with roots as (select q.*, v.snapshot from questionbank.question q "
                 + "join questionbank.question_version v on v.question_id=q.id and v.version_no=q.current_version_no "
                 + "where q.parent_id is null and q.deleted_at is null and q.status='READY' and ("
-                + String.join(" or ", alternatives) + ") order by q.id" + tail + "), ";
+                + String.join(" or ", alternatives) + ")" + restriction + " order by q.id" + tail + "), ";
     }
 
     private String predicate(Filter f, int index, MapSqlParameterSource params) {

@@ -126,8 +126,7 @@ public class AdminQuestionController {
 
     @GetMapping("/{id}/usage")
     @RequirePermission(Permissions.QUESTION_VIEW)
-    @Operation(summary = "Nơi đang dùng câu: khối bài thi lấy câu làm nguồn + sổ đã dùng",
-            description = "sourceBlocks rỗng tới khi BE-6 cung cấp QuestionUsageProvider.")
+    @Operation(summary = "Nơi đang dùng câu: khối bài thi lấy câu làm nguồn + sổ đã dùng")
     public QuestionUsage usage(@PathVariable UUID id) {
         return queryService.usage(id);
     }

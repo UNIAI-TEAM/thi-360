@@ -3310,6 +3310,16 @@
         "required" : [ "attemptCount", "check", "code", "combinationCount", "hasEnglishOption", "hasEssay", "hasUnpublishedChanges", "id", "kind", "name", "parts", "practiceScoring", "questionCount", "revision", "scope", "status", "timing", "updatedAt", "versions", "yearsConfirmed" ],
         "type" : "object"
       },
+      "ExamDiscontinueRequest" : {
+        "properties" : {
+          "expectedRevision" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "expectedRevision" ],
+        "type" : "object"
+      },
       "ExamKindOption" : {
         "description" : "Một kỳ thi trong danh mục EXAM kèm hồ sơ (spec 6)",
         "properties" : {
@@ -4099,6 +4109,62 @@
         },
         "type" : "object"
       },
+      "ExamPublishKeptPath" : {
+        "properties" : {
+          "pathId" : {
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPublishRequest" : {
+        "properties" : {
+          "expectedRevision" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "pathIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "expectedRevision", "pathIds" ],
+        "type" : "object"
+      },
+      "ExamPublishResponse" : {
+        "properties" : {
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "keptPaths" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPublishKeptPath"
+            },
+            "type" : "array"
+          },
+          "publishedPathIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "ExamSection" : {
         "properties" : {
           "answerQuotas" : {
@@ -4135,17 +4201,6 @@
             "type" : "string"
           }
         },
-        "type" : "object"
-      },
-      "ExamSourceRef" : {
-        "description" : "Một bài có câu trong nguồn của một khối",
-        "properties" : {
-          "examId" : {
-            "format" : "uuid",
-            "type" : "string"
-          }
-        },
-        "required" : [ "examId" ],
         "type" : "object"
       },
       "ExamStructureResponse" : {
@@ -4310,8 +4365,119 @@
         "required" : [ "active", "code", "kindCode", "scope", "structure", "timing" ],
         "type" : "object"
       },
+      "ExamVersionChange" : {
+        "properties" : {
+          "after" : {
+            "type" : "string"
+          },
+          "before" : {
+            "type" : "string"
+          },
+          "blockId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "warning" : {
+            "type" : "string"
+          },
+          "where" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamVersionDetail" : {
+        "properties" : {
+          "changes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamVersionChange"
+            },
+            "type" : "array"
+          },
+          "config" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "parts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPart"
+            },
+            "type" : "array"
+          },
+          "row" : {
+            "$ref" : "#/components/schemas/ExamVersionResponse"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamVersionList" : {
+        "properties" : {
+          "changes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamVersionChange"
+            },
+            "type" : "array"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamVersionResponse"
+            },
+            "type" : "array"
+          },
+          "workingCopy" : {
+            "$ref" : "#/components/schemas/ExamVersionWorkingCopy"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamVersionPath" : {
+        "properties" : {
+          "choices" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamVersionPathChoice"
+            },
+            "type" : "array"
+          },
+          "pathId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamVersionPathChoice" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ExamVersionResponse" : {
-        "description" : "Một phiên bản của bài thi (bản làm việc hoặc bản đã chốt — BE-6 bổ sung)",
+        "description" : "Một phiên bản của bài thi",
         "properties" : {
           "attemptCount" : {
             "format" : "int32",
@@ -4330,6 +4496,18 @@
             "$ref" : "#/components/schemas/PersonRef",
             "description" : "Người phát hành"
           },
+          "publishedPaths" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamVersionPath"
+            },
+            "type" : "array"
+          },
+          "servingPaths" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamVersionPath"
+            },
+            "type" : "array"
+          },
           "state" : {
             "description" : "WORKING | SERVING | RETIRED",
             "type" : "string"
@@ -4341,6 +4519,34 @@
           }
         },
         "required" : [ "attemptCount", "state" ],
+        "type" : "object"
+      },
+      "ExamVersionWorkingCopy" : {
+        "properties" : {
+          "baseVersion" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "check" : {
+            "$ref" : "#/components/schemas/ExamCheckSummary"
+          },
+          "editedBy" : {
+            "$ref" : "#/components/schemas/PersonRef"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "savedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "unpublishedPaths" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamVersionPath"
+            },
+            "type" : "array"
+          }
+        },
         "type" : "object"
       },
       "ExistingQuestionRef" : {
@@ -5915,7 +6121,7 @@
         "properties" : {
           "affectedBlocks" : {
             "items" : {
-              "$ref" : "#/components/schemas/ExamSourceRef"
+              "$ref" : "#/components/schemas/QuestionbankExamSourceRef"
             },
             "type" : "array"
           },
@@ -6177,27 +6383,6 @@
         "required" : [ "active", "code", "name" ],
         "type" : "object"
       },
-      "QuestionUsage" : {
-        "description" : "Nơi đang dùng câu: các bài có khối lấy câu làm nguồn (exam, qua QuestionUsageProvider — rỗng tới BE-6) cộng các dòng sổ đã dùng (ledger, D18)",
-        "properties" : {
-          "sourceBlocks" : {
-            "description" : "Các bài/khối đang lấy câu làm nguồn (module exam)",
-            "items" : {
-              "$ref" : "#/components/schemas/ExamSourceRef"
-            },
-            "type" : "array"
-          },
-          "usedIn" : {
-            "description" : "Các dòng sổ đã dùng (xem trước, công bố, lượt thi)",
-            "items" : {
-              "$ref" : "#/components/schemas/LedgerRef"
-            },
-            "type" : "array"
-          }
-        },
-        "required" : [ "sourceBlocks", "usedIn" ],
-        "type" : "object"
-      },
       "QuestionVersionItem" : {
         "description" : "Một phiên bản trong lịch sử câu hỏi",
         "properties" : {
@@ -6238,6 +6423,71 @@
           }
         },
         "required" : [ "versions" ],
+        "type" : "object"
+      },
+      "QuestionbankExamSourceRef" : {
+        "description" : "Một khối bài thi có câu trong nguồn",
+        "properties" : {
+          "blockId" : {
+            "type" : "string"
+          },
+          "blockName" : {
+            "type" : "string"
+          },
+          "examCode" : {
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "examStatus" : {
+            "type" : "string"
+          },
+          "optionCode" : {
+            "type" : "string"
+          },
+          "optionId" : {
+            "type" : "string"
+          },
+          "optionName" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "examId" ],
+        "type" : "object"
+      },
+      "QuestionbankQuestionUsage" : {
+        "description" : "Nơi đang dùng câu: các bài có khối lấy câu làm nguồn và các dòng sổ đã dùng (ledger, D18)",
+        "properties" : {
+          "sourceBlocks" : {
+            "description" : "Các bài/khối đang lấy câu làm nguồn (module exam)",
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionbankExamSourceRef"
+            },
+            "type" : "array"
+          },
+          "usedIn" : {
+            "description" : "Các dòng sổ đã dùng (xem trước, công bố, lượt thi)",
+            "items" : {
+              "$ref" : "#/components/schemas/LedgerRef"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "sourceBlocks", "usedIn" ],
         "type" : "object"
       },
       "ReorderCatalogItemsRequest" : {
@@ -15890,6 +16140,596 @@
         "tags" : [ "Kiểm tra cấu hình bài thi" ]
       }
     },
+    "/api/v1/admin/exams/{examId}/discontinue" : {
+      "post" : {
+        "operationId" : "discontinueExam",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "examId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExamDiscontinueRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "tags" : [ "Exam versions" ]
+      }
+    },
+    "/api/v1/admin/exams/{examId}/publish" : {
+      "post" : {
+        "operationId" : "publishExam",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "examId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExamPublishRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamPublishResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "tags" : [ "Exam versions" ]
+      }
+    },
+    "/api/v1/admin/exams/{examId}/versions" : {
+      "get" : {
+        "operationId" : "listExamVersions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "examId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamVersionList"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "tags" : [ "Exam versions" ]
+      }
+    },
+    "/api/v1/admin/exams/{examId}/versions/{version}" : {
+      "get" : {
+        "operationId" : "getExamVersion",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "examId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "version",
+          "required" : true,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamVersionDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "tags" : [ "Exam versions" ]
+      }
+    },
     "/api/v1/admin/exams/{id}" : {
       "get" : {
         "operationId" : "detail_1",
@@ -21791,7 +22631,6 @@
     },
     "/api/v1/admin/questions/{id}/usage" : {
       "get" : {
-        "description" : "sourceBlocks rỗng tới khi BE-6 cung cấp QuestionUsageProvider.",
         "operationId" : "usage",
         "parameters" : [ {
           "in" : "path",
@@ -21807,7 +22646,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/QuestionUsage"
+                  "$ref" : "#/components/schemas/QuestionbankQuestionUsage"
                 }
               }
             },

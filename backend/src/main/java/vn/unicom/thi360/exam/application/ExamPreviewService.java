@@ -22,7 +22,6 @@ import vn.unicom.thi360.exam.domain.*;
 import vn.unicom.thi360.exam.domain.solver.*;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
-import vn.unicom.thi360.shared.api.NotFoundException;
 
 /** Seeded generation for one requested path, using serving question snapshots only. */
 @Service
@@ -45,8 +44,8 @@ public class ExamPreviewService {
     }
 
     public PreviewResult generate(UUID id, GeneratePreviewRequest request) {
-        var snapshot = store.load(id);
-        if (request.version() != null) throw new NotFoundException("Exam version not found");
+        var snapshot = request.version() == null ? store.load(id)
+                : store.loadVersion(id, request.version(), request.pathId());
         ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
         var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
         List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document).unrepresentable()
@@ -56,7 +55,7 @@ public class ExamPreviewService {
                 }).toList();
         if (!draftIssues.isEmpty()) {
             PathRef path = PreviewPathResolver.resolveDraft(document, request.pathId(), request.subjectCodes());
-            return new PreviewResult(id, path, null, request.seed(), Instant.now(clock), "FAILED", null,
+            return new PreviewResult(id, path, request.version(), request.seed(), Instant.now(clock), "FAILED", null,
                     "INVALID", draftIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList());
         }
         PaperSolver solver = new PaperSolver(limits, clock);
@@ -75,13 +74,13 @@ public class ExamPreviewService {
         if (staticIssues.stream().anyMatch(issue -> !"WARNING".equals(issue.path("severity").asText()))) {
             String reason = staticIssues.stream().anyMatch(issue -> "ERROR".equals(issue.path("severity").asText()))
                     ? "INVALID" : "UNCONFIRMED";
-            return new PreviewResult(id, resolved.pathRef(), null, request.seed(), Instant.now(clock),
+            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                     "FAILED", null, reason,
                     staticIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList());
         }
         PathResult result = solver.solvePath(resolved.path(), input.candidates(), SolveMode.generate(request.seed()));
         if (result.status() != SolveStatus.VALID) {
-            return new PreviewResult(id, resolved.pathRef(), null, request.seed(), Instant.now(clock),
+            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                     "FAILED", null, result.status().name(), issues(result, document));
         }
         Map<String, GroupWitness> groups = new HashMap<>();
@@ -115,7 +114,7 @@ public class ExamPreviewService {
                 catalog.listGroupItems("KNOWLEDGE"));
         PreviewPaper paper = paperBuilder.build(snapshot, document, resolved.path());
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
-        return new PreviewResult(id, resolved.pathRef(), null, request.seed(), Instant.now(clock),
+        return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                 "GENERATED", paper, null, null);
     }
 
