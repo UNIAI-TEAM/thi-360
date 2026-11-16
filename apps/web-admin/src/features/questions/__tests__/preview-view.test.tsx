@@ -173,6 +173,42 @@ describe("xem trước câu hỏi", () => {
     expect(screen.getByText("1.13 / 1.13 points")).toBeInTheDocument();
   });
 
+  it("câu con của Bộ câu hỏi và tiêu chí chấm: điểm 0,125 hiện 0,13 (vi) và 0.13 (en)", async () => {
+    const essay: QuestionDetail = {
+      ...questionStore.require("q-8001"),
+      id: "q-tiny-essay",
+      points: 0.125,
+      body: { ...questionStore.require("q-8001").body, rubric: [{ id: "r1", description: "Mở bài", points: 0.125 }] },
+    };
+    questionStore.insert(essay);
+    const set: QuestionDetail = {
+      ...questionStore.require("q-0027"),
+      id: "q-tiny-set",
+      points: 0.125,
+      body: { type: "QUESTION_SET", passage: "Đọc.", childIds: [essay.id] },
+      children: [essay],
+    };
+    questionStore.insert(set);
+
+    const viewVi = renderWithProviders(<QuestionPreviewView questionId="q-tiny-set" />);
+    await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });
+    expect(screen.getAllByText("0,13 điểm").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/0,125/)).not.toBeInTheDocument();
+    await userEvent.type(screen.getByRole("textbox", { name: "Bài làm" }), "Mở bài ngắn");
+    await userEvent.click(grade());
+    const compare = await screen.findByRole("region", { name: "Đối chiếu với hướng dẫn chấm" });
+    expect(within(compare).getByText("0,13 điểm")).toBeInTheDocument();
+    viewVi.unmount();
+
+    renderWithProviders(<QuestionPreviewView questionId="q-tiny-set" />, { locale: "en", messages: en });
+    await screen.findByRole("group", { name: "Preview in a desktop browser" });
+    expect(screen.getAllByText("0.13 points").length).toBeGreaterThan(0);
+    await userEvent.type(screen.getByRole("textbox", { name: "Your answer" }), "Short opening");
+    await userEvent.click(screen.getByRole("button", { name: "Try grading" }));
+    const enCompare = await screen.findByRole("region", { name: "Compare with the grading guide" });
+    expect(within(enCompare).getByText("0.13 points")).toBeInTheDocument();
+  });
+
   it("Tự luận: không có điểm tự động, hiện Chờ chấm và bảng đối chiếu với hướng dẫn chấm và bài mẫu", async () => {
     renderWithProviders(<QuestionPreviewView questionId="q-8001" />);
     await screen.findByRole("group", { name: "Xem trước trên trình duyệt máy tính" });

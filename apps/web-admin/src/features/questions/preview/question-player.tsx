@@ -481,7 +481,7 @@ function QuestionSetPlayer({
             <div className="flex flex-wrap items-center gap-2">
               <Heading className="text-label font-semibold text-text">{t("childTitle", { number: index + 1 })}</Heading>
               <span className="text-caption text-text-secondary">{tType(child.type)}</span>
-              <span className="text-caption text-text-muted">{t("points", { points: child.points })}</span>
+              <span className="text-caption text-text-muted">{t("points", { points: roundScore(child.points) })}</span>
             </div>
             <QuestionPlayer
               question={child}
@@ -556,7 +556,7 @@ function EssayCompare({ body, text }: { body: Extract<QuestionDetail["body"], { 
               <span className="font-semibold">{index + 1}.</span>
               <span className="min-w-0 flex-1 wrap-break-word">{criterion.description}</span>
               <span className="text-caption font-semibold text-text-secondary">
-                {t("criterionPoints", { points: criterion.points })}
+                {t("criterionPoints", { points: roundScore(criterion.points) })}
               </span>
             </li>
           ))}
