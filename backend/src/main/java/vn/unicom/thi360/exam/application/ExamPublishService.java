@@ -94,7 +94,14 @@ public class ExamPublishService {
             for (JsonNode selection : path.path("selections")) collectPicks(selection.path("witness"), picks);
         }
         if (!witnessed.containsAll(selected)) throw new IllegalStateException("Missing published path witness");
-        source.recordUsage(examId, QuestionUsageKind.PUBLISH_WITNESS, picks);
+        try {
+            source.recordUsage(examId, QuestionUsageKind.PUBLISH_WITNESS, picks);
+        } catch (IllegalStateException e) {
+            if (!"Question no longer exists".equals(e.getMessage())) throw e;
+            var stale = validity.assess(List.of(examId)).get(examId);
+            if (stale != null && "SOURCE_CHANGED".equals(stale.invalidReason())) throw checkRequired("SOURCE_CHANGED");
+            throw e;
+        }
         var assessment = validity.assess(List.of(examId)).get(examId);
         if (assessment == null || assessment.invalidReason() != null) {
             throw checkRequired(assessment == null ? "NO_CHECK" : assessment.invalidReason());

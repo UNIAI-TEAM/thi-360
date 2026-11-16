@@ -2,6 +2,11 @@ package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.reset;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -14,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.application.ExamCheckFingerprint;
@@ -32,38 +39,92 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
     @Autowired ExamKindProfileRepository profiles;
     @Autowired ExamCheckResultStore results;
     @Autowired QuestionSourcePort source;
+    @MockitoSpyBean QuestionSourcePort sourceSpy;
+    @Autowired TransactionTemplate transactions;
     @Autowired CatalogLookup catalog;
 
     @Test
-    void simultaneousExamsSharingWitnessQuestionDoNotDeadlockOrDuplicateUsage() throws Exception {
+    void simultaneousExamsSharingWitnessQuestionsDoNotDeadlockOrDuplicateUsage() throws Exception {
         UUID question = UUID.randomUUID();
+        UUID otherQuestion = UUID.randomUUID();
         UUID first = UUID.randomUUID();
         UUID second = UUID.randomUUID();
         try {
-            jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", question, "CONC-" + question, SUBJECT);
-            jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", question);
-            setup(first, question);
-            setup(second, question);
+            for (UUID id : List.of(question, otherQuestion)) {
+                jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", id, "CONC-" + id, SUBJECT);
+                jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", id);
+            }
+            setup(first, question, otherQuestion);
+            setup(second, otherQuestion, question);
             CountDownLatch start = new CountDownLatch(1);
             CompletableFuture<Integer> a = CompletableFuture.supplyAsync(() -> publish(first, start));
             CompletableFuture<Integer> b = CompletableFuture.supplyAsync(() -> publish(second, start));
             start.countDown();
             assertThat(a.get(30, TimeUnit.SECONDS)).isEqualTo(200);
             assertThat(b.get(30, TimeUnit.SECONDS)).isEqualTo(200);
-            assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question_usage_ledger WHERE question_id = ? AND kind = 'PUBLISH_WITNESS' AND exam_id IN (?, ?)", Long.class, question, first, second)).isEqualTo(2);
+            for (UUID id : List.of(question, otherQuestion)) {
+                for (UUID exam : List.of(first, second)) {
+                    assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question_usage_ledger WHERE question_id = ? AND version_no = 1 AND kind = 'PUBLISH_WITNESS' AND exam_id = ?", Long.class, id, exam)).isEqualTo(1);
+                }
+            }
         } finally {
-            jdbc.update("DELETE FROM questionbank.question_usage_ledger WHERE question_id = ? AND exam_id IN (?, ?)", question, first, second);
+            jdbc.update("DELETE FROM questionbank.question_usage_ledger WHERE question_id IN (?, ?) AND exam_id IN (?, ?)", question, otherQuestion, first, second);
             jdbc.update("DELETE FROM exam.exam_block_ref WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam_version WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam WHERE id IN (?, ?)", first, second);
+            jdbc.update("DELETE FROM questionbank.question_version WHERE question_id IN (?, ?)", question, otherQuestion);
+            jdbc.update("DELETE FROM questionbank.question WHERE id IN (?, ?)", question, otherQuestion);
+        }
+    }
+
+    @Test
+    void deletedWitnessAfterAssessmentReturnsSourceChangedAndRollsBack() throws Exception {
+        UUID question = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        CountDownLatch beforeLock = new CountDownLatch(1);
+        CountDownLatch deleted = new CountDownLatch(1);
+        try {
+            jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", question, "CONC-" + question, SUBJECT);
+            jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", question);
+            setup(exam, question, question);
+            doAnswer(invocation -> {
+                beforeLock.countDown();
+                if (!deleted.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("Deletion barrier timed out");
+                return invocation.callRealMethod();
+            }).when(sourceSpy).recordUsage(any(), any(), any());
+            CompletableFuture<Void> request = CompletableFuture.runAsync(() -> {
+                try {
+                    mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/publish")
+                            .with(asUser(Permissions.EXAM_PUBLISH)).header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"pathIds\":[\"default\"],\"expectedRevision\":0}"))
+                            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_REQUIRED"))
+                            .andExpect(jsonPath("$.fieldErrors[0].code").value("SOURCE_CHANGED"));
+                } catch (Exception e) { throw new IllegalStateException(e); }
+            });
+            assertThat(beforeLock.await(10, TimeUnit.SECONDS)).isTrue();
+            transactions.executeWithoutResult(tx -> {
+                jdbc.update("UPDATE questionbank.question SET deleted_at = now() WHERE id = ?", question);
+                jdbc.update("INSERT INTO questionbank.question_source_revision(subject_item_id, revision) VALUES (?, 1) ON CONFLICT (subject_item_id) DO UPDATE SET revision = questionbank.question_source_revision.revision + 1", SUBJECT);
+            });
+            deleted.countDown();
+            request.get(30, TimeUnit.SECONDS);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, exam)).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question_usage_ledger WHERE exam_id = ?", Long.class, exam)).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM shared.outbox_event WHERE topic = 'audit' AND payload->>'action' = 'EXAM.PUBLISH' AND payload->>'targetId' = ?", Long.class, exam.toString())).isZero();
+        } finally {
+            deleted.countDown();
+            reset(sourceSpy);
+            jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id = ?", exam);
+            jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id = ?", exam);
+            jdbc.update("DELETE FROM exam.exam WHERE id = ?", exam);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id = ?", question);
             jdbc.update("DELETE FROM questionbank.question WHERE id = ?", question);
         }
     }
 
-    private void setup(UUID id, UUID question) {
+    private void setup(UUID id, UUID question, UUID otherQuestion) {
         UUID kind = jdbc.queryForObject("SELECT kind_item_id FROM exam.exam WHERE id = ?", UUID.class, SEEDED_EXAM);
         jdbc.update("INSERT INTO exam.exam (id, code, code_normalized, name, kind_item_id, scope, timing, has_unpublished_changes) VALUES (?, ?, ?, 'Concurrent', ?, 'FULL', 'SHARED', true)", id, id.toString(), id.toString(), kind);
         jdbc.update("INSERT INTO exam.exam_structure (exam_id, parts, structure_hash) VALUES (?, '{\"parts\":[]}'::jsonb, 'concurrent')", id);
@@ -77,7 +138,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
         path.putObject("path").putArray("chosen");
         var picks = path.putArray("witness").addObject().putArray("groups").addObject().putArray("picks");
         picks.addObject().put("questionId", question.toString()).put("versionNo", 1);
-        picks.addObject().put("questionId", question.toString()).put("versionNo", 1);
+        picks.addObject().put("questionId", otherQuestion.toString()).put("versionNo", 1);
         assertThat(results.save(input, "VALID", 0, Instant.now(), 1, result, witness)).isTrue();
     }
 
