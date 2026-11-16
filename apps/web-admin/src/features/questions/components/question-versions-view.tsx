@@ -23,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
+import { RichTextView } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { MockApiError } from "@/lib/mock/content-mock";
 import { QUESTIONS_QUERY_KEYS, toQuestionSummary } from "../api";
@@ -331,7 +332,11 @@ function VersionViewDialog({
               {questionType !== "QUESTION_SET" && (
                 <div className="flex flex-col gap-1">
                   <h3 className="text-label font-semibold text-text">{t("view.solution")}</h3>
-                  <p className="text-body whitespace-pre-wrap text-text">{version.snapshot.solution ?? t("view.noSolution")}</p>
+                  {version.snapshot.solution ? (
+                    <RichTextView className="text-body text-text" html={version.snapshot.solution} />
+                  ) : (
+                    <p className="text-body text-text">{t("view.noSolution")}</p>
+                  )}
                 </div>
               )}
             </div>

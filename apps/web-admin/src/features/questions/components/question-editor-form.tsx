@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, ConfirmDialog, LiveStatus, notify, PageHeader, Textarea } from "@thi360/ui";
+import { Button, ConfirmDialog, LiveStatus, notify, PageHeader } from "@thi360/ui";
 import { Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -13,13 +13,14 @@ import type { ContentReference, QuestionType } from "@/features/content/types";
 import { MockApiError } from "@/lib/mock/content-mock";
 import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
-import { CONTENT_MAX, questionEditorSchema, SOLUTION_MAX } from "../editor-schema";
+import { questionEditorSchema } from "../editor-schema";
 import { editCreatesNewVersion } from "../editor-versioning";
 import type { QuestionDetail } from "../types";
 import { QuestionBodyEditor } from "./question-editor-body";
 import { ClassificationSection } from "./question-editor-classification";
 import { AttachmentsSection, CommonMistakesSection } from "./question-editor-extras";
 import { QuestionSetEditor } from "./question-editor-set";
+import { RichTextField } from "./question-editor-rich-field";
 import { EditorAnnounceProvider, EditorSection, FieldErrorText, useEditorError } from "./question-editor-shared";
 
 export type QuestionEditorFormProps =
@@ -52,7 +53,7 @@ const CONTENT_HINT_KEY: Record<QuestionType, string> = {
 /**
  * Biểu mẫu soạn câu hỏi theo dạng (canvas `CauHoi*Form`): khung chung (Phân loại, Đề bài, Lời giải) và khối đáp án
  * theo dạng. Câu mới lưu ở trạng thái Nháp; sửa câu Sẵn sàng tạo phiên bản mới (thông báo ở đầu biểu mẫu).
- * Trình soạn thảo đầy đủ (canvas trang 07) chưa làm: đề bài, lời giải, đoạn dẫn là ô nhập nhiều dòng.
+ * Đề bài, lời giải, đoạn dẫn và các ô nội dung HTML khác dùng `RichTextEditor` (UNI-2617).
  */
 export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const t = useTranslations("questions.editor");
@@ -183,12 +184,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
               <ChildrenSection formId={formId} reference={props.reference} />
             ) : (
               <EditorSection title={t(`bodyTitle.${BODY_TITLE_KEY[type]}`)} titleId={`${formId}-body`}>
-                <QuestionBodyEditor
-                  type={type}
-                  prefix="body"
-                  contentPath="content"
-                  contentFieldId={`${formId}-content`}
-                />
+                <QuestionBodyEditor type={type} prefix="body" contentPath="content" />
               </EditorSection>
             )}
             {type !== "QUESTION_SET" && <SolutionSection formId={formId} />}
@@ -216,7 +212,6 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
 
 function ContentSection({ formId, type }: { formId: string; type: QuestionType }) {
   const t = useTranslations("questions.editor");
-  const { register } = useFormContext<QuestionEditorValues>();
   const error = useEditorError("content");
   const key = type === "QUESTION_SET" ? "passage" : type === "TRUE_FALSE" ? "sharedContent" : "content";
   const hintKey = CONTENT_HINT_KEY[type];
@@ -224,15 +219,13 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
   return (
     <EditorSection title={t(`contentTitle.${key}`)} titleId={titleId} required>
       <div className="flex flex-col gap-1.5">
-        <Textarea
+        <RichTextField
           id={`${formId}-content`}
-          rows={type === "QUESTION_SET" ? 8 : 4}
-          maxLength={CONTENT_MAX}
           aria-labelledby={titleId}
           aria-required
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${formId}-content-error` : `${formId}-content-hint`}
-          {...register("content")}
+          name="content"
         />
         {!error && (
           <p id={`${formId}-content-hint`} className="text-caption text-text-muted">
@@ -262,19 +255,16 @@ function ChildrenSection({ formId, reference }: { formId: string; reference: Con
 
 function SolutionSection({ formId }: { formId: string }) {
   const t = useTranslations("questions.editor");
-  const { register } = useFormContext<QuestionEditorValues>();
   const error = useEditorError("solution");
   const titleId = `${formId}-solution-title`;
   return (
     <EditorSection title={t("solutionTitle")} titleId={titleId} optionalLabel={t("optional")}>
       <div className="flex flex-col gap-1.5">
-        <Textarea
-          rows={4}
-          maxLength={SOLUTION_MAX}
+        <RichTextField
           aria-labelledby={titleId}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${formId}-solution-error` : `${formId}-solution-hint`}
-          {...register("solution")}
+          name="solution"
         />
         {!error && (
           <p id={`${formId}-solution-hint`} className="text-caption text-text-muted">

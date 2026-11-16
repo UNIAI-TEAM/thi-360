@@ -1,10 +1,8 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/messages/en.json";
-import { renderWithProviders } from "@/test/render";
 import { resetQuestionHistoryForTests } from "../editor-api.mock";
+import { renderEn, rich } from "./editor-test-kit";
 import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout } from "../components/question-detail-layout";
 import { QuestionEditorView } from "../components/question-editor-view";
@@ -15,10 +13,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
   useRouter: () => ({ push: navigation.push, replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
-
-function renderEn(ui: ReactElement) {
-  return renderWithProviders(ui, { locale: "en", messages: en });
-}
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
@@ -43,7 +37,7 @@ describe("soan cau Tu luan", () => {
     await user.click(within(section).getByRole("button", { name: "Add criterion" }));
     const first = within(section).getByRole("textbox", { name: "Criterion 1 description" });
     expect(first).toHaveFocus();
-    await user.type(first, "Lap luan");
+    rich(first).set("<p>Lap luan</p>");
     await user.type(within(section).getByRole("textbox", { name: "Criterion 1 points" }), "0,5");
     expect(within(section).getByText("Criteria total 0.5 / 1: does not match the question points yet")).toBeInTheDocument();
 
@@ -57,9 +51,9 @@ describe("soan cau Tu luan", () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="edit" questionId="q-8001" />);
     const first = await screen.findByRole("textbox", { name: "Criterion 1 description" });
-    expect(first).toHaveValue("Đảm bảo hình thức đoạn văn khoảng 200 chữ");
+    expect(rich(first).text).toBe("Đảm bảo hình thức đoạn văn khoảng 200 chữ");
     await user.click(screen.getByRole("button", { name: "Move criterion 1 down" }));
-    expect(screen.getByRole("textbox", { name: "Criterion 2 description" })).toHaveValue(
+    expect(rich(screen.getByRole("textbox", { name: "Criterion 2 description" })).text).toBe(
       "Đảm bảo hình thức đoạn văn khoảng 200 chữ",
     );
     await user.click(screen.getByRole("button", { name: "Delete criterion 4" }));

@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  countBlankMarkers,
   emptyChild,
   emptyEditorValues,
-  insertBlankMarker,
   parsePoints,
   questionSetPoints,
   removeBlankMarker,
@@ -58,6 +56,18 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
     expect(messages(singleChoice([0]))).toEqual([]);
     expect(messages(singleChoice([]))).toContain("singleCorrectRequired");
     expect(messages(singleChoice([0, 2]))).toContain("singleCorrectRequired");
+  });
+
+  it("ô HTML không còn chữ nào là trống như backend isBlankHtml, ô chỉ có ảnh thì không", () => {
+    const base = singleChoice([0]);
+    for (const empty of ["<p></p><p></p>", "<p> </p>", "<p><br></p>"]) {
+      expect(messages({ ...base, content: empty })).toEqual(["contentRequired"]);
+      expect(
+        messages({ ...base, body: { ...base.body, options: base.body.options.map((o, i) => (i === 1 ? { ...o, content: empty } : o)) } }),
+      ).toEqual(["optionRequired"]);
+    }
+    const imageOnly = '<p><img src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f"></p>';
+    expect(messages({ ...base, content: imageOnly })).toEqual([]);
   });
 
   it("nhiều đáp án: cần ít nhất một phương án đúng và ít nhất 2 phương án", () => {
@@ -143,24 +153,6 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
 });
 
 describe("chỗ trống của câu Điền đáp án", () => {
-  it("chèn ___ tại con trỏ, thêm khoảng trắng và trả thứ tự chỗ trống", () => {
-    const first = insertBlankMarker("Thủ đô là.", 9);
-    expect(first.content).toBe("Thủ đô là ___ .");
-    expect(first.index).toBe(0);
-    expect(first.caret).toBe(13);
-
-    const second = insertBlankMarker("___ và", 0);
-    expect(second.content).toBe("___ ___ và");
-    expect(second.index).toBe(0);
-    expect(countBlankMarkers(second.content)).toBe(2);
-  });
-
-  it("không cắt đôi chỗ trống có sẵn", () => {
-    const result = insertBlankMarker("a ___ b", 3);
-    expect(result.content).toBe("a ___ ___ b");
-    expect(result.index).toBe(1);
-  });
-
   it("xóa đúng chỗ trống thứ n", () => {
     expect(removeBlankMarker("a ___ b ___ c", 1)).toBe("a ___ b  c");
     expect(removeBlankMarker("a ___ b", 3)).toBe("a ___ b");

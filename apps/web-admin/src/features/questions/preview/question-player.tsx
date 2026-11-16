@@ -3,7 +3,9 @@
 import { Checkbox, cn, Input, Select, Textarea } from "@thi360/ui";
 import { CircleCheck, CircleMinus, CircleX, Paperclip } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Fragment, useId } from "react";
+import { useId } from "react";
+import { questionHtmlText, RichTextView } from "@/components/rich-text";
+import { ClozePassage } from "../components/cloze-passage";
 import { optionLetter, statementLetter } from "../components/question-editor-shared";
 import type { QuestionDetail } from "../types";
 import { countWords, emptyAnswer, type PartResult, type PartState, type PreviewAnswer, type QuestionResult } from "./grading";
@@ -33,14 +35,14 @@ export function QuestionPlayer({ question, answer, onChange, result, headingLeve
   return (
     <div className="flex flex-col gap-4">
       {body.type !== "CLOZE" && (
-        <p
+        <div
           className={cn(
-            "text-body wrap-break-word whitespace-pre-wrap text-text",
+            "text-body wrap-break-word text-text",
             body.type === "QUESTION_SET" && "rounded-lg border border-border bg-subtle p-3.5",
           )}
         >
-          {passage || t("noContent")}
-        </p>
+          {passage ? <RichTextView html={passage} /> : t("noContent")}
+        </div>
       )}
       {question.attachmentIds.length > 0 && (
         <p className="inline-flex items-center gap-1.5 text-caption text-text-secondary">
@@ -210,7 +212,7 @@ function ChoiceList({
               />
             )}
             <span className="font-semibold">{optionLetter(index)}.</span>
-            <span className="min-w-0 flex-1 wrap-break-word">{option.content}</span>
+            <RichTextView className="min-w-0 flex-1 wrap-break-word" html={option.content} />
             {graded && option.correct && (
               <span className="inline-flex items-center gap-1 text-caption font-semibold text-success">
                 <CircleCheck aria-hidden className="size-4" />
@@ -292,22 +294,18 @@ function ClozeInputs({
 }) {
   const t = useTranslations("questions.preview");
   const name = useId();
-  const segments = body.passage.split(/\[\[([^\]]+)\]\]/);
-  // split với nhóm bắt: phần tử lẻ là id ô trống.
   const blankOrder = body.blanks.map((blank) => blank.id);
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-body leading-10 wrap-break-word whitespace-pre-wrap text-text">
-        {segments.map((segment, index) => {
-          if (index % 2 === 0) return <Fragment key={index}>{segment}</Fragment>;
-          // Nhập tệp và kiểm tra sẵn sàng đều cắt khoảng trắng quanh mã ô (`[[ b1 ]]` là ô b1).
-          const blankId = segment.trim();
+      <ClozePassage
+        html={body.passage}
+        className="text-body leading-10 wrap-break-word text-text"
+        renderBlank={(blankId) => {
           const blank = body.blanks.find((item) => item.id === blankId);
           const number = blankOrder.indexOf(blankId) + 1;
           const part = partOf(result, blankId);
           return (
             <Input
-              key={index}
               id={`${name}-${blankId}`}
               aria-label={t("blankLabel", { number })}
               placeholder={t("blankPlaceholder", { number })}
@@ -322,8 +320,8 @@ function ClozeInputs({
               )}
             />
           );
-        })}
-      </p>
+        }}
+      />
       {result && (
         <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
           {body.blanks.map((blank, index) => {
@@ -366,7 +364,7 @@ function TrueFalseInputs({
           <li key={statement.id} className="flex flex-col gap-2 rounded-lg border border-border px-3.5 py-2.5">
             <div className="flex gap-3">
               <span className="font-semibold text-text">{statementLetter(index)})</span>
-              <span className="min-w-0 flex-1 wrap-break-word text-text">{statement.content}</span>
+              <RichTextView className="min-w-0 flex-1 wrap-break-word text-text" html={statement.content} />
             </div>
             <fieldset className="m-0 flex flex-wrap items-center gap-x-5 gap-y-1 border-0 p-0">
               <legend className="sr-only">{t("statementLegend", { letter: statementLetter(index) })}</legend>
@@ -422,7 +420,7 @@ function MatchingInputs({
             { value: BLANK_PICK, label: t("matchPlaceholder") },
             ...body.right.map((right, rightIndex) => ({
               value: right.id,
-              label: `${rightIndex + 1}. ${right.content}`,
+              label: `${rightIndex + 1}. ${questionHtmlText(right.content)}`,
               disabled: !body.reuseRight && taken.has(right.id) && pick !== right.id,
             })),
           ];
@@ -430,7 +428,7 @@ function MatchingInputs({
             <li key={item.id} className="flex flex-col gap-2 rounded-lg border border-border px-3.5 py-2.5">
               <div className="flex gap-3">
                 <span className="text-caption font-semibold text-text-muted">{t("matchItem", { number: index + 1 })}</span>
-                <span className="min-w-0 flex-1 wrap-break-word text-text">{item.content}</span>
+                <RichTextView className="min-w-0 flex-1 wrap-break-word text-text" html={item.content} />
               </div>
               <Select
                 aria-label={t("matchSelectLabel", { number: index + 1 })}
@@ -443,7 +441,7 @@ function MatchingInputs({
                   <ResultMark part={part} state={part.state} />
                   {part.state !== "correct" && key !== undefined && (
                     <span className="text-caption text-text-secondary">
-                      {t("result.matchKey", { answer: contentOf.get(key) ?? "" })}
+                      {t("result.matchKey", { answer: questionHtmlText(contentOf.get(key) ?? "") })}
                     </span>
                   )}
                 </div>
@@ -531,7 +529,7 @@ function EssayInput({
 /** Đối chiếu bài làm với hướng dẫn chấm, tiêu chí và bài mẫu (câu Tự luận chấm tay, UniNote 8.5). */
 function EssayCompare({ body, text }: { body: Extract<QuestionDetail["body"], { type: "ESSAY" }>; text: string }) {
   const t = useTranslations("questions.preview.essay");
-  const block = "rounded-lg border border-border bg-subtle p-3.5 text-body wrap-break-word whitespace-pre-wrap text-text";
+  const block = "rounded-lg border border-border bg-subtle p-3.5 text-body wrap-break-word text-text";
   return (
     <section aria-label={t("title")} className="flex flex-col gap-3 @container">
       <h4 className="text-label font-semibold text-text">{t("title")}</h4>
@@ -542,19 +540,19 @@ function EssayCompare({ body, text }: { body: Extract<QuestionDetail["body"], { 
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-caption font-semibold text-text-secondary">{t("sampleAnswer")}</p>
-          <p className={block}>{body.sampleAnswer ?? t("noSample")}</p>
+          <div className={block}>{body.sampleAnswer ? <RichTextView html={body.sampleAnswer} /> : t("noSample")}</div>
         </div>
       </div>
       <div className="flex flex-col gap-1">
         <p className="text-caption font-semibold text-text-secondary">{t("guide")}</p>
-        <p className={block}>{body.gradingGuide || t("noGuide")}</p>
+        <div className={block}>{body.gradingGuide ? <RichTextView html={body.gradingGuide} /> : t("noGuide")}</div>
       </div>
       {body.rubric.length > 0 && (
         <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
           {body.rubric.map((criterion, index) => (
             <li key={criterion.id} className="flex flex-wrap items-baseline gap-x-3 text-body text-text">
               <span className="font-semibold">{index + 1}.</span>
-              <span className="min-w-0 flex-1 wrap-break-word">{criterion.description}</span>
+              <RichTextView className="min-w-0 flex-1 wrap-break-word" html={criterion.description} />
               <span className="text-caption font-semibold text-text-secondary">
                 {t("criterionPoints", { points: roundScore(criterion.points) })}
               </span>

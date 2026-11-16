@@ -1,0 +1,131 @@
+/*
+ * Nội dung HTML của trình soạn và khung xem (spec 4.2): chỉ token của DESIGN.md, đúng cả sáng/tối.
+ * Phạm vi `.rich-text-*` để không đụng style toàn cục.
+ */
+
+.rich-text-editor-content {
+  min-height: 7rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  padding: 0.625rem 0.75rem;
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  color: var(--color-text);
+  outline: none;
+}
+
+.rich-text-editor .ProseMirror-focused {
+  outline: none;
+}
+
+/* Placeholder của @tiptap/extensions: data-placeholder trên phần tử trống đầu tiên. */
+.rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-text-placeholder);
+}
+
+.rich-text-body,
+.rich-text-editor-content {
+  overflow-wrap: break-word;
+}
+
+.rich-text-body p,
+.rich-text-editor-content p {
+  margin: 0 0 0.375em;
+}
+
+.rich-text-body p:last-child,
+.rich-text-editor-content p:last-child {
+  margin-bottom: 0;
+}
+
+.rich-text-body ul,
+.rich-text-editor-content ul {
+  list-style: disc;
+  padding-inline-start: 1.5em;
+  margin: 0 0 0.375em;
+}
+
+.rich-text-body ol,
+.rich-text-editor-content ol {
+  list-style: decimal;
+  padding-inline-start: 1.5em;
+  margin: 0 0 0.375em;
+}
+
+.rich-text-body table,
+.rich-text-editor-content table {
+  border-collapse: collapse;
+  margin: 0.375em 0;
+  max-width: 100%;
+}
+
+.rich-text-body th,
+.rich-text-body td,
+.rich-text-editor-content th,
+.rich-text-editor-content td {
+  border: 1px solid var(--color-border-strong);
+  padding: 0.25rem 0.5rem;
+  vertical-align: top;
+  text-align: start;
+  min-width: 2.5rem;
+}
+
+.rich-text-body th,
+.rich-text-editor-content th {
+  background: var(--color-table-head);
+  font-weight: 600;
+}
+
+/* Ô đang chọn trong bảng (ProseMirror đánh dấu bằng class riêng). */
+.rich-text-editor-content .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-primary-fill);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.rich-text-editor-content td,
+.rich-text-editor-content th {
+  position: relative;
+}
+
+.rich-text-body img,
+.rich-text-editor-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Chip công thức trong trình soạn: khung mảnh để biết đây là phần tử sửa được bằng hộp thoại. */
+.rich-text-editor-content .rich-text-math {
+  display: inline-block;
+  padding: 0 0.25em;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-50, var(--color-subtle));
+  outline: 1px solid var(--color-border-primary, var(--color-border));
+  cursor: default;
+}
+
+.rich-text-editor-content .rich-text-math.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary-600, var(--color-primary-text));
+}
+
+.rich-text-editor-content .math-block.rich-text-math {
+  display: block;
+  margin: 0.375em 0;
+  padding: 0.375em 0.5em;
+  text-align: center;
+}
+
+/* Công thức khối trong khung xem. */
+.rich-text-body .math-block {
+  display: block;
+  margin: 0.5em 0;
+  text-align: center;
+}

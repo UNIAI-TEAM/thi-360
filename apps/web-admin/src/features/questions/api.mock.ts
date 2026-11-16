@@ -4,6 +4,7 @@ import type { ContentReference, PersonRef, QuestionStatus } from "@/features/con
 import { examStore } from "@/features/exams/mock/store";
 import type { ExamDetail, ExamSection, QuestionBlock } from "@/features/exams/types";
 import { MockApiError, mockRequest, paginate } from "@/lib/mock/content-mock";
+import { checkAttachment } from "./editor/attachments";
 import { MOCK_QUESTION_AUTHORS, questionStore } from "./mock/store";
 import { evaluateReadiness, firstReadinessIssue, type QuestionReadiness } from "./readiness";
 import { toQuestionSummary } from "./question-summary";
@@ -327,4 +328,53 @@ export async function getQuestionRetireImpact(id: string): Promise<QuestionRetir
       hardDeleteBlocked: question.usedInExamCount > 0,
     };
   });
+}
+
+// --- Tài nguyên câu hỏi (ảnh trong nội dung, tệp đính kèm) ------------------------------------------------------
+
+/**
+ * `POST /question-assets` (spec 4.2/4.5, UNI-2617): `IMAGE` nhận PNG, JPEG, WebP tối đa 5 MB;
+ * `ATTACHMENT` nhận danh sách đuôi của `editor/attachments.ts`, tối đa 20 MB. Backend kiểm bằng
+ * chữ ký byte; mock chặn sớm theo loại và dung lượng. Id là UUID vì `data-asset-id` của `img`
+ * phải là UUID khi qua `QuestionHtmlSanitizer`; `url` là đường nội bộ để qua `isSafeInternalSrc`.
+ */
+export const QUESTION_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const QUESTION_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+
+export type QuestionAssetKind = "IMAGE" | "ATTACHMENT";
+
+export interface QuestionAsset {
+  id: string;
+  url: string;
+  fileName: string;
+  size: number;
+}
+
+/** `null` khi tệp ảnh được nhận; còn lại là lý do từ chối (ánh xạ sang mã `ASSET_*` của spec 4.5). */
+export function checkQuestionImage(
+  file: Pick<File, "type" | "size">,
+): "TOO_LARGE" | "UNSUPPORTED_TYPE" | null {
+  if (!(QUESTION_IMAGE_TYPES as readonly string[]).includes(file.type)) return "UNSUPPORTED_TYPE";
+  if (file.size > QUESTION_IMAGE_MAX_BYTES) return "TOO_LARGE";
+  return null;
+}
+
+export async function uploadQuestionAsset(file: File, kind: QuestionAssetKind): Promise<QuestionAsset> {
+  return mockRequest(
+    () => {
+      const rejection = kind === "IMAGE" ? checkQuestionImage(file) : checkAttachment(file);
+      if (rejection) {
+        throw new MockApiError(422, rejection === "TOO_LARGE" ? "ASSET_TOO_LARGE" : "ASSET_TYPE_NOT_ALLOWED");
+      }
+      const id = crypto.randomUUID();
+      const asset: QuestionAsset = {
+        id,
+        url: `/api/v1/admin/question-assets/${id}`,
+        fileName: file.name,
+        size: file.size,
+      };
+      return asset;
+    },
+    { ignoreScenario: true },
+  );
 }

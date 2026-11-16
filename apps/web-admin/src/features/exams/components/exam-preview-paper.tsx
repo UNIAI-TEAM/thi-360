@@ -4,6 +4,7 @@ import { Badge, Button, cn, focusRing } from "@thi360/ui";
 import { Check, PenLine, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { RichTextView } from "@/components/rich-text";
 import type { PreviewBlock, PreviewItem, PreviewPaper, PreviewQuestion } from "../review-types";
 import { useLookup } from "./exam-review-shared";
 
@@ -110,8 +111,8 @@ function PreviewItemView({ item, setIndex }: { item: PreviewItem; setIndex: numb
         <Badge>{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
       </div>
       {item.passage ? (
-        <blockquote className="rounded-md border-s-4 border-border bg-subtle px-3 py-2 text-body whitespace-pre-line text-text">
-          {item.passage}
+        <blockquote className="rounded-md border-s-4 border-border bg-subtle px-3 py-2 text-body text-text">
+          <RichTextView html={item.passage} />
         </blockquote>
       ) : (
         <p className="text-body text-text-muted italic">{t("simulatedPassage")}</p>
@@ -152,7 +153,7 @@ function QuestionArticle({ question, compact = false }: { question: PreviewQuest
       {question.simulated ? (
         <p className="text-body text-text-muted italic">{t("simulatedQuestion")}</p>
       ) : (
-        <p className="text-body whitespace-pre-line text-text">{question.content}</p>
+        <RichTextView html={question.content ?? ""} className="text-body text-text" />
       )}
       {question.options && (
         <ol className="flex flex-col gap-1.5">
@@ -168,7 +169,7 @@ function QuestionArticle({ question, compact = false }: { question: PreviewQuest
                 <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-subtle text-caption font-semibold">
                   {OPTION_KEYS[index] ?? index + 1}
                 </span>
-                <span className="min-w-0 flex-1 text-text">{option.content}</span>
+                <RichTextView html={option.content} className="min-w-0 flex-1 text-text" />
                 {marked && (
                   <span
                     className={`inline-flex shrink-0 items-center gap-1 text-caption font-medium ${
@@ -207,7 +208,7 @@ function QuestionArticle({ question, compact = false }: { question: PreviewQuest
       {question.solution && (
         <details className="rounded-md bg-subtle px-3 py-2 text-body">
           <summary className={cn("cursor-pointer rounded-sm font-medium text-text", focusRing)}>{t("solution")}</summary>
-          <p className="mt-1.5 whitespace-pre-line text-text-secondary">{question.solution}</p>
+          <RichTextView html={question.solution} className="mt-1.5 text-text-secondary" />
         </details>
       )}
     </article>
