@@ -19,7 +19,7 @@ export interface Recorded {
   body: unknown;
 }
 
-type Handler = Reply | ((request: Recorded) => Reply);
+export type Handler = Reply | ((request: Recorded) => Reply | Promise<Reply>);
 
 interface Route {
   method: string;
@@ -65,7 +65,7 @@ export class FakeServer {
         const reply: Reply = !handler
           ? { status: 404, body: { code: "FAKE_SERVER_UNMATCHED", message: `${recorded.method} ${recorded.url.pathname}` } }
           : typeof handler === "function"
-            ? handler(recorded)
+            ? await handler(recorded)
             : handler;
         return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
           status: reply.status,

@@ -1,6 +1,6 @@
 import { createMockStore } from "@/lib/mock/content-mock";
 import type { ExamDetail, ExamTemplate } from "../types";
-import fixture from "./exams.json";
+import fixture from "../__tests__/fixtures/exams.json";
 
 /**
  * Kho bài thi mẫu dùng chung cho mọi màn của Bài thi (danh sách, soạn cấu trúc, kiểm tra, công bố).
