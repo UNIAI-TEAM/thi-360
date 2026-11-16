@@ -36,10 +36,6 @@ public final class QuestionImportParser {
     private static final Pattern GRADE_DIGITS = Pattern.compile("^\\d+$");
     private static final Pattern NON_DIGITS = Pattern.compile("\\D+");
 
-    /** Trường dòng câu con được phép ghi đè của bộ khi để trống (spec 4.6, 9.2). */
-    private static final Set<ImportField> CHILD_OVERRIDE_FIELDS =
-        EnumSet.of(ImportField.GRADE, ImportField.DIFFICULTY, ImportField.KNOWLEDGE);
-
     /** Trường dòng câu con có giá trị nhưng không chỗ lưu: bỏ qua kèm cảnh báo. */
     private static final Set<ImportField> CHILD_IGNORED_FIELDS =
         EnumSet.of(ImportField.SUBJECT, ImportField.TASK_TYPE, ImportField.TAGS,
@@ -89,7 +85,7 @@ public final class QuestionImportParser {
                     + " hoặc trường trùng cột " + check.duplicateFields());
         }
 
-        Context ctx = new Context(sheet, mapping, catalog, dictionary, check);
+        Context ctx = new Context(sheet, catalog, dictionary, check);
 
         // Lượt 1: giá trị thô theo trường, dạng câu và dòng ngữ liệu của từng Mã chùm.
         List<Raw> raws = ctx.raws();
@@ -1070,12 +1066,7 @@ public final class QuestionImportParser {
                     }
                 }
                 case ERROR -> error++;
-                case DUPLICATE -> {
-                    duplicate++;
-                    if (row.parentRowNumber() != null) {
-                        validSetChildren++;
-                    }
-                }
+                case DUPLICATE -> duplicate++;
             }
         }
         return new ImportSummary(results.size(), valid, error, duplicate, validSets, validSetChildren);
@@ -1097,16 +1088,14 @@ public final class QuestionImportParser {
     /** Ngữ cảnh dùng chung của một lần đọc. */
     private static final class Context {
         private final ImportSheet sheet;
-        private final ColumnMapping mapping;
         private final ImportCatalog catalog;
         private final ImportDictionary dictionary;
         private final Map<ImportField, String> columnByField;
         private final Map<String, String> headerByKey;
 
-        Context(ImportSheet sheet, ColumnMapping mapping, ImportCatalog catalog,
+        Context(ImportSheet sheet, ImportCatalog catalog,
             ImportDictionary dictionary, MappingCheck check) {
             this.sheet = sheet;
-            this.mapping = mapping;
             this.catalog = catalog;
             this.dictionary = dictionary;
             this.columnByField = check.columnByField();

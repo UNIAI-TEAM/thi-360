@@ -125,6 +125,19 @@ class QuestionImportParserTests {
     }
 
     @Test
+    void duplicateSetChildrenAreNotCountedAsValid() throws Exception {
+        var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(
+            List.of("sourceCode", "type", "content", "subject", "grade", "difficulty", "setCode", "correctAnswer"),
+            List.of("SET", "QUESTION_SET", "Bộ", "MATH", "GRADE_11", "RECOGNITION", "S", ""),
+            List.of("", "SHORT_ANSWER", "Con", "", "", "", "S", "1")), ImportLimits.DEFAULT);
+        var existing = new ExistingQuestionRef(UUID.randomUUID(), "CH-1", QuestionType.QUESTION_SET, "set");
+        var result = QuestionImportParser.parse(sheet,
+            ImportColumnMapper.suggestMapping(sheet.columns(), DICTIONARY), CATALOG, List.of(existing), DICTIONARY);
+        assertEquals(2, result.summary().duplicate());
+        assertEquals(0, result.summary().validSetChildren());
+    }
+
+    @Test
     void mappingDetectsDuplicateFieldsAndNormalizesHeaders() {
         assertEquals("ma nguon", ImportColumnMapper.normalizeHeader("Mã nguồn"));
         assertEquals("kien thuc mapid", ImportColumnMapper.normalizeHeader("Kiến thức (MAPID)"));
