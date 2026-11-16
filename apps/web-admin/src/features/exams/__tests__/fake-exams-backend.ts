@@ -595,6 +595,8 @@ export class ExamsBackend {
       if (query.get("scope") && exam.scope !== query.get("scope")) return false;
       if (query.get("subject") && exam.subjectCode !== query.get("subject") && exam.partCode !== query.get("subject")) return false;
       if (query.get("status") && exam.status !== query.get("status")) return false;
+      if (query.get("checkStatus") && exam.check.status !== query.get("checkStatus")) return false;
+      if (query.get("hasUnpublishedChanges") === "true" && !exam.hasUnpublishedChanges) return false;
       return true;
     });
     rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -608,6 +610,12 @@ export class ExamsBackend {
         kind: exam.kind,
         scope: exam.scope,
         status: exam.status,
+        revision: exam.revision,
+        partCode: exam.partCode,
+        subjectCode: exam.subjectCode,
+        timing: exam.timing,
+        referenceMax: exam.referenceMax,
+        practiceScoring: exam.practiceScoring,
         servingVersion: exam.servingVersion,
         hasUnpublishedChanges: exam.hasUnpublishedChanges,
         questionCount: exam.questionCount,

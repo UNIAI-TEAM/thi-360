@@ -194,11 +194,7 @@ function sumDurations(parts: readonly ExamPart[]): number {
 
 const person = (value: Schemas["PersonRef"] | undefined) => value ?? { id: "", name: "" };
 
-/**
- * Dòng danh sách. Máy chủ không trả `revision`, `timing`, `partCode`, `subjectCode`, `referenceMax`, `practiceScoring`
- * cho danh sách: `timingUnknown` đặt `true` (`timing` chỉ là giá trị điền chỗ, màn không đọc), thời lượng không có
- * là 0, phần còn lại rỗng; `revision` lấy từ chi tiết khi cần ghi (`discontinueExam`).
- */
+/** Dòng danh sách: máy chủ trả đủ `revision`, `timing`, `partCode`, `subjectCode`, `referenceMax`, `practiceScoring`. */
 export function mapExamSummary(row: Schemas["ExamSummaryResponse"]): ExamSummary {
   return {
     id: row.id,
@@ -207,20 +203,19 @@ export function mapExamSummary(row: Schemas["ExamSummaryResponse"]): ExamSummary
     kind: row.kind,
     scope: row.scope as ExamScope,
     status: row.status as ExamStatus,
-    revision: 0,
+    revision: row.revision,
     servingVersion: nullable(row.servingVersion),
     hasUnpublishedChanges: row.hasUnpublishedChanges,
     totalQuestions: row.questionCount,
     durationMinutes: row.durationMinutes ?? 0,
     englishOption: row.hasEnglishOption,
     combinationCount: row.combinationCount,
-    partCode: null,
-    subjectCode: null,
-    timing: "PER_PART",
-    timingUnknown: true,
+    partCode: nullable(row.partCode),
+    subjectCode: nullable(row.subjectCode),
+    timing: row.timing as ExamTiming,
     maxScore: nullable(row.maxScore),
-    referenceMax: null,
-    practiceScoring: "RAW",
+    referenceMax: nullable(row.referenceMax),
+    practiceScoring: row.practiceScoring as PracticeScoring,
     hasEssay: row.hasEssay,
     check: { status: row.check.status as ExamCheckStatus, issueCount: row.check.issueCount, checkedAt: nullable(row.check.checkedAt) },
     attemptCount: row.attemptCount,

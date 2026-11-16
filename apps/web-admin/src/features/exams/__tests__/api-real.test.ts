@@ -161,15 +161,13 @@ describe("tạo bài từ mẫu (nhánh thật)", () => {
 });
 
 describe("ngừng bán từ danh sách (nhánh thật)", () => {
-  it("đọc revision hiện tại của bài rồi gửi Idempotency-Key và expectedRevision đó", async () => {
-    server
-      .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ status: "PUBLISHED", revision: 9, servingVersion: 2 }) })
-      .on("POST", `${EXAM_PATH}/discontinue`, { status: 200, body: examDetailWire({ status: "DISCONTINUED", revision: 10 }) });
+  it("gửi Idempotency-Key và expectedRevision của dòng danh sách, không đọc lại bài", async () => {
+    server.on("POST", `${EXAM_PATH}/discontinue`, { status: 200, body: examDetailWire({ status: "DISCONTINUED", revision: 10 }) });
 
-    // Dòng danh sách không có revision: không gửi `expectedRevision`, client đọc revision hiện tại rồi gửi số đó.
-    const exam = await discontinueExam(EXAM_ID);
+    const exam = await discontinueExam(EXAM_ID, 9);
 
     expect(exam.status).toBe("DISCONTINUED");
+    expect(server.calls("GET", EXAM_PATH)).toHaveLength(0);
     const [post] = server.calls("POST", `${EXAM_PATH}/discontinue`);
     expect(post!.body).toEqual({ expectedRevision: 9 });
     expect(post!.headers.get("Idempotency-Key")).toMatch(/^[0-9a-f-]{36}$/);

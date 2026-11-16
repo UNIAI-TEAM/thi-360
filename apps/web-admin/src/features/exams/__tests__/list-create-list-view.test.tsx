@@ -53,13 +53,13 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     const bca = rowOf(table, "BCA thu");
     expect(bca.getByText("BCA")).toBeInTheDocument();
     expect(bca.getByText("4 tổ hợp")).toBeInTheDocument();
-    // Danh sách của máy chủ không cho biết cách tính thời gian: thời lượng trung tính, không ghi "chung".
-    expect(bca.getByText("81 câu · 180 phút")).toBeInTheDocument();
+    // Danh sách của máy chủ mang cách tính thời gian: BCA dùng thời lượng chung.
+    expect(bca.getByText("81 câu · 180 phút chung")).toBeInTheDocument();
     expect(bca.getByText("Có tự luận")).toBeInTheDocument();
 
     const informatics = rowOf(table, "THPTQG Tin hoc thu");
-    // Danh sách của máy chủ không có môn và số nhánh của bài: cột Lựa chọn để trống.
-    expect(informatics.getByText("28 câu · 50 phút")).toBeInTheDocument();
+    // Danh sách của máy chủ mang timing và môn của bài: thời lượng chung.
+    expect(informatics.getByText("28 câu · 50 phút chung")).toBeInTheDocument();
 
     const hsa = rowOf(table, "HSA FULL · Đề luyện số 1");
     expect(hsa.getByText("Tiếng Anh")).toBeInTheDocument();

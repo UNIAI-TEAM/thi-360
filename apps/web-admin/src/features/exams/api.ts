@@ -23,21 +23,11 @@ export const updateExamStructure = http.updateExamStructure;
 export const applyExamTemplate = http.applyExamTemplate;
 export const duplicateExam = http.duplicateExam;
 /**
- * Ngừng bán. Nơi gọi có `revision` của bản đang xem (màn Phiên bản) gửi làm `expectedRevision`: lệch thì máy chủ trả
- * 412 `EXAM_REVISION_CONFLICT`. Dòng danh sách của máy chủ không có `revision`, nên nơi gọi đó không gửi và nhánh
- * thật đọc revision hiện tại của bài rồi ngừng bán — bước "lần ghi cuối thắng" có chủ đích. `idempotencyKey` do nơi
- * gọi giữ: thử lại cùng một lần bấm dùng cùng khóa.
+ * Ngừng bán. `expectedRevision` là `revision` của bản đang xem (dòng danh sách hoặc màn Phiên bản): lệch thì máy chủ
+ * trả 412 `EXAM_REVISION_CONFLICT`. `idempotencyKey` do nơi gọi giữ: thử lại cùng một lần bấm dùng cùng khóa.
  */
-export const discontinueExam = async (
-  id: string,
-  expectedRevision?: number,
-  idempotencyKey?: string,
-): Promise<ExamDetail> =>
-  discontinueReviewedExam({
-    examId: id,
-    expectedRevision: expectedRevision ?? (await http.getExam(id)).revision,
-    idempotencyKey,
-  });
+export const discontinueExam = (id: string, expectedRevision: number, idempotencyKey?: string): Promise<ExamDetail> =>
+  discontinueReviewedExam({ examId: id, expectedRevision, idempotencyKey });
 export const countAvailableQuestions = http.countAvailableQuestions;
 export const countSubjectAvailableQuestions = http.countSubjectAvailableQuestions;
 

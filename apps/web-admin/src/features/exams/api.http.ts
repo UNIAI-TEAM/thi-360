@@ -19,7 +19,6 @@ import type {
   ExamDetail,
   ExamListPage,
   ExamStructure,
-  ExamSummary,
   ExamTemplate,
   ListExamsQuery,
   SubjectAvailableQuestionsQuery,
@@ -35,70 +34,35 @@ import type {
  * phiên bản và công bố nằm ở `review-api.ts`.
  */
 
-/**
- * Danh sách theo hai bộ lọc máy chủ không có (`checkStatus`, `hasUnpublishedChanges`): đọc từng trang rồi lọc và cắt
- * trang. Đọc tối đa `MAX_FILTER_PAGES` trang (1.000 bài); quá thì dừng và báo `incomplete`.
- */
-const FILTER_PAGE_SIZE = 100;
-export const MAX_FILTER_PAGES = 10;
-
 const idempotencyKey = () => globalThis.crypto.randomUUID();
 
-const SERVER_FILTERS = (query: ListExamsQuery) => ({
-  q: query.q,
-  kind: query.kind,
-  subject: query.subjectCode,
-  scope: query.scope,
-  status: query.status,
-});
-
-async function fetchSummaries(query: ListExamsQuery, page: number, size: number, signal?: AbortSignal) {
+/** `signal` hủy lần đọc đang chờ khi truy vấn đổi (React Query hủy truy vấn cũ). Mọi bộ lọc và phân trang do máy chủ làm. */
+export async function listExams(query: ListExamsQuery, signal?: AbortSignal): Promise<ExamListPage> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/exams", {
-    params: { query: { ...SERVER_FILTERS(query), sort: query.sort, page, size } },
+    params: {
+      query: {
+        q: query.q,
+        kind: query.kind,
+        subject: query.subjectCode,
+        scope: query.scope,
+        status: query.status,
+        checkStatus: query.checkStatus,
+        hasUnpublishedChanges: query.hasUnpublishedChanges || undefined,
+        sort: query.sort,
+        page: query.page ?? 0,
+        size: query.size ?? 20,
+      },
+    },
     signal,
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
-  return data;
-}
-
-/** `signal` hủy các lần đọc đang chờ khi truy vấn đổi (React Query hủy truy vấn cũ). */
-export async function listExams(query: ListExamsQuery, signal?: AbortSignal): Promise<ExamListPage> {
-  const page = query.page ?? 0;
-  const size = query.size ?? 20;
-  if (!query.checkStatus && !query.hasUnpublishedChanges) {
-    const data = await fetchSummaries(query, page, size, signal);
-    return {
-      content: data.items.map(mapExamSummary),
-      page: data.page,
-      size: data.size,
-      totalElements: data.totalItems,
-      totalPages: data.totalPages,
-    };
-  }
-  const rows: ExamSummary[] = [];
-  let incomplete = false;
-  for (let next = 0, pages = 1; next < pages; next += 1) {
-    if (next >= MAX_FILTER_PAGES) {
-      incomplete = true;
-      break;
-    }
-    const data = await fetchSummaries(query, next, FILTER_PAGE_SIZE, signal);
-    pages = data.totalPages;
-    rows.push(...data.items.map(mapExamSummary));
-  }
-  const filtered = rows.filter(
-    (row) =>
-      (!query.checkStatus || row.check.status === query.checkStatus) &&
-      (!query.hasUnpublishedChanges || row.hasUnpublishedChanges),
-  );
   return {
-    content: filtered.slice(page * size, (page + 1) * size),
-    page,
-    size,
-    totalElements: filtered.length,
-    totalPages: Math.ceil(filtered.length / size),
-    ...(incomplete ? { incomplete } : {}),
+    content: data.items.map(mapExamSummary),
+    page: data.page,
+    size: data.size,
+    totalElements: data.totalItems,
+    totalPages: data.totalPages,
   };
 }
 
