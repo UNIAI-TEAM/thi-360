@@ -52,14 +52,14 @@ public class AvailableQuestionCountController {
 
     @PostMapping("/count")
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Đếm nguồn câu hỏi của nhóm")
+    @Operation(operationId = "countAvailableQuestions", summary = "Đếm nguồn câu hỏi của nhóm")
     public Response count(@Valid @RequestBody Query query) {
         return service.count(query);
     }
 
     @PostMapping("/count-subject")
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Đếm hợp nguồn câu hỏi của môn")
+    @Operation(operationId = "countSubjectAvailableQuestions", summary = "Đếm hợp nguồn câu hỏi của môn")
     public Response countSubject(@Valid @RequestBody SubjectQuery query) {
         return service.countSubject(query);
     }

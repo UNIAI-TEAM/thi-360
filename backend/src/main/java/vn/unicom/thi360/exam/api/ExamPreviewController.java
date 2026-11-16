@@ -171,7 +171,7 @@ public class ExamPreviewController {
 
     @PostMapping("/exams/{id}/preview")
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Sinh đề xem trước một đường (có hạt giống)")
+    @Operation(operationId = "previewExam", summary = "Sinh đề xem trước một đường (có hạt giống)")
     public PreviewResult preview(@PathVariable UUID id,
             @Valid @RequestBody GeneratePreviewRequest request) {
         return preview.generate(id, request);

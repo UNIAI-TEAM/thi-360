@@ -46,7 +46,7 @@ public class ExamCheckController {
 
     @GetMapping
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Xem kết quả kiểm tra gần nhất")
+    @Operation(operationId = "getLatestExamCheck", summary = "Xem kết quả kiểm tra gần nhất")
     @ApiResponse(responseCode = "200", description = "Latest check, or null when not checked",
             content = @Content(schema = @Schema(implementation = ExamCheckApiModels.Result.class, nullable = true)))
     public JsonNode latest(@PathVariable UUID examId) {
@@ -59,7 +59,7 @@ public class ExamCheckController {
 
     @PostMapping
     @RequirePermission(Permissions.EXAM_MODIFY)
-    @Operation(summary = "Kiểm tra cấu hình bài thi")
+    @Operation(operationId = "checkExam", summary = "Kiểm tra cấu hình bài thi")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Synchronous check",
                 content = @Content(schema = @Schema(implementation = ExamCheckApiModels.Result.class))),
@@ -78,7 +78,7 @@ public class ExamCheckController {
 
     @GetMapping("/runs/{runId}")
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Xem trạng thái kiểm tra kỹ")
+    @Operation(operationId = "getExamCheckRun", summary = "Xem trạng thái kiểm tra kỹ")
     @ApiResponse(responseCode = "200", description = "Background check state",
             content = @Content(schema = @Schema(implementation = ExamCheckApiModels.Run.class)))
     public ExamCheckOrchestrator.Run run(@PathVariable UUID examId, @PathVariable UUID runId) {
