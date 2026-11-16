@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -8,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +25,11 @@ import vn.unicom.thi360.exam.api.CatalogOption;
 import vn.unicom.thi360.exam.api.CombinationOption;
 import vn.unicom.thi360.exam.api.CompetencyOption;
 import vn.unicom.thi360.exam.api.ContentReferenceResponse;
+import vn.unicom.thi360.exam.api.ExamKindOption;
 import vn.unicom.thi360.exam.api.KnowledgeNode;
 import vn.unicom.thi360.exam.api.QuestionTypeOption;
+import vn.unicom.thi360.exam.domain.ExamKindProfile;
+import vn.unicom.thi360.exam.infrastructure.ExamKindProfileRepository;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.web.LocaleConfig;
 
@@ -43,7 +48,7 @@ public class ContentReferenceService {
 
     // Khóa có hậu tố phiên bản: đổi hậu tố mỗi khi hình dạng payload hoặc logic dựng cache
     // thay đổi — bản cache của builder cũ không được code mới phục vụ (R2-1).
-    public static final String CACHE_KEY = "exam:content-reference:v2";
+    public static final String CACHE_KEY = "exam:content-reference:v3";
     private static final long CACHE_TTL_SECONDS = 6 * 3600L;
     private static final String SUBJECT_GROUP = "SUBJECT";
     private static final String EXAM_GROUP = "EXAM";
@@ -55,14 +60,17 @@ public class ContentReferenceService {
     private final CatalogLookup catalogLookup;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final ExamKindProfileRepository profileRepository;
 
     public ContentReferenceService(
             CatalogLookup catalogLookup,
             StringRedisTemplate redisTemplate,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ExamKindProfileRepository profileRepository) {
         this.catalogLookup = catalogLookup;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.profileRepository = profileRepository;
     }
 
     @Transactional(readOnly = true)
@@ -145,13 +153,30 @@ public class ContentReferenceService {
                         knowledgeItems.stream().map(CatalogItemView::id).toList());
         List<CachedKnowledgeNode> knowledgeTree = buildKnowledgeTree(knowledgeItems, knowledgeRefs);
 
+        Map<UUID, ExamKindProfile> profiles = new LinkedHashMap<>();
+        profileRepository.findAll().forEach(profile -> profiles.put(profile.getExamItemId(), profile));
+        List<CachedExamKind> examKinds = catalogLookup.listActiveGroupItems(EXAM_GROUP).stream()
+                .map(item -> {
+                    ExamKindProfile p = profiles.get(item.id());
+                    return new CachedExamKind(item.id(),
+                            new NamePair(item.code(), item.nameVi(), item.nameEn()),
+                            p == null ? List.of() : p.getScopes(),
+                            p == null ? null : p.getTemplateBy(),
+                            p == null ? null : p.getTiming(),
+                            p == null ? null : p.getMaxScore(),
+                            p == null ? null : p.getReferenceMax(),
+                            p == null ? null : p.getPracticeScoring(),
+                            p == null ? null : p.getTfScoring(),
+                            p == null ? null : p.getMultipleChoiceRule(), p != null);
+                }).toList();
+
         return new CachedReference(
                 revision,
                 subjects,
                 grades,
                 difficulties,
                 tags,
-                List.of(),
+                examKinds,
                 combinations,
                 competencies,
                 knowledgeTree,
@@ -276,7 +301,11 @@ public class ContentReferenceService {
                 options(cached.grades(), english),
                 options(cached.difficulties(), english),
                 options(cached.tags(), english),
-                List.of(),
+                cached.examKinds().stream().map(k -> new ExamKindOption(
+                        k.itemId(), k.name().code(), k.name().pick(english), k.scopes(),
+                        k.templateBy(), k.timing(), k.maxScore(), k.referenceMax(),
+                        k.practiceScoring(), k.trueFalseScoring(), k.multipleChoiceRule(),
+                        k.profileSet())).toList(),
                 cached.combinations().stream()
                         .map(c -> new CombinationOption(
                                 c.code(), c.name().pick(english), c.subjectCodes(), c.examKindCode()))
@@ -341,6 +370,14 @@ public class ContentReferenceService {
         }
     }
 
+    public void evictCache() {
+        try {
+            redisTemplate.delete(CACHE_KEY);
+        } catch (RuntimeException ex) {
+            log.atWarn().setCause(ex).log("Failed to evict exam content-reference cache");
+        }
+    }
+
     public record NamePair(String code, String vi, String en) {
         String pick(boolean english) {
             return ContentReferenceService.pick(vi, en, english);
@@ -353,13 +390,19 @@ public class ContentReferenceService {
             List<NamePair> grades,
             List<NamePair> difficulties,
             List<NamePair> tags,
-            List<Object> examKinds,
+            List<CachedExamKind> examKinds,
             List<CachedCombination> combinations,
             List<CachedCompetency> competencies,
             List<CachedKnowledgeNode> knowledgeTree,
             List<NamePair> taskTypes,
             List<CachedQuestionType> questionTypes
     ) {
+    }
+
+    public record CachedExamKind(UUID itemId, NamePair name, List<String> scopes,
+            String templateBy, String timing, BigDecimal maxScore, BigDecimal referenceMax,
+            String practiceScoring, JsonNode trueFalseScoring, String multipleChoiceRule,
+            boolean profileSet) {
     }
 
     public record CachedCombination(

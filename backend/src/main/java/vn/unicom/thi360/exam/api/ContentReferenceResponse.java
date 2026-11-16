@@ -13,9 +13,9 @@ public record ContentReferenceResponse(
         List<CatalogOption> difficulties,
         @Schema(description = "Các nhãn câu hỏi đang hoạt động", requiredMode = Schema.RequiredMode.REQUIRED)
         List<CatalogOption> tags,
-        @Schema(description = "Các kỳ thi kèm hồ sơ; rỗng cho tới khi BE-4 bổ sung",
+        @Schema(description = "Các kỳ thi kèm hồ sơ",
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        List<Object> examKinds,
+        List<ExamKindOption> examKinds,
         @Schema(description = "Các mã tổ hợp đang hiệu lực", requiredMode = Schema.RequiredMode.REQUIRED)
         List<CombinationOption> combinations,
         @Schema(description = "Các năng lực đang hoạt động", requiredMode = Schema.RequiredMode.REQUIRED)
