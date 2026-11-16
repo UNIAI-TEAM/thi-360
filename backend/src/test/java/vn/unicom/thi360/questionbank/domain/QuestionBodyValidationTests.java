@@ -449,6 +449,17 @@ class QuestionBodyValidationTests {
             List.of(new BigDecimal("0.5"), new BigDecimal("0.25")));
         assertTrue(codes(readyErrors(input(QuestionType.TRUE_FALSE, decreasing))).contains("SCORE_TABLE_INVALID"));
     }
+    @Test
+    void missingParentPointsDefaultsToOneForScoreComparisons() {
+        QuestionBody body = new QuestionBody.TrueFalseBody(QuestionType.TRUE_FALSE, List.of(
+            new TrueFalseStatement("s1", "a", true, null), new TrueFalseStatement("s2", "b", false, null)),
+            QuestionBody.TrueFalseScoringMethod.COUNT_TABLE, List.of(BigDecimal.ONE, new BigDecimal("2")));
+        QuestionInput draft = new QuestionInput(QuestionType.TRUE_FALSE, body, null, "content", null, List.of(), List.of());
+        assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+        assertTrue(readyErrors(draft).stream().anyMatch(e ->
+            e.code().equals("SCORE_TABLE_INVALID") && e.path().equals("body.scoreTable")));
+    }
+
 
     @Test
     void statementWithoutAnswerFailsReady() {

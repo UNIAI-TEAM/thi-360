@@ -317,7 +317,7 @@ public final class QuestionBodyValidator {
     // ---------------------------------------------------------------- mức Sẵn sàng
 
     private static void validateBodyReady(QuestionInput input, List<QuestionFieldError> errors) {
-        BigDecimal points = input.points();
+        BigDecimal points = input.points() == null ? BigDecimal.ONE : input.points();
         switch (input.body()) {
             case QuestionBody.SingleChoiceBody b -> {
                 if (b.options().size() < MIN_OPTIONS || b.options().size() > MAX_OPTIONS) {
@@ -585,7 +585,7 @@ public final class QuestionBodyValidator {
             }
         }
         if (points == null) {
-            return true;
+            points = BigDecimal.ONE;
         }
         return table.get(table.size() - 1).subtract(points).abs().compareTo(SCORE_TOLERANCE) <= 0;
     }
