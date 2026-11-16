@@ -100,4 +100,18 @@ class ContentReferenceIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.questionTypes[?(@.code=='ESSAY' && @.active==false)]").exists())
                 .andExpect(jsonPath("$.questionTypes[?(@.code=='MATCHING' && @.active==true)]").exists());
     }
+
+    @Test
+    void knowledgeTreeWrapsChaptersUnderSubjectWithCatalogIds() throws Exception {
+        // Cây danh mục KNOWLEDGE có ba cấp (Chương/Bài/Kiến thức); client bắt đầu ở cấp
+        // SUBJECT nên các chương gom dưới nút môn dựng từ liên kết SUBJECT. Bộ mẫu dev:
+        // TOAN → 0D1 (Chương) → 0D1-1 (Bài) → 0D1-1-1 (Kiến thức, chọn được với id danh mục).
+        mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.knowledgeTree[?(@.level=='SUBJECT' && @.code=='TOAN' && @.subjectCode=='TOAN' && @.gradeCode==null)]").value(org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.knowledgeTree[?(@.code=='TOAN')].children[?(@.code=='0D1' && @.level=='CHAPTER' && @.subjectCode=='TOAN' && @.gradeCode=='G10')]").value(org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.knowledgeTree[?(@.code=='TOAN')].children[?(@.code=='0D1')].children[?(@.code=='0D1-1' && @.level=='LESSON' && @.subjectCode=='TOAN' && @.gradeCode=='G10')]").value(org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.knowledgeTree[?(@.code=='TOAN')].children[?(@.code=='0D1')].children[?(@.code=='0D1-1')].children[?(@.code=='0D1-1-1' && @.level=='KNOWLEDGE' && @.subjectCode=='TOAN' && @.gradeCode=='G10' && @.active==true && @.id=='00000000-0000-7000-8200-000000001201')]").value(org.hamcrest.Matchers.hasSize(1)));
+    }
+
 }

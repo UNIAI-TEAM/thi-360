@@ -155,6 +155,13 @@ public class ContentReferenceService {
                 questionTypes);
     }
 
+    /**
+     * Cây danh mục KNOWLEDGE có ba cấp (Chương → Bài → Kiến thức); hợp đồng của client lại
+     * bắt đầu ở cấp SUBJECT. Các nút cấp Chương có cùng một liên kết SUBJECT hiệu lực được
+     * gom lại dưới một nút môn dựng từ giá trị SUBJECT được liên kết (id = id giá trị môn,
+     * children = các chương). Chương chưa gắn môn (hoặc gắn môn đã ngừng) giữ nguyên cấp
+     * CHAPTER ở gốc — không bịa dữ liệu môn.
+     */
     private List<CachedKnowledgeNode> buildKnowledgeTree(
             List<CatalogItemView> items, Map<UUID, List<CatalogItemRefView>> refsByItem) {
         Map<UUID, List<CatalogItemView>> childrenByParent = new LinkedHashMap<>();
@@ -166,7 +173,48 @@ public class ContentReferenceService {
                 childrenByParent.computeIfAbsent(item.parentId(), k -> new ArrayList<>()).add(item);
             }
         }
-        return roots.stream().map(root -> toNode(root, childrenByParent, refsByItem)).toList();
+
+        Map<UUID, CatalogItemRefView> subjectsById = new LinkedHashMap<>();
+        Map<UUID, List<CachedKnowledgeNode>> chaptersBySubject = new LinkedHashMap<>();
+        List<CachedKnowledgeNode> ungroupedRoots = new ArrayList<>();
+        for (CatalogItemView root : roots) {
+            CachedKnowledgeNode node = toNode(root, childrenByParent, refsByItem);
+            CatalogItemRefView subjectRef =
+                    firstActiveRef(refsByItem.get(root.id()), SUBJECT_GROUP);
+            if (subjectRef == null) {
+                ungroupedRoots.add(node);
+                continue;
+            }
+            subjectsById.putIfAbsent(subjectRef.refItemId(), subjectRef);
+            chaptersBySubject.computeIfAbsent(subjectRef.refItemId(), k -> new ArrayList<>())
+                    .add(node);
+        }
+
+        List<CachedKnowledgeNode> tree = new ArrayList<>(subjectsById.size() + ungroupedRoots.size());
+        for (CatalogItemRefView subject : subjectsById.values()) {
+            tree.add(new CachedKnowledgeNode(
+                    subject.refItemId(),
+                    subject.refItemCode(),
+                    new NamePair(subject.refItemCode(), subject.refNameVi(), subject.refNameEn()),
+                    KnowledgeNode.KnowledgeLevel.SUBJECT,
+                    subject.refItemCode(),
+                    null,
+                    chaptersBySubject.getOrDefault(subject.refItemId(), List.of())));
+        }
+        tree.addAll(ungroupedRoots);
+        return tree;
+    }
+
+    private static CatalogItemRefView firstActiveRef(List<CatalogItemRefView> refs, String groupCode) {
+        if (refs == null) {
+            return null;
+        }
+        for (CatalogItemRefView ref : refs) {
+            if (ref.refStatus() == CatalogStatus.ACTIVE && groupCode.equals(ref.refGroupCode())) {
+                return ref;
+            }
+        }
+        return null;
     }
 
     private CachedKnowledgeNode toNode(
@@ -200,11 +248,12 @@ public class ContentReferenceService {
                 children);
     }
 
+    // Danh mục KNOWLEDGE có ba cấp: Chương (1) → Bài (2) → Kiến thức (3 trở xuống); cấp
+    // SUBJECT do cây trả ra dựng từ liên kết SUBJECT, không phải một cấp trong danh mục.
     private static KnowledgeNode.KnowledgeLevel levelOf(short depth) {
         return switch (depth) {
-            case 1 -> KnowledgeNode.KnowledgeLevel.SUBJECT;
-            case 2 -> KnowledgeNode.KnowledgeLevel.CHAPTER;
-            case 3 -> KnowledgeNode.KnowledgeLevel.LESSON;
+            case 1 -> KnowledgeNode.KnowledgeLevel.CHAPTER;
+            case 2 -> KnowledgeNode.KnowledgeLevel.LESSON;
             default -> KnowledgeNode.KnowledgeLevel.KNOWLEDGE;
         };
     }
