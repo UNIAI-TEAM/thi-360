@@ -11,13 +11,17 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionImport;
 import vn.unicom.thi360.questionbank.infrastructure.QuestionImportRepository;
 
@@ -25,6 +29,13 @@ class QuestionImportApiIT extends AbstractIntegrationTest {
     private static final String BASE = "/api/v1/admin/question-imports";
     @Autowired private QuestionImportRepository imports;
     @Autowired private ObjectMapper mapper;
+    @Autowired private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void clearUploadRateLimitBucket() {
+        redisTemplate.delete(RateLimitFilter.UPLOAD_KEY_PREFIX + "127.0.0.1");
+    }
 
     @Test
     void templateAndHistoryRequireTheirOwnPermissions() throws Exception {

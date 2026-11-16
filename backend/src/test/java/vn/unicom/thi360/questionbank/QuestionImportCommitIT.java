@@ -17,9 +17,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -27,6 +30,7 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 
 class QuestionImportCommitIT extends AbstractIntegrationTest {
     private static final String URL = "/api/v1/admin/question-imports/uploads";
@@ -34,6 +38,13 @@ class QuestionImportCommitIT extends AbstractIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectStorage storage;
     @MockitoSpyBean private AuditRecorder audit;
+    @Autowired private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void clearUploadRateLimitBucket() {
+        redisTemplate.delete(RateLimitFilter.UPLOAD_KEY_PREFIX + "127.0.0.1");
+    }
 
     @Test
     void commitReplaysAfterFileDeletedAndRejectsChangedBody() throws Exception {

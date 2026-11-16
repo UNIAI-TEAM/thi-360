@@ -13,6 +13,8 @@ import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -33,6 +35,12 @@ class QuestionImportUploadIT extends AbstractIntegrationTest {
     @Autowired private ObjectStorage storage;
     @Autowired private SecurityProperties securityProperties;
     @Autowired private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void clearUploadRateLimitBucket() {
+        redisTemplate.delete(RateLimitFilter.UPLOAD_KEY_PREFIX + "127.0.0.1");
+    }
 
     @Test
     void uploadCsvStoresSourceAndSuggestions() throws Exception {

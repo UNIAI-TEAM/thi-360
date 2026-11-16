@@ -10,17 +10,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
 
 @Tag("perf")
 class QuestionImportPerfIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
+    @Autowired private StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void clearUploadRateLimitBucket() {
+        redisTemplate.delete(RateLimitFilter.UPLOAD_KEY_PREFIX + "127.0.0.1");
+    }
 
     @Test
     void import2000RowsUnder120s() throws Exception {
