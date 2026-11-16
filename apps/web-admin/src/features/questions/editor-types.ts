@@ -12,19 +12,27 @@ export function isQuestionType(value: string | undefined | null): value is Quest
   return (QUESTION_TYPES as readonly string[]).includes(value ?? "");
 }
 
-/** Dạng của câu con trong câu chùm: mọi dạng trừ câu chùm (Tự luận dùng cho đọc hiểu Ngữ văn THPTQG). */
-export type ChildQuestionType = Exclude<QuestionType, "QUESTION_SET">;
+/** Dạng của câu con trong Bộ câu hỏi (D19): không nhận Bộ câu hỏi hay Điền khuyết. */
+export type ChildQuestionType = Exclude<QuestionType, "QUESTION_SET" | "CLOZE">;
 
 export const CHILD_QUESTION_TYPES = [
   "SINGLE_CHOICE",
   "MULTIPLE_CHOICE",
+  "SHORT_ANSWER",
   "TRUE_FALSE",
-  "FILL_IN",
-  "DRAG_DROP",
+  "MATCHING",
   "ESSAY",
 ] as const satisfies readonly ChildQuestionType[];
 
-/** Câu con gửi lên khi lưu câu chùm. Phân loại (môn, khối, mức độ, kiến thức, nhãn) lấy theo câu cha. */
+/** Giá trị `type` có làm câu con của Bộ câu hỏi được không (D19). */
+export function isChildQuestionType(type: QuestionType): type is ChildQuestionType {
+  return (CHILD_QUESTION_TYPES as readonly string[]).includes(type);
+}
+
+/**
+ * Câu con gửi lên khi lưu Bộ câu hỏi. Phân loại để `null` là kế thừa của bộ; có giá trị là ghi đè riêng của câu con
+ * (khối lớp, độ khó, kiến thức; PBI-03 mục 10).
+ */
 export interface SaveChildQuestionRequest {
   /** Id câu con đã có; `null` với câu con mới. */
   id: string | null;
@@ -33,6 +41,9 @@ export interface SaveChildQuestionRequest {
   body: QuestionBody;
   solution: string | null;
   points: number;
+  gradeCode: string | null;
+  difficultyCode: string | null;
+  knowledgeIds: string[] | null;
 }
 
 /** Thân yêu cầu tạo hoặc sửa câu hỏi. Câu mới luôn ở trạng thái Nháp. */
@@ -41,35 +52,41 @@ export interface SaveQuestionRequest {
   subjectCode: string;
   gradeCode: string;
   difficultyCode: string;
+  /** Dạng bài (`ContentReference.taskTypes`); `null` hoặc bỏ trống: không gắn. */
+  taskTypeCode?: string | null;
   /** Năng lực (V-ACT); `null` hoặc bỏ trống: không gắn. Câu con lấy theo câu cha. */
   competencyCode?: string | null;
-  /** Điểm của câu đơn. Câu chùm: máy chủ tính bằng tổng điểm câu con, giá trị gửi lên bị bỏ qua. */
+  /** Điểm của câu đơn. Bộ câu hỏi và Điền khuyết: máy chủ tính bằng tổng điểm thành phần, giá trị gửi lên bị bỏ qua. */
   points: number;
   knowledge: KnowledgeRef[];
   tagCodes: string[];
-  /** Đề bài; câu chùm: đoạn dẫn chung. */
+  /** Đề bài; Bộ câu hỏi: ngữ liệu chung. */
   content: string;
   solution: string | null;
+  /** Lỗi sai thường gặp; `null`: không có. */
+  commonMistakes: string | null;
+  /** Id tệp đính kèm đã tải lên. */
+  attachmentIds: string[];
   body: QuestionBody;
-  /** Câu con của câu chùm; rỗng với dạng khác. */
+  /** Câu con của Bộ câu hỏi; rỗng với dạng khác. */
   children: SaveChildQuestionRequest[];
 }
 
 export interface UpdateQuestionRequest extends SaveQuestionRequest {
-  /** Phiên bản đang sửa (khóa lạc quan); khác phiên bản hiện tại thì trả 409 `QUESTION_VERSION_CONFLICT`. */
-  expectedVersion: number;
+  /** `revision` của câu lúc mở màn (D13); lệch thì 412 `QUESTION_REVISION_CONFLICT`. */
+  expectedRevision: number;
 }
 
 export interface UpdateQuestionResponse {
   question: QuestionDetail;
-  /** `true` khi lần lưu tạo phiên bản mới (câu đã Sẵn sàng hoặc Ngừng sử dụng), `false` khi sửa tại chỗ bản Nháp. */
+  /** `true` khi lần lưu tạo bản làm việc mới (câu đã Sẵn sàng hoặc Ngừng sử dụng), `false` khi sửa tại chỗ bản Nháp. */
   versionCreated: boolean;
 }
 
 export interface RestoreQuestionVersionRequest {
   /** Phiên bản cần chép lại thành bản nháp. */
   version: number;
-  expectedVersion: number;
+  expectedRevision: number;
 }
 
 /** Phần nội dung của một phiên bản câu hỏi (những gì so sánh được giữa hai phiên bản). */
@@ -79,12 +96,15 @@ export type QuestionSnapshot = Pick<
   | "gradeCode"
   | "difficultyCode"
   | "competencyCode"
+  | "taskTypeCode"
   | "points"
   | "knowledge"
   | "tagCodes"
   | "content"
   | "body"
   | "solution"
+  | "commonMistakes"
+  | "attachmentIds"
   | "children"
 >;
 

@@ -1,32 +1,148 @@
 {
   "fieldAliases": {
-    "sourceCode": ["Mã nguồn", "Mã câu nguồn", "Source code"],
-    "type": ["Dạng câu", "Dạng câu hỏi", "Loại câu", "Question type"],
-    "content": ["Nội dung", "Đề bài", "Câu hỏi"],
-    "optionA": ["A", "Phương án A", "Option A"],
-    "optionB": ["B", "Phương án B", "Option B"],
-    "optionC": ["C", "Phương án C", "Option C"],
-    "optionD": ["D", "Phương án D", "Option D"],
-    "correctAnswer": ["Đáp án", "Đáp án đúng", "Answer", "Correct answer"],
-    "solution": ["Lời giải", "Hướng dẫn giải"],
-    "subject": ["Môn", "Môn học"],
-    "grade": ["Lớp", "Khối", "Khối lớp"],
-    "difficulty": ["Mức độ", "Độ khó"],
-    "knowledge": ["Kiến thức", "Kiến thức (MAPID)", "MAPID", "Mã kiến thức"],
-    "tags": ["Nhãn"],
-    "setCode": ["Mã chùm", "Mã câu chùm", "Set code"],
-    "rubric": ["Tiêu chí chấm", "Hướng dẫn chấm", "Thang chấm", "Rubric"]
+    "sourceCode": [
+      "Mã nguồn",
+      "Mã câu nguồn",
+      "Source code"
+    ],
+    "type": [
+      "Dạng câu",
+      "Dạng câu hỏi",
+      "Loại câu",
+      "Question type"
+    ],
+    "content": [
+      "Nội dung",
+      "Đề bài",
+      "Câu hỏi"
+    ],
+    "optionA": [
+      "A",
+      "Phương án A",
+      "Option A"
+    ],
+    "optionB": [
+      "B",
+      "Phương án B",
+      "Option B"
+    ],
+    "optionC": [
+      "C",
+      "Phương án C",
+      "Option C"
+    ],
+    "optionD": [
+      "D",
+      "Phương án D",
+      "Option D"
+    ],
+    "correctAnswer": [
+      "Đáp án",
+      "Đáp án đúng",
+      "Answer",
+      "Correct answer"
+    ],
+    "solution": [
+      "Lời giải",
+      "Hướng dẫn giải"
+    ],
+    "subject": [
+      "Môn",
+      "Môn học"
+    ],
+    "grade": [
+      "Lớp",
+      "Khối",
+      "Khối lớp"
+    ],
+    "difficulty": [
+      "Mức độ",
+      "Độ khó"
+    ],
+    "knowledge": [
+      "Kiến thức",
+      "Kiến thức (MAPID)",
+      "MAPID",
+      "Mã kiến thức"
+    ],
+    "tags": [
+      "Nhãn"
+    ],
+    "setCode": [
+      "Mã chùm",
+      "Mã câu chùm",
+      "Set code"
+    ],
+    "rubric": [
+      "Tiêu chí chấm",
+      "Hướng dẫn chấm",
+      "Thang chấm",
+      "Rubric"
+    ]
   },
-  "ignoreHeaders": ["Ghi chú nội bộ", "Ghi chú", "STT"],
+  "ignoreHeaders": [
+    "Ghi chú nội bộ",
+    "Ghi chú",
+    "STT"
+  ],
   "typeAliases": {
-    "SINGLE_CHOICE": ["Trắc nghiệm 1 đáp án", "Trắc nghiệm một đáp án", "Một đáp án", "Single choice"],
-    "MULTIPLE_CHOICE": ["Trắc nghiệm nhiều đáp án", "Nhiều đáp án", "Multiple choice"],
-    "TRUE_FALSE": ["Đúng / Sai", "Đúng/Sai", "Đúng sai", "True / False", "True/False"],
-    "FILL_IN": ["Điền đáp án", "Điền", "Short answer", "Fill in"],
-    "DRAG_DROP": ["Kéo thả", "Drag and drop"],
-    "QUESTION_SET": ["Câu chùm", "Question set"],
-    "ESSAY": ["Tự luận", "Câu tự luận", "Tự luận (chấm tay)", "Essay"]
+    "SINGLE_CHOICE": [
+      "Trắc nghiệm 1 đáp án",
+      "Trắc nghiệm một đáp án",
+      "Một đáp án",
+      "Single choice"
+    ],
+    "MULTIPLE_CHOICE": [
+      "Trắc nghiệm nhiều đáp án",
+      "Nhiều đáp án",
+      "Multiple choice"
+    ],
+    "SHORT_ANSWER": [
+      "Trả lời ngắn",
+      "Điền đáp án",
+      "Điền",
+      "Short answer",
+      "Fill in"
+    ],
+    "CLOZE": [
+      "Điền khuyết",
+      "Cloze",
+      "Fill in the blanks"
+    ],
+    "QUESTION_SET": [
+      "Câu chùm",
+      "Question set"
+    ],
+    "TRUE_FALSE": [
+      "Đúng / Sai",
+      "Đúng/Sai",
+      "Đúng sai",
+      "True / False",
+      "True/False"
+    ],
+    "MATCHING": [
+      "Ghép đôi",
+      "Kéo thả",
+      "Matching",
+      "Drag and drop"
+    ],
+    "ESSAY": [
+      "Tự luận",
+      "Câu tự luận",
+      "Tự luận (chấm tay)",
+      "Essay"
+    ]
   },
-  "trueTokens": ["Đ", "Đúng", "T", "True"],
-  "falseTokens": ["S", "Sai", "F", "False"]
+  "trueTokens": [
+    "Đ",
+    "Đúng",
+    "T",
+    "True"
+  ],
+  "falseTokens": [
+    "S",
+    "Sai",
+    "F",
+    "False"
+  ]
 }
