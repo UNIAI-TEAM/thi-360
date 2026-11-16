@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS exam;
+
 -- BE-4 W-SCHEMA (UNI-2610): bảng của module exam theo spec mục 5.1 (B9/D21-D26).
 -- exam_version, exam_check_run, exam_check_job do BE-5b/BE-6 tạo (ngoài phạm vi W-SCHEMA).
 -- Không đặt FK sang schema catalog: bảng tham chiếu giá trị danh mục bằng uuid mà không join
