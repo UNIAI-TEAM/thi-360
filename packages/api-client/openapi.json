@@ -3446,6 +3446,26 @@
         "required" : [ "action", "classCode", "classId", "className", "id", "occurredAt" ],
         "type" : "object"
       },
+      "UserClassSummary" : {
+        "description" : "Lớp hiện tại của tài khoản trong danh sách",
+        "properties" : {
+          "code" : {
+            "description" : "Mã lớp",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "ID lớp",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Tên lớp",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "id", "name" ],
+        "type" : "object"
+      },
       "UserClassesResponse" : {
         "description" : "Danh sách lớp học hiện tại và lịch sử tham gia/chuyển lớp của tài khoản",
         "properties" : {
@@ -3953,6 +3973,13 @@
       "UserSummaryResponse" : {
         "description" : "Thông tin tóm tắt tài khoản trong danh sách",
         "properties" : {
+          "classes" : {
+            "description" : "Các lớp hiện tại của tài khoản, sắp theo mã lớp",
+            "items" : {
+              "$ref" : "#/components/schemas/UserClassSummary"
+            },
+            "type" : "array"
+          },
           "code" : {
             "description" : "Mã tài khoản",
             "example" : "U000001",
@@ -4026,7 +4053,7 @@
             "type" : "integer"
           }
         },
-        "required" : [ "code", "createdAt", "fullName", "id", "mustChangePassword", "roles", "source", "status", "updatedAt", "username", "version" ],
+        "required" : [ "classes", "code", "createdAt", "fullName", "id", "mustChangePassword", "roles", "source", "status", "updatedAt", "username", "version" ],
         "type" : "object"
       },
       "UsernameAvailabilityResponse" : {

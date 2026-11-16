@@ -33,6 +33,8 @@ public record UserSummaryResponse(
         Instant deletedAt,
         @Schema(description = "Danh sách vai trò của tài khoản", requiredMode = Schema.RequiredMode.REQUIRED)
         List<UserRoleSummary> roles,
+        @Schema(description = "Các lớp hiện tại của tài khoản, sắp theo mã lớp", requiredMode = Schema.RequiredMode.REQUIRED)
+        List<UserClassSummary> classes,
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
         Long version,
         @Schema(description = "Thời điểm tạo", requiredMode = Schema.RequiredMode.REQUIRED)

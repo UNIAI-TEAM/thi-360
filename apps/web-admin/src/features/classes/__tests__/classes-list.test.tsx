@@ -114,6 +114,7 @@ function renderListView(
             status: "ACTIVE",
             mustChangePassword: false,
             roles: [],
+            classes: [],
             version: 0,
             createdAt: "2026-11-01T00:00:00Z",
             updatedAt: "2026-11-01T00:00:00Z",

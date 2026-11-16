@@ -2109,6 +2109,7 @@
     },
     "table": {
       "actions": "Thao tác",
+      "classes": "Lớp",
       "email": "Email",
       "fullName": "Họ và tên",
       "roles": "Vai trò",

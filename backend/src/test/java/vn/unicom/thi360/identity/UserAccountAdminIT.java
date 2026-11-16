@@ -340,6 +340,31 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.totalItems").value(1))
                 .andExpect(jsonPath("$.items[0].id").value(adminCreated.getId().toString()));
 
+        // each row carries the user's current classes, sorted by code; deleted classes are left out
+        UUID firstClassId = createTestClass("AAA-" + sfx, "First Class " + sfx, true);
+        UUID deletedClassId = createTestClass("DEL-" + sfx, "Deleted Class " + sfx, true);
+        for (UUID classId : List.of(firstClassId, deletedClassId)) {
+            jdbcTemplate.update(
+                    "INSERT INTO classroom.class_member (class_id, user_id, joined_at) VALUES (?, ?, now())",
+                    classId, adminCreated.getId());
+        }
+        jdbcTemplate.update("UPDATE classroom.class_room SET deleted_at = now() WHERE id = ?", deletedClassId);
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .param("classId", filterClassId.toString())
+                        .with(asUser(Permissions.USER_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].classes.length()").value(2))
+                .andExpect(jsonPath("$.items[0].classes[0].id").value(firstClassId.toString()))
+                .andExpect(jsonPath("$.items[0].classes[0].code").value("AAA-" + sfx))
+                .andExpect(jsonPath("$.items[0].classes[0].name").value("First Class " + sfx))
+                .andExpect(jsonPath("$.items[0].classes[1].code").value("FILTER-" + sfx));
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .param("q", bulkUser.getUsername())
+                        .with(asUser(Permissions.USER_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].classes").isArray())
+                .andExpect(jsonPath("$.items[0].classes.length()").value(0));
+
         mockMvc.perform(get("/api/v1/admin/users")
                         .param("classId", Ids.newId().toString())
                         .with(asUser(Permissions.USER_VIEW)))

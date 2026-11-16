@@ -2109,6 +2109,7 @@
     },
     "table": {
       "actions": "Actions",
+      "classes": "Classes",
       "email": "Email",
       "fullName": "Full name",
       "roles": "Roles",

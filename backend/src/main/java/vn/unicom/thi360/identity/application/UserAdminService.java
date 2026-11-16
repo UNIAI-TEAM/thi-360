@@ -61,6 +61,7 @@ import vn.unicom.thi360.identity.api.UserLoginMethodResponse;
 import vn.unicom.thi360.identity.api.UserProfileClassHistoryResponse;
 import vn.unicom.thi360.identity.api.UserProfileCurrentClassResponse;
 import vn.unicom.thi360.identity.api.UserProfileResponse;
+import vn.unicom.thi360.identity.api.UserClassSummary;
 import vn.unicom.thi360.identity.api.UserRoleSummary;
 import vn.unicom.thi360.identity.api.UserSummaryResponse;
 import vn.unicom.thi360.identity.api.UsernameAvailabilityResponse;
@@ -304,6 +305,7 @@ public class UserAdminService {
         List<UserRow> rows = jdbcTemplate.query(dataSql, (rs, rowNum) -> mapUserRow(rs), dataParams.toArray());
         List<UUID> userIds = rows.stream().map(UserRow::id).toList();
         Map<UUID, List<UserRoleSummary>> rolesByUserId = loadRolesForUsers(userIds);
+        Map<UUID, List<UserClassSummary>> classesByUserId = loadClassesForUsers(userIds);
 
         List<UserSummaryResponse> items = rows.stream()
                 .map(row -> new UserSummaryResponse(
@@ -319,6 +321,7 @@ public class UserAdminService {
                         row.lastLoginAt(),
                         row.deletedAt(),
                         rolesByUserId.getOrDefault(row.id(), List.of()),
+                        classesByUserId.getOrDefault(row.id(), List.of()),
                         row.version(),
                         row.createdAt(),
                         row.updatedAt()))
@@ -1596,6 +1599,21 @@ public class UserAdminService {
                 },
                 roleIds.toArray());
         return permissions;
+    }
+
+    private Map<UUID, List<UserClassSummary>> loadClassesForUsers(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<ClassMembershipPort.ClassRef>> found = classMembershipPort.findCurrentClassesByUserIds(userIds);
+        if (found == null || found.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<UserClassSummary>> result = new HashMap<>();
+        found.forEach((userId, refs) -> result.put(
+                userId,
+                refs.stream().map(ref -> new UserClassSummary(ref.id(), ref.code(), ref.name())).toList()));
+        return result;
     }
 
     private Map<UUID, List<UserRoleSummary>> loadRolesForUsers(Collection<UUID> userIds) {

@@ -3485,6 +3485,18 @@ export interface components {
             /** @description Tên lớp liên quan */
             relatedClassName?: string;
         };
+        /** @description Lớp hiện tại của tài khoản trong danh sách */
+        UserClassSummary: {
+            /** @description Mã lớp */
+            code: string;
+            /**
+             * Format: uuid
+             * @description ID lớp
+             */
+            id: string;
+            /** @description Tên lớp */
+            name: string;
+        };
         /** @description Danh sách lớp học hiện tại và lịch sử tham gia/chuyển lớp của tài khoản */
         UserClassesResponse: {
             /** @description Danh sách lớp học hiện tại */
@@ -3831,6 +3843,8 @@ export interface components {
         };
         /** @description Thông tin tóm tắt tài khoản trong danh sách */
         UserSummaryResponse: {
+            /** @description Các lớp hiện tại của tài khoản, sắp theo mã lớp */
+            classes: components["schemas"]["UserClassSummary"][];
             /**
              * @description Mã tài khoản
              * @example U000001
