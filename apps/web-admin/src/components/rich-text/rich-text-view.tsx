@@ -28,12 +28,16 @@ const serverSnapshot = () => false;
  */
 function renderMath(container: HTMLElement) {
   for (const span of [...container.querySelectorAll<HTMLElement>("span.math-inline, span.math-block")]) {
-    const text = span.textContent ?? "";
+    // LaTeX nguồn giữ trong `data-latex` ở lần dựng đầu: effect chạy lại (StrictMode, dựng lại) không đọc lại chữ đã render.
     const displayMode = span.classList.contains("math-block");
-    const open = displayMode ? "\\[" : "\\(";
-    const close = displayMode ? "\\]" : "\\)";
-    const latex =
-      text.trim().startsWith(open) && text.trim().endsWith(close) ? text.trim().slice(2, -2) : text;
+    let latex = span.dataset.latex;
+    if (latex === undefined) {
+      const text = span.textContent ?? "";
+      const open = displayMode ? "\\[" : "\\(";
+      const close = displayMode ? "\\]" : "\\)";
+      latex = text.trim().startsWith(open) && text.trim().endsWith(close) ? text.trim().slice(2, -2) : text;
+      span.dataset.latex = latex;
+    }
     try {
       katex.render(latex, span, { displayMode, throwOnError: false });
     } catch {
@@ -70,6 +74,7 @@ function renderMath(container: HTMLElement) {
       if (index > cursor) fragment.append(text.slice(cursor, index));
       const span = document.createElement("span");
       span.className = block ? "math-block" : "math-inline";
+      span.dataset.latex = latex;
       try {
         katex.render(latex, span, { displayMode: block, throwOnError: false });
       } catch {

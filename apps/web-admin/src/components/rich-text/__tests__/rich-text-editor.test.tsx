@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
@@ -211,6 +211,31 @@ describe("RichTextView", () => {
     await user.click(screen.getByRole("button", { name: "rerender 0" }));
     await screen.findByRole("button", { name: "rerender 1" });
     expect(container.querySelector(".katex")).toBe(formula);
+  });
+
+  it("renders each formula once with the original LaTeX when effects run twice", async () => {
+    const user = userEvent.setup();
+    const html = '<p><span class="math-inline">\\(x^2+\\frac{1}{2}\\)</span> và Tính \\(a+b\\)</p>';
+    function Harness() {
+      const [count, setCount] = useState(0);
+      return (
+        <>
+          <button onClick={() => setCount(count + 1)}>rerender {count}</button>
+          <RichTextView html={html} />
+        </>
+      );
+    }
+    const { container } = render(
+      <StrictMode>
+        <Harness />
+      </StrictMode>,
+    );
+    await user.click(screen.getByRole("button", { name: "rerender 0" }));
+    await screen.findByRole("button", { name: "rerender 1" });
+
+    const annotations = [...container.querySelectorAll(".katex-mathml annotation")].map((node) => node.textContent);
+    expect(annotations).toEqual(["x^2+\\frac{1}{2}", "a+b"]);
+    expect(container.querySelectorAll(".katex")).toHaveLength(2);
   });
 
   it("renders plain-text delimiters with KaTeX too", () => {
