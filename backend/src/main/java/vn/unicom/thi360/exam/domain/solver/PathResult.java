@@ -19,6 +19,7 @@ import java.util.List;
  * @param failingSelections các cách chọn môn ({@link SubjectPick}) không giải được của một đường có
  *                          {@link SubjectChoice}; chỉ khác rỗng khi INVALID do cách chọn lỗi
  * @param failingQuota      chỉ tiêu cấp môn thiếu nguồn, hoặc null khi không xác định được
+ * @param selections        kết quả riêng cho từng tổ hợp chọn môn đã được giải
  */
 public record PathResult(
         SolvePath path,
@@ -28,11 +29,25 @@ public record PathResult(
         String groupId,
         List<SubjectWitness> witness,
         List<SubjectPick> failingSelections,
-        QuotaRef failingQuota) {
+        QuotaRef failingQuota,
+        List<SelectionResult> selections) {
+
+    public PathResult(SolvePath path, SolveStatus status, SolveReason reason, String subjectCode,
+            String groupId, List<SubjectWitness> witness, List<SubjectPick> failingSelections,
+            QuotaRef failingQuota) {
+        this(path, status, reason, subjectCode, groupId, witness, failingSelections, failingQuota,
+                List.of());
+    }
 
     public PathResult {
         witness = witness == null ? List.of() : List.copyOf(witness);
         failingSelections = failingSelections == null ? List.of() : List.copyOf(failingSelections);
+        selections = selections == null ? List.of() : List.copyOf(selections);
+    }
+
+    PathResult withSelections(List<SelectionResult> values) {
+        return new PathResult(path, status, reason, subjectCode, groupId, witness, failingSelections,
+                failingQuota, values);
     }
 
     static PathResult valid(SolvePath path, List<SubjectWitness> witness) {
