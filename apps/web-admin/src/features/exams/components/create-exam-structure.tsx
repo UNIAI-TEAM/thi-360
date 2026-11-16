@@ -15,12 +15,11 @@ import {
   type CreatePartValues,
   type CreateSectionValues,
   defaultSubjectCounts,
-  type ExamFormat,
   optionTarget,
   PART_NAME_MAX,
 } from "../create-exam-schema";
 import { countOf, sum } from "../matrix";
-import type { ExamTemplateBlock, ExamTiming } from "../types";
+import type { ExamScope, ExamTemplateBlock, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationAttachDialog } from "./combination-options";
 import { OptionalNumberInput } from "./create-exam-fields";
@@ -146,7 +145,7 @@ function SectionCountsEditor({
 export function CreateExamPartsEditor({
   control,
   parts,
-  format,
+  scope,
   timing,
   pointsByPart,
   subjects,
@@ -159,7 +158,7 @@ export function CreateExamPartsEditor({
 }: {
   control: Control<CreateExamFormValues>;
   parts: readonly CreatePartValues[];
-  format: ExamFormat;
+  scope: ExamScope;
   timing: ExamTiming;
   pointsByPart: boolean;
   subjects: readonly CatalogOption[];
@@ -172,7 +171,7 @@ export function CreateExamPartsEditor({
 }) {
   const t = useTranslations("exams.create.parts");
   const subjectOptions = subjects.map((subject) => ({ value: subject.code, label: subject.name }));
-  const single = format === "SINGLE";
+  const single = scope === "PART";
   const perPart = timing === "PER_PART";
   const numberColumns = (1 + (perPart ? 1 : 0) + (pointsByPart ? 1 : 0)) as 1 | 2 | 3;
 

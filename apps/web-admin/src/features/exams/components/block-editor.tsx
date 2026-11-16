@@ -31,7 +31,7 @@ import type { BlockShuffleRule, KnowledgeScope, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
-import { ChoiceCardGroup } from "./create-exam-fields";
+import { ChoiceCardGroup, OptionalNumberInput } from "./create-exam-fields";
 
 const SHUFFLE_RULES: BlockShuffleRule[] = ["SHUFFLE", "KEEP_ORDER"];
 const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [], match: "ANY" };
@@ -232,14 +232,19 @@ export function BlockEditor({
         )}
         <FormField
           label={t("points")}
-          required
-          hint={t("pointsTotal", { points: Math.round(questionCount * blockPointsEach(block) * 10_000) / 10_000 })}
+          hint={
+            block.requiredPointsPerQuestion === null
+              ? t("pointsOpenHint")
+              : t("pointsTotal", {
+                  points: block.requiredPointsPerQuestion,
+                  total: Math.round(questionCount * block.requiredPointsPerQuestion * 10_000) / 10_000,
+                })
+          }
         >
           {(controlProps) => (
-            <BlockNumberInput
+            <OptionalNumberInput
               {...controlProps}
-              allowDecimal
-              value={blockPointsEach(block)}
+              value={block.requiredPointsPerQuestion}
               onValueChange={(requiredPointsPerQuestion) => update({ requiredPointsPerQuestion })}
             />
           )}

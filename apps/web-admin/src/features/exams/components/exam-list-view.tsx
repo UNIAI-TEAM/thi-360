@@ -47,7 +47,7 @@ import {
   type ExamSummary,
   type ListExamsQuery,
 } from "../types";
-import { useKindLabel, useSingleScopes } from "./create-exam-fields";
+import { useKindLabel, usePartNames } from "./create-exam-fields";
 import { ExamListRowActions } from "./exam-list-actions";
 
 const ALL = "ALL";
@@ -83,7 +83,7 @@ export function ExamListView() {
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
   const kindLabel = useKindLabel();
-  const { scopeName } = useSingleScopes();
+  const { partName: scopeName } = usePartNames();
   const kindCodes = useMemo(
     () => referenceQuery.data?.examKinds.map((kind) => kind.code) ?? [...EXAM_KINDS],
     [referenceQuery.data],

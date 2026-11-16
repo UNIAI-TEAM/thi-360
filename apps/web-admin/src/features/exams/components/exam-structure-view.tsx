@@ -29,6 +29,8 @@ import {
   removeOption,
   selectionExists,
   setEnglishOption,
+  setPartChoose,
+  setPartOnPaper,
   setPartPoints,
   setPartQuestionCount,
   setSectionCount,
@@ -39,6 +41,7 @@ import {
 import { issueTarget, optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
 import { ExamStructureOutline } from "./exam-structure-outline";
 import { ExamStructurePartPanel } from "./exam-structure-part-panel";
+import { StructureVersionPicker } from "./structure-version-picker";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 
 const SELECTION_PARAMS = { part: "part", block: "block" } as const;
@@ -136,6 +139,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
       structure={structureQuery.data}
       syncKey={structureQuery.dataUpdatedAt}
       reference={referenceQuery.data}
+      templates={templatesQuery.data ?? []}
       template={templatesQuery.data?.find((item) => item.code === examQuery.data.templateCode) ?? null}
     />
   );
@@ -146,12 +150,14 @@ function StructureEditor({
   structure,
   syncKey,
   reference,
+  templates,
   template,
 }: {
   exam: ExamDetail;
   structure: ExamStructure;
   syncKey: number;
   reference: ContentReference;
+  templates: readonly ExamTemplate[];
   template: ExamTemplate | null;
 }) {
   const t = useTranslations("exams.structure");
@@ -322,6 +328,16 @@ function StructureEditor({
         <p className="text-caption text-text-muted">
           {exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote")}
         </p>
+        <StructureVersionPicker
+          exam={exam}
+          templates={templates}
+          dirty={dirty}
+          onAnnounce={announce}
+          onApplied={(parts) => {
+            setDraft(parts);
+            setBaseline(JSON.stringify(parts));
+          }}
+        />
         {yearsPending && (
           <p className="flex flex-wrap items-start gap-x-2 gap-y-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-body text-text">
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
@@ -415,6 +431,12 @@ function StructureEditor({
               defaultCombinationSize={defaultCombinationSize}
               branchSubjects={branchSubjects}
               onPoints={(points) => setDraft((parts) => setPartPoints(parts, selectedPart.id, points))}
+              onOnPaper={(count) =>
+                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartOnPaper(part, count)))
+              }
+              onChoose={(choose) =>
+                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartChoose(part, choose)))
+              }
               onGenerate={(combinations) => {
                 setDraft((parts) => attachGenerated(parts, selectedPart.id, combinations, lookup.subject));
                 announce(t("combinationsGenerated", { count: combinations.length }));

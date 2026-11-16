@@ -8,6 +8,7 @@ import { countOf, sectionsPoints, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamSection, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
+import { OptionalNumberInput } from "./create-exam-fields";
 import type { StructureNames } from "./exam-structure-issues";
 
 export interface PartPanelProps
@@ -31,7 +32,9 @@ export interface PartPanelProps
   onAttachCombination: (combination: CombinationOption) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
-  onPoints: (points: number) => void;
+  onPoints: (points: number | null) => void;
+  onOnPaper: (questionCountOnPaper: number) => void;
+  onChoose: (choose: number) => void;
 }
 
 /**
@@ -55,6 +58,8 @@ export function ExamStructurePartPanel({
   onRemoveOption,
   onSelectBlock,
   onPoints,
+  onOnPaper,
+  onChoose,
   showEnglish,
   subjectPool,
   defaultCombinationSize,
@@ -69,6 +74,8 @@ export function ExamStructurePartPanel({
   const durationInvalid = partIssues.some((issue) => issue.code === "PART_DURATION_NOT_POSITIVE");
   const shared = timing === "SHARED";
   const pointsInvalid = partIssues.some((issue) => issue.code === "PART_POINTS");
+  const paperInvalid = partIssues.some((issue) => issue.code === "PART_PAPER_COUNT");
+  const chooseInvalid = partIssues.some((issue) => issue.code === "PART_CHOOSE_INVALID");
   const blockPoints = part.mode === "FIXED" ? sectionsPoints(part.sections) : null;
 
   return (
@@ -101,7 +108,22 @@ export function ExamStructurePartPanel({
         <FormField label={t("order")} hint={t("orderHint")}>
           {(controlProps) => <Input {...controlProps} value={String(part.order)} readOnly className="tabular-nums" />}
         </FormField>
-        <FormField label={t("questionCount")} required error={countInvalid ? t("countInvalid") : undefined}>
+        <FormField
+          label={t("questionCountOnPaper")}
+          required
+          hint={t("questionCountOnPaperHint")}
+          error={paperInvalid ? t("paperInvalid") : undefined}
+        >
+          {(controlProps) => (
+            <BlockNumberInput {...controlProps} value={part.questionCountOnPaper} onValueChange={onOnPaper} />
+          )}
+        </FormField>
+        <FormField
+          label={t("questionCount")}
+          required
+          hint={t("questionCountHint")}
+          error={countInvalid ? t("countInvalid") : undefined}
+        >
           {(controlProps) => (
             <BlockNumberInput {...controlProps} value={part.questionCount} onValueChange={onQuestionCount} />
           )}
@@ -122,20 +144,35 @@ export function ExamStructurePartPanel({
             )}
           </FormField>
         )}
-        {part.maxPoints !== null && part.maxPoints !== undefined && (
-          <FormField
-            label={t("points")}
-            required
-            hint={blockPoints !== null ? t("pointsHintFixed", { points: blockPoints }) : t("pointsHint")}
-            error={pointsInvalid ? t("pointsInvalid") : undefined}
-          >
-            {(controlProps) => (
-              <BlockNumberInput {...controlProps} allowDecimal value={part.maxPoints ?? 0} onValueChange={onPoints} />
-            )}
-          </FormField>
-        )}
+        <FormField
+          label={t("points")}
+          hint={blockPoints !== null ? t("pointsHintFixed", { points: blockPoints }) : t("pointsHint")}
+          error={pointsInvalid ? t("pointsInvalid") : undefined}
+        >
+          {(controlProps) => <OptionalNumberInput {...controlProps} value={part.maxPoints ?? null} onValueChange={onPoints} />}
+        </FormField>
       </div>
       {shared && <p className="text-caption text-text-muted">{t("sharedHint")}</p>}
+
+      <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
+        <h3 className="text-title font-semibold text-text">{t("participation.title")}</h3>
+        {part.mode === "CHOICE" ? (
+          <div className="flex flex-wrap items-center gap-2 text-body text-text">
+            <span>{t("participation.choosePrefix")}</span>
+            <BlockNumberInput
+              className="h-9 w-20"
+              value={part.participation.choose ?? 1}
+              aria-invalid={chooseInvalid ? true : undefined}
+              aria-label={t("participation.chooseAria")}
+              onValueChange={onChoose}
+            />
+            <span>{t("participation.chooseSuffix", { count: part.options.length })}</span>
+          </div>
+        ) : (
+          <p className="text-body text-text">{t("participation.all")}</p>
+        )}
+        <p className="text-caption text-text-muted">{t("participation.hint")}</p>
+      </section>
 
       {partIssues.length > 0 && (
         <ul className="flex flex-col gap-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2">

@@ -46,7 +46,7 @@ describe("Cấu trúc theo bảy kỳ thi", () => {
     openStructure("ex-bca-f-001", "?part=part-b3");
     expect(await screen.findByRole("heading", { name: "Phần 3 · Tự chọn" })).toBeInTheDocument();
     expect(screen.getByText("100 / 100 điểm")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /Điểm của phần/ })).toHaveValue("15");
+    expect(screen.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("15");
     expect(screen.getAllByText("Chờ chuyên gia xác nhận").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: /^Xác nhận số câu của CA4/ }));
     expect(screen.queryByRole("button", { name: /^Xác nhận số câu của CA4/ })).not.toBeInTheDocument();

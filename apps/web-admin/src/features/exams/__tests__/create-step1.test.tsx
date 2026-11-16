@@ -77,7 +77,7 @@ describe("trang Tạo bài thi", () => {
     await user.type(firstCount, "40");
     await user.click(screen.getByRole("radio", { name: /QDA/ }));
     const prompt = await screen.findByRole("alert", { name: "" });
-    expect(within(prompt).getByText("Nạp lại mẫu QDA FULL?")).toBeInTheDocument();
+    expect(within(prompt).getByText("Nạp lại mẫu QDA · Toàn bài?")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /HSA/ })).toBeChecked();
 
     await user.click(within(prompt).getByRole("button", { name: "Nạp lại mẫu" }));
@@ -88,9 +88,12 @@ describe("trang Tạo bài thi", () => {
     expect(within(summary()).getByText("195 phút")).toBeInTheDocument();
   }, 20_000);
 
-  it("bài lẻ: chọn phần/môn, mã có đoạn môn", async () => {
+  it("Theo phần: chọn phần, mã có đoạn phần; không còn ô Hình thức", async () => {
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /Bài lẻ/ }));
+    expect(screen.queryByText("Hình thức")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Toàn bài/ })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: /Theo môn/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
     expect(screen.getByRole("radio", { name: "Toán" })).toBeChecked();
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
     await user.click(screen.getByRole("radio", { name: "Khoa học" }));
@@ -131,17 +134,39 @@ describe("trang Tạo bài thi", () => {
     expect(within(aside).getByText("100 điểm")).toBeInTheDocument();
   }, 20_000);
 
-  it("SP2E: chọn môn, mẫu theo năm; cấu trúc 2026 dùng ma trận 2025 thì nhắc chuyên gia xác nhận", async () => {
+  it("SP2E: chỉ Theo môn; nạp mẫu mới nhất, không chọn năm ở bước 1; năm khác ma trận thì xác nhận sau khi tạo", async () => {
     const user = await renderPage();
     await user.click(screen.getByRole("radio", { name: /SP2E/ }));
     expect(await screen.findByRole("combobox", { name: /Môn của bài thi/ })).toHaveTextContent("Toán");
-    expect(screen.getByRole("radio", { name: /^Cấu trúc 2026/ })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: /Toàn bài|Theo phần|Theo môn/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Kỳ thi này chỉ có phạm vi này")).toBeInTheDocument();
+    // Không còn ô chọn mẫu theo năm; chỉ ghi chú mẫu mới nhất.
+    expect(screen.queryByRole("radio", { name: /^Cấu trúc 20/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/Hệ thống nạp mẫu mới nhất: SP2E 2026 · Toán · 40 câu · 90 phút/)).toBeInTheDocument();
     expect(screen.getAllByText(/Cấu trúc 2026 dùng ma trận 2025/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("checkbox", { name: /Chuyên gia đã xác nhận/ })).not.toBeChecked();
+    expect(screen.queryByRole("checkbox", { name: /Chuyên gia đã xác nhận/ })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("SP2E-S-TOAN-001"));
+    expect(within(summary()).getByText("90 phút")).toBeInTheDocument();
+  }, 20_000);
 
-    await user.click(screen.getByRole("radio", { name: /^Cấu trúc 2025/ }));
-    await waitFor(() => expect(screen.queryAllByText(/Cấu trúc 2026 dùng ma trận 2025/)).toHaveLength(0));
+  it("hướng dẫn làm bài đi theo yêu cầu tạo; phạm vi Theo phần gửi mã phần", async () => {
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA Toán · Đề thử");
+    await user.type(screen.getByRole("textbox", { name: /Hướng dẫn làm bài/ }), "Đọc kỹ đề trước khi làm.");
+    const score = screen.getByRole("textbox", { name: /Thang điểm/ });
+    await user.clear(score);
+    await user.type(score, "50");
+    await user.click(within(summary()).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    const created = examStore.all().find((exam) => exam.code === "HSA-P-TOAN-001")!;
+    expect(created).toMatchObject({
+      scope: "PART",
+      partCode: "MATH",
+      subjectCode: null,
+      instructions: "Đọc kỹ đề trước khi làm.",
+    });
   }, 20_000);
 
   it("THPTQG: môn chưa có mẫu thì dựng một phần trống của môn", async () => {

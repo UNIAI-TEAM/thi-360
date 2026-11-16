@@ -6815,7 +6815,7 @@
       "timing": "PER_PART",
       "durationMinutes": 90,
       "maxScore": 10,
-      "expertNote": "Điểm từng câu là tạm, cần nhập theo tài liệu SPT 2025. 11 môn còn lại chưa có mẫu trong dữ liệu mẫu.",
+      "expertNote": "Điểm từng câu là tạm, cần nhập theo tài liệu SPT 2025.",
       "parts": [
         {
           "name": "Toán",
@@ -6858,6 +6858,248 @@
               "requiredPointsPerQuestion": 1
             }
           ]
+        }
+      ]
+    },
+    {
+      "code": "SPT_LITERATURE_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Ngữ văn · 12 câu · 90 phút",
+      "subjectCode": "LITERATURE",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 90,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Ngữ văn",
+          "questionCount": 12,
+          "durationMinutes": 90,
+          "mode": "FIXED",
+          "subjectCode": "LITERATURE"
+        }
+      ]
+    },
+    {
+      "code": "SPT_ENGLISH_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Tiếng Anh · 33 câu · 60 phút",
+      "subjectCode": "ENGLISH",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Tiếng Anh",
+          "questionCount": 33,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "ENGLISH"
+        }
+      ]
+    },
+    {
+      "code": "SPT_PHYSICS_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Vật lí · 21 câu · 60 phút",
+      "subjectCode": "PHYSICS",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Vật lí",
+          "questionCount": 21,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "PHYSICS"
+        }
+      ]
+    },
+    {
+      "code": "SPT_CHEMISTRY_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Hóa học · 27 câu · 60 phút",
+      "subjectCode": "CHEMISTRY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Hóa học",
+          "questionCount": 27,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "CHEMISTRY"
+        }
+      ]
+    },
+    {
+      "code": "SPT_BIOLOGY_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Sinh học · 22 câu · 60 phút",
+      "subjectCode": "BIOLOGY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Sinh học",
+          "questionCount": 22,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "BIOLOGY"
+        }
+      ]
+    },
+    {
+      "code": "SPT_HISTORY_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Lịch sử · 25 câu · 60 phút",
+      "subjectCode": "HISTORY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Lịch sử",
+          "questionCount": 25,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "HISTORY"
+        }
+      ]
+    },
+    {
+      "code": "SPT_GEOGRAPHY_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Địa lí · 20 câu · 60 phút",
+      "subjectCode": "GEOGRAPHY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Địa lí",
+          "questionCount": 20,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "GEOGRAPHY"
+        }
+      ]
+    },
+    {
+      "code": "SPT_ECON_LAW_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Giáo dục kinh tế và pháp luật · 21 câu · 60 phút",
+      "subjectCode": "ECON_LAW",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Giáo dục kinh tế và pháp luật",
+          "questionCount": 21,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "ECON_LAW"
+        }
+      ]
+    },
+    {
+      "code": "SPT_INFORMATICS_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Tin học · 25 câu · 60 phút",
+      "subjectCode": "INFORMATICS",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Tin học",
+          "questionCount": 25,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "INFORMATICS"
+        }
+      ]
+    },
+    {
+      "code": "SPT_TECH_INDUSTRY_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Công nghệ (định hướng công nghiệp) · 24 câu · 60 phút",
+      "subjectCode": "TECH_INDUSTRY",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Công nghệ (định hướng công nghiệp)",
+          "questionCount": 24,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "TECH_INDUSTRY"
+        }
+      ]
+    },
+    {
+      "code": "SPT_TECH_AGRICULTURE_2025",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "name": "SPT 2025 · Công nghệ (định hướng nông nghiệp) · 24 câu · 60 phút",
+      "subjectCode": "TECH_AGRICULTURE",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Công nghệ (định hướng nông nghiệp)",
+          "questionCount": 24,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "TECH_AGRICULTURE"
         }
       ]
     },
@@ -6916,19 +7158,19 @@
       "code": "SP2E_MATH_2026",
       "kind": "SP2E",
       "scope": "SUBJECT",
-      "name": "SP2E 2026 · Toán · 40 câu (ma trận 2025)",
+      "name": "SP2E 2026 · Toán · 40 câu · 90 phút (ma trận 2025)",
       "subjectCode": "MATH",
       "structureYear": 2026,
       "matrixYear": 2025,
       "timing": "PER_PART",
-      "durationMinutes": null,
+      "durationMinutes": 90,
       "maxScore": 10,
-      "expertNote": "Điểm từng câu là tạm; thời lượng chưa có trong bản tóm tắt.",
+      "expertNote": "Điểm từng câu là tạm.",
       "parts": [
         {
           "name": "Toán",
           "questionCount": 40,
-          "durationMinutes": null,
+          "durationMinutes": 90,
           "mode": "FIXED",
           "subjectCode": "MATH",
           "blocks": [
@@ -6962,6 +7204,182 @@
               "requiredPointsPerQuestion": 0.25
             }
           ]
+        }
+      ]
+    },
+    {
+      "code": "SP2E_LITERATURE_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Ngữ văn · 22 câu · 90 phút",
+      "subjectCode": "LITERATURE",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 90,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Ngữ văn",
+          "questionCount": 22,
+          "durationMinutes": 90,
+          "mode": "FIXED",
+          "subjectCode": "LITERATURE"
+        }
+      ]
+    },
+    {
+      "code": "SP2E_ENGLISH_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Tiếng Anh · 50 câu · 60 phút",
+      "subjectCode": "ENGLISH",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Tiếng Anh",
+          "questionCount": 50,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "ENGLISH"
+        }
+      ]
+    },
+    {
+      "code": "SP2E_PHYSICS_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Vật lí · 28 câu · 60 phút",
+      "subjectCode": "PHYSICS",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Vật lí",
+          "questionCount": 28,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "PHYSICS"
+        }
+      ]
+    },
+    {
+      "code": "SP2E_CHEMISTRY_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Hóa học · 28 câu · 60 phút",
+      "subjectCode": "CHEMISTRY",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Hóa học",
+          "questionCount": 28,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "CHEMISTRY"
+        }
+      ]
+    },
+    {
+      "code": "SP2E_BIOLOGY_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Sinh học · 28 câu · 60 phút",
+      "subjectCode": "BIOLOGY",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Sinh học",
+          "questionCount": 28,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "BIOLOGY"
+        }
+      ]
+    },
+    {
+      "code": "SP2E_HISTORY_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Lịch sử · 32 câu · 60 phút",
+      "subjectCode": "HISTORY",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Lịch sử",
+          "questionCount": 32,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "HISTORY"
+        }
+      ]
+    },
+    {
+      "code": "SP2E_GEOGRAPHY_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Địa lí · 28 câu · 60 phút",
+      "subjectCode": "GEOGRAPHY",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Địa lí",
+          "questionCount": 28,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "GEOGRAPHY"
+        }
+      ]
+    },
+    {
+      "code": "SP2E_ECON_LAW_2026",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "name": "SP2E 2026 · Giáo dục kinh tế và pháp luật · 32 câu · 60 phút",
+      "subjectCode": "ECON_LAW",
+      "structureYear": 2026,
+      "matrixYear": 2026,
+      "timing": "PER_PART",
+      "durationMinutes": 60,
+      "maxScore": 10,
+      "expertNote": "Chưa có cách chia phần và dạng câu của môn này: mẫu có một phần, đủ số câu và thời lượng; chuyên gia ra đề bổ sung (spec mục 12).",
+      "parts": [
+        {
+          "name": "Giáo dục kinh tế và pháp luật",
+          "questionCount": 32,
+          "durationMinutes": 60,
+          "mode": "FIXED",
+          "subjectCode": "ECON_LAW"
         }
       ]
     },

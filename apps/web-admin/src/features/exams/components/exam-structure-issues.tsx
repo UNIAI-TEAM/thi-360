@@ -68,6 +68,12 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
       if (issue.code === "PART_COUNT_NOT_POSITIVE") return t("partCount", { part: prefix });
       if (issue.code === "PART_DURATION_NOT_POSITIVE") return t("partDuration", { part: prefix });
       if (issue.code === "NO_OPTIONS") return t("noOptions", { part: prefix });
+      if (issue.code === "PART_PAPER_COUNT") {
+        return t("partPaperCount", { part: prefix, onPaper: issue.onPaper, required: issue.required });
+      }
+      if (issue.code === "PART_CHOOSE_INVALID") {
+        return t("partChoose", { part: prefix, choose: issue.choose, options: issue.options });
+      }
       if (issue.code === "SECTIONS_TOTAL") {
         return t("sectionsTotal", { part: prefix, actual: issue.actual, expected: issue.expected });
       }
