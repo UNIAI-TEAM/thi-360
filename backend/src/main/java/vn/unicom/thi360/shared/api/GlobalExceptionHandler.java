@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
@@ -57,6 +58,16 @@ public class GlobalExceptionHandler {
         String code = ex.getCode();
         String message = resolveMessage(code, ex.getMessage(), "VALIDATION_FAILED", locale);
         return respond(HttpStatus.BAD_REQUEST, code, message, ex.getFieldErrors(), request);
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ResponseEntity<ApiError> handleBusinessRule(
+            BusinessRuleException ex, HttpServletRequest request) {
+        Locale locale = resolveLocale(request);
+        String code = ex.getCode();
+        String message = resolveMessage(code, ex.getMessage(), "UNPROCESSABLE_ENTITY", locale);
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, code, message, ex.getFieldErrors(), request);
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
@@ -148,6 +159,17 @@ public class GlobalExceptionHandler {
         String message = resolveMessage(code, ex.getMessage(), "CONFLICT", locale);
         return respond(HttpStatus.CONFLICT, code, message, ex.getFieldErrors(), request);
     }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public ResponseEntity<ApiError> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        Locale locale = resolveLocale(request);
+        String message = resolveMessage("UPLOAD_TOO_LARGE", null, "UPLOAD_TOO_LARGE", locale);
+        return respond(HttpStatus.PAYLOAD_TOO_LARGE, "UPLOAD_TOO_LARGE", message,
+                List.of(new FieldError("file", "UPLOAD_TOO_LARGE", message)), request);
+    }
+
 
     @ExceptionHandler({
         VersionConflictException.class,

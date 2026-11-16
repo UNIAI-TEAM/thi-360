@@ -41,7 +41,7 @@ class ImportBatchLocaleTest {
 
         importBatchService = mock(ImportBatchService.class);
         schemaHelper = new ImportExcelSchemaHelper(messageSource);
-        exceptionHandler = new ImportBatchExceptionHandler(messageSource, new com.fasterxml.jackson.databind.ObjectMapper());
+        exceptionHandler = new ImportBatchExceptionHandler(messageSource);
         mockMvc = MockMvcBuilders.standaloneSetup(new AdminImportBatchController(importBatchService))
                 .setControllerAdvice(exceptionHandler)
                 .setLocaleResolver(LocaleConfig.createLocaleResolver())

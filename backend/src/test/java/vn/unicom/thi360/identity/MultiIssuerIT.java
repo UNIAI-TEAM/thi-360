@@ -42,6 +42,7 @@ import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUserCommand;
 import vn.unicom.thi360.identity.infrastructure.PlatformAdminRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
+import vn.unicom.thi360.identity.spi.Permission;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
@@ -169,9 +170,10 @@ class MultiIssuerIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.username").value("platform"))
                 .andExpect(jsonPath("$.realm").value("MASTER"))
                 .andExpect(jsonPath("$.access").value("MANAGE"))
-                .andExpect(jsonPath("$.permissions.length()").value(13))
-                .andExpect(jsonPath("$.permissions", org.hamcrest.Matchers.hasItems(
-                        "USER.VIEW", "USER.MODIFY", "ROLE.MODIFY", "CATALOG.VIEW", "APPEARANCE.MODIFY")))
+                .andExpect(jsonPath("$.permissions", org.hamcrest.Matchers.containsInAnyOrder(
+                        java.util.Arrays.stream(Permission.values())
+                                .map(Permission::code)
+                                .toArray(String[]::new))))
                 .andExpect(jsonPath("$.homeUrl").value("http://localhost:3001"))
                 .andReturn();
 

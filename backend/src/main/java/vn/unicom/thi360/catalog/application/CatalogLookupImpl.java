@@ -2,19 +2,29 @@ package vn.unicom.thi360.catalog.application;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.catalog.api.CatalogDescendantNodeResponse;
+import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
+import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
+import vn.unicom.thi360.catalog.api.CombinationSubjectResponse;
+import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
 import vn.unicom.thi360.catalog.domain.CatalogGroup;
 import vn.unicom.thi360.catalog.domain.CatalogItem;
 import vn.unicom.thi360.catalog.domain.CatalogNormalizer;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogItemRepository;
+import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogGroupKind;
+import vn.unicom.thi360.catalog.spi.CatalogItemRefView;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
@@ -26,16 +36,202 @@ public class CatalogLookupImpl implements CatalogLookup {
     private final CatalogItemRepository catalogItemRepository;
     private final CatalogSupportDao catalogSupportDao;
     private final CatalogQueryService catalogQueryService;
+    private final JdbcTemplate jdbcTemplate;
 
     public CatalogLookupImpl(
             CatalogGroupRepository catalogGroupRepository,
             CatalogItemRepository catalogItemRepository,
             CatalogSupportDao catalogSupportDao,
-            CatalogQueryService catalogQueryService) {
+            CatalogQueryService catalogQueryService,
+            JdbcTemplate jdbcTemplate) {
         this.catalogGroupRepository = catalogGroupRepository;
         this.catalogItemRepository = catalogItemRepository;
         this.catalogSupportDao = catalogSupportDao;
         this.catalogQueryService = catalogQueryService;
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long revision() {
+        Long value = jdbcTemplate.queryForObject(
+                "SELECT revision FROM catalog.catalog_revision WHERE id = 1", Long.class);
+        return value == null ? 0L : value;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CatalogItemView> listActiveGroupItems(String groupCode) {
+        String normGroup = CatalogNormalizer.normalizeCode(groupCode);
+        if (normGroup == null) {
+            return List.of();
+        }
+        CatalogGroup group = catalogGroupRepository.findByCodeNormalized(normGroup).orElse(null);
+        if (group == null || group.getStatus() != CatalogStatus.ACTIVE) {
+            return List.of();
+        }
+        String sql =
+                """
+                SELECT n.id, n.code, n.code_normalized, n.value, n.name_vi, n.name_en, n.status,
+                       n.is_system, n.parent_id, n.depth, n.path
+                FROM catalog.catalog_item n
+                WHERE n.group_id = ?
+                  AND\s"""
+                        + CatalogSupportDao.ACTIVE_EFFECTIVE_ITEM_PREDICATE
+                        + " ORDER BY n.display_order ASC, n.code_normalized ASC, n.id ASC";
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new CatalogItemView(
+                        rs.getObject("id", UUID.class),
+                        group.getId(),
+                        group.getCode(),
+                        rs.getString("code"),
+                        rs.getString("code_normalized"),
+                        rs.getInt("value"),
+                        rs.getString("name_vi"),
+                        rs.getString("name_en"),
+                        CatalogStatus.fromCode(rs.getShort("status")),
+                        CatalogStatus.ACTIVE,
+                        rs.getBoolean("is_system"),
+                        rs.getObject("parent_id", UUID.class),
+                        rs.getShort("depth"),
+                        rs.getString("path")),
+                group.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CatalogItemView> listGroupItems(String groupCode) {
+        String normGroup = CatalogNormalizer.normalizeCode(groupCode);
+        if (normGroup == null) {
+            return List.of();
+        }
+        CatalogGroup group = catalogGroupRepository.findByCodeNormalized(normGroup).orElse(null);
+        if (group == null || group.getStatus() != CatalogStatus.ACTIVE) {
+            return List.of();
+        }
+        String sql =
+                """
+                SELECT n.id, n.code, n.code_normalized, n.value, n.name_vi, n.name_en, n.status,
+                       n.is_system, n.parent_id, n.depth, n.path,
+                       CASE WHEN n.status = 1 AND NOT EXISTS (
+                           SELECT 1 FROM catalog.catalog_item anc
+                           WHERE anc.group_id = n.group_id
+                             AND n.path LIKE anc.path || '%'
+                             AND anc.status <> 1
+                       ) THEN 1 ELSE 2 END AS effective_status
+                FROM catalog.catalog_item n
+                WHERE n.group_id = ?
+                ORDER BY n.display_order ASC, n.code_normalized ASC, n.id ASC""";
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new CatalogItemView(
+                        rs.getObject("id", UUID.class),
+                        group.getId(),
+                        group.getCode(),
+                        rs.getString("code"),
+                        rs.getString("code_normalized"),
+                        rs.getInt("value"),
+                        rs.getString("name_vi"),
+                        rs.getString("name_en"),
+                        CatalogStatus.fromCode(rs.getShort("status")),
+                        CatalogStatus.fromCode(rs.getShort("effective_status")),
+                        rs.getBoolean("is_system"),
+                        rs.getObject("parent_id", UUID.class),
+                        rs.getShort("depth"),
+                        rs.getString("path")),
+                group.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, List<CatalogItemRefView>> findEffectiveItemRefs(Collection<UUID> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = List.copyOf(new LinkedHashSet<>(itemIds));
+        Map<UUID, List<CatalogItemRefResponse>> own = catalogSupportDao.loadOwnRefs(ids);
+        UUID groupId = catalogItemRepository.findGroupIdById(ids.getFirst()).orElse(null);
+        Map<UUID, List<CatalogInheritedRefResponse>> inherited =
+                groupId == null ? Map.of() : catalogSupportDao.loadInheritedRefs(groupId, ids);
+
+        Map<UUID, List<CatalogItemRefView>> result = new LinkedHashMap<>();
+        for (UUID itemId : ids) {
+            LinkedHashMap<UUID, CatalogItemRefView> merged = new LinkedHashMap<>();
+            for (CatalogItemRefResponse ref : own.getOrDefault(itemId, List.of())) {
+                merged.put(ref.refItemId(), toRefView(ref));
+            }
+            for (CatalogInheritedRefResponse ref : inherited.getOrDefault(itemId, List.of())) {
+                merged.putIfAbsent(ref.refItemId(), toRefView(ref));
+            }
+            if (!merged.isEmpty()) {
+                result.put(itemId, List.copyOf(merged.values()));
+            }
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CatalogCombinationView> listCurrentCombinations(String groupCode) {
+        String normGroup = CatalogNormalizer.normalizeCode(groupCode);
+        if (normGroup == null) {
+            return List.of();
+        }
+        CatalogGroup group = catalogGroupRepository.findByCodeNormalized(normGroup).orElse(null);
+        if (group == null
+                || group.getStatus() != CatalogStatus.ACTIVE
+                || group.getKind() != CatalogGroupKind.COMBINATION) {
+            return List.of();
+        }
+        List<CatalogItemView> items = listActiveGroupItems(normGroup);
+        if (items.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, CombinationVersionResponse> byItem = catalogSupportDao.loadCurrentCombinations(
+                items.stream().map(CatalogItemView::id).toList());
+        List<CatalogCombinationView> result = new ArrayList<>(items.size());
+        for (CatalogItemView item : items) {
+            CombinationVersionResponse combination = byItem.get(item.id());
+            if (combination == null || combination.examStatus() != CatalogStatus.ACTIVE) {
+                continue;
+            }
+            result.add(new CatalogCombinationView(
+                    item.id(),
+                    item.code(),
+                    item.nameVi(),
+                    item.nameEn(),
+                    combination.examCode(),
+                    combination.examNameVi(),
+                    combination.examNameEn(),
+                    combination.versionNo(),
+                    combination.subjects().stream()
+                            .filter(s -> s.status() == CatalogStatus.ACTIVE)
+                            .sorted(java.util.Comparator.comparingInt(CombinationSubjectResponse::position))
+                            .map(CombinationSubjectResponse::code)
+                            .toList()));
+        }
+        return result;
+    }
+
+    private static CatalogItemRefView toRefView(CatalogItemRefResponse ref) {
+        return new CatalogItemRefView(
+                ref.refItemId(),
+                ref.refGroupCode(),
+                ref.code(),
+                ref.nameVi(),
+                ref.nameEn(),
+                ref.status());
+    }
+
+    private static CatalogItemRefView toRefView(CatalogInheritedRefResponse ref) {
+        return new CatalogItemRefView(
+                ref.refItemId(),
+                ref.refGroupCode(),
+                ref.code(),
+                ref.nameVi(),
+                ref.nameEn(),
+                ref.status());
     }
 
     @Override
@@ -131,6 +327,7 @@ public class CatalogLookupImpl implements CatalogLookup {
                 item.getGroupId(),
                 group.getCode(),
                 item.getCode(),
+                item.getCodeNormalized(),
                 item.getValue(),
                 item.getNameVi(),
                 item.getNameEn(),

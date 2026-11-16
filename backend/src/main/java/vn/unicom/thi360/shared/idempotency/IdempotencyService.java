@@ -58,6 +58,13 @@ public class IdempotencyService {
 
     @Transactional
     public <T> T executeOnce(
+            String key, String scope, String requestDigest, JavaType resultType, Supplier<T> supplier) {
+        Objects.requireNonNull(resultType, "resultType must not be null");
+        return executeOnceWithJavaType(key, scope, requestDigest, resultType, supplier);
+    }
+
+    @Transactional
+    public <T> T executeOnce(
             String key, String scope, String requestDigest, TypeReference<T> resultType, Supplier<T> supplier) {
         Objects.requireNonNull(resultType, "resultType must not be null");
         return executeOnceWithJavaType(
