@@ -224,6 +224,11 @@ export interface ExamPartOption {
    * hình nhắc trước khi công bố; bỏ trống: không cần xác nhận. Phương án `SUBJECT_CHOICE` không dùng cờ này.
    */
   expertConfirmed?: boolean;
+  /**
+   * Khối gợi ý của lựa chọn không có môn riêng (tổ hợp một môn CA1–CA4, nhánh Tin học) khi máy chủ lưu khối ở lựa chọn;
+   * bỏ trống: lựa chọn chỉ có khối trong `sections`.
+   */
+  blocks?: QuestionBlock[];
 }
 
 /** Quy tắc tham gia của phần: làm tất cả (`ALL`), hoặc chọn `choose` trong các phương án (`CHOICE`). */

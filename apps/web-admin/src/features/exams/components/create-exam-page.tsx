@@ -467,7 +467,10 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
 
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
-    createExam.mutate(toCreateExamRequest(submitted), {
+    // Cấu trúc chưa sửa so với mẫu thì không gửi: máy chủ nạp mẫu, giữ nguyên các trường của mẫu.
+    const request = toCreateExamRequest(submitted);
+    if (!partsEdited(submitted.parts, baseline)) delete request.parts;
+    createExam.mutate(request, {
       onSuccess: (exam) => {
         const message = t("success", { code: exam.code });
         notify.success(message);
