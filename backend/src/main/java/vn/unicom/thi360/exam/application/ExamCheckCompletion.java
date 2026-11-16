@@ -42,9 +42,16 @@ public class ExamCheckCompletion {
             List<UUID> exam = jdbc.queryForList("SELECT id FROM exam.exam WHERE id = ? FOR UPDATE",
                     UUID.class, input.examId());
             if (exam.isEmpty()) return new Completion(result, false);
-            List<String> states = jdbc.queryForList("SELECT state FROM exam.exam_check_job "
-                    + "WHERE id = ? AND exam_id = ? FOR UPDATE", String.class, runId, input.examId());
-            if (states.isEmpty() || !"RUNNING".equals(states.getFirst())) {
+            List<JobLock> states = jdbc.query("SELECT state, started_at FROM exam.exam_check_job "
+                            + "WHERE id = ? AND exam_id = ? FOR UPDATE",
+                    (rs, row) -> new JobLock(rs.getString(1), rs.getTimestamp(2).toInstant()), runId, input.examId());
+            if (states.isEmpty() || !"RUNNING".equals(states.getFirst().state())) {
+                return new Completion(result, false);
+            }
+            if (!states.getFirst().startedAt().isAfter(checkedAt.minus(ExamCheckJobStore.ABANDONED_AFTER))) {
+                jobs.fail(runId, "CHECK_RUN_ABANDONED");
+                audit.record(input.examId(), "EXAM.CHECK_FAILED",
+                        Map.of("runId", runId.toString(), "errorCode", "CHECK_RUN_ABANDONED"), actor, traceId);
                 return new Completion(result, false);
             }
         }
@@ -60,6 +67,8 @@ public class ExamCheckCompletion {
                 Map.of("status", completed.path("status").asText(), "stale", !saved), actor, traceId);
         return new Completion(completed, true);
     }
+
+    private record JobLock(String state, Instant startedAt) { }
 
     private String json(JsonNode value) {
         try {

@@ -19,10 +19,24 @@ public class ExamCheckJobCommands {
     @Transactional
     public ExamCheckJobStore.Start start(UUID examId, ExamCheckCompletion.Actor actor, String traceId) {
         ExamCheckJobStore.Start start = jobs.startOrGet(examId, actor.id());
+        for (UUID abandoned : start.abandonedRunIds()) {
+            audit.record(examId, "EXAM.CHECK_FAILED",
+                    Map.of("runId", abandoned.toString(), "errorCode", "CHECK_RUN_ABANDONED"), actor, traceId);
+        }
         if (start.created()) {
             audit.record(examId, "EXAM.CHECK_START", Map.of("runId", start.runId().toString()), actor, traceId);
         }
         return start;
+    }
+
+    @Transactional
+    public ExamCheckJobStore.Job get(UUID examId, UUID runId, ExamCheckCompletion.Actor actor, String traceId) {
+        ExamCheckJobStore.Job job = jobs.get(examId, runId);
+        if (job.abandonedNow()) {
+            audit.record(examId, "EXAM.CHECK_FAILED",
+                    Map.of("runId", runId.toString(), "errorCode", "CHECK_RUN_ABANDONED"), actor, traceId);
+        }
+        return job;
     }
 
     @Transactional
