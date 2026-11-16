@@ -7,7 +7,9 @@ import Link from "next/link";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ChoiceNameResolver } from "../check";
+import { type ChangeLevel, parseChangeWhere } from "../change-where";
 import type { BlockCheckResult, CheckIssue, ExamPathRef, PathCheckResult } from "../review-types";
+import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */
 export const PATH_RESULT_TONE: Record<PathCheckResult, StatusTone> = {
@@ -90,20 +92,28 @@ export function useIssueText() {
       const competency = issue.competencyCode
         ? (competencies?.find((item) => item.code === issue.competencyCode)?.name ?? issue.competencyCode)
         : "";
+      const grade = issue.gradeCode ? lookup.grade(issue.gradeCode) : "";
+      const difficulty = issue.difficultyCode ? lookup.difficulty(issue.difficultyCode) : "";
+      const level =
+        issue.dimension === "GRADE" && issue.gradeCode
+          ? grade
+          : issue.dimension === "COMPETENCY"
+            ? competency
+            : difficulty;
+      // Ô chỉ tiêu bị thiếu nguồn: "lớp/độ khó", hoặc một chiều; chiều không có tên thì bỏ cả cụm, không in "/".
+      const bucket =
+        issue.code === "DIMENSION_SHORTAGE" || issue.dimension === "GRADE" || issue.dimension === "DIFFICULTY"
+          ? level
+          : [grade, difficulty].filter(Boolean).join("/");
       const values = {
         block: issue.blockName ? `${subject} · ${issue.blockName}` : subject,
         subject,
         part: issue.partName ?? "",
-        grade: issue.gradeCode ? lookup.grade(issue.gradeCode) : "",
-        difficulty: issue.difficultyCode ? lookup.difficulty(issue.difficultyCode) : "",
-        level:
-          issue.dimension === "GRADE" && issue.gradeCode
-            ? lookup.grade(issue.gradeCode)
-            : issue.dimension === "COMPETENCY"
-              ? competency
-              : issue.difficultyCode
-                ? lookup.difficulty(issue.difficultyCode)
-                : "",
+        grade,
+        difficulty,
+        level,
+        bucket,
+        hasBucket: bucket ? "yes" : "no",
         dimension: issue.dimension ?? "NONE",
         required: issue.required ?? 0,
         available: issue.available ?? 0,
@@ -173,5 +183,62 @@ export function IconLink({ href, label, tooltip, icon }: { href: string; label: 
         </span>
       </Link>
     </Tooltip>
+  );
+}
+
+/** Tên các phần tử của cấu trúc hiện tại theo id, để dựng nhãn vị trí thay đổi. `null`: không có tên dùng được. */
+function structureNames(
+  parts: readonly ExamPart[],
+  subjectName: (code: string) => string,
+): Record<ChangeLevel, Map<string, string | null>> {
+  const names: Record<ChangeLevel, Map<string, string | null>> = {
+    part: new Map(),
+    section: new Map(),
+    block: new Map(),
+    option: new Map(),
+  };
+  const visitBlocks = (blocks: readonly { id: string; name: string }[] | undefined) => {
+    for (const block of blocks ?? []) names.block.set(block.id, block.name.trim() || null);
+  };
+  const visitSections = (sections: readonly ExamSection[]) => {
+    for (const section of sections) {
+      names.section.set(section.id, subjectName(section.subjectCode));
+      visitBlocks(section.blocks);
+    }
+  };
+  for (const part of parts) {
+    names.part.set(part.id, part.name.trim() || null);
+    visitSections(part.sections);
+    for (const option of part.options) {
+      names.option.set(option.id, option.kind === "COMBINATION" ? option.code : (option.name ?? option.code));
+      visitSections(option.sections);
+      visitBlocks(option.blocks);
+    }
+  }
+  return names;
+}
+
+/**
+ * Nhãn dễ đọc cho vị trí của một thay đổi (`ExamChange.where`): tên phần, môn, khối, lựa chọn lấy từ cấu trúc hiện tại,
+ * không có thì chữ chung ("Khối"); sau đó là nhãn của trường. Không bao giờ in id. `where` không phải đường dẫn (dữ liệu
+ * mẫu đã là chữ mô tả) giữ nguyên.
+ */
+export function useChangeWhere(exam: ExamDetail) {
+  const t = useTranslations("exams.versions.changes.where");
+  const lookup = useLookup();
+  const names = useMemo(() => structureNames(exam.parts, lookup.subject), [exam.parts, lookup]);
+  return useCallback(
+    (where: string) => {
+      const target = parseChangeWhere(where);
+      if (!target) return where;
+      const labels = target.steps.map((step) =>
+        step.id === null ? t(`all.${step.level}`) : (names[step.level].get(step.id) ?? t(`item.${step.level}`)),
+      );
+      if (target.config) labels.unshift(t("config"));
+      const field = target.fields.find((name) => t.has(`field.${name}`));
+      if (field) labels.push(t(`field.${field}`));
+      return labels.length > 0 ? labels.join(" · ") : t("structure");
+    },
+    [t, names],
   );
 }

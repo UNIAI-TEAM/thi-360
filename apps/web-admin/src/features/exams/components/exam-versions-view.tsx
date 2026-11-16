@@ -39,7 +39,7 @@ import type { ExamChange, ExamChangeKind, ExamVersionList, ExamVersionRow } from
 import { EXAM_CHECK_TONE } from "../status";
 import type { ExamDetail } from "../types";
 import { ExamVersionDetailDialog } from "./exam-versions-detail-dialog";
-import { IconLink, pathLabelCodes, reviewHref, structureHref } from "./exam-review-shared";
+import { IconLink, pathLabelCodes, reviewHref, structureHref, useChangeWhere } from "./exam-review-shared";
 import { PublishExamDialog } from "./publish-exam-dialog";
 
 const CHANGE_ICON: Record<ExamChangeKind, typeof Plus> = {
@@ -259,6 +259,7 @@ function WorkingCopySection({
 function ChangesSection({ exam, data }: { exam: ExamDetail; data: ExamVersionList }) {
   const t = useTranslations("exams.versions");
   const base = data.workingCopy?.baseVersion ?? null;
+  const whereLabel = useChangeWhere(exam);
   return (
     <section aria-labelledby="versions-changes-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -269,14 +270,14 @@ function ChangesSection({ exam, data }: { exam: ExamDetail; data: ExamVersionLis
       </div>
       <ul className="flex flex-col gap-3">
         {data.changes.map((change) => (
-          <ChangeItem key={change.id} exam={exam} change={change} base={base} />
+          <ChangeItem key={change.id} exam={exam} change={change} where={whereLabel(change.where)} base={base} />
         ))}
       </ul>
     </section>
   );
 }
 
-function ChangeItem({ exam, change, base }: { exam: ExamDetail; change: ExamChange; base: number | null }) {
+function ChangeItem({ exam, change, where, base }: { exam: ExamDetail; change: ExamChange; where: string; base: number | null }) {
   const t = useTranslations("exams.versions.changes");
   const Icon = CHANGE_ICON[change.kind];
   return (
@@ -287,7 +288,7 @@ function ChangeItem({ exam, change, base }: { exam: ExamDetail; change: ExamChan
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-text">{t(`kind.${change.kind}`)}</span>
-          <span className="text-body text-text-secondary">{change.where}</span>
+          <span className="text-body text-text-secondary">{where}</span>
           {change.warning && (
             <StatusChip tone={change.warning === "INVALID" ? "danger" : "warning"}>
               {t(`warning.${change.warning}`)}
@@ -313,7 +314,7 @@ function ChangeItem({ exam, change, base }: { exam: ExamDetail; change: ExamChan
       </div>
       <IconLink
         href={structureHref(exam.id, change.blockId)}
-        label={t("openAria", { where: change.where })}
+        label={t("openAria", { where })}
         tooltip={t("openTooltip")}
         icon={<ArrowRight />}
       />
