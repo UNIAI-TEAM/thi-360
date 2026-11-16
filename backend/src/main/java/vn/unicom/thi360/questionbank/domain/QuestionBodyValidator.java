@@ -123,16 +123,14 @@ public final class QuestionBodyValidator {
         if (isBlankHtml(input.content()) && !contentCarrierIsBody(input.body())) {
             errors.add(QuestionFieldError.of("CONTENT_EMPTY", "content"));
         }
-        if (classification != null) {
-            if (!classification.subjectPresent()) {
-                errors.add(QuestionFieldError.of("SUBJECT_MISSING", "subjectItemId"));
-            }
-            if (!classification.gradePresent()) {
-                errors.add(QuestionFieldError.of("GRADE_MISSING", "gradeItemId"));
-            }
-            if (!classification.levelPresent()) {
-                errors.add(QuestionFieldError.of("DIFFICULTY_MISSING", "levelItemId"));
-            }
+        if (classification == null || !classification.subjectPresent()) {
+            errors.add(QuestionFieldError.of("SUBJECT_MISSING", "subjectItemId"));
+        }
+        if (classification == null || !classification.gradePresent()) {
+            errors.add(QuestionFieldError.of("GRADE_MISSING", "gradeItemId"));
+        }
+        if (classification == null || !classification.levelPresent()) {
+            errors.add(QuestionFieldError.of("DIFFICULTY_MISSING", "levelItemId"));
         }
         List<QuestionFieldError> warnings = new ArrayList<>();
         if (!hasPrimaryKnowledge) {
@@ -436,6 +434,16 @@ public final class QuestionBodyValidator {
                     }
                     if (pair.rightId() != null && rightIds.contains(pair.rightId())) {
                         rightUse.merge(pair.rightId(), 1, Integer::sum);
+                    }
+                }
+                for (int i = 0; i < b.left().size(); i++) {
+                    if (isBlankHtml(b.left().get(i).content())) {
+                        errors.add(QuestionFieldError.of("MATCHING_SIDE_EMPTY", "body.left[" + i + "].content"));
+                    }
+                }
+                for (int i = 0; i < b.right().size(); i++) {
+                    if (isBlankHtml(b.right().get(i).content())) {
+                        errors.add(QuestionFieldError.of("MATCHING_SIDE_EMPTY", "body.right[" + i + "].content"));
                     }
                 }
                 for (int i = 0; i < b.left().size(); i++) {

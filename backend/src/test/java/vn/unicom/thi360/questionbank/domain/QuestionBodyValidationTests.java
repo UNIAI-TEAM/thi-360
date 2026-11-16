@@ -473,6 +473,24 @@ class QuestionBodyValidationTests {
         List<String> codes = codes(missing.errors());
         assertTrue(codes.containsAll(List.of("SUBJECT_MISSING", "GRADE_MISSING", "DIFFICULTY_MISSING")));
     }
+    @Test
+    void nullClassificationAndEmptyMatchingSidesBlockReady() {
+        QuestionInput choice = input(QuestionType.SINGLE_CHOICE, singleChoiceBody());
+        var classificationErrors = QuestionBodyValidator.validateReady(choice, null, true, null).errors();
+        assertTrue(codes(classificationErrors).containsAll(
+            List.of("SUBJECT_MISSING", "GRADE_MISSING", "DIFFICULTY_MISSING")));
+        QuestionBody matching = new QuestionBody.MatchingBody(QuestionType.MATCHING,
+            List.of(new MatchingSide("l", "<p> </p>")), List.of(new MatchingSide("r", "")),
+            List.of(new MatchingPair("l", "r", BigDecimal.ONE)), false, false, false);
+        QuestionInput draft = input(QuestionType.MATCHING, matching);
+        assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
+        var errors = readyErrors(draft);
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("MATCHING_SIDE_EMPTY")
+            && e.path().equals("body.left[0].content")));
+        assertTrue(errors.stream().anyMatch(e -> e.code().equals("MATCHING_SIDE_EMPTY")
+            && e.path().equals("body.right[0].content")));
+    }
+
 
     @Test
     void unbalancedMathFailsReady() {
