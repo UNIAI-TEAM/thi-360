@@ -69,6 +69,15 @@ describe("RichTextEditor", () => {
     expect(onPageSubmit).not.toHaveBeenCalled();
   });
 
+  it("shows a tooltip with the aria-label text when hovering a toolbar icon button", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.hover(screen.getByRole("button", { name: "Bold" }));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Bold");
+  });
+
   it("inserts a block formula when Block is chosen", async () => {
     const user = userEvent.setup();
     const { onChange } = renderEditor();
