@@ -1,15 +1,47 @@
 package vn.unicom.thi360.exam.domain.solver;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.exam.application.SolverInputBuilder;
+import vn.unicom.thi360.exam.domain.ExamStructureDocument;
+import vn.unicom.thi360.exam.domain.ExamStructureValidator;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 class ChooseKOptionsTest {
+    @Test
+    void weightedChooseTwoMatchesDocumentPathCount() throws Exception {
+        String json = """
+                {"parts":[{"id":"p","questionCount":2,"participation":{"mode":"CHOICE","choose":2},"options":[
+                {"id":"first","kind":"SUBJECT_CHOICE","code":"F","chooseSubjects":1,"countsByPick":[1],
+                 "sections":[{"id":"a","subjectCode":"A","choiceGroup":"NATURAL","blocks":[{"id":"ga","questionType":"SINGLE_CHOICE"}]},
+                             {"id":"b","subjectCode":"B","choiceGroup":"NATURAL","blocks":[{"id":"gb","questionType":"SINGLE_CHOICE"}]}]},
+                {"id":"second","kind":"SUBJECT_CHOICE","code":"S","chooseSubjects":1,"countsByPick":[1],
+                 "sections":[{"id":"c","subjectCode":"C","choiceGroup":"NATURAL","blocks":[{"id":"gc","questionType":"SINGLE_CHOICE"}]},
+                             {"id":"d","subjectCode":"D","choiceGroup":"NATURAL","blocks":[{"id":"gd","questionType":"SINGLE_CHOICE"}]},
+                             {"id":"e","subjectCode":"E","choiceGroup":"NATURAL","blocks":[{"id":"ge","questionType":"SINGLE_CHOICE"}]}]},
+                {"id":"fixed","kind":"SUBJECT","code":"X","sections":[{"id":"x","subjectCode":"X","questionCount":1,
+                 "blocks":[{"id":"gx","questionType":"SINGLE_CHOICE","questionCount":1}]}]}
+                ]}]}
+                """;
+        var document = new ObjectMapper().readValue(json, ExamStructureDocument.class);
+        ExamStructureValidator.validate(document);
+        var builder = new SolverInputBuilder(mock(CatalogLookup.class), mock(QuestionSourcePort.class), SolverLimits.defaults());
+        var input = builder.build(UUID.randomUUID(), document);
+        SolveOutcome outcome = new PaperSolver().solveAll(input.parts(), ChooseKOptionsTest::source, SolveMode.check());
+        assertThat(outcome.stats().pathsEnumerated()).isEqualTo(ExamStructureValidator.countPaths(document));
+    }
+
     @Test
     void choosesTwoOptionsInLexicographicOrderIncludingSubjectChoice() {
         SolveOption a = regular("a");
