@@ -21,6 +21,7 @@ import vn.unicom.thi360.questionbank.domain.QuestionBody.MatchingPair;
 import vn.unicom.thi360.questionbank.domain.QuestionBody.MatchingSide;
 import vn.unicom.thi360.questionbank.domain.QuestionBody.TrueFalseStatement;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator.ClassificationRequirement;
+import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /**
@@ -312,7 +313,7 @@ class QuestionBodyValidationTests {
 
     @Test
     void unresolvedAttachmentRejectedAtSave() {
-        // Resolver mặc định trả rỗng (chưa có BE-2b): mọi attachmentIds bị từ chối.
+        // Resolver mặc định trả rỗng: mọi attachmentIds bị từ chối.
         QuestionInput input = new QuestionInput(QuestionType.ESSAY, essayBody(), BigDecimal.ONE,
             "<p>x</p>", null, List.of(), List.of(UUID.randomUUID()));
         assertTrue(codes(QuestionBodyValidator.validateSave(input, null))
@@ -324,9 +325,21 @@ class QuestionBodyValidationTests {
         UUID assetId = UUID.randomUUID();
         QuestionInput input = new QuestionInput(QuestionType.ESSAY, essayBody(), BigDecimal.ONE,
             "<p>x</p>", null, List.of(), List.of(assetId));
-        assertTrue(QuestionBodyValidator.validateSave(
-            input, id -> id.equals(assetId) ? java.util.Optional.of("/api/v1/admin/question-assets/" + id)
-                : java.util.Optional.empty()).isEmpty());
+        // Resolver nhận biết loại (quyết định 8.6): id này chỉ tra được với ATTACHMENT;
+        // IMAGE hay id lạ đều trả rỗng như resolver thật.
+        assertTrue(QuestionBodyValidator.validateSave(input, new QuestionAssetResolver() {
+            @Override
+            public java.util.Optional<String> servingPath(UUID id) {
+                return java.util.Optional.empty();
+            }
+
+            @Override
+            public java.util.Optional<String> servingPath(UUID id, QuestionAssetKind kind) {
+                return kind == QuestionAssetKind.ATTACHMENT && id.equals(assetId)
+                        ? java.util.Optional.of("/api/v1/admin/question-assets/" + id)
+                        : java.util.Optional.empty();
+            }
+        }).isEmpty());
     }
 
     // ------------------------------------------------------------- lỗi mức Sẵn sàng

@@ -30,8 +30,8 @@ import vn.unicom.thi360.questionbank.spi.QuestionType;
  *
  * <p>HTML không nằm trong lớp này: {@code content} và các trường HTML trong thân phải được lọc
  * trước bởi {@link QuestionHtmlSanitizer}; {@code attachmentIds} được tra qua
- * {@link QuestionAssetResolver} truyền vào — id không tra được là lỗi lưu (BE-2b chưa có nên mọi
- * id bị từ chối tới khi BE-2b cài bản thật).
+ * {@link QuestionAssetResolver} truyền vào — id không tra được (hoặc sai loại tài nguyên) là
+ * lỗi lưu.
  */
 public final class QuestionBodyValidator {
 
