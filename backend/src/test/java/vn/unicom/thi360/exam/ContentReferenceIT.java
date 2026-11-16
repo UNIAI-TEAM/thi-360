@@ -79,8 +79,7 @@ class ContentReferenceIT extends AbstractIntegrationTest {
 
         mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.questionTypes.length()").value(8))
-                .andExpect(jsonPath("$.questionTypes[?(@.active==true)].length()").value(8))
+                .andExpect(jsonPath("$.questionTypes[?(@.active==true)]").value(org.hamcrest.Matchers.hasSize(8)))
                 .andExpect(jsonPath("$.questionTypes[?(@.code=='SHORT_ANSWER' && @.name=='Trả lời ngắn')]").exists());
     }
 

@@ -83,7 +83,7 @@ public class ContentReferenceService {
         List<NamePair> taskTypes = namesOf(catalogLookup.listActiveGroupItems("TASK_TYPE"));
 
         Map<String, CatalogItemView> formatsByCode = new LinkedHashMap<>();
-        for (CatalogItemView item : catalogLookup.listActiveGroupItems("QUESTION_FORMAT")) {
+        for (CatalogItemView item : catalogLookup.listGroupItems("QUESTION_FORMAT")) {
             formatsByCode.put(item.code(), item);
         }
         List<CachedQuestionType> questionTypes = new ArrayList<>(QuestionType.values().length);

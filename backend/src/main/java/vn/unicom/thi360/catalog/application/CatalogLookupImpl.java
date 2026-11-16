@@ -100,6 +100,49 @@ public class CatalogLookupImpl implements CatalogLookup {
 
     @Override
     @Transactional(readOnly = true)
+    public List<CatalogItemView> listGroupItems(String groupCode) {
+        String normGroup = CatalogNormalizer.normalizeCode(groupCode);
+        if (normGroup == null) {
+            return List.of();
+        }
+        CatalogGroup group = catalogGroupRepository.findByCodeNormalized(normGroup).orElse(null);
+        if (group == null || group.getStatus() != CatalogStatus.ACTIVE) {
+            return List.of();
+        }
+        String sql =
+                """
+                SELECT n.id, n.code, n.value, n.name_vi, n.name_en, n.status, n.is_system,
+                       n.parent_id, n.depth, n.path,
+                       CASE WHEN n.status = 1 AND NOT EXISTS (
+                           SELECT 1 FROM catalog.catalog_item anc
+                           WHERE anc.group_id = n.group_id
+                             AND n.path LIKE anc.path || '%'
+                             AND anc.status <> 1
+                       ) THEN 1 ELSE 2 END AS effective_status
+                FROM catalog.catalog_item n
+                WHERE n.group_id = ?
+                ORDER BY n.display_order ASC, n.code_normalized ASC, n.id ASC""";
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new CatalogItemView(
+                        rs.getObject("id", UUID.class),
+                        group.getId(),
+                        group.getCode(),
+                        rs.getString("code"),
+                        rs.getInt("value"),
+                        rs.getString("name_vi"),
+                        rs.getString("name_en"),
+                        CatalogStatus.fromCode(rs.getShort("status")),
+                        CatalogStatus.fromCode(rs.getShort("effective_status")),
+                        rs.getBoolean("is_system"),
+                        rs.getObject("parent_id", UUID.class),
+                        rs.getShort("depth"),
+                        rs.getString("path")),
+                group.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<UUID, List<CatalogItemRefView>> findEffectiveItemRefs(Collection<UUID> itemIds) {
         if (itemIds == null || itemIds.isEmpty()) {
             return Map.of();

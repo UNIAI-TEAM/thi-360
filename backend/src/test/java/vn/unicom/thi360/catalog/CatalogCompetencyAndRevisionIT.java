@@ -90,7 +90,7 @@ class CatalogCompetencyAndRevisionIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code").value("TEST-COMP-AC6"))
                 .andReturn().getResponse().getContentAsString();
         JsonNode created = objectMapper.readTree(createdJson);
@@ -135,7 +135,7 @@ class CatalogCompetencyAndRevisionIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         createdCompetencyItemId = UUID.fromString(objectMapper.readTree(createdJson).get("id").asText());
 

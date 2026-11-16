@@ -21,6 +21,13 @@ public interface CatalogLookup {
     List<CatalogItemView> listActiveGroupItems(String groupCode);
 
     /**
+     * Mọi giá trị của một nhóm đang hoạt động kể cả đã ngừng, sắp theo display_order rồi mã;
+     * {@code effectiveStatus} là ACTIVE chỉ khi giá trị và cả tổ tiên đều hoạt động. Trả rỗng
+     * khi nhóm không có hoặc đã ngừng.
+     */
+    List<CatalogItemView> listGroupItems(String groupCode);
+
+    /**
      * Liên kết hiệu lực của các giá trị nhóm cây: liên kết riêng cộng kế thừa từ tổ tiên,
      * đã bỏ trùng theo {@code refItemId}.
      */
