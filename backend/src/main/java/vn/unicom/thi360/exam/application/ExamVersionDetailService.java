@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +49,8 @@ public class ExamVersionDetailService {
                 current.note(), paths(current.published(), current.parts()), paths(current.serving(), current.parts()));
         var changes = previous.isEmpty() ? List.<vn.unicom.thi360.exam.api.ExamVersionChange>of()
                 : ExamVersionChanges.between(previous.getFirst().config(), previous.getFirst().parts(), current.config(), current.parts());
-        return new ExamVersionDetail(examId, row, current.config(), current.parts().path("parts"), changes);
+        List<JsonNode> parts = StreamSupport.stream(current.parts().path("parts").spliterator(), false).toList();
+        return new ExamVersionDetail(examId, row, current.config(), parts, changes);
     }
 
     private List<ExamVersionPath> paths(List<String> ids, JsonNode document) {
