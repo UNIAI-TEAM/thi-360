@@ -96,6 +96,22 @@ export function toExamsApiError(status: number, error: unknown): ExamsApiError {
   return new ExamsApiError(status);
 }
 
+/**
+ * Tạo bài từ mẫu đã xong (POST 201) nhưng lưu cấu trúc đã sửa thất bại: `exam` là bài Nháp đã có, mang cấu trúc của mẫu.
+ * Mang trạng thái và mã của lỗi lưu cấu trúc; nơi gọi chuyển sang bài đó, không POST lại (sẽ trùng mã).
+ */
+export class ExamStructureSaveError extends ExamsApiError {
+  readonly exam: ExamDetail;
+
+  constructor(exam: ExamDetail, cause: unknown) {
+    const base = cause instanceof ExamsApiError ? cause : undefined;
+    super(base?.status ?? 0, base?.message, base?.code, base?.fieldErrors);
+    this.name = "ExamStructureSaveError";
+    this.exam = exam;
+    this.cause = cause;
+  }
+}
+
 /** Mã lỗi của backend (`ApiError.code`) trên lỗi của nhánh thật lẫn nhánh dữ liệu mẫu; `undefined` khi không có. */
 export function errorCodeOf(error: unknown): string | undefined {
   if (!(error instanceof ApiStatusError)) return undefined;

@@ -4750,7 +4750,8 @@
       "errors": {
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
         "generic": "Không tạo được bài thi. Thử lại sau.",
-        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại."
+        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại.",
+        "structureNotSaved": "Đã tạo bài thi {code} với cấu trúc của mẫu, nhưng chưa lưu được cấu trúc bạn đã sửa. Sửa lại ở tab Cấu trúc và ma trận."
       },
       "validation": {
         "nameRequired": "Nhập tên bài thi.",

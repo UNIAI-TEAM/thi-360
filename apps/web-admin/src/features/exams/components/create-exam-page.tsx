@@ -55,6 +55,7 @@ import {
 } from "../create-exam-schema";
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
+import { ExamStructureSaveError } from "../review-api";
 import type { ExamTemplate } from "../types";
 import { CreateExamCover, type CoverImage } from "./create-exam-cover";
 import {
@@ -478,6 +479,14 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
         router.push(examTabHref(exam.id, "structure"));
       },
       onError: (error) => {
+        if (error instanceof ExamStructureSaveError) {
+          // Bài đã được tạo: không POST lại (trùng mã). Chuyển sang bài để sửa lại cấu trúc ở tab Cấu trúc.
+          const message = t("errors.structureNotSaved", { code: error.exam.code });
+          notify.error(message);
+          setLiveMessage(message);
+          router.push(examTabHref(error.exam.id, "structure"));
+          return;
+        }
         const status = getErrorStatus(error);
         if (status === 409) {
           const code = submitted.code.trim().toUpperCase();

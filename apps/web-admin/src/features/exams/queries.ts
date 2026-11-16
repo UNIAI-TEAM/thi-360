@@ -93,7 +93,8 @@ export function useCreateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({
     mutationFn: (request: CreateExamRequest) => deps.createExam(request),
-    onSuccess: () => invalidate(),
+    // Cũng khi lỗi: bài có thể đã tạo xong rồi mới lỗi ở bước lưu cấu trúc (`ExamStructureSaveError`).
+    onSettled: () => invalidate(),
   });
 }
 

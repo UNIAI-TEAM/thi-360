@@ -4750,7 +4750,8 @@
       "errors": {
         "codeTaken": "This exam code is already used. Enter another code.",
         "generic": "Could not create the exam. Try again later.",
-        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again."
+        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again.",
+        "structureNotSaved": "Exam {code} was created with the template structure, but the structure you edited could not be saved. Redo your edits in the Structure and matrix tab."
       },
       "validation": {
         "nameRequired": "Enter the exam name.",

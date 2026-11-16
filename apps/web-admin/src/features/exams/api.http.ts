@@ -10,7 +10,7 @@ import {
   toApiParts,
 } from "./api-mapping";
 import { partsFromInput } from "./create-parts";
-import { toExamsApiError } from "./review-api";
+import { ExamStructureSaveError, toExamsApiError } from "./review-api";
 import type {
   ApplyExamTemplateRequest,
   AvailableQuestionCounts,
@@ -144,7 +144,8 @@ export async function updateExamStructure(id: string, request: UpdateExamStructu
 /**
  * Tạo bài Nháp: máy chủ nạp mẫu mới nhất khớp kỳ thi, phạm vi, phần hoặc môn (`CreateExamRequest` của máy chủ không
  * nhận cấu trúc). Có `parts` (trang Tạo bài đã sửa cấu trúc so với mẫu) thì lưu tiếp cấu trúc đó bằng revision vừa
- * nhận; lỗi ở bước lưu cấu trúc thì bài đã tạo vẫn còn ở Nháp với cấu trúc của mẫu.
+ * nhận; lỗi ở bước lưu cấu trúc thì bài đã tạo vẫn còn ở Nháp với cấu trúc của mẫu và ném `ExamStructureSaveError`
+ * mang bài đó (nơi gọi chuyển sang bài, không POST lại).
  */
 export async function createExam(request: CreateExamRequest): Promise<ExamDetail> {
   const client = createBrowserApiClient();
@@ -166,11 +167,15 @@ export async function createExam(request: CreateExamRequest): Promise<ExamDetail
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
   const created = mapExamDetail(data);
   if (!request.parts) return created;
-  const { combinations } = await getContentReference();
-  return updateExamStructure(created.id, {
-    expectedRevision: created.revision,
-    parts: partsFromInput(request.parts, combinations, request.subjectCode ?? null),
-  });
+  try {
+    const { combinations } = await getContentReference();
+    return await updateExamStructure(created.id, {
+      expectedRevision: created.revision,
+      parts: partsFromInput(request.parts, combinations, request.subjectCode ?? null),
+    });
+  } catch (failure) {
+    throw new ExamStructureSaveError(created, failure);
+  }
 }
 
 export async function updateExamInfo(id: string, request: UpdateExamInfoRequest): Promise<ExamDetail> {
