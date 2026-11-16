@@ -6,6 +6,9 @@ import { renderWithProviders } from "@/test/render";
 import { ExamVersionsView } from "../components/exam-versions-view";
 import { reviewStore } from "../mock/review-store";
 import { examStore } from "../mock/store";
+import { useInMemoryBackend } from "./in-memory-backend";
+
+useInMemoryBackend();
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/exams/ex-hsa-f-001/versions",

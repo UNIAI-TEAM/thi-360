@@ -7,6 +7,9 @@ import { ExamReviewView } from "../components/exam-review-view";
 import { reviewStore } from "../mock/review-store";
 import { examStore } from "../mock/store";
 import { generatePreview } from "../review-api";
+import { useInMemoryBackend } from "./in-memory-backend";
+
+useInMemoryBackend();
 
 const navigation = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({

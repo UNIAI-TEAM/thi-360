@@ -15,6 +15,9 @@ import {
   runExamCheck,
   startDeepCheck,
 } from "../review-api";
+import { useInMemoryBackend } from "./in-memory-backend";
+
+useInMemoryBackend();
 
 const HSA = "ex-hsa-f-001";
 

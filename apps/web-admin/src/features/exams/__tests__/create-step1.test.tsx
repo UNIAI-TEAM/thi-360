@@ -5,6 +5,9 @@ import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
 import { examStore } from "../mock/store";
+import { useInMemoryBackend } from "./in-memory-backend";
+
+useInMemoryBackend();
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));

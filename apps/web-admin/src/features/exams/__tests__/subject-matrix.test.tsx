@@ -8,6 +8,9 @@ import { examStore } from "../mock/store";
 import { remainderGroupCount, resolveQuotaCounts, sectionCaseCounts, subjectAllocation } from "../subject-matrix";
 import en from "../../../messages/en.json";
 import vi_ from "../../../messages/vi.json";
+import { useInMemoryBackend } from "./in-memory-backend";
+
+useInMemoryBackend();
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
