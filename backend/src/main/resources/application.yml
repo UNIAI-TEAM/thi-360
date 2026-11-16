@@ -221,6 +221,9 @@ thi360:
       cleanup:
         scheduling:
           enabled: false
+  exam:
+    scheduling:
+      enabled: false
 ---
 spring:
   config:

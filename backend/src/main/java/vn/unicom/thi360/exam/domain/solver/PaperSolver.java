@@ -269,6 +269,7 @@ public final class PaperSolver {
         String groupId = null;
         QuotaRef failingQuota = null;
         List<SubjectPick> failing = new ArrayList<>();
+        List<SelectionResult> selectionResults = new ArrayList<>();
         Map<SubproblemKey, SubjectWitness> witnesses = new LinkedHashMap<>();
         for (List<SubjectPick> tuple : tuples) {
             PathResult r;
@@ -278,10 +279,12 @@ public final class PaperSolver {
             } catch (DeadlineHit e) {
                 if (worst == SolveStatus.INVALID) {
                     return PathResult.invalidPicks(path, reason, subjectCode, groupId, failing,
-                            failingQuota);
+                            failingQuota).withSelections(selectionResults);
                 }
-                return PathResult.unconfirmed(path, SolveReason.DEADLINE_EXCEEDED, null, null);
+                return PathResult.unconfirmed(path, SolveReason.DEADLINE_EXCEEDED, null, null)
+                        .withSelections(selectionResults);
             }
+            selectionResults.add(SelectionResult.from(tuple, r));
             if (r.status() == SolveStatus.VALID) {
                 List<SectionOnPath> sections = new ArrayList<>(path.sections());
                 for (SubjectPick pick : tuple) {
@@ -313,12 +316,13 @@ public final class PaperSolver {
             }
         }
         if (worst == SolveStatus.VALID) {
-            return PathResult.valid(path, new ArrayList<>(witnesses.values()));
+            return PathResult.valid(path, new ArrayList<>(witnesses.values())).withSelections(selectionResults);
         }
         if (worst == SolveStatus.INVALID) {
-            return PathResult.invalidPicks(path, reason, subjectCode, groupId, failing, failingQuota);
+            return PathResult.invalidPicks(path, reason, subjectCode, groupId, failing, failingQuota)
+                    .withSelections(selectionResults);
         }
-        return PathResult.unconfirmed(path, reason, subjectCode, groupId);
+        return PathResult.unconfirmed(path, reason, subjectCode, groupId).withSelections(selectionResults);
     }
 
     /**

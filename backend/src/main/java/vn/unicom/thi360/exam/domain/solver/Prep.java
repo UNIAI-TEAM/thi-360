@@ -97,9 +97,9 @@ final class Prep {
                     u -> dim.code().equals(u.difficultyCode()));
         }
 
-        static Requirement competency(String groupId, CompetencyQuota comp) {
+        static Requirement competency(String groupId, CompetencyQuota comp, int resolvedQuota) {
             return new Requirement(Kind.COMPETENCY, "comp:" + groupId + ":" + comp.competencyCode(),
-                    comp.quota(), u -> u.competencyCodes().contains(comp.competencyCode()));
+                    resolvedQuota, u -> u.competencyCodes().contains(comp.competencyCode()));
         }
 
         static Requirement mapidGroup(String groupId, MapidGroupQuota group,
@@ -345,8 +345,16 @@ final class Prep {
                                 "group " + group.groupId() + " difficulty dimension");
                     }
                 }
-                for (CompetencyQuota c : group.competencies()) {
-                    reqs.add(Requirement.competency(group.groupId(), c));
+                List<CompetencyQuota> competencies = group.competencies();
+                int[] resolvedCompetencies = null;
+                if (!competencies.isEmpty() && competencies.getFirst().unit() == QuotaUnit.PERCENT) {
+                    resolvedCompetencies = apportioner.apportion(
+                            competencies.stream().map(CompetencyQuota::quota).toList(), rg.units());
+                }
+                for (int i = 0; i < competencies.size(); i++) {
+                    CompetencyQuota c = competencies.get(i);
+                    reqs.add(Requirement.competency(group.groupId(), c,
+                            resolvedCompetencies == null ? c.quota() : resolvedCompetencies[i]));
                     reqRefs.add(null);
                 }
                 for (MapidGroupQuota mg : group.mapidGroups()) {

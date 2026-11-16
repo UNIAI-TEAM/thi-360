@@ -34,7 +34,8 @@ public class ExamBlockRefProjector {
     public record CodeResolver(Function<String, UUID> subjectByCode,
                                Function<String, UUID> taskTypeByCode,
                                Function<String, UUID> competencyByCode,
-                               Function<String, UUID> combinationByCode) {
+                               Function<String, UUID> combinationByCode,
+                               Function<String, UUID> tagByCode) {
     }
 
     /**
@@ -121,7 +122,7 @@ public class ExamBlockRefProjector {
                 knowledgeItemIds(scope),
                 knowledgeMode(scope),
                 inherited,
-                null,
+                tagItemIds(block.tagCodes(), resolver),
                 competencyItemIds(scope, resolver),
                 block.requiredPointsPerQuestion(),
                 option == null ? null : option.combinationItemId()));
@@ -165,6 +166,20 @@ public class ExamBlockRefProjector {
         Set<UUID> ids = new LinkedHashSet<>();
         for (String code : scope.competencyCodes()) {
             UUID id = resolver.competencyByCode().apply(code);
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        return ids.isEmpty() ? null : List.copyOf(ids);
+    }
+
+    private static List<UUID> tagItemIds(List<String> codes, CodeResolver resolver) {
+        if (codes.isEmpty() || resolver.tagByCode() == null) {
+            return null;
+        }
+        Set<UUID> ids = new LinkedHashSet<>();
+        for (String code : codes) {
+            UUID id = resolve(resolver.tagByCode(), code);
             if (id != null) {
                 ids.add(id);
             }
