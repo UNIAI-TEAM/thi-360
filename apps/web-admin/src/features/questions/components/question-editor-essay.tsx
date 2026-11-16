@@ -1,12 +1,11 @@
 "use client";
 
-import { Badge, Button, FormField, Input, Textarea } from "@thi360/ui";
+import { Badge, Button, FormField, Input } from "@thi360/ui";
 import { CircleAlert, CircleCheck, PenLine, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useRef } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { emptyCriterion, parsePoints, rubricTotal, samePoints, type QuestionEditorValues } from "../editor-form";
-import { CRITERION_MAX, SAMPLE_ANSWER_MAX } from "../editor-schema";
 import {
   FieldErrorText,
   GroupError,
@@ -16,6 +15,7 @@ import {
   useEditorError,
   type BodyPath,
 } from "./question-editor-shared";
+import { RichTextField } from "./question-editor-rich-field";
 
 /**
  * Hướng dẫn chấm câu Tự luận (UNI-2599 mục 2.1, chấm tay): điểm tối đa là ô Điểm của câu; tiêu chí chấm thêm, xóa,
@@ -55,7 +55,7 @@ export function EssayEditor({ prefix }: { prefix: BodyPath }) {
 
       <FormField label={t("gradingGuide")} required hint={t("gradingGuideHint")} error={guideError}>
         {(controlProps) => (
-          <Textarea {...controlProps} rows={4} maxLength={SAMPLE_ANSWER_MAX} {...register(`${prefix}.gradingGuide`)} />
+          <RichTextField {...controlProps} aria-label={t("gradingGuide")} name={`${prefix}.gradingGuide`} />
         )}
       </FormField>
 
@@ -120,7 +120,7 @@ export function EssayEditor({ prefix }: { prefix: BodyPath }) {
       <div className="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_12rem]">
         <FormField label={t("sampleAnswer")} hint={t("sampleAnswerHint")} error={sampleError}>
           {(controlProps) => (
-            <Textarea {...controlProps} rows={4} maxLength={SAMPLE_ANSWER_MAX} {...register(`${prefix}.sampleAnswer`)} />
+            <RichTextField {...controlProps} aria-label={t("sampleAnswer")} name={`${prefix}.sampleAnswer`} />
           )}
         </FormField>
         <FormField label={t("wordLimit")} hint={t("wordLimitHint")} error={wordLimitError}>
@@ -158,16 +158,15 @@ function CriterionRow({
         <span aria-hidden className="mt-2.5 w-6 shrink-0 font-semibold text-text">
           {number}.
         </span>
-        <Textarea
-          id={inputId}
-          rows={2}
-          maxLength={CRITERION_MAX}
-          aria-label={t("descriptionLabel", { number })}
-          aria-invalid={descriptionError ? true : undefined}
-          aria-describedby={descriptionError ? `${inputId}-error` : undefined}
-          className="min-w-0 flex-1 basis-48"
-          {...register(`${prefix}.rubric.${index}.description`)}
-        />
+        <div className="min-w-0 flex-1 basis-48">
+          <RichTextField
+            id={inputId}
+            aria-label={t("descriptionLabel", { number })}
+            aria-invalid={descriptionError ? true : undefined}
+            aria-describedby={descriptionError ? `${inputId}-error` : undefined}
+            name={`${prefix}.rubric.${index}.description`}
+          />
+        </div>
         <div className="flex w-24 shrink-0 flex-col">
           <Input
             id={`${inputId}-points`}

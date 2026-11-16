@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Chip, cn, FormField, IconButton, Input, Label, Textarea } from "@thi360/ui";
+import { questionHtmlText } from "@/components/rich-text";
+import { Button, Chip, cn, FormField, IconButton, Input, Label } from "@thi360/ui";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
@@ -8,7 +9,7 @@ import { get, useFieldArray, useFormContext, useFormState, useWatch } from "reac
 import type { ContentReference } from "@/features/content/types";
 import { emptyChild, questionSetPoints, type EditorChild, type QuestionEditorValues } from "../editor-form";
 import { CHILD_QUESTION_TYPES, type ChildQuestionType } from "../editor-types";
-import { CONTENT_MAX, SOLUTION_MAX } from "../editor-schema";
+import { RichTextField } from "./question-editor-rich-field";
 import { QuestionBodyEditor } from "./question-editor-body";
 import { ChildClassification } from "./question-editor-child-classification";
 import { FieldErrorText, GroupError, optionLetter, RowActions, statementLetter, useAnnounce, useEditorError } from "./question-editor-shared";
@@ -143,7 +144,7 @@ function ChildCard({
           </div>
           {!open && (
             <>
-              <p className="line-clamp-2 text-body text-text">{child.content.trim() || t("noContent")}</p>
+              <p className="line-clamp-2 text-body text-text">{questionHtmlText(child.content).trim() || t("noContent")}</p>
               <p className="text-caption text-text-muted">{t("answerSummary", { answer: answerSummary(child, t) })}</p>
             </>
           )}
@@ -165,17 +166,16 @@ function ChildCard({
         {open && (
           <>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${cardId}-content`} required>
+              <Label id={`${cardId}-content-label`} htmlFor={`${cardId}-content`} required>
                 {t("contentLabel")}
               </Label>
-              <Textarea
+              <RichTextField
                 id={`${cardId}-content`}
-                rows={3}
-                maxLength={CONTENT_MAX}
+                aria-labelledby={`${cardId}-content-label`}
                 aria-required
                 aria-invalid={contentError ? true : undefined}
                 aria-describedby={contentError ? `${cardId}-content-error` : undefined}
-                {...register(`children.${index}.content`)}
+                name={`children.${index}.content`}
               />
               <FieldErrorText
                 id={`${cardId}-content-error`}
@@ -187,7 +187,6 @@ function ChildCard({
                 type={child.type}
                 prefix={`children.${index}.body`}
                 contentPath={`children.${index}.content`}
-                contentFieldId={`${cardId}-content`}
               />
             </div>
             <div className="grid gap-3 @lg:grid-cols-[10rem_minmax(0,1fr)]">
@@ -202,7 +201,7 @@ function ChildCard({
                 error={solutionError ? tErrors(solutionError) : undefined}
               >
                 {(controlProps) => (
-                  <Textarea {...controlProps} rows={2} maxLength={SOLUTION_MAX} {...register(`children.${index}.solution`)} />
+                  <RichTextField {...controlProps} aria-label={t("solutionLabel")} name={`children.${index}.solution`} />
                 )}
               </FormField>
             </div>
@@ -241,7 +240,7 @@ function answerSummary(child: EditorChild, t: ReturnType<typeof useTranslations>
       return pairs.length ? pairs.join(", ") : t("noAnswer");
     }
     case "ESSAY": {
-      const guide = body.gradingGuide.trim();
+      const guide = questionHtmlText(body.gradingGuide).trim();
       return guide || t("noAnswer");
     }
   }

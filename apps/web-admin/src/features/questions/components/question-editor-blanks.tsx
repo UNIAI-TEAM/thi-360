@@ -17,19 +17,10 @@ import { FieldErrorText, GroupError, useAnnounce, useEditorError, type BodyPath,
 
 /**
  * Ô trống của câu Điền đáp án (canvas `CauHoiDienDapAnForm`). Chỗ trống là `___` trong đề bài: "Thêm ô trống" chèn
- * `___` tại con trỏ của ô Đề bài và thêm dòng đáp án đúng thứ tự; xóa dòng thì bỏ chỗ trống tương ứng. Mỗi ô có
+ * `___` cuối đoạn văn cuối của ô Đề bài và thêm dòng đáp án đúng thứ tự; xóa dòng thì bỏ chỗ trống tương ứng. Mỗi ô có
  * thể có nhiều đáp án chấp nhận. Kiểu đáp án (Số / Văn bản) của bản vẽ chưa có trong mô hình dữ liệu.
  */
-export function BlanksEditor({
-  prefix,
-  contentPath,
-  contentFieldId,
-}: {
-  prefix: BodyPath;
-  contentPath: ContentPath;
-  /** Id của ô Đề bài để đọc vị trí con trỏ. */
-  contentFieldId: string;
-}) {
+export function BlanksEditor({ prefix, contentPath }: { prefix: BodyPath; contentPath: ContentPath }) {
   const t = useTranslations("questions.editor.blanks");
   const announce = useAnnounce();
   const groupId = useId();
@@ -45,10 +36,10 @@ export function BlanksEditor({
   };
 
   const addBlank = () => {
-    const field = document.getElementById(contentFieldId) as HTMLTextAreaElement | null;
     const current = getValues(contentPath);
-    // Ô nhập nhiều dòng giữ vị trí con trỏ sau khi mất focus, nên bấm nút vẫn chèn đúng chỗ vừa gõ.
-    const result = insertBlankMarker(current, field ? field.selectionStart : current.length);
+    // Trình soạn HTML không lộ vị trí con trỏ dạng chỉ số chuỗi: chỗ trống mới chèn cuối đoạn văn cuối cùng.
+    const position = current.endsWith("</p>") ? current.length - "</p>".length : current.length;
+    const result = insertBlankMarker(current, position);
     setValue(contentPath, result.content, { shouldDirty: true });
     insert(result.index, emptyBlank(), { shouldFocus: true, focusName: `${prefix}.blanks.${result.index}.answers.0.value` });
     announce(t("added", { number: result.index + 1 }));

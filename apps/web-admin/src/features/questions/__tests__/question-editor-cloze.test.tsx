@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { questionStore } from "../mock/store";
-import { renderEn, seedQuestion, storedQuestion } from "./editor-test-kit";
+import { renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -74,7 +74,7 @@ describe("trinh soan Dien khuyet", () => {
 
     await user.click(within(section).getByRole("button", { name: "Add blank" }));
     expect(within(section).getByText("The text has 3 gaps ___ and 3 answer blanks.")).toBeInTheDocument();
-    expect((text as HTMLTextAreaElement).value.split("___")).toHaveLength(4);
+    expect(rich(text).text.split("___")).toHaveLength(4);
     // Ô mới mang điểm mặc định 1 và đã vào tổng điểm.
     expect(screen.getByRole("textbox", { name: "Points of blank 3" })).toHaveValue("1");
     expect(screen.getByRole("textbox", { name: /^Points \(calculated\)/ })).toHaveValue("3.5");
@@ -104,8 +104,7 @@ describe("trinh soan Dien khuyet", () => {
     await user.type(first, "1");
     await user.type(screen.getByRole("textbox", { name: "Answer 1 for blank 1" }), "thủ đô");
     const text = screen.getByRole("textbox", { name: /^Question text/ });
-    await user.clear(text);
-    await user.type(text, "Chỉ còn một chỗ trống ___ thôi.");
+    rich(text).set("<p>Chỉ còn một chỗ trống ___ thôi.</p>");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     expect(
       await screen.findByText("The number of ___ gaps in the text must equal the number of answer blanks."),

@@ -1,3 +1,6 @@
+import { act } from "@testing-library/react";
+import { vi } from "vitest";
+import type { Editor } from "@tiptap/react";
 import type { ReactElement } from "react";
 import type { QuestionType } from "@/features/content/types";
 import en from "@/messages/en.json";
@@ -6,6 +9,11 @@ import { getQuestion } from "../api";
 import { createQuestion } from "../editor-api";
 import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
 import { questionStore } from "../mock/store";
+
+// Mỗi ô nội dung HTML là một trình soạn TipTap; biểu mẫu nhiều ô (phương án, cặp ghép, ý đúng/sai) dựng chậm trong jsdom.
+vi.setConfig({ testTimeout: 20_000 });
+// jsdom không có `elementFromPoint` mà ProseMirror gọi khi focus/cuộn tới con trỏ.
+if (typeof document.elementFromPoint !== "function") document.elementFromPoint = () => null;
 
 /** Dựng chung cho test của từng trình soạn dạng câu (`question-editor-<dạng>.test.tsx`). */
 
@@ -34,4 +42,26 @@ export async function seedQuestion(type: QuestionType, fill: (values: QuestionEd
 /** Câu đang lưu trong kho dữ liệu mẫu sau khi bấm Lưu. */
 export function storedQuestion(id: string) {
   return questionStore.require(id);
+}
+
+/**
+ * Tay cầm tới trình soạn HTML (TipTap) sau một phần tử `textbox`: jsdom không gõ được vào ProseMirror như trình duyệt,
+ * nên test đọc chữ thuần/HTML và đặt nội dung qua chính editor (đi qua `onUpdate` như khi gõ).
+ */
+export function rich(element: HTMLElement) {
+  const editor = (element as HTMLElement & { editor?: Editor }).editor;
+  if (!editor) throw new Error("Phần tử này không phải trình soạn HTML");
+  return {
+    get text() {
+      return editor.getText();
+    },
+    get html() {
+      return editor.getHTML();
+    },
+    set(html: string) {
+      act(() => {
+        editor.commands.setContent(html, { emitUpdate: true });
+      });
+    },
+  };
 }
