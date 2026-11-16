@@ -481,8 +481,6 @@ export interface ExamVersionDetail {
 
 export interface RunExamCheckRequest {
   examId: string;
-  /** Chạy với giới hạn xử lý dài hơn; màn Kiểm tra hiện chạy bằng cờ này tới khi FE-3c chuyển sang `startDeepCheck`. */
-  extendedTimeLimit?: boolean;
 }
 
 export interface GeneratePreviewRequest {

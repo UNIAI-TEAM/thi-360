@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useEffectEvent, useState } from "react";
 import { EXAMS_QUERY_KEYS } from "./api";
 import { defaultExamReviewApiDeps, EXAM_REVIEW_QUERY_KEYS, type ExamReviewApiDeps } from "./review-api";
-import type { GeneratePreviewRequest, PublishExamRequest, RunExamCheckRequest } from "./review-types";
+import type { ExamCheckResult, GeneratePreviewRequest, PublishExamRequest, RunExamCheckRequest } from "./review-types";
 
 /** Sau thao tác ghi: bài thi (chip trạng thái, dải tóm tắt), danh sách bài thi và dữ liệu kiểm tra, phiên bản. */
 function useInvalidateExam(examId: string, { includeCheck = true }: { includeCheck?: boolean } = {}) {
@@ -35,6 +36,80 @@ export function useRunExamCheck(examId: string, deps: ExamReviewApiDeps = defaul
       await invalidate();
     },
   });
+}
+
+/** Chu kỳ hỏi `getCheckRun` khi kiểm tra kỹ đang chạy nền (spec 5.4). */
+export const DEEP_CHECK_POLL_MS = 2000;
+
+export type DeepCheckPhase = "idle" | "running" | "failed";
+
+export interface DeepCheck {
+  phase: DeepCheckPhase;
+  /** Mã lỗi của lần chạy nền (`CHECK_RUN_ABANDONED`); `null` khi chưa lỗi hoặc lỗi không có mã (mất kết nối). */
+  errorCode: string | null;
+  /** Bắt đầu một lần kiểm tra kỹ; gọi lại sau lỗi là thử lại bằng lần chạy mới. Bỏ qua khi đang chạy. */
+  start: () => void;
+}
+
+export interface UseDeepCheckOptions {
+  /** `false` khi màn bị che (đổi tab): ngừng hỏi, lần chạy vẫn còn đó và hỏi tiếp khi quay lại. */
+  active?: boolean;
+  /** Gọi một lần khi lần chạy xong, sau khi kết quả đã thay kết quả đang hiện. */
+  onDone?: (result: ExamCheckResult) => void;
+  deps?: ExamReviewApiDeps;
+}
+
+/**
+ * Kiểm tra kỹ (spec 5.4): chạy nền tới 120 giây, proxy web cắt ở 60 giây nên `startDeepCheck` trả `runId` ngay, rồi
+ * hỏi `getCheckRun` mỗi 2 giây tới khi xong. Hỏi dừng khi màn rời đi (gỡ khỏi cây hoặc `active = false`). Xong thì kết
+ * quả ghi thẳng vào bộ đệm kiểm tra, thay kết quả đang hiện.
+ */
+export function useDeepCheck(
+  examId: string,
+  { active = true, onDone, deps = defaultExamReviewApiDeps }: UseDeepCheckOptions = {},
+): DeepCheck {
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateExam(examId, { includeCheck: false });
+  const [runId, setRunId] = useState<string | null>(null);
+  const starter = useMutation({
+    mutationFn: () => deps.startDeepCheck(examId),
+    onSuccess: (started) => setRunId(started.runId),
+  });
+  const run = useQuery({
+    queryKey: EXAM_REVIEW_QUERY_KEYS.checkRun(examId, runId ?? ""),
+    queryFn: () => deps.getCheckRun(examId, runId!),
+    enabled: runId !== null && active,
+    refetchInterval: (query) =>
+      query.state.data === undefined || query.state.data.state === "RUNNING" ? DEEP_CHECK_POLL_MS : false,
+    retry: 2,
+    retryDelay: DEEP_CHECK_POLL_MS,
+  });
+
+  const finished = run.data?.state === "DONE" ? run.data.result : null;
+  const finish = useEffectEvent((result: ExamCheckResult) => {
+    queryClient.setQueryData(EXAM_REVIEW_QUERY_KEYS.check(examId), result);
+    void invalidate();
+    onDone?.(result);
+  });
+  useEffect(() => {
+    if (finished) finish(finished);
+  }, [finished]);
+
+  const { mutate, reset } = starter;
+  const phase: DeepCheckPhase =
+    starter.isError || run.isError || run.data?.state === "FAILED"
+      ? "failed"
+      : run.data?.state !== "DONE" && (starter.isPending || runId !== null)
+        ? "running"
+        : "idle";
+  const start = () => {
+    if (phase === "running") return;
+    setRunId(null);
+    reset();
+    mutate();
+  };
+
+  return { phase, errorCode: run.data?.state === "FAILED" ? run.data.errorCode : null, start };
 }
 
 /** Sinh đề là một lần chạy (mỗi lần một hạt giống), không phải dữ liệu đọc lại: dùng mutation, kết quả giữ ở màn. */

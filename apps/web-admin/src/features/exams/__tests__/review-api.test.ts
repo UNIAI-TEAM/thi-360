@@ -48,12 +48,14 @@ describe("runExamCheck / getExamCheck", () => {
     expect(exam.check).toEqual({ status: result.status, issueCount: result.issueCount, checkedAt: result.checkedAt });
   });
 
-  it("kiểm tra lại với thời gian dài hơn xác nhận được cách chọn có Địa lí", async () => {
+  it("kiểm tra kỹ xác nhận được cách chọn có Địa lí", async () => {
     const standard = await runExamCheck({ examId: HSA });
     const pick = (result: typeof standard) =>
       result.paths.find((path) => path.pathId === SCIENCE)!.selections.find((item) => item.subjectCodes.join() === "PHYSICS,BIOLOGY,GEOGRAPHY")?.result;
     expect(pick(standard)).toBe("UNCONFIRMED");
-    const result = await runExamCheck({ examId: HSA, extendedTimeLimit: true });
+    const { runId } = await startDeepCheck(HSA);
+    for (let poll = 1; poll < DEEP_CHECK_POLLS_UNTIL_DONE; poll += 1) await getCheckRun(HSA, runId);
+    const result = (await getCheckRun(HSA, runId)).result!;
     expect(result.timeLimitSeconds).toBe(120);
     expect(pick(result)).toBe("VALID");
     // Còn lại: chỉ tiêu Hóa học Lớp 12 thiếu nguồn ở cả hai số câu môn có thể nhận (17 câu cần 9, 16 câu cần 8).

@@ -3638,6 +3638,24 @@
         "running": "Checking the configuration",
         "done": "Check finished: {valid, number} valid, {invalid, number} invalid, {unconfirmed, number} unconfirmed paths."
       },
+      "deep": {
+        "start": "Deep check",
+        "hint": "Some results could not be confirmed within the processing limit. Deep check gives the solver up to {seconds, number} seconds and runs in the background.",
+        "live": {
+          "running": "Deep check is running. The new result appears when it finishes.",
+          "failed": "The deep check did not finish."
+        },
+        "running": {
+          "title": "Deep check is running",
+          "description": "Runs in the background for up to {seconds, number} seconds. The results below are from the previous check and are replaced when it finishes. Updates pause while you are on another tab and resume when you come back."
+        },
+        "failed": {
+          "title": "The deep check did not finish",
+          "abandoned": "The background run was interrupted before it produced a result. The results below are still from the previous check.",
+          "generic": "Could not get the deep check result. The results below are still from the previous check.",
+          "retry": "Try again"
+        }
+      },
       "emptyTitle": "Configuration not checked yet",
       "emptyDescription": "Check every choice path before publishing. The result shows which paths can generate a paper and what to fix.",
       "errorTitle": "Could not load the check result",
@@ -3674,12 +3692,13 @@
         "tableLabel": "Check results of {count, plural, one {# choice path} other {# choice paths}}",
         "empty": "This exam has no choice path yet",
         "sub": "{questions, plural, one {# question} other {# questions}} · {minutes, plural, one {# minute} other {# minutes}}",
+        "subSelections": "{picks, plural, one {# subject set} other {# subject sets}} · {cases, plural, one {# case} other {# cases}}",
         "partsValue": "Part {list}",
         "previewAria": "Generate a preview paper for {path}",
         "previewTooltip": "Generate preview paper",
         "fix": "Go to matrix row",
         "fixAria": "Go to the matrix row to fix for {path}",
-        "rerunExtended": "Check again with a longer limit",
+        "deepAria": "Deep check {path}",
         "viewOverlap": "View overlapping source",
         "columns": {
           "path": "Choice path",
@@ -3695,6 +3714,18 @@
         "INVALID": "there is a definite error, such as a wrong question total or fewer source questions than the quota.",
         "UNCONFIRMED": "no solution was found within the processing limit; this does not mean the bank lacks questions.",
         "note": "The last two results cannot be published for the affected scope."
+      },
+      "selections": {
+        "title": "{path}: results for each subject set the learner can pick",
+        "summary": "{total, plural, one {# case} other {# cases}}: {valid, number} valid, {invalid, number} invalid, {unconfirmed, number} unconfirmed.",
+        "rule": "Learners pick {choose, number} subjects. Two subjects of the same group (natural or social) get {high, number} questions each and the other subject gets {low, number}. When all {choose, number} subjects are in one group, one of them gets {low, number}: that subject set has {choose, number} splits and every split is checked.",
+        "tableLabel": "Check results for each subject set of {path}",
+        "empty": "This path has no subject choice yet",
+        "columns": {
+          "subjects": "Subjects and questions per subject",
+          "result": "Result",
+          "issue": "Issue"
+        }
       },
       "groups": {
         "title": "Check groups",

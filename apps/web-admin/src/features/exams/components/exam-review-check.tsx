@@ -18,12 +18,21 @@ import {
   TabsTrigger,
   type TableCards,
 } from "@thi360/ui";
-import { ArrowRight, ClipboardCheck, Eye, Info, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { createContext, type RefObject, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { useExamCheck, useRunExamCheck } from "../review-queries";
-import type { BlockCheck, CheckGroupResult, ExamCheckResult, PathCheck, PathCheckResult } from "../review-types";
+import { EXTENDED_CHECK_TIME_LIMIT_SECONDS } from "../check";
+import type { ExamReviewApiDeps } from "../review-api";
+import { type DeepCheck, useDeepCheck, useExamCheck, useRunExamCheck } from "../review-queries";
+import type {
+  BlockCheck,
+  CheckGroupResult,
+  ExamCheckResult,
+  PathCheck,
+  PathCheckResult,
+  PathSelectionCheck,
+} from "../review-types";
 import type { ExamDetail } from "../types";
 import {
   BLOCK_RESULT_TONE,
@@ -41,37 +50,39 @@ export interface ExamReviewCheckProps {
   exam: ExamDetail;
   /** Chuyển sang tab Đề xem trước và sinh đề cho đường này (`null`: giữ đường đang chọn). */
   onPreview: (pathId: string | null) => void;
+  /** `false` khi tab bị che: kiểm tra kỹ ngừng hỏi kết quả, hỏi tiếp khi quay lại. */
+  active?: boolean;
+  deps?: ExamReviewApiDeps;
 }
 
 /**
  * Kiểm tra cấu hình (bản vẽ `BaiThiKiemTra`): kết quả theo từng đường lựa chọn, tám nhóm kiểm tra, chi tiết theo khối
  * của từng đường, liên kết tới chỗ cần sửa.
  */
-export function ExamReviewCheck({ exam, onPreview }: ExamReviewCheckProps) {
+export function ExamReviewCheck({ exam, onPreview, active = true, deps }: ExamReviewCheckProps) {
   const t = useTranslations("exams.review");
-  const checkQuery = useExamCheck(exam.id);
-  const runCheck = useRunExamCheck(exam.id);
+  const checkQuery = useExamCheck(exam.id, deps);
+  const runCheck = useRunExamCheck(exam.id, deps);
   const [liveMessage, setLiveMessage] = useState("");
   const blocksRef = useRef<HTMLHeadingElement>(null);
   const [blockTab, setBlockTab] = useState<string | null>(null);
 
-  function run(extendedTimeLimit = false) {
+  const announceDone = (result: ExamCheckResult) => {
+    const count = (value: PathCheckResult) => result.paths.filter((path) => path.result === value).length;
+    setLiveMessage(
+      t("live.done", { valid: count("VALID"), invalid: count("INVALID"), unconfirmed: count("UNCONFIRMED") }),
+    );
+  };
+  const deep = useDeepCheck(exam.id, { active, deps, onDone: announceDone });
+  // Kiểm tra kỹ đang chạy hay vừa lỗi thì thông báo theo trạng thái; còn lại là câu của lần chạy gần nhất.
+  const announcement =
+    deep.phase === "running" ? t("deep.live.running") : deep.phase === "failed" ? t("deep.live.failed") : liveMessage;
+
+  function run() {
     setLiveMessage(t("live.running"));
     runCheck.mutate(
-      { extendedTimeLimit },
-      {
-        onSuccess: (result) => {
-          const count = (value: PathCheckResult) => result.paths.filter((path) => path.result === value).length;
-          setLiveMessage(
-            t("live.done", {
-              valid: count("VALID"),
-              invalid: count("INVALID"),
-              unconfirmed: count("UNCONFIRMED"),
-            }),
-          );
-        },
-        onError: () => setLiveMessage(t("runError")),
-      },
+      {},
+      { onSuccess: announceDone, onError: () => setLiveMessage(t("runError")) },
     );
   }
 
@@ -131,6 +142,7 @@ export function ExamReviewCheck({ exam, onPreview }: ExamReviewCheckProps) {
         result={checkQuery.data}
         running={runCheck.isPending}
         runFailed={runCheck.isError}
+        deep={deep}
         onRun={run}
         onPreview={onPreview}
         onShowOverlap={showOverlap}
@@ -143,7 +155,7 @@ export function ExamReviewCheck({ exam, onPreview }: ExamReviewCheckProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <LiveStatus message={liveMessage} />
+      <LiveStatus message={announcement} />
       {body}
     </div>
   );
@@ -154,7 +166,8 @@ interface CheckResultViewProps {
   result: ExamCheckResult;
   running: boolean;
   runFailed: boolean;
-  onRun: (extended?: boolean) => void;
+  deep: DeepCheck;
+  onRun: () => void;
   onPreview: (pathId: string | null) => void;
   onShowOverlap: (pathId: string) => void;
   blocksRef: RefObject<HTMLHeadingElement | null>;
@@ -167,6 +180,7 @@ function CheckResultView({
   result,
   running,
   runFailed,
+  deep,
   onRun,
   onPreview,
   onShowOverlap,
@@ -179,6 +193,11 @@ function CheckResultView({
   const stale = exam.check.status === "NEEDS_RECHECK";
   const validCount = result.paths.filter((path) => path.result === "VALID").length;
   const first = result.paths[0];
+  const deepRunning = deep.phase === "running";
+  // Chưa xác nhận được ở cả đường lẫn từng cách chọn môn (đường Không hợp lệ vẫn có thể còn cách chọn chưa xác nhận).
+  const hasUnconfirmed = result.paths.some(
+    (path) => path.result === "UNCONFIRMED" || path.selections.some((selection) => selection.result === "UNCONFIRMED"),
+  );
 
   return (
     <>
@@ -201,12 +220,27 @@ function CheckResultView({
             </p>
           )}
           {runFailed && <p className="text-body text-danger">{t("runError")}</p>}
+          {hasUnconfirmed && !deepRunning && (
+            <p className="flex items-start gap-2 text-body text-text-secondary">
+              <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{t("deep.hint", { seconds: EXTENDED_CHECK_TIME_LIMIT_SECONDS })}</span>
+            </p>
+          )}
         </div>
-        <Button variant="secondary" onClick={() => onRun()} loading={running}>
-          <RefreshCw />
-          {t("rerun")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {hasUnconfirmed && (
+            <Button variant="outline" onClick={deep.start} loading={deepRunning} disabled={running}>
+              <SearchCheck />
+              {t("deep.start")}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
+            <RefreshCw />
+            {t("rerun")}
+          </Button>
+        </div>
       </Card>
+      <DeepCheckStatus deep={deep} />
 
       <dl aria-label={t("summary.label")} className="flex flex-wrap gap-x-6 gap-y-2 text-body">
         <SummaryItem
@@ -251,11 +285,15 @@ function CheckResultView({
       <PathsSection
         exam={exam}
         result={result}
-        running={running}
-        onRun={onRun}
+        deep={deep}
         onPreview={onPreview}
         onShowOverlap={onShowOverlap}
       />
+      {result.paths
+        .filter((path) => path.selections.length > 0)
+        .map((path) => (
+          <SelectionsSection key={path.pathId} exam={exam} path={path} />
+        ))}
       <GroupsSection exam={exam} result={result} />
       <BlocksSection
         exam={exam}
@@ -266,7 +304,7 @@ function CheckResultView({
       />
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" onClick={() => onRun()} loading={running}>
+        <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
           <RefreshCw />
           {t("rerun")}
         </Button>
@@ -288,11 +326,152 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Dòng phụ của một đường: số câu, thời gian, và số câu từng môn của lựa chọn (17–17–16). */
+/** Kiểm tra kỹ chạy nền: đang chạy (kết quả cũ còn hiện bên dưới tới khi xong) hoặc lỗi kèm thử lại. */
+function DeepCheckStatus({ deep }: { deep: DeepCheck }) {
+  const t = useTranslations("exams.review.deep");
+  if (deep.phase === "idle") return null;
+  if (deep.phase === "running") {
+    return (
+      <Card padding="md" className="flex items-start gap-3" aria-busy="true">
+        <LoaderCircle
+          aria-hidden
+          className="mt-0.5 size-5 shrink-0 animate-spin text-text-secondary motion-reduce:animate-[spin_6s_linear_infinite]"
+        />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="font-semibold text-text">{t("running.title")}</p>
+          <p className="text-body text-text-secondary">
+            {t("running.description", { seconds: EXTENDED_CHECK_TIME_LIMIT_SECONDS })}
+          </p>
+        </div>
+      </Card>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-danger/30 bg-danger-bg p-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-danger" />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="font-semibold text-text">{t("failed.title")}</p>
+          <p className="text-body text-text-secondary">
+            {t(deep.errorCode === "CHECK_RUN_ABANDONED" ? "failed.abandoned" : "failed.generic")}
+          </p>
+        </div>
+      </div>
+      <Button variant="secondary" onClick={deep.start}>
+        <RefreshCw />
+        {t("failed.retry")}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Kết quả từng cách chọn môn của đường có `SUBJECT_CHOICE` (spec 5.3, B10): mỗi bộ môn học viên có thể chọn một dòng
+ * kèm số câu từng môn; bộ ba môn cùng nhóm có đủ ba cách chia. Quy tắc chia chỉ đọc.
+ */
+function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }) {
+  const t = useTranslations("exams.review.selections");
+  const tReview = useTranslations("exams.review");
+  const lookup = useLookup();
+  const issueText = useIssueText();
+  const pathLabel = usePathLabel();
+  const choice = path.choices.find((item) => item.kind === "SUBJECT_CHOICE");
+  const option = exam.parts
+    .find((part) => part.id === choice?.partId)
+    ?.options.find((item) => item.id === choice?.optionId);
+  const counts = option?.countsByPick ?? [];
+  const tally = (value: PathCheckResult) => path.selections.filter((selection) => selection.result === value).length;
+  const titleId = `review-selections-${path.pathId}`;
+  const label = pathLabel(path);
+
+  const { columns, cards } = useMemo(() => {
+    const picked = (selection: PathSelectionCheck) =>
+      selection.subjectCodes.map((code, index) => `${lookup.subject(code)} ${selection.counts[index] ?? ""}`).join(" · ");
+    const issueCell = (selection: PathSelectionCheck) => {
+      const unique = [...new Map(selection.issues.map((issue) => [issue.key, issue])).values()];
+      if (unique.length === 0) return <span className="text-text-muted">{tReview("noIssue")}</span>;
+      return (
+        <span className={selection.result === "INVALID" ? "text-danger" : "text-text-secondary"}>
+          {issueText(unique[0]!)}
+          {unique.length > 1 && <> {tReview("moreIssues", { count: unique.length - 1 })}</>}
+        </span>
+      );
+    };
+    const columns: ColumnDef<PathSelectionCheck>[] = [
+      {
+        id: "subjects",
+        header: t("columns.subjects"),
+        cell: ({ row }) => <span className="block min-w-56 font-semibold text-text tabular-nums">{picked(row.original)}</span>,
+      },
+      {
+        id: "result",
+        header: t("columns.result"),
+        cell: ({ row }) => <PathResultChip result={row.original.result} />,
+      },
+      {
+        id: "issue",
+        header: t("columns.issue"),
+        cell: ({ row }) => <div className="min-w-56">{issueCell(row.original)}</div>,
+      },
+    ];
+    const cards: TableCards<PathSelectionCheck> = {
+      render: (selection) => (
+        <ListCard title={picked(selection)} status={<PathResultChip result={selection.result} />}>
+          <p className="text-body">{issueCell(selection)}</p>
+        </ListCard>
+      ),
+    };
+    return { columns, cards };
+  }, [t, tReview, lookup, issueText]);
+
+  return (
+    <section aria-labelledby={titleId} className="flex flex-col gap-3">
+      <div>
+        <h2 id={titleId} className="text-h3 font-bold text-text">
+          {t("title", { path: label })}
+        </h2>
+        <p className="text-body text-text-muted">
+          {t("summary", {
+            total: path.selections.length,
+            valid: tally("VALID"),
+            invalid: tally("INVALID"),
+            unconfirmed: tally("UNCONFIRMED"),
+          })}
+        </p>
+        {option?.chooseSubjects && counts.length > 0 && (
+          <p className="flex items-start gap-2 text-body text-text-muted">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {t("rule", { choose: option.chooseSubjects, high: Math.max(...counts), low: Math.min(...counts) })}
+          </p>
+        )}
+      </div>
+      <Card padding="none" className="overflow-hidden">
+        <Table
+          aria-label={t("tableLabel", { path: label })}
+          columns={columns}
+          data={path.selections}
+          getRowId={(selection) => `${selection.subjectCodes.join("+")}:${selection.counts.join("/")}`}
+          empty={<EmptyState headingLevel={3} title={t("empty")} />}
+          cards={cards}
+        />
+      </Card>
+    </section>
+  );
+}
+
+/** Dòng phụ của một đường: số câu, thời gian; đường Khoa học nêu số bộ môn và số trường hợp; tổ hợp nêu số câu từng môn. */
 function usePathSub() {
   const t = useTranslations("exams.review");
   return useCallback(
     (path: PathCheck) => {
+      const base = t("paths.sub", {
+        questions: path.totalQuestions,
+        minutes: path.totalMinutes,
+      });
+      if (path.selections.length > 0) {
+        const picks = new Set(path.selections.map((selection) => selection.subjectCodes.join())).size;
+        return `${base} · ${t("paths.subSelections", { picks, cases: path.selections.length })}`;
+      }
       const optionIds = new Set(path.choices.map((choice) => choice.optionId));
       const perSection = new Map<string, number>();
       for (const block of path.blocks) {
@@ -301,10 +480,6 @@ function usePathSub() {
         }
       }
       const split = perSection.size > 1 ? [...perSection.values()].join("–") : "";
-      const base = t("paths.sub", {
-        questions: path.totalQuestions,
-        minutes: path.totalMinutes,
-      });
       return split ? `${base} · ${split}` : base;
     },
     [t],
@@ -313,21 +488,20 @@ function usePathSub() {
 
 interface PathActionsValue {
   examId: string;
-  running: boolean;
-  onRun: (extended?: boolean) => void;
+  deep: DeepCheck;
   onPreview: (pathId: string | null) => void;
   onShowOverlap: (pathId: string) => void;
 }
 
 const PathActionsContext = createContext<PathActionsValue | null>(null);
 
-/** Thao tác theo kết quả của một đường: xem trước (hợp lệ), đến dòng ma trận (không hợp lệ), kiểm tra lại (chưa xác nhận). */
+/** Thao tác theo kết quả của một đường: xem trước (hợp lệ), đến dòng ma trận (không hợp lệ), kiểm tra kỹ (chưa xác nhận). */
 function PathActions({ path }: { path: PathCheck }) {
   const t = useTranslations("exams.review");
   const pathLabel = usePathLabel();
   const context = useContext(PathActionsContext);
   if (!context) return null;
-  const { examId, running, onRun, onPreview, onShowOverlap } = context;
+  const { examId, deep, onPreview, onShowOverlap } = context;
   const label = pathLabel(path);
   if (path.result === "VALID") {
     return (
@@ -352,8 +526,14 @@ function PathActions({ path }: { path: PathCheck }) {
   }
   return (
     <div className="flex flex-col items-start gap-1">
-      <Button variant="secondary" size="sm" onClick={() => onRun(true)} loading={running}>
-        {t("paths.rerunExtended")}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={deep.start}
+        loading={deep.phase === "running"}
+        aria-label={t("paths.deepAria", { path: label })}
+      >
+        {t("deep.start")}
       </Button>
       <Button variant="link" size="sm" onClick={() => onShowOverlap(path.pathId)}>
         {t("paths.viewOverlap")}
@@ -365,15 +545,13 @@ function PathActions({ path }: { path: PathCheck }) {
 function PathsSection({
   exam,
   result,
-  running,
-  onRun,
+  deep,
   onPreview,
   onShowOverlap,
 }: {
   exam: ExamDetail;
   result: ExamCheckResult;
-  running: boolean;
-  onRun: (extended?: boolean) => void;
+  deep: DeepCheck;
   onPreview: (pathId: string | null) => void;
   onShowOverlap: (pathId: string) => void;
 }) {
@@ -388,8 +566,8 @@ function PathsSection({
   // Thao tác đọc trạng thái chạy và các hàm gọi lại qua context, để cột của bảng giữ nguyên giữa các lần render:
   // bảng dựng lại ô mỗi khi định nghĩa cột đổi, nút đang được focus sẽ mất focus.
   const actionsValue = useMemo(
-    () => ({ examId: exam.id, running, onRun, onPreview, onShowOverlap }),
-    [exam.id, running, onRun, onPreview, onShowOverlap],
+    () => ({ examId: exam.id, deep, onPreview, onShowOverlap }),
+    [exam.id, deep, onPreview, onShowOverlap],
   );
 
   const { columns, cards } = useMemo(() => {

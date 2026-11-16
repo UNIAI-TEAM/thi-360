@@ -72,12 +72,11 @@ export async function getExamCheck({ examId }: { examId: string }): Promise<Exam
 }
 
 /** Chạy kiểm tra trên nguồn câu hỏi hiện tại; cập nhật trạng thái kiểm tra của bài thi. */
-export async function runExamCheck({ examId, extendedTimeLimit = false }: RunExamCheckRequest): Promise<ExamCheckResult> {
+export async function runExamCheck({ examId }: RunExamCheckRequest): Promise<ExamCheckResult> {
   return mockRequest(
     () => {
       const exam = examStore.require(examId);
-      const limit = extendedTimeLimit ? EXTENDED_CHECK_TIME_LIMIT_SECONDS : CHECK_TIME_LIMIT_SECONDS;
-      const result = computeCheck(exam, limit, nowIso());
+      const result = computeCheck(exam, CHECK_TIME_LIMIT_SECONDS, nowIso());
       reviewStore.setCheck(result);
       examStore.update(examId, (current) => ({
         ...current,

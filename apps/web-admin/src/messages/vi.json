@@ -3638,6 +3638,24 @@
         "running": "Đang kiểm tra cấu hình",
         "done": "Đã kiểm tra: {valid, number} đường hợp lệ, {invalid, number} không hợp lệ, {unconfirmed, number} chưa xác nhận được."
       },
+      "deep": {
+        "start": "Kiểm tra kỹ",
+        "hint": "Có kết quả chưa xác nhận được trong giới hạn xử lý. Kiểm tra kỹ cho bộ giải tới {seconds, number} giây và chạy nền.",
+        "live": {
+          "running": "Đang kiểm tra kỹ. Kết quả mới hiện khi xong.",
+          "failed": "Kiểm tra kỹ không hoàn tất."
+        },
+        "running": {
+          "title": "Đang kiểm tra kỹ",
+          "description": "Chạy nền tới {seconds, number} giây. Kết quả bên dưới là của lần kiểm tra trước và sẽ được thay khi xong. Rời tab này thì dừng cập nhật, quay lại sẽ cập nhật tiếp."
+        },
+        "failed": {
+          "title": "Kiểm tra kỹ không hoàn tất",
+          "abandoned": "Lần chạy nền bị ngắt trước khi có kết quả. Kết quả bên dưới vẫn là của lần kiểm tra trước.",
+          "generic": "Không lấy được kết quả của lần kiểm tra kỹ. Kết quả bên dưới vẫn là của lần kiểm tra trước.",
+          "retry": "Thử lại"
+        }
+      },
       "emptyTitle": "Chưa kiểm tra cấu hình",
       "emptyDescription": "Kiểm tra mọi đường lựa chọn trước khi công bố. Kết quả cho biết đường nào sinh được đề và chỗ cần sửa.",
       "errorTitle": "Không tải được kết quả kiểm tra",
@@ -3674,12 +3692,13 @@
         "tableLabel": "Kết quả kiểm tra của {count, number} đường lựa chọn",
         "empty": "Bài thi chưa có đường lựa chọn nào",
         "sub": "{questions, number} câu · {minutes, number} phút",
+        "subSelections": "{picks, number} bộ môn · {cases, number} trường hợp",
         "partsValue": "Phần {list}",
         "previewAria": "Sinh đề xem trước cho {path}",
         "previewTooltip": "Sinh đề xem trước",
         "fix": "Đến dòng ma trận",
         "fixAria": "Đến dòng ma trận cần sửa của {path}",
-        "rerunExtended": "Kiểm tra lại với thời gian dài hơn",
+        "deepAria": "Kiểm tra kỹ đường {path}",
         "viewOverlap": "Xem nguồn giao nhau",
         "columns": {
           "path": "Đường lựa chọn",
@@ -3695,6 +3714,18 @@
         "INVALID": "có lỗi xác định, như tổng số câu sai hoặc nguồn ít hơn chỉ tiêu.",
         "UNCONFIRMED": "chưa tìm được phương án trong giới hạn xử lý; không kết luận là ngân hàng thiếu câu.",
         "note": "Hai kết quả sau không được công bố cho phạm vi đang lỗi."
+      },
+      "selections": {
+        "title": "{path}: kết quả theo bộ môn học viên chọn",
+        "summary": "{total, number} trường hợp: {valid, number} hợp lệ, {invalid, number} không hợp lệ, {unconfirmed, number} chưa xác nhận được.",
+        "rule": "Học viên chọn {choose, number} môn. Hai môn cùng nhóm (tự nhiên hoặc xã hội) nhận {high, number} câu mỗi môn, môn còn lại nhận {low, number} câu. Cả {choose, number} môn cùng nhóm thì một môn nhận {low, number} câu: bộ môn đó có {choose, number} cách chia và đều được kiểm tra.",
+        "tableLabel": "Kết quả kiểm tra từng bộ môn của đường {path}",
+        "empty": "Đường này chưa có cách chọn môn nào",
+        "columns": {
+          "subjects": "Bộ môn và số câu mỗi môn",
+          "result": "Kết quả",
+          "issue": "Vấn đề"
+        }
       },
       "groups": {
         "title": "Các nhóm kiểm tra",
