@@ -217,8 +217,10 @@ public class ExamBlockRefProjector {
                 if (part == null) {
                     continue;
                 }
+                if (part.questionCount() != null) {
+                    questionCount += part.questionCount();
+                }
                 for (ExamSection s : part.sections()) {
-                    questionCount += blockQuestions(s.blocks());
                     hasEssay |= hasEssay(s.blocks(), s);
                     if ("ANH".equals(s.subjectCode())) {
                         hasEnglishOption = true;
@@ -235,13 +237,11 @@ public class ExamBlockRefProjector {
                         hasEnglishOption = true;
                     }
                     for (ExamSection s : o.sections()) {
-                        questionCount += blockQuestions(s.blocks());
                         hasEssay |= hasEssay(s.blocks(), s);
                         if ("ANH".equals(s.subjectCode())) {
                             hasEnglishOption = true;
                         }
                     }
-                    questionCount += blockQuestions(o.blocks());
                     hasEssay |= hasEssay(o.blocks(), null);
                 }
             }
@@ -249,15 +249,6 @@ public class ExamBlockRefProjector {
         return new ExamStructureSummary(questionCount, hasEssay, hasEnglishOption, combinationKeys.size());
     }
 
-    private static int blockQuestions(List<QuestionBlock> blocks) {
-        int count = 0;
-        for (QuestionBlock b : blocks) {
-            if (b != null && b.questionCount() != null) {
-                count += b.questionCount();
-            }
-        }
-        return count;
-    }
 
     private static boolean hasEssay(List<QuestionBlock> blocks, ExamSection section) {
         for (QuestionBlock b : blocks) {

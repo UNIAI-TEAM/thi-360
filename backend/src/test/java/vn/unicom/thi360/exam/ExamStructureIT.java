@@ -68,7 +68,8 @@ class ExamStructureIT extends AbstractIntegrationTest {
         request.put("expectedRevision", before.path("revision").asLong());
         mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionCount").value(150));
         JsonNode after = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
