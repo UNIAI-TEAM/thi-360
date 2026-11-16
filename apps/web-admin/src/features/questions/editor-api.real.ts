@@ -99,10 +99,10 @@ export async function getQuestionUsage(id: string): Promise<QuestionUsage> {
 
 export async function listQuestionVersions(id: string): Promise<QuestionVersionList> {
   const client = createBrowserApiClient();
-  const [versions, question, usage, reference] = await Promise.all([
+  const question = await getQuestion(id);
+  const [versions, usage, reference] = await Promise.all([
     client.GET("/api/v1/admin/questions/{id}/versions", { params: { path: { id } } }),
-    getQuestion(id),
-    getQuestionUsage(id),
+    loadQuestionUsage(id, { subjectCode: question.subjectCode, type: question.type }),
     getContentReference(),
   ]);
   if (!versions.response.ok || !versions.data) throw toContentApiError(versions.response.status, versions.error);
