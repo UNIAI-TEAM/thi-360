@@ -58,6 +58,18 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
     expect(messages(singleChoice([0, 2]))).toContain("singleCorrectRequired");
   });
 
+  it("ô HTML không còn chữ nào là trống như backend isBlankHtml, ô chỉ có ảnh thì không", () => {
+    const base = singleChoice([0]);
+    for (const empty of ["<p></p><p></p>", "<p> </p>", "<p><br></p>"]) {
+      expect(messages({ ...base, content: empty })).toEqual(["contentRequired"]);
+      expect(
+        messages({ ...base, body: { ...base.body, options: base.body.options.map((o, i) => (i === 1 ? { ...o, content: empty } : o)) } }),
+      ).toEqual(["optionRequired"]);
+    }
+    const imageOnly = '<p><img src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f"></p>';
+    expect(messages({ ...base, content: imageOnly })).toEqual([]);
+  });
+
   it("nhiều đáp án: cần ít nhất một phương án đúng và ít nhất 2 phương án", () => {
     const values = { ...singleChoice([0, 1]), type: "MULTIPLE_CHOICE" as const };
     expect(messages(values)).toEqual([]);

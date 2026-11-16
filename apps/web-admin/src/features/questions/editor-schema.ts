@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MULTIPLE_CHOICE_RULES, QUESTION_TYPES, TRUE_FALSE_METHODS } from "@/features/content/types";
+import { questionHtmlText } from "@/components/rich-text/sanitize";
 import {
   countBlankMarkers,
   parsePoints,
@@ -93,6 +94,9 @@ export interface EditorIssue {
 
 const blank = (value: string) => value.trim().length === 0;
 
+/** Ô HTML trống: không còn chữ nào và không có ảnh — mirror `isBlankHtml` của backend (`<p></p>` cũng là trống). */
+const blankHtml = (value: string) => questionHtmlText(value).trim() === "" && !/<img\b/i.test(value);
+
 function validatePoints(value: string, path: (string | number)[], issues: EditorIssue[]) {
   const points = parsePoints(value);
   if (!Number.isFinite(points) || points <= 0) issues.push({ path, message: "pointsInvalid" });
@@ -116,7 +120,7 @@ export function validateBody(
     case "SINGLE_CHOICE":
     case "MULTIPLE_CHOICE": {
       body.options.forEach((option, index) => {
-        if (blank(option.content)) issues.push({ path: [...prefix, "options", index, "content"], message: "optionRequired" });
+        if (blankHtml(option.content)) issues.push({ path: [...prefix, "options", index, "content"], message: "optionRequired" });
         else if (option.content.length > OPTION_MAX) {
           issues.push({ path: [...prefix, "options", index, "content"], message: "optionMax" });
         }
@@ -132,7 +136,7 @@ export function validateBody(
     }
     case "TRUE_FALSE": {
       body.statements.forEach((statement, index) => {
-        if (blank(statement.content)) {
+        if (blankHtml(statement.content)) {
           issues.push({ path: [...prefix, "statements", index, "content"], message: "statementRequired" });
         } else if (statement.content.length > OPTION_MAX) {
           issues.push({ path: [...prefix, "statements", index, "content"], message: "optionMax" });
@@ -199,7 +203,7 @@ export function validateBody(
       const used = new Set<string>();
       body.left.forEach((item, index) => {
         const at = [...prefix, "left", index];
-        if (blank(item.content)) issues.push({ path: [...at, "content"], message: "matchLeftRequired" });
+        if (blankHtml(item.content)) issues.push({ path: [...at, "content"], message: "matchLeftRequired" });
         else if (item.content.length > OPTION_MAX) issues.push({ path: [...at, "content"], message: "optionMax" });
         if (!item.rightId || !rightIds.has(item.rightId)) {
           issues.push({ path: [...at, "rightId"], message: "matchAnswerRequired" });
@@ -212,7 +216,7 @@ export function validateBody(
       });
       body.right.forEach((item, index) => {
         const at = [...prefix, "right", index, "content"];
-        if (blank(item.content)) issues.push({ path: at, message: "matchRightRequired" });
+        if (blankHtml(item.content)) issues.push({ path: at, message: "matchRightRequired" });
         else if (item.content.length > OPTION_MAX) issues.push({ path: at, message: "optionMax" });
       });
       if (body.left.length < 1) issues.push({ path: [...prefix, "left"], message: "matchLeftMin" });
@@ -228,10 +232,10 @@ export function validateBody(
     case "QUESTION_SET":
       return;
     case "ESSAY": {
-      if (blank(body.gradingGuide)) issues.push({ path: [...prefix, "gradingGuide"], message: "gradingGuideRequired" });
+      if (blankHtml(body.gradingGuide)) issues.push({ path: [...prefix, "gradingGuide"], message: "gradingGuideRequired" });
       body.rubric.forEach((criterion, index) => {
         const at = [...prefix, "rubric", index];
-        if (blank(criterion.description)) issues.push({ path: [...at, "description"], message: "criterionRequired" });
+        if (blankHtml(criterion.description)) issues.push({ path: [...at, "description"], message: "criterionRequired" });
         else if (criterion.description.length > CRITERION_MAX) {
           issues.push({ path: [...at, "description"], message: "criterionMax" });
         }
@@ -293,7 +297,7 @@ export function validateQuestionEditor(values: QuestionEditorValues): EditorIssu
   if (!isSet && values.type !== "CLOZE") validatePoints(values.points, ["points"], issues);
   if (values.knowledge.length === 0) issues.push({ path: ["knowledge"], message: "knowledgeRequired" });
 
-  if (blank(values.content)) issues.push({ path: ["content"], message: isSet ? "passageRequired" : "contentRequired" });
+  if (blankHtml(values.content)) issues.push({ path: ["content"], message: isSet ? "passageRequired" : "contentRequired" });
   else if (values.content.length > CONTENT_MAX) issues.push({ path: ["content"], message: "contentMax" });
 
   validateBody(values.type, values.body, values.content, ["body"], issues, values.points);
@@ -301,7 +305,7 @@ export function validateQuestionEditor(values: QuestionEditorValues): EditorIssu
   if (isSet) {
     values.children.forEach((child, index) => {
       const prefix = ["children", index];
-      if (blank(child.content)) issues.push({ path: [...prefix, "content"], message: "childContentRequired" });
+      if (blankHtml(child.content)) issues.push({ path: [...prefix, "content"], message: "childContentRequired" });
       else if (child.content.length > CONTENT_MAX) issues.push({ path: [...prefix, "content"], message: "contentMax" });
       validateBody(child.type, child.body, child.content, [...prefix, "body"], issues, child.points);
       validatePoints(child.points, [...prefix, "points"], issues);
