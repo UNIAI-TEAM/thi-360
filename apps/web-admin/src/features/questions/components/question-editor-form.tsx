@@ -12,7 +12,7 @@ import { ContentMockBanner } from "@/features/content/components/content-mock-ba
 import type { ContentReference, QuestionType } from "@/features/content/types";
 import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { applyServerFieldErrors } from "../editor-field-errors";
+import { applyServerFieldErrors, serverErrorKey } from "../editor-field-errors";
 import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
 import { useUiLocale } from "../use-ui-locale";
@@ -112,10 +112,15 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
       return;
     }
     const fieldErrors = getErrorStatus(error) === 422 ? apiFieldErrors(error) : [];
-    if (applyServerFieldErrors(fieldErrors, methods.setError) > 0) {
-      setSubmitError(t("saveErrors.fieldErrors"));
+    const { applied, unmatched } = applyServerFieldErrors(fieldErrors, methods.setError, (path) =>
+      methods.getValues(path as never),
+    );
+    if (applied > 0 || unmatched.length > 0) {
+      // Lỗi không có ô trên biểu mẫu (cặp ghép, kiến thức...) vẫn phải đọc được: ghi vào dải thông báo theo mã.
+      const unmatchedText = [...new Set(unmatched.map((item) => t(`errors.${serverErrorKey(item.code)}`)))];
+      setSubmitError([...(applied > 0 ? [t("saveErrors.fieldErrors")] : []), ...unmatchedText].join(" "));
       setLiveMessage(t("invalidSubmit"));
-      focusFirstInvalid();
+      if (applied > 0) focusFirstInvalid();
       return;
     }
     const code = apiErrorCode(error);
