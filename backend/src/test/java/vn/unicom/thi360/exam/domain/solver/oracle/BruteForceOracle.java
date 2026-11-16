@@ -301,14 +301,34 @@ public final class BruteForceOracle {
 
     // ------------------------------------------------------------ giải một đường con
 
-    /** Bài toán con của một môn: các nhóm đã gộp từ mọi mục cùng mã môn và chỉ tiêu từng mục. */
+    /** Bài toán con của một môn: các mục cùng mã môn, mỗi mục giữ chỉ tiêu và nhóm của riêng nó. */
     private static final class SubjectProblem {
+        final String subjectCode;
         final List<GroupQuota> groups = new ArrayList<>();
-        final List<SectionOnPath> sections = new ArrayList<>();
-        final List<ResolvedQuota> quotas = new ArrayList<>();
         /** Số đơn vị mỗi nhóm phải chiếm, song song {@code groups}. */
         final List<Integer> required = new ArrayList<>();
-        int totalUnits;
+        final List<SectionScope> scopes = new ArrayList<>();
+
+        SubjectProblem(String subjectCode) {
+            this.subjectCode = subjectCode;
+        }
+    }
+
+    /**
+     * Một {@link SectionOnPath} trong bài toán con: chỉ tiêu cấp môn của mục quy trên số câu của
+     * chính mục và chỉ tính trên các nhóm của mục đó (spec 5.4: gộp mọi ExamSection cùng môn để
+     * giải chung, không gộp phạm vi chỉ tiêu — mỗi mục khai chỉ tiêu riêng của nó).
+     */
+    private static final class SectionScope {
+        final SectionOnPath section;
+        final ResolvedQuota quota;
+        /** Chỉ số trong {@link SubjectProblem#groups} của các nhóm thuộc mục. */
+        final List<Integer> groupIdx = new ArrayList<>();
+
+        SectionScope(SectionOnPath section, ResolvedQuota quota) {
+            this.section = section;
+            this.quota = quota;
+        }
     }
 
     private final class Subpath {
@@ -317,31 +337,47 @@ public final class BruteForceOracle {
         private final Map<String, SubjectProblem> problems = new LinkedHashMap<>();
         private final List<GroupQuota> allGroups = new ArrayList<>();
         private final Map<GroupQuota, SubjectProblem> groupSubject = new HashMap<>();
+        private final Map<GroupQuota, SectionScope> groupScope = new HashMap<>();
         private final Map<GroupQuota, List<Assignment>> pickSets = new HashMap<>();
+        private final boolean feasible;
         private long nodes;
 
         Subpath(List<SectionOnPath> sections, CandidateSource source) {
             this.source = source;
+            boolean feasible = true;
             for (SectionOnPath section : sections) {
                 SubjectProblem problem = problems.computeIfAbsent(section.subjectCode(),
-                        k -> new SubjectProblem());
-                problem.sections.add(section);
-                problem.quotas.add(OracleSupport.resolveSubjectQuota(section.subjectQuota(),
-                        section.questionCount()));
-                problem.totalUnits += section.questionCount();
+                        SubjectProblem::new);
+                // chỉ tiêu cấp môn quy trên số câu của chính mục (PERCENT → COUNT)
+                SectionScope scope = new SectionScope(section, OracleSupport
+                        .resolveSubjectQuota(section.subjectQuota(), section.questionCount()));
+                problem.scopes.add(scope);
                 int[] req = OracleSupport.groupUnitRequirements(section);
+                int sum = 0;
                 for (int i = 0; i < section.groups().size(); i++) {
                     GroupQuota group = section.groups().get(i);
+                    sum += req[i];
+                    if (req[i] < 0) {
+                        feasible = false; // phần còn lại âm: tổng nhóm cố định vượt số câu mục
+                    }
+                    scope.groupIdx.add(problem.groups.size());
                     problem.groups.add(group);
                     problem.required.add(req[i]);
                     allGroups.add(group);
                     groupSubject.put(group, problem);
+                    groupScope.put(group, scope);
+                }
+                if (sum != section.questionCount()) {
+                    // nhóm của mục phải lấp đúng số câu của mục: nhóm "lấy phần còn lại" tiêu
+                    // thụ phần chênh; thiếu nó mà còn dư thì mục không thể đủ câu (R2-21)
+                    feasible = false;
                 }
             }
+            this.feasible = feasible;
         }
 
         boolean search() {
-            if (!uniqueGroupIds()) {
+            if (!feasible || !uniqueGroupIds()) {
                 return false;
             }
             for (GroupQuota group : allGroups) {
@@ -351,9 +387,11 @@ public final class BruteForceOracle {
                 }
                 pickSets.put(group, sets);
             }
-            Map<String, Map<String, Integer>> counters = new HashMap<>();
-            for (String subject : problems.keySet()) {
-                counters.put(subject, new HashMap<>());
+            Map<SectionScope, Map<String, Integer>> counters = new LinkedHashMap<>();
+            for (SubjectProblem problem : problems.values()) {
+                for (SectionScope scope : problem.scopes) {
+                    counters.put(scope, new HashMap<>());
+                }
             }
             return dfs(0, new HashSet<>(), counters);
         }
@@ -372,16 +410,20 @@ public final class BruteForceOracle {
 
         private List<Assignment> enumeratePickSets(GroupQuota group) {
             SubjectProblem problem = groupSubject.get(group);
+            SectionScope scope = groupScope.get(group);
             int req = problem.required.get(problem.groups.indexOf(group));
             ResolvedQuota groupQuota = OracleSupport.resolveGroupQuota(group, req);
             List<PathCandidate> eligible = new ArrayList<>();
             for (PathCandidate c : source.candidatesFor(group)) {
-                if (!OracleSupport.eligibleForGroup(group, c)) {
+                // ứng viên lặp định danh trong chính nó không bao giờ vào đề (spec 5.4, R2-18)
+                if (OracleSupport.hasInternalIdentityRepeat(c)
+                        || !OracleSupport.eligibleForGroup(group, c)) {
                     continue;
                 }
                 boolean admissible = true;
                 for (CountingUnit u : c.units()) {
-                    if (!OracleSupport.admissibleInSubject(problem.quotas, u)
+                    // chỉ tiêu cấp môn chặt theo mục sở hữu của nhóm, không theo môn gộp
+                    if (!OracleSupport.admissibleInSubject(List.of(scope.quota), u)
                             || !OracleSupport.admissibleInSubject(List.of(groupQuota), u)) {
                         admissible = false;
                         break;
@@ -516,24 +558,22 @@ public final class BruteForceOracle {
         // ---- duyệt chung trên mọi nhóm của mọi môn
 
         private boolean dfs(int groupIdx, Set<String> usedIds,
-                Map<String, Map<String, Integer>> counters) {
+                Map<SectionScope, Map<String, Integer>> counters) {
             if (++nodes > MAX_NODES) {
                 throw new IllegalStateException("oracle search over budget (" + MAX_NODES + ")");
             }
             if (groupIdx == allGroups.size()) {
-                for (Map.Entry<String, SubjectProblem> e : problems.entrySet()) {
-                    Map<String, Integer> counts = counters.get(e.getKey());
-                    for (ResolvedQuota q : e.getValue().quotas) {
-                        if (!countsMatch(q, counts)) {
-                            return false;
-                        }
+                // chỉ tiêu của từng mục phải khớp đúng trên các nhóm của chính mục đó
+                for (Map.Entry<SectionScope, Map<String, Integer>> e : counters.entrySet()) {
+                    if (!countsMatch(e.getKey().quota, e.getValue())) {
+                        return false;
                     }
                 }
                 return true;
             }
             GroupQuota group = allGroups.get(groupIdx);
-            SubjectProblem problem = groupSubject.get(group);
-            Map<String, Integer> counts = counters.get(problem.sections.get(0).subjectCode());
+            SectionScope scope = groupScope.get(group);
+            Map<String, Integer> counts = counters.get(scope);
             for (Assignment a : pickSets.get(group)) {
                 Set<String> ids = new HashSet<>();
                 for (PathCandidate c : a.candidates()) {
@@ -544,7 +584,7 @@ public final class BruteForceOracle {
                 }
                 Map<String, Integer> delta = contribution(a, group);
                 delta.forEach((k, v) -> counts.merge(k, v, Integer::sum));
-                if (!exceeds(problem.quotas, counts)) {
+                if (!exceeds(List.of(scope.quota), counts)) {
                     usedIds.addAll(ids);
                     if (dfs(groupIdx + 1, usedIds, counters)) {
                         return true;

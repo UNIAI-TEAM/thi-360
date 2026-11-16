@@ -3,12 +3,15 @@ package vn.unicom.thi360.exam.domain.solver;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import vn.unicom.thi360.exam.domain.solver.oracle.SteppingClock;
+import vn.unicom.thi360.exam.domain.solver.oracle.BruteForceOracle;
 
 /**
  * Các ca bắt buộc của {@link PaperSolver} theo spec mục 10 (danh sách bộ giải) và các hồi quy
@@ -34,19 +37,36 @@ class PaperSolverSpecCasesTest {
     }
 
     @Test
-    @DisplayName("tổng năng lực đủ nhưng ô lớp × độ khó của nhóm không khớp → INVALID")
+    @DisplayName("năng lực và ô lớp × độ khó riêng lẻ đủ nhưng không xếp được cùng nhau → INVALID")
     void competencyTotalsButCellsMismatch() {
-        // nhóm cần 2 câu với ô (G10,NB)=1 và (G11,TH)=1; nguồn toàn (G10,TH): tổng đủ, ô không
+        // nhóm cần 2 câu: ô (G10,NB)=1 và (G11,TH)=1, năng lực P=1.
+        // Nguồn đủ từng chỉ tiêu riêng (có ô (G10,NB), có ô (G11,TH), có một câu P) nhưng câu
+        // duy nhất mang P lại là ô (G10,TH) → không có phép xếp thỏa đồng thời.
         GroupQuota g = new GroupQuota("g1", GroupQuota.GroupKind.SINGLE, 2, null, null, null,
                 null, new MatrixQuota.Combined(List.of(
                         new CellQuota("G10", "NB", 1), new CellQuota("G11", "TH", 1))),
-                List.of(), List.of(), null, null);
+                List.of(new CompetencyQuota("P", 1)), List.of(), null, null);
         SectionOnPath section = section("S", 2, List.of(g));
-        List<PathCandidate> pool = List.of(
-                unit("q1", "G10", "TH"), unit("q2", "G10", "TH"), unit("q3", "G10", "TH"));
-        PathResult result = solver.solvePath(path(List.of(section)), g2 -> pool,
-                SolveMode.check());
+        PathCandidate q1 = unit("q1", "G10", "NB"); // ô đúng, không P
+        PathCandidate q2 = unit("q2", "G11", "TH"); // ô đúng, không P
+        PathCandidate q3 = new PathCandidate("q3", 1, null, null, null,
+                List.of(new CountingUnit(null, "SINGLE_CHOICE", "G10", "TH", List.of(),
+                        List.of("P"), BigDecimal.ONE))); // có P nhưng ô lệch
+        PathResult result = solver.solvePath(path(List.of(section)),
+                g2 -> List.of(q1, q2, q3), SolveMode.check());
         assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
+
+        // ca đối chứng khả thi: thêm một câu (G11,TH) có P → lấy q1 + q4
+        PathCandidate q4 = new PathCandidate("q4", 1, null, null, null,
+                List.of(new CountingUnit(null, "SINGLE_CHOICE", "G11", "TH", List.of(),
+                        List.of("P"), BigDecimal.ONE)));
+        PathResult feasible = solver.solvePath(path(List.of(section)),
+                g2 -> List.of(q1, q2, q3, q4), SolveMode.check());
+        assertThat(feasible.status()).isEqualTo(SolveStatus.VALID);
+        for (GroupWitness gw : feasible.witness().get(0).groups()) {
+            assertThat(gw.picks()).containsExactlyInAnyOrder(
+                    new QuestionPick("q1", 1), new QuestionPick("q4", 1));
+        }
     }
 
     @Test
@@ -106,40 +126,74 @@ class PaperSolverSpecCasesTest {
     }
 
     @Test
-    @DisplayName("hết hạn trong prep (đồng hồ vượt hạn ngay) → UNCONFIRMED, R1-4")
+    @DisplayName("hết hạn trong prep: nguồn đầu tiên tiêu hết hạn, nhóm sau không được hỏi nguồn (R1-4)")
     void deadlineDuringPrep() {
-        GroupQuota g = GroupQuota.single("g1", 2);
-        SectionOnPath section = section("S", 2, List.of(g));
-        List<PathCandidate> pool = List.of(single("q1"), single("q2"), single("q3"));
-        // đồng hồ nhảy 1s mỗi lần đọc; hạn 1 ms → hết hạn ngay khi bắt đầu
-        PaperSolver expired = new PaperSolver(
-                new SolverLimits(200, 20_000, Duration.ofMillis(1), 8),
-                new SteppingClock(1_000));
-        PathResult result = expired.solvePath(path(List.of(section)), x -> pool,
+        // hạn giờ chỉ trôi khi nạp nguồn nhóm đầu → kiểm tra hạn bên trong chuẩn bị mới bắt được
+        GroupQuota g1 = GroupQuota.single("g1", 2);
+        GroupQuota g2 = GroupQuota.single("g2", 2);
+        SectionOnPath section = new SectionOnPath("S", "sec", 4, SubjectQuota.NONE,
+                List.of(g1, g2));
+        MutableClock clock = new MutableClock();
+        List<String> fetched = new ArrayList<>();
+        CandidateSource source = g -> {
+            fetched.add(g.groupId());
+            clock.advance(Duration.ofSeconds(60));
+            List<PathCandidate> pool = new ArrayList<>();
+            for (int i = 0; i < 2_048; i++) {
+                pool.add(single(g.groupId() + "-q" + i));
+            }
+            return pool;
+        };
+        PaperSolver limited = new PaperSolver(
+                new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), clock);
+        PathResult result = limited.solvePath(path(List.of(section)), source,
                 SolveMode.check());
+        // chuẩn bị đã vào (một nhóm được hỏi nguồn) rồi hết hạn trước nhóm tiếp theo
+        assertThat(fetched).hasSize(1);
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
+        assertThat(result.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
     }
 
     @Test
-    @DisplayName("hết hạn trong khi tìm kiếm → UNCONFIRMED, R1-4")
+    @DisplayName("hết hạn trong quay lui (chùm + nhiều phân hoạch): nguồn nạp xong mới vượt hạn (R1-4)")
     void deadlineDuringSearch() {
-        // ca cần duyệt tổ hợp: 4 nhóm cùng tranh nguồn, một nhóm không xếp được
-        List<GroupQuota> groups = new ArrayList<>();
-        for (int i = 0; i < 4; i++) {
-            groups.add(GroupQuota.single("g" + i, 2));
-        }
-        SectionOnPath section = section("S", 8, groups);
-        List<PathCandidate> pool = new ArrayList<>();
-        for (int i = 0; i < 9; i++) {
-            pool.add(single("q" + i));
-        }
-        // đồng hồ nhảy chậm để qua prep, hết hạn giữa duyệt
+        // môn khai hai phân hoạch cấp môn (lớp + độ khó) và có nhóm chùm → bắt buộc quay lui;
+        // đồng hồ chỉ vượt hạn sau khi nguồn của cả hai nhóm đã nạp
+        SubjectQuota quota = new SubjectQuota(null, new MatrixQuota.Separate(
+                List.of(new DimensionQuota("G10", 3), new DimensionQuota("G11", 3)),
+                List.of(new DimensionQuota("NB", 3), new DimensionQuota("TH", 3))));
+        GroupQuota setGroup = GroupQuota.set("gs", 1, 2, null);
+        GroupQuota rest = GroupQuota.remainder("gr");
+        SectionOnPath section = new SectionOnPath("S", "sec", 6, quota,
+                List.of(setGroup, rest));
+        MutableClock clock = new MutableClock();
+        List<String> fetched = new ArrayList<>();
+        CandidateSource source = g -> {
+            fetched.add(g.groupId());
+            if (fetched.size() == 2) {
+                clock.advance(Duration.ofSeconds(60));
+            }
+            if (g == setGroup) {
+                return List.of(
+                        setPair("s1", "G10", "NB"), setPair("s2", "G11", "TH"),
+                        setPair("s3", "G11", "NB"), setPair("s4", "G10", "TH"));
+            }
+            List<PathCandidate> pool = new ArrayList<>();
+            for (int i = 0; i < 10; i++) {
+                pool.add(PathCandidate.standalone("q" + i, 1, "SINGLE_CHOICE",
+                        i % 2 == 0 ? "G10" : "G11", i % 3 == 0 ? "TH" : "NB",
+                        BigDecimal.ONE));
+            }
+            return pool;
+        };
         PaperSolver limited = new PaperSolver(
-                new SolverLimits(200, 20_000, Duration.ofMillis(30), 8),
-                new SteppingClock(1));
-        PathResult result = limited.solvePath(path(List.of(section)), x -> pool,
+                new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), clock);
+        PathResult result = limited.solvePath(path(List.of(section)), source,
                 SolveMode.check());
+        // cả hai nhóm đã nạp nguồn: hết hạn sau chuẩn bị, trong pha tìm kiếm
+        assertThat(fetched).containsExactlyInAnyOrder("gs", "gr");
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
+        assertThat(result.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
     }
 
     @Test
@@ -192,29 +246,37 @@ class PaperSolverSpecCasesTest {
     // ------------------------------------------------------------ hồi quy R1-x
 
     @Test
-    @DisplayName("R1-1: chỉ được dùng ứng viên của đúng nhóm (câu cầu nối không sang nhóm khác)")
+    @DisplayName("R1-1: cầu nối U/q không dùng được không được gộp định danh hai nhóm")
     void unusableBridgeCandidate() {
-        // gA chỉ có q1; gB có q1,q2 → q1 phải về gA, gB lấy q2; solver lấy q2 cho gA là sai
-        GroupQuota ga = GroupQuota.single("gA", 1);
-        GroupQuota gb = GroupQuota.single("gB", 1);
+        // ứng viên x1 mang đơn vị (U, Q): gA chỉ nhận U nên x1 không dùng được (đơn vị Q sai
+        // dạng), gB chỉ nhận Q nên x1 cũng không dùng được; nguồn dùng được: u1 (gA), q1 (gB)
+        GroupQuota ga = new GroupQuota("gA", GroupQuota.GroupKind.SINGLE, 1, "U", null, null,
+                null, null, List.of(), List.of(), null, null);
+        GroupQuota gb = new GroupQuota("gB", GroupQuota.GroupKind.SINGLE, 1, "Q", null, null,
+                null, null, List.of(), List.of(), null, null);
         SectionOnPath section = section("S", 2, List.of(ga, gb));
-        PathCandidate q1 = single("q1");
-        PathCandidate q2 = single("q2");
+        PathCandidate bridge = new PathCandidate("x1", 1, null, null, null, List.of(
+                new CountingUnit(null, "U", "G10", "NB", List.of(), List.of(),
+                        BigDecimal.ONE),
+                new CountingUnit("cx", "Q", "G10", "NB", List.of(), List.of(),
+                        BigDecimal.ONE)));
+        PathCandidate u1 = PathCandidate.standalone("u1", 1, "U", "G10", "NB", BigDecimal.ONE);
+        PathCandidate q1 = PathCandidate.standalone("q1", 1, "Q", "G10", "NB", BigDecimal.ONE);
         PathResult result = solver.solvePath(path(List.of(section)),
-                g -> g == ga ? List.of(q1) : List.of(q1, q2), SolveMode.check());
+                g -> g == ga ? List.of(bridge, u1) : List.of(bridge, q1), SolveMode.check());
         assertThat(result.status()).isEqualTo(SolveStatus.VALID);
-        // gA chỉ được chứa q1
-        for (SubjectWitness sw : result.witness()) {
-            for (GroupWitness gw : sw.groups()) {
-                if (gw.groupId().equals("gA")) {
-                    assertThat(gw.picks()).containsExactly(new QuestionPick("q1", 1));
-                }
+        // đường VALID phải thành bằng hai ứng viên dùng được, không nhờ cầu nối
+        for (GroupWitness gw : result.witness().get(0).groups()) {
+            if (gw.groupId().equals("gA")) {
+                assertThat(gw.picks()).containsExactly(new QuestionPick("u1", 1));
+            } else {
+                assertThat(gw.picks()).containsExactly(new QuestionPick("q1", 1));
             }
         }
     }
 
     @Test
-    @DisplayName("R1-2: nhóm cần câu dương mà không có yêu cầu nào thỏa → không được trả witness rỗng VALID")
+    @DisplayName("R1-2: số câu dương không có yêu cầu nào phủ → không được trả witness rỗng VALID")
     void positiveCountNoRequirement() {
         GroupQuota g = GroupQuota.single("g1", 2);
         SectionOnPath section = section("S", 2, List.of(g));
@@ -222,18 +284,69 @@ class PaperSolverSpecCasesTest {
                 SolveMode.check());
         assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
         assertThat(result.witness()).isEmpty();
+
+        // nguồn đủ nhưng yêu cầu rỗng: mục 2 câu có nhóm khai 0 câu
+        SectionOnPath zero = new SectionOnPath("S", "sec-zero", 2, SubjectQuota.NONE,
+                List.of(GroupQuota.single("g0", 0)));
+        PathResult under = solver.solvePath(path(List.of(zero)),
+                x -> List.of(single("q1"), single("q2")), SolveMode.check());
+        assertThat(under.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(under.witness()).isEmpty();
     }
 
     @Test
-    @DisplayName("R1-3: hai nhóm trùng groupId trên một đường → INVALID DUPLICATE_GROUP_ID")
-    void duplicateGroupIdRejected() {
-        GroupQuota g1 = GroupQuota.single("dup", 1);
-        GroupQuota g2 = GroupQuota.single("dup", 1);
-        SectionOnPath section = section("S", 2, List.of(g1, g2));
-        PathResult result = solver.solvePath(path(List.of(section)),
-                g -> List.of(single("q1"), single("q2")), SolveMode.check());
-        assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
-        assertThat(result.reason()).isEqualTo(SolveReason.DUPLICATE_GROUP_ID);
+    @DisplayName("R2-5: tổng nhóm của mục phải bằng đúng số câu mục: thiếu nhóm lấp → INVALID")
+    void sectionTotalMustBeFilled() {
+        // mục 2 câu chỉ khai một nhóm cố định 1 câu, không nhóm "lấy phần còn lại"
+        SectionOnPath short_ = new SectionOnPath("S", "sec-short", 2, SubjectQuota.NONE,
+                List.of(GroupQuota.single("g1", 1)));
+        PathResult r = solver.solvePath(path(List.of(short_)),
+                x -> List.of(single("q1"), single("q2")), SolveMode.check());
+        assertThat(r.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(r.witness()).isEmpty();
+
+        // mục 1 câu không khai nhóm nào
+        SectionOnPath noGroups = new SectionOnPath("S", "sec-ng", 1, SubjectQuota.NONE,
+                List.of());
+        PathResult r2 = solver.solvePath(path(List.of(noGroups)),
+                x -> List.of(single("q1")), SolveMode.check());
+        assertThat(r2.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(r2.witness()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("R1-3: cùng groupId khác giá trị trên hai đường loại trừ nhau → mỗi đường VALID với nguồn riêng")
+    void sameGroupIdDifferentValueAcrossPaths() {
+        // hai phương án loại trừ nhau mang nhóm cùng id "g" nhưng khác chỉ tiêu dạng trả lời;
+        // nguồn phân theo giá trị nhóm → nhớ nguồn theo id trần sẽ lẫn hai đường
+        GroupQuota gSc = new GroupQuota("g", GroupQuota.GroupKind.SINGLE, 1, "SINGLE_CHOICE",
+                null, null, null, null, List.of(), List.of(), null, null);
+        GroupQuota gSa = new GroupQuota("g", GroupQuota.GroupKind.SINGLE, 1, "SHORT_ANSWER",
+                null, null, null, null, List.of(), List.of(), null, null);
+        SolvePart part = SolvePart.Choice.of("p1", List.of(
+                new SolveOption.Sections("opt-a", List.of(new SectionOnPath("MATH", "sa", 1,
+                        SubjectQuota.NONE, List.of(gSc)))),
+                new SolveOption.Sections("opt-b", List.of(new SectionOnPath("MATH", "sb", 1,
+                        SubjectQuota.NONE, List.of(gSa))))));
+        PathCandidate sc1 = PathCandidate.standalone("sc1", 1, "SINGLE_CHOICE", "G10", "NB",
+                BigDecimal.ONE);
+        PathCandidate sa1 = PathCandidate.standalone("sa1", 1, "SHORT_ANSWER", "G10", "NB",
+                BigDecimal.ONE);
+        CandidateSource source = g -> "SINGLE_CHOICE".equals(g.answerType())
+                ? List.of(sc1) : List.of(sa1);
+        SolveOutcome outcome = solver.solveAll(List.of(part), source, SolveMode.check());
+        assertThat(outcome.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(outcome.results()).hasSize(2);
+        for (PathResult r : outcome.results()) {
+            assertThat(r.status()).isEqualTo(SolveStatus.VALID);
+            GroupWitness gw = r.witness().get(0).groups().get(0);
+            String optionId = r.path().chosen().get(0).optionId();
+            if (optionId.equals("opt-a")) {
+                assertThat(gw.picks()).containsExactly(new QuestionPick("sc1", 1));
+            } else {
+                assertThat(gw.picks()).containsExactly(new QuestionPick("sa1", 1));
+            }
+        }
     }
 
     @Test
@@ -261,6 +374,101 @@ class PaperSolverSpecCasesTest {
         assertThat(b.witness()).isEqualTo(a.witness());
     }
 
+    @Test
+    @DisplayName("R2-6: solvePath trên đường SUBJECT_CHOICE chưa mở phải giải mọi cách chọn")
+    void unopenedSubjectChoiceSolves() {
+        // SUBJECT_CHOICE 3 môn chọn 2; CS2 chỉ đủ 1 câu → cách chọn có CS2 nhận 1 mới khả thi
+        List<SectionOnPath> sections = new ArrayList<>();
+        List<GroupQuota> groupOf = new ArrayList<>();
+        for (int s = 0; s < 3; s++) {
+            GroupQuota g = GroupQuota.remainder("g-cs" + s);
+            groupOf.add(g);
+            sections.add(new SectionOnPath("CS" + s, "cs" + s, null, SubjectQuota.NONE,
+                    List.of(g)));
+        }
+        SubjectChoice choice = new SubjectChoice("opt-sc", sections, 2, List.of(2, 1));
+        CandidateSource starving = g -> g == groupOf.get(2)
+                ? List.of(single("cs2-q1"))
+                : List.of(single(g.groupId() + "-q1"), single(g.groupId() + "-q2"),
+                        single(g.groupId() + "-q3"));
+        SolvePath unopened = new SolvePath(0,
+                List.of(new ChosenOption("p1", "opt-sc")), List.of(), List.of(choice),
+                List.of());
+        PathResult r = solver.solvePath(unopened, starving, SolveMode.check());
+        assertThat(r.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(r.failingSelections()).isNotEmpty();
+
+        // danh sách cách chọn rỗng trong cũng là dạng "chưa mở"
+        SolvePath emptyInner = new SolvePath(0,
+                List.of(new ChosenOption("p1", "opt-sc")), List.of(), List.of(choice),
+                List.of(List.of()));
+        PathResult r2 = solver.solvePath(emptyInner, starving, SolveMode.check());
+        assertThat(r2.status()).isEqualTo(SolveStatus.INVALID);
+
+        // nguồn đủ mọi môn → đường chưa mở VALID và witness phủ mọi bài toán con
+        CandidateSource full = g -> List.of(single(g.groupId() + "-q1"),
+                single(g.groupId() + "-q2"), single(g.groupId() + "-q3"));
+        PathResult ok = solver.solvePath(unopened, full, SolveMode.check());
+        assertThat(ok.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(ok.witness()).isNotEmpty();
+
+        // cách chọn đã vật liệu hóa một phần: giải đúng cách chọn đó
+        List<SectionOnPath> picked = List.of(sections.get(0), sections.get(1));
+        SubjectPick only = new SubjectPick("opt-sc", picked, List.of(2, 1));
+        SolvePath partial = new SolvePath(0,
+                List.of(new ChosenOption("p1", "opt-sc")), List.of(), List.of(choice),
+                List.of(List.of(only)));
+        PathResult r3 = solver.solvePath(partial, starving, SolveMode.check());
+        assertThat(r3.status()).isEqualTo(SolveStatus.VALID);
+    }
+
+    @Test
+    @DisplayName("R2-1: chỉ tiêu tỉ lệ hòa phần dư thập phân phân theo thứ tự khai báo (quy tắc web)")
+    void percentTieDeclarationOrder() {
+        // [3,13,23,61] × 10: phần lý thuyết 0.3;1.3;2.3;6.1 — ba phần dư 0.3 bằng nhau về toán
+        // nhưng khác biểu diễn nhị phân; quy tắc web (làm tròn 1e-9) cho [1,1,2,6]
+        SubjectQuota quota = new SubjectQuota(null, new MatrixQuota.Combined(List.of(
+                new CellQuota("G10", "NB", 3), new CellQuota("G10", "TH", 13),
+                new CellQuota("G11", "NB", 23), new CellQuota("G11", "TH", 61)),
+                QuotaUnit.PERCENT));
+        GroupQuota rest = GroupQuota.remainder("g-rest");
+        SectionOnPath section = new SectionOnPath("MATH", "sec", 10, quota, List.of(rest));
+        List<PathCandidate> pool = new ArrayList<>();
+        pool.add(unit("a1", "G10", "NB"));
+        pool.add(unit("b1", "G10", "TH"));
+        pool.add(unit("c1", "G11", "NB"));
+        pool.add(unit("c2", "G11", "NB"));
+        for (int i = 0; i < 6; i++) {
+            pool.add(unit("d" + i, "G11", "TH"));
+        }
+        CandidateSource source = g -> pool;
+        // oracle độc lập phải kết luận ca này khả thi theo phân bổ của web
+        assertThat(new BruteForceOracle().solveSubpath(List.of(section), source)).isTrue();
+        PathResult result = solver.solvePath(path(List.of(section)), source, SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(result.witness().get(0).groups().get(0).picks()).hasSize(10);
+    }
+
+    @Test
+    @DisplayName("R2-17: quy tắc chấm và điểm yêu cầu của nhóm lọc nguồn")
+    void scoringRuleAndPointsFilters() {
+        GroupQuota g = new GroupQuota("g1", GroupQuota.GroupKind.SINGLE, 2, null, null, null,
+                null, null, List.of(), List.of(), BigDecimal.valueOf(2), "PER_ITEM");
+        SectionOnPath section = section("S", 2, List.of(g));
+        PathCandidate ok1 = scored("ok1", "PER_ITEM", BigDecimal.valueOf(2));
+        PathCandidate ok2 = scored("ok2", "PER_ITEM", BigDecimal.valueOf(2));
+        PathCandidate wrongRule = scored("wr", "ALL_OR_NOTHING", BigDecimal.valueOf(2));
+        PathCandidate wrongPoints = scored("wp", "PER_ITEM", BigDecimal.valueOf(3));
+        PathCandidate noPoints = scored("np", "PER_ITEM", null);
+        PathResult result = solver.solvePath(path(List.of(section)),
+                x -> List.of(ok1, ok2, wrongRule, wrongPoints, noPoints), SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+        for (GroupWitness gw : result.witness().get(0).groups()) {
+            assertThat(gw.picks()).containsExactlyInAnyOrder(
+                    new QuestionPick("ok1", 1), new QuestionPick("ok2", 1));
+        }
+    }
+
     // ------------------------------------------------------------ bộ phận dựng
 
     private static SolvePath path(List<SectionOnPath> sections) {
@@ -273,6 +481,46 @@ class PaperSolverSpecCasesTest {
 
     private static PathCandidate single(String id) {
         return PathCandidate.standalone(id, 1, "SINGLE_CHOICE", "G10", "NB", BigDecimal.ONE);
+    }
+
+    private static PathCandidate scored(String id, String rule, BigDecimal points) {
+        return new PathCandidate(id, 1, null, null, rule,
+                List.of(new CountingUnit(null, "SINGLE_CHOICE", "G10", "NB", List.of(),
+                        List.of(), points)));
+    }
+
+    /** Chùm 2 câu con cùng khối lớp và độ khó, dạng SINGLE_CHOICE. */
+    private static PathCandidate setPair(String id, String grade, String difficulty) {
+        List<CountingUnit> units = List.of(
+                new CountingUnit(id + "-c1", "SINGLE_CHOICE", grade, difficulty, List.of(),
+                        List.of(), BigDecimal.ONE),
+                new CountingUnit(id + "-c2", "SINGLE_CHOICE", grade, difficulty, List.of(),
+                        List.of(), BigDecimal.ONE));
+        return new PathCandidate(id, 1, id, null, null, units);
+    }
+
+    /** Đồng hồ test chỉ trôi khi {@link #advance} được gọi (mô phỏng nạp nguồn tiêu hao giờ). */
+    private static final class MutableClock extends Clock {
+        private Instant now = Instant.EPOCH;
+
+        void advance(Duration delta) {
+            now = now.plus(delta);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("UTC");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
     }
 
     private static PathCandidate unit(String id, String grade, String difficulty) {

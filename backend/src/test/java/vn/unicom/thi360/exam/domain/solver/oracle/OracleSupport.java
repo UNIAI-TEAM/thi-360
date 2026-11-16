@@ -32,9 +32,10 @@ final class OracleSupport {
 
     /**
      * Quy dãy tỉ lệ ra số câu nguyên theo phần dư lớn nhất (PBI-04 7.3), cùng quy tắc hòa của web
-     * ({@code apportionByPercent} trong {@code apps/web-admin/src/features/exams/matrix.ts}): phần
-     * nguyên trước, phần còn thiếu ({@code round(tổng lý thuyết) - tổng phần nguyên}) đi tới mục có
-     * phần thập phân lớn nhất, hòa thì theo thứ tự khai báo.
+     * ({@code apportionByPercent} trong {@code apps/web-admin/src/features/exams/matrix.ts}):
+     * giá trị lý thuyết làm tròn 1e-9, phần nguyên của {@code floor(t + 1e-9)}, phần thập phân
+     * cũng làm tròn 1e-9 trước khi so — nên các phần dư bằng nhau về toán nhưng khác biểu diễn
+     * nhị phân vẫn hòa và phân theo thứ tự khai báo.
      */
     static int[] apportion(List<Integer> percents, int total) {
         int n = percents.size();
@@ -43,7 +44,7 @@ final class OracleSupport {
         double theoSum = 0;
         int floorSum = 0;
         for (int i = 0; i < n; i++) {
-            theoretical[i] = percents.get(i) * total / 100.0;
+            theoretical[i] = roundPrecision(percents.get(i) * total / 100.0);
             floors[i] = (int) Math.floor(theoretical[i] + 1e-9);
             theoSum += theoretical[i];
             floorSum += floors[i];
@@ -55,8 +56,8 @@ final class OracleSupport {
             ranked.add(i);
         }
         ranked.sort((a, b) -> {
-            double fa = theoretical[a] - floors[a];
-            double fb = theoretical[b] - floors[b];
+            double fa = roundPrecision(theoretical[a] - floors[a]);
+            double fb = roundPrecision(theoretical[b] - floors[b]);
             if (fa != fb) {
                 return Double.compare(fb, fa);
             }
@@ -67,6 +68,11 @@ final class OracleSupport {
             result[ranked.get(k)]++;
         }
         return result;
+    }
+
+    /** {@code Math.round(v * 1e9) / 1e9} — chuẩn hóa số học thập phân của web trước khi so sánh. */
+    private static double roundPrecision(double value) {
+        return Math.round(value * 1e9) / 1e9;
     }
 
     // ------------------------------------------------------------ chỉ tiêu đã quy
@@ -159,8 +165,6 @@ final class OracleSupport {
         return resolveMatrix(group.matrix(), groupUnits);
     }
 
-    // ------------------------------------------------------------ tập id đụng nhau
-
     /** Các id mà một ứng viên chiếm trên đường: id câu cộng mọi childId khác null (B9, spec 5.4). */
     static Set<String> occupiedIds(PathCandidate candidate) {
         Set<String> ids = new HashSet<>();
@@ -171,6 +175,22 @@ final class OracleSupport {
             }
         }
         return ids;
+    }
+
+    /**
+     * Ứng viên lặp định danh ngay trong chính nó (id câu trùng một childId, hoặc một childId
+     * xuất hiện hai lần): "mỗi câu con chỉ dùng một lần trên cả đường" (spec 5.4) nên ứng viên
+     * như vậy không bao giờ vào được đề — kiểm trước khi gom {@link #occupiedIds} thành Set.
+     */
+    static boolean hasInternalIdentityRepeat(PathCandidate candidate) {
+        Set<String> ids = new HashSet<>();
+        ids.add(candidate.questionId());
+        for (CountingUnit unit : candidate.units()) {
+            if (unit.childId() != null && !ids.add(unit.childId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static int unitCount(PathCandidate candidate) {
@@ -283,21 +303,76 @@ final class OracleSupport {
     }
 
     /**
-     * Cách chọn môn với số câu theo D25: môn thứ i theo thứ tự cấu trúc nhận
-     * {@code countsByPick[i]} (cài đặt lại quy tắc tạm của spec 12).
+     * Các phân bổ số câu cho một cách chọn môn, cài đặt độc lập từ B10/D25 (không dùng bộ gán
+     * của bộ giải):
+     *
+     * <ul>
+     *   <li>mọi môn được chọn có {@code choiceGroup} và cách chọn đúng 3 môn: {@code hi} = max
+     *       của {@code countsByPick}, {@code lo} = min. Bộ 2-1 nhóm: hai môn của nhóm đôi nhận
+     *       {@code hi}, môn của nhóm lẻ nhận {@code lo} (D25: "nhóm nhiều hơn nhận 17" — với bộ
+     *       ba, 2-1 là dạng duy nhất có nhóm đông hơn). Bộ đồng nhóm: {@code choose} phương án
+     *       đối xứng, mỗi môn lần lượt nhận {@code lo}, còn lại {@code hi};
+     *   <li>có môn không gắn {@code choiceGroup} hoặc cách chọn khác 3 môn: môn thứ i theo thứ
+     *       tự cấu trúc nhận {@code countsByPick[i]} (quy tắc trước B10).
+     * </ul>
      */
-    static SubjectPick structureOrderPick(SubjectChoice choice, List<SectionOnPath> picked) {
-        List<Integer> counts = new ArrayList<>(picked.size());
-        for (int i = 0; i < picked.size(); i++) {
+    static List<List<Integer>> allocationsOf(SubjectChoice choice, List<SectionOnPath> picked) {
+        int k = picked.size();
+        boolean allGrouped = true;
+        for (SectionOnPath s : picked) {
+            if (s.choiceGroup() == null) {
+                allGrouped = false;
+                break;
+            }
+        }
+        if (allGrouped && k == 3) {
+            int hi = Integer.MIN_VALUE;
+            int lo = Integer.MAX_VALUE;
+            for (int v : choice.countsByPick()) {
+                hi = Math.max(hi, v);
+                lo = Math.min(lo, v);
+            }
+            Map<String, Integer> groupCounts = new LinkedHashMap<>();
+            for (SectionOnPath s : picked) {
+                groupCounts.merge(s.choiceGroup(), 1, Integer::sum);
+            }
+            if (groupCounts.size() == 2) {
+                // nhóm lẻ (1 môn) nhận lo, nhóm đôi nhận hi
+                String singleton = null;
+                for (Map.Entry<String, Integer> e : groupCounts.entrySet()) {
+                    if (e.getValue() == 1) {
+                        singleton = e.getKey();
+                    }
+                }
+                List<Integer> counts = new ArrayList<>(k);
+                for (SectionOnPath s : picked) {
+                    counts.add(s.choiceGroup().equals(singleton) ? lo : hi);
+                }
+                return List.of(counts);
+            }
+            // mọi môn cùng một nhóm: chọn môn nhận lo, còn lại nhận hi (k phương án)
+            List<List<Integer>> out = new ArrayList<>(k);
+            for (int low = 0; low < k; low++) {
+                List<Integer> counts = new ArrayList<>(k);
+                for (int i = 0; i < k; i++) {
+                    counts.add(i == low ? lo : hi);
+                }
+                out.add(counts);
+            }
+            return out;
+        }
+        // không gắn nhóm đủ (hoặc cách chọn khác 3 môn): thứ tự cấu trúc
+        List<Integer> counts = new ArrayList<>(k);
+        for (int i = 0; i < k; i++) {
             counts.add(choice.countsByPick().get(i));
         }
-        return new SubjectPick(choice.optionId(), picked, counts);
+        return List.of(counts);
     }
 
     /**
      * Mọi cách chọn {@code choose} môn của phương án, theo thứ tự tổ hợp ổn định (từ điển trên
-     * chỉ số theo thứ tự cấu trúc), mỗi cách nhận số câu theo D25 qua {@link #structureOrderPick}
-     * — cài lại độc lập từ spec, không dùng bộ gán số câu của bộ giải.
+     * chỉ số theo thứ tự cấu trúc), mỗi cách chọn sinh một {@link SubjectPick} trên mỗi phân
+     * bổ của {@link #allocationsOf} — cài lại độc lập từ spec, không dùng bộ gán của bộ giải.
      */
     static List<SubjectPick> picksOf(SubjectChoice choice) {
         List<SectionOnPath> sections = choice.sections();
@@ -313,7 +388,9 @@ final class OracleSupport {
             for (int i : idx) {
                 picked.add(sections.get(i));
             }
-            out.add(structureOrderPick(choice, picked));
+            for (List<Integer> counts : allocationsOf(choice, picked)) {
+                out.add(new SubjectPick(choice.optionId(), picked, counts));
+            }
             int p = k - 1;
             while (p >= 0 && idx[p] == n - k + p) {
                 p--;
@@ -327,19 +404,6 @@ final class OracleSupport {
             }
         }
         return out;
-    }
-
-    /**
-     * Cách chọn môn với các môn được chỉ định bằng mã (đầu vào của {@code solvePick}): giữ thứ tự
-     * cấu trúc của {@code choice.sections}, môn thứ i trong thứ tự đó nhận {@code countsByPick[i]}.
-     */
-    static SubjectPick pickFor(SubjectChoice choice, List<String> subjectCodes) {
-        List<SectionOnPath> picked = choice.sections().stream()
-                .filter(s -> subjectCodes.contains(s.subjectCode())).toList();
-        if (picked.size() != subjectCodes.size()) {
-            throw new IllegalArgumentException("subjectCodes not a subset of choice sections");
-        }
-        return structureOrderPick(choice, picked);
     }
 
     /** Khóa chuỗi của một cách chọn: {@code S1=c1+S2=c2}, đủ để đối chiếu selections. */
