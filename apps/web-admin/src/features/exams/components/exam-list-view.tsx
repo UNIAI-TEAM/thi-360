@@ -27,7 +27,7 @@ import { FileText, Plus, Search, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import {
   FILTER_FORM,
@@ -345,7 +345,7 @@ export function ExamListView() {
           </Button>
         }
       />
-      <MockDataBanner />
+      <ContentMockBanner />
 
       <Card padding="md" className="@container">
         <search>

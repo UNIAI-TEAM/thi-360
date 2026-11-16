@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, get, useForm, useWatch } from "react-hook-form";
 import { RichTextEditor } from "@/components/rich-text";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -140,7 +140,7 @@ export function CreateExamPage() {
         </Link>
         <PageHeader title={t("title")} description={t("description")} />
       </div>
-      <MockDataBanner />
+      <ContentMockBanner />
       {body}
     </div>
   );
