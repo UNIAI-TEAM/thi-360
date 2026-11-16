@@ -8,6 +8,7 @@ import type {
   QuestionStatusSkipReason,
   QuestionSummary,
 } from "./types";
+import { plainQuestionPreview } from "./question-summary";
 import { asWireBody, fromWireBody } from "./wire-body";
 
 /**
@@ -29,8 +30,7 @@ export function fromApiSummary(summary: ApiSummary): QuestionSummary {
     code: summary.code,
     type: summary.type,
     status: summary.status,
-    contentPreview: summary.contentPreview,
-    subjectCode: summary.subjectCode ?? "",
+    contentPreview: plainQuestionPreview(summary.contentPreview),
     gradeCode: summary.gradeCode ?? "",
     difficultyCode: summary.difficultyCode ?? "",
     points: summary.points,

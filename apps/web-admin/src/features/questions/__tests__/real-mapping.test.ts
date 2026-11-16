@@ -5,6 +5,7 @@ import { fromApiDetail, fromApiSummary } from "../api-mapping";
 import { resolveFormPath, toFormPath } from "../editor-field-errors";
 import { emptyChild, emptyEditorValues, formatPoints } from "../editor-form";
 import { fromApiReadiness } from "../readiness-mapping";
+import { plainQuestionPreview } from "../question-summary";
 
 const summary = {
   id: "q1",
@@ -164,5 +165,17 @@ describe("điểm theo ngôn ngữ", () => {
     expect(emptyEditorValues("MATCHING", "en").body.left.map((row) => row.points)).toEqual(["0.5", "0.5"]);
     expect(emptyEditorValues("TRUE_FALSE", "vi").body.statements.map((row) => row.points)).toEqual(["0,5", "0,5"]);
     expect(emptyChild("TRUE_FALSE", "en").body.statements.map((row) => row.points)).toEqual(["0.5", "0.5"]);
+  });
+});
+
+describe("tóm tắt câu trên danh sách (F-06)", () => {
+  it("chỗ trống [[id]] thành ___ và bỏ cặp dấu công thức \\(…\\), \\[…\\]", () => {
+    expect(plainQuestionPreview("Điền [[new-b-1]] vào chỗ trống.")).toBe("Điền ___ vào chỗ trống.");
+    expect(plainQuestionPreview("Tính \\(x^2\\) và \\[\\int_0^1 x\\] của hàm.")).toBe("Tính x^2 và \\int_0^1 x của hàm.");
+    // Dấu đóng không có dấu mở (không cân) giữ nguyên.
+    expect(plainQuestionPreview("ngoặc \\) lẻ")).toBe("ngoặc \\) lẻ");
+    expect(fromApiSummary({ ...summary, contentPreview: "Điền [[b1]] \\(\\frac{1}{2}\\)." }).contentPreview).toBe(
+      "Điền ___ \\frac{1}{2}.",
+    );
   });
 });
