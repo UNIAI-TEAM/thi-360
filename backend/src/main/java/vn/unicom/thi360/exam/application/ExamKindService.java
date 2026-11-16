@@ -148,6 +148,7 @@ public class ExamKindService {
         m.put("maxScore", p.getMaxScore());
         m.put("referenceMax", p.getReferenceMax());
         m.put("practiceScoring", p.getPracticeScoring());
+        m.put("tfScoring", p.getTfScoring());
         m.put("multipleChoiceRule", p.getMultipleChoiceRule());
         m.put("revision", p.getRevision());
         return m;

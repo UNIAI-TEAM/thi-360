@@ -430,6 +430,7 @@ public class ExamService {
         Exam exam = examRepository.findByIdForUpdate(examId)
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
+        Map<String, Object> before = examInfoSnapshot(exam);
         Instant now = Instant.now();
         UUID actor = actorId();
 
@@ -523,7 +524,8 @@ public class ExamService {
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.UPDATE")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
-                .after(Map.of("scopeChanged", scopeChanged))
+                .before(before)
+                .after(examInfoSnapshot(exam))
                 .build());
         return getExamDetail(examId);
     }
@@ -576,6 +578,7 @@ public class ExamService {
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument storedDoc = stored == null ? null
                 : codec().read(stored.getParts());
+        String beforeHash = stored == null ? null : stored.getStructureHash();
         ExamTemplate template = exam.getTemplateCode() == null ? null
                 : templateService.findActive(exam.getTemplateCode());
         if (exam.getTemplateCode() != null && template == null) {
@@ -588,11 +591,20 @@ public class ExamService {
                 templateDoc);
         ExamStructureValidator.validate(doc);
         validateStructureReferences(doc);
+        List<String> changedPartIds = changedPartIds(storedDoc, doc);
         writeStructure(exam, doc, true, actor, now);
 
+        Map<String, Object> beforeStructure = new LinkedHashMap<>();
+        beforeStructure.put("structureHash", beforeHash);
+        beforeStructure.put("changedPartIds", changedPartIds);
+        Map<String, Object> afterStructure = new LinkedHashMap<>();
+        afterStructure.put("structureHash", structureRepository.findById(examId)
+                .map(ExamStructure::getStructureHash).orElse(null));
+        afterStructure.put("changedPartIds", changedPartIds);
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.STRUCTURE_UPDATE")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
-                .after(Map.of("partCount", doc.parts().size()))
+                .before(beforeStructure)
+                .after(afterStructure)
                 .build());
         return new ExamStructureResponse(examId, doc.parts(), examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
@@ -758,6 +770,50 @@ public class ExamService {
         if (code == null || code.isBlank() || catalogLookup.findActiveItem(group, code).isEmpty()) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
+    }
+
+    private Map<String, Object> examInfoSnapshot(Exam exam) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("code", exam.getCode());
+        values.put("name", exam.getName());
+        values.put("description", exam.getDescription());
+        values.put("instructions", exam.getInstructions());
+        values.put("kindItemId", exam.getKindItemId());
+        values.put("scope", exam.getScope());
+        values.put("partCode", exam.getPartCode());
+        values.put("subjectItemId", exam.getSubjectItemId());
+        values.put("templateCode", exam.getTemplateCode());
+        values.put("structureYear", exam.getStructureYear());
+        values.put("matrixYear", exam.getMatrixYear());
+        values.put("yearsConfirmed", exam.isYearsConfirmed());
+        values.put("timing", exam.getTiming());
+        values.put("durationMinutes", exam.getDurationMinutes());
+        values.put("maxScore", exam.getMaxScore());
+        values.put("referenceMax", exam.getReferenceMax());
+        values.put("practiceScoring", exam.getPracticeScoring());
+        return values;
+    }
+
+    private List<String> changedPartIds(ExamStructureDocument before, ExamStructureDocument after) {
+        Map<String, ExamPart> previous = new LinkedHashMap<>();
+        Map<String, Integer> previousPositions = new LinkedHashMap<>();
+        if (before != null) {
+            for (int i = 0; i < before.parts().size(); i++) {
+                ExamPart part = before.parts().get(i);
+                previous.put(part.id(), part);
+                previousPositions.put(part.id(), i);
+            }
+        }
+        Set<String> changed = new LinkedHashSet<>();
+        for (int i = 0; i < after.parts().size(); i++) {
+            ExamPart part = after.parts().get(i);
+            if (!Objects.equals(previous.remove(part.id()), part)
+                    || !Objects.equals(previousPositions.get(part.id()), i)) {
+                changed.add(part.id());
+            }
+        }
+        changed.addAll(previous.keySet());
+        return List.copyOf(changed);
     }
 
     private String hash(ExamStructureDocument doc) {

@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class ExamApiIT extends AbstractIntegrationTest {
     private static final String EXAM = "/api/v1/admin/exams/00000000-0000-7000-8700-000000000001";
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private EntityManager entityManager;
     @Autowired private ObjectMapper mapper;
 
     @Test
@@ -117,5 +119,47 @@ class ExamApiIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readTree(detail).path("instructions").asText()).isEqualTo(cleaned);
+    }
+
+    @Test
+    void auditCapturesMetadataAndStructureChanges() throws Exception {
+        var before = mapper.readTree(mockMvc.perform(get(EXAM).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        mockMvc.perform(patch(EXAM).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Updated name\",\"expectedRevision\":" + before.path("revision").asLong() + "}"))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        String id = "00000000-0000-7000-8700-000000000001";
+        var metadataAudit = mapper.readTree(jdbc.queryForObject(
+                "SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "
+                        + "AND payload->>'action'='EXAM.UPDATE' AND payload->>'targetId'=?",
+                String.class, id));
+        assertThat(metadataAudit.path("before").path("name").asText()).isEqualTo(before.path("name").asText());
+        assertThat(metadataAudit.path("after").path("name").asText()).isEqualTo("Updated name");
+
+        var structure = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = structure.path("parts").deepCopy();
+        var part = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0);
+        String partId = part.path("id").asText();
+        part.put("name", "Updated part");
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", structure.path("revision").asLong());
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        var structureAudit = mapper.readTree(jdbc.queryForObject(
+                "SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "
+                        + "AND payload->>'action'='EXAM.STRUCTURE_UPDATE' AND payload->>'targetId'=?",
+                String.class, id));
+        assertThat(structureAudit.path("before").path("structureHash").asText()).isNotBlank();
+        assertThat(structureAudit.path("after").path("structureHash").asText())
+                .isNotBlank().isNotEqualTo(structureAudit.path("before").path("structureHash").asText());
+        assertThat(structureAudit.path("before").path("changedPartIds").toString()).contains(partId);
+        assertThat(structureAudit.path("after").path("changedPartIds").toString()).contains(partId);
     }
 }

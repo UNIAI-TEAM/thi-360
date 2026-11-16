@@ -1,11 +1,13 @@
 package vn.unicom.thi360.exam;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,9 @@ class ContentReferenceIT extends AbstractIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -88,6 +93,31 @@ class ContentReferenceIT extends AbstractIntegrationTest {
         mockMvc.perform(get(URL).with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.examKinds[?(@.code=='HSA' && @.maxScore==149)]").isNotEmpty());
+    }
+
+    @Test
+    void profileAuditIncludesTrueFalseScoringBeforeAndAfter() throws Exception {
+        String itemId = "00000000-0000-7000-8200-000000000101";
+        Long revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM exam.exam_kind_profile WHERE exam_item_id = CAST(? AS uuid)",
+                Long.class, itemId);
+        mockMvc.perform(put("/api/v1/admin/exam-kinds/" + itemId + "/profile")
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"scopes":["FULL","PART"],"templateBy":"KIND","timing":"PER_PART",
+                                 "maxScore":150,"practiceScoring":"RAW","expectedRevision":%d,
+                                 "trueFalseScoring":{"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1]}}
+                                """.formatted(revision)))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        String payload = jdbcTemplate.queryForObject(
+                "SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "
+                        + "AND payload->>'action'='EXAM_KIND_PROFILE.UPDATE' AND payload->>'targetId'=?",
+                String.class, itemId);
+        JsonNode event = objectMapper.readTree(payload);
+        assertThat(event.path("before").path("tfScoring").path("method").asText()).isEqualTo("PER_STATEMENT");
+        assertThat(event.path("after").path("tfScoring").path("method").asText()).isEqualTo("COUNT_TABLE");
     }
 
     @Test
