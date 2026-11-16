@@ -113,6 +113,35 @@ class QuestionImportParserTests {
     }
 
     @Test
+    void childSourceCodeIsIgnoredAndReported() throws Exception {
+        var result = parse(List.of(
+            List.of("sourceCode", "type", "content", "subject", "grade", "difficulty", "setCode", "correctAnswer"),
+            List.of("SET", "Bộ câu hỏi", "Bộ", "MATH", "GRADE_11", "RECOGNITION", "S", ""),
+            List.of("SET", "SHORT_ANSWER", "Con", "", "", "", "S", "1")));
+        assertFalse(result.hasErrors());
+        assertNull(result.rows().get(1).draft().sourceCode());
+        assertTrue(result.rows().get(1).issues().stream()
+            .anyMatch(i -> i.code() == ImportIssueCode.CHILD_SOURCE_CODE_IGNORED && !i.blocking()));
+    }
+
+    @Test
+    void mappingDetectsDuplicateFieldsAndNormalizesHeaders() {
+        assertEquals("ma nguon", ImportColumnMapper.normalizeHeader("Mã nguồn"));
+        assertEquals("kien thuc mapid", ImportColumnMapper.normalizeHeader("Kiến thức (MAPID)"));
+        var columns = List.of(new ImportColumn("c0", "Dạng câu", ""),
+            new ImportColumn("c1", "Nội dung", ""), new ImportColumn("c2", "Môn", ""),
+            new ImportColumn("c3", "Lớp", ""), new ImportColumn("c4", "Mức độ", ""),
+            new ImportColumn("c5", "Lời giải", ""));
+        var mapping = ImportColumnMapper.suggestMapping(columns, DICTIONARY);
+        var changed = new java.util.HashMap<>(mapping.byColumnKey());
+        changed.put("c5", "content");
+        var check = ImportColumnMapper.checkMapping(columns, new ColumnMapping(changed));
+        assertFalse(check.valid());
+        assertEquals(List.of(ImportField.CONTENT), check.duplicateFields());
+        assertEquals(java.util.Set.of("c1", "c5"), check.duplicateColumnKeys());
+    }
+
+    @Test
     void plainTextEscapedButHtmlPreserved() {
         assertEquals("x &lt; 3<br>a &amp; b", ImportCellSyntax.processCell("x < 3\na & b"));
         assertEquals("<strong>x</strong>", ImportCellSyntax.processCell("<strong>x</strong>"));
