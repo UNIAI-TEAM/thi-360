@@ -48,6 +48,17 @@ public class ExamPreviewService {
         var snapshot = store.load(id);
         if (request.version() != null) throw new NotFoundException("Exam version not found");
         ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
+        var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
+        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document).unrepresentable()
+                .stream().filter(issue -> {
+                    String optionId = issue.path("optionId").asText(null);
+                    return optionId == null || selectedIds.contains(optionId);
+                }).toList();
+        if (!draftIssues.isEmpty()) {
+            PathRef path = PreviewPathResolver.resolveDraft(document, request.pathId(), request.subjectCodes());
+            return new PreviewResult(id, path, null, request.seed(), Instant.now(clock), "FAILED", null,
+                    "INVALID", draftIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList());
+        }
         PaperSolver solver = new PaperSolver(limits, clock);
         SolverInputBuilder.SolverInput input;
         try {

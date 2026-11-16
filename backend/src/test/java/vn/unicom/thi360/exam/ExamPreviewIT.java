@@ -144,6 +144,29 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void unrepresentableSelectedDraftReturnsIssuesWithoutUsage() throws Exception {
+        for (String[] fixture : ExamCheckApiIT.draftFixtures()) {
+            UUID examId = exam(mapper.readTree(fixture[0]).path("parts").toString());
+            String url = "/api/v1/admin/exams/" + examId + "/preview";
+            mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"pathId\":\"default\",\"seed\":1}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("FAILED"))
+                    .andExpect(jsonPath("$.reason").value("INVALID"))
+                    .andExpect(jsonPath("$.issues[?(@.code == '" + fixture[1] + "')]").isNotEmpty())
+                    .andExpect(jsonPath("$.paper").doesNotExist());
+            mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"pathId\":\"default\",\"seed\":1,\"subjectCodes\":[\"MATH\"]}"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("PREVIEW_SUBJECTS_INVALID"));
+            assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'",
+                    Integer.class, examId)).isZero();
+        }
+    }
+
+    @Test
     void mathAnswerQuotas() throws Exception {
         Subject subject = subject();
         for (int i = 0; i < 34; i++) question(subject, "SINGLE_CHOICE", "single", false);
