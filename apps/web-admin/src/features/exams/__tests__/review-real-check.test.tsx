@@ -112,6 +112,16 @@ describe("kiểm tra kỹ, nhánh thật", () => {
     expect(runPolls()).toBe(4);
   });
 
+  it("kết quả hết hiệu lực vì lý do lạ thì hiện câu chung, không in khóa dịch thô", async () => {
+    new FakeServer()
+      .on("GET", CHECK_PATH, { status: 200, body: { ...checkResultWire("VALID"), stale: true, invalidReason: "SOMETHING_NEW" } })
+      .install();
+    renderWithProviders(<ExamReviewCheck exam={mapExamDetail(examDetailWire())} onPreview={() => {}} active />);
+
+    expect(await screen.findByText(/Nguồn câu hỏi hoặc cấu hình đã đổi sau lần kiểm tra này/)).toBeInTheDocument();
+    expect(screen.queryByText(/staleReason/)).not.toBeInTheDocument();
+  });
+
   it("gỡ màn khỏi cây thì dừng hỏi dù lần chạy chưa xong", async () => {
     server.on("GET", RUN_PATH, running);
     const view = await startDeepCheck();
