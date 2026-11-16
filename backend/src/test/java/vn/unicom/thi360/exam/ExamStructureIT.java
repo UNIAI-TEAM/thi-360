@@ -10,9 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
@@ -21,6 +24,8 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class ExamStructureIT extends AbstractIntegrationTest {
     private static final String EXAM = "/api/v1/admin/exams/00000000-0000-7000-8700-000000000001";
     @Autowired private ObjectMapper mapper;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private EntityManager entityManager;
 
     @Test
     void incompleteDraftSavesAndYearChangeNeedsConfirmation() throws Exception {
@@ -38,6 +43,77 @@ class ExamStructureIT extends AbstractIntegrationTest {
                         .content("{\"structureYear\":1990,\"expectedRevision\":" + nextRevision + "}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_REPLACE_CONFIRM"));
+    }
+
+    @Test
+    void untemplatedGroupsWithMissingOrNullStoredLockCanBeResaved() throws Exception {
+        jdbc.update("UPDATE exam.exam_template SET active=false WHERE kind_code='SPT' AND subject_code='TOAN'");
+        for (boolean explicitIncomingLock : new boolean[] {false, true}) {
+            String key = UUID.randomUUID().toString();
+            JsonNode exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                            .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", key)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"kind\":\"SPT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                                    + "\"name\":\"Draft\",\"code\":\"SPT-S-" + key.substring(0, 8) + "\"}"))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").isEmpty())
+                    .andReturn().getResponse().getContentAsString());
+            UUID examId = UUID.fromString(exam.path("id").asText());
+            String url = "/api/v1/admin/exams/" + examId + "/structure";
+            JsonNode initial = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            var request = mapper.createObjectNode();
+            var section = request.putArray("parts").addObject().putArray("sections").addObject();
+            section.put("subjectCode", "TOAN");
+            section.putArray("blocks").addObject().put("name", "Draft group");
+            request.put("expectedRevision", initial.path("revision").asLong());
+            mockMvc.perform(put(url).with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                    .andExpect(status().isOk());
+
+            // Exercise both omitted JSON and explicit JSON null as persisted legacy values.
+            entityManager.flush();
+            String path = "{parts,0,sections,0,blocks,0,answerTypeLocked}";
+            if (explicitIncomingLock) {
+                jdbc.update("UPDATE exam.exam_structure SET parts=jsonb_set(parts, ?::text[], 'null'::jsonb) WHERE exam_id=?",
+                        path, examId);
+            } else {
+                jdbc.update("UPDATE exam.exam_structure SET parts=parts #- ?::text[] WHERE exam_id=?", path, examId);
+            }
+            String storedLock = jdbc.queryForObject(
+                    "SELECT (parts #> ?::text[])::text FROM exam.exam_structure WHERE exam_id=?",
+                    String.class, path, examId);
+            if (explicitIncomingLock) {
+                assertThat(storedLock).isEqualTo("null");
+            } else {
+                assertThat(storedLock).isNull();
+            }
+            entityManager.clear();
+
+            JsonNode before = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            var parts = before.path("parts").deepCopy();
+            var block = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    parts.get(0).path("sections").get(0).path("blocks").get(0);
+            String blockId = block.path("id").asText();
+            assertThat(blockId).isNotBlank();
+            if (explicitIncomingLock) {
+                block.put("answerTypeLocked", true);
+            } else {
+                block.remove("answerTypeLocked");
+            }
+            request.set("parts", parts);
+            request.put("expectedRevision", before.path("revision").asLong());
+            mockMvc.perform(put(url).with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.parts[0].sections[0].blocks[0].answerTypeLocked").value(false));
+            JsonNode after = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            JsonNode savedBlock = after.path("parts").get(0).path("sections").get(0).path("blocks").get(0);
+            assertThat(savedBlock.path("id").asText()).isEqualTo(blockId);
+            assertThat(savedBlock.path("answerTypeLocked").booleanValue()).isFalse();
+            assertThat(after.path("revision").asLong()).isGreaterThan(before.path("revision").asLong());
+        }
     }
 
 

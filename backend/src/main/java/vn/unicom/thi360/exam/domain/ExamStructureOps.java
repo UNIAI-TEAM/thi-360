@@ -216,7 +216,7 @@ public final class ExamStructureOps {
         return new QuestionBlock(b.id(), b.name(), b.questionType(), b.questionCount(),
                 b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(), b.taskTypeCode(),
                 b.childAnswerType(), stored == null ? null : stored.templateGroupCode(),
-                stored != null && stored.answerTypeLocked(), b.requiredPointsPerQuestion(),
+                stored != null && Boolean.TRUE.equals(stored.answerTypeLocked()), b.requiredPointsPerQuestion(),
                 stored == null ? null : stored.shuffle());
     }
 }
