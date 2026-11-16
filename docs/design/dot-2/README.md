@@ -2,7 +2,7 @@
 
 Bản xem được: https://claude.ai/artifact/4WyWEQAR8DTdZQTmQA5eG7, trang 05–08 (trang riêng tư trên claude.ai). Cách đọc tệp `*.dc.html` giống `docs/design/dot-1/README.md`: lấy bố cục, tên trường, câu chữ, trạng thái, dữ liệu mẫu; **không chép style viết thẳng**, mã thật dùng token và thành phần của `packages/ui` theo `DESIGN.md`.
 
-Đợt này là **mockup trên dữ liệu mẫu** (UNI-2590): chưa có backend, quy ước ở `DESIGN.md` mục 5.14. Hai tệp `uninote-*.md` là bản chép UniNote của BA ngày 2026-11-14 để đối chiếu nghiệp vụ.
+Đợt này là **mockup trên dữ liệu mẫu** (UNI-2590): chưa có backend, quy ước ở `DESIGN.md` mục 5.14. Hai tệp `uninote-*.md` là bản chép UniNote của BA để đối chiếu nghiệp vụ, lấy lại ngày 2026-11-16 (PBI-03 bản 11:22 thêm mục 10 với 8 dạng câu; PBI-04 bản 11:12 viết lại mục 4, 5). Mockup làm theo bản ngày 2026-11-14; chỗ lệch ghi ở `docs/specs/2026-11-16-be-pbi-03-04.md` mục 9.1.
 
 ## Màn nào thuộc issue nào
 
