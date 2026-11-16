@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -253,6 +254,12 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.question.displayedVersionNo").value(2))
                 .andExpect(jsonPath("$.question.hasDraft").value(true))
                 .andExpect(jsonPath("$.question.children", hasSize(2)));
+        mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.summary.gradeCode").value("G11"))
+                .andExpect(jsonPath("$.displayedVersionNo").value(2))
+                .andExpect(jsonPath("$.hasDraft").value(true))
+                .andExpect(jsonPath("$.children", hasSize(2)));
         org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
                 "SELECT grade_item_id, search_text FROM questionbank.question WHERE id = ?", id))
                 .isEqualTo(original);
@@ -269,6 +276,38 @@ class QuestionStatusIT extends AbstractIntegrationTest {
                 "SELECT count(*) FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL",
                 Integer.class, id)).isEqualTo(2);
         assertSourceRevision(QuestionTestSupport.SUBJECT_TOAN_ID, before + 1);
+    }
+
+    @Test
+    void newWorkingChildAppearsInEditorBeforeItHasServingRow() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode initial = read(created);
+        UUID id = UUID.fromString(initial.at("/summary/id").asText());
+        transition(id, "ready");
+        var children = (com.fasterxml.jackson.databind.node.ArrayNode) initial.at("/body/children").deepCopy();
+        var newChild = (com.fasterxml.jackson.databind.node.ObjectNode) children.get(1).deepCopy();
+        newChild.remove("id");
+        children.add(newChild);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).set("children", children);
+        request.put("expectedRevision", currentRevision(id));
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.children[2].summary.revision").value(0))
+                .andExpect(jsonPath("$.question.children[2].hasDraft").value(true))
+                .andExpect(jsonPath("$.question.children[2].displayedVersionNo").value(2));
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL",
+                Integer.class, id)).isEqualTo(2);
+        transition(id, "ready");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL",
+                Integer.class, id)).isEqualTo(3);
     }
 
     @Test

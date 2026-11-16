@@ -198,6 +198,10 @@ public class QuestionMapper {
     }
 
     private QuestionDetail toDetail(Question question, QuestionVersion version, Batch batch) {
+        return toDetail(question, version, batch, question.getWorkingVersionNo() != null);
+    }
+
+    private QuestionDetail toDetail(Question question, QuestionVersion version, Batch batch, boolean hasDraft) {
         QuestionSnapshot snapshot = version == null ? null : version.getSnapshot();
         QuestionSummary summary = snapshot == null
                 ? toSummary(question, version, batch) : snapshotSummary(question, snapshot, batch);
@@ -210,9 +214,10 @@ public class QuestionMapper {
                 if (childId == null) {
                     continue;
                 }
+                int position = i;
                 Question row = questionRepository.findById(childId).orElseGet(() ->
-                        Question.create(childId, question.getCode() + ".draft", child.type(),
-                                question.getId(), null, question.getCreatedAt(), question.getCreatedBy()));
+                        Question.create(childId, question.getCode() + "." + (position + 1), child.type(),
+                                question.getId(), position, question.getCreatedAt(), question.getCreatedBy()));
                 List<UUID> ids = child.knowledgeItemIds() == null
                         ? snapshot.knowledge().stream().map(QuestionSnapshot.KnowledgeRef::itemId).toList()
                         : child.knowledgeItemIds();
@@ -225,7 +230,7 @@ public class QuestionMapper {
                         List.of(), child.content(), child.solution(), List.of(), List.of(), child.body(), null);
                 QuestionVersion childVersion = new QuestionVersion(childId, version.getVersionNo(),
                         childSnapshot, version.getSavedBy(), version.getSavedAt());
-                children.add(toDetail(row, childVersion, batch));
+                children.add(toDetail(row, childVersion, batch, hasDraft));
             }
         }
         return new QuestionDetail(
@@ -238,7 +243,7 @@ public class QuestionMapper {
                 children,
                 snapshot,
                 version == null ? null : version.getVersionNo(),
-                question.getWorkingVersionNo() != null);
+                hasDraft);
     }
 
     private QuestionSummary snapshotSummary(Question question, QuestionSnapshot snapshot, Batch batch) {
@@ -256,8 +261,9 @@ public class QuestionMapper {
                 tagCodes(snapshot.tagItemIds(), batch), snapshot.solution() != null && !snapshot.solution().isBlank(),
                 question.getCurrentVersionNo() == null ? 0 : question.getCurrentVersionNo(),
                 question.getWorkingVersionNo(), ledgerRepository.countDistinctExamsByQuestionId(question.getId()),
-                snapshot.sourceCode() == null ? question.getSourceCode() : snapshot.sourceCode(),
-                question.getRevision(), personOf(question.getCreatedBy(), batch),
+                snapshot.sourceCode() == null ? question.getSourceCode()
+                        : snapshot.sourceCode().isBlank() ? null : snapshot.sourceCode(),
+                question.getRevision() == null ? 0L : question.getRevision(), personOf(question.getCreatedBy(), batch),
                 question.getCreatedAt(), question.getUpdatedAt());
     }
 
