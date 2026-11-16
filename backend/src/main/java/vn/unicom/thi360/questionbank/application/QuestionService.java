@@ -795,6 +795,10 @@ public class QuestionService {
         for (Map.Entry<UUID, Question> entry : existing.entrySet()) {
             Question leftover = entry.getValue();
             if (leftover.getDeletedAt() == null && !kept.contains(leftover.getId())) {
+                if (ledgerRepository.existsByQuestionId(leftover.getId())) {
+                    throw new ConflictException(ERR_IN_USE, null,
+                            List.of(new FieldError("body.children", ERR_IN_USE, leftover.getCode())));
+                }
                 leftover.setDeletedAt(now);
                 leftover.touch(now, actorId);
             }

@@ -336,6 +336,44 @@ class QuestionStatusIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void publishingCannotRemoveLedgerUsedChild() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        var originalChildren = (com.fasterxml.jackson.databind.node.ArrayNode) request.at("/body/children");
+        originalChildren.add(originalChildren.get(1).deepCopy());
+        var created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode initial = read(created);
+        UUID id = UUID.fromString(initial.at("/summary/id").asText());
+        UUID usedChild = UUID.fromString(initial.at("/body/children/2/id").asText());
+        transition(id, "ready");
+        jdbcTemplate.update("INSERT INTO questionbank.question_usage_ledger"
+                + " (question_id, version_no, kind, exam_id, first_at) VALUES (?, 1, 'PREVIEW', ?, now())",
+                usedChild, UUID.randomUUID());
+        var children = (com.fasterxml.jackson.databind.node.ArrayNode) initial.at("/body/children").deepCopy();
+        children.remove(2);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).set("children", children);
+        request.put("expectedRevision", currentRevision(id));
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("QUESTION_IN_USE"));
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL",
+                Integer.class, id)).isEqualTo(3);
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForMap(
+                "SELECT status, current_version_no, working_version_no FROM questionbank.question WHERE id = ?", id))
+                .containsEntry("status", "READY").containsEntry("current_version_no", 1)
+                .containsEntry("working_version_no", 2);
+    }
+
+    @Test
     void newWorkingChildAppearsInEditorBeforeItHasServingRow() throws Exception {
         var request = (com.fasterxml.jackson.databind.node.ObjectNode)
                 objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
