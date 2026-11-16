@@ -432,6 +432,8 @@ export type StructureIssue =
   | { code: "PART_COUNT_NOT_POSITIVE"; partId: string }
   | { code: "PART_DURATION_NOT_POSITIVE"; partId: string }
   | { code: "NO_OPTIONS"; partId: string }
+  | { code: "PART_PAPER_COUNT"; partId: string; onPaper: number; required: number }
+  | { code: "PART_CHOOSE_INVALID"; partId: string; choose: number; options: number }
   | { code: "SECTIONS_TOTAL"; partId: string; optionId: string | null; expected: number; actual: number }
   | { code: "PART_POINTS"; partId: string; optionId: string | null; expected: number; actual: number }
   | { code: "BLOCKS_TOTAL"; location: SectionLocation; expected: number; actual: number }
@@ -509,6 +511,21 @@ export function validateStructure(
       issues.push({ code: "PART_DURATION_NOT_POSITIVE", partId: part.id });
     }
     if (part.mode === "CHOICE" && part.options.length === 0) issues.push({ code: "NO_OPTIONS", partId: part.id });
+    // Số câu trên đề phải đủ cho số câu học viên làm (PBI-04 mục 5.2).
+    if (!(part.questionCountOnPaper >= part.questionCountRequired)) {
+      issues.push({
+        code: "PART_PAPER_COUNT",
+        partId: part.id,
+        onPaper: part.questionCountOnPaper,
+        required: part.questionCountRequired,
+      });
+    }
+    if (part.mode === "CHOICE" && part.options.length > 0) {
+      const choose = part.participation.choose ?? 1;
+      if (!Number.isInteger(choose) || choose < 1 || choose > part.options.length) {
+        issues.push({ code: "PART_CHOOSE_INVALID", partId: part.id, choose, options: part.options.length });
+      }
+    }
     const expectedPoints = partPoints(part);
     for (const group of choiceGroups(part)) {
       const option = part.options.find((item) => item.id === group.optionId);
@@ -601,7 +618,7 @@ export function structureTotals(parts: readonly ExamPart[], options: StructureTo
   return {
     partCount: parts.length,
     totalQuestions,
-    printedQuestions: sum(parts.map(printedPartQuestions)),
+    printedQuestions: sum(parts.map((part) => Math.max(printedPartQuestions(part), part.questionCountOnPaper))),
     totalMinutes: options.sharedDuration ?? sum(parts.map((part) => part.durationMinutes ?? 0)),
     totalPoints: roundPrecision(totalPoints),
     allocated,

@@ -8,12 +8,14 @@ import { countOf, sectionsPoints, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamSection, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
+import { OptionalNumberInput } from "./create-exam-fields";
+import { SubjectChoiceOptions } from "./subject-choice-options";
 import type { StructureNames } from "./exam-structure-issues";
 
 export interface PartPanelProps
   extends Pick<
     CombinationOptionsProps,
-    "showEnglish" | "subjectPool" | "defaultCombinationSize" | "branchSubjects" | "onGenerate" | "onAddBranch" | "onConfirm"
+    "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"
   > {
   part: ExamPart;
   /** `SHARED`: phần không có ô thời lượng, bài dùng thời lượng chung `sharedMinutes`. */
@@ -31,7 +33,11 @@ export interface PartPanelProps
   onAttachCombination: (combination: CombinationOption) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
-  onPoints: (points: number) => void;
+  /** Mở môn để soạn chỉ tiêu cấp môn và các nhóm. */
+  onSelectSection: (sectionId: string) => void;
+  onPoints: (points: number | null) => void;
+  onOnPaper: (questionCountOnPaper: number) => void;
+  onChoose: (choose: number) => void;
 }
 
 /**
@@ -54,12 +60,12 @@ export function ExamStructurePartPanel({
   onAttachCombination,
   onRemoveOption,
   onSelectBlock,
+  onSelectSection,
   onPoints,
+  onOnPaper,
+  onChoose,
   showEnglish,
-  subjectPool,
-  defaultCombinationSize,
   branchSubjects,
-  onGenerate,
   onAddBranch,
   onConfirm,
 }: PartPanelProps) {
@@ -69,7 +75,10 @@ export function ExamStructurePartPanel({
   const durationInvalid = partIssues.some((issue) => issue.code === "PART_DURATION_NOT_POSITIVE");
   const shared = timing === "SHARED";
   const pointsInvalid = partIssues.some((issue) => issue.code === "PART_POINTS");
+  const paperInvalid = partIssues.some((issue) => issue.code === "PART_PAPER_COUNT");
+  const chooseInvalid = partIssues.some((issue) => issue.code === "PART_CHOOSE_INVALID");
   const blockPoints = part.mode === "FIXED" ? sectionsPoints(part.sections) : null;
+  const onlySubjectChoice = part.mode === "CHOICE" && part.options.length === 1 && part.options[0]?.kind === "SUBJECT_CHOICE";
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -101,7 +110,22 @@ export function ExamStructurePartPanel({
         <FormField label={t("order")} hint={t("orderHint")}>
           {(controlProps) => <Input {...controlProps} value={String(part.order)} readOnly className="tabular-nums" />}
         </FormField>
-        <FormField label={t("questionCount")} required error={countInvalid ? t("countInvalid") : undefined}>
+        <FormField
+          label={t("questionCountOnPaper")}
+          required
+          hint={t("questionCountOnPaperHint")}
+          error={paperInvalid ? t("paperInvalid") : undefined}
+        >
+          {(controlProps) => (
+            <BlockNumberInput {...controlProps} value={part.questionCountOnPaper} onValueChange={onOnPaper} />
+          )}
+        </FormField>
+        <FormField
+          label={t("questionCount")}
+          required
+          hint={t("questionCountHint")}
+          error={countInvalid ? t("countInvalid") : undefined}
+        >
           {(controlProps) => (
             <BlockNumberInput {...controlProps} value={part.questionCount} onValueChange={onQuestionCount} />
           )}
@@ -122,20 +146,38 @@ export function ExamStructurePartPanel({
             )}
           </FormField>
         )}
-        {part.maxPoints !== null && part.maxPoints !== undefined && (
-          <FormField
-            label={t("points")}
-            required
-            hint={blockPoints !== null ? t("pointsHintFixed", { points: blockPoints }) : t("pointsHint")}
-            error={pointsInvalid ? t("pointsInvalid") : undefined}
-          >
-            {(controlProps) => (
-              <BlockNumberInput {...controlProps} allowDecimal value={part.maxPoints ?? 0} onValueChange={onPoints} />
-            )}
-          </FormField>
-        )}
+        <FormField
+          label={t("points")}
+          hint={blockPoints !== null ? t("pointsHintFixed", { points: blockPoints }) : t("pointsHint")}
+          error={pointsInvalid ? t("pointsInvalid") : undefined}
+        >
+          {(controlProps) => <OptionalNumberInput {...controlProps} value={part.maxPoints ?? null} onValueChange={onPoints} />}
+        </FormField>
       </div>
       {shared && <p className="text-caption text-text-muted">{t("sharedHint")}</p>}
+
+      <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
+        <h3 className="text-title font-semibold text-text">{t("participation.title")}</h3>
+        {part.mode !== "CHOICE" ? (
+          <p className="text-body text-text">{t("participation.all")}</p>
+        ) : onlySubjectChoice ? (
+          // Phương án duy nhất là chọn môn (HSA Khoa học): luật chọn k môn nằm ở thẻ phương án, không lặp ô k ở đây (R1-10).
+          <p className="text-body text-text">{t("participation.subjectChoice")}</p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-body text-text">
+            <span>{t("participation.choosePrefix")}</span>
+            <BlockNumberInput
+              className="h-9 w-20"
+              value={part.participation.choose ?? 1}
+              aria-invalid={chooseInvalid ? true : undefined}
+              aria-label={t("participation.chooseAria")}
+              onValueChange={onChoose}
+            />
+            <span>{t("participation.chooseSuffix", { count: part.options.length })}</span>
+          </div>
+        )}
+        {!onlySubjectChoice && <p className="text-caption text-text-muted">{t("participation.hint")}</p>}
+      </section>
 
       {partIssues.length > 0 && (
         <ul className="flex flex-col gap-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2">
@@ -149,24 +191,39 @@ export function ExamStructurePartPanel({
       )}
 
       {part.mode === "FIXED" ? (
-        <SectionsTable part={part} names={names} onSectionCount={onSectionCount} onAddBlock={onAddBlock} />
+        <SectionsTable
+          part={part}
+          names={names}
+          onSectionCount={onSectionCount}
+          onAddBlock={onAddBlock}
+          onSelectSection={onSelectSection}
+        />
       ) : (
         <>
           {part.sections.length > 0 && (
-            <SectionsTable part={part} names={names} common onSectionCount={onSectionCount} onAddBlock={onAddBlock} />
+            <SectionsTable
+              part={part}
+              names={names}
+              common
+              onSectionCount={onSectionCount}
+              onAddBlock={onAddBlock}
+              onSelectSection={onSelectSection}
+            />
           )}
+          {part.options
+            .filter((option) => option.kind === "SUBJECT_CHOICE")
+            .map((option) => (
+              <SubjectChoiceOptions key={option.id} option={option} names={names} onSelectSection={onSelectSection} />
+            ))}
           <CombinationOptions
             part={part}
             combinations={combinations}
             names={names}
             issues={issues}
             showEnglish={showEnglish}
-            subjectPool={subjectPool}
-            defaultCombinationSize={defaultCombinationSize}
             branchSubjects={branchSubjects}
             onToggleEnglish={onToggleEnglish}
             onAttach={onAttachCombination}
-            onGenerate={onGenerate}
             onAddBranch={onAddBranch}
             onConfirm={onConfirm}
             onRemove={onRemoveOption}
@@ -186,12 +243,14 @@ function SectionsTable({
   common = false,
   onSectionCount,
   onAddBlock,
+  onSelectSection,
 }: {
   part: ExamPart;
   names: StructureNames;
   common?: boolean;
   onSectionCount: PartPanelProps["onSectionCount"];
   onAddBlock: PartPanelProps["onAddBlock"];
+  onSelectSection: PartPanelProps["onSelectSection"];
 }) {
   const t = useTranslations("exams.structure.part");
   const single = !common && part.sections.length === 1;
@@ -231,7 +290,16 @@ function SectionsTable({
               return (
                 <tr key={section.id}>
                   <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
-                    {subject}
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-left font-medium"
+                      aria-label={t("openSubject", { subject })}
+                      onClick={() => onSelectSection(section.id)}
+                    >
+                      {subject}
+                    </Button>
                     <span className="block text-caption font-normal text-text-muted">
                       {t("blockCount", { count: section.blocks.length })}
                     </span>

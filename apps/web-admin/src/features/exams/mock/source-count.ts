@@ -2,6 +2,7 @@ import referenceFixture from "@/features/content/mock/reference.json";
 import type { ContentReference, KnowledgeNode, QuestionType } from "@/features/content/types";
 import { questionStore } from "@/features/questions/mock/store";
 import type { QuestionDetail } from "@/features/questions/types";
+import { effectiveScope } from "../subject-matrix";
 import type {
   AvailableQuestionCounts,
   AvailableQuestionsQuery,
@@ -40,14 +41,6 @@ function indexDescendants(nodes: readonly KnowledgeNode[]): Map<string, Set<stri
 }
 
 let descendantsIndex: Map<string, Set<string>> | null = null;
-
-/**
- * Phạm vi MAPID có hiệu lực của nhóm (D21): phạm vi riêng của nhóm nếu có (không giao với phạm vi của môn), không thì
- * phạm vi của môn; cả hai trống là không giới hạn.
- */
-export function effectiveScope(block: Pick<QuestionBlock, "knowledgeScope">, section: Pick<ExamSection, "knowledgeScope">): KnowledgeScope | null {
-  return block.knowledgeScope ?? section.knowledgeScope ?? null;
-}
 
 /**
  * Dạng trả lời nhóm nhận: dạng của nhóm; nhóm lấy theo chỉ tiêu của môn (`questionType = null`) nhận các dạng trong

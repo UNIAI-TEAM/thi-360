@@ -8,6 +8,7 @@ import type {
   AvailableQuestionsQuery,
   CreateExamRequest,
   ListExamsQuery,
+  SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
   UpdateExamStructureRequest,
@@ -58,6 +59,20 @@ export function useAvailableQuestions(query: AvailableQuestionsQuery | null, dep
     queryKey: query ? EXAMS_QUERY_KEYS.available(query) : ["exams", "available-questions", null],
     queryFn: () =>
       query ? deps.countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
+    enabled: query !== null,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Đếm nguồn cho cả môn: hợp nguồn của các nhóm trong môn, mỗi câu đếm một lần (soạn chỉ tiêu cấp môn). */
+export function useSubjectAvailableQuestions(
+  query: SubjectAvailableQuestionsQuery | null,
+  deps: ExamsApiDeps = defaultExamsApiDeps,
+) {
+  return useQuery({
+    queryKey: query ? EXAMS_QUERY_KEYS.subjectAvailable(query) : ["exams", "available-questions", "subject", null],
+    queryFn: () =>
+      query ? deps.countSubjectAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
     enabled: query !== null,
     placeholderData: (previous) => previous,
   });

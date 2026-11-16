@@ -23,11 +23,13 @@ import type {
   PreviewPaper,
   PreviewPart,
   PreviewQuestion,
+  PreviewSubject,
+  PreviewSubjectQuota,
 } from "./review-types";
 import { blockPointsEach, countOf, isSetBlock, sum } from "./matrix";
 import type { ExamPart, ExamSection, QuestionBlock } from "./types";
-import { effectiveScope } from "./mock/source-count";
 import { allocateSubjectCounts, pickAllocation } from "./subject-choice";
+import { effectiveScope } from "./subject-matrix";
 
 /**
  * Bộ sinh đề xem trước (mô phỏng cơ chế sinh đề thật, UniNote PBI-04 mục 10, 12): cùng quy tắc với Kiểm tra cấu
@@ -120,6 +122,20 @@ function nextQuotaType(quotas: ReadonlyMap<QuestionType, number>): QuestionType 
   let best: QuestionType | null = null;
   for (const [type, left] of quotas) if (left > 0 && (best === null || left > (quotas.get(best) ?? 0))) best = type;
   return best;
+}
+
+/** Chỉ tiêu một chiều (khối lớp, độ khó) của ma trận cấp môn; ma trận kết hợp cộng các ô theo chiều. */
+function dimensionRequired(
+  requirement: BlockRequirement,
+  dimension: "GRADE" | "DIFFICULTY",
+): Array<{ code: string; required: number }> {
+  if (requirement.mode === "SEPARATE") return dimension === "GRADE" ? requirement.byGrade : requirement.byDifficulty;
+  const totals = new Map<string, number>();
+  for (const cell of requirement.cells) {
+    const code = dimension === "GRADE" ? cell.gradeCode : cell.difficultyCode;
+    totals.set(code, (totals.get(code) ?? 0) + cell.required);
+  }
+  return [...totals].map(([code, required]) => ({ code, required }));
 }
 
 export function generatePaper(input: GeneratePaperInput): PreviewPaper {
@@ -402,6 +418,43 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     return section.blocks.map((block, index) => buildBlock(block, section, perGroup[index]!, sectionRemaining, quotas));
   };
 
+  /** Đối chiếu chỉ tiêu cấp môn với câu đề sinh cho môn (câu của mọi nhóm trong môn, mỗi câu một lần). */
+  const summarizeSubject = (section: ExamSection, count: number, blocks: readonly PreviewBlock[]): PreviewSubject => {
+    const questions = blocks.flatMap((block) =>
+      block.items.flatMap((item) => (item.kind === "SET" ? item.children : [item.question])),
+    );
+    const generatedBy = (pick: (question: PreviewQuestion) => string) => {
+      const tally = new Map<string, number>();
+      for (const question of questions) tally.set(pick(question), (tally.get(pick(question)) ?? 0) + 1);
+      return tally;
+    };
+    const quotas: PreviewSubjectQuota[] = [];
+    if (section.answerQuotas) {
+      const required = quotasOf(section, count);
+      const generated = generatedBy((question) => question.type);
+      for (const { answerType } of section.answerQuotas.items) {
+        quotas.push({
+          kind: "ANSWER_TYPE",
+          code: answerType,
+          required: required.get(answerType) ?? 0,
+          generated: generated.get(answerType) ?? 0,
+        });
+      }
+    }
+    const requirement = section.matrix ? resolveMatrixRequirement(section.matrix, count).requirement : null;
+    if (requirement) {
+      const byGrade = generatedBy((question) => question.gradeCode);
+      const byDifficulty = generatedBy((question) => question.difficultyCode);
+      for (const { code, required } of dimensionRequired(requirement, "GRADE")) {
+        quotas.push({ kind: "GRADE", code, required, generated: byGrade.get(code) ?? 0 });
+      }
+      for (const { code, required } of dimensionRequired(requirement, "DIFFICULTY")) {
+        quotas.push({ kind: "DIFFICULTY", code, required, generated: byDifficulty.get(code) ?? 0 });
+      }
+    }
+    return { sectionId: section.id, subjectCode: section.subjectCode, questionCount: questions.length, quotas };
+  };
+
   /**
    * Môn của một phần trên đường: môn cố định theo số câu của môn; `SUBJECT_CHOICE` chỉ các môn đã chọn, theo thứ tự cấu
    * trúc, số câu chia theo nhóm của môn (B10, D25); ba môn cùng nhóm thì môn nhận số câu nhỏ nhất chọn theo hạt giống.
@@ -422,11 +475,16 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
   };
 
   let totalMinutes = 0;
+  const subjects: PreviewSubject[] = [];
   const previewParts: PreviewPart[] = pathSections(parts, path).map(({ part, optionId, sections }) => {
     totalMinutes += part.durationMinutes ?? 0;
     const firstNumber = number;
     const pointsBefore = totalPoints;
-    const blocks = sectionsToBuild(part, optionId, sections).flatMap(({ section, count }) => buildSection(section, count));
+    const blocks = sectionsToBuild(part, optionId, sections).flatMap(({ section, count }) => {
+      const built = buildSection(section, count);
+      subjects.push(summarizeSubject(section, count, built));
+      return built;
+    });
     return {
       partId: part.id,
       name: part.name,
@@ -455,6 +513,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
     sharedDuration: sharedMinutes !== null,
     hasManualGrading: previewParts.some((part) => part.blocks.some((block) => block.manualGrading)),
     parts: previewParts,
+    subjects,
     checks,
     knowledgeStats: [...chapterCounts.values()].sort((a, b) => b.count - a.count || a.code.localeCompare(b.code)),
   };

@@ -60,6 +60,28 @@ describe("ExamReviewView", () => {
     );
   });
 
+  it("duong Khoa hoc hien ket qua tung bo mon hoc vien chon kem so cau tung mon, bo ba mon tu nhien co ba cach chia", async () => {
+    renderWithProviders(<ExamReviewView examId={HSA} />);
+    const table = await screen.findByRole("table", { name: /^Kết quả kiểm tra từng bộ môn của đường/ });
+    // Tên môn lấy từ danh mục: đợi tải xong.
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(13));
+    const rowOf = (text: string) => within(table).getByText(text).closest("tr")!;
+    expect(screen.getByText(/12 trường hợp: 1 hợp lệ, 8 không hợp lệ, 3 chưa xác nhận được\./)).toBeInTheDocument();
+    expect(screen.getByText(/Hai môn cùng nhóm \(tự nhiên hoặc xã hội\) nhận 17 câu mỗi môn, môn còn lại nhận 16 câu/)).toBeInTheDocument();
+    // Ba môn tự nhiên: mỗi môn một lần nhận 16 câu, đều được kiểm tra.
+    for (const text of [
+      "Vật lí 16 · Hóa học 17 · Sinh học 17",
+      "Vật lí 17 · Hóa học 16 · Sinh học 17",
+      "Vật lí 17 · Hóa học 17 · Sinh học 16",
+    ]) {
+      expect(within(rowOf(text)).getByText("Không hợp lệ")).toBeInTheDocument();
+    }
+    expect(within(rowOf("Vật lí 17 · Sinh học 17 · Lịch sử 16")).getByText("Hợp lệ")).toBeInTheDocument();
+    expect(within(rowOf("Vật lí 17 · Sinh học 17 · Địa lí 16")).getByText("Chưa xác nhận được")).toBeInTheDocument();
+    // Hai môn xã hội một môn tự nhiên: môn tự nhiên nhận 16 câu.
+    expect(within(rowOf("Vật lí 16 · Lịch sử 17 · Địa lí 17")).getByText("Chưa xác nhận được")).toBeInTheDocument();
+  });
+
   it("sinh de xem truoc tu bang kiem tra cho duong Tieng Anh", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExamReviewView examId={HSA} />);

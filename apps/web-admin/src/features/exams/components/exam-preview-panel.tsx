@@ -20,9 +20,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { enumeratePaths } from "../check";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import type { ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult } from "../review-types";
-import type { ExamDetail } from "../types";
+import type { ExamDetail, ExamPartOption } from "../types";
 import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewPaper } from "./exam-preview-paper";
+import { ExamPreviewSubjects } from "./exam-preview-subjects";
 import { structureHref, useChoiceNameResolver, useIssueText, usePathLabel } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
@@ -80,17 +81,24 @@ export function ExamPreviewPanel({
   const fallback = (options.find((option) => option.result === null || option.result === "VALID") ?? options[0])?.path.pathId;
   const pathId = selected && options.some((option) => option.path.pathId === selected) ? selected : (fallback ?? null);
 
-  /**
-   * Đường có `SUBJECT_CHOICE` cần gửi đúng số môn muốn xem (spec 5.2): tới khi FE-3c có ô chọn môn ở xem trước, xem
-   * trước các môn đầu tiên của phương án theo thứ tự cấu trúc.
-   */
-  function defaultSubjects(candidatePathId: string): string[] | undefined {
+  /** Phương án `SUBJECT_CHOICE` của đường: đường có phương án này phải gửi đúng số môn muốn xem (spec 5.2). */
+  function subjectChoiceOf(candidatePathId: string | null): ExamPartOption | null {
     const parts = version !== null ? versionQuery.data?.parts : exam.parts;
     const path = options.find((option) => option.path.pathId === candidatePathId)?.path;
     const choice = path?.choices.find((item) => item.kind === "SUBJECT_CHOICE");
-    const option = parts?.find((part) => part.id === choice?.partId)?.options.find((item) => item.id === choice?.optionId);
-    return option ? option.sections.slice(0, option.chooseSubjects ?? 0).map((section) => section.subjectCode) : undefined;
+    return parts?.find((part) => part.id === choice?.partId)?.options.find((item) => item.id === choice?.optionId) ?? null;
   }
+
+  // Môn đã chọn theo từng phương án; chưa chọn thì xem các môn đầu tiên của phương án theo thứ tự cấu trúc.
+  const [pickedSubjects, setPickedSubjects] = useState<{ optionId: string; codes: string[] } | null>(null);
+  function subjectsOf(option: ExamPartOption | null): string[] | undefined {
+    if (!option) return undefined;
+    if (pickedSubjects?.optionId === option.id) return pickedSubjects.codes;
+    return option.sections.slice(0, option.chooseSubjects ?? 0).map((section) => section.subjectCode);
+  }
+  const subjectOption = subjectChoiceOf(pathId);
+  const subjectCodes = subjectsOf(subjectOption);
+  const subjectsIncomplete = subjectOption !== null && subjectCodes?.length !== subjectOption.chooseSubjects;
 
   function start(nextPathId: string | null = pathId) {
     if (!nextPathId) return;
@@ -99,7 +107,7 @@ export function ExamPreviewPanel({
     setTab("paper");
     setLiveMessage(t("live.generating"));
     generate.mutate(
-      { pathId: nextPathId, seed: nextRun, version, subjectCodes: defaultSubjects(nextPathId) },
+      { pathId: nextPathId, seed: nextRun, version, subjectCodes: subjectsOf(subjectChoiceOf(nextPathId)) },
       {
         onSuccess: (result) => {
           setLiveMessage(
@@ -234,11 +242,18 @@ export function ExamPreviewPanel({
               />
             )}
           </FormField>
-          <Button onClick={() => start()} loading={generate.isPending} disabled={!pathId}>
+          <Button onClick={() => start()} loading={generate.isPending} disabled={!pathId || subjectsIncomplete}>
             {data ? <RefreshCw /> : <Eye />}
             {data ? t("regenerate") : t("generate")}
           </Button>
         </div>
+        {subjectOption && (
+          <ExamPreviewSubjects
+            option={subjectOption}
+            value={subjectCodes ?? []}
+            onChange={(codes) => setPickedSubjects({ optionId: subjectOption.id, codes })}
+          />
+        )}
         {runStatus && <p className="text-caption text-text-muted">{runStatus}</p>}
       </Card>
 
