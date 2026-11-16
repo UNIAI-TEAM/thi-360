@@ -3,22 +3,30 @@ package vn.unicom.thi360.exam;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.application.ExamBlockRefProjector;
+import vn.unicom.thi360.exam.application.ExamCheckFingerprint;
+import vn.unicom.thi360.exam.application.ExamCheckResultStore;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.exam.infrastructure.ExamBlockRefRepository;
+import vn.unicom.thi360.exam.infrastructure.ExamRepository;
+import vn.unicom.thi360.exam.infrastructure.ExamKindProfileRepository;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
@@ -33,6 +41,10 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
     @Autowired ExamBlockRefRepository refs;
     @Autowired QuestionSourcePort source;
     @Autowired QuestionUsageProvider provider;
+    @Autowired ExamRepository exams;
+    @Autowired ExamKindProfileRepository profiles;
+    @Autowired ExamCheckResultStore checks;
+    @Autowired EntityManager entityManager;
 
     @Test
     void inheritedScopeAndSubjectChoiceAreReportedByBothEndpoints() throws Exception {
@@ -47,9 +59,9 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", question);
         jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)", question, leaf.id());
         UUID exam = UUID.randomUUID();
-        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing) values (?,?,?,'Usage exam','FULL','SHARED')", exam, exam.toString(), exam.toString());
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Usage exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)", exam, exam.toString(), exam.toString());
         String json = """
-                {"parts":[{"id":"p","name":"Part","sections":[
+                {"parts":[{"id":"p","name":"Part","participation":{"mode":"CHOICE","choose":1},"sections":[
                   {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"],"match":"ANY"},
                    "blocks":[{"id":"inherited","name":"Inherited","questionType":"SINGLE_CHOICE"},
                              {"id":"wrong-type","name":"Wrong type","questionType":"SHORT_ANSWER"}]}],
@@ -93,6 +105,40 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
             assertThat(response.path(field).toString()).contains("inherited", "choice-b", "draft-b", "Science")
                     .doesNotContain("wrong-type");
         }
+        // A partial publication preserves the old snapshot even when the working structure is removed.
+        UUID witness = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,1,1)", witness, "WITNESS-" + witness, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", witness);
+        publish(exam, subject, witness, List.of("choice", "draft-option"));
+        assertThat(provider.examUsagesOf(question)).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
+                .containsExactlyInAnyOrder("inherited", "choice-b", "draft-b");
+        UUID replacementSubject = UUID.randomUUID();
+        UUID replacementWitness = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,1,1)",
+                replacementWitness, "WITNESS-" + replacementWitness, replacementSubject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", replacementWitness);
+        jdbc.update("update exam.exam_structure set parts=?::jsonb,structure_hash='test2' where exam_id=?", json.replace("TEST", "OTHER"), exam);
+        jdbc.update("update exam.exam_block_ref set subject_item_id=? where exam_id=? and version_no is null", replacementSubject, exam);
+        jdbc.update("update exam.exam set has_unpublished_changes=true where id=?", exam);
+        publish(exam, replacementSubject, replacementWitness, List.of("choice"));
+        for (String endpoint : List.of("usage", "retire-impact")) {
+            var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                    .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString());
+            String field = endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks";
+            assertThat(response.path(field).toString()).contains("inherited", "draft-b").doesNotContain("choice-b");
+        }
+        publish(exam, replacementSubject, replacementWitness, List.of("draft-option"));
+        jdbc.update("update exam.exam set has_unpublished_changes=true where id=?", exam);
+        entityManager.clear();
+        mockMvc.perform(get("/api/v1/admin/exams/" + exam + "/versions").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.workingCopy.unpublishedPaths").isEmpty());
+        for (String endpoint : List.of("usage", "retire-impact")) {
+            var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                    .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString());
+            assertThat(response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks")).isEmpty();
+        }
         UUID usedQuestion = UUID.randomUUID();
         jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,1,1)",
                 usedQuestion, "USAGE-USED-" + usedQuestion, subject);
@@ -112,6 +158,33 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                 .andExpect(status().isNoContent());
         assertThat(jdbc.queryForObject("select deleted_at is not null from questionbank.question where id = ?",
                 Boolean.class, question)).isTrue();
+    }
+
+    private void publish(UUID exam, UUID subject, UUID witness, List<String> selected) throws Exception {
+        entityManager.clear();
+        var examEntity = exams.findById(exam).orElseThrow();
+        var profile = profiles.findById(examEntity.getKindItemId()).orElseThrow();
+        String hash = jdbc.queryForObject("select structure_hash from exam.exam_structure where exam_id=?", String.class, exam);
+        var input = new ExamCheckResultStore.Input(exam, examEntity.getRevision(), hash,
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(examEntity)), profile.getRevision(), catalog.revision(),
+                "test", mapper.valueToTree(source.sourceRevisions(List.of(subject))));
+        var outcome = mapper.createObjectNode().put("status", "VALID");
+        var paths = outcome.putArray("paths");
+        var witnesses = mapper.createArrayNode();
+        for (String id : List.of("choice", "draft-option")) {
+            paths.addObject().put("pathId", id).put("result", "VALID");
+            var path = witnesses.addObject();
+            path.putObject("path").putArray("chosen").addObject().put("optionId", id);
+            path.putArray("witness").addObject().put("questionId", witness.toString()).put("versionNo", 1);
+        }
+        assertThat(checks.save(input, "VALID", 0, Instant.now(), 1, outcome, witnesses)).isTrue();
+        var request = mapper.createObjectNode().put("expectedRevision", examEntity.getRevision());
+        request.set("pathIds", mapper.valueToTree(selected));
+        mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/publish")
+                .with(asUser(Permissions.EXAM_PUBLISH)).header("Idempotency-Key", UUID.randomUUID().toString())
+                .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        entityManager.clear();
     }
 
     @Test

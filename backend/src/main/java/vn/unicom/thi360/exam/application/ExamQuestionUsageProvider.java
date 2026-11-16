@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
@@ -27,7 +29,7 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageProvider;
 
-/** Reverse lookup of working sources, confirmed using the same source filters as exam generation. */
+/** Reverse lookup of working and serving sources using exam-generation filters. */
 @Service
 public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsagePort {
     private final ExamBlockRefRepository refs;
@@ -36,15 +38,17 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
     private final CatalogLookup catalog;
     private final QuestionSourcePort source;
     private final ExamStructureCodec codec;
+    private final NamedParameterJdbcTemplate jdbc;
 
     public ExamQuestionUsageProvider(ExamBlockRefRepository refs, ExamRepository exams,
             ExamStructureRepository structures, CatalogLookup catalog, QuestionSourcePort source,
-            ObjectMapper mapper) {
+            ObjectMapper mapper, NamedParameterJdbcTemplate jdbc) {
         this.refs = refs;
         this.exams = exams;
         this.structures = structures;
         this.catalog = catalog;
         this.source = source;
+        this.jdbc = jdbc;
         this.codec = new ExamStructureCodec(mapper);
     }
 
@@ -60,15 +64,32 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         Map<UUID, Exam> examById = new HashMap<>();
         exams.findAllById(blocks.stream().map(ExamBlockRef::getExamId).distinct().toList())
                 .forEach(exam -> examById.put(exam.getId(), exam));
+        if (examById.isEmpty()) return List.of();
         Map<UUID, List<ExamPart>> partsByExam = new HashMap<>();
         structures.findAllById(examById.keySet()).forEach(structure ->
                 partsByExam.put(structure.getExamId(), codec.read(structure.getParts()).parts()));
+        Map<VersionKey, ServingSnapshot> serving = new HashMap<>();
+        jdbc.query("""
+                select exam_id, version_no, parts::text, serving_path_ids
+                from exam.exam_version
+                where exam_id in (:examIds) and state = 'SERVING' and cardinality(serving_path_ids) > 0
+                """, new MapSqlParameterSource("examIds", examById.keySet()), rs -> {
+            var key = new VersionKey(rs.getObject(1, UUID.class), rs.getInt(2));
+            serving.put(key, new ServingSnapshot(codec.read(rs.getString(3)).parts(),
+                    List.of((String[]) rs.getArray(4).getArray())));
+        });
         Map<QuestionSourcePort.Filter, Boolean> matches = new HashMap<>();
         List<ExamUsageRef> result = new ArrayList<>();
-        for (ExamBlockRef ref : blocks) {
+        for (ExamBlockRef ref : blocks.stream()
+                .sorted(java.util.Comparator.comparing(ref -> ref.getVersionNo() != null)).toList()) {
             Exam exam = examById.get(ref.getExamId());
             if (exam == null) continue;
-            for (ExamPart part : partsByExam.getOrDefault(ref.getExamId(), List.of())) {
+            ServingSnapshot snapshot = ref.getVersionNo() == null ? null
+                    : serving.get(new VersionKey(ref.getExamId(), ref.getVersionNo()));
+            if (ref.getVersionNo() != null && snapshot == null) continue;
+            List<ExamPart> parts = snapshot == null ? partsByExam.getOrDefault(ref.getExamId(), List.of())
+                    : snapshot.parts();
+            for (ExamPart part : parts) {
                 if (part == null || !Objects.equals(part.id(), ref.getPartId())) continue;
                 if (ref.getOptionCode() == null) {
                     addSections(result, questionId, exam, part, null, part.sections(), ref,
@@ -76,6 +97,8 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                 }
                 for (ExamPartOption option : part.options()) {
                     if (option == null || !Objects.equals(option.code(), ref.getOptionCode())) continue;
+                    if (snapshot != null && snapshot.paths().stream().noneMatch(path ->
+                            List.of(path.split("\\+", -1)).contains(option.id()))) continue;
                     addSections(result, questionId, exam, part, option, option.sections(), ref,
                             knowledge, knowledgeById, descendants, matches);
                     if (ref.getSectionId() == null) {
@@ -87,14 +110,19 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                 }
             }
         }
-        return List.copyOf(result);
+        Map<BlockKey, ExamUsageRef> unique = new java.util.LinkedHashMap<>();
+        for (ExamUsageRef usage : result) {
+            unique.putIfAbsent(new BlockKey(usage.examId(), usage.partId(), usage.optionId(),
+                    usage.sectionId(), usage.blockId()), usage);
+        }
+        return List.copyOf(unique.values());
     }
 
     private List<ExamBlockRef> candidateBlocks(UUID questionId, List<CatalogItemView> knowledge,
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
         var description = source.describe(List.of(questionId)).get(questionId);
         if (description == null || description.subjectId() == null) return List.of();
-        return refs.findBySubjectItemIdAndVersionNoIsNull(description.subjectId()).stream()
+        return refs.findBySubjectItemId(description.subjectId()).stream()
                 .filter(ref -> {
                     if (ref.getQuestionType() != null) {
                         if (!ref.getQuestionType().equals(description.questionType().name())) return false;
@@ -163,4 +191,8 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                     section == null ? null : section.id(), block.id(), block.name()));
         }
     }
+
+    private record VersionKey(UUID examId, int version) {}
+    private record ServingSnapshot(List<ExamPart> parts, List<String> paths) {}
+    private record BlockKey(UUID examId, String partId, String optionId, String sectionId, String blockId) {}
 }
