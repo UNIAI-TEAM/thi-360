@@ -36,11 +36,11 @@ function block(matrix: Partial<BlockMatrix>, overrides: Partial<QuestionBlock> =
   return {
     id: "blk-test",
     name: "Khối thử",
-    questionType: "FILL_IN",
+    questionType: "SHORT_ANSWER",
     questionCount: 20,
     setCount: null,
     setSize: null,
-    pointsPerQuestion: 1,
+    requiredPointsPerQuestion: 1,
     knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
     tagCodes: [],
     matrix: { mode: "COMBINED", unit: "COUNT", cells: [], byGrade: [], byDifficulty: [], ...matrix },

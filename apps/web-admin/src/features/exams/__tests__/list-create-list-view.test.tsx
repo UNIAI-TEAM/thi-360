@@ -15,18 +15,14 @@ beforeEach(async () => {
     name: "BCA thu",
     code: "BCA-F-901",
     kind: "BCA",
-    format: "FULL",
-    templateCode: "BCA_FULL",
-    singleSubjectCode: null,
+    scope: "FULL",
     description: null,
   });
   await createExam({
     name: "THPTQG Tin hoc thu",
     code: "THPTQG-F-TIN-901",
     kind: "THPTQG",
-    format: "FULL",
-    templateCode: "THPTQG_INFORMATICS_2025",
-    singleSubjectCode: null,
+    scope: "SUBJECT",
     subjectCode: "INFORMATICS",
     description: null,
   });

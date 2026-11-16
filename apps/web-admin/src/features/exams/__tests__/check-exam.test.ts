@@ -23,7 +23,7 @@ function block(overrides: Partial<QuestionBlock> = {}): QuestionBlock {
     questionCount: 10,
     setCount: null,
     setSize: null,
-    pointsPerQuestion: 1,
+    requiredPointsPerQuestion: 1,
     knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
     tagCodes: [],
     matrix: {
@@ -69,6 +69,9 @@ function singlePart(blocks: QuestionBlock[], questionCount = 10): ExamPart {
     name: "Phần 1",
     durationMinutes: 60,
     questionCount,
+    questionCountOnPaper: questionCount,
+    questionCountRequired: questionCount,
+    participation: { mode: "ALL", choose: null },
     mode: "FIXED",
     sections: [{ id: "s1", subjectCode: "MATH", questionCount, blocks }],
     options: [],

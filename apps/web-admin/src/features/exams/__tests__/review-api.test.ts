@@ -14,6 +14,9 @@ import {
 } from "../review-api";
 
 const HSA = "ex-hsa-f-001";
+
+/** `revision` hiện tại của bài (D13): lệnh công bố gửi lại làm `expectedRevision`. */
+const rev = (examId: string) => examStore.require(examId).revision;
 const KH1 = "opt-1";
 const EN = "opt-30";
 const KH2 = "opt-8";
@@ -125,7 +128,7 @@ describe("listExamVersions / getExamVersion", () => {
 describe("publishExam", () => {
   it("công bố một phần: phiên bản mới cho đường đã chọn, đường còn lại giữ bản cũ", async () => {
     await getExamCheck({ examId: HSA });
-    const response = await publishExam({ examId: HSA, pathIds: [EN, KH1], note: "  Sửa ma trận  " });
+    const response = await publishExam({ examId: HSA, pathIds: [EN, KH1], note: "  Sửa ma trận  ", expectedRevision: rev(HSA) });
     expect(response.version).toBe(3);
     expect(response.keptPaths).toEqual([{ pathId: KH2, version: 2 }]);
 
@@ -148,7 +151,7 @@ describe("publishExam", () => {
 
   it("công bố mọi đường: bản cũ thành đã thay thế, hết bản sửa chưa công bố", async () => {
     await runExamCheck({ examId: "ex-qda-l-ta-001" });
-    await publishExam({ examId: "ex-qda-l-ta-001", pathIds: ["default"], note: null });
+    await publishExam({ examId: "ex-qda-l-ta-001", pathIds: ["default"], note: null, expectedRevision: rev("ex-qda-l-ta-001") });
     const exam = examStore.require("ex-qda-l-ta-001");
     expect(exam.hasUnpublishedChanges).toBe(false);
     expect(exam.versions.map((item) => [item.version, item.state])).toEqual([
@@ -160,16 +163,20 @@ describe("publishExam", () => {
   });
 
   it("từ chối đường không hợp lệ, chưa chọn đường, hoặc chưa kiểm tra", async () => {
-    await expect(publishExam({ examId: HSA, pathIds: [KH2], note: null })).rejects.toMatchObject({
+    await expect(publishExam({ examId: HSA, pathIds: [KH2], note: null, expectedRevision: rev(HSA) })).rejects.toMatchObject({
       status: 422,
       code: "PATH_NOT_VALID",
     });
-    await expect(publishExam({ examId: HSA, pathIds: [], note: null })).rejects.toMatchObject({ code: "NO_PATH_SELECTED" });
-    await expect(publishExam({ examId: "ex-hsa-f-002", pathIds: ["opt-72"], note: null })).rejects.toMatchObject({
+    await expect(publishExam({ examId: HSA, pathIds: [], note: null, expectedRevision: rev(HSA) })).rejects.toMatchObject({ code: "NO_PATH_SELECTED" });
+    await expect(publishExam({ examId: HSA, pathIds: [EN], note: null, expectedRevision: rev(HSA) + 2 })).rejects.toMatchObject({
+      status: 412,
+      code: "EXAM_REVISION_CONFLICT",
+    });
+    await expect(publishExam({ examId: "ex-hsa-f-002", pathIds: ["opt-72"], note: null, expectedRevision: rev("ex-hsa-f-002") })).rejects.toMatchObject({
       status: 409,
       code: "CHECK_REQUIRED",
     });
-    const nothing = publishExam({ examId: "ex-qda-f-001", pathIds: ["default"], note: null });
+    const nothing = publishExam({ examId: "ex-qda-f-001", pathIds: ["default"], note: null, expectedRevision: rev("ex-qda-f-001") });
     await expect(nothing).rejects.toBeInstanceOf(MockApiError);
     await expect(nothing).rejects.toMatchObject({ status: 409, code: "NOTHING_TO_PUBLISH" });
   });
@@ -178,7 +185,7 @@ describe("publishExam", () => {
     const check = await runExamCheck({ examId: "ex-hsa-f-002" });
     const valid = check.paths.filter((path) => path.result === "VALID").map((path) => path.pathId);
     expect(valid.length).toBeGreaterThan(0);
-    await publishExam({ examId: "ex-hsa-f-002", pathIds: valid, note: null });
+    await publishExam({ examId: "ex-hsa-f-002", pathIds: valid, note: null, expectedRevision: rev("ex-hsa-f-002") });
     const exam = examStore.require("ex-hsa-f-002");
     expect(exam.status).toBe("PUBLISHED");
     expect(exam.servingVersion).toBe(1);

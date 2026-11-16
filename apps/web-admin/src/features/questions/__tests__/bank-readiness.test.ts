@@ -96,9 +96,16 @@ describe("evaluateReadiness (UniNote PBI-03 muc 7.2)", () => {
   });
 
   it("o trong chua co dap an va cau con thieu dap an", () => {
-    const fill = sample("FILL_IN");
-    if (fill.body.type === "FILL_IN") fill.body.blanks[0]!.acceptedAnswers = [" "];
-    expect(failed(fill)).toEqual(["NO_GAPS"]);
+    const fill = sample("SHORT_ANSWER");
+    if (fill.body.type === "SHORT_ANSWER") fill.body.answers = [" "];
+    expect(failed(fill)).toEqual(["ANSWER"]);
+
+    const cloze: QuestionDetail = {
+      ...fill,
+      type: "CLOZE",
+      body: { type: "CLOZE", passage: "Dien [[b1]] vao cho trong", blanks: [{ id: "b1", answers: [" "], points: 1 }] },
+    };
+    expect(failed(cloze)).toEqual(["NO_GAPS"]);
 
     const set = sample("QUESTION_SET");
     const child = set.children[2]!;

@@ -88,8 +88,8 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
     expect(messages(values)).toEqual([]);
   });
 
-  it("điền đáp án: số chỗ trống ___ phải bằng số ô đáp án", () => {
-    const values = classified(emptyEditorValues("FILL_IN"));
+  it("điền khuyết: số chỗ trống ___ phải bằng số ô đáp án", () => {
+    const values = classified(emptyEditorValues("CLOZE"));
     values.content = "Thủ đô của Việt Nam là ___ .";
     expect(messages(values)).toContain("blanksMin");
     values.body.blanks = [{ id: "b1", answers: [{ id: "a1", value: "Hà Nội" }] }];
@@ -101,8 +101,8 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
     expect(messages(values)).toEqual(["blankAnswerRequired"]);
   });
 
-  it("kéo thả: ô thả cần nội dung và thẻ đúng, thẻ nhiễu không được trống", () => {
-    const values = classified(emptyEditorValues("DRAG_DROP"));
+  it("ghép đôi: ô ghép cần nội dung và thẻ đúng, thẻ nhiễu không được trống", () => {
+    const values = classified(emptyEditorValues("MATCHING"));
     expect(messages(values)).toEqual(expect.arrayContaining(["zoneLabelRequired", "zoneItemRequired"]));
     values.body.zones = values.body.zones.map((zone, index) => ({ ...zone, label: `Ô ${index}`, itemContent: `Thẻ ${index}` }));
     values.body.distractors = [{ id: "d1", content: "" }];

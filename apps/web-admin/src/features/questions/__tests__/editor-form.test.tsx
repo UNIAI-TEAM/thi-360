@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
-import { resetQuestionHistoryForTests } from "../editor-api";
+import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { QuestionTypePicker } from "../components/question-type-picker";
 import { questionStore } from "../mock/store";

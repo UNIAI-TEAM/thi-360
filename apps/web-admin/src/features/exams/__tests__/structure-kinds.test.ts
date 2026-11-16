@@ -52,7 +52,7 @@ function competencyBlock(byCompetency: BlockMatrix["byCompetency"], unit: BlockM
     questionCount: 30,
     setCount: null,
     setSize: null,
-    pointsPerQuestion: 1,
+    requiredPointsPerQuestion: 1,
     knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: true, competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
     tagCodes: [],
     matrix: {
@@ -95,7 +95,7 @@ describe("cấu trúc theo bảy kỳ thi: bài mẫu", () => {
 
   it("BCA: điểm khối lệch điểm phần bị báo PART_POINTS", () => {
     const exam = sample("ex-bca-f-001");
-    exam.parts[1]!.sections[2]!.blocks[0]!.pointsPerQuestion = 1;
+    exam.parts[1]!.sections[2]!.blocks[0]!.requiredPointsPerQuestion = 1;
     expect(validateStructure(exam.parts, AXES, { timing: exam.timing })).toEqual([
       { code: "PART_POINTS", partId: "part-b2", optionId: null, expected: 60, actual: 65 },
     ]);
@@ -122,6 +122,9 @@ describe("thời lượng chung và theo phần", () => {
     name: "Phần 1",
     durationMinutes: null,
     questionCount: 1,
+    questionCountOnPaper: 1,
+    questionCountRequired: 1,
+    participation: { mode: "ALL", choose: null },
     mode: "FIXED",
     sections: [{ id: "s1", subjectCode: "MATH", questionCount: 1, blocks: [] }],
     options: [],

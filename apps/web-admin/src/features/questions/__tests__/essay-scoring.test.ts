@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import referenceFixture from "@/features/content/mock/reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { listQuestions } from "../api";
-import { resetQuestionHistoryForTests, updateQuestion } from "../editor-api";
+import { updateQuestion } from "../editor-api";
+import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import {
   emptyChild,
   emptyEditorValues,
@@ -47,6 +48,7 @@ function classified(type: QuestionEditorValues["type"]): QuestionEditorValues {
 function essay(points: string, rubric: Array<[string, string]>): QuestionEditorValues {
   const values = classified("ESSAY");
   values.points = points;
+  values.body.gradingGuide = "Huong dan cham";
   values.body.rubric = rubric.map(([description, criterionPoints], index) => ({
     id: `r${index}`,
     description,
@@ -66,16 +68,15 @@ function trueFalse(points: string, table: string[]): QuestionEditorValues {
 const messages = (values: QuestionEditorValues) => validateQuestionEditor(values).map((issue) => issue.message);
 
 describe("soan cau Tu luan", () => {
-  it("bieu mau moi co mot tieu chi mang du diem mac dinh", () => {
+  it("bieu mau moi chua co tieu chi (tuy chon) va can huong dan cham", () => {
     const values = classified("ESSAY");
-    expect(values.body.rubric).toHaveLength(1);
-    expect(values.body.rubric[0]?.points).toBe("1");
-    expect(messages(values)).toEqual(["criterionRequired"]);
+    expect(values.body.rubric).toHaveLength(0);
+    expect(messages(values)).toEqual(["gradingGuideRequired"]);
   });
 
-  it("can it nhat mot tieu chi, tong diem bang diem cua cau", () => {
+  it("tieu chi tuy chon; co thi tong diem bang diem cua cau", () => {
     expect(messages(essay("2", [["Mo bai", "0,5"], ["Than bai", "1,5"]]))).toEqual([]);
-    expect(messages(essay("2", []))).toEqual(["rubricMin"]);
+    expect(messages(essay("2", []))).toEqual([]);
     expect(messages(essay("2", [["Mo bai", "0,5"], ["Than bai", "1"]]))).toEqual(["rubricTotalMismatch"]);
     expect(messages(essay("2", [["Mo bai", "0"], ["", "2"]]))).toEqual(["criterionPointsInvalid", "criterionRequired"]);
   });
@@ -144,7 +145,7 @@ describe("bang diem Dung/Sai", () => {
   });
 
   it("bang mau ky thi doi theo diem cua cau", () => {
-    const thpt = reference.examKinds.find((kind) => kind.code === "THPTQG")?.scoringDefaults.trueFalseTable;
+    const thpt = reference.examKinds.find((kind) => kind.code === "THPTQG")?.scoringDefaults.trueFalse.table;
     expect(thpt).toEqual([0.1, 0.25, 0.5, 1]);
     expect(scaleScoreTable(thpt ?? [], 1)).toEqual([0.1, 0.25, 0.5, 1]);
     expect(scaleScoreTable(thpt ?? [], 2)).toEqual([0.2, 0.5, 1, 2]);
@@ -232,7 +233,7 @@ describe("phien ban luu quy tac cham va nang luc", () => {
   it("luu cau giu nang luc", async () => {
     const question = questionStore.require("q-8007");
     const values = toEditorValues(question);
-    const { question: saved } = await updateQuestion(question.id, { ...toSaveRequest(values), expectedVersion: 1 });
+    const { question: saved } = await updateQuestion(question.id, { ...toSaveRequest(values), expectedRevision: question.revision });
     expect(saved.competencyCode).toBe("VACT-NN-TA");
   });
 });

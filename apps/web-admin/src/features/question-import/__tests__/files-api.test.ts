@@ -4,11 +4,11 @@ import { MockApiError } from "@/lib/mock/content-mock";
 import {
   commitImport,
   downloadQuestionTemplate,
-  importHistoryStore,
   listImportHistory,
   uploadQuestionFile,
   validateImport,
 } from "../api";
+import { importHistoryStore } from "../api.mock";
 import { buildErrorReportTable, collectErrorLines, errorReportFileName } from "../error-report";
 import { checkImportFile, parseCsv, readFileText, sheetFromTable } from "../files";
 import type { ColumnMapping, ImportUpload } from "../types";

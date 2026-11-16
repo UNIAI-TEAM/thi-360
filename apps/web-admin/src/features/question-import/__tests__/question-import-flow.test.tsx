@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
-import { importHistoryStore } from "../api";
+import { importHistoryStore } from "../api.mock";
 import { QuestionImportView } from "../components/question-import-view";
 
 function setUrl(search = "") {

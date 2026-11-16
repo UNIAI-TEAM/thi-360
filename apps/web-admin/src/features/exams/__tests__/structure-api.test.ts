@@ -19,9 +19,7 @@ const NEW_EXAM: CreateExamRequest = {
   name: "Đề HSA thử",
   code: "hsa-f-003",
   kind: "HSA",
-  format: "FULL",
-  templateCode: "HSA_FULL",
-  singleSubjectCode: null,
+  scope: "FULL",
   description: "  ",
 };
 
@@ -39,8 +37,8 @@ async function rejectsWith(promise: Promise<unknown>, status: number, code: stri
 
 describe("tạo bài thi", () => {
   it("gợi ý mã tiếp theo chưa dùng", async () => {
-    expect(await suggestExamCode({ kind: "HSA", format: "FULL" })).toBe("HSA-F-003");
-    expect(await suggestExamCode({ kind: "QDA", format: "SINGLE" })).toBe("QDA-L-001");
+    expect(await suggestExamCode({ kind: "HSA", scope: "FULL" })).toBe("HSA-F-003");
+    expect(await suggestExamCode({ kind: "QDA", scope: "PART" })).toBe("QDA-P-001");
   });
 
   it("tạo bài Nháp theo mẫu, mã viết hoa, cấu trúc 3 phần với khối để trống", async () => {
@@ -62,15 +60,14 @@ describe("tạo bài thi", () => {
   });
 
   it("mã gợi ý của bài lẻ có đoạn môn", async () => {
-    expect(await suggestExamCode({ kind: "HSA", format: "SINGLE", singleScope: "MATH" })).toBe("HSA-L-TOAN-002");
-    expect(await suggestExamCode({ kind: "QDA", format: "SINGLE", singleScope: "SCIENCE" })).toBe("QDA-L-KH-001");
+    expect(await suggestExamCode({ kind: "HSA", scope: "PART", partCode: "MATH" })).toBe("HSA-P-TOAN-002");
+    expect(await suggestExamCode({ kind: "QDA", scope: "PART", partCode: "SCIENCE" })).toBe("QDA-P-KH-001");
   });
 
   it("tạo theo cấu trúc khởi tạo đã chỉnh: phần cố định, Tiếng Anh, tổ hợp với số câu từng môn", async () => {
     const exam = await createExam({
       ...NEW_EXAM,
       kind: "QDA",
-      templateCode: "QDA_FULL",
       code: "QDA-F-009",
       parts: [
         { name: "Toán", questionCount: 40, durationMinutes: 70, mode: "FIXED", subjectCode: "MATH", englishOption: false, combinations: [] },
@@ -107,24 +104,32 @@ describe("tạo bài thi", () => {
     await rejectsWith(createExam({ ...NEW_EXAM, parts: [] }), 422, "EXAM_STRUCTURE_INVALID");
   });
 
-  it("chặn mã trùng và phạm vi thiếu môn hoặc mẫu", async () => {
+  it("chặn mã trùng và phạm vi không hợp lệ", async () => {
     await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-001" }), 409, "EXAM_CODE_TAKEN");
-    await rejectsWith(createExam({ ...NEW_EXAM, templateCode: null }), 422, "EXAM_TEMPLATE_MISMATCH");
-    await rejectsWith(
-      createExam({ ...NEW_EXAM, format: "SINGLE", templateCode: null, singleSubjectCode: null }),
-      422,
-      "EXAM_SUBJECT_REQUIRED",
-    );
+    await rejectsWith(createExam({ ...NEW_EXAM, scope: "SUBJECT" }), 422, "EXAM_SCOPE_NOT_ALLOWED");
+    await rejectsWith(createExam({ ...NEW_EXAM, scope: "PART", partCode: null }), 422, "EXAM_PART_OR_SUBJECT_REQUIRED");
   });
 });
 
 describe("sửa bài thi", () => {
+  it("lưu cấu trúc lệch revision bị từ chối 412 EXAM_REVISION_CONFLICT và không đổi bài", async () => {
+    const before = await getExam("ex-qda-f-001");
+    await rejectsWith(
+      updateExamStructure(before.id, { parts: before.parts, expectedRevision: before.revision + 1 }),
+      412,
+      "EXAM_REVISION_CONFLICT",
+    );
+    expect((await getExam(before.id)).revision).toBe(before.revision);
+    const saved = await updateExamStructure(before.id, { parts: before.parts, expectedRevision: before.revision });
+    expect(saved.revision).toBe(before.revision + 1);
+  });
+
   it("lưu cấu trúc: có bản sửa chưa công bố, bài đã kiểm tra chuyển Cần kiểm tra lại", async () => {
     const before = await getExam("ex-qda-f-001");
     expect(before.check.status).toBe("VALID");
     const parts = structuredClone(before.parts);
     parts[0]!.durationMinutes = (parts[0]!.durationMinutes ?? 0) + 5;
-    const saved = await updateExamStructure("ex-qda-f-001", { parts });
+    const saved = await updateExamStructure("ex-qda-f-001", { parts, expectedRevision: before.revision });
     expect(saved.hasUnpublishedChanges).toBe(true);
     expect(saved.check.status).toBe("NEEDS_RECHECK");
     expect(saved.durationMinutes).toBe(before.durationMinutes + 5);
@@ -134,37 +139,36 @@ describe("sửa bài thi", () => {
 
   it("bài chưa kiểm tra vẫn giữ Chưa kiểm tra sau khi lưu", async () => {
     const draft = await getExam("ex-hsa-f-002");
-    const saved = await updateExamStructure(draft.id, { parts: draft.parts });
+    const saved = await updateExamStructure(draft.id, { parts: draft.parts, expectedRevision: draft.revision });
     expect(saved.check.status).toBe("UNCHECKED");
   });
 
-  it("đã công bố thì không đổi được kỳ thi, hình thức, mẫu; tên và mã vẫn sửa được", async () => {
+  it("đã công bố thì không đổi được kỳ thi, phạm vi; tên và mã vẫn sửa được", async () => {
     const exam = await getExam("ex-hsa-f-001");
     const info = {
       name: "Đề HSA đổi tên",
       code: exam.code,
       kind: exam.kind,
-      format: exam.format,
-      templateCode: exam.templateCode,
-      singleSubjectCode: exam.singleSubjectCode,
+      scope: exam.scope,
+      partCode: exam.partCode,
       description: null,
+      expectedRevision: exam.revision,
     };
-    await rejectsWith(updateExamInfo(exam.id, { ...info, kind: "QDA", templateCode: "QDA_FULL" }), 409, "EXAM_SCOPE_LOCKED");
+    await rejectsWith(updateExamInfo(exam.id, { ...info, kind: "QDA" }), 409, "EXAM_SCOPE_LOCKED");
     const renamed = await updateExamInfo(exam.id, info);
     expect(renamed.name).toBe("Đề HSA đổi tên");
     expect(renamed.parts).toEqual(exam.parts);
   });
 
-  it("bài chưa công bố đổi mẫu thì nạp lại cấu trúc theo mẫu mới", async () => {
+  it("bài chưa công bố đổi kỳ thi thì nạp lại cấu trúc theo mẫu mới", async () => {
     const exam = await getExam("ex-hsa-f-002");
     const changed = await updateExamInfo(exam.id, {
       name: exam.name,
       code: exam.code,
       kind: "QDA",
-      format: "FULL",
-      templateCode: "QDA_FULL",
-      singleSubjectCode: null,
+      scope: "FULL",
       description: null,
+      expectedRevision: exam.revision,
     });
     expect(changed.kind).toBe("QDA");
     expect(changed.parts.map((part) => [part.questionCount, part.durationMinutes, part.mode])).toEqual([
@@ -204,7 +208,9 @@ describe("sao chép và ngừng bán", () => {
   });
 
   it("chỉ ngừng bán được bài Đang bán", async () => {
-    expect((await discontinueExam("ex-qda-f-001")).status).toBe("DISCONTINUED");
+    const published = await getExam("ex-qda-f-001");
+    await rejectsWith(discontinueExam(published.id, published.revision + 4), 412, "EXAM_REVISION_CONFLICT");
+    expect((await discontinueExam(published.id, published.revision)).status).toBe("DISCONTINUED");
     await rejectsWith(discontinueExam("ex-hsa-f-002"), 409, "EXAM_NOT_PUBLISHED");
   });
 });

@@ -7,8 +7,10 @@ import {
   createExamSchema,
   type CreateExamFormValues,
   type CreateExamSchemaMessages,
+  type ExamFormat,
   type ExamScope,
   findTemplate,
+  formatOfScope,
   initialParts,
   NO_TEMPLATE,
   partsEdited,
@@ -20,7 +22,7 @@ import {
   yearsDiffer,
 } from "../create-exam-schema";
 import { MOCK_EXAM_TEMPLATES } from "../mock/store";
-import type { ExamFormat, ExamKind } from "../types";
+import type { ExamKind } from "../types";
 
 const MESSAGES: CreateExamSchemaMessages = {
   nameRequired: "nameRequired",
@@ -148,8 +150,8 @@ describe("mẫu cấu trúc khởi tạo", () => {
 describe("kiểm tra trang Tạo bài thi", () => {
   it("mẫu hợp lệ thì không có lỗi; mã đưa về chữ hoa khi gửi", () => {
     expect(errors(values())).toEqual({});
-    const request = toCreateExamRequest(values(), MOCK_EXAM_TEMPLATES);
-    expect(request).toMatchObject({ code: "HSA-F-003", templateCode: "HSA_FULL", singleSubjectCode: null, description: null });
+    const request = toCreateExamRequest(values(), KINDS);
+    expect(request).toMatchObject({ code: "HSA-F-003", scope: "FULL", partCode: null, description: null });
     expect(request.parts?.[2]).toMatchObject({ mode: "CHOICE", subjectCode: null, englishOption: true });
   });
 
@@ -212,7 +214,7 @@ function templateParts(code: string) {
   return initialParts({
     templates: MOCK_EXAM_TEMPLATES,
     kind: source.kind,
-    format: source.format,
+    format: formatOfScope(source.scope),
     singleScope: "",
     combinations: combinationsForKind(COMBINATIONS, source.kind),
     scopeName: (scope) => scope,
@@ -229,7 +231,7 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
       ["FIXED", 65, 60],
       ["CHOICE", 15, 15],
     ]);
-    expect(bca[0]!.blocks).toMatchObject([{ questionType: "ESSAY", pointsPerQuestion: 25 }]);
+    expect(bca[0]!.blocks).toMatchObject([{ questionType: "ESSAY", requiredPointsPerQuestion: 25 }]);
     expect(bca[1]!.sections.map((section) => [section.subjectCode, section.questionCount])).toEqual([
       ["MATH", 35],
       ["HISTORY", 10],
@@ -253,7 +255,7 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     });
     const bcaValues = values({ kind: "BCA", code: "BCA-F-009", templateCode: "BCA_FULL", ...defaults, parts: bca });
     expect(errors(bcaValues)).toEqual({});
-    const request = toCreateExamRequest(bcaValues, MOCK_EXAM_TEMPLATES);
+    const request = toCreateExamRequest(bcaValues, KINDS);
     expect(request).toMatchObject({ durationMinutes: 180, maxScore: 100 });
     expect(request.parts?.[0]).toMatchObject({ durationMinutes: null, points: 25 });
     expect(request.parts?.[1]?.sections).toHaveLength(3);
@@ -327,9 +329,11 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
       parts: sp2e,
     });
     expect(errors(input)).toEqual({ "parts.0.durationMinutes": "durationPositive" });
-    expect(toCreateExamRequest(input, MOCK_EXAM_TEMPLATES)).toMatchObject({ subjectCode: "MATH", yearsConfirmed: true });
-    const older = toCreateExamRequest({ ...input, templateCode: "SP2E_MATH_2025" }, MOCK_EXAM_TEMPLATES);
-    expect(older).not.toHaveProperty("yearsConfirmed");
+    // Bước 1 gửi phạm vi và môn; mẫu và xác nhận năm đi sau (applyExamTemplate, updateExamInfo).
+    const request = toCreateExamRequest(input, KINDS);
+    expect(request).toMatchObject({ scope: "SUBJECT", subjectCode: "MATH" });
+    expect(request).not.toHaveProperty("templateCode");
+    expect(request).not.toHaveProperty("yearsConfirmed");
   });
 
   it("kỳ thi theo môn phải chọn môn; thang điểm bắt buộc; V-ACT thang 1.200 chia điểm theo phần", () => {
