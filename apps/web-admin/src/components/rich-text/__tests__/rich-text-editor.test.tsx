@@ -1,0 +1,182 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import en from "@/messages/en.json";
+import { renderWithProviders } from "@/test/render";
+import { RichTextEditor } from "../rich-text-editor";
+import { RichTextView } from "../rich-text-view";
+import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
+
+function renderEditor(props: Partial<Parameters<typeof RichTextEditor>[0]> = {}) {
+  const onChange = vi.fn();
+  const view = renderWithProviders(
+    <RichTextEditor value="" onChange={onChange} {...props} />,
+    { locale: "en", messages: en },
+  );
+  return { onChange, ...view };
+}
+
+const editable = () => document.querySelector<HTMLElement>(".ProseMirror");
+
+describe("RichTextEditor", () => {
+  it("inserts a formula chip from the toolbar dialog and emits span.math-inline", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderEditor();
+
+    await user.click(screen.getByRole("button", { name: "Insert formula" }));
+    await user.type(screen.getByLabelText("LaTeX code"), "x^2");
+    await user.click(screen.getByRole("button", { name: "Insert formula" }));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('class="math-inline"'));
+    });
+    const html = onChange.mock.lastCall?.[0] as string;
+    expect(html).toContain("\\(x^2\\)");
+    expect(editable()?.querySelector("span.math-inline")).toBeTruthy();
+  });
+
+  it("inserts a block formula when Block is chosen", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderEditor();
+
+    await user.click(screen.getByRole("button", { name: "Insert formula" }));
+    await user.click(screen.getByRole("radio", { name: "Block" }));
+    await user.type(screen.getByLabelText("LaTeX code"), "\\sum_{i=1}^n i");
+    await user.click(screen.getByRole("button", { name: "Insert formula" }));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('class="math-block"'));
+    });
+  });
+
+  it("inserts an image via uploadQuestionAsset (mock) with data-asset-id", async () => {
+    const user = userEvent.setup();
+    const { onChange, container } = renderEditor();
+
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).toBeTruthy();
+    const file = new File(["png"], "diagram.png", { type: "image/png" });
+    await user.upload(input!, file);
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining("<img"));
+    });
+    const html = onChange.mock.lastCall?.[0] as string;
+    expect(html).toContain("data-asset-id=");
+    expect(html).toContain('src="/api/v1/admin/question-assets/');
+  });
+
+  it("drops disallowed tags and attributes from pasted HTML", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderEditor();
+
+    editable()!.focus();
+    const dirty =
+      '<p onclick="x()">ok</p><script>alert(1)</script><iframe src="https://evil"></iframe><a href="https://evil">link</a><div>wrapped</div>';
+    await user.paste(dirty);
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const html = onChange.mock.lastCall?.[0] as string;
+    expect(html).not.toContain("script");
+    expect(html).not.toContain("iframe");
+    expect(html).not.toContain("onclick");
+    expect(html).not.toContain("<a");
+    expect(html).not.toContain("<div");
+    expect(html).toContain("ok");
+    expect(html).toContain("wrapped");
+  });
+
+  it("blocks image paste and shows no image button when allowImages=false", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderEditor({ allowImages: false });
+
+    expect(screen.queryByRole("button", { name: "Insert image" })).toBeNull();
+
+    editable()!.focus();
+    await user.paste('<img src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" alt="x">after');
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const html = onChange.mock.lastCall?.[0] as string;
+    expect(html).not.toContain("<img");
+    expect(html).toContain("after");
+  });
+
+  it("shows the unbalanced-delimiter warning (NO_GAPS wording) while editing", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    editable()!.focus();
+    await user.paste("formula \\( x^2 open");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Math delimiters are unbalanced");
+  });
+});
+
+describe("RichTextView", () => {
+  it("renders formulas with KaTeX inside math spans", () => {
+    const { container } = render(
+      <RichTextView html={'<p>Cho <span class="math-inline">\\(x^2\\)</span> và <span class="math-block">\\[\\int_0^1 x\\]</span></p>'} />,
+    );
+    expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelector(".katex-display")).toBeTruthy();
+  });
+
+  it("renders plain-text delimiters with KaTeX too", () => {
+    const { container } = render(<RichTextView html="<p>Tính \\(1+1\\)</p>" />);
+    expect(container.querySelector(".katex")).toBeTruthy();
+  });
+
+  it("strips disallowed tags and attributes before rendering", () => {
+    const { container } = render(
+      <RichTextView html={'<p>ok</p><script>alert(1)</script><a href="https://e">x</a><p style="color:red">y</p>'} />,
+    );
+    expect(container.innerHTML).not.toContain("script");
+    expect(container.innerHTML).not.toContain("<a");
+    expect(container.innerHTML).not.toContain("style=");
+  });
+
+  it("drops images when allowImages=false", () => {
+    const { container } = render(
+      <RichTextView allowImages={false} html={'<p>before<img src="/x.png" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" alt="a">after</p>'} />,
+    );
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.textContent).toContain("before");
+    expect(container.textContent).toContain("after");
+  });
+});
+
+describe("sanitizeQuestionHtml / hasUnbalancedMath", () => {
+  it("keeps td/th colspan+rowspan and span math classes only", () => {
+    const { html } = sanitizeQuestionHtml(
+      '<table><tr><th colspan="2" style="x">h</th></tr><tr><td rowspan="2" data-x="1">d</td></tr></table><span class="math-inline">\\(a\\)</span><span class="other">b</span>',
+    );
+    expect(html).toContain('colspan="2"');
+    expect(html).toContain('rowspan="2"');
+    expect(html).not.toContain("style");
+    expect(html).not.toContain("data-x");
+    expect(html).toContain('class="math-inline"');
+    expect(html).not.toContain('class="other"');
+  });
+
+  it("drops external img src and keeps internal paths", () => {
+    const { html } = sanitizeQuestionHtml(
+      '<img src="https://evil/x.png" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f"><img src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" alt="k">',
+    );
+    expect(html).not.toContain("https://evil");
+    expect(html).toContain('src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f"');
+  });
+
+  it("reports violations for dropped parts", () => {
+    const { violations } = sanitizeQuestionHtml('<script>s</script><p onclick="a()">x</p>');
+    expect(violations.some((v) => v.tag === "script")).toBe(true);
+    expect(violations.some((v) => v.tag === "p" && v.attribute === "onclick")).toBe(true);
+  });
+
+  it("detects unbalanced formula delimiters like the backend NO_GAPS check", () => {
+    expect(hasUnbalancedMath("<p>\\(x^2\\)</p>")).toBe(false);
+    expect(hasUnbalancedMath("<p>\\[x\\]</p>")).toBe(false);
+    expect(hasUnbalancedMath("<p>\\(x</p>")).toBe(true);
+    expect(hasUnbalancedMath("<p>x\\)</p>")).toBe(true);
+    expect(hasUnbalancedMath("<p>\\(a\\]b\\)</p>")).toBe(true);
+  });
+});

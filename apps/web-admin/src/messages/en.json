@@ -5110,5 +5110,35 @@
         "generic": "Could not save the scores. Try again."
       }
     }
+  },
+  "richText": {
+    "formula": {
+      "block": "Block",
+      "cancel": "Cancel",
+      "close": "Close",
+      "description": "Enter LaTeX code; the formula is shown rendered inside the content.",
+      "displayLabel": "Display style",
+      "inline": "Inline",
+      "insert": "Insert formula",
+      "latexLabel": "LaTeX code",
+      "latexPlaceholder": "x^2 + y^2 = z^2",
+      "title": "Insert formula"
+    },
+    "mathUnbalanced": "Math delimiters are unbalanced",
+    "toolbar": {
+      "bold": "Bold",
+      "bulletList": "Bullet list",
+      "formula": "Insert formula",
+      "image": "Insert image",
+      "imageUploading": "Uploading image",
+      "italic": "Italic",
+      "label": "Content formatting",
+      "orderedList": "Numbered list",
+      "strike": "Strikethrough",
+      "subscript": "Subscript",
+      "superscript": "Superscript",
+      "table": "Insert table",
+      "underline": "Underline"
+    }
   }
 }

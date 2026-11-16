@@ -5110,5 +5110,35 @@
         "generic": "Không lưu được điểm. Hãy thử lại."
       }
     }
+  },
+  "richText": {
+    "formula": {
+      "block": "Khối",
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "description": "Nhập mã LaTeX; công thức hiển thị dưới dạng đã dựng trong nội dung.",
+      "displayLabel": "Kiểu hiển thị",
+      "inline": "Cùng dòng",
+      "insert": "Chèn công thức",
+      "latexLabel": "Mã LaTeX",
+      "latexPlaceholder": "x^2 + y^2 = z^2",
+      "title": "Chèn công thức"
+    },
+    "mathUnbalanced": "Công thức có dấu mở hoặc đóng không khớp",
+    "toolbar": {
+      "bold": "Đậm",
+      "bulletList": "Danh sách chấm",
+      "formula": "Chèn công thức",
+      "image": "Chèn ảnh",
+      "imageUploading": "Đang tải ảnh lên",
+      "italic": "Nghiêng",
+      "label": "Định dạng nội dung",
+      "orderedList": "Danh sách số",
+      "strike": "Gạch ngang",
+      "subscript": "Chỉ số dưới",
+      "superscript": "Chỉ số trên",
+      "table": "Chèn bảng",
+      "underline": "Gạch chân"
+    }
   }
 }
