@@ -152,6 +152,18 @@ public class QuestionHtmlSanitizer {
         return Jsoup.parse(html).text();
     }
 
+
+    /**
+     * {@code true} khi HTML có ít nhất một thẻ {@code img} (P1-22: img làm nội dung không
+     * rỗng). Chỉ gọi trên HTML đã qua lọc — img còn sót là img mang {@code data-asset-id}
+     * tra được qua resolver.
+     */
+    public static boolean containsImg(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        return !Jsoup.parseBodyFragment(html).select("img").isEmpty();
+    }
     /**
      * Duyệt cây nguồn trước khi lọc để ghi nhận phần sẽ bị bỏ: thẻ ngoài danh sách, thuộc tính
      * không được phép, giá trị {@code class} của {@code span} ngoài hai lớp công thức, và
