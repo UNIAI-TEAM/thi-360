@@ -222,7 +222,14 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
     questionCountRequired: part.questionCount,
     participation: part.mode === "CHOICE" ? { mode: "CHOICE", choose: 1 } : { mode: "ALL" },
     maxPoints: part.points ?? undefined,
-    sections: sections.length ? sections : blocks.length ? [{ subjectCode: "", blocks }] : [],
+    // Máy chủ không có `subjectCode` của phần: phần cố định một môn mang môn trong `sections` (kèm khối gợi ý nếu có).
+    sections: sections.length
+      ? sections
+      : part.subjectCode
+        ? [{ subjectCode: part.subjectCode, questionCount: part.questionCount, blocks }]
+        : blocks.length
+          ? [{ subjectCode: "", blocks }]
+          : [],
     options,
   } as WirePart;
 }
@@ -339,6 +346,12 @@ export class ExamsBackend {
   /** Bài mẫu đang được phục vụ (wire). Trả undefined khi chưa nạp. */
   wire(id: string): WireDetail | undefined {
     return this.exams.get(id);
+  }
+
+  /** Bài mẫu theo mã (viết hoa hay thường); undefined khi chưa nạp. */
+  wireByCode(code: string): WireDetail | undefined {
+    const normalized = code.trim().toUpperCase();
+    return [...this.exams.values()].find((exam) => exam.code === normalized);
   }
 
   /** Bài mẫu sau ánh xạ của client (`mapExamDetail`), để soạn số liệu cần assert trong test. */

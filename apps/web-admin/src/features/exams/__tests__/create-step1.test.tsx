@@ -1,24 +1,29 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
-import { examStore } from "../mock/store";
-import { pinInMemoryBackend } from "./in-memory-backend";
+import { ExamsBackend } from "./fake-exams-backend";
 
-pinInMemoryBackend();
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-beforeEach(() => {
-  window.history.replaceState(null, "", "/exams/new");
-});
+let backend: ExamsBackend;
 
-afterEach(() => {
-  examStore.reset();
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+  window.history.replaceState(null, "", "/exams/new");
   routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 async function renderPage() {
@@ -69,7 +74,7 @@ describe("trang Tạo bài thi", () => {
     await waitFor(() => expect(within(aside).getByText("Không còn mục cần xử lý")).toBeInTheDocument());
     await user.click(within(aside).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    const created = examStore.all().find((exam) => exam.code === "QDA-F-003")!;
+    const created = backend.app(backend.wireByCode("QDA-F-003")!.id);
     expect(created).toMatchObject({ name: "QDA FULL · Đề thử", status: "DRAFT", totalQuestions: 150, combinationCount: 4 });
     expect(routerMock.push).toHaveBeenCalledWith(`/exams/${created.id}/structure`);
   }, 20_000);
@@ -87,7 +92,8 @@ describe("trang Tạo bài thi", () => {
     await user.click(within(prompt).getByRole("button", { name: "Nạp lại mẫu" }));
     expect(screen.getByRole("radio", { name: /QDA/ })).toBeChecked();
     await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("QDA-F-003"));
-    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(4);
+    // Hai phần cố định mang môn trong `sections` (hình dạng của máy chủ) cũng hiện dòng "50 / 50 câu", cộng bốn tổ hợp ở phần 3.
+    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(6);
     expect(screen.getAllByRole("textbox", { name: "1. Vật lí" })[0]).toHaveValue("25");
     expect(within(summary()).getByText("195 phút")).toBeInTheDocument();
   }, 20_000);
