@@ -1,7 +1,7 @@
 import type { ApiError, FieldError } from "@thi360/api-client";
+import { selectApi } from "@/features/content/api-switch";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
-import { isContentMockEnabled } from "@/lib/mock/flags";
 import * as mock from "./api.mock";
 import type { QuestionAsset, QuestionAssetKind } from "./api.mock";
 
@@ -59,9 +59,7 @@ async function uploadQuestionAssetReal(file: File, kind: QuestionAssetKind): Pro
   };
 }
 
-export function uploadQuestionAsset(file: File, kind: QuestionAssetKind): Promise<QuestionAsset> {
-  return isContentMockEnabled() ? mock.uploadQuestionAsset(file, kind) : uploadQuestionAssetReal(file, kind);
-}
+export const uploadQuestionAsset = selectApi(mock.uploadQuestionAsset, uploadQuestionAssetReal);
 
 function errorCode(error: unknown): string | undefined {
   if (typeof error === "object" && error !== null && "code" in error && typeof error.code === "string") {

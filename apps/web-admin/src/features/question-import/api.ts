@@ -1,4 +1,4 @@
-import { isContentMockEnabled } from "@/lib/mock/flags";
+import { selectApi } from "@/features/content/api-switch";
 import * as mock from "./api.mock";
 import * as real from "./api-real";
 
@@ -9,12 +9,6 @@ import * as real from "./api-real";
 
 export { QUESTION_IMPORT_QUERY_KEYS } from "./keys";
 export type { DownloadedFile } from "./api-real";
-
-type AsyncFn<A extends unknown[], R> = (...args: A) => Promise<R>;
-
-function selectApi<A extends unknown[], R>(mockFn: AsyncFn<A, R>, realFn: AsyncFn<A, R>): AsyncFn<A, R> {
-  return (...args) => (isContentMockEnabled() ? mockFn(...args) : realFn(...args));
-}
 
 export const downloadQuestionTemplate = selectApi(mock.downloadQuestionTemplate, real.downloadQuestionTemplate);
 export const uploadQuestionFile = selectApi(mock.uploadQuestionFile, real.uploadQuestionFile);
