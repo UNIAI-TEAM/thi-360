@@ -76,12 +76,12 @@ Issue cha: **UNI-2606** · Thi 360 · Đợt 2 · Backend PBI-03 + PBI-04 và n�
 | Task | Issue | Việc | Phụ thuộc | Điểm | Trạng thái |
 |---|---|---|---|---|---|
 | BE-1 | UNI-2607 | Khung module, quyền, danh mục `COMPETENCY`, idempotency, `content-reference` | — | 8 | in_review (đã merge vào `integration/dot-2` qua PR #46 ngày 2026-11-16) |
-| FE-3a | UNI-2608 | Kiểu dữ liệu và dữ liệu mẫu theo spec mục 9.2 | — | 6 | in_progress |
+| FE-3a | UNI-2608 | Kiểu dữ liệu và dữ liệu mẫu theo spec mục 9.2 | — | 6 | in_review (merge PR #49) |
 | BE-2a | UNI-2609 | Câu hỏi: lưu, 8 dạng, trạng thái, revision, tìm kiếm, lọc HTML | BE-1 | 10 | in_progress |
 | BE-4 | UNI-2610 | Bài thi: hồ sơ kỳ thi, mẫu, tạo, cấu trúc, sao chép | BE-1 | 8 | in_progress |
 | BE-5a | UNI-2611 | `PaperSolver` (thuần thuật toán) | BE-1 | 9 | in_progress |
-| FE-3b | UNI-2612 | Giao diện ngân hàng câu hỏi theo UniNote mới | FE-3a | 7 | todo |
-| FE-3c | UNI-2613 | Giao diện bài thi theo UniNote mới | FE-3a | 7 | todo |
+| FE-3b | UNI-2612 | Giao diện ngân hàng câu hỏi theo UniNote mới | FE-3a | 7 | in_progress |
+| FE-3c | UNI-2613 | Giao diện bài thi theo UniNote mới | FE-3a | 7 | in_progress |
 | BE-2b | UNI-2614 | Ảnh và tệp đính kèm | BE-2a | 5 | todo |
 | BE-3 | UNI-2615 | Nhập câu hỏi từ tệp | BE-2a | 7 | todo |
 | BE-5b | UNI-2616 | Nguồn câu hỏi, kiểm tra cấu hình, hiệu lực, xem trước | BE-2a, BE-4, BE-5a | 7 | todo |
