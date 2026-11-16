@@ -155,22 +155,35 @@ class PaperSolverSpecCasesTest {
         GroupQuota rest = GroupQuota.remainder("gr");
         SectionOnPath section = new SectionOnPath("S", "sec", 6, quota,
                 List.of(setGroup, rest));
-        PhaseClock clock = new PhaseClock("PathSearch", "search");
-        List<String> fetched = new ArrayList<>();
-        CandidateSource source = g -> {
-            fetched.add(g.groupId());
-            if (g == setGroup) {
-                return List.of(setPair("s1", "G10", "NB"), setPair("s2", "G11", "TH"));
+        // Điều chỉnh kích cỡ nguồn để một lần kiểm định kỳ rơi trong vòng quay lui.
+        // Đồng hồ chỉ hết hạn trong search, nên không thể nhầm với pha nạp hoặc dựng lớp.
+        PhaseClock clock = null;
+        PathResult result = null;
+        for (int n = 1; n <= 1024; n++) {
+            List<PathCandidate> singles = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                singles.add(unit("q" + i, i % 2 == 0 ? "G10" : "G11",
+                        (i / 2) % 2 == 0 ? "NB" : "TH"));
             }
-            return List.of(unit("q1", "G10", "NB"), unit("q2", "G10", "TH"),
-                    unit("q3", "G11", "NB"), unit("q4", "G11", "TH"),
-                    unit("q5", "G10", "TH"), unit("q6", "G11", "NB"));
-        };
-        PaperSolver limited = new PaperSolver(
-                new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), clock);
-        PathResult result = limited.solvePath(path(List.of(section)), source, SolveMode.check());
-        assertThat(fetched).containsExactlyInAnyOrder("gs", "gr");
-        assertThat(clock.expiredReads).isPositive();
+            PhaseClock attemptClock = new PhaseClock("PathSearch", "search");
+            List<String> fetched = new ArrayList<>();
+            CandidateSource source = g -> {
+                fetched.add(g.groupId());
+                return g == setGroup
+                        ? List.of(setPair("s1", "G10", "NB"), setPair("s2", "G11", "TH"))
+                        : singles;
+            };
+            PaperSolver limited = new PaperSolver(
+                    new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), attemptClock);
+            PathResult attempt = limited.solvePath(path(List.of(section)), source, SolveMode.check());
+            assertThat(fetched).containsExactlyInAnyOrder("gs", "gr");
+            if (attemptClock.expiredReads > 0) {
+                clock = attemptClock;
+                result = attempt;
+                break;
+            }
+        }
+        assertThat(clock).as("phải kiểm hạn trong vòng quay lui").isNotNull();
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
         assertThat(result.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
     }
