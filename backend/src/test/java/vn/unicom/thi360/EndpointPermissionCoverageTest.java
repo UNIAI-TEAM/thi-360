@@ -42,7 +42,8 @@ class EndpointPermissionCoverageTest extends AbstractIntegrationTest {
             RequirePermission classAnnotation =
                     AnnotatedElementUtils.findMergedAnnotation(handlerMethod.getBeanType(), RequirePermission.class);
             RequirePermission resolved = methodAnnotation != null ? methodAnnotation : classAnnotation;
-            if (resolved == null || resolved.value().length == 0) {
+            if (resolved == null
+                    || (resolved.value().length == 0 && resolved.anyOf().length == 0)) {
                 missingHandlers.add(patterns + " -> " + handlerMethod.getShortLogMessage());
             }
         }

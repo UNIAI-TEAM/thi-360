@@ -59,6 +59,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.PermissionCatalog;
 import vn.unicom.thi360.shared.security.RequirePermission;
+import vn.unicom.thi360.shared.security.RequirePermissionAspect;
 import vn.unicom.thi360.shared.security.SecurityProperties;
 import vn.unicom.thi360.shared.security.TestSecurity.SimulatedPrincipal;
 
@@ -110,7 +111,12 @@ class AdminApiForbiddenMatrixIT extends AbstractIntegrationTest {
     @Autowired
     private Validator validator;
 
-    private record Endpoint(HttpMethod method, String pattern, HandlerMethod handler, List<String> requiredCodes) {
+    private record Endpoint(
+            HttpMethod method,
+            String pattern,
+            HandlerMethod handler,
+            List<String> requiredCodes,
+            List<String> anyOfCodes) {
 
         String key() {
             return method + " " + pattern;
@@ -132,6 +138,20 @@ class AdminApiForbiddenMatrixIT extends AbstractIntegrationTest {
                         asUser(granted.toArray(String[]::new));
                 calls++;
                 check(failures, endpoint, "all permissions except " + missing, user, 403, "FORBIDDEN");
+            }
+            if (!endpoint.anyOfCodes().isEmpty()) {
+                Set<String> granted = new TreeSet<>(permissionCatalog.allCodes());
+                for (String code : endpoint.anyOfCodes()) {
+                    assertThat(granted.remove(code))
+                            .as("%s declares anyOf %s which is not in the permission catalogue",
+                                    endpoint.key(), code)
+                            .isTrue();
+                }
+                RequestPostProcessor user = asUser(granted.toArray(String[]::new));
+                calls++;
+                check(failures, endpoint,
+                        "all permissions except every anyOf code " + endpoint.anyOfCodes(),
+                        user, 403, "FORBIDDEN");
             }
         }
         report("every permission except the required one -> 403", endpoints.size(), calls);
@@ -188,10 +208,13 @@ class AdminApiForbiddenMatrixIT extends AbstractIntegrationTest {
                 continue;
             }
             List<String> required = requiredPermissions(handler);
+            List<String> anyOf = anyOfPermissions(handler);
             for (String pattern : adminPatterns) {
                 for (var method : methods) {
-                    Endpoint endpoint = new Endpoint(HttpMethod.valueOf(method.name()), pattern, handler, required);
-                    if (required.isEmpty() && !AUTHENTICATION_ONLY_ADMIN_MAPPINGS.contains(endpoint.key())) {
+                    Endpoint endpoint = new Endpoint(
+                            HttpMethod.valueOf(method.name()), pattern, handler, required, anyOf);
+                    if (required.isEmpty() && anyOf.isEmpty()
+                            && !AUTHENTICATION_ONLY_ADMIN_MAPPINGS.contains(endpoint.key())) {
                         unresolved.add(endpoint.key() + " -> " + handler.getShortLogMessage()
                                 + ": no @RequirePermission on method or class, and not in the allow-list");
                         continue;
@@ -209,16 +232,18 @@ class AdminApiForbiddenMatrixIT extends AbstractIntegrationTest {
     }
 
     private static List<String> requiredPermissions(HandlerMethod handler) {
-        RequirePermission onMethod =
-                AnnotatedElementUtils.findMergedAnnotation(handler.getMethod(), RequirePermission.class);
-        RequirePermission resolved = onMethod != null
-                ? onMethod
-                : AnnotatedElementUtils.findMergedAnnotation(handler.getBeanType(), RequirePermission.class);
-        if (resolved == null) {
-            return List.of();
-        }
+        RequirePermission resolved = RequirePermissionAspect.resolveAnnotation(handler);
+        return resolved == null ? List.of() : normalizeCodes(resolved.value());
+    }
+
+    private static List<String> anyOfPermissions(HandlerMethod handler) {
+        RequirePermission resolved = RequirePermissionAspect.resolveAnnotation(handler);
+        return resolved == null ? List.of() : normalizeCodes(resolved.anyOf());
+    }
+
+    private static List<String> normalizeCodes(String[] raw) {
         List<String> codes = new ArrayList<>();
-        for (String code : resolved.value()) {
+        for (String code : raw) {
             if (code != null && !code.isBlank()) {
                 codes.add(code.trim());
             }

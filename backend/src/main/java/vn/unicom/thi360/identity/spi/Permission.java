@@ -114,7 +114,47 @@ public enum Permission {
             12,
             Access.MANAGE,
             "Sửa giao diện",
-            "Đổi chế độ sáng/tối và bộ phối màu toàn hệ thống");
+            "Đổi chế độ sáng/tối và bộ phối màu toàn hệ thống"),
+    QUESTION_VIEW(
+            PermissionObject.QUESTION,
+            Kind.VIEW,
+            "QUESTION.VIEW",
+            13,
+            Access.MANAGE,
+            "Xem ngân hàng câu hỏi",
+            "Danh sách, chi tiết câu hỏi, nơi đang dùng, lịch sử phiên bản, lịch sử nhập"),
+    QUESTION_MODIFY(
+            PermissionObject.QUESTION,
+            Kind.MODIFY,
+            "QUESTION.MODIFY",
+            14,
+            Access.MANAGE,
+            "Xem và sửa ngân hàng câu hỏi",
+            "Tạo, sửa, sao chép, đánh dấu Sẵn sàng, ngừng sử dụng, xóa câu hỏi; nhập từ tệp"),
+    EXAM_VIEW(
+            PermissionObject.EXAM,
+            Kind.VIEW,
+            "EXAM.VIEW",
+            15,
+            Access.MANAGE,
+            "Xem bài thi",
+            "Danh sách, chi tiết bài thi, cấu trúc, kiểm tra cấu hình, xem trước, phiên bản"),
+    EXAM_MODIFY(
+            PermissionObject.EXAM,
+            Kind.MODIFY,
+            "EXAM.MODIFY",
+            16,
+            Access.MANAGE,
+            "Xem và sửa bài thi",
+            "Tạo, sửa thông tin và cấu trúc, nạp mẫu, sao chép bài thi"),
+    EXAM_PUBLISH(
+            PermissionObject.EXAM,
+            Kind.EXTRA,
+            "EXAM.PUBLISH",
+            17,
+            Access.MANAGE,
+            "Công bố bài thi",
+            "Công bố phiên bản mới và ngừng bán bài thi");
 
     public enum Kind {
         VIEW,

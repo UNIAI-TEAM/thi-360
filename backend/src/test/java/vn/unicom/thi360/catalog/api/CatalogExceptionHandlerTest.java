@@ -151,6 +151,7 @@ class CatalogExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("CATALOG_ITEM_IN_USE"))
                 .andExpect(jsonPath("$.message").value("Không thể thực hiện thao tác vì giá trị danh mục đang được sử dụng"));
 
+        // MaxUploadSizeExceededException nay do GlobalExceptionHandler (shared) xu ly -> 413 UPLOAD_TOO_LARGE
         doThrow(new MaxUploadSizeExceededException(5L * 1024L * 1024L))
                 .when(catalogAdminService)
                 .createGroup(any());
@@ -160,16 +161,14 @@ class CatalogExceptionHandlerTest {
                         .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("IMPORT_FILE_TOO_LARGE"))
-                .andExpect(jsonPath("$.message").value("Excel file size exceeds the allowed limit (maximum 5 MB)"))
-                .andExpect(jsonPath("$.fieldErrors[0].message").value("Excel file size exceeds the allowed limit (maximum 5 MB)"));
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("UPLOAD_TOO_LARGE"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("file"));
 
         mockMvc.perform(post("/api/v1/admin/catalog/groups")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("IMPORT_FILE_TOO_LARGE"))
-                .andExpect(jsonPath("$.message").value("Dung lượng tệp Excel vượt quá giới hạn cho phép (tối đa 5 MB)"));
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("UPLOAD_TOO_LARGE"));
     }
 }
