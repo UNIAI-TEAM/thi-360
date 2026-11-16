@@ -2,6 +2,7 @@ import type { PersonRef } from "@/features/content/types";
 import { createMockStore } from "@/lib/mock/content-mock";
 import type { QuestionDetail } from "../types";
 import fixture from "./questions.json";
+import examsFixture from "./questions-exams.json";
 
 /**
  * Kho câu hỏi mẫu dùng chung cho mọi màn của Ngân hàng câu hỏi (danh sách, soạn câu, nhập từ tệp, chọn câu cho
@@ -9,7 +10,7 @@ import fixture from "./questions.json";
  */
 const data = fixture as { people: PersonRef[]; questions: QuestionDetail[] };
 
-export const questionStore = createMockStore<QuestionDetail>(data.questions);
+export const questionStore = createMockStore<QuestionDetail>([...data.questions, ...(examsFixture.questions as QuestionDetail[])]);
 
 export const MOCK_QUESTION_AUTHORS: readonly PersonRef[] = data.people;
 

@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { MULTIPLE_CHOICE_RULES } from "@/features/content/types";
 import { emptyOption, type QuestionEditorValues } from "../editor-form";
 import {
   FieldErrorText,
@@ -19,6 +20,7 @@ import {
 /**
  * Phương án của Trắc nghiệm 1 đáp án (ô tròn, đúng một đáp án) và nhiều đáp án (ô vuông, ít nhất một),
  * canvas `CauHoi1DapAnForm`, `CauHoiNhieuDapAnForm`. Đổi thứ tự bằng nút lên/xuống thay cho tay kéo của bản vẽ.
+ * Nhiều đáp án có thêm cách chấm: đúng hết mới có điểm (mặc định) hoặc chấm từng phần (UNI-2599 mục 2.3).
  */
 export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; multiple: boolean }) {
   const t = useTranslations("questions.editor.choice");
@@ -44,65 +46,106 @@ export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; mu
   };
 
   return (
-    <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0" aria-describedby={`${groupId}-hint`}>
-      <legend className="sr-only">{multiple ? t("legendMultiple") : t("legendSingle")}</legend>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p id={`${groupId}-hint`} className="text-body text-text-muted">
-          {multiple ? t("hintMultiple") : t("hintSingle")}
-        </p>
-        {multiple && (
-          <span className="text-caption font-medium text-text-secondary">{t("correctCount", { count: correctCount })}</span>
-        )}
-      </div>
-      <GroupError id={`${groupId}-error`} message={groupError} />
-      <ol className="m-0 flex list-none flex-col gap-2 p-0">
-        {fields.map((field, index) => (
-          <OptionRow
-            key={field.rowKey}
-            prefix={prefix}
-            index={index}
-            count={fields.length}
-            multiple={multiple}
-            correct={options[index]?.correct ?? false}
-            groupName={groupId}
-            onChooseSingle={() => chooseSingle(index)}
-            onMove={(from, to) => {
-              move(from, to);
-              announce(t("moved", { letter: optionLetter(from), position: to + 1 }));
+    <>
+      <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0" aria-describedby={`${groupId}-hint`}>
+        <legend className="sr-only">{multiple ? t("legendMultiple") : t("legendSingle")}</legend>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p id={`${groupId}-hint`} className="text-body text-text-muted">
+            {multiple ? t("hintMultiple") : t("hintSingle")}
+          </p>
+          {multiple && (
+            <span className="text-caption font-medium text-text-secondary">{t("correctCount", { count: correctCount })}</span>
+          )}
+        </div>
+        <GroupError id={`${groupId}-error`} message={groupError} />
+        <ol className="m-0 flex list-none flex-col gap-2 p-0">
+          {fields.map((field, index) => (
+            <OptionRow
+              key={field.rowKey}
+              prefix={prefix}
+              index={index}
+              count={fields.length}
+              multiple={multiple}
+              correct={options[index]?.correct ?? false}
+              groupName={groupId}
+              onChooseSingle={() => chooseSingle(index)}
+              onMove={(from, to) => {
+                move(from, to);
+                announce(t("moved", { letter: optionLetter(from), position: to + 1 }));
+              }}
+              onRemove={() => {
+                remove(index);
+                announce(t("removed", { letter: optionLetter(index) }));
+                addRef.current?.focus();
+              }}
+            />
+          ))}
+        </ol>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            ref={addRef}
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              append(emptyOption(), { shouldFocus: true, focusName: `${prefix}.options.${fields.length}.content` });
+              announce(t("added", { letter: optionLetter(fields.length) }));
             }}
-            onRemove={() => {
-              remove(index);
-              announce(t("removed", { letter: optionLetter(index) }));
-              addRef.current?.focus();
+          >
+            <Plus aria-hidden />
+            {t("add")}
+          </Button>
+          <Controller
+            control={control}
+            name={`${prefix}.shuffleOptions`}
+            render={({ field }) => (
+              <label className="flex min-h-10 items-center gap-2.5 text-body text-text">
+                <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
+                {t("shuffle")}
+              </label>
+            )}
+          />
+        </div>
+      </fieldset>
+      {multiple && <ScoringRuleField prefix={prefix} />}
+    </>
+  );
+}
+
+/** Cách chấm câu nhiều đáp án: hai lựa chọn hiện sẵn (radio), mỗi lựa chọn kèm giải thích ngắn. */
+function ScoringRuleField({ prefix }: { prefix: BodyPath }) {
+  const t = useTranslations("questions.editor.scoringRule");
+  const announce = useAnnounce();
+  const groupId = useId();
+  const { register } = useFormContext<QuestionEditorValues>();
+  const field = register(`${prefix}.scoringRule`);
+  return (
+    <fieldset className="m-0 flex min-w-0 flex-col gap-2 rounded-lg border border-border p-3">
+      <legend className="px-1 text-label font-semibold text-text">{t("legend")}</legend>
+      {MULTIPLE_CHOICE_RULES.map((rule) => (
+        <div key={rule} className="flex items-start gap-2.5">
+          <input
+            id={`${groupId}-${rule}-input`}
+            type="radio"
+            value={rule}
+            className="mt-3 size-4 shrink-0 accent-primary-fill"
+            aria-describedby={`${groupId}-${rule}`}
+            {...field}
+            onChange={(event) => {
+              void field.onChange(event);
+              announce(t("chosen", { rule: t(`${rule}.label`) }));
             }}
           />
-        ))}
-      </ol>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button
-          ref={addRef}
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            append(emptyOption(), { shouldFocus: true, focusName: `${prefix}.options.${fields.length}.content` });
-            announce(t("added", { letter: optionLetter(fields.length) }));
-          }}
-        >
-          <Plus aria-hidden />
-          {t("add")}
-        </Button>
-        <Controller
-          control={control}
-          name={`${prefix}.shuffleOptions`}
-          render={({ field }) => (
-            <label className="flex min-h-10 items-center gap-2.5 text-body text-text">
-              <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
-              {t("shuffle")}
+          <div className="flex flex-col">
+            <label htmlFor={`${groupId}-${rule}-input`} className="flex min-h-10 items-center text-body font-medium text-text">
+              {t(`${rule}.label`)}
             </label>
-          )}
-        />
-      </div>
+            <p id={`${groupId}-${rule}`} className="text-caption text-text-muted">
+              {t(`${rule}.description`)}
+            </p>
+          </div>
+        </div>
+      ))}
     </fieldset>
   );
 }

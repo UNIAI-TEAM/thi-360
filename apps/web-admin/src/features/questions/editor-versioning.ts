@@ -22,6 +22,7 @@ export const SNAPSHOT_FIELDS = [
   "subjectCode",
   "gradeCode",
   "difficultyCode",
+  "competencyCode",
   "knowledge",
   "tagCodes",
 ] as const satisfies readonly (keyof QuestionSnapshot)[];
@@ -33,6 +34,7 @@ export function toSnapshot(question: QuestionSnapshot): QuestionSnapshot {
     subjectCode: question.subjectCode,
     gradeCode: question.gradeCode,
     difficultyCode: question.difficultyCode,
+    competencyCode: question.competencyCode ?? null,
     points: question.points,
     knowledge: question.knowledge,
     tagCodes: question.tagCodes,
@@ -69,6 +71,7 @@ function comparable(field: SnapshotField, value: QuestionSnapshot[SnapshotField]
     );
   }
   if (field === "solution") return JSON.stringify((value as string | null)?.trim() || null);
+  if (field === "competencyCode") return JSON.stringify((value as string | null | undefined) || null);
   return JSON.stringify(value);
 }
 
@@ -80,9 +83,14 @@ function comparableBody(body: QuestionDetail["body"]): unknown {
         type: body.type,
         options: body.options.map((option) => [option.content, option.correct]),
         shuffleOptions: body.shuffleOptions,
+        scoringRule: body.type === "MULTIPLE_CHOICE" ? body.scoringRule : null,
       };
     case "TRUE_FALSE":
-      return { type: body.type, statements: body.statements.map((s) => [s.content, s.answer]) };
+      return {
+        type: body.type,
+        statements: body.statements.map((s) => [s.content, s.answer]),
+        scoreTable: body.scoreTable ?? [],
+      };
     case "FILL_IN":
       return { type: body.type, blanks: body.blanks.map((blank) => blank.acceptedAnswers) };
     case "DRAG_DROP": {
@@ -96,6 +104,14 @@ function comparableBody(body: QuestionDetail["body"]): unknown {
     }
     case "QUESTION_SET":
       return { type: body.type, passage: body.passage };
+    case "ESSAY":
+      return {
+        type: body.type,
+        maxPoints: body.maxPoints,
+        rubric: body.rubric.map((criterion) => [criterion.description, criterion.points]),
+        sampleAnswer: body.sampleAnswer?.trim() || null,
+        wordLimit: body.wordLimit,
+      };
   }
 }
 

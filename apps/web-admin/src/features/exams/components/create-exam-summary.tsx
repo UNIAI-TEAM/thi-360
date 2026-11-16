@@ -5,6 +5,7 @@ import { CircleCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, type ReactNode } from "react";
 import type { CreateExamSummary } from "../create-exam-schema";
+import type { ExamTiming } from "../types";
 
 export interface CreateExamIssue {
   /** Đường dẫn trường (`parts.2.combinations.0.subjectCounts`), khớp `data-field` của ô nhập. */
@@ -25,16 +26,21 @@ export function focusField(path: string): void {
 }
 
 /**
- * Tóm tắt luôn hiển thị (bản vẽ TaoBaiThi; UniNote PBI-04 mục 3): tổng số câu, tổng thời gian, số phần, số đường lựa
- * chọn và các mục cần xử lý, mỗi mục đưa tới ô nhập tương ứng. Màn rộng dính bên phải; màn hẹp nằm dưới biểu mẫu.
+ * Tóm tắt luôn hiển thị (bản vẽ TaoBaiThi; UniNote PBI-04 mục 3): tổng số câu, tổng thời gian (ghi "chung" khi bài
+ * dùng thời lượng chung), số phần, số đường lựa chọn, thang điểm và các mục cần xử lý, mỗi mục đưa tới ô nhập tương
+ * ứng. Màn rộng dính bên phải; màn hẹp nằm dưới biểu mẫu.
  */
 export function CreateExamSummaryPanel({
   summary,
+  timing,
+  maxScore,
   pathText,
   issues,
   actions,
 }: {
   summary: CreateExamSummary;
+  timing: ExamTiming;
+  maxScore: number | null;
   pathText: string;
   issues: readonly CreateExamIssue[];
   actions: ReactNode;
@@ -52,9 +58,24 @@ export function CreateExamSummaryPanel({
         </h2>
         <dl className="grid grid-cols-2 gap-3 text-body">
           <SummaryItem label={t("totalQuestions")} value={tParts("questionsValue", { count: summary.totalQuestions })} />
-          <SummaryItem label={t("totalMinutes")} value={t("minutesValue", { count: summary.totalMinutes })} />
+          <SummaryItem
+            label={t("totalMinutes")}
+            value={t("minutesValue", { count: summary.totalMinutes })}
+            detail={timing === "SHARED" ? t("sharedTiming") : undefined}
+          />
           <SummaryItem label={t("partCount")} value={String(summary.partCount)} />
           <SummaryItem label={t("pathCount")} value={String(summary.pathCount)} detail={pathText} />
+          <SummaryItem
+            label={t("maxScore")}
+            value={maxScore === null ? "—" : t("pointsValue", { count: maxScore })}
+            detail={
+              maxScore === null
+                ? t("maxScoreUnset")
+                : summary.totalPoints !== null
+                  ? t("partPoints", { count: summary.totalPoints })
+                  : undefined
+            }
+          />
         </dl>
 
         <section aria-labelledby={issuesHeadingId} className="flex flex-col gap-2 border-t border-border pt-3">

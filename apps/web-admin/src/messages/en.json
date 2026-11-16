@@ -1299,6 +1299,10 @@
       "rbac": {
         "description": "Roles, permission catalog, and bulk assignment",
         "label": "Permissions"
+      },
+      "grading": {
+        "description": "Attempts with essay questions to grade or already scored",
+        "label": "Essay grading"
       }
     }
   },
@@ -2301,7 +2305,8 @@
         "sourceCode": "Import source code",
         "createdBy": "Created by",
         "byAt": "{name} · {at}",
-        "updatedAt": "Last edited"
+        "updatedAt": "Last edited",
+        "competency": "Competency"
       },
       "body": {
         "noContent": "No question text.",
@@ -2316,7 +2321,23 @@
         "zoneLabel": "Drop zone {number}",
         "correctItem": "Correct card:",
         "distractors": "Distractors: {items}",
-        "noDistractors": "No distractors."
+        "noDistractors": "No distractors.",
+        "manualGrading": "Graded by hand",
+        "scoringRule": "Scoring:",
+        "scoringRules": {
+          "ALL_OR_NOTHING": "All correct or nothing",
+          "PARTIAL": "Partial credit (proportional; any wrong pick gives 0)"
+        },
+        "essayMaxPoints": "Maximum {points} points",
+        "wordLimit": "{count, plural, one {about # word} other {about # words}}",
+        "rubricTitle": "Rubric",
+        "noRubric": "No rubric yet.",
+        "sampleAnswer": "Sample answer",
+        "scoreTableTitle": "Score by number of correct statements",
+        "scoreTableCell": "{count, plural, one {# correct} other {# correct}}",
+        "scoreTableLine": "Score by number of correct statements: {values}",
+        "scoreValue": "{value, number}",
+        "essaySummary": "Graded by hand · maximum {points, number} points"
       }
     },
     "editor": {
@@ -2350,7 +2371,8 @@
         "default": "Plain multi-line text. The rich editor with formulas, images and tables comes later.",
         "fillIn": "Type ___ (three underscores) where the answer goes, or place the cursor and press “Add blank”.",
         "trueFalse": "Shared by every statement: given data, figures, tables.",
-        "passage": "Reading text, data table or figure shared by all sub-questions."
+        "passage": "Reading text, data table or figure shared by all sub-questions.",
+        "essay": "The essay prompt and its requirements, such as the expected length. Learners write an answer; a grader scores it by hand against the rubric."
       },
       "bodyTitle": {
         "options": "Options",
@@ -2358,7 +2380,7 @@
         "blanks": "Answers for each blank",
         "dragDrop": "Drop zones and cards",
         "children": "Sub-questions",
-        "essay": "Rubric"
+        "essay": "Grading guide"
       },
       "toast": {
         "created": "Saved question {code} as Draft.",
@@ -2425,7 +2447,10 @@
         "addTag": "Add tag",
         "removeTag": "Remove tag {name}",
         "tagAdded": "Added tag {name}.",
-        "tagRemoved": "Removed tag {name}."
+        "tagRemoved": "Removed tag {name}.",
+        "competency": "Competency",
+        "competencyNone": "None",
+        "competencyHint": "Used by exams whose matrix is split by competency (V-ACT). Optional."
       },
       "rows": {
         "moveUp": "Move {name} up",
@@ -2547,7 +2572,63 @@
         "zoneItemRequired": "Enter the correct card for the drop zone.",
         "distractorRequired": "Enter the distractor text or delete it.",
         "childrenMin": "A question set needs at least 2 sub-questions.",
-        "childContentRequired": "Enter the sub-question text."
+        "childContentRequired": "Enter the sub-question text.",
+        "scoreValueInvalid": "Points must be a number of 0 or more.",
+        "scoreNotIncreasing": "Points cannot be lower than the previous cell.",
+        "scoreLastMismatch": "The last cell must equal the question points.",
+        "rubricMin": "Add at least one criterion.",
+        "criterionRequired": "Enter the criterion description.",
+        "criterionMax": "The description is too long.",
+        "criterionPointsInvalid": "Criterion points must be a number greater than 0.",
+        "rubricTotalMismatch": "The criteria must add up to the question points.",
+        "sampleAnswerMax": "The sample answer is too long.",
+        "wordLimitInvalid": "The length must be a whole number greater than 0."
+      },
+      "scoreTable": {
+        "legend": "Score by number of correct statements",
+        "hint": "Points a learner gets for 1, 2, … correct statements. Values never decrease; the last one equals the question points ({points}).",
+        "cellLabel": "{count, plural, one {# correct} other {# correct}}",
+        "even": "Split evenly",
+        "evenApplied": "Score table split evenly by the question points.",
+        "fromExamKind": "From exam template…",
+        "fromExamKindLabel": "{count, plural, one {Template tables for # statement} other {Template tables for # statements}}",
+        "templateItem": "{kind}: {values}",
+        "templateNeeds": "{count, plural, one {For # statement} other {For # statements}}",
+        "templateApplied": "Loaded the {kind} score table.",
+        "reflowed": "{count, plural, one {Score table split evenly for # statement.} other {Score table split evenly for # statements.}}"
+      },
+      "scoringRule": {
+        "legend": "Scoring",
+        "chosen": "Scoring set to: {rule}.",
+        "ALL_OR_NOTHING": {
+          "label": "All correct or nothing",
+          "description": "Full points only when the learner picks every correct option and nothing else; otherwise 0."
+        },
+        "PARTIAL": {
+          "label": "Partial credit",
+          "description": "Points in proportion to the correct options picked; picking any wrong option gives 0."
+        }
+      },
+      "essay": {
+        "manualGrading": "Graded by hand",
+        "maxPoints": "Maximum {points} points (the question's Points field).",
+        "maxPointsUnknown": "The maximum comes from the question's Points field.",
+        "rubricLegend": "Rubric",
+        "rubricHint": "Each criterion has a description and maximum points. The criteria must add up to the question points.",
+        "descriptionLabel": "Criterion {number} description",
+        "pointsLabel": "Criterion {number} points",
+        "rowName": "criterion {number}",
+        "add": "Add criterion",
+        "added": "Added criterion {number}.",
+        "removed": "Removed criterion {number}.",
+        "moved": "Moved criterion {number} to position {position}.",
+        "totalMatches": "Criteria total {total} / {points}: matches the question points",
+        "totalDiffers": "Criteria total {total} / {points}: does not match the question points yet",
+        "totalOnly": "Criteria total {total}",
+        "sampleAnswer": "Sample answer",
+        "sampleAnswerHint": "Optional. Graders see it while grading; learners do not.",
+        "wordLimit": "Suggested length (words)",
+        "wordLimitHint": "Optional, for example 200."
       }
     },
     "statusDialogs": {
@@ -2598,7 +2679,11 @@
         "RESOURCE_UNAVAILABLE": "Could not load {value}.",
         "TYPE_UNSUPPORTED": "This question type is not supported.",
         "BODY_TYPE_MISMATCH": "The answer part does not match the question type.",
-        "NESTED_SET": "A question set cannot contain another question set."
+        "NESTED_SET": "A question set cannot contain another question set.",
+        "CRITERION_EMPTY": "Rubric criterion {position, number} has no description.",
+        "SCORE_TABLE_INVALID": "The score table is not valid (one cell per statement, never decreasing, last cell equal to the question points).",
+        "NO_RUBRIC": "The essay question has no rubric.",
+        "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
       "moreIssues": "and {count, plural, one {# more place} other {# more places}}",
@@ -2683,7 +2768,8 @@
       "chipCreatedFrom": "Created from {value}",
       "chipCreatedTo": "Created to {value}",
       "remove": "Remove filter {label}",
-      "clearAll": "Clear all filters"
+      "clearAll": "Clear all filters",
+      "competency": "Competency"
     },
     "bulk": {
       "groupLabel": "Bulk actions",
@@ -2794,7 +2880,8 @@
           "gradeCode": "Grade",
           "difficultyCode": "Difficulty",
           "knowledge": "Knowledge (MAPID)",
-          "tagCodes": "Tags"
+          "tagCodes": "Tags",
+          "competencyCode": "Competency"
         },
         "fieldsShort": {
           "content": "question text",
@@ -2806,7 +2893,8 @@
           "gradeCode": "grade",
           "difficultyCode": "difficulty",
           "knowledge": "knowledge",
-          "tagCodes": "tags"
+          "tagCodes": "tags",
+          "competencyCode": "competency"
         }
       }
     },
@@ -2865,7 +2953,8 @@
       "difficulty": "Difficulty",
       "knowledge": "Knowledge (MAPID)",
       "tags": "Tags",
-      "setCode": "Set code"
+      "setCode": "Set code",
+      "rubric": "Rubric"
     },
     "upload": {
       "heading": "Choose a question file",
@@ -2891,17 +2980,18 @@
       "optionsRow": "A, B, C, D",
       "rules": {
         "sourceCode": "Identifies a question imported before; must not repeat within the file.",
-        "type": "Single choice, Multiple choice, True / False, Fill in or Question set.",
+        "type": "Single choice, Multiple choice, True / False, Fill in, Essay or Question set.",
         "content": "The question text; for a Question set row, the shared passage. Write formulas in LaTeX.",
         "options": "Choice options, or the statements of a True / False question. Choice questions need at least 2 options.",
-        "correctAnswer": "Letter of the correct option (A); several answers separated by commas (A, C); True / False takes T or F per statement; Fill in lists accepted answers separated by |. Leave empty on a Question set row.",
+        "correctAnswer": "Letter of the correct option (A); several answers separated by commas (A, C); True / False takes T or F per statement; Fill in lists accepted answers separated by |; Essay takes a sample answer (optional). Leave empty on a Question set row.",
         "solution": "Solution or worked explanation.",
         "subject": "Subject name or code from the catalog. Child questions left empty take the Question set row's value.",
         "grade": "Grade number (10, 11, 12) or grade name.",
         "difficulty": "Recognition, Comprehension, Application or High application.",
         "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty, it must be added before moving to Ready.",
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
-        "setCode": "A Question set row and its child questions share the same set code."
+        "setCode": "A Question set row and its child questions share the same set code.",
+        "rubric": "Essay questions only: write each criterion as “Description: points”, separated by ; (for example Opening: 0.25; Body: 1). The question points equal the criteria total. Leave empty and the question stays Draft until a rubric is added."
       },
       "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2."
     },
@@ -3036,7 +3126,11 @@
         "VALID": "Valid",
         "ERROR": "Has errors",
         "DUPLICATE": "Duplicate"
-      }
+      },
+      "rubric": "Rubric",
+      "noRubric": "No rubric yet; the question stays Draft until one is added.",
+      "criterionPoints": "{points, number} pts",
+      "sampleAnswer": "Sample answer"
     },
     "issues": {
       "REQUIRED": {
@@ -3045,7 +3139,7 @@
       },
       "TYPE_UNKNOWN": {
         "message": "Question type “{value}” is not supported",
-        "fix": "Use one of: Single choice, Multiple choice, True / False, Fill in, Question set."
+        "fix": "Use one of: Single choice, Multiple choice, True / False, Fill in, Essay, Question set."
       },
       "TYPE_NOT_IMPORTABLE": {
         "message": "Type “{value}” cannot be imported from a file yet",
@@ -3110,6 +3204,14 @@
       "TAG_UNKNOWN": {
         "message": "Tag “{value}” is not in the catalog and will be skipped",
         "fix": "Add the tag in Catalog if you need it."
+      },
+      "RUBRIC_INVALID": {
+        "message": "Rubric criterion “{value}” has no points or invalid points",
+        "fix": "Write each criterion as “Description: points” with points greater than 0, separated by ;."
+      },
+      "RUBRIC_MISSING": {
+        "message": "The essay question has no rubric",
+        "fix": "The question is still imported as Draft; add a rubric before marking it Ready."
       }
     },
     "errorReport": {
@@ -3198,7 +3300,8 @@
         "check": "Last check",
         "all": "All",
         "unpublishedOnly": "Has unpublished changes",
-        "clear": "Clear filters"
+        "clear": "Clear filters",
+        "subject": "Subject"
       },
       "table": {
         "exam": "Exam",
@@ -3209,7 +3312,8 @@
         "draft": "Changes",
         "check": "Last check",
         "updated": "Updated",
-        "actions": "Actions"
+        "actions": "Actions",
+        "choice": "Options"
       },
       "actions": {
         "create": "Create exam",
@@ -3231,7 +3335,15 @@
       "discontinueDescription": "“{name}” will no longer be sold. Learners who bought it can still take version v{version}; existing attempts are unchanged.",
       "discontinueSuccess": "Exam {code} is no longer sold.",
       "discontinueConflict": "The exam is no longer serving. Reload the list and try again.",
-      "discontinueError": "Could not stop selling the exam. Try again later."
+      "discontinueError": "Could not stop selling the exam. Try again later.",
+      "structureValueShared": "{questions, plural, one {# question} other {# questions}} · {minutes, number} min shared",
+      "essay": "Has essay",
+      "choice": {
+        "english": "English",
+        "combinations": "{count, plural, one {# combination} other {# combinations}}",
+        "branches": "{count, plural, one {# branch} other {# branches}}",
+        "none": "No elective part"
+      }
     },
     "general": {
       "title": "Exam details",
@@ -3256,14 +3368,27 @@
         "structure": "Structure",
         "structureValue": "{parts, plural, one {# part} other {# parts}} · {questions, plural, one {# question} other {# questions}} · {minutes, number} min",
         "paths": "Learner paths",
-        "pathsEnglishAndCombinations": "English + {count, plural, one {# combination} other {# combinations}}",
         "pathsEnglishOnly": "English",
         "pathsCombinationsOnly": "{count, plural, one {# combination} other {# combinations}}",
         "pathsFixed": "No elective part",
         "attempts": "Attempts",
         "attemptsValue": "{count, plural, one {# attempt} other {# attempts}}",
-        "updated": "Last updated"
-      }
+        "updated": "Last updated",
+        "pathsBranches": "{count, plural, one {# branch} other {# branches}}",
+        "years": "Structure {structureYear} · matrix {matrixYear}",
+        "yearsConfirmed": "Matrix targets",
+        "yearsConfirmedYes": "Confirmed by an expert",
+        "yearsConfirmedNo": "Awaiting expert confirmation",
+        "structureValueShared": "{parts, plural, one {# part} other {# parts}} · {questions, plural, one {# question} other {# questions}} · {minutes, number} min shared",
+        "maxScore": "Maximum score",
+        "maxScoreValue": "{count, plural, one {# point} other {# points}}",
+        "maxScoreUnset": "Not set",
+        "essay": "Essay",
+        "essayValue": "Has essay questions, graded by hand"
+      },
+      "loadErrorTitle": "Could not load the catalog and structure templates",
+      "loadErrorDescription": "Check your connection and try again.",
+      "retry": "Try again"
     },
     "structure": {
       "title": "Structure and matrix",
@@ -3301,7 +3426,10 @@
         "points": "Total points",
         "allocated": "Allocated",
         "allocatedValue": "{allocated, number}, {missing, number} missing",
-        "issues": "Issues to fix"
+        "issues": "Issues to fix",
+        "questionsPrinted": "{count, plural, one {# question} other {# questions}} taken ({printed, number} printed)",
+        "sharedMinutes": "{count, number} min, shared",
+        "pointsOfScale": "{points} / {scale} points"
       },
       "unsaved": {
         "title": "Leave without saving?",
@@ -3312,7 +3440,7 @@
       "outline": {
         "title": "Structure",
         "summary": "{parts, plural, one {# part} other {# parts}} · {count, plural, one {# question} other {# questions}}",
-        "partMeta": "{count, number} q · {minutes, number} min",
+        "partMeta": "{count, number} q{hasMinutes, select, yes { · {minutes, number} min} other {}}",
         "section": "{subject} · {count, plural, one {# question} other {# questions}}",
         "blockCount": "{count, plural, one {# question} other {# questions}}",
         "sets": "({sets, number} sets × {size, number})",
@@ -3320,11 +3448,13 @@
         "noBlocks": "No question blocks yet.",
         "noOptions": "No paths yet.",
         "untitledBlock": "Untitled block",
-        "hasIssue": "has issues"
+        "hasIssue": "has issues",
+        "common": "Common",
+        "expertPending": "awaiting expert confirmation"
       },
       "part": {
         "fixedHint": "Every learner takes the same subjects in this part.",
-        "choiceHint": "Every path must have {count, plural, one {# question} other {# questions}} and {minutes, number} minutes.",
+        "choiceHint": "{shared, select, yes {Every path must have {count, plural, one {# question} other {# questions}}; the duration is shared by the whole exam.} other {Every path must have {count, plural, one {# question} other {# questions}} and {minutes, number} minutes.}}",
         "name": "Part name",
         "nameRequired": "Enter the part name.",
         "order": "Order",
@@ -3345,7 +3475,17 @@
         "actions": "Actions",
         "addBlock": "Add block",
         "addBlockTarget": "Add block to {subject}",
-        "total": "Total"
+        "total": "Total",
+        "sharedDuration": "{minutes, plural, one {# minute} other {# minutes}}, shared by the whole exam",
+        "sharedHint": "The exam uses a shared duration, so parts have no duration of their own. Change it in General.",
+        "points": "Part points",
+        "pointsHint": "On every path, the blocks of this part must add up to the part points.",
+        "pointsHintFixed": "The blocks currently total {points, number} points; they must equal the part points.",
+        "pointsInvalid": "The block points do not add up to the part points.",
+        "commonTitle": "Common to every branch",
+        "commonHint": "Every learner takes the common sections, then picks one branch.",
+        "commonCaption": "Common subjects and questions of {name}",
+        "commonTotal": "{count, plural, one {# common question} other {# common questions}}"
       },
       "block": {
         "title": "Question block · {name}",
@@ -3384,7 +3524,11 @@
           "nameRequired": "Enter the block name.",
           "countPositive": "Questions to draw must be greater than 0.",
           "setMismatch": "Sets × questions per set must equal the block's question count ({expected, number})."
-        }
+        },
+        "pointsTotal": "The block is worth {points, number} points.",
+        "manualGrading": "Manual grading",
+        "competencies": "Competencies",
+        "competenciesHint": "Only draw questions tagged with one of the selected competencies. None selected: any competency of the subject."
       },
       "issues": {
         "partCount": "{part}: the question count must be a positive whole number.",
@@ -3395,7 +3539,8 @@
         "dimension": {
           "COMBINED": "matrix",
           "GRADE": "by grade",
-          "DIFFICULTY": "by difficulty"
+          "DIFFICULTY": "by difficulty",
+          "COMPETENCY": "by competency"
         },
         "block": {
           "prefix": "{section} · {block}: {detail}",
@@ -3404,6 +3549,35 @@
           "invalidValue": "the matrix has negative or non-whole values.",
           "percentTotal": "the percentages {dimension} add up to {value}%, they must total 100%.",
           "allocationTotal": "{dimension} has {actual, number} questions; the block needs {expected, number}."
+        },
+        "partPoints": "{part}: the blocks are worth {actual} points; the part needs {expected}."
+      },
+      "yearsPending": "The structure year ({structure}) differs from the matrix year ({matrix}) and is not confirmed. The exam cannot be published until this is confirmed in General.",
+      "yearsLink": "Open General",
+      "expertNote": "Template note: {note}",
+      "combinationsGenerated": "{count, plural, one {Added # combination.} other {Added # combinations.}}",
+      "branchAdded": "Added branch {name}.",
+      "optionConfirmed": "Confirmed the question counts of {code}.",
+      "scoring": {
+        "title": "Expected scoring rule",
+        "essay": "Essay questions are graded manually against each question's rubric. The configuration check reports source questions without a rubric.",
+        "compare": "Compare with the scoring rule of source questions",
+        "compareHint": "The actual rule is stored on each question. Turn this on so the configuration check warns about source questions whose rule differs from the one below.",
+        "statements": "Statements per question",
+        "statementsHint": "From {min, number} to {max, number}. Changing the count spreads the table evenly again.",
+        "useKindDefault": "Use the exam type's table",
+        "tableLegend": "Points by correct statements (per question: {points})",
+        "correctCount": "{count, plural, one {# correct} other {# correct}}",
+        "lastNotPoints": "All statements correct must earn the full question points ({points}).",
+        "decreasing": "Points must not decrease as more statements are correct.",
+        "ruleLegend": "Multiple-answer scoring rule",
+        "rules": {
+          "ALL_OR_NOTHING": "All or nothing",
+          "PARTIAL": "Partial credit"
+        },
+        "ruleHints": {
+          "ALL_OR_NOTHING": "Points only when every correct answer is selected and nothing else.",
+          "PARTIAL": "Partial points for the correct answers selected, following the rule stored on the question."
         }
       }
     },
@@ -3435,11 +3609,13 @@
         "pathsValue": "{valid, number} / {total, number} valid",
         "questions": "Questions per path",
         "minutes": "Duration",
-        "minutesValue": "{count, plural, one {# minute} other {# minutes}}",
+        "minutesValue": "{count, plural, one {# minute} other {# minutes}}{shared, select, yes {, shared} other {}}",
         "points": "Total points",
         "issues": "Issues to fix",
         "issuesValue": "{count, plural, one {# issue} other {# issues}}",
-        "none": "None"
+        "none": "None",
+        "questionsPrinted": "{count, plural, one {# question} other {# questions}} taken ({printed, number} printed)",
+        "pointsOfScale": "{points} / {scale} points"
       },
       "path": {
         "single": "Common paper"
@@ -3501,7 +3677,7 @@
           "SOURCE": "Every matrix quota has enough matching questions in the bank.",
           "QUESTION_SET": "Question-set blocks (if any) have enough matching sets, taken whole.",
           "OVERLAP": "No question has to serve more than one quota.",
-          "POINTS": "No fixed total score is configured; the total is {points, number} points.",
+          "POINTS": "{hasScale, select, yes {{points, number} points in total, matching the {scale, number}-point scale; every part matches its block points.} other {No fixed total score is configured; the total is {points, number} points.}}",
           "DISPLAY": "Passages, formulas, images and answers of the source render correctly."
         }
       },
@@ -3529,7 +3705,8 @@
           "result": "Assembly result",
           "issue": "Issue",
           "location": "Where to fix"
-        }
+        },
+        "manualGrading": "Manual grading"
       },
       "issue": {
         "INFO_MISSING": "Required exam information is missing (name, code or the subject of a single-subject exam).",
@@ -3537,15 +3714,22 @@
         "PATH_TOTAL_MISMATCH": "The path has {available, number} questions in total; the exam requires {required, number}.",
         "PART_TOTAL_MISMATCH": "{part} allocates {available, number} questions; the part requires {required, number}.",
         "SECTION_TOTAL_MISMATCH": "The blocks of {subject} add up to {available, number} questions; {required, number} are required.",
-        "MATRIX_TOTAL_MISMATCH": "Block {block}: the matrix allocates {available, number} questions {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} other {in total}}; the block needs {required, number}.",
+        "MATRIX_TOTAL_MISMATCH": "Block {block}: the matrix allocates {available, number} questions {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} COMPETENCY {by competency} other {in total}}; the block needs {required, number}.",
         "MATRIX_NEGATIVE": "Block {block} has a negative quota.",
-        "PERCENT_TOTAL_INVALID": "Block {block}: the percentages {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} other {of the matrix}} add up to {available, number}%; they must add up to 100%.",
+        "PERCENT_TOTAL_INVALID": "Block {block}: the percentages {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} COMPETENCY {by competency} other {of the matrix}} add up to {available, number}%; they must add up to 100%.",
         "SET_SIZE_MISMATCH": "Block {block}: sets × questions per set is {available, number}; the block needs {required, number} questions.",
         "CELL_SHORTAGE": "Block {block} needs {required, number} questions at {grade}/{difficulty}; {available, number} matching questions are available.",
         "DIMENSION_SHORTAGE": "Block {block} needs {required, number} questions at {level}; {available, number} matching questions are available.",
         "MATRIX_INFEASIBLE": "Block {block}: each dimension has enough source questions, but no selection of {required, number} questions meets grade and difficulty together.",
         "SET_SHORTAGE": "Block {block} requires {required, number} sets; only {available, number} valid sets are available.",
-        "OVERLAP_UNCONFIRMED": "Block {block}: {available, number} questions are shared between knowledge groups; no solution was found within the processing limit ({seconds, number} seconds, sample). This does not mean the bank lacks questions."
+        "OVERLAP_UNCONFIRMED": "Block {block}: {available, number} questions are shared between knowledge groups; no solution was found within the processing limit ({seconds, number} seconds, sample). This does not mean the bank lacks questions.",
+        "YEARS_UNCONFIRMED": "The structure year ({required}) differs from the matrix year ({available}) and is not confirmed.",
+        "OPTION_UNCONFIRMED": "{part}: the per-subject counts of this option await expert confirmation.",
+        "PART_POINTS_MISMATCH": "{part}: the blocks are worth {available, number} points; the part needs {required, number}.",
+        "POINTS_TOTAL_MISMATCH": "The path totals {available, number} points; the exam scale is {required, number}.",
+        "COMPETENCY_SHORTAGE": "Block {block} needs {required, number} questions for {competency}; {available, number} matching questions are available.",
+        "RUBRIC_MISSING": "Block {block}: {available, plural, one {# essay source question has} other {# essay source questions have}} no rubric ({codes}).",
+        "SCORING_MISMATCH": "Block {block}: {available, plural, one {# source question uses} other {# source questions use}} a scoring rule different from the block's expected rule ({codes}). Warning only; publishing is not blocked."
       }
     },
     "versions": {
@@ -3635,9 +3819,10 @@
         "description": "Read-only. Snapshot taken at publishing; attempts that used this version stay unchanged.",
         "error": "Could not load the configuration of this version.",
         "note": "Note",
-        "partMeta": "{count, plural, one {# question} other {# questions}} · {minutes, plural, one {# minute} other {# minutes}}",
+        "partMeta": "{count, plural, one {# question} other {# questions}}{hasMinutes, select, yes { · {minutes, plural, one {# minute} other {# minutes}}} other {}}{hasPoints, select, yes { · {points, plural, one {# point} other {# points}}} other {}}",
         "section": "{subject} · {count, plural, one {# question} other {# questions}}",
-        "block": "{name} · {type} · {count, plural, one {# question} other {# questions}} · {mode, select, COMBINED {combined matrix} other {separate matrix}}"
+        "block": "{name} · {type} · {count, plural, one {# question} other {# questions}} · {mode, select, COMBINED {combined matrix} other {separate matrix}}{manual, select, yes { · manual grading} other {}}",
+        "common": "Common"
       }
     },
     "editor": {
@@ -3671,7 +3856,12 @@
     },
     "kind": {
       "HSA": "HSA",
-      "QDA": "QDA"
+      "QDA": "QDA",
+      "BCA": "BCA",
+      "VACT": "V-ACT",
+      "SPT": "SPT",
+      "SP2E": "SP2E",
+      "THPTQG": "THPTQG"
     },
     "format": {
       "FULL": "FULL",
@@ -3724,8 +3914,8 @@
       },
       "footer": "A successful trial run does not replace checking the whole configuration.",
       "footerLink": "View check result",
-      "paperSummary": "{questions, plural, one {# question} other {# questions}} · {points, plural, one {# point} other {# points}} · {minutes, plural, one {# minute} other {# minutes}}",
-      "partRange": "questions {first, number}–{last, number} · {minutes, plural, one {# minute} other {# minutes}}",
+      "paperSummary": "{questions, plural, one {# question} other {# questions}} · {points, plural, one {# point} other {# points}} · {minutes, plural, one {# minute} other {# minutes}}{shared, select, yes {, shared} other {}}",
+      "partRange": "questions {first, number}–{last, number}{hasMinutes, select, yes { · {minutes, plural, one {# minute} other {# minutes}}} other {}}",
       "blockHeading": "Block {block}",
       "blockRange": "questions {first, number}–{last, number} · {count, plural, one {# question} other {# questions}}",
       "blockRangeSets": "{sets, number} sets × {size, number} questions · questions {first, number}–{last, number}",
@@ -3775,7 +3965,14 @@
         "subject": "Subject",
         "count": "Questions",
         "empty": "No question is tagged with knowledge"
-      }
+      },
+      "manualGradingNote": "The paper has essay questions graded manually against each question's rubric; their points are known after a teacher grades them.",
+      "partPoints": "{points, plural, one {# point} other {# points}}",
+      "partPointsOf": "{points, number} / {max, number} points",
+      "manualGrading": "Manual grading",
+      "rubricTitle": "Rubric",
+      "rubricEmpty": "This question has no rubric yet.",
+      "rubricItem": "{description}: {points, plural, one {# point} other {# points}}"
     },
     "publish": {
       "close": "Close",
@@ -3802,7 +3999,8 @@
         "blockedServing": "Cannot be published. New attempts on this path keep using the v{version} configuration.",
         "blockedNew": "Not on sale until the check is valid.",
         "new": "New",
-        "viewCheck": "View check result →"
+        "viewCheck": "View check result →",
+        "firstIssue": "{issue}{more, plural, =0 {} one { (and # more issue)} other { (and # more issues)}}"
       },
       "summary": {
         "exam": "Exam",
@@ -3815,7 +4013,8 @@
       "note": "Publishing note",
       "noteHint": "Optional, at most {max, number} characters.",
       "selectedSummary": "{count, number} of {total, number} choice paths will be published",
-      "submit": "Publish {count, plural, one {# choice path} other {# choice paths}}"
+      "submit": "Publish {count, plural, one {# choice path} other {# choice paths}}",
+      "yearsLink": "Open General"
     },
     "create": {
       "title": "Create exam",
@@ -3831,9 +4030,13 @@
       "sections": {
         "info": "General information",
         "structure": "Initial structure",
-        "structureDescription": "Loaded from the {name} template · changing the exam type or format reloads the template after confirmation",
+        "structureDescription": "Loaded from the {name} template · changing the exam type, format, subject or template reloads the structure after confirmation",
         "choice": "Elective part · Part {order}",
-        "choiceDescription": "Every learner path must have {count, plural, one {# question} other {# questions}}"
+        "choiceDescription": "Every learner path must have {count, plural, one {# question} other {# questions}}",
+        "timing": "Time and scoring",
+        "timingSharedDescription": "The whole exam has one shared duration; set the maximum score and per-part points when the exam type splits points by part",
+        "timingPerPartDescription": "Each part has its own duration; set the maximum score and per-part points when the exam type splits points by part",
+        "choiceCommonDescription": "{common, plural, one {# common question} other {# common questions}} plus one option of {option, plural, one {# question} other {# questions}}; learners answer {total, plural, one {# question} other {# questions}}"
       },
       "name": "Exam name",
       "namePlaceholder": "For example: HSA FULL · Practice test 2",
@@ -3842,8 +4045,6 @@
       "generateCode": "Generate code",
       "codeGenerated": "Generated code {code}.",
       "kind": "Exam type",
-      "kindHsaDescription": "Math 75 · Literature 60 · Science/English 60 min",
-      "kindQdaDescription": "Math 80 · Literature 55 · Science/English 60 min",
       "format": "Format",
       "formatFull": "FULL",
       "formatFullDescription": "All three parts",
@@ -3869,7 +4070,10 @@
         "invalidType": "Choose a PNG, JPG or WebP image.",
         "tooLarge": "The image can be at most 5 MB.",
         "selected": "Selected image {name}.",
-        "removed": "Cover image removed."
+        "removed": "Cover image removed.",
+        "choose": "Choose image",
+        "change": "Change image",
+        "empty": "No image chosen"
       },
       "parts": {
         "caption": "Parts in order, with questions and duration",
@@ -3892,14 +4096,18 @@
         "total": "Total · {count, plural, one {# part} other {# parts}}",
         "questionsValue": "{count, plural, one {# question} other {# questions}}",
         "minutesValue": "{count, number} min",
-        "templateNote": "The template is only a starting point; check the configuration before publishing. Learners see the questions and duration of the published structure."
+        "templateNote": "The template is only a starting point; check the configuration before publishing. Learners see the questions and duration of the published structure.",
+        "points": "Points",
+        "choiceCommon": "Common part and branches",
+        "choiceBranches": "By branch",
+        "multiSubject": "Several subjects ({count, plural, one {# subject} other {# subjects}})",
+        "sectionsLegend": "Questions per subject (must total {count, plural, one {# question} other {# questions}})",
+        "templateNoteShared": "The exam uses one shared duration, so parts have no duration of their own. The template is only a starting point; check the configuration before publishing."
       },
       "choice": {
         "english": "Allow English ({count, plural, one {# question} other {# questions}})",
         "englishHint": "Learners may take English instead of Science. English question blocks are set up in the next step.",
-        "combinations": "Science combinations from the catalog",
-        "hintHSA": "HSA: three-subject combinations, for example 17–17–16",
-        "hintQDA": "QDA: two-subject combinations, default 25–25",
+        "combinations": "Combinations from the catalog",
         "attach": "Attach combination",
         "emptyAllocation": "No combinations attached. Learners can choose only combinations attached to the exam.",
         "subjectLabel": "{index, number}. {subject}",
@@ -3915,7 +4123,17 @@
           "total": "The subjects must add up to the part's questions ({count, plural, one {# question} other {# questions}}). Never split 51 and drop one at random.",
           "fixed": "Per-subject counts are stored in each combination; the system never picks a subject to shorten on each attempt.",
           "catalog": "New combination codes in the catalog are not added to a serving exam automatically."
-        }
+        },
+        "hintSubjects": "{kind}: {count, plural, one {# subject} other {# subjects}} per combination",
+        "hintMixed": "{kind}: combinations have different numbers of subjects",
+        "commonValue": "Common part: {count, plural, one {# question} other {# questions}}",
+        "commonLegend": "Common part (every learner answers it)",
+        "commonHint": "Every learner answers {common, plural, one {# common question} other {# common questions}} plus {option, plural, one {# question} other {# questions}} from the chosen option.",
+        "branches": "Content branches",
+        "branchesHint": "Learners choose one branch; each branch has {count, plural, one {# question} other {# questions}}",
+        "branchCode": "Branch code {code}",
+        "branchCount": "Questions",
+        "expertPending": "Question split awaiting expert confirmation"
       },
       "summary": {
         "title": "Summary",
@@ -3924,14 +4142,19 @@
         "partCount": "Parts",
         "pathCount": "Learner paths",
         "minutesValue": "{count, number} min",
-        "pathsEnglishAndCombinations": "English + {count, plural, one {# combination} other {# combinations}}",
         "pathsEnglishOnly": "English",
         "pathsCombinationsOnly": "{count, plural, one {# combination} other {# combinations}}",
         "pathsNone": "No paths yet",
         "pathsFixed": "One fixed path",
         "issuesTitle": "To fix",
         "noIssues": "Nothing left to fix",
-        "draftNote": "The exam is created as a draft. Fix every item above to create it."
+        "draftNote": "The exam is created as a draft. Fix every item above to create it.",
+        "sharedTiming": "Shared duration",
+        "maxScore": "Maximum score",
+        "pointsValue": "{count, plural, one {# point} other {# points}}",
+        "maxScoreUnset": "Set during configuration",
+        "partPoints": "Parts: {count, plural, one {# point} other {# points}}",
+        "pathsBranches": "{count, plural, one {# branch} other {# branches}}"
       },
       "fields": {
         "name": "Exam name",
@@ -3944,7 +4167,13 @@
         "partQuestions": "Part {order} · questions",
         "partDuration": "Part {order} · duration",
         "partOptions": "Part {order} · learner paths",
-        "combination": "Combination {code}"
+        "combination": "Combination {code}",
+        "subjectCode": "Exam subject",
+        "sharedDuration": "Shared duration",
+        "maxScore": "Maximum score",
+        "partPoints": "Part {order} · points",
+        "partSections": "Part {order} · questions per subject",
+        "branch": "Branch {name}"
       },
       "replace": {
         "title": "Reload the {name} template?",
@@ -3958,7 +4187,7 @@
       "errors": {
         "codeTaken": "This exam code is already used. Enter another code.",
         "generic": "Could not create the exam. Try again later.",
-        "structure": "The initial structure is not valid. Check the questions, duration and combinations, then try again."
+        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again."
       },
       "validation": {
         "nameRequired": "Enter the exam name.",
@@ -3974,10 +4203,16 @@
         "partSubjectRequired": "Choose the part's subject.",
         "questionCountPositive": "Questions must be a whole number greater than 0.",
         "durationPositive": "Duration must be more than 0 minutes.",
-        "noOptions": "No learner paths yet: allow English or attach a combination.",
+        "noOptions": "There are no learner paths: allow English, attach a combination or keep at least one branch.",
         "subjectCountPositive": "Each subject needs a whole number of questions greater than 0.",
         "allocationTotal": "The subjects add up to {actual, number}; they must equal the part's {expected, number} questions.",
-        "partsRequired": "The exam has no parts yet."
+        "partsRequired": "The exam has no parts yet.",
+        "kindSubjectRequired": "Choose the exam subject.",
+        "sharedDurationPositive": "The shared duration must be a whole number of minutes greater than 0.",
+        "maxScoreRequired": "Enter the maximum score.",
+        "maxScorePositive": "The maximum score must be greater than 0.",
+        "pointsPositive": "Part points must be greater than 0.",
+        "commonTooLarge": "The common part has {common, plural, one {# question} other {# questions}}, leaving none for the options out of the part's {total, number}."
       },
       "preview": {
         "title": "Structure to load · {name}",
@@ -3993,7 +4228,61 @@
         "choiceNote": "Learners choose English or a Science combination; adjust per-subject counts in Structure",
         "subjectPending": "No subject chosen",
         "emptyNote": "Set the questions and duration in Structure",
-        "note": "The template is only a starting point. Check the configuration before publishing. Learners see the questions and duration of the published structure."
+        "note": "The template is only a starting point. Check the configuration before publishing. Learners see the questions and duration of the published structure.",
+        "points": "Points",
+        "pointsValue": "{count, plural, one {# point} other {# points}}",
+        "durationShared": "shared",
+        "durationSharedValue": "{count, number} min shared",
+        "choiceOptionsNote": "Learners choose one of {count, plural, one {# preset option} other {# preset options}}",
+        "sectionsNote": "{count, plural, one {# subject} other {# subjects}} in this part"
+      },
+      "kindHintKind": "{kind}: one structure template for the whole exam type · {timing}",
+      "kindHintSubject": "{kind}: structure templates by subject and year · {timing}",
+      "timingMode": {
+        "PER_PART": "duration per part",
+        "SHARED": "one shared duration"
+      },
+      "formatOnlyFull": "This exam type only has FULL exams",
+      "templateSubject": "{kind} {subject} {year}",
+      "templateBlank": "{kind} {subject} (no template)",
+      "noSubject": "no subject chosen",
+      "subjectTemplate": {
+        "subject": "Exam subject",
+        "subjectHint": "{count, plural, one {# subject has} other {# subjects have}} a structure template; subjects without one start with an empty structure",
+        "subjectPlaceholder": "Choose a subject",
+        "subjectWithTemplates": "{subject} · {count, plural, one {# template} other {# templates}}",
+        "noTemplate": "{subject} has no structure template yet. The initial structure starts empty: enter the questions and duration, and add parts if needed.",
+        "template": "Structure template",
+        "templateHint": "Templates by structure year, newest first",
+        "templateYear": "Structure {year}"
+      },
+      "templateNotes": {
+        "structureYear": "Structure year",
+        "matrixYear": "Matrix year",
+        "yearsDiffer": "The {structureYear} structure uses the {matrixYear} matrix: an expert must confirm the matrix targets before it is sold.",
+        "yearsConfirm": "An expert has confirmed that the {matrixYear} matrix targets fit this structure",
+        "yearsConfirmHint": "Until it is confirmed, the configuration check blocks publishing. You can confirm later in General information.",
+        "expertNote": "Template note"
+      },
+      "timing": {
+        "sharedDuration": "Shared duration (min)",
+        "sharedHint": "The whole exam has one duration; parts have no duration of their own",
+        "perPart": "Duration per part",
+        "perPartHint": "Total of the part durations; enter each part in the initial structure",
+        "minutesValue": "{count, number} min",
+        "maxScore": "Maximum score",
+        "maxScoreHint": "Highest possible score for the exam",
+        "maxScoreOptionalHint": "Leave empty if the scale is set when the exam is configured",
+        "pointsByPart": "Split points by part",
+        "pointsByPartHint": "Each part has its own maximum points, entered in the initial structure. When off, points come from the question blocks.",
+        "pointsTotal": "Part points total: {actual, plural, one {# point} other {# points}}",
+        "pointsTotalOf": "Part points total: {actual, number} / {expected, plural, one {# point} other {# points}}",
+        "pointsMismatch": "Does not match the maximum score"
+      },
+      "blocks": {
+        "title": "Suggested blocks from the template ({count, plural, one {# question} other {# questions}}, edit in Structure and matrix)",
+        "item": "{name}: {count, plural, one {# question} other {# questions}}",
+        "essay": "graded by hand"
       }
     },
     "matrix": {
@@ -4047,7 +4336,11 @@
         "invalidValue": "The matrix has negative values or non-whole question counts.",
         "percentTotal": "Percentages {dimension} add up to {value}%; they must total 100%.",
         "allocationTotal": "The {dimension} total is {actual, number} questions; the block needs {expected, number}."
-      }
+      },
+      "byCompetencyCaption": "By competency",
+      "competencyToggle": "Allocate by competency",
+      "competencyHint": "A separate dimension, independent of grade and difficulty: it must add up to the block's question count.",
+      "competencyHeader": "Competency"
     },
     "combinations": {
       "title": "Paths learners choose",
@@ -4079,7 +4372,8 @@
         "total": "The subjects must add up to the part's question count. The system never splits 51 questions and drops one.",
         "fixed": "Per-subject counts are fixed in each combination; the system never picks which subject loses a question per attempt.",
         "newCodes": "Combination codes added later in Shared configuration are not added to serving exams automatically.",
-        "sample": "The subjects of KH-1, KH-2 and KH-3 are sample data, pending BA input in Shared configuration."
+        "sample": "The subjects of KH-1, KH-2 and KH-3 are sample data, pending BA input in Shared configuration.",
+        "expert": "Newly generated combinations, or ones whose counts were edited, await expert confirmation; paths that use them cannot be published."
       },
       "attachDialog": {
         "title": "Attach combination",
@@ -4089,6 +4383,223 @@
         "required": "Choose a combination.",
         "cancel": "Cancel",
         "submit": "Attach"
+      },
+      "branchDescription": "Every learner takes {common, plural, one {# common question} other {# common questions}}, then picks one branch. A path is the common sections plus one branch, {count, plural, one {# question} other {# questions}} in total.",
+      "branchesTitle": "Branches ({count, number})",
+      "branchesCaption": "Branches of this part",
+      "branchesEmpty": "No branches yet. Add a branch for learners to choose.",
+      "addBranch": "Add branch",
+      "generate": "Generate combinations",
+      "temporaryCode": "Temporary code",
+      "totalWithCommon": "{total, number} / {count, number} (incl. {common, number} common)",
+      "expertPending": "Awaiting expert confirmation",
+      "expertConfirm": "Confirm",
+      "expertConfirmAria": "Confirm the question counts of {code}",
+      "expertConfirmed": "Expert confirmed",
+      "generator": {
+        "title": "Generate subject combinations",
+        "description": "Pick the subjects and how many go in each combination. Each combination has {count, plural, one {# question} other {# questions}} split across its subjects.",
+        "subjectsLegend": "Subjects to choose from",
+        "size": "Subjects per combination",
+        "sizeHint": "From 1 to {total, number}.",
+        "sizeInvalid": "Subjects per combination must be from 1 to {total, number}.",
+        "listLegend": "Generated combinations ({selected, number} / {total, number} selected)",
+        "listEmpty": "Pick subjects and a size to generate combinations.",
+        "attached": "Attached",
+        "temporaryCode": "Temporary code",
+        "required": "Select at least one combination.",
+        "note": "A combination with the same subjects as a catalog entry uses the catalog code; others get a temporary TH-nn code. Every combination added here awaits expert confirmation of its per-subject counts.",
+        "cancel": "Cancel",
+        "submit": "{count, plural, one {Add # combination} other {Add # combinations}}"
+      },
+      "branchDialog": {
+        "title": "Add branch",
+        "description": "A branch is what learners pick after the common sections; it has {count, plural, one {# question} other {# questions}}.",
+        "name": "Branch name",
+        "nameHint": "For example: Computer science",
+        "nameRequired": "Enter the branch name.",
+        "nameMax": "The branch name can have at most {max, number} characters.",
+        "subject": "Subject",
+        "subjectRequired": "Select a subject.",
+        "cancel": "Cancel",
+        "submit": "Add branch"
+      }
+    }
+  },
+  "grading": {
+    "status": {
+      "GRADING": "Grading",
+      "SCORED": "Scored"
+    },
+    "filters": {
+      "ariaLabel": "Filter attempts to grade",
+      "statusLegend": "Status",
+      "statusAll": "All",
+      "search": "Search",
+      "searchPlaceholder": "Learner name, learner code or exam code",
+      "kind": "Exam type",
+      "exam": "Exam",
+      "grader": "Grader",
+      "all": "All",
+      "graderUnassigned": "No grader yet",
+      "examOption": "{code} · {name}",
+      "chip": "{label}: {value}",
+      "activeLabel": "Active filters",
+      "remove": "Remove filter {label}",
+      "clearAll": "Clear all filters"
+    },
+    "list": {
+      "title": "Essay grading",
+      "description": "Attempts with essay questions, waiting for grading or already scored. Objective questions were scored on submission.",
+      "filteredCount": "{count, plural, one {# attempt matches} other {# attempts match}} the filters",
+      "filteredCountRich": "<strong>{count, number}</strong> {count, plural, one {attempt matches} other {attempts match}} the filters",
+      "loadingCount": "Loading attempts…",
+      "errorCount": "Attempt count unavailable",
+      "hint": "Oldest submissions first",
+      "tableAriaLabel": "Attempts to grade matching the filters",
+      "table": {
+        "learner": "Learner",
+        "exam": "Exam",
+        "submittedAt": "Submitted",
+        "progress": "Essays",
+        "score": "Score",
+        "grader": "Grader",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "progress": "{graded, number}/{count, number} graded",
+      "noGrader": "None yet",
+      "score": {
+        "total": "{score}/{max}",
+        "parts": "Objective {objective} + essays {essay}",
+        "objective": "Objective {score}/{max}",
+        "essayPending": "Essays not scored yet"
+      },
+      "actions": {
+        "gradeAria": "Grade the attempt of {name}",
+        "gradeTooltip": "Grade",
+        "viewAria": "View the grading result of {name}",
+        "viewTooltip": "View result"
+      },
+      "sortBy": "Sort by",
+      "ascending": "ascending",
+      "descending": "descending",
+      "errorTitle": "Could not load attempts",
+      "errorDescription": "Check your connection and try again.",
+      "retry": "Try again",
+      "emptyTitle": "No attempts to grade",
+      "emptyDescription": "Attempts with essay questions appear here once learners submit them.",
+      "emptyFilteredTitle": "No attempts match the filters",
+      "emptyFilteredDescription": "Change or remove some filters to see more attempts.",
+      "paginationNav": "Attempt list pagination",
+      "paginationPrevious": "Previous",
+      "paginationNext": "Next",
+      "paginationRowsPerPage": "Rows per page",
+      "paginationPage": "Page {page}",
+      "paginationRange": "Showing {from}–{to} of {total}"
+    },
+    "detail": {
+      "title": "Grade attempt",
+      "loading": "Loading attempt",
+      "notFoundTitle": "Attempt not found",
+      "notFoundDescription": "The attempt does not exist or has been removed.",
+      "errorTitle": "Could not load the attempt",
+      "errorDescription": "Check your connection and try again.",
+      "retry": "Try again",
+      "backToList": "Back to grading list",
+      "emptyTitle": "This attempt has no essay questions",
+      "emptyDescription": "Nothing needs manual grading. The attempt score is the objective score.",
+      "heading": "Attempt of {name}",
+      "subheading": "{code} · {examCode} · {examName}",
+      "formLabel": "Grade the attempt of {name}",
+      "essayLabel": "{part} · Question {number}",
+      "summary": {
+        "kind": "Exam type",
+        "submittedAt": "Submitted",
+        "grader": "Grader",
+        "gradedAt": "Graded",
+        "essays": "Essays"
+      },
+      "navigator": {
+        "label": "Essay questions in this attempt",
+        "score": "{score}/{max}",
+        "state": {
+          "complete": "fully scored",
+          "partial": "partly scored",
+          "empty": "not scored",
+          "error": "has invalid scores"
+        }
+      },
+      "question": {
+        "meta": "{code} · {points} points",
+        "source": {
+          "BANK": "Prompt and rubric from the question bank",
+          "ATTEMPT": "Prompt and rubric saved with the attempt"
+        },
+        "passage": "Reading passage ({code})",
+        "prompt": "Prompt",
+        "answer": "Learner answer",
+        "wordCount": "{count, plural, one {# word} other {# words}}",
+        "wordCountWithLimit": "{count, plural, one {# word} other {# words}} · about {limit, number} suggested",
+        "noAnswer": "The learner left this question blank.",
+        "sampleAnswer": "Suggested answer"
+      },
+      "rubric": {
+        "title": "Rubric",
+        "max": "Up to {max} points",
+        "legend": "Rubric scores for {label}",
+        "criterion": "{index}. {description}",
+        "criterionHint": "Up to {max} points; use a comma or a dot for decimals.",
+        "subtotal": "Question score",
+        "subtotalValue": "{score}/{max}",
+        "comment": "Comment",
+        "commentHint": "Optional. The learner sees it once the attempt is scored.",
+        "noComment": "No comment.",
+        "previous": "Previous question",
+        "next": "Next question"
+      },
+      "validation": {
+        "invalid": "Enter a non-negative number with at most two decimals (for example 1.5).",
+        "tooHigh": "The score cannot exceed {max}.",
+        "required": "Enter a score for this criterion before finishing.",
+        "commentMax": "Comments can be at most {limit} characters.",
+        "summary": "Some fields need fixing. Moved to the first one.",
+        "missing": "{count, plural, one {# criterion has} other {# criteria have}} no score yet. Moved to the first one."
+      },
+      "totals": {
+        "objective": "Objective (scored on submission)",
+        "noObjective": "No objective part",
+        "essayDraft": "Essays (running total)",
+        "totalDraft": "Total (running total)",
+        "value": "{score}/{max}"
+      },
+      "draft": {
+        "save": "Save draft",
+        "saved": "Draft scores saved.",
+        "unsaved": "You have unsaved scores.",
+        "hint": "Save a draft to continue later; the attempt stays in Grading."
+      },
+      "finish": {
+        "action": "Finish grading",
+        "confirmTitle": "Finish grading the attempt of {name}?",
+        "confirmDescription": "Attempt total: objective {objective} + essays {essay} = {total}/{max}. The attempt moves to Scored.",
+        "confirmDescriptionEssayOnly": "Attempt total: {total}/{max}. The attempt moves to Scored.",
+        "cancel": "Keep grading",
+        "confirm": "Confirm and finish",
+        "done": "Finished grading the attempt of {name}. Total {score}/{max}."
+      },
+      "result": {
+        "title": "Scored",
+        "essay": "Essays",
+        "total": "Total"
+      },
+      "errors": {
+        "ATTEMPT_ALREADY_SCORED": "This attempt is already scored and cannot be saved. Reload to see the result.",
+        "GRADING_INCOMPLETE": "Some criteria have no score yet.",
+        "SCORE_OUT_OF_RANGE": "A score is outside the allowed range of its criterion.",
+        "UNKNOWN_QUESTION": "A question or its rubric has changed. Reload and grade again.",
+        "NOT_FOUND": "Attempt not found.",
+        "generic": "Could not save the scores. Try again."
       }
     }
   }

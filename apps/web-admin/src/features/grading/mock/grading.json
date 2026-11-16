@@ -1,0 +1,760 @@
+{
+  "graders": [
+    { "id": "u-grader-01", "name": "Nguyễn Thu Hà" },
+    { "id": "u-grader-02", "name": "Trần Minh Đức" },
+    { "id": "u-grader-03", "name": "Lê Phương Anh" }
+  ],
+  "currentGraderId": "u-grader-01",
+  "questions": [
+    {
+      "id": "gq-bca-van-01",
+      "code": "CH-TL-BCA-001",
+      "subjectCode": "LITERATURE",
+      "content": "Viết bài văn nghị luận xã hội (khoảng 600 chữ) trình bày suy nghĩ của anh/chị về trách nhiệm của thanh niên trong việc giữ gìn an ninh, trật tự nơi mình sinh sống.",
+      "maxPoints": 25,
+      "rubric": [
+        { "id": "c1", "description": "Đảm bảo cấu trúc bài văn nghị luận: có mở bài, thân bài, kết bài.", "points": 2.5 },
+        { "id": "c2", "description": "Xác định đúng vấn đề nghị luận: trách nhiệm của thanh niên với an ninh, trật tự nơi cư trú.", "points": 2.5 },
+        { "id": "c3", "description": "Triển khai vấn đề thành các luận điểm; kết hợp lí lẽ và dẫn chứng thuyết phục.", "points": 12.5 },
+        { "id": "c4", "description": "Chính tả, ngữ pháp, diễn đạt mạch lạc.", "points": 2.5 },
+        { "id": "c5", "description": "Sáng tạo: cách nhìn riêng, liên hệ thực tế sâu sắc.", "points": 5 }
+      ],
+      "sampleAnswer": "Giải thích an ninh, trật tự; vì sao thanh niên cần có trách nhiệm; biểu hiện cụ thể (chấp hành pháp luật, tham gia tổ dân phố, phát hiện và báo tin vi phạm, tuyên truyền trên mạng xã hội); phê phán thái độ thờ ơ; bài học cho bản thân.",
+      "wordLimit": 600,
+      "passage": null
+    },
+    {
+      "id": "gq-spt-toan-23",
+      "code": "CH-TL-SPT-023",
+      "subjectCode": "MATH",
+      "content": "Giải phương trình log₂(x − 1) + log₂(x + 1) = 3.",
+      "maxPoints": 1,
+      "rubric": [
+        { "id": "c1", "description": "Đặt đúng điều kiện xác định x > 1.", "points": 0.25 },
+        { "id": "c2", "description": "Biến đổi về phương trình x² − 1 = 8.", "points": 0.5 },
+        { "id": "c3", "description": "Kết luận nghiệm x = 3, loại x = −3.", "points": 0.25 }
+      ],
+      "sampleAnswer": "Điều kiện x > 1. Phương trình tương đương log₂(x² − 1) = 3 ⇔ x² − 1 = 8 ⇔ x = ±3. Đối chiếu điều kiện, nghiệm x = 3.",
+      "wordLimit": null,
+      "passage": null
+    },
+    {
+      "id": "gq-spt-toan-24",
+      "code": "CH-TL-SPT-024",
+      "subjectCode": "MATH",
+      "content": "Cho hình chóp S.ABCD có đáy là hình vuông cạnh a, SA vuông góc với mặt phẳng đáy và SA = a√2. Tính góc giữa đường thẳng SC và mặt phẳng (ABCD).",
+      "maxPoints": 1,
+      "rubric": [
+        { "id": "c1", "description": "Chỉ ra AC là hình chiếu của SC trên (ABCD), góc cần tìm là góc SCA.", "points": 0.5 },
+        { "id": "c2", "description": "Tính AC = a√2, tan SCA = 1, kết luận góc bằng 45°.", "points": 0.5 }
+      ],
+      "sampleAnswer": "Vì SA ⊥ (ABCD) nên AC là hình chiếu của SC, góc cần tìm là góc SCA. AC = a√2, tan SCA = SA/AC = 1 nên góc SCA = 45°.",
+      "wordLimit": null,
+      "passage": null
+    },
+    {
+      "id": "gq-spt-toan-25",
+      "code": "CH-TL-SPT-025",
+      "subjectCode": "MATH",
+      "content": "Một cửa hàng bán áo với giá 100 nghìn đồng một chiếc thì mỗi tháng bán được 300 chiếc. Cứ giảm giá 2 nghìn đồng thì mỗi tháng bán thêm được 20 chiếc. Giá nhập là 60 nghìn đồng một chiếc. Cửa hàng nên bán với giá bao nhiêu để lợi nhuận mỗi tháng lớn nhất?",
+      "maxPoints": 1,
+      "rubric": [
+        { "id": "c1", "description": "Lập đúng hàm lợi nhuận theo số lần giảm giá x: (40 − 2x)(300 + 20x).", "points": 0.5 },
+        { "id": "c2", "description": "Tìm được giá trị lớn nhất tại x = 2,5.", "points": 0.25 },
+        { "id": "c3", "description": "Kết luận giá bán 95 nghìn đồng một chiếc.", "points": 0.25 }
+      ],
+      "sampleAnswer": "Lợi nhuận L(x) = (40 − 2x)(300 + 20x) = −40x² + 200x + 12000, lớn nhất khi x = 2,5. Giá bán 100 − 5 = 95 nghìn đồng, lợi nhuận 12 250 nghìn đồng.",
+      "wordLimit": null,
+      "passage": null
+    },
+    {
+      "id": "gq-thpt-van-dh1",
+      "code": "CH-TL-THPT-011",
+      "subjectCode": "LITERATURE",
+      "content": "Xác định phương thức biểu đạt chính của đoạn trích.",
+      "maxPoints": 0.5,
+      "rubric": [
+        { "id": "c1", "description": "Nêu đúng phương thức biểu đạt chính: tự sự.", "points": 0.5 }
+      ],
+      "sampleAnswer": "Tự sự (kết hợp miêu tả và biểu cảm).",
+      "wordLimit": null,
+      "passage": { "questionId": "gq-thpt-van-set", "code": "CH-TL-THPT-010" }
+    },
+    {
+      "id": "gq-thpt-van-dh2",
+      "code": "CH-TL-THPT-012",
+      "subjectCode": "LITERATURE",
+      "content": "Chỉ ra hai hình ảnh gắn với căn bếp của bà trong đoạn trích.",
+      "maxPoints": 0.5,
+      "rubric": [
+        { "id": "c1", "description": "Nêu đúng hai hình ảnh, mỗi hình ảnh 0,25 điểm (nồi cơm độn, bếp rơm, ánh lửa hồng, chiếc chổi rơm…).", "points": 0.5 }
+      ],
+      "sampleAnswer": "Nồi cơm độn trên bếp rơm; ánh lửa hồng hắt lên mái tóc bà.",
+      "wordLimit": null,
+      "passage": { "questionId": "gq-thpt-van-set", "code": "CH-TL-THPT-010" }
+    },
+    {
+      "id": "gq-thpt-van-dh3",
+      "code": "CH-TL-THPT-013",
+      "subjectCode": "LITERATURE",
+      "content": "Nêu tác dụng của biện pháp liệt kê trong câu: “Bà nhóm lửa, vo gạo, nhặt rau, rồi ngồi đợi chúng tôi đi học về.”",
+      "maxPoints": 1,
+      "rubric": [
+        { "id": "c1", "description": "Gọi đúng biện pháp liệt kê và chỉ ra các từ ngữ được liệt kê.", "points": 0.5 },
+        { "id": "c2", "description": "Nêu tác dụng: nhấn mạnh sự tần tảo, chăm chút của bà; tạo nhịp kể đều đặn, gợi không khí ấm áp.", "points": 0.5 }
+      ],
+      "sampleAnswer": "Liệt kê các việc làm: nhóm lửa, vo gạo, nhặt rau, ngồi đợi. Tác dụng: nhấn mạnh sự tần tảo, lặng lẽ yêu thương của bà; câu văn có nhịp đều, gợi không khí bình yên.",
+      "wordLimit": null,
+      "passage": { "questionId": "gq-thpt-van-set", "code": "CH-TL-THPT-010" }
+    },
+    {
+      "id": "gq-thpt-van-dh4",
+      "code": "CH-TL-THPT-014",
+      "subjectCode": "LITERATURE",
+      "content": "Anh/chị hiểu như thế nào về câu: “Bếp lửa của bà không chỉ nấu chín bữa cơm mà còn nấu chín lòng người”?",
+      "maxPoints": 1,
+      "rubric": [
+        { "id": "c1", "description": "Giải thích được nghĩa tả thực và nghĩa biểu tượng của hình ảnh bếp lửa.", "points": 0.5 },
+        { "id": "c2", "description": "Nêu được ý nghĩa: tình yêu thương của bà nuôi dưỡng tâm hồn, nhân cách con cháu.", "points": 0.5 }
+      ],
+      "sampleAnswer": "Bếp lửa vừa là nơi nấu ăn, vừa tượng trưng cho tình yêu thương, sự chăm sóc của bà; tình cảm ấy làm con cháu trưởng thành, biết yêu thương.",
+      "wordLimit": null,
+      "passage": { "questionId": "gq-thpt-van-set", "code": "CH-TL-THPT-010" }
+    },
+    {
+      "id": "gq-thpt-van-dh5",
+      "code": "CH-TL-THPT-015",
+      "subjectCode": "LITERATURE",
+      "content": "Từ đoạn trích, anh/chị rút ra bài học gì về cách trân trọng những người thân yêu? Trình bày trong khoảng 5–7 dòng.",
+      "maxPoints": 1,
+      "rubric": [
+        { "id": "c1", "description": "Nêu được bài học phù hợp với nội dung đoạn trích.", "points": 0.5 },
+        { "id": "c2", "description": "Lí giải ngắn gọn, thuyết phục.", "points": 0.5 }
+      ],
+      "sampleAnswer": "Biết quan tâm, dành thời gian cho người thân khi còn có thể; vì những điều giản dị hằng ngày chính là tình yêu thương lớn nhất.",
+      "wordLimit": null,
+      "passage": { "questionId": "gq-thpt-van-set", "code": "CH-TL-THPT-010" }
+    },
+    {
+      "id": "gq-thpt-van-v1",
+      "code": "CH-TL-THPT-021",
+      "subjectCode": "LITERATURE",
+      "content": "Viết đoạn văn nghị luận (khoảng 200 chữ) phân tích hình ảnh người bà trong đoạn trích ở phần Đọc hiểu.",
+      "maxPoints": 2,
+      "rubric": [
+        { "id": "c1", "description": "Đảm bảo yêu cầu về hình thức và dung lượng của đoạn văn.", "points": 0.25 },
+        { "id": "c2", "description": "Xác định đúng vấn đề nghị luận: hình ảnh người bà.", "points": 0.25 },
+        { "id": "c3", "description": "Đề xuất được hệ thống ý phù hợp.", "points": 0.5 },
+        { "id": "c4", "description": "Triển khai vấn đề: lí lẽ và dẫn chứng từ đoạn trích.", "points": 0.5 },
+        { "id": "c5", "description": "Chính tả, ngữ pháp, diễn đạt.", "points": 0.25 },
+        { "id": "c6", "description": "Sáng tạo trong cách diễn đạt.", "points": 0.25 }
+      ],
+      "sampleAnswer": "Người bà tần tảo, lặng lẽ hi sinh; yêu thương con cháu qua những việc làm giản dị bên bếp lửa; là điểm tựa tinh thần của gia đình.",
+      "wordLimit": 200,
+      "passage": null
+    },
+    {
+      "id": "gq-thpt-van-v2",
+      "code": "CH-TL-THPT-022",
+      "subjectCode": "LITERATURE",
+      "content": "Viết bài văn nghị luận (khoảng 600 chữ) bàn về ý nghĩa của việc biết lắng nghe trong cuộc sống hiện đại.",
+      "maxPoints": 4,
+      "rubric": [
+        { "id": "c1", "description": "Đảm bảo bố cục và dung lượng của bài văn.", "points": 0.25 },
+        { "id": "c2", "description": "Xác định đúng vấn đề nghị luận.", "points": 0.5 },
+        { "id": "c3", "description": "Đề xuất được hệ thống ý phù hợp.", "points": 1 },
+        { "id": "c4", "description": "Triển khai vấn đề: lí lẽ, dẫn chứng, mở rộng và phản biện.", "points": 1.5 },
+        { "id": "c5", "description": "Chính tả, ngữ pháp, diễn đạt.", "points": 0.25 },
+        { "id": "c6", "description": "Sáng tạo: cách nhìn riêng, liên hệ bản thân.", "points": 0.5 }
+      ],
+      "sampleAnswer": "Giải thích lắng nghe; ý nghĩa với cá nhân, các mối quan hệ, công việc; biểu hiện của việc thiếu lắng nghe trong thời mạng xã hội; cách rèn luyện; liên hệ bản thân.",
+      "wordLimit": 600,
+      "passage": null
+    }
+  ],
+  "passages": [
+    {
+      "questionId": "gq-thpt-van-set",
+      "code": "CH-TL-THPT-010",
+      "passage": "Đọc đoạn trích sau và trả lời các câu hỏi:\n\nMùa đông năm ấy, mẹ đi làm xa, hai anh em tôi ở với bà. Chiều nào cũng vậy, bà nhóm lửa, vo gạo, nhặt rau, rồi ngồi đợi chúng tôi đi học về. Căn bếp nhỏ lợp rạ, khói cay xè mắt, nhưng ánh lửa hồng hắt lên mái tóc bạc của bà làm tôi thấy ấm lạ. Nồi cơm độn trên bếp rơm sôi lục bục, bà khẽ dỗ: “Đói thì ăn trước, bà ăn sau cũng được.” Lớn lên, đi qua bao nhiêu bếp ăn sáng choang, tôi vẫn nhớ căn bếp ấy. Bếp lửa của bà không chỉ nấu chín bữa cơm mà còn nấu chín lòng người.\n\n(Đoạn trích viết cho dữ liệu mẫu)"
+    }
+  ],
+  "attempts": [
+    {
+      "id": "att-bca-001",
+      "learner": { "id": "hv-1021", "code": "HV-001021", "name": "Phạm Gia Huy" },
+      "exam": { "id": "ex-bca-f-001", "code": "BCA-F-001", "name": "BCA FULL · Đề luyện số 1 (CA1)", "kindCode": "BCA", "subjectCode": null, "maxScore": 100 },
+      "submittedAt": "2026-11-10T09:12:00+07:00",
+      "status": "GRADING",
+      "objectiveScore": 52.5,
+      "objectiveMaxScore": 75,
+      "grader": null,
+      "gradedAt": null,
+      "essays": [
+        {
+          "questionId": "gq-bca-van-01",
+          "partName": "Phần 1",
+          "number": 1,
+          "answer": "An ninh, trật tự là điều kiện để mỗi người yên tâm học tập, lao động. Ở khu phố em, có thời gian xảy ra nhiều vụ trộm xe máy vào ban đêm. Sau đó, đoàn thanh niên phường lập nhóm tuần tra, lắp thêm đèn ở các ngõ tối và lập nhóm Zalo để báo tin cho công an khu vực. Chỉ sau vài tháng, tình hình đã yên ổn trở lại.\n\nTheo em, trách nhiệm của thanh niên trước hết là tự mình chấp hành pháp luật: đi xe đúng luật, không tụ tập gây ồn ào, không tham gia cá độ. Thứ hai, thanh niên cần chủ động tham gia các phong trào ở nơi cư trú như tuần tra, tuyên truyền phòng chống ma túy. Thứ ba, khi thấy hành vi vi phạm, cần báo cho cơ quan chức năng chứ không đứng ngoài cuộc hay quay video đăng mạng để câu like.\n\nBên cạnh đó vẫn còn một bộ phận thanh niên thờ ơ, cho rằng việc giữ gìn an ninh là của công an. Suy nghĩ đó cần phải thay đổi.\n\nLà một học sinh, em sẽ bắt đầu từ những việc nhỏ như khóa xe cẩn thận, nhắc nhở bạn bè chấp hành luật giao thông và tham gia hoạt động của chi đoàn khu phố.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null },
+            { "criterionId": "c4", "score": null },
+            { "criterionId": "c5", "score": null }
+          ],
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "id": "att-bca-002",
+      "learner": { "id": "hv-1034", "code": "HV-001034", "name": "Đỗ Thị Mai Anh" },
+      "exam": { "id": "ex-bca-f-001", "code": "BCA-F-001", "name": "BCA FULL · Đề luyện số 1 (CA1)", "kindCode": "BCA", "subjectCode": null, "maxScore": 100 },
+      "submittedAt": "2026-11-11T14:40:00+07:00",
+      "status": "GRADING",
+      "objectiveScore": 61,
+      "objectiveMaxScore": 75,
+      "grader": { "id": "u-grader-01", "name": "Nguyễn Thu Hà" },
+      "gradedAt": null,
+      "essays": [
+        {
+          "questionId": "gq-bca-van-01",
+          "partName": "Phần 1",
+          "number": 1,
+          "answer": "Có người từng nói: “Bình yên không tự nhiên mà có.” Sự yên ổn của mỗi khu phố là kết quả của rất nhiều người cùng góp sức, trong đó thanh niên là lực lượng quan trọng nhất vì có sức khỏe, sự nhiệt tình và hiểu biết về công nghệ.\n\nTrách nhiệm ấy thể hiện ở ba việc. Một là gương mẫu chấp hành pháp luật. Hai là tham gia mô hình “Thanh niên xung kích” cùng công an phường. Ba là dùng mạng xã hội đúng cách: chia sẻ thông tin chính thống, cảnh báo các thủ đoạn lừa đảo qua mạng cho người lớn tuổi trong gia đình.\n\nVí dụ, nhóm thanh niên ở phường em đã hướng dẫn hơn 200 cụ cài đặt ứng dụng định danh điện tử và nhận biết cuộc gọi giả danh công an. Việc làm nhỏ đó giúp nhiều gia đình tránh mất tiền.\n\nTuy vậy, nhiều bạn trẻ vẫn vô tâm, thậm chí tham gia đua xe trái phép. Đó là những hành vi đáng phê phán.\n\nGiữ gìn an ninh, trật tự không phải là việc quá xa vời. Mỗi người trẻ hãy bắt đầu từ chính ngôi nhà, con ngõ của mình.",
+          "scores": [
+            { "criterionId": "c1", "score": 2.5 },
+            { "criterionId": "c2", "score": 2.5 },
+            { "criterionId": "c3", "score": null },
+            { "criterionId": "c4", "score": null },
+            { "criterionId": "c5", "score": null }
+          ],
+          "comment": "Bố cục rõ, dẫn chứng thực tế tốt."
+        }
+      ]
+    },
+    {
+      "id": "att-bca-003",
+      "learner": { "id": "hv-1047", "code": "HV-001047", "name": "Vũ Quốc Bảo" },
+      "exam": { "id": "ex-bca-f-001", "code": "BCA-F-001", "name": "BCA FULL · Đề luyện số 1 (CA1)", "kindCode": "BCA", "subjectCode": null, "maxScore": 100 },
+      "submittedAt": "2026-11-09T08:05:00+07:00",
+      "status": "SCORED",
+      "objectiveScore": 47.25,
+      "objectiveMaxScore": 75,
+      "grader": { "id": "u-grader-02", "name": "Trần Minh Đức" },
+      "gradedAt": "2026-11-12T16:20:00+07:00",
+      "essays": [
+        {
+          "questionId": "gq-bca-van-01",
+          "partName": "Phần 1",
+          "number": 1,
+          "answer": "Thanh niên là tương lai của đất nước nên phải có trách nhiệm giữ gìn an ninh trật tự. Thanh niên phải học tập tốt, chấp hành pháp luật, không vi phạm. Khi thấy người xấu thì báo công an. Ngoài ra phải tham gia các phong trào của địa phương. Em thấy nhiều bạn còn chạy xe lạng lách, như vậy là sai. Chúng ta phải sống có trách nhiệm.",
+          "scores": [
+            { "criterionId": "c1", "score": 1.5 },
+            { "criterionId": "c2", "score": 2 },
+            { "criterionId": "c3", "score": 5 },
+            { "criterionId": "c4", "score": 1.5 },
+            { "criterionId": "c5", "score": 1 }
+          ],
+          "comment": "Bài viết quá ngắn, thiếu dẫn chứng; cần triển khai luận điểm rõ hơn."
+        }
+      ]
+    },
+    {
+      "id": "att-bca-004",
+      "learner": { "id": "hv-1052", "code": "HV-001052", "name": "Hoàng Minh Châu" },
+      "exam": { "id": "ex-bca-f-001", "code": "BCA-F-001", "name": "BCA FULL · Đề luyện số 1 (CA1)", "kindCode": "BCA", "subjectCode": null, "maxScore": 100 },
+      "submittedAt": "2026-11-13T19:30:00+07:00",
+      "status": "GRADING",
+      "objectiveScore": 66.75,
+      "objectiveMaxScore": 75,
+      "grader": { "id": "u-grader-03", "name": "Lê Phương Anh" },
+      "gradedAt": null,
+      "essays": [
+        {
+          "questionId": "gq-bca-van-01",
+          "partName": "Phần 1",
+          "number": 1,
+          "answer": "",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null },
+            { "criterionId": "c4", "score": null },
+            { "criterionId": "c5", "score": null }
+          ],
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "id": "att-spt-001",
+      "learner": { "id": "hv-2010", "code": "HV-002010", "name": "Bùi Khánh Linh" },
+      "exam": { "id": "ex-spt-f-toan-001", "code": "SPT-F-TOAN-001", "name": "SPT Toán 2025 · Đề luyện số 1", "kindCode": "SPT", "subjectCode": "MATH", "maxScore": 10 },
+      "submittedAt": "2026-11-12T10:00:00+07:00",
+      "status": "GRADING",
+      "objectiveScore": 5.25,
+      "objectiveMaxScore": 7,
+      "grader": null,
+      "gradedAt": null,
+      "essays": [
+        {
+          "questionId": "gq-spt-toan-23",
+          "partName": "Tự luận",
+          "number": 23,
+          "answer": "Điều kiện: x > 1.\nlog₂(x − 1) + log₂(x + 1) = 3\n⇔ log₂[(x − 1)(x + 1)] = 3\n⇔ x² − 1 = 8\n⇔ x = 3 hoặc x = −3.\nVậy x = 3.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-spt-toan-24",
+          "partName": "Tự luận",
+          "number": 24,
+          "answer": "Góc giữa SC và (ABCD) là góc SCA.\nAC = a√2.\ntan SCA = SA/AC = a√2 / a√2 = 1 nên góc = 45°.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-spt-toan-25",
+          "partName": "Tự luận",
+          "number": 25,
+          "answer": "Gọi x là số lần giảm giá. Giá bán 100 − 2x, số áo 300 + 20x.\nLợi nhuận L = (100 − 2x − 60)(300 + 20x) = (40 − 2x)(300 + 20x).\nL' = −80x + 200 = 0 ⇒ x = 2,5.\nGiá bán 95 nghìn đồng.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null }
+          ],
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "id": "att-spt-002",
+      "learner": { "id": "hv-2017", "code": "HV-002017", "name": "Ngô Đức Thịnh" },
+      "exam": { "id": "ex-spt-f-toan-001", "code": "SPT-F-TOAN-001", "name": "SPT Toán 2025 · Đề luyện số 1", "kindCode": "SPT", "subjectCode": "MATH", "maxScore": 10 },
+      "submittedAt": "2026-11-12T10:05:00+07:00",
+      "status": "GRADING",
+      "objectiveScore": 6,
+      "objectiveMaxScore": 7,
+      "grader": { "id": "u-grader-01", "name": "Nguyễn Thu Hà" },
+      "gradedAt": null,
+      "essays": [
+        {
+          "questionId": "gq-spt-toan-23",
+          "partName": "Tự luận",
+          "number": 23,
+          "answer": "log₂(x² − 1) = 3 ⇒ x² = 9 ⇒ x = ±3.",
+          "scores": [
+            { "criterionId": "c1", "score": 0 },
+            { "criterionId": "c2", "score": 0.5 },
+            { "criterionId": "c3", "score": 0 }
+          ],
+          "comment": "Thiếu điều kiện xác định nên không loại được nghiệm x = −3."
+        },
+        {
+          "questionId": "gq-spt-toan-24",
+          "partName": "Tự luận",
+          "number": 24,
+          "answer": "Hình chiếu của S lên (ABCD) là A. Góc cần tìm là góc SCA. SC = √(SA² + AC²) = 2a. cos SCA = AC/SC = √2/2 nên góc SCA = 45°.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-spt-toan-25",
+          "partName": "Tự luận",
+          "number": 25,
+          "answer": "L(x) = (40 − 2x)(300 + 20x) = −40x² + 200x + 12000. Đỉnh parabol tại x = 2,5. Vậy bán giá 95 nghìn đồng thì lãi nhiều nhất là 12 250 nghìn đồng.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null }
+          ],
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "id": "att-spt-003",
+      "learner": { "id": "hv-2023", "code": "HV-002023", "name": "Trịnh Hải Yến" },
+      "exam": { "id": "ex-spt-f-toan-001", "code": "SPT-F-TOAN-001", "name": "SPT Toán 2025 · Đề luyện số 1", "kindCode": "SPT", "subjectCode": "MATH", "maxScore": 10 },
+      "submittedAt": "2026-11-11T15:45:00+07:00",
+      "status": "SCORED",
+      "objectiveScore": 4.5,
+      "objectiveMaxScore": 7,
+      "grader": { "id": "u-grader-01", "name": "Nguyễn Thu Hà" },
+      "gradedAt": "2026-11-13T09:10:00+07:00",
+      "essays": [
+        {
+          "questionId": "gq-spt-toan-23",
+          "partName": "Tự luận",
+          "number": 23,
+          "answer": "Điều kiện x > 1. Ta có (x − 1)(x + 1) = 8 ⇒ x = 3 (thỏa mãn), x = −3 (loại).",
+          "scores": [
+            { "criterionId": "c1", "score": 0.25 },
+            { "criterionId": "c2", "score": 0.5 },
+            { "criterionId": "c3", "score": 0.25 }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-spt-toan-24",
+          "partName": "Tự luận",
+          "number": 24,
+          "answer": "Góc SCA. tan = √2.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.5 },
+            { "criterionId": "c2", "score": 0 }
+          ],
+          "comment": "Tính sai AC."
+        },
+        {
+          "questionId": "gq-spt-toan-25",
+          "partName": "Tự luận",
+          "number": 25,
+          "answer": "",
+          "scores": [
+            { "criterionId": "c1", "score": 0 },
+            { "criterionId": "c2", "score": 0 },
+            { "criterionId": "c3", "score": 0 }
+          ],
+          "comment": "Bỏ trống."
+        }
+      ]
+    },
+    {
+      "id": "att-spt-004",
+      "learner": { "id": "hv-2031", "code": "HV-002031", "name": "Lý Thanh Tùng" },
+      "exam": { "id": "ex-spt-f-toan-001", "code": "SPT-F-TOAN-001", "name": "SPT Toán 2025 · Đề luyện số 1", "kindCode": "SPT", "subjectCode": "MATH", "maxScore": 10 },
+      "submittedAt": "2026-11-10T16:20:00+07:00",
+      "status": "SCORED",
+      "objectiveScore": 6.75,
+      "objectiveMaxScore": 7,
+      "grader": { "id": "u-grader-03", "name": "Lê Phương Anh" },
+      "gradedAt": "2026-11-12T11:00:00+07:00",
+      "essays": [
+        {
+          "questionId": "gq-spt-toan-23",
+          "partName": "Tự luận",
+          "number": 23,
+          "answer": "ĐK: x > 1. PT ⇔ x² − 1 = 8 ⇔ x = 3 (nhận) hoặc x = −3 (loại). Vậy S = {3}.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.25 },
+            { "criterionId": "c2", "score": 0.5 },
+            { "criterionId": "c3", "score": 0.25 }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-spt-toan-24",
+          "partName": "Tự luận",
+          "number": 24,
+          "answer": "SA ⊥ (ABCD) ⇒ AC là hình chiếu của SC. AC = a√2, tan SCA = 1 ⇒ góc SCA = 45°.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.5 },
+            { "criterionId": "c2", "score": 0.5 }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-spt-toan-25",
+          "partName": "Tự luận",
+          "number": 25,
+          "answer": "L(x) = (40 − 2x)(300 + 20x), lớn nhất khi x = 2,5. Giá bán 95 nghìn đồng.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.5 },
+            { "criterionId": "c2", "score": 0.25 },
+            { "criterionId": "c3", "score": 0.25 }
+          ],
+          "comment": "Lời giải gọn, đúng."
+        }
+      ]
+    },
+    {
+      "id": "att-thpt-001",
+      "learner": { "id": "hv-3005", "code": "HV-003005", "name": "Đặng Ngọc Hân" },
+      "exam": { "id": "ex-thptqg-f-van-001", "code": "THPTQG-F-VAN-001", "name": "THPTQG Ngữ văn 2025 · Đề luyện số 1", "kindCode": "THPTQG", "subjectCode": "LITERATURE", "maxScore": 10 },
+      "submittedAt": "2026-11-14T08:30:00+07:00",
+      "status": "GRADING",
+      "objectiveScore": 0,
+      "objectiveMaxScore": 0,
+      "grader": null,
+      "gradedAt": null,
+      "essays": [
+        {
+          "questionId": "gq-thpt-van-dh1",
+          "partName": "Đọc hiểu",
+          "number": 1,
+          "answer": "Phương thức biểu đạt chính là tự sự.",
+          "scores": [{ "criterionId": "c1", "score": null }],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh2",
+          "partName": "Đọc hiểu",
+          "number": 2,
+          "answer": "Ánh lửa hồng hắt lên mái tóc bạc của bà; nồi cơm độn trên bếp rơm.",
+          "scores": [{ "criterionId": "c1", "score": null }],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh3",
+          "partName": "Đọc hiểu",
+          "number": 3,
+          "answer": "Biện pháp liệt kê: nhóm lửa, vo gạo, nhặt rau. Tác dụng: cho thấy bà làm nhiều việc, rất vất vả.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh4",
+          "partName": "Đọc hiểu",
+          "number": 4,
+          "answer": "Câu văn có nghĩa là bếp lửa giúp nấu cơm, còn tình thương của bà giúp tác giả trở thành người tốt.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh5",
+          "partName": "Đọc hiểu",
+          "number": 5,
+          "answer": "Em rút ra bài học phải biết yêu thương ông bà, cha mẹ khi còn ở bên. Vì thời gian không chờ đợi ai, những bữa cơm giản dị hôm nay sẽ là kỉ niệm quý giá ngày mai. Em sẽ dành nhiều thời gian hơn để trò chuyện với bà thay vì cầm điện thoại.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-v1",
+          "partName": "Viết",
+          "number": 1,
+          "answer": "Hình ảnh người bà trong đoạn trích hiện lên thật giản dị mà ấm áp. Bà thay mẹ chăm sóc hai anh em trong những ngày đông thiếu thốn. Những việc làm quen thuộc như nhóm lửa, vo gạo, nhặt rau được kể liền mạch cho thấy sự tần tảo, chu đáo của bà. Chi tiết “ánh lửa hồng hắt lên mái tóc bạc” vừa gợi tuổi già, vừa gợi hơi ấm tình thương. Lời dỗ “Đói thì ăn trước, bà ăn sau cũng được” cho thấy bà luôn nhường phần cho con cháu. Qua hình ảnh người bà, tác giả bày tỏ lòng biết ơn sâu sắc và khẳng định tình thân là hành trang theo con người suốt đời.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null },
+            { "criterionId": "c4", "score": null },
+            { "criterionId": "c5", "score": null },
+            { "criterionId": "c6", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-v2",
+          "partName": "Viết",
+          "number": 2,
+          "answer": "Trong thời đại mạng xã hội, ai cũng muốn được nói, được thể hiện, nhưng ít ai chịu lắng nghe. Lắng nghe là chú tâm tiếp nhận lời nói, cảm xúc của người khác để hiểu họ.\n\nBiết lắng nghe giúp ta hiểu người, tránh hiểu lầm và xây dựng các mối quan hệ bền chặt. Trong học tập, lắng nghe thầy cô và bạn bè giúp ta tiếp thu kiến thức tốt hơn. Trong công việc, người lãnh đạo biết lắng nghe sẽ nhận được nhiều ý kiến hay.\n\nThế nhưng nhiều bạn trẻ vừa nói chuyện vừa lướt điện thoại, chỉ nghe để chờ đến lượt mình nói. Điều đó khiến người đối diện bị tổn thương.\n\nĐể rèn luyện, chúng ta cần tập trung khi người khác nói, không ngắt lời, đặt câu hỏi để hiểu rõ hơn. Bản thân em từng hiểu lầm một người bạn vì không chịu nghe bạn giải thích, từ đó em học được rằng im lặng lắng nghe đôi khi là cách yêu thương tốt nhất.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null },
+            { "criterionId": "c4", "score": null },
+            { "criterionId": "c5", "score": null },
+            { "criterionId": "c6", "score": null }
+          ],
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "id": "att-thpt-002",
+      "learner": { "id": "hv-3012", "code": "HV-003012", "name": "Mai Xuân Phúc" },
+      "exam": { "id": "ex-thptqg-f-van-001", "code": "THPTQG-F-VAN-001", "name": "THPTQG Ngữ văn 2025 · Đề luyện số 1", "kindCode": "THPTQG", "subjectCode": "LITERATURE", "maxScore": 10 },
+      "submittedAt": "2026-11-14T08:41:00+07:00",
+      "status": "GRADING",
+      "objectiveScore": 0,
+      "objectiveMaxScore": 0,
+      "grader": { "id": "u-grader-02", "name": "Trần Minh Đức" },
+      "gradedAt": null,
+      "essays": [
+        {
+          "questionId": "gq-thpt-van-dh1",
+          "partName": "Đọc hiểu",
+          "number": 1,
+          "answer": "Biểu cảm.",
+          "scores": [{ "criterionId": "c1", "score": 0 }],
+          "comment": "Chưa đúng phương thức chính."
+        },
+        {
+          "questionId": "gq-thpt-van-dh2",
+          "partName": "Đọc hiểu",
+          "number": 2,
+          "answer": "Bếp rơm, khói cay xè mắt.",
+          "scores": [{ "criterionId": "c1", "score": 0.5 }],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh3",
+          "partName": "Đọc hiểu",
+          "number": 3,
+          "answer": "Liệt kê các hành động của bà để nhấn mạnh bà rất yêu cháu.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh4",
+          "partName": "Đọc hiểu",
+          "number": 4,
+          "answer": "Bếp lửa là biểu tượng của tình yêu thương. Tình thương ấy nuôi lớn tâm hồn người cháu.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh5",
+          "partName": "Đọc hiểu",
+          "number": 5,
+          "answer": "Phải biết ơn ông bà.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-v1",
+          "partName": "Viết",
+          "number": 1,
+          "answer": "Người bà trong đoạn trích là người phụ nữ giàu đức hi sinh. Bà làm lụng vất vả, luôn chờ các cháu đi học về và nhường phần ăn cho cháu. Hình ảnh bà bên bếp lửa khiến người đọc xúc động.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null },
+            { "criterionId": "c4", "score": null },
+            { "criterionId": "c5", "score": null },
+            { "criterionId": "c6", "score": null }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-v2",
+          "partName": "Viết",
+          "number": 2,
+          "answer": "Lắng nghe rất quan trọng trong cuộc sống. Khi biết lắng nghe, chúng ta sẽ hiểu người khác hơn. Ngày nay nhiều người chỉ thích nói mà không thích nghe. Vì vậy chúng ta cần rèn luyện kĩ năng lắng nghe.",
+          "scores": [
+            { "criterionId": "c1", "score": null },
+            { "criterionId": "c2", "score": null },
+            { "criterionId": "c3", "score": null },
+            { "criterionId": "c4", "score": null },
+            { "criterionId": "c5", "score": null },
+            { "criterionId": "c6", "score": null }
+          ],
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "id": "att-thpt-003",
+      "learner": { "id": "hv-3020", "code": "HV-003020", "name": "Cao Thùy Dung" },
+      "exam": { "id": "ex-thptqg-f-van-001", "code": "THPTQG-F-VAN-001", "name": "THPTQG Ngữ văn 2025 · Đề luyện số 1", "kindCode": "THPTQG", "subjectCode": "LITERATURE", "maxScore": 10 },
+      "submittedAt": "2026-11-13T08:30:00+07:00",
+      "status": "SCORED",
+      "objectiveScore": 0,
+      "objectiveMaxScore": 0,
+      "grader": { "id": "u-grader-01", "name": "Nguyễn Thu Hà" },
+      "gradedAt": "2026-11-15T10:45:00+07:00",
+      "essays": [
+        {
+          "questionId": "gq-thpt-van-dh1",
+          "partName": "Đọc hiểu",
+          "number": 1,
+          "answer": "Tự sự.",
+          "scores": [{ "criterionId": "c1", "score": 0.5 }],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh2",
+          "partName": "Đọc hiểu",
+          "number": 2,
+          "answer": "Nồi cơm độn; ánh lửa hồng.",
+          "scores": [{ "criterionId": "c1", "score": 0.5 }],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh3",
+          "partName": "Đọc hiểu",
+          "number": 3,
+          "answer": "Liệt kê: nhóm lửa, vo gạo, nhặt rau, ngồi đợi. Nhấn mạnh sự tần tảo, chăm chút của bà, tạo nhịp kể đều.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.5 },
+            { "criterionId": "c2", "score": 0.5 }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-dh4",
+          "partName": "Đọc hiểu",
+          "number": 4,
+          "answer": "Bếp lửa vừa là bếp thật, vừa là tình thương của bà; tình thương ấy làm cháu trưởng thành.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.5 },
+            { "criterionId": "c2", "score": 0.25 }
+          ],
+          "comment": "Ý thứ hai còn sơ sài."
+        },
+        {
+          "questionId": "gq-thpt-van-dh5",
+          "partName": "Đọc hiểu",
+          "number": 5,
+          "answer": "Trân trọng người thân bằng những việc nhỏ mỗi ngày, vì tình thân là điều không gì thay thế được.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.5 },
+            { "criterionId": "c2", "score": 0.5 }
+          ],
+          "comment": ""
+        },
+        {
+          "questionId": "gq-thpt-van-v1",
+          "partName": "Viết",
+          "number": 1,
+          "answer": "Người bà hiện lên với vẻ đẹp tần tảo, giàu yêu thương. Bà lặng lẽ làm mọi việc trong căn bếp nhỏ, nhường phần ăn cho cháu. Ánh lửa trên mái tóc bạc là hình ảnh đẹp, gợi sự hi sinh thầm lặng.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.25 },
+            { "criterionId": "c2", "score": 0.25 },
+            { "criterionId": "c3", "score": 0.25 },
+            { "criterionId": "c4", "score": 0.25 },
+            { "criterionId": "c5", "score": 0.25 },
+            { "criterionId": "c6", "score": 0 }
+          ],
+          "comment": "Đoạn văn chưa đủ dung lượng."
+        },
+        {
+          "questionId": "gq-thpt-van-v2",
+          "partName": "Viết",
+          "number": 2,
+          "answer": "Lắng nghe là một kĩ năng sống cần thiết. Người biết lắng nghe sẽ thấu hiểu người khác, tạo dựng niềm tin. Trong gia đình, lắng nghe giúp cha mẹ và con cái gần nhau hơn. Ngoài xã hội, lắng nghe giúp ta học hỏi. Tuy nhiên, lắng nghe không có nghĩa là nghe theo mọi điều; cần chọn lọc và có chính kiến. Bản thân em luôn cố gắng lắng nghe trọn vẹn trước khi đưa ra ý kiến.",
+          "scores": [
+            { "criterionId": "c1", "score": 0.25 },
+            { "criterionId": "c2", "score": 0.5 },
+            { "criterionId": "c3", "score": 0.75 },
+            { "criterionId": "c4", "score": 1 },
+            { "criterionId": "c5", "score": 0.25 },
+            { "criterionId": "c6", "score": 0.25 }
+          ],
+          "comment": "Có ý phản biện tốt; cần thêm dẫn chứng."
+        }
+      ]
+    }
+  ]
+}

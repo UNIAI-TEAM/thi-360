@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, cn, focusRing } from "@thi360/ui";
-import { Check, X } from "lucide-react";
+import { Check, PenLine, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PreviewBlock, PreviewItem, PreviewPaper, PreviewQuestion } from "../review-types";
@@ -17,14 +17,35 @@ export function ExamPreviewPaper({ paper }: { paper: PreviewPaper }) {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-body text-text-secondary">
-        {t("paperSummary", { questions: paper.totalQuestions, points: paper.totalPoints, minutes: paper.totalMinutes })}
+        {t("paperSummary", {
+          questions: paper.totalQuestions,
+          points: paper.totalPoints,
+          minutes: paper.totalMinutes,
+          shared: paper.sharedDuration ? "yes" : "no",
+        })}
       </p>
+      {paper.hasManualGrading && (
+        <p className="flex items-start gap-2 rounded-md border border-border bg-subtle px-3 py-2 text-body text-text-secondary">
+          <PenLine aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t("manualGradingNote")}
+        </p>
+      )}
       {paper.parts.map((part) => (
         <section key={part.partId} aria-labelledby={`preview-part-${part.partId}`} className="flex flex-col gap-4">
           <h3 id={`preview-part-${part.partId}`} className="text-title font-semibold text-text">
             {part.name}{" "}
             <span className="font-normal text-text-muted">
-              · {t("partRange", { first: part.firstNumber, last: part.lastNumber, minutes: part.durationMinutes ?? 0 })}
+              ·{" "}
+              {t("partRange", {
+                first: part.firstNumber,
+                last: part.lastNumber,
+                minutes: part.durationMinutes ?? 0,
+                hasMinutes: part.durationMinutes === null ? "no" : "yes",
+              })}{" "}
+              ·{" "}
+              {part.maxPoints !== null
+                ? t("partPointsOf", { points: part.points, max: part.maxPoints })
+                : t("partPoints", { points: part.points })}
             </span>
           </h3>
           {part.blocks.map((block) => (
@@ -51,8 +72,11 @@ function PreviewBlockView({ block }: { block: PreviewBlock }) {
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
-      <h4 className="text-label font-semibold text-text">
-        {t("blockHeading", { block: name })} <span className="font-normal text-text-muted">· {range}</span>
+      <h4 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-semibold text-text">
+        <span>
+          {t("blockHeading", { block: name })} <span className="font-normal text-text-muted">· {range}</span>
+        </span>
+        {block.manualGrading && <Badge>{t("manualGrading")}</Badge>}
       </h4>
       <ol id={listId} className="flex flex-col gap-3">
         {visible.map((item, index) => (
@@ -165,6 +189,20 @@ function QuestionArticle({ question, compact = false }: { question: PreviewQuest
           <Check aria-hidden className="size-4 shrink-0" />
           {t("answer", { answer: question.answer })}
         </p>
+      )}
+      {question.rubric && (
+        <div className="flex flex-col gap-1 rounded-md bg-subtle px-3 py-2 text-body">
+          <span className="font-medium text-text">{t("rubricTitle")}</span>
+          {question.rubric.length === 0 ? (
+            <span className="text-text-secondary">{t("rubricEmpty")}</span>
+          ) : (
+            <ul className="flex flex-col gap-0.5 text-text-secondary">
+              {question.rubric.map((criterion) => (
+                <li key={criterion.id}>{t("rubricItem", { description: criterion.description, points: criterion.points })}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
       {question.solution && (
         <details className="rounded-md bg-subtle px-3 py-2 text-body">

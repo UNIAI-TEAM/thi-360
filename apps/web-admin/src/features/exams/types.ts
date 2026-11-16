@@ -55,6 +55,8 @@ export interface ExamSummary {
   maxScore: number | null;
   /** Có câu Tự luận: điểm phần tự luận có sau khi chấm tay. */
   hasEssay: boolean;
+  /** Số nhánh nội dung của phần tự chọn (THPTQG Tin học: 2); bỏ trống coi như 0. Danh sách tính từ cấu trúc. */
+  branchCount?: number;
   check: ExamCheckSummary;
   /** Tổng lượt làm của mọi phiên bản đã công bố. */
   attemptCount: number;
@@ -290,6 +292,8 @@ export interface CreateExamRequest {
   /** Thời lượng chung khi `timing = SHARED`. */
   durationMinutes?: number | null;
   maxScore?: number | null;
+  /** Năm cấu trúc khác năm ma trận của mẫu: chuyên gia đã xác nhận chỉ tiêu ma trận lúc tạo. */
+  yearsConfirmed?: boolean;
   description: string | null;
   /**
    * Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi (UniNote PBI-04 mục 5.1–5.3). Bỏ trống thì nạp nguyên mẫu theo
@@ -336,6 +340,8 @@ export interface SuggestExamCodeQuery {
   format: ExamFormat;
   /** Phần/môn của bài lẻ, để mã có đoạn môn (`HSA-L-TOAN-002`). */
   singleScope?: string | null;
+  /** Môn của bài với kỳ thi có mẫu theo môn, để mã có đoạn môn (`THPTQG-F-TOAN-001`). */
+  subjectCode?: string | null;
 }
 
 /** Bộ lọc nguồn của một khối: môn của phần, dạng câu, phạm vi kiến thức. Chỉ đếm câu Sẵn sàng. */
@@ -349,6 +355,8 @@ export interface AvailableQuestionsQuery {
 export interface AvailableQuestionCounts {
   total: number;
   cells: MatrixCell[];
+  /** Số câu theo năng lực (V-ACT), cho chiều năng lực của ma trận; bỏ trống khi không có câu gắn năng lực. */
+  byCompetency?: MatrixDimensionValue[];
 }
 
 /** Một phần của cấu trúc khởi tạo khi tạo bài thi: tên, số câu, thời lượng, môn cố định hoặc các lựa chọn. */
@@ -363,6 +371,18 @@ export interface CreateExamPartInput {
   subjectCode: string | null;
   /** Phần tự chọn: có nhánh Tiếng Anh. */
   englishOption: boolean;
-  /** Phần tự chọn: tổ hợp đã gắn, số câu từng môn theo thứ tự môn của tổ hợp (tổng bằng số câu của phần). */
-  combinations: Array<{ code: string; subjectCounts: number[] }>;
+  /**
+   * Phần tự chọn: tổ hợp đã gắn, số câu từng môn theo thứ tự môn của tổ hợp (tổng bằng số câu của phần trừ phần
+   * chung). `blocks`: khối gợi ý từ mẫu (môn đầu tiên của tổ hợp); `expertConfirmed` như `ExamPartOption`.
+   */
+  combinations: Array<{ code: string; subjectCounts: number[]; blocks?: ExamTemplateBlock[]; expertConfirmed?: boolean }>;
+  /**
+   * Phần cố định nhiều môn (BCA Phần 2: Toán 35, Lịch sử 10, Tiếng Anh 20; tổng bằng số câu của phần) hoặc phần chung
+   * của phần tự chọn (THPTQG Tin học). Bỏ trống: phần một môn theo `subjectCode`.
+   */
+  sections?: Array<{ subjectCode: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
+  /** Khối gợi ý từ mẫu của phần cố định một môn. */
+  blocks?: ExamTemplateBlock[];
+  /** Phần tự chọn: nhánh nội dung (THPTQG Tin học), số câu của nhánh bằng số câu của phần trừ phần chung. */
+  branches?: Array<{ code: string; name: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
 }

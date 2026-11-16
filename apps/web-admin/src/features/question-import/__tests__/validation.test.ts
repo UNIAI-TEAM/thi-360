@@ -7,7 +7,7 @@ import dictionaryFixture from "../mock/import-dictionary.json";
 import sampleSheet from "../mock/sample-sheet.json";
 import templateFixture from "../mock/template.json";
 import type { ColumnMapping, ImportDictionary, ImportRowResult } from "../types";
-import { bracesBalanced, summarizeImport, validateImportRows } from "../validation";
+import { bracesBalanced, parseRubric, summarizeImport, validateImportRows } from "../validation";
 
 const reference = referenceFixture as ContentReference;
 const dictionary = dictionaryFixture as ImportDictionary;
@@ -83,9 +83,10 @@ describe("ánh xạ cột", () => {
 });
 
 describe("validateImportRows", () => {
-  it("bảng mẫu với ánh xạ gợi ý: 9 lỗi, 3 trùng, 14 hợp lệ (gồm 1 câu chùm, 2 câu con)", () => {
+  // UNI-2599: dòng 19 (Tự luận) nay hợp lệ, nhập ở Nháp kèm cảnh báo chưa có tiêu chí chấm.
+  it("bảng mẫu với ánh xạ gợi ý: 8 lỗi, 3 trùng, 15 hợp lệ (gồm 1 câu chùm, 2 câu con)", () => {
     const summary = summarizeImport(run(suggested));
-    expect(summary).toEqual({ total: 26, valid: 14, error: 9, duplicate: 3, validSets: 1, validSetChildren: 2 });
+    expect(summary).toEqual({ total: 26, valid: 15, error: 8, duplicate: 3, validSets: 1, validSetChildren: 2 });
   });
 
   it("câu hợp lệ đọc đủ phương án, đáp án, phân loại và nhãn", () => {
@@ -131,9 +132,8 @@ describe("validateImportRows", () => {
     expect(codes(row(results, 16))).toEqual(["ANSWER_INVALID"]);
     expect(codes(row(results, 17))).toEqual(["FORMULA_INVALID"]);
     expect(codes(row(results, 18))).toEqual(["SUBJECT_UNKNOWN"]);
-    expect(codes(row(results, 19))).toEqual(["TYPE_UNKNOWN"]);
     expect(codes(row(results, 22))).toEqual(["GRADE_UNKNOWN"]);
-    expect(summarizeImport(results).error).toBe(10);
+    expect(summarizeImport(results).error).toBe(9);
   });
 
   it("thiếu kiến thức và nhãn lạ chỉ là cảnh báo", () => {
@@ -225,6 +225,48 @@ describe("validateImportRows", () => {
     expect(codes(row(results, 3))).toEqual(["ANSWER_INVALID"]);
     expect(codes(row(results, 4))).toEqual(["OPTIONS_TOO_FEW"]);
     expect(codes(row(results, 5))).toEqual(["ANSWER_INVALID"]);
+  });
+
+  it("Tự luận: không có cột Tiêu chí chấm thì cảnh báo, cột Đáp án là bài làm mẫu", () => {
+    const essay = row(run(withKnowledge), 19);
+    expect(essay.status).toBe("VALID");
+    expect(essay.draft.type).toBe("ESSAY");
+    expect(codes(essay, "warning")).toEqual(["RUBRIC_MISSING"]);
+    expect(essay.draft.rubric).toEqual([]);
+    expect(essay.draft.sampleAnswer).toMatch(/^Xét f\(x\)/);
+  });
+
+  it("Tự luận: đọc cột Tiêu chí chấm; viết sai là lỗi", () => {
+    const header = [...sampleSheet.rows[0]!, "Tiêu chí chấm"];
+    const local = sheetFromTable([
+      header,
+      ["E-1", "Tự luận", "Viết đoạn văn", "", "", "", "", "", "", "Ngữ văn", "12", "Vận dụng", "", "", "", "", "Mở bài: 0,25; Thân bài (1)\nKết bài = 0,75"],
+      ["E-2", "Tự luận", "Viết đoạn văn", "", "", "", "", "", "", "Ngữ văn", "12", "Vận dụng", "", "", "", "", "Mở bài; Thân bài: 1"],
+    ]);
+    const mapping = suggestMapping(local.columns, dictionary.fieldAliases, dictionary.ignoreHeaders);
+    expect(Object.values(mapping)).toContain("rubric");
+    const results = validateImportRows({ columns: local.columns, rows: local.rows, mapping, reference, existingQuestions: [], dictionary });
+    expect(row(results, 2).status).toBe("VALID");
+    expect(row(results, 2).draft.rubric).toEqual([
+      { description: "Mở bài", points: 0.25 },
+      { description: "Thân bài", points: 1 },
+      { description: "Kết bài", points: 0.75 },
+    ]);
+    expect(codes(row(results, 3))).toEqual(["RUBRIC_INVALID"]);
+    expect(row(results, 3).issues.find((issue) => issue.code === "RUBRIC_INVALID")).toMatchObject({
+      field: "rubric",
+      value: "Mở bài",
+      column: "Tiêu chí chấm",
+    });
+  });
+
+  it("đọc tiêu chí chấm: mô tả có dấu hai chấm, điểm 0 là sai", () => {
+    expect(parseRubric("Ý 1: nêu luận điểm: 0,5")).toEqual({
+      criteria: [{ description: "Ý 1: nêu luận điểm", points: 0.5 }],
+      invalid: null,
+    });
+    expect(parseRubric("Ý 1: 0").invalid).toBe("Ý 1: 0");
+    expect(parseRubric("")).toEqual({ criteria: [], invalid: null });
   });
 
   it("kiểm tra dấu ngoặc nhọn của công thức", () => {

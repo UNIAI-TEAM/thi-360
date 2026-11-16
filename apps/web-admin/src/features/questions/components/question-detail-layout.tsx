@@ -15,6 +15,7 @@ import { QUESTIONS_QUERY_KEYS, toQuestionSummary } from "../api";
 import { useDuplicateQuestion } from "../editor-queries";
 import { useQuestion } from "../queries";
 import type { QuestionDetail } from "../types";
+import { ManualGradingBadge } from "./question-detail-body";
 import { MarkReadyDialog, RetireQuestionDialog } from "./question-status-dialogs";
 
 /** Ba trang con của chi tiết câu hỏi, mỗi trang một đường dẫn (NavTabs, DESIGN.md 5.5). */
@@ -108,6 +109,11 @@ export function QuestionDetailLayout({ questionId, children }: { questionId: str
   );
 }
 
+/** Câu Tự luận hoặc câu chùm có câu con Tự luận: chấm tay. */
+function hasEssay(question: QuestionDetail): boolean {
+  return question.type === "ESSAY" || question.children.some((child) => child.type === "ESSAY");
+}
+
 function QuestionDetailHeader({ question }: { question: QuestionDetail }) {
   const t = useTranslations("questions.detail");
   const tType = useTranslations("content.questionType");
@@ -138,6 +144,7 @@ function QuestionDetailHeader({ question }: { question: QuestionDetail }) {
             <Chip variant="tag" className="h-6">
               {tType(question.type)}
             </Chip>
+            {hasEssay(question) && <ManualGradingBadge />}
             <StatusChip tone={QUESTION_STATUS_TONE[question.status]}>
               {t("statusVersion", { status: tStatus(question.status), version: question.version })}
             </StatusChip>

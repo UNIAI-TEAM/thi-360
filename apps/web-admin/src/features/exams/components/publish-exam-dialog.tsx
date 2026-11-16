@@ -26,7 +26,8 @@ import { MockApiError } from "@/lib/mock/content-mock";
 import { useExamCheck, usePublishExam } from "../review-queries";
 import type { ExamCheckResult, ExamVersionList, PathCheck, PublishExamResponse } from "../review-types";
 import type { ExamDetail } from "../types";
-import { PathResultChip, reviewHref, usePathLabel } from "./exam-review-shared";
+import { examTabHref } from "../editor-tabs";
+import { PathResultChip, reviewHref, useIssueText, usePathLabel } from "./exam-review-shared";
 
 export const PUBLISH_NOTE_MAX = 500;
 
@@ -152,6 +153,7 @@ function PublishForm({
   const t = useTranslations("exams.publish");
   const format = useFormatter();
   const pathLabel = usePathLabel();
+  const issueText = useIssueText();
   const publish = usePublishExam(exam.id);
   const fieldsetId = useId();
   const errorId = useId();
@@ -227,6 +229,10 @@ function PublishForm({
   const keptServing = rows.some((path) => !selected.includes(path.pathId) && servedBy.has(path.pathId));
   const servingVersion = exam.servingVersion;
   const firstEnabled = rows.find((path) => path.result === "VALID")?.pathId;
+  // Năm cấu trúc khác năm ma trận chưa xác nhận chặn mọi đường; sửa ở tab Thông tin chung, không phải ở Kiểm tra.
+  const yearsIssue = check.paths.flatMap((path) => path.issues).find((issue) => issue.code === "YEARS_UNCONFIRMED");
+  /** Vấn đề chặn của đường (bỏ cảnh báo); vấn đề đầu tiên nêu ngay dưới dòng để biết vì sao không chọn được. */
+  const blockersOf = (path: PathCheck) => path.issues.filter((issue) => issue.severity !== "WARNING");
 
   return (
     <form onSubmit={(event) => void submit(event)} noValidate className="flex min-h-0 flex-1 flex-col gap-4">
@@ -244,6 +250,19 @@ function PublishForm({
           <dd className="m-0 text-text">{format.dateTime(new Date(check.checkedAt), "dateTime")}</dd>
         </dl>
 
+        {yearsIssue && (
+          <p className="flex flex-wrap items-start gap-x-2 gap-y-1 rounded-lg border border-warning/30 bg-warning-bg px-3.5 py-2.5 text-body text-text">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+            <span className="min-w-0 flex-1">{issueText(yearsIssue)}</span>
+            <Link
+              href={examTabHref(exam.id, "general")}
+              className="rounded-sm font-medium text-primary-text hover:underline"
+            >
+              {t("yearsLink")}
+            </Link>
+          </p>
+        )}
+
         <fieldset
           id={fieldsetId}
           aria-describedby={errors.pathIds ? errorId : undefined}
@@ -260,6 +279,8 @@ function PublishForm({
                   const descId = `${id}-desc`;
                   const enabled = path.result === "VALID";
                   const checked = enabled && field.value.includes(path.pathId);
+                  const blockers = enabled ? [] : blockersOf(path);
+                  const blocker = blockers[0];
                   return (
                     <div
                       key={path.pathId}
@@ -295,6 +316,11 @@ function PublishForm({
                         <p id={descId} className={`text-body ${path.result === "INVALID" ? "text-danger" : "text-text-secondary"}`}>
                           {description(path, checked)}
                         </p>
+                        {blocker && (
+                          <p className="text-caption text-text-secondary">
+                            {t("row.firstIssue", { issue: issueText(blocker), more: blockers.length - 1 })}
+                          </p>
+                        )}
                         {!enabled && (
                           <Link href={reviewHref(exam.id)} className="w-fit rounded-sm text-body font-medium text-primary-text hover:underline">
                             {t("row.viewCheck")}

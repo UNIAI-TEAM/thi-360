@@ -41,6 +41,8 @@ export interface SaveQuestionRequest {
   subjectCode: string;
   gradeCode: string;
   difficultyCode: string;
+  /** Năng lực (V-ACT); `null` hoặc bỏ trống: không gắn. Câu con lấy theo câu cha. */
+  competencyCode?: string | null;
   /** Điểm của câu đơn. Câu chùm: máy chủ tính bằng tổng điểm câu con, giá trị gửi lên bị bỏ qua. */
   points: number;
   knowledge: KnowledgeRef[];
@@ -76,6 +78,7 @@ export type QuestionSnapshot = Pick<
   | "subjectCode"
   | "gradeCode"
   | "difficultyCode"
+  | "competencyCode"
   | "points"
   | "knowledge"
   | "tagCodes"

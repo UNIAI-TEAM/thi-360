@@ -20,6 +20,11 @@ async function expectCount(text: string) {
   );
 }
 
+/** So cau mau tinh tu kho (cac nhanh khac co the them cau mau vao kho). */
+function countWhere(predicate: (question: ReturnType<typeof questionStore.all>[number]) => boolean = () => true): number {
+  return questionStore.all().filter(predicate).length;
+}
+
 function setUrl(search: string) {
   window.history.replaceState(null, "", `/questions${search}`);
 }
@@ -45,10 +50,13 @@ describe("QuestionBankView", () => {
 
     const table = await screen.findByRole("table", { name: "Danh sách câu hỏi khớp bộ lọc" });
     await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(21));
-    await expectCount("27 câu hỏi khớp bộ lọc");
+    const total = countWhere();
+    await expectCount(`${total} câu hỏi khớp bộ lọc`);
 
     const statusGroup = screen.getByRole("group", { name: "Trạng thái" });
-    await waitFor(() => expect(within(statusGroup).getByRole("radio", { name: /Tất cả\s*27/ })).toBeChecked());
+    await waitFor(() =>
+      expect(within(statusGroup).getByRole("radio", { name: new RegExp(`Tất cả\\s*${total}`) })).toBeChecked(),
+    );
 
     // Cau Nhap thieu kien thuc chinh: dong goi y vi tri can sua.
     expect(screen.getAllByText("Chưa chọn kiến thức chính.").length).toBeGreaterThan(0);
@@ -62,7 +70,7 @@ describe("QuestionBankView", () => {
     await userEvent.click(screen.getByRole("radio", { name: /^Nháp/ }));
     await waitFor(() => expect(window.location.search).toContain("status=DRAFT"));
     expect(window.location.search).toContain("mockState=data");
-    await expectCount("8 câu hỏi khớp bộ lọc");
+    await expectCount(`${countWhere((question) => question.status === "DRAFT")} câu hỏi khớp bộ lọc`);
     // Chip "Dang loc" bo duoc dieu kien.
     await userEvent.click(screen.getByRole("button", { name: "Bỏ lọc Trạng thái: Nháp" }));
     await waitFor(() => expect(window.location.search).not.toContain("status="));
@@ -71,7 +79,8 @@ describe("QuestionBankView", () => {
   it("doc bo loc tu URL khi mo trang", async () => {
     setUrl("?subject=PHYSICS&status=READY");
     renderWithProviders(<QuestionBankView />);
-    await expectCount("1 câu hỏi khớp bộ lọc");
+    const physicsReady = countWhere((question) => question.subjectCode === "PHYSICS" && question.status === "READY");
+    await expectCount(`${physicsReady} câu hỏi khớp bộ lọc`);
     expect(screen.getByRole("radio", { name: /^Sẵn sàng/ })).toBeChecked();
   });
 

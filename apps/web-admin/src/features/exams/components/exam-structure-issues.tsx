@@ -2,7 +2,7 @@
 
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback } from "react";
-import type { BlockIssue, StructureIssue } from "../matrix";
+import type { BlockIssue, MatrixDimension, StructureIssue } from "../matrix";
 import type { ExamPart, ExamPartOption } from "../types";
 import type { StructureSelection } from "./exam-structure-draft";
 
@@ -20,7 +20,9 @@ export function optionLabel(
   names: StructureNames,
 ): string {
   if (option.kind === "BRANCH") return option.name ?? option.code;
-  return option.kind === "SUBJECT" ? names.subject(option.code) : `${option.code} · ${names.combination(option.code)}`;
+  if (option.kind === "SUBJECT") return names.subject(option.code);
+  // Tổ hợp sinh từ "chọn k trong n" chưa có trong danh mục mang tên riêng (tên các môn).
+  return `${option.code} · ${option.name ?? names.combination(option.code)}`;
 }
 
 /** Chữ của một lỗi cấu trúc, kèm vị trí (phần · lựa chọn · môn · khối), theo mẫu thông báo của UniNote mục 9.4. */
@@ -30,7 +32,7 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
 
   const blockDetail = useCallback(
     (issue: BlockIssue): string => {
-      const dimension = (value: "COMBINED" | "GRADE" | "DIFFICULTY") => t(`dimension.${value}`);
+      const dimension = (value: MatrixDimension) => t(`dimension.${value}`);
       switch (issue.code) {
         case "COUNT_NOT_POSITIVE":
           return t("block.countNotPositive");
@@ -69,6 +71,10 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
       if (issue.code === "SECTIONS_TOTAL") {
         return t("sectionsTotal", { part: prefix, actual: issue.actual, expected: issue.expected });
       }
+      if (issue.code === "PART_POINTS") {
+        const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
+        return t("partPoints", { part: prefix, actual: number(issue.actual), expected: number(issue.expected) });
+      }
       const sections = option ? option.sections : (part?.sections ?? []);
       const section = sections.find((item) => item.id === issue.location.sectionId);
       const sectionText = [prefix, section ? names.subject(section.subjectCode) : null].filter(Boolean).join(" · ");
@@ -78,7 +84,7 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
       const block = section?.blocks.find((item) => item.id === issue.blockId);
       return t("block.prefix", { section: sectionText, block: block?.name ?? "", detail: blockDetail(issue.issue) });
     },
-    [parts, names, t, blockDetail],
+    [parts, names, t, format, blockDetail],
   );
 }
 

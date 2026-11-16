@@ -1,7 +1,7 @@
 "use client";
 
-import { IconButton } from "@thi360/ui";
-import { ImageIcon, X } from "lucide-react";
+import { buttonVariants, cn, IconButton } from "@thi360/ui";
+import { ImageIcon, ImageUp, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import { COVER_IMAGE_MAX_BYTES } from "../create-exam-schema";
@@ -18,6 +18,10 @@ export interface CoverImage {
 /**
  * Ảnh giới thiệu (UniNote PBI-04 mục 4, không bắt buộc). Dữ liệu mẫu: chỉ xem trước tại chỗ bằng đường dẫn tạm, không
  * tải lên; tên tệp không gửi kèm khi tạo bài.
+ *
+ * Nút chọn tệp theo kiểu nút Phụ của kit (như màn Cấp tài khoản hàng loạt): ô chọn tệp thật ẩn về hình ảnh nhưng vẫn
+ * nhận Tab và Enter/Space, nhãn của nó vẽ thành nút, nên không còn chữ tiếng Anh của trình duyệt ("Choose file", "No
+ * file chosen"). Ô nhập đứng trước nhãn để lớp `peer` vẽ vòng focus lên nút khi ô nhập nhận focus bằng bàn phím.
  */
 export function CreateExamCover({
   value,
@@ -30,6 +34,9 @@ export function CreateExamCover({
 }) {
   const t = useTranslations("exams.create.cover");
   const inputId = useId();
+  const labelId = useId();
+  const buttonTextId = useId();
+  const fileNameId = useId();
   const hintId = useId();
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -68,13 +75,13 @@ export function CreateExamCover({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-field-label font-medium text-text-secondary">
+      <p id={labelId} className="text-field-label font-medium text-text-secondary">
         {t("label")}
-      </label>
+      </p>
       <div className="flex flex-wrap items-center gap-3">
         <div
           aria-hidden
-          className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-subtle text-text-muted"
+          className="grid aspect-video w-28 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-subtle text-text-muted"
         >
           {value?.url ? (
             // Ảnh xem trước tại chỗ từ đường dẫn tạm (trang trí, tên tệp đọc ở dòng bên cạnh).
@@ -84,21 +91,38 @@ export function CreateExamCover({
           )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <input
-            ref={inputRef}
-            id={inputId}
-            type="file"
-            accept={COVER_TYPES.join(",")}
-            aria-describedby={[hintId, error ? errorId : null].filter(Boolean).join(" ")}
-            aria-invalid={error ? true : undefined}
-            onChange={(event) => pick(event.target.files?.[0])}
-            className="block w-full max-w-sm text-body text-text-secondary file:mr-3 file:min-h-10 file:cursor-pointer file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3.5 file:font-medium file:text-text hover:file:bg-subtle"
-          />
+          <div className="relative flex flex-wrap items-center gap-2">
+            <input
+              ref={inputRef}
+              id={inputId}
+              type="file"
+              accept={COVER_TYPES.join(",")}
+              aria-labelledby={`${labelId} ${buttonTextId}`}
+              aria-describedby={[value ? fileNameId : null, hintId, error ? errorId : null].filter(Boolean).join(" ")}
+              aria-invalid={error ? true : undefined}
+              onChange={(event) => pick(event.target.files?.[0])}
+              className="peer sr-only"
+            />
+            <label
+              htmlFor={inputId}
+              className={cn(
+                buttonVariants({ variant: "secondary" }),
+                "cursor-pointer",
+                "peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-text",
+              )}
+            >
+              <ImageUp aria-hidden />
+              <span id={buttonTextId}>{value ? t("change") : t("choose")}</span>
+            </label>
+            {!value && <span className="text-caption text-text-muted">{t("empty")}</span>}
+          </div>
           {value && (
             <p className="flex min-w-0 items-center gap-2 text-caption text-text-secondary">
-              <span className="truncate">{value.name}</span>
-              <span className="shrink-0 text-text-muted tabular-nums">
-                {t("size", { size: Math.max(1, Math.round(value.size / 1024)) })}
+              <span id={fileNameId} className="min-w-0 wrap-anywhere">
+                {value.name}
+                <span className="ml-2 text-text-muted tabular-nums">
+                  {t("size", { size: Math.max(1, Math.round(value.size / 1024)) })}
+                </span>
               </span>
               <IconButton aria-label={t("removeAria", { name: value.name })} icon={<X />} onClick={clear} />
             </p>

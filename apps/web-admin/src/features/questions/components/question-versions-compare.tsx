@@ -35,7 +35,10 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
   const changes = diffSnapshots(before.snapshot, after.snapshot);
   const changed = new Set(changes.map((change) => change.field));
   const unchanged = SNAPSHOT_FIELDS.filter(
-    (field) => !changed.has(field) && (field !== "children" || after.snapshot.children.length > 0),
+    (field) =>
+      !changed.has(field) &&
+      (field !== "children" || after.snapshot.children.length > 0) &&
+      (field !== "competencyCode" || Boolean(after.snapshot.competencyCode)),
   );
   const affectsMatrix = changed.has("gradeCode") || changed.has("difficultyCode");
 
@@ -47,6 +50,11 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
         return lookup.grade(change[side]);
       case "difficultyCode":
         return lookup.difficulty(change[side]);
+      case "competencyCode": {
+        const code = change[side];
+        if (!code) return t("none");
+        return referenceQuery.data?.competencies.find((option) => option.code === code)?.name ?? code;
+      }
       case "points":
         return String(change[side]);
       case "content":

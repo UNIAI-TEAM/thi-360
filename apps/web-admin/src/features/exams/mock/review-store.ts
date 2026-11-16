@@ -27,6 +27,8 @@ interface BlockOverride {
   cells?: Record<string, number>;
   sets?: number;
   overlap?: SourceOverlap;
+  /** Số câu tuyệt đối theo năng lực (chiều năng lực, V-ACT). */
+  competencies?: Record<string, number>;
 }
 
 type FixtureChange = Omit<ExamChange, "warning"> & { optionId: string | null };
@@ -81,15 +83,46 @@ function coversScope(nodeIds: readonly string[], scope: KnowledgeScope): boolean
   return scope.match === "ALL" ? scope.nodeIds.every(hit) : scope.nodeIds.some(hit);
 }
 
-/** Câu Sẵn sàng trong kho khớp khối: môn, dạng, nhãn, phạm vi MAPID (câu chùm xét cả câu con). */
+/** Câu Sẵn sàng trong kho khớp khối: môn, dạng, nhãn, năng lực, phạm vi MAPID (câu chùm xét cả câu con). */
 export function mockBlockCandidates(block: QuestionBlock, subjectCode: string): QuestionDetail[] {
+  const competencies = block.knowledgeScope.competencyCodes ?? [];
   return questionStore.all().filter((question) => {
     if (question.status !== "READY" || question.subjectCode !== subjectCode) return false;
     if (question.type !== block.questionType) return false;
     if (!block.tagCodes.every((tag) => question.tagCodes.includes(tag))) return false;
+    if (competencies.length && !competencies.includes(question.competencyCode ?? "")) return false;
     const nodeIds = [question, ...question.children].flatMap((item) => item.knowledge.map((ref) => ref.nodeId));
     return coversScope(nodeIds, block.knowledgeScope);
   });
+}
+
+function sameTable(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((value, index) => Math.abs(value - (b[index] ?? 0)) < 1e-6);
+}
+
+/**
+ * Câu có quy tắc chấm khác quy tắc mong đợi của khối: bảng điểm Đúng/Sai khác (so theo tỉ lệ với điểm câu, vì bảng của
+ * kỳ thi tính trên điểm tối đa 1) hoặc quy tắc nhiều đáp án khác.
+ */
+export function scoringDiffers(question: QuestionDetail, block: QuestionBlock): boolean {
+  const expected = block.expectedScoring;
+  if (!expected) return false;
+  const body = question.body;
+  if (body.type === "TRUE_FALSE" && expected.trueFalseTable) {
+    const max = question.points || 1;
+    const expectedMax = expected.trueFalseTable.at(-1) || 1;
+    return !sameTable(
+      body.scoreTable.map((value) => value / max),
+      expected.trueFalseTable.map((value) => value / expectedMax),
+    );
+  }
+  if (body.type === "MULTIPLE_CHOICE" && expected.multipleChoiceRule) return body.scoringRule !== expected.multipleChoiceRule;
+  return false;
+}
+
+/** Câu Tự luận chưa có tiêu chí chấm (chấm tay cần hướng dẫn chấm). */
+function lacksRubric(question: QuestionDetail): boolean {
+  return question.body.type === "ESSAY" && question.body.rubric.length === 0;
 }
 
 function forEachBlock(parts: readonly ExamPart[], visit: (block: QuestionBlock, subjectCode: string) => void) {
@@ -115,11 +148,29 @@ export function mockAvailability(examId: string, parts: readonly ExamPart[]): Ex
         return { gradeCode, difficultyCode, count: override?.cells?.[key] ?? inStore + data.baseline.perCell };
       }),
     );
+    const byCompetency = block.matrix.byCompetency ?? [];
     blocks[block.id] = {
       blockId: block.id,
       cells,
       setCount: isSet ? (override?.sets ?? candidates.length + data.baseline.sets) : null,
       overlap: override?.overlap ?? null,
+      ...(byCompetency.length
+        ? {
+            competencies: byCompetency.map(({ code }) => ({
+              code,
+              count:
+                override?.competencies?.[code] ??
+                units.filter((q) => q.competencyCode === code).length +
+                  data.baseline.perCell * MOCK_DIFFICULTY_CODES.length,
+            })),
+          }
+        : {}),
+      ...(block.expectedScoring
+        ? { scoringMismatch: units.filter((q) => scoringDiffers(q, block)).map((q) => q.code) }
+        : {}),
+      ...(block.questionType === "ESSAY" || units.some((q) => q.type === "ESSAY")
+        ? { missingRubric: units.filter(lacksRubric).map((q) => q.code) }
+        : {}),
     };
   });
   return { blocks };

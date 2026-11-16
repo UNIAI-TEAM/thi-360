@@ -1,22 +1,27 @@
 "use client";
 
 import { Button, Card, ConfirmDialog, EmptyState, LiveStatus, notify, Skeleton, StatusChip } from "@thi360/ui";
-import { ClipboardCheck, LayoutList, Save, TriangleAlert } from "lucide-react";
+import { ClipboardCheck, Info, LayoutList, Save, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
+import { yearsNeedConfirmation } from "../check";
 import { examTabHref } from "../editor-tabs";
 import { combinationsForKind } from "../create-exam-schema";
 import { type MatrixAxes, structureTotals, validateStructure } from "../matrix";
-import { useExam, useExamStructure, useUpdateExamStructure } from "../queries";
-import type { ExamDetail, ExamPart, ExamSection, ExamStructure } from "../types";
+import { useExam, useExamStructure, useExamTemplates, useUpdateExamStructure } from "../queries";
+import type { ExamDetail, ExamPart, ExamSection, ExamStructure, ExamTemplate } from "../types";
 import { BlockEditor } from "./block-editor";
 import {
   addBlock,
+  addBranch,
   attachCombination,
+  attachGenerated,
+  confirmOption,
   defaultSelection,
+  ENGLISH_CODE,
   findBlock,
   moveBlock,
   newBlock,
@@ -24,11 +29,12 @@ import {
   removeOption,
   selectionExists,
   setEnglishOption,
+  setPartPoints,
   setPartQuestionCount,
+  setSectionCount,
   type StructureSelection,
   updateBlock,
   updatePart,
-  updateSection,
 } from "./exam-structure-draft";
 import { issueTarget, optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
 import { ExamStructureOutline } from "./exam-structure-outline";
@@ -66,6 +72,8 @@ export function ExamStructureView({ examId }: { examId: string }) {
   const structureQuery = useExamStructure(examId);
   const examQuery = useExam(examId);
   const referenceQuery = useContentReference();
+  // Mẫu cấu trúc chỉ để hiện ghi chú chuyên môn và biết phần tự chọn có nhánh Tiếng Anh; không chặn trang khi lỗi.
+  const templatesQuery = useExamTemplates();
 
   if (structureQuery.isPending || referenceQuery.isPending || examQuery.isPending) {
     return (
@@ -128,6 +136,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
       structure={structureQuery.data}
       syncKey={structureQuery.dataUpdatedAt}
       reference={referenceQuery.data}
+      template={templatesQuery.data?.find((item) => item.code === examQuery.data.templateCode) ?? null}
     />
   );
 }
@@ -137,11 +146,13 @@ function StructureEditor({
   structure,
   syncKey,
   reference,
+  template,
 }: {
   exam: ExamDetail;
   structure: ExamStructure;
   syncKey: number;
   reference: ContentReference;
+  template: ExamTemplate | null;
 }) {
   const t = useTranslations("exams.structure");
   const format = useFormatter();
@@ -191,9 +202,31 @@ function StructureEditor({
     }),
     [lookup, reference],
   );
-  const issues = useMemo(() => validateStructure(draft, axes), [draft, axes]);
-  const totals = useMemo(() => structureTotals(draft), [draft]);
+  const shared = exam.timing === "SHARED";
+  const issues = useMemo(() => validateStructure(draft, axes, { timing: exam.timing }), [draft, axes, exam.timing]);
+  const totals = useMemo(
+    () => structureTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null }),
+    [draft, shared, exam.durationMinutes],
+  );
   const issueText = useStructureIssueText(draft, names);
+
+  // Danh mục theo kỳ thi: quy tắc chấm mặc định, năng lực (V-ACT), tổ hợp và các môn ghép được khi sinh tổ hợp.
+  const kind = reference.examKinds.find((item) => item.code === exam.kind);
+  const kindCompetencies = useMemo(
+    () => reference.competencies.filter((competency) => competency.examKindCodes.includes(exam.kind)),
+    [reference, exam.kind],
+  );
+  const kindCombinations = useMemo(() => combinationsForKind(reference.combinations, exam.kind), [reference, exam.kind]);
+  const subjectPool = useMemo(
+    () =>
+      reference.subjects
+        .map((subject) => subject.code)
+        .filter((code) => kindCombinations.some((combination) => combination.subjectCodes.includes(code))),
+    [reference, kindCombinations],
+  );
+  const defaultCombinationSize = Math.max(0, ...kindCombinations.map((combination) => combination.subjectCodes.length));
+  const branchSubjects = reference.subjects;
+  const yearsPending = yearsNeedConfirmation(exam);
 
   const announce = (message: string) => setLiveMessage(message);
 
@@ -230,11 +263,33 @@ function StructureEditor({
       <Card padding="md" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <dl aria-label={t("summary.label")} className="flex flex-wrap gap-x-6 gap-y-2 text-body">
-            <SummaryItem label={t("summary.questions")} value={format.number(totals.totalQuestions)} />
-            <SummaryItem label={t("summary.duration")} value={t("summary.minutes", { count: totals.totalMinutes })} />
+            <SummaryItem
+              label={t("summary.questions")}
+              value={
+                totals.printedQuestions !== totals.totalQuestions
+                  ? t("summary.questionsPrinted", { count: totals.totalQuestions, printed: totals.printedQuestions })
+                  : format.number(totals.totalQuestions)
+              }
+            />
+            <SummaryItem
+              label={t("summary.duration")}
+              value={
+                shared
+                  ? t("summary.sharedMinutes", { count: totals.totalMinutes })
+                  : t("summary.minutes", { count: totals.totalMinutes })
+              }
+            />
             <SummaryItem
               label={t("summary.points")}
-              value={format.number(totals.totalPoints, { maximumFractionDigits: 2 })}
+              value={
+                exam.maxScore !== null
+                  ? t("summary.pointsOfScale", {
+                      points: format.number(totals.totalPoints, { maximumFractionDigits: 2 }),
+                      scale: format.number(exam.maxScore, { maximumFractionDigits: 2 }),
+                    })
+                  : format.number(totals.totalPoints, { maximumFractionDigits: 2 })
+              }
+              warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
             />
             <SummaryItem
               label={t("summary.allocated")}
@@ -267,6 +322,23 @@ function StructureEditor({
         <p className="text-caption text-text-muted">
           {exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote")}
         </p>
+        {yearsPending && (
+          <p className="flex flex-wrap items-start gap-x-2 gap-y-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-body text-text">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+            <span className="min-w-0 flex-1">
+              {t("yearsPending", { structure: exam.structureYear ?? 0, matrix: exam.matrixYear ?? 0 })}
+            </span>
+            <Button asChild variant="link" size="sm">
+              <Link href={examTabHref(exam.id, "general")}>{t("yearsLink")}</Link>
+            </Button>
+          </p>
+        )}
+        {template?.expertNote && (
+          <p className="flex items-start gap-2 text-body text-text-secondary">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>{t("expertNote", { note: template.expertNote })}</span>
+          </p>
+        )}
         {issues.length > 0 && (
           <details className="rounded-md border border-warning/40 bg-warning-bg px-3 py-2">
             <summary className="cursor-pointer text-body font-medium text-warning">
@@ -315,6 +387,8 @@ function StructureEditor({
               axes={axes}
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
               reference={reference}
+              scoringDefaults={kind?.scoringDefaults ?? null}
+              competencies={kindCompetencies}
               onChange={(block) => setDraft((parts) => updateBlock(parts, block.id, () => block))}
               onMove={(offset) => setDraft((parts) => moveBlock(parts, blockContext.block.id, offset))}
               onRemove={() => {
@@ -327,8 +401,33 @@ function StructureEditor({
           ) : selectedPart ? (
             <ExamStructurePartPanel
               part={selectedPart}
+              timing={exam.timing}
+              sharedMinutes={exam.durationMinutes}
               names={names}
-              combinations={combinationsForKind(reference.combinations, exam.kind)}
+              combinations={kindCombinations}
+              showEnglish={
+                selectedPart.options.some((option) => option.kind === "SUBJECT" && option.code === ENGLISH_CODE) ||
+                (selectedPart.sections.length === 0 &&
+                  !selectedPart.options.some((option) => option.kind === "BRANCH") &&
+                  !template?.parts[selectedPart.order - 1]?.options?.length)
+              }
+              subjectPool={subjectPool}
+              defaultCombinationSize={defaultCombinationSize}
+              branchSubjects={branchSubjects}
+              onPoints={(points) => setDraft((parts) => setPartPoints(parts, selectedPart.id, points))}
+              onGenerate={(combinations) => {
+                setDraft((parts) => attachGenerated(parts, selectedPart.id, combinations, lookup.subject));
+                announce(t("combinationsGenerated", { count: combinations.length }));
+              }}
+              onAddBranch={(branch) => {
+                setDraft((parts) => addBranch(parts, selectedPart.id, branch));
+                announce(t("branchAdded", { name: branch.name.trim() }));
+              }}
+              onConfirm={(optionId) => {
+                const option = selectedPart.options.find((item) => item.id === optionId);
+                setDraft((parts) => confirmOption(parts, selectedPart.id, optionId));
+                if (option) announce(t("optionConfirmed", { code: option.kind === "BRANCH" ? (option.name ?? option.code) : option.code }));
+              }}
               issues={issues.filter((issue) =>
                 ("partId" in issue ? issue.partId : issue.location.partId) === selectedPart.id,
               )}
@@ -338,12 +437,7 @@ function StructureEditor({
                 setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartQuestionCount(part, count)))
               }
               onSectionCount={(optionId, sectionId, questionCount) =>
-                setDraft((parts) =>
-                  updateSection(parts, { partId: selectedPart.id, optionId, sectionId }, (section) => ({
-                    ...section,
-                    questionCount,
-                  })),
-                )
+                setDraft((parts) => setSectionCount(parts, { partId: selectedPart.id, optionId, sectionId }, questionCount))
               }
               onAddBlock={(optionId, section) => handleAddBlock(selectedPart.id, optionId, section)}
               onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
@@ -354,7 +448,7 @@ function StructureEditor({
               onRemoveOption={(optionId) => {
                 const option = selectedPart.options.find((item) => item.id === optionId);
                 setDraft((parts) => removeOption(parts, selectedPart.id, optionId));
-                if (option) announce(t("combinationRemoved", { code: option.code }));
+                if (option) announce(t("combinationRemoved", { code: option.kind === "BRANCH" ? (option.name ?? option.code) : option.code }));
               }}
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
             />

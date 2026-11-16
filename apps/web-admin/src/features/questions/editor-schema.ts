@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { MULTIPLE_CHOICE_RULES, QUESTION_TYPES } from "@/features/content/types";
-import { countBlankMarkers, parsePoints, type EditorBody, type QuestionEditorValues } from "./editor-form";
+import {
+  countBlankMarkers,
+  parsePoints,
+  rubricTotal,
+  samePoints,
+  type EditorBody,
+  type QuestionEditorValues,
+} from "./editor-form";
 import { CHILD_QUESTION_TYPES } from "./editor-types";
 
 /**
@@ -12,10 +19,13 @@ import { CHILD_QUESTION_TYPES } from "./editor-types";
  * - Điểm lớn hơn 0 (mặc định 1). Câu chùm: điểm là tổng điểm câu con, chỉ đọc.
  * - Trắc nghiệm 1 đáp án: ít nhất 2 phương án, đúng một phương án đúng.
  * - Trắc nghiệm nhiều đáp án: ít nhất 2 phương án, ít nhất một phương án đúng.
- * - Đúng/Sai: ít nhất 2 ý, mỗi ý chọn Đúng hoặc Sai.
+ * - Đúng/Sai: ít nhất 2 ý, mỗi ý chọn Đúng hoặc Sai. Bảng điểm theo số ý đúng: mỗi ô là số không âm, không giảm dần,
+ *   ô cuối bằng điểm của câu (UNI-2599).
  * - Điền đáp án: ít nhất 1 ô, mỗi ô có ít nhất một đáp án chấp nhận, số chỗ trống `___` trong đề bài bằng số ô.
  * - Kéo thả: ít nhất 1 ô thả, mỗi ô có nhãn và thẻ đúng; thẻ nhiễu không rỗng.
  * - Câu chùm: đoạn dẫn chung, ít nhất 2 câu con, mỗi câu con hợp lệ theo dạng của nó.
+ * - Tự luận: ít nhất 1 tiêu chí chấm, mỗi tiêu chí có mô tả và điểm lớn hơn 0, tổng điểm tiêu chí bằng điểm của câu;
+ *   số chữ gợi ý (nếu có) là số nguyên dương (UNI-2599, chấm tay).
  */
 
 export const CONTENT_MAX = 10_000;
@@ -25,6 +35,9 @@ export const ANSWER_MAX = 200;
 export const MIN_OPTIONS = 2;
 export const MIN_STATEMENTS = 2;
 export const MIN_CHILDREN = 2;
+export const MIN_CRITERIA = 1;
+export const CRITERION_MAX = 1_000;
+export const SAMPLE_ANSWER_MAX = 10_000;
 
 export type EditorErrorKey =
   | "subjectRequired"
@@ -53,7 +66,17 @@ export type EditorErrorKey =
   | "zoneItemRequired"
   | "distractorRequired"
   | "childrenMin"
-  | "childContentRequired";
+  | "childContentRequired"
+  | "scoreValueInvalid"
+  | "scoreNotIncreasing"
+  | "scoreLastMismatch"
+  | "rubricMin"
+  | "criterionRequired"
+  | "criterionMax"
+  | "criterionPointsInvalid"
+  | "rubricTotalMismatch"
+  | "sampleAnswerMax"
+  | "wordLimitInvalid";
 
 export interface EditorIssue {
   path: (string | number)[];
@@ -67,14 +90,20 @@ function validatePoints(value: string, path: (string | number)[], issues: Editor
   if (!Number.isFinite(points) || points <= 0) issues.push({ path, message: "pointsInvalid" });
 }
 
-/** Kiểm tra phần thân theo dạng câu; `prefix` là đường dẫn tới `body` (câu đơn hoặc câu con). */
+/**
+ * Kiểm tra phần thân theo dạng câu; `prefix` là đường dẫn tới `body` (câu đơn hoặc câu con). `points` là ô Điểm của
+ * câu (chuỗi), dùng cho bảng điểm Đúng/Sai và tổng điểm tiêu chí Tự luận; không phải số thì bỏ qua hai phép so đó.
+ */
 export function validateBody(
   type: QuestionEditorValues["type"],
   body: EditorBody,
   content: string,
   prefix: (string | number)[],
   issues: EditorIssue[],
+  points = "",
 ): void {
+  const questionPoints = parsePoints(points);
+  const pointsValid = Number.isFinite(questionPoints) && questionPoints > 0;
   switch (type) {
     case "SINGLE_CHOICE":
     case "MULTIPLE_CHOICE": {
@@ -107,6 +136,7 @@ export function validateBody(
       if (body.statements.length < MIN_STATEMENTS) {
         issues.push({ path: [...prefix, "statements"], message: "statementsMin" });
       }
+      validateScoreTable(body.scoreTable, pointsValid ? questionPoints : null, [...prefix, "scoreTable"], issues);
       return;
     }
     case "FILL_IN": {
@@ -143,10 +173,59 @@ export function validateBody(
     }
     case "QUESTION_SET":
       return;
-    case "ESSAY":
-      // Kiểm tra tiêu chí chấm (tổng điểm bằng điểm của câu) do nhánh soạn Tự luận thêm (UNI-2603).
+    case "ESSAY": {
+      body.rubric.forEach((criterion, index) => {
+        const at = [...prefix, "rubric", index];
+        if (blank(criterion.description)) issues.push({ path: [...at, "description"], message: "criterionRequired" });
+        else if (criterion.description.length > CRITERION_MAX) {
+          issues.push({ path: [...at, "description"], message: "criterionMax" });
+        }
+        const value = parsePoints(criterion.points);
+        if (!Number.isFinite(value) || value <= 0) issues.push({ path: [...at, "points"], message: "criterionPointsInvalid" });
+      });
+      if (body.rubric.length < MIN_CRITERIA) issues.push({ path: [...prefix, "rubric"], message: "rubricMin" });
+      else if (
+        pointsValid &&
+        body.rubric.every((criterion) => parsePoints(criterion.points) > 0) &&
+        !samePoints(rubricTotal(body.rubric), questionPoints)
+      ) {
+        issues.push({ path: [...prefix, "rubric"], message: "rubricTotalMismatch" });
+      }
+      if (body.sampleAnswer.length > SAMPLE_ANSWER_MAX) {
+        issues.push({ path: [...prefix, "sampleAnswer"], message: "sampleAnswerMax" });
+      }
+      const wordLimit = body.wordLimit.trim();
+      if (wordLimit && (!/^\d+$/.test(wordLimit) || Number(wordLimit) <= 0)) {
+        issues.push({ path: [...prefix, "wordLimit"], message: "wordLimitInvalid" });
+      }
       return;
+    }
   }
+}
+
+/**
+ * Bảng điểm Đúng/Sai: lỗi gắn vào ô gây lỗi (ô không phải số; ô nhỏ hơn ô trước; ô cuối khác điểm của câu) để người
+ * dùng tới đúng chỗ. Độ dài bảng do biểu mẫu giữ bằng số ý.
+ */
+function validateScoreTable(
+  table: readonly string[],
+  points: number | null,
+  prefix: (string | number)[],
+  issues: EditorIssue[],
+): void {
+  let previous = 0;
+  table.forEach((cell, index) => {
+    const value = parsePoints(cell);
+    if (!Number.isFinite(value)) {
+      issues.push({ path: [...prefix, index], message: "scoreValueInvalid" });
+      return;
+    }
+    if (value < previous) issues.push({ path: [...prefix, index], message: "scoreNotIncreasing" });
+    else if (index === table.length - 1 && points !== null && !samePoints(value, points)) {
+      issues.push({ path: [...prefix, index], message: "scoreLastMismatch" });
+    }
+    previous = value;
+  });
 }
 
 /** Mọi lỗi của biểu mẫu, theo thứ tự trên màn hình. Rỗng khi hợp lệ. */
@@ -162,14 +241,14 @@ export function validateQuestionEditor(values: QuestionEditorValues): EditorIssu
   if (blank(values.content)) issues.push({ path: ["content"], message: isSet ? "passageRequired" : "contentRequired" });
   else if (values.content.length > CONTENT_MAX) issues.push({ path: ["content"], message: "contentMax" });
 
-  validateBody(values.type, values.body, values.content, ["body"], issues);
+  validateBody(values.type, values.body, values.content, ["body"], issues, values.points);
 
   if (isSet) {
     values.children.forEach((child, index) => {
       const prefix = ["children", index];
       if (blank(child.content)) issues.push({ path: [...prefix, "content"], message: "childContentRequired" });
       else if (child.content.length > CONTENT_MAX) issues.push({ path: [...prefix, "content"], message: "contentMax" });
-      validateBody(child.type, child.body, child.content, [...prefix, "body"], issues);
+      validateBody(child.type, child.body, child.content, [...prefix, "body"], issues, child.points);
       validatePoints(child.points, [...prefix, "points"], issues);
       if (child.solution.length > SOLUTION_MAX) issues.push({ path: [...prefix, "solution"], message: "solutionMax" });
     });
@@ -202,6 +281,7 @@ export const questionEditorSchema = z
     subjectCode: z.string(),
     gradeCode: z.string(),
     difficultyCode: z.string(),
+    competencyCode: z.string(),
     points: z.string(),
     knowledge: z.array(z.object({ nodeId: z.string(), code: z.string(), name: z.string(), primary: z.boolean() })),
     tagCodes: z.array(z.string()),

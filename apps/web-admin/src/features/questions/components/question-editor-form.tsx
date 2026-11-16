@@ -204,7 +204,15 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
   const error = useEditorError("content");
   const key = type === "QUESTION_SET" ? "passage" : type === "TRUE_FALSE" ? "sharedContent" : "content";
   const hintKey =
-    type === "FILL_IN" ? "fillIn" : type === "TRUE_FALSE" ? "trueFalse" : type === "QUESTION_SET" ? "passage" : "default";
+    type === "FILL_IN"
+      ? "fillIn"
+      : type === "TRUE_FALSE"
+        ? "trueFalse"
+        : type === "QUESTION_SET"
+          ? "passage"
+          : type === "ESSAY"
+            ? "essay"
+            : "default";
   const titleId = `${formId}-content-title`;
   return (
     <EditorSection title={t(`contentTitle.${key}`)} titleId={titleId} required>

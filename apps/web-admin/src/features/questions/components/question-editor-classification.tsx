@@ -22,7 +22,10 @@ import type { ContentReference } from "@/features/content/types";
 import { questionSetPoints, type QuestionEditorValues } from "../editor-form";
 import { EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
 
-/** Khối Phân loại: môn, khối, mức độ, điểm, kiến thức (MAPID, có kiến thức chính) và nhãn. */
+/**
+ * Khối Phân loại: môn, khối, mức độ, điểm, năng lực (V-ACT, không bắt buộc), kiến thức (MAPID, có kiến thức chính) và
+ * nhãn.
+ */
 export function ClassificationSection({ reference }: { reference: ContentReference }) {
   const t = useTranslations("questions.editor.classification");
   const tErrors = useTranslations("questions.editor.errors");
@@ -83,10 +86,42 @@ export function ClassificationSection({ reference }: { reference: ContentReferen
             )}
           </FormField>
         )}
+        <CompetencyField reference={reference} />
       </div>
       <KnowledgeField reference={reference} onChange={(value) => setValue("knowledge", value, { shouldDirty: true })} />
       <TagsField reference={reference} />
     </EditorSection>
+  );
+}
+
+const NO_COMPETENCY = "__none__";
+
+/** Năng lực (`ContentReference.competencies`), dùng để dựng ma trận theo năng lực (V-ACT); để trống: không gắn. */
+function CompetencyField({ reference }: { reference: ContentReference }) {
+  const t = useTranslations("questions.editor.classification");
+  const { control } = useFormContext<QuestionEditorValues>();
+  const options = [
+    { value: NO_COMPETENCY, label: t("competencyNone") },
+    ...reference.competencies.map((option) => ({ value: option.code, label: option.name })),
+  ];
+  return (
+    <Controller
+      control={control}
+      name="competencyCode"
+      render={({ field }) => (
+        <FormField label={t("competency")} hint={t("competencyHint")}>
+          {(controlProps) => (
+            <Select
+              {...controlProps}
+              name={field.name}
+              value={field.value || NO_COMPETENCY}
+              options={options}
+              onValueChange={(value) => field.onChange(value === NO_COMPETENCY ? "" : value)}
+            />
+          )}
+        </FormField>
+      )}
+    />
   );
 }
 

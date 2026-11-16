@@ -56,7 +56,7 @@ interface ActiveFilter {
 
 /**
  * Thanh lọc của Ngân hàng câu hỏi (canvas `NganHangCauHoi`): dải trạng thái kèm số câu, hàng lọc chính (tìm, môn,
- * khối, độ khó, dạng câu), "Bộ lọc khác" mở thêm kiến thức (MAPID), nhãn, người tạo, ngày tạo, lời giải; cuối cùng
+ * khối, độ khó, dạng câu, gồm cả Tự luận), "Bộ lọc khác" mở thêm năng lực (V-ACT), kiến thức (MAPID), nhãn, người tạo, ngày tạo, lời giải; cuối cùng
  * là các chip "Đang lọc" bỏ từng điều kiện và nút xóa tất cả. Đổi điều kiện áp dụng ngay; ô tìm chờ ngừng gõ 300ms.
  */
 export function QuestionFiltersBar({
@@ -112,6 +112,8 @@ export function QuestionFiltersBar({
   );
   const knowledgeLabel = (ref: KnowledgeRef) => (ref.name ? `${ref.code} ${ref.name}` : ref.code);
 
+  const competencyName = (code: string) =>
+    reference?.competencies.find((option) => option.code === code)?.name ?? code;
   const authorName = (id: string) => authors.find((person) => person.id === id)?.name ?? id;
   const formatDay = (day: string) => format.dateTime(new Date(`${day}T00:00:00+07:00`), "date");
 
@@ -145,6 +147,11 @@ export function QuestionFiltersBar({
       clear: { difficulty: null },
     },
     filters.type && { key: "type", label: chip(t("type"), contentT(`questionType.${filters.type}`)), clear: { type: null } },
+    filters.competency && {
+      key: "competency",
+      label: chip(t("competency"), competencyName(filters.competency)),
+      clear: { competency: null },
+    },
     ...knowledgeRefs.map((ref) => ({
       key: `knowledge-${ref.nodeId}`,
       label: chip(t("knowledgeShort"), knowledgeLabel(ref)),
@@ -345,6 +352,17 @@ export function QuestionFiltersBar({
                     )}
                     <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" />
                   </button>
+                )}
+              </FormField>
+              <FormField label={t("competency")}>
+                {(controlProps) => (
+                  <Select
+                    {...controlProps}
+                    name="competency"
+                    options={selectOptions(reference?.competencies)}
+                    value={filters.competency ?? ALL}
+                    onValueChange={(value) => onChange({ competency: fromSelect(value) })}
+                  />
                 )}
               </FormField>
               <FormField label={t("tag")}>

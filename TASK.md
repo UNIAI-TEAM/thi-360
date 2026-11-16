@@ -40,7 +40,7 @@ Không thuộc điểm của plan đợt 1; mỗi việc một issue con của U
 | UNI-2577 | Lỗi · Danh sách bị nhảy khi đổi bộ lọc | #28 | in_review |
 | UNI-2578 | Hộp thoại Tạo tài khoản: bố cục hai cột, hiện đủ trong một khung | #27 | in_review |
 | UNI-2576 | Đổi đường dẫn trang của hai web sang tiếng Anh (chồng lên ba PR trên) | #29 | in_review |
-| UNI-2598 | Danh sách tài khoản: thêm cột Lớp theo bản vẽ | — | in_progress |
+| UNI-2598 | Danh sách tài khoản: thêm cột Lớp theo bản vẽ | #38, #39 | in_review |
 
 ## Đợt 2 — Mockup web admin PBI-03 + PBI-04 (dữ liệu mẫu)
 
@@ -56,6 +56,24 @@ Issue cha: **UNI-2590** · Mockup web admin PBI-03 Ngân hàng câu hỏi và PB
 | E | UNI-2596 | Kiểm tra, xem trước, phiên bản, công bố bài thi | in_review |
 
 Khi có backend: chỉ thay thân các hàm trong `features/<x>/api.ts` (và `*-api.ts`), giữ chữ ký; bỏ `mockOnly` ở menu và `notFound()` theo cờ ở trang.
+
+### Mở rộng 7 kỳ thi và chấm tự luận (dữ liệu mẫu)
+
+Issue cha: **UNI-2599** (con của UNI-2590) · HSA, QDA, BCA, V-ACT, SPT, SP2E, THPTQG; dạng câu Tự luận chấm tay; quy tắc chấm trên câu hỏi. Đặc tả: `docs/specs/2026-11-16-mockup-7-ky-thi.md`.
+
+| Mã | Issue | Việc | Trạng thái |
+|---|---|---|---|
+| Nền | UNI-2600 | Danh mục mẫu 7 kỳ thi, mẫu cấu trúc, kiểu dữ liệu, dạng Tự luận, quy tắc chấm; seed đủ 12 môn THPT | in_review |
+| G | UNI-2601 | Tạo bài thi, danh sách, Thông tin chung cho 7 kỳ thi | in_review |
+| H | UNI-2602 | Cấu trúc, ma trận, kiểm tra cấu hình, xem trước, phiên bản; bài mẫu BCA, V-ACT, THPTQG Tin học | in_review |
+| I | UNI-2603 | Ngân hàng câu hỏi: Tự luận, bảng điểm Đúng/Sai, quy tắc nhiều đáp án, năng lực, nhập tệp | in_review |
+| J | UNI-2604 | Hàng chờ chấm tự luận `/grading` | in_review |
+
+### Backend PBI-03, PBI-04
+
+| Issue | Việc | Trạng thái |
+|---|---|---|
+| UNI-2605 | Đặc tả backend (`docs/specs/2026-11-16-be-pbi-03-04.md`); chia việc BE-1 đến BE-6, FE-1, FE-2, QA ở mục 11 | in_review |
 
 ### Thứ tự làm
 
@@ -82,7 +100,7 @@ Sóng 7:  T16
 
 | Đợt | PBI | Ghi chú |
 |---|---|---|
-| 2 · Nội dung | 03 Ngân hàng câu hỏi, 04 Bài thi và ma trận | Làm mới, rủi ro cao nhất. Mockup giao diện đã làm ở UNI-2590; phần backend chưa tạo issue |
+| 2 · Nội dung | 03 Ngân hàng câu hỏi, 04 Bài thi và ma trận | Mockup giao diện ở UNI-2590, UNI-2599; đặc tả backend ở UNI-2605, chưa tạo issue cho từng task |
 | 3 · Thi | 10–13 Làm bài, lưu bài, chấm, kết quả | Port một phần từ `lms-exam` |
 | 4 · Thương mại | 05, 06, 07–09 | Port nhiều từ `lms-exam/commercial` và `exam-portal` |
 | 5 · AI | 14–18 | Làm mới |

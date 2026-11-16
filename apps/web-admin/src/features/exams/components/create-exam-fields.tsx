@@ -1,10 +1,11 @@
 "use client";
 
-import { Button, cn, focusRing, FormField, Input, Textarea } from "@thi360/ui";
-import { Info, WandSparkles } from "lucide-react";
+import { Button, Checkbox, cn, focusRing, FormField, Input, type InputProps, Select, Textarea } from "@thi360/ui";
+import { Info, TriangleAlert, WandSparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useId, type ReactNode } from "react";
+import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
+import type { CatalogOption, ExamKindOption } from "@/features/content/types";
 import {
   createExamInfoSchema,
   EXAM_CODE_MAX,
@@ -13,13 +14,20 @@ import {
   type CreateExamSchemaMessages,
   type ExamInfoFormValues,
   type ExamInfoSchemaMessages,
+  type ExamScope,
+  formatsForKind,
   isSingleScope,
+  isSubjectKind,
+  kindOptionFor,
   SINGLE_SCOPES,
   type SingleScope,
+  subjectTemplates,
   type TakenCodes,
+  templateCountBySubject,
+  yearsDiffer,
 } from "../create-exam-schema";
 import { sum } from "../matrix";
-import type { ExamFormat, ExamKind, ExamTemplate } from "../types";
+import type { ExamFormat, ExamKind, ExamTemplate, ExamTiming } from "../types";
 
 /** Chữ báo lỗi của Thông tin chung (`exams.create.validation`). */
 export function useExamInfoMessages(): ExamInfoSchemaMessages {
@@ -32,12 +40,17 @@ export function useExamInfoMessages(): ExamInfoSchemaMessages {
     codeMax: t("codeMax", { max: EXAM_CODE_MAX }),
     codeTaken: t("codeTaken"),
     subjectRequired: t("subjectRequired"),
+    kindSubjectRequired: t("kindSubjectRequired"),
+    sharedDurationPositive: t("sharedDurationPositive"),
+    maxScoreRequired: t("maxScoreRequired"),
+    maxScorePositive: t("maxScorePositive"),
     descriptionMax: t("descriptionMax", { max: EXAM_DESCRIPTION_MAX }),
   };
 }
 
-export function useExamInfoSchema(takenCodes?: TakenCodes) {
-  return createExamInfoSchema(useExamInfoMessages(), takenCodes);
+export function useExamInfoSchema(takenCodes?: TakenCodes, kinds: readonly ExamKindOption[] = []) {
+  const messages = useExamInfoMessages();
+  return useMemo(() => createExamInfoSchema(messages, takenCodes, kinds), [messages, takenCodes, kinds]);
 }
 
 /** Chữ báo lỗi của trang Tạo bài thi: Thông tin chung và cấu trúc khởi tạo. */
@@ -50,25 +63,29 @@ export function useCreateExamMessages(): CreateExamSchemaMessages {
     partSubjectRequired: t("partSubjectRequired"),
     questionCountPositive: t("questionCountPositive"),
     durationPositive: t("durationPositive"),
+    pointsPositive: t("pointsPositive"),
     noOptions: t("noOptions"),
     subjectCountPositive: t("subjectCountPositive"),
     allocationTotal: (actual, expected) => t("allocationTotal", { actual, expected }),
+    commonTooLarge: (common, total) => t("commonTooLarge", { common, total }),
     partsRequired: t("partsRequired"),
   };
 }
 
-/** Lựa chọn Kỳ thi và Hình thức dạng thẻ (bản vẽ TaoBaiThi). */
-export function useScopeOptions() {
+/** Tên ngắn của kỳ thi (`exams.kind.*`); mã mới của danh mục chưa có bản dịch thì hiện chính mã. */
+export function useKindLabel() {
+  const t = useTranslations("exams.kind");
+  return useCallback((code: string) => (t.has(code) ? t(code) : code), [t]);
+}
+
+/** Lựa chọn Hình thức dạng thẻ (bản vẽ TaoBaiThi), chỉ các hình thức kỳ thi cho phép. */
+export function useFormatOptions(formats: readonly ExamFormat[]): ChoiceCardOption<ExamFormat>[] {
   const t = useTranslations("exams.create");
-  const kindOptions: ChoiceCardOption<ExamKind>[] = [
-    { value: "HSA", label: "HSA", description: t("kindHsaDescription") },
-    { value: "QDA", label: "QDA", description: t("kindQdaDescription") },
-  ];
-  const formatOptions: ChoiceCardOption<ExamFormat>[] = [
+  const all: ChoiceCardOption<ExamFormat>[] = [
     { value: "FULL", label: t("formatFull"), description: t("formatFullDescription") },
     { value: "SINGLE", label: t("formatSingle"), description: t("formatSingleDescription") },
   ];
-  return { kindOptions, formatOptions };
+  return all.filter((option) => formats.includes(option.value));
 }
 
 /** Phần/môn áp dụng của bài lẻ: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi). */
@@ -177,15 +194,396 @@ export function GenerateCodeButton({ onClick, loading }: { onClick: () => void; 
   );
 }
 
+const DECIMAL = /^\d+([.,]\d{1,2})?$/;
+
+/** Đọc chữ đã gõ: ô trống là `null`; sai định dạng trả `undefined`. */
+function parseOptionalNumber(text: string): number | null | undefined {
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  return DECIMAL.test(trimmed) ? Number(trimmed.replace(",", ".")) : undefined;
+}
+
+function formatOptionalNumber(value: number | null): string {
+  return value === null ? "" : String(value).replace(".", ",");
+}
+
+export type OptionalNumberInputProps = Omit<InputProps, "value" | "onChange" | "type" | "inputMode"> & {
+  value: number | null;
+  onValueChange: (value: number | null) => void;
+};
+
 /**
- * Các trường Thông tin chung của tab Thông tin chung (UniNote PBI-04 mục 4). Mẫu cấu trúc đi theo kỳ thi và hình thức,
- * không chọn tay. `lockScope` khóa kỳ thi, hình thức, môn (bài đã công bố).
+ * Ô số thập phân được để trống (thang điểm, điểm của phần): `type="text"` + `inputMode="decimal"`, ô trống là `null`,
+ * nhận dấu phẩy hoặc chấm, tối đa hai chữ số sau dấu phẩy. Chữ sai định dạng thì `aria-invalid` và giữ giá trị cũ.
+ */
+export function OptionalNumberInput({ value, onValueChange, className, ...props }: OptionalNumberInputProps) {
+  const [text, setText] = useState(() => formatOptionalNumber(value));
+  const [lastValue, setLastValue] = useState(value);
+  const parsed = parseOptionalNumber(text);
+  if (value !== lastValue) {
+    setLastValue(value);
+    if (parsed !== value) setText(formatOptionalNumber(value));
+  }
+  return (
+    <Input
+      {...props}
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      value={text}
+      aria-invalid={parsed === undefined || props["aria-invalid"] ? true : undefined}
+      className={cn("text-right tabular-nums", className)}
+      onChange={(event) => {
+        const next = event.target.value;
+        setText(next);
+        const nextValue = parseOptionalNumber(next);
+        if (nextValue !== undefined && nextValue !== value) {
+          setLastValue(nextValue);
+          onValueChange(nextValue);
+        }
+      }}
+    />
+  );
+}
+
+/**
+ * Kỳ thi: thẻ chọn của bản vẽ TaoBaiThi, một thẻ cho mỗi kỳ thi của danh mục (mã ngắn và tên đầy đủ). Gợi ý dưới nhóm
+ * nêu cách lấy mẫu (theo kỳ thi hay theo môn) và cách tính thời lượng của kỳ thi đang chọn.
+ */
+export function KindField({
+  kinds,
+  value,
+  onChange,
+  disabled,
+}: {
+  kinds: readonly ExamKindOption[];
+  value: ExamKind;
+  onChange: (kind: ExamKind) => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations("exams.create");
+  const kindLabel = useKindLabel();
+  const current = kindOptionFor(kinds, value);
+  const options = kinds.map((kind) => ({ value: kind.code, label: kindLabel(kind.code), description: kind.name }));
+  const hint = current
+    ? t(current.templateBy === "SUBJECT" ? "kindHintSubject" : "kindHintKind", {
+        kind: kindLabel(current.code),
+        timing: t(`timingMode.${current.timing}`),
+      })
+    : undefined;
+  return (
+    <ChoiceCardGroup
+      legend={t("kind")}
+      name="kind"
+      value={value}
+      required
+      disabled={disabled}
+      hint={hint}
+      options={options}
+      onChange={onChange}
+    />
+  );
+}
+
+/**
+ * Hình thức (FULL, bài lẻ) theo `formats` của kỳ thi. Kỳ thi chỉ có FULL thì không cần chọn: hiện một dòng nêu hình
+ * thức thay cho nhóm radio một lựa chọn.
+ */
+export function FormatField({
+  kinds,
+  kind,
+  value,
+  onChange,
+  disabled,
+}: {
+  kinds: readonly ExamKindOption[];
+  kind: ExamKind;
+  value: ExamFormat;
+  onChange: (format: ExamFormat) => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations("exams.create");
+  const formats = formatsForKind(kinds, kind);
+  const options = useFormatOptions(formats);
+  if (options.length <= 1) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <p className="text-field-label font-medium text-text-secondary">{t("format")}</p>
+        <p className="flex min-h-10 flex-col justify-center text-body">
+          <span className="font-semibold text-text">{options[0]?.label ?? t("formatFull")}</span>
+          <span className="text-caption text-text-muted">{t("formatOnlyFull")}</span>
+        </p>
+      </div>
+    );
+  }
+  return (
+    <ChoiceCardGroup
+      legend={t("format")}
+      name="format"
+      value={value}
+      required
+      disabled={disabled}
+      options={options}
+      onChange={onChange}
+    />
+  );
+}
+
+/** Năm của mẫu, không định dạng số (2025, không phải 2.025). */
+function yearText(year: number | null | undefined): string {
+  return year === null || year === undefined ? "" : String(year);
+}
+
+/**
+ * Môn và mẫu theo năm của kỳ thi có mẫu theo môn (SPT, SP2E, THPTQG): chọn môn (nêu số mẫu của môn), rồi chọn mẫu
+ * theo năm cấu trúc. Môn chưa có mẫu thì báo cấu trúc khởi tạo để trống.
+ */
+export function SubjectTemplateFields({
+  kind,
+  format,
+  subjects,
+  templates,
+  subjectCode,
+  templateCode,
+  subjectError,
+  disabled,
+  onSubjectChange,
+  onTemplateChange,
+}: {
+  kind: ExamKind;
+  format: ExamFormat;
+  subjects: readonly CatalogOption[];
+  templates: readonly ExamTemplate[];
+  subjectCode: string;
+  templateCode: string;
+  subjectError?: string;
+  disabled?: boolean;
+  onSubjectChange: (subjectCode: string) => void;
+  onTemplateChange: (templateCode: string) => void;
+}) {
+  const t = useTranslations("exams.create.subjectTemplate");
+  const counts = templateCountBySubject(templates, kind, format);
+  const options = subjects.map((subject) => {
+    const count = counts.get(subject.code) ?? 0;
+    return { value: subject.code, label: count > 0 ? t("subjectWithTemplates", { subject: subject.name, count }) : subject.name };
+  });
+  const available = subjectCode ? subjectTemplates(templates, kind, format, subjectCode) : [];
+  const subjectName = subjects.find((subject) => subject.code === subjectCode)?.name ?? subjectCode;
+
+  return (
+    <div data-field="subjectCode" className="flex flex-col gap-3">
+      <FormField label={t("subject")} required hint={t("subjectHint", { count: counts.size })} error={subjectError}>
+        {(controlProps) => (
+          <Select
+            {...controlProps}
+            name="subjectCode"
+            value={subjectCode || undefined}
+            disabled={disabled}
+            placeholder={t("subjectPlaceholder")}
+            onValueChange={onSubjectChange}
+            options={options}
+          />
+        )}
+      </FormField>
+      {subjectCode &&
+        (available.length === 0 ? (
+          <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-body text-text-secondary">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
+            {t("noTemplate", { subject: subjectName })}
+          </p>
+        ) : (
+          <ChoiceCardGroup
+            legend={t("template")}
+            name="templateCode"
+            value={templateCode}
+            required
+            disabled={disabled}
+            hint={available.length > 1 ? t("templateHint") : undefined}
+            options={available.map((template) => ({
+              value: template.code,
+              label: t("templateYear", { year: yearText(template.structureYear) }),
+              description: template.name,
+            }))}
+            onChange={onTemplateChange}
+          />
+        ))}
+    </div>
+  );
+}
+
+/**
+ * Ghi chú của mẫu: năm cấu trúc và năm ma trận; hai năm khác nhau thì ô xác nhận chuyên môn (chưa xác nhận thì kiểm
+ * tra cấu hình chặn công bố); điều chuyên gia cần xác nhận (`expertNote`).
+ */
+export function TemplateNotes({
+  template,
+  yearsConfirmed,
+  onYearsConfirmedChange,
+  disabled,
+}: {
+  template: ExamTemplate | undefined;
+  yearsConfirmed: boolean;
+  onYearsConfirmedChange: (confirmed: boolean) => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations("exams.create.templateNotes");
+  const checkboxId = useId();
+  const hintId = useId();
+  if (!template) return null;
+  const hasYears = template.structureYear != null || template.matrixYear != null;
+  const differ = yearsDiffer(template);
+  if (!hasYears && !template.expertNote) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      {hasYears && (
+        <dl className="flex flex-wrap gap-x-6 gap-y-1 text-body">
+          <div className="flex gap-1.5">
+            <dt className="text-text-muted">{t("structureYear")}</dt>
+            <dd className="m-0 font-semibold text-text tabular-nums">{yearText(template.structureYear) || "—"}</dd>
+          </div>
+          <div className="flex gap-1.5">
+            <dt className="text-text-muted">{t("matrixYear")}</dt>
+            <dd className="m-0 font-semibold text-text tabular-nums">{yearText(template.matrixYear) || "—"}</dd>
+          </div>
+        </dl>
+      )}
+      {differ && (
+        <div data-field="yearsConfirmed" className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning-bg p-3">
+          <p className="flex items-start gap-2 text-body font-medium text-text">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+            {t("yearsDiffer", {
+              structureYear: yearText(template.structureYear),
+              matrixYear: yearText(template.matrixYear),
+            })}
+          </p>
+          <div className="flex items-start gap-2.5">
+            <Checkbox
+              id={checkboxId}
+              checked={yearsConfirmed}
+              disabled={disabled}
+              aria-describedby={hintId}
+              onCheckedChange={(checked) => onYearsConfirmedChange(checked === true)}
+              className="mt-0.5"
+            />
+            <div className="flex flex-col gap-0.5">
+              <label htmlFor={checkboxId} className="cursor-pointer font-medium text-text">
+                {t("yearsConfirm", { matrixYear: yearText(template.matrixYear) })}
+              </label>
+              <p id={hintId} className="text-caption text-text-secondary">
+                {t("yearsConfirmHint")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {template.expertNote && (
+        <div className="flex items-start gap-2 rounded-md border border-border bg-subtle px-3 py-2.5 text-body">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
+          <p className="flex flex-col gap-0.5">
+            <span className="font-semibold text-text">{t("expertNote")}</span>
+            <span className="text-text-secondary">{template.expertNote}</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Thời lượng và thang điểm: kỳ thi dùng thời lượng chung có một ô thời lượng chung (phần không có ô thời lượng); thang
+ * điểm bắt buộc trừ kỳ thi không có thang cố định (V-ACT để trống được).
+ */
+export function TimingScoreFields({
+  timing,
+  sharedDuration,
+  onSharedDurationChange,
+  sharedDurationError,
+  partMinutes,
+  maxScore,
+  onMaxScoreChange,
+  maxScoreError,
+  maxScoreOptional,
+  disabled,
+  children,
+}: {
+  timing: ExamTiming;
+  sharedDuration: number;
+  onSharedDurationChange: (minutes: number) => void;
+  sharedDurationError?: string;
+  /** Tổng thời lượng các phần khi tính theo phần (chỉ đọc). */
+  partMinutes: number;
+  maxScore: number | null;
+  onMaxScoreChange: (value: number | null) => void;
+  maxScoreError?: string;
+  maxScoreOptional: boolean;
+  disabled?: boolean;
+  children?: ReactNode;
+}) {
+  const t = useTranslations("exams.create.timing");
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {timing === "SHARED" ? (
+          <div data-field="sharedDuration">
+            <FormField label={t("sharedDuration")} required hint={t("sharedHint")} error={sharedDurationError}>
+              {(controlProps) => (
+                <OptionalNumberInput
+                  {...controlProps}
+                  name="sharedDuration"
+                  disabled={disabled}
+                  value={sharedDuration > 0 ? sharedDuration : null}
+                  onValueChange={(value) => onSharedDurationChange(value ?? 0)}
+                />
+              )}
+            </FormField>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-field-label font-medium text-text-secondary">{t("perPart")}</p>
+            <p className="flex min-h-10 flex-col justify-center text-body">
+              <span className="font-semibold text-text tabular-nums">{t("minutesValue", { count: partMinutes })}</span>
+              <span className="text-caption text-text-muted">{t("perPartHint")}</span>
+            </p>
+          </div>
+        )}
+        <div data-field="maxScore">
+          <FormField
+            label={t("maxScore")}
+            required={!maxScoreOptional}
+            hint={maxScoreOptional ? t("maxScoreOptionalHint") : t("maxScoreHint")}
+            error={maxScoreError}
+          >
+            {(controlProps) => (
+              <OptionalNumberInput
+                {...controlProps}
+                name="maxScore"
+                disabled={disabled}
+                value={maxScore}
+                onValueChange={onMaxScoreChange}
+              />
+            )}
+          </FormField>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Các trường Thông tin chung của tab Thông tin chung (UniNote PBI-04 mục 4; spec 7 kỳ thi): tên, mã, kỳ thi, hình thức,
+ * phần/môn bài lẻ, môn và mẫu theo năm, ghi chú của mẫu, thời lượng chung, thang điểm, mô tả. `lockScope` khóa kỳ thi,
+ * hình thức, môn, mẫu (bài đã công bố). Đổi phạm vi gọi `onScopeChange` để chọn lại mẫu.
  */
 export function ExamInfoFields({
   control,
   register,
   errors,
   values,
+  kinds,
+  subjects,
+  templates,
+  partMinutes,
   lockScope = false,
   lockScopeHint,
   onScopeChange,
@@ -195,17 +593,23 @@ export function ExamInfoFields({
   control: Control<ExamInfoFormValues>;
   register: UseFormRegister<ExamInfoFormValues>;
   errors: FieldErrors<ExamInfoFormValues>;
-  values: Pick<ExamInfoFormValues, "kind" | "format">;
+  values: ExamInfoFormValues;
+  kinds: readonly ExamKindOption[];
+  subjects: readonly CatalogOption[];
+  templates: readonly ExamTemplate[];
+  /** Tổng thời lượng các phần đang lưu (bài tính thời lượng theo phần). */
+  partMinutes: number;
   lockScope?: boolean;
   lockScopeHint?: string;
-  /** Gọi sau khi đổi kỳ thi hoặc hình thức, để chọn lại mẫu theo kỳ thi và hình thức. */
-  onScopeChange: (next: { kind: ExamKind; format: ExamFormat }) => void;
+  onScopeChange: (change: Partial<ExamScope>) => void;
   onGenerateCode?: () => void;
   generatingCode?: boolean;
 }) {
   const t = useTranslations("exams.create");
-  const { kindOptions, formatOptions } = useScopeOptions();
   const singleScopes = useSingleScopes();
+  const template = templates.find((item) => item.code === values.templateCode);
+  const kind = kindOptionFor(kinds, values.kind);
+  const timingHeadingId = useId();
 
   return (
     <div className="flex flex-col gap-4">
@@ -239,42 +643,14 @@ export function ExamInfoFields({
         </FormField>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Controller
-          control={control}
-          name="kind"
-          render={({ field }) => (
-            <ChoiceCardGroup
-              legend={t("kind")}
-              name={field.name}
-              value={field.value}
-              required
-              disabled={lockScope}
-              options={kindOptions}
-              onChange={(kind) => {
-                field.onChange(kind);
-                onScopeChange({ kind, format: values.format });
-              }}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="format"
-          render={({ field }) => (
-            <ChoiceCardGroup
-              legend={t("format")}
-              name={field.name}
-              value={field.value}
-              required
-              disabled={lockScope}
-              options={formatOptions}
-              onChange={(format) => {
-                field.onChange(format);
-                onScopeChange({ kind: values.kind, format });
-              }}
-            />
-          )}
+      <div className="flex flex-col gap-4">
+        <KindField kinds={kinds} value={values.kind} disabled={lockScope} onChange={(next) => onScopeChange({ kind: next })} />
+        <FormatField
+          kinds={kinds}
+          kind={values.kind}
+          value={values.format}
+          disabled={lockScope}
+          onChange={(format) => onScopeChange({ format })}
         />
       </div>
       {lockScope && lockScopeHint && (
@@ -285,31 +661,77 @@ export function ExamInfoFields({
       )}
 
       {values.format === "SINGLE" && (
-        <Controller
-          control={control}
-          name="singleSubjectCode"
-          render={({ field }) => (
-            <div className="flex flex-col gap-1">
-              <ChoiceCardGroup
-                legend={t("singleSubject")}
-                name={field.name}
-                value={(isSingleScope(field.value) ? field.value : "") as SingleScope}
-                required
-                disabled={lockScope}
-                variant="pill"
-                hint={t("singleSubjectHint")}
-                options={singleScopes.options}
-                onChange={field.onChange}
-              />
-              {errors.singleSubjectCode?.message && (
-                <p role="alert" className="text-caption text-danger">
-                  {errors.singleSubjectCode.message}
-                </p>
-              )}
-            </div>
+        <div data-field="singleSubjectCode" className="flex flex-col gap-1">
+          <ChoiceCardGroup
+            legend={t("singleSubject")}
+            name="singleSubjectCode"
+            value={(isSingleScope(values.singleSubjectCode) ? values.singleSubjectCode : "") as SingleScope}
+            required
+            disabled={lockScope}
+            variant="pill"
+            hint={t("singleSubjectHint")}
+            options={singleScopes.options}
+            onChange={(scope) => onScopeChange({ singleScope: scope })}
+          />
+          {errors.singleSubjectCode?.message && (
+            <p role="alert" className="text-caption text-danger">
+              {errors.singleSubjectCode.message}
+            </p>
           )}
+        </div>
+      )}
+
+      {isSubjectKind(kinds, values.kind) && (
+        <SubjectTemplateFields
+          kind={values.kind}
+          format={values.format}
+          subjects={subjects}
+          templates={templates}
+          subjectCode={values.subjectCode}
+          templateCode={values.templateCode}
+          subjectError={errors.subjectCode?.message}
+          disabled={lockScope}
+          onSubjectChange={(subjectCode) => onScopeChange({ subjectCode })}
+          onTemplateChange={(templateCode) => onScopeChange({ templateCode })}
         />
       )}
+
+      <Controller
+        control={control}
+        name="yearsConfirmed"
+        render={({ field }) => (
+          <TemplateNotes template={template} yearsConfirmed={field.value} onYearsConfirmedChange={field.onChange} />
+        )}
+      />
+
+      <section aria-labelledby={timingHeadingId} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+        <h3 id={timingHeadingId} className="text-title font-semibold text-text">
+          {t("sections.timing")}
+        </h3>
+        <Controller
+          control={control}
+          name="sharedDuration"
+          render={({ field: durationField }) => (
+            <Controller
+              control={control}
+              name="maxScore"
+              render={({ field: scoreField }) => (
+                <TimingScoreFields
+                  timing={values.timing}
+                  sharedDuration={durationField.value}
+                  onSharedDurationChange={durationField.onChange}
+                  sharedDurationError={errors.sharedDuration?.message}
+                  partMinutes={partMinutes}
+                  maxScore={scoreField.value}
+                  onMaxScoreChange={scoreField.onChange}
+                  maxScoreError={errors.maxScore?.message}
+                  maxScoreOptional={kind?.maxScore === null}
+                />
+              )}
+            />
+          )}
+        />
+      </section>
 
       <FormField label={t("descriptionLabel")} error={errors.description?.message}>
         {(controlProps) => (
@@ -326,7 +748,10 @@ export function ExamInfoFields({
   );
 }
 
-/** Bảng "Cấu trúc sẽ nạp" của bản vẽ TaoBaiThi: phần, số câu, thời lượng của mẫu đã chọn. */
+/**
+ * Bảng "Cấu trúc sẽ nạp" của bản vẽ TaoBaiThi: phần, số câu, thời lượng (hoặc "chung"), điểm của phần (nếu mẫu chia
+ * điểm theo phần) của mẫu đã chọn.
+ */
 export function TemplatePreview({
   template,
   format,
@@ -343,6 +768,7 @@ export function TemplatePreview({
   const t = useTranslations("exams.create.preview");
   const headingId = useId();
   const Heading = headingLevel === 2 ? "h2" : "h3";
+  const shared = template?.timing === "SHARED";
   const rows =
     format === "SINGLE"
       ? [
@@ -350,6 +776,7 @@ export function TemplatePreview({
             name: subjectName ?? t("subjectPending"),
             questionCount: template?.parts[0]?.questionCount ?? 0,
             durationMinutes: template?.parts[0]?.durationMinutes ?? 0,
+            points: null,
             note: template ? null : t("emptyNote"),
           },
         ]
@@ -357,8 +784,18 @@ export function TemplatePreview({
           name: part.name,
           questionCount: part.questionCount,
           durationMinutes: part.durationMinutes,
-          note: part.mode === "CHOICE" ? t("choiceNote") : null,
+          points: part.points ?? null,
+          note:
+            part.mode === "CHOICE"
+              ? part.options?.length
+                ? t("choiceOptionsNote", { count: part.options.length })
+                : t("choiceNote")
+              : part.sections?.length
+                ? t("sectionsNote", { count: part.sections.length })
+                : null,
         }));
+  const withPoints = rows.some((row) => row.points !== null);
+  const totalMinutes = shared ? (template?.durationMinutes ?? 0) : sum(rows.map((row) => row.durationMinutes ?? 0));
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-lg border border-border bg-subtle p-4">
@@ -379,9 +816,14 @@ export function TemplatePreview({
               <th scope="col" className="border-b border-border px-2 py-2 text-right font-semibold">
                 {t("questions")}
               </th>
-              <th scope="col" className="border-b border-border py-2 pl-2 text-right font-semibold">
+              <th scope="col" className="border-b border-border px-2 py-2 text-right font-semibold">
                 {t("duration")}
               </th>
+              {withPoints && (
+                <th scope="col" className="border-b border-border py-2 pl-2 text-right font-semibold">
+                  {t("points")}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -394,9 +836,14 @@ export function TemplatePreview({
                 <td className="border-b border-border px-2 py-2 text-right whitespace-nowrap">
                   {t("questionsValue", { count: row.questionCount })}
                 </td>
-                <td className="border-b border-border py-2 pl-2 text-right whitespace-nowrap">
-                  {t("durationValue", { count: row.durationMinutes ?? 0 })}
+                <td className="border-b border-border px-2 py-2 text-right whitespace-nowrap">
+                  {shared ? t("durationShared") : t("durationValue", { count: row.durationMinutes ?? 0 })}
                 </td>
+                {withPoints && (
+                  <td className="border-b border-border py-2 pl-2 text-right whitespace-nowrap">
+                    {row.points === null ? "—" : t("pointsValue", { count: row.points })}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -408,9 +855,14 @@ export function TemplatePreview({
               <td className="px-2 py-2 text-right whitespace-nowrap">
                 {t("questionsValue", { count: sum(rows.map((row) => row.questionCount)) })}
               </td>
-              <td className="py-2 pl-2 text-right whitespace-nowrap">
-                {t("durationValue", { count: sum(rows.map((row) => row.durationMinutes ?? 0)) })}
+              <td className="px-2 py-2 text-right whitespace-nowrap">
+                {shared ? t("durationSharedValue", { count: totalMinutes }) : t("durationValue", { count: totalMinutes })}
               </td>
+              {withPoints && (
+                <td className="py-2 pl-2 text-right whitespace-nowrap">
+                  {t("pointsValue", { count: sum(rows.map((row) => row.points ?? 0)) })}
+                </td>
+              )}
             </tr>
           </tfoot>
         </table>

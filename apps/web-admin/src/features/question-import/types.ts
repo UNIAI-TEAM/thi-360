@@ -22,6 +22,7 @@ export const IMPORT_FIELDS = [
   "knowledge",
   "tags",
   "setCode",
+  "rubric",
 ] as const;
 export type ImportField = (typeof IMPORT_FIELDS)[number];
 
@@ -100,6 +101,8 @@ export const IMPORT_ISSUE_CODES = [
   "SET_NO_CHILDREN",
   "KNOWLEDGE_MISSING",
   "TAG_UNKNOWN",
+  "RUBRIC_INVALID",
+  "RUBRIC_MISSING",
 ] as const;
 export type ImportIssueCode = (typeof IMPORT_ISSUE_CODES)[number];
 
@@ -140,6 +143,12 @@ export interface ImportDraftStatement {
   answer: boolean | null;
 }
 
+/** Một tiêu chí chấm của câu Tự luận đọc từ cột Tiêu chí chấm ("Mô tả: điểm", các tiêu chí cách nhau dấu ;). */
+export interface ImportDraftCriterion {
+  description: string;
+  points: number;
+}
+
 /** Câu hỏi đọc được từ một dòng, dùng cho xem trước và để tạo câu khi nhập. */
 export interface ImportQuestionDraft {
   type: QuestionType | null;
@@ -148,6 +157,9 @@ export interface ImportQuestionDraft {
   options: ImportDraftOption[];
   statements: ImportDraftStatement[];
   acceptedAnswers: string[];
+  /** Tự luận: tiêu chí chấm (rỗng khi tệp không có, câu ở Nháp tới khi bổ sung) và bài làm mẫu (cột Đáp án). */
+  rubric: ImportDraftCriterion[];
+  sampleAnswer: string | null;
   solution: string | null;
   subjectCode: string | null;
   gradeCode: string | null;

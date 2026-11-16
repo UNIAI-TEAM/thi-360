@@ -12,7 +12,7 @@ import type {
   PathCheck,
   PathChoice,
 } from "./review-types";
-import { apportionByPercent } from "./matrix";
+import { apportionByPercent, printedPartQuestions } from "./matrix";
 import { CHECK_GROUPS } from "./review-types";
 import type { BlockMatrix, ExamDetail, ExamPart, ExamSection, MatrixDimensionValue, QuestionBlock } from "./types";
 
@@ -59,7 +59,8 @@ export function enumeratePaths(parts: readonly ExamPart[], nameOf: ChoiceNameRes
           optionId: option.id,
           kind: option.kind,
           code: option.code,
-          name: option.kind === "BRANCH" ? (option.name ?? option.code) : nameOf(option.kind, option.code),
+          // Nhánh và tổ hợp sinh từ "chọn k trong n" (chưa có mã danh mục) mang tên riêng; còn lại lấy theo danh mục.
+          name: option.name ?? (option.kind === "BRANCH" ? option.code : nameOf(option.kind, option.code)),
         },
       ]),
     );
@@ -76,21 +77,29 @@ export interface PathSectionGroup {
   sections: ExamSection[];
 }
 
-/** Các phần của một đường, mỗi phần kèm môn mà đường đó làm (phần cố định: mọi môn; phần tự chọn: môn của lựa chọn). */
+/**
+ * Các phần của một đường, mỗi phần kèm môn mà đường đó làm: phần cố định mọi môn; phần tự chọn môn chung (nếu có) rồi
+ * môn của lựa chọn đã chọn.
+ */
 export function pathSections(parts: readonly ExamPart[], path: ExamPathRef): PathSectionGroup[] {
   return sortedParts(parts).map((part) => {
     if (part.mode !== "CHOICE") return { part, optionId: null, sections: part.sections };
     const choice = path.choices.find((item) => item.partId === part.id);
     const option = part.options.find((item) => item.id === choice?.optionId);
-    return { part, optionId: option?.id ?? null, sections: option?.sections ?? [] };
+    return { part, optionId: option?.id ?? null, sections: [...part.sections, ...(option?.sections ?? [])] };
   });
+}
+
+/** Lựa chọn chứa môn trong đường: môn chung của phần tự chọn không thuộc lựa chọn nào (`null`). */
+export function sectionOptionId(group: PathSectionGroup, section: ExamSection): string | null {
+  return group.part.mode === "CHOICE" && group.part.sections.some((item) => item.id === section.id) ? null : group.optionId;
 }
 
 /* ---------- Chỉ tiêu của khối ---------- */
 
 interface MatrixIssue {
   code: Extract<CheckIssueCode, "MATRIX_NEGATIVE" | "PERCENT_TOTAL_INVALID" | "MATRIX_TOTAL_MISMATCH">;
-  dimension: "GRADE" | "DIFFICULTY" | null;
+  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | null;
   required: number;
   available: number;
 }
@@ -123,9 +132,21 @@ export function resolveBlockRequirement(block: QuestionBlock): {
   issues: MatrixIssue[];
 } {
   const { matrix, questionCount } = block;
+  const dimension = (values: readonly MatrixDimensionValue[], name: "GRADE" | "DIFFICULTY" | "COMPETENCY") => {
+    const resolved = resolveValues(questionCount, matrix.unit, values.map((item) => item.value), name);
+    return {
+      list: resolved.counts?.map((required, index) => ({ code: values[index]!.code, required })) ?? null,
+      issues: resolved.issues,
+    };
+  };
+  // Chiều năng lực (V-ACT) cộng thêm vào ma trận Lớp × Độ khó; khối không khai báo thì bỏ qua.
+  const competency: { list: BlockRequirement["byCompetency"] | null; issues: MatrixIssue[] } = matrix.byCompetency?.length
+    ? dimension(matrix.byCompetency, "COMPETENCY")
+    : { list: [], issues: [] };
   if (matrix.mode === "COMBINED") {
     const resolved = resolveValues(questionCount, matrix.unit, matrix.cells.map((cell) => cell.value), null);
-    if (!resolved.counts) return { requirement: null, issues: resolved.issues };
+    const issues = [...resolved.issues, ...competency.issues];
+    if (!resolved.counts || !competency.list) return { requirement: null, issues };
     const counts = resolved.counts;
     return {
       requirement: {
@@ -137,23 +158,23 @@ export function resolveBlockRequirement(block: QuestionBlock): {
         })),
         byGrade: [],
         byDifficulty: [],
+        byCompetency: competency.list,
       },
-      issues: [],
+      issues,
     };
   }
-  const dimension = (values: MatrixDimensionValue[], name: "GRADE" | "DIFFICULTY") => {
-    const resolved = resolveValues(questionCount, matrix.unit, values.map((item) => item.value), name);
-    return {
-      list: resolved.counts?.map((required, index) => ({ code: values[index]!.code, required })) ?? null,
-      issues: resolved.issues,
-    };
-  };
   const byGrade = dimension(matrix.byGrade, "GRADE");
   const byDifficulty = dimension(matrix.byDifficulty, "DIFFICULTY");
-  const issues = [...byGrade.issues, ...byDifficulty.issues];
-  if (!byGrade.list || !byDifficulty.list) return { requirement: null, issues };
+  const issues = [...byGrade.issues, ...byDifficulty.issues, ...competency.issues];
+  if (!byGrade.list || !byDifficulty.list || !competency.list) return { requirement: null, issues };
   return {
-    requirement: { mode: "SEPARATE", cells: [], byGrade: byGrade.list, byDifficulty: byDifficulty.list },
+    requirement: {
+      mode: "SEPARATE",
+      cells: [],
+      byGrade: byGrade.list,
+      byDifficulty: byDifficulty.list,
+      byCompetency: competency.list,
+    },
     issues,
   };
 }
@@ -271,6 +292,19 @@ const GROUP_OF: Record<CheckIssueCode, CheckGroup> = {
   MATRIX_INFEASIBLE: "SOURCE",
   SET_SHORTAGE: "QUESTION_SET",
   OVERLAP_UNCONFIRMED: "OVERLAP",
+  YEARS_UNCONFIRMED: "INFO",
+  OPTION_UNCONFIRMED: "STRUCTURE",
+  PART_POINTS_MISMATCH: "POINTS",
+  POINTS_TOTAL_MISMATCH: "POINTS",
+  COMPETENCY_SHORTAGE: "SOURCE",
+  RUBRIC_MISSING: "SOURCE",
+  SCORING_MISMATCH: "POINTS",
+};
+
+/** Mức của từng mã: chưa xác nhận được (giới hạn xử lý), cảnh báo không chặn công bố; còn lại là lỗi. */
+const SEVERITY_OF: Partial<Record<CheckIssueCode, CheckIssue["severity"]>> = {
+  OVERLAP_UNCONFIRMED: "UNCONFIRMED",
+  SCORING_MISMATCH: "WARNING",
 };
 
 type IssueInput = Partial<Omit<CheckIssue, "key" | "code" | "severity" | "group">> & { code: CheckIssueCode };
@@ -278,7 +312,7 @@ type IssueInput = Partial<Omit<CheckIssue, "key" | "code" | "severity" | "group"
 function makeIssue(input: IssueInput): CheckIssue {
   const issue: Omit<CheckIssue, "key"> = {
     code: input.code,
-    severity: input.code === "OVERLAP_UNCONFIRMED" ? "UNCONFIRMED" : "ERROR",
+    severity: SEVERITY_OF[input.code] ?? "ERROR",
     group: GROUP_OF[input.code],
     partId: input.partId ?? null,
     partName: input.partName ?? null,
@@ -290,9 +324,11 @@ function makeIssue(input: IssueInput): CheckIssue {
     gradeCode: input.gradeCode ?? null,
     difficultyCode: input.difficultyCode ?? null,
     dimension: input.dimension ?? null,
+    competencyCode: input.competencyCode ?? null,
     required: input.required ?? null,
     available: input.available ?? null,
     timeLimitSeconds: input.timeLimitSeconds ?? null,
+    questionCodes: input.questionCodes ?? null,
   };
   const key = [
     issue.code,
@@ -301,6 +337,7 @@ function makeIssue(input: IssueInput): CheckIssue {
     issue.gradeCode ?? "",
     issue.difficultyCode ?? "",
     issue.dimension ?? "",
+    issue.competencyCode ?? "",
   ].join("|");
   return { key, ...issue };
 }
@@ -416,6 +453,35 @@ export function checkBlock(
     issues.push(...diagnoseSeparate(requirement, capacity, base));
   }
 
+  // Chiều năng lực: mỗi năng lực cần đủ câu nguồn (kiểm riêng, chưa ghép đồng thời với Lớp × Độ khó).
+  for (const item of requirement?.byCompetency ?? []) {
+    const have = availability?.competencies?.find((entry) => entry.code === item.code)?.count ?? 0;
+    if (item.required > have) {
+      issues.push(
+        makeIssue({
+          ...base,
+          code: "COMPETENCY_SHORTAGE",
+          dimension: "COMPETENCY",
+          competencyCode: item.code,
+          required: item.required,
+          available: have,
+        }),
+      );
+    }
+  }
+
+  // Tự luận chấm tay theo tiêu chí: câu nguồn thiếu tiêu chí chấm thì chưa công bố được.
+  if (availability?.missingRubric?.length) {
+    issues.push(
+      makeIssue({
+        ...base,
+        code: "RUBRIC_MISSING",
+        available: availability.missingRubric.length,
+        questionCodes: availability.missingRubric,
+      }),
+    );
+  }
+
   const availableSets = isSet ? (availability?.setCount ?? 0) : null;
   if (isSet && block.setCount !== null && availableSets !== null && availableSets < block.setCount) {
     issues.push(makeIssue({ ...base, code: "SET_SHORTAGE", required: block.setCount, available: availableSets }));
@@ -428,7 +494,20 @@ export function checkBlock(
     );
   }
 
+  // Quy tắc chấm nằm trên từng câu: câu nguồn khác quy tắc mong đợi của khối chỉ cảnh báo, không chặn sinh đề.
+  if (availability?.scoringMismatch?.length) {
+    issues.push(
+      makeIssue({
+        ...base,
+        code: "SCORING_MISMATCH",
+        available: availability.scoringMismatch.length,
+        questionCodes: availability.scoringMismatch,
+      }),
+    );
+  }
+
   const hasError = issues.some((issue) => issue.severity === "ERROR");
+  const hasUnconfirmed = issues.some((issue) => issue.severity === "UNCONFIRMED");
   return {
     partId: part.id,
     partName: part.name,
@@ -445,7 +524,7 @@ export function checkBlock(
     available,
     availableSets,
     requirement,
-    result: hasError ? "NOT_FOUND" : issues.length ? "UNCONFIRMED" : "FOUND",
+    result: hasError ? "NOT_FOUND" : hasUnconfirmed ? "UNCONFIRMED" : "FOUND",
     issues,
   };
 }
@@ -456,10 +535,28 @@ function dedupe(issues: readonly CheckIssue[]): CheckIssue[] {
   return [...seen.values()];
 }
 
+/** Kết quả của đường: có lỗi là Không hợp lệ; có vấn đề chưa xác nhận được là Chưa xác nhận; cảnh báo không tính. */
 export function pathResultOf(issues: readonly CheckIssue[]): PathCheck["result"] {
   if (issues.some((issue) => issue.severity === "ERROR")) return "INVALID";
-  if (issues.length) return "UNCONFIRMED";
+  if (issues.some((issue) => issue.severity === "UNCONFIRMED")) return "UNCONFIRMED";
   return "VALID";
+}
+
+/** Năm cấu trúc khác năm ma trận (SP2E 2026 dùng ma trận 2025) mà chuyên gia chưa xác nhận chỉ tiêu. */
+export function yearsNeedConfirmation(exam: Pick<ExamDetail, "structureYear" | "matrixYear" | "yearsConfirmed">): boolean {
+  return (
+    exam.structureYear !== null && exam.matrixYear !== null && exam.structureYear !== exam.matrixYear && !exam.yearsConfirmed
+  );
+}
+
+const POINTS_TOLERANCE = 1e-6;
+
+function roundPoints(value: number): number {
+  return Math.round(value * 1e6) / 1e6;
+}
+
+function pointsOf(blocks: readonly QuestionBlock[]): number {
+  return roundPoints(blocks.reduce((sum, block) => sum + block.questionCount * block.pointsPerQuestion, 0));
 }
 
 export interface CheckExamOptions {
@@ -479,6 +576,11 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
   if (!exam.name.trim() || !exam.code.trim() || (exam.format === "SINGLE" && !exam.singleSubjectCode)) {
     examIssues.push(makeIssue({ code: "INFO_MISSING" }));
   }
+  if (yearsNeedConfirmation(exam)) {
+    examIssues.push(
+      makeIssue({ code: "YEARS_UNCONFIRMED", required: exam.structureYear ?? 0, available: exam.matrixYear ?? 0 }),
+    );
+  }
   for (const part of parts) {
     if (part.mode === "CHOICE" && part.options.length === 0) {
       examIssues.push(makeIssue({ code: "OPTION_EMPTY", partId: part.id, partName: part.name }));
@@ -492,9 +594,32 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     let totalQuestions = 0;
     let totalMinutes = 0;
     let totalPoints = 0;
+    for (const choice of path.choices) {
+      const part = parts.find((item) => item.id === choice.partId);
+      const option = part?.options.find((item) => item.id === choice.optionId);
+      // Số câu từng môn của lựa chọn chờ chuyên gia xác nhận (HSA chia 17–17–16): chưa công bố được đường này.
+      if (part && option?.expertConfirmed === false) {
+        issues.push(makeIssue({ code: "OPTION_UNCONFIRMED", partId: part.id, partName: part.name, optionId: option.id }));
+      }
+    }
     for (const group of pathSections(parts, path)) {
       const { part, optionId, sections } = group;
       totalMinutes += part.durationMinutes ?? 0;
+      if (part.points !== null && part.points !== undefined) {
+        const points = pointsOf(sections.flatMap((section) => section.blocks));
+        if (Math.abs(points - part.points) > POINTS_TOLERANCE) {
+          issues.push(
+            makeIssue({
+              code: "PART_POINTS_MISMATCH",
+              partId: part.id,
+              partName: part.name,
+              optionId,
+              required: part.points,
+              available: points,
+            }),
+          );
+        }
+      }
       const sectionSum = sections.reduce((sum, section) => sum + section.questionCount, 0);
       if (sectionSum !== part.questionCount) {
         issues.push(
@@ -509,6 +634,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
         );
       }
       for (const section of sections) {
+        const sectionOption = sectionOptionId(group, section);
         const blockSum = section.blocks.reduce((sum, block) => sum + block.questionCount, 0);
         if (blockSum !== section.questionCount) {
           issues.push(
@@ -518,7 +644,7 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
               partName: part.name,
               sectionId: section.id,
               subjectCode: section.subjectCode,
-              optionId,
+              optionId: sectionOption,
               required: section.questionCount,
               available: blockSum,
             }),
@@ -527,7 +653,12 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
         for (const block of section.blocks) {
           let checked = blockCache.get(block.id);
           if (!checked) {
-            checked = checkBlock(block, { part, section, optionId }, availability.blocks[block.id], timeLimitSeconds);
+            checked = checkBlock(
+              block,
+              { part, section, optionId: sectionOption },
+              availability.blocks[block.id],
+              timeLimitSeconds,
+            );
             blockCache.set(block.id, checked);
           }
           blocks.push(checked);
@@ -540,12 +671,17 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     if (totalQuestions !== exam.totalQuestions) {
       issues.push(makeIssue({ code: "PATH_TOTAL_MISMATCH", required: exam.totalQuestions, available: totalQuestions }));
     }
+    totalPoints = roundPoints(totalPoints);
+    // Kỳ thi có thang điểm (BCA 100, THPTQG 10): tổng điểm mỗi đường phải bằng thang.
+    if (exam.maxScore !== null && Math.abs(totalPoints - exam.maxScore) > POINTS_TOLERANCE) {
+      issues.push(makeIssue({ code: "POINTS_TOTAL_MISMATCH", required: exam.maxScore, available: totalPoints }));
+    }
     return {
       ...path,
       result: pathResultOf(issues),
       partIds: parts.map((part) => part.id),
       totalQuestions,
-      totalMinutes,
+      totalMinutes: exam.timing === "SHARED" ? exam.durationMinutes : totalMinutes,
       totalPoints,
       blocks,
       issues,
@@ -558,13 +694,16 @@ export function checkExam(exam: ExamDetail, availability: ExamAvailability, opti
     const status = issues.some((issue) => issue.severity === "ERROR") ? "FAIL" : issues.length ? "WARN" : "PASS";
     return { group, status, issues };
   });
+  const blocking = allIssues.some((issue) => issue.severity !== "WARNING");
 
   return {
-    status: allIssues.length === 0 && paths.length > 0 ? "VALID" : "INVALID",
+    status: !blocking && paths.length > 0 ? "VALID" : "INVALID",
     issueCount: allIssues.length,
     paths,
     groups,
     partCount: parts.length,
     totalPoints: paths[0]?.totalPoints ?? 0,
+    printedQuestions: parts.reduce((sum, part) => sum + printedPartQuestions(part), 0),
+    maxScore: exam.maxScore,
   };
 }

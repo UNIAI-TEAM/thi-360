@@ -138,6 +138,15 @@ function nextQuestionNumber(): number {
   }, 0);
 }
 
+/**
+ * Điểm của câu nhập vào: tệp chưa có cột Điểm nên câu đơn 1 điểm; câu Tự luận có tiêu chí chấm thì bằng tổng điểm tiêu
+ * chí (để hướng dẫn chấm khớp điểm của câu).
+ */
+function draftPoints(draft: ImportQuestionDraft): number {
+  if (draft.type !== "ESSAY" || draft.rubric.length === 0) return DEFAULT_POINTS;
+  return Math.round(draft.rubric.reduce((sum, criterion) => sum + criterion.points, 0) * 1000) / 1000;
+}
+
 function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: string[]): QuestionBody {
   switch (draft.type) {
     case "MULTIPLE_CHOICE":
@@ -163,6 +172,14 @@ function bodyFromDraft(draft: ImportQuestionDraft, idPrefix: string, childIds: s
       };
     case "FILL_IN":
       return { type: "FILL_IN", blanks: [{ id: `${idPrefix}-b1`, acceptedAnswers: draft.acceptedAnswers }] };
+    case "ESSAY":
+      return {
+        type: "ESSAY",
+        maxPoints: draftPoints(draft),
+        rubric: draft.rubric.map((criterion, index) => ({ id: `${idPrefix}-r${index + 1}`, ...criterion })),
+        sampleAnswer: draft.sampleAnswer,
+        wordLimit: null,
+      };
     default:
       return { type: "QUESTION_SET", passage: draft.content, childIds };
   }
@@ -188,7 +205,7 @@ function questionFromRow(
     subjectCode: draft.subjectCode ?? "",
     gradeCode: draft.gradeCode ?? "",
     difficultyCode: draft.difficultyCode ?? "",
-    points: row.isSetPassage ? Math.max(1, childQuestions.length) : 1,
+    points: row.isSetPassage ? childQuestions.reduce((sum, child) => sum + child.points, 0) || 1 : draftPoints(draft),
     knowledge: draft.knowledge,
     tagCodes: draft.tagCodes,
     hasSolution: Boolean(solution) || childQuestions.some((child) => child.hasSolution),

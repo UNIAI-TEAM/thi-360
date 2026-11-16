@@ -11,6 +11,12 @@ import type { QuestionEditorValues } from "../editor-form";
 export type BodyPath = "body" | `children.${number}.body`;
 /** Đường dẫn tới đề bài tương ứng (để chèn chỗ trống `___`). */
 export type ContentPath = "content" | `children.${number}.content`;
+/** Đường dẫn tới ô Điểm của câu đơn hoặc câu con (bảng điểm Đúng/Sai, tổng điểm tiêu chí Tự luận). */
+export type PointsPath = "points" | `children.${number}.points`;
+
+export function pointsPathOf(prefix: BodyPath): PointsPath {
+  return prefix === "body" ? "points" : (prefix.replace(/\.body$/, ".points") as PointsPath);
+}
 
 /** Một `LiveStatus` cho cả biểu mẫu: các khối soạn báo kết quả đổi thứ tự, thêm, xóa qua đây. */
 const AnnounceContext = createContext<(message: string) => void>(() => {});

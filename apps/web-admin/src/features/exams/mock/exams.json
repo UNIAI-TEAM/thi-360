@@ -2238,7 +2238,7 @@
       "singleSubjectCode": "MATH",
       "subjectCode": null,
       "timing": "PER_PART",
-      "maxScore": 150,
+      "maxScore": 50,
       "hasEssay": false,
       "check": {
         "status": "VALID",
@@ -2363,7 +2363,7 @@
       "singleSubjectCode": "ENGLISH",
       "subjectCode": null,
       "timing": "PER_PART",
-      "maxScore": 150,
+      "maxScore": 50,
       "hasEssay": false,
       "check": {
         "status": "VALID",
@@ -4279,6 +4279,1417 @@
           "note": "Ngừng bán từ 30/10/2026"
         }
       ]
+    },
+    {
+      "id": "ex-bca-f-001",
+      "code": "BCA-F-001",
+      "name": "BCA · Đề luyện số 1",
+      "kind": "BCA",
+      "format": "FULL",
+      "status": "DRAFT",
+      "servingVersion": null,
+      "hasUnpublishedChanges": true,
+      "totalQuestions": 81,
+      "durationMinutes": 180,
+      "englishOption": false,
+      "combinationCount": 4,
+      "singleSubjectCode": null,
+      "subjectCode": null,
+      "timing": "SHARED",
+      "maxScore": 100,
+      "hasEssay": true,
+      "check": {
+        "status": "UNCHECKED",
+        "issueCount": 0,
+        "checkedAt": null
+      },
+      "attemptCount": 0,
+      "updatedAt": "2026-11-16T09:10:00+07:00",
+      "updatedBy": {
+        "id": "u-ngoc",
+        "name": "Nguyễn Thị Ngọc"
+      },
+      "description": "Đề mẫu BCA: tự luận Ngữ văn, trắc nghiệm bắt buộc và một tổ hợp tự chọn; 180 phút chung, thang 100.",
+      "templateCode": "BCA_FULL",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
+      "versions": [
+        {
+          "version": null,
+          "state": "WORKING",
+          "publishedAt": null,
+          "publishedBy": null,
+          "attemptCount": 0,
+          "note": null
+        }
+      ],
+      "parts": [
+        {
+          "id": "part-b1",
+          "order": 1,
+          "name": "Phần 1 · Tự luận Ngữ văn",
+          "durationMinutes": null,
+          "questionCount": 1,
+          "mode": "FIXED",
+          "sections": [
+            {
+              "id": "sec-b1",
+              "subjectCode": "LITERATURE",
+              "questionCount": 1,
+              "blocks": [
+                {
+                  "id": "blk-b1",
+                  "name": "Bài nghị luận",
+                  "questionType": "ESSAY",
+                  "questionCount": 1,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 25,
+                  "knowledgeScope": {
+                    "nodeIds": [
+                      "kn-2V1"
+                    ],
+                    "match": "ANY",
+                    "includeDescendants": true
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_12",
+                        "value": 1
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "HIGH_APPLICATION",
+                        "value": 1
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": [],
+          "points": 25
+        },
+        {
+          "id": "part-b2",
+          "order": 2,
+          "name": "Phần 2 · Trắc nghiệm bắt buộc",
+          "durationMinutes": null,
+          "questionCount": 65,
+          "mode": "FIXED",
+          "sections": [
+            {
+              "id": "sec-b2-1",
+              "subjectCode": "MATH",
+              "questionCount": 35,
+              "blocks": [
+                {
+                  "id": "blk-b2-1",
+                  "name": "Trắc nghiệm một đáp án",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 30,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [
+                      "kn-0D1",
+                      "kn-0D2",
+                      "kn-1D4",
+                      "kn-1D5"
+                    ],
+                    "match": "ANY",
+                    "includeDescendants": true
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_10",
+                        "value": 8
+                      },
+                      {
+                        "code": "GRADE_11",
+                        "value": 10
+                      },
+                      {
+                        "code": "GRADE_12",
+                        "value": 12
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 9
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 12
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 7
+                      },
+                      {
+                        "code": "HIGH_APPLICATION",
+                        "value": 2
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "blk-b2-2",
+                  "name": "Nhiều đáp án",
+                  "questionType": "MULTIPLE_CHOICE",
+                  "questionCount": 5,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [
+                      "kn-0D1",
+                      "kn-0D2",
+                      "kn-1D4",
+                      "kn-1D5"
+                    ],
+                    "match": "ANY",
+                    "includeDescendants": true
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "COMBINED",
+                    "unit": "COUNT",
+                    "cells": [
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "RECOGNITION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "COMPREHENSION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "APPLICATION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "HIGH_APPLICATION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "RECOGNITION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "COMPREHENSION",
+                        "value": 2
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "APPLICATION",
+                        "value": 2
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "HIGH_APPLICATION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "RECOGNITION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "COMPREHENSION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "APPLICATION",
+                        "value": 1
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "HIGH_APPLICATION",
+                        "value": 0
+                      }
+                    ],
+                    "byGrade": [],
+                    "byDifficulty": []
+                  },
+                  "expectedScoring": {
+                    "multipleChoiceRule": "ALL_OR_NOTHING"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "sec-b2-2",
+              "subjectCode": "HISTORY",
+              "questionCount": 10,
+              "blocks": [
+                {
+                  "id": "blk-b2-3",
+                  "name": "Lịch sử",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 10,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 0.5,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_11",
+                        "value": 4
+                      },
+                      {
+                        "code": "GRADE_12",
+                        "value": 6
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 4
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 4
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 2
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "sec-b2-3",
+              "subjectCode": "ENGLISH",
+              "questionCount": 20,
+              "blocks": [
+                {
+                  "id": "blk-b2-4",
+                  "name": "Tiếng Anh",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 20,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_10",
+                        "value": 5
+                      },
+                      {
+                        "code": "GRADE_11",
+                        "value": 7
+                      },
+                      {
+                        "code": "GRADE_12",
+                        "value": 8
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 6
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 8
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 5
+                      },
+                      {
+                        "code": "HIGH_APPLICATION",
+                        "value": 1
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": [],
+          "points": 60
+        },
+        {
+          "id": "part-b3",
+          "order": 3,
+          "name": "Phần 3 · Tự chọn",
+          "durationMinutes": null,
+          "questionCount": 15,
+          "mode": "CHOICE",
+          "sections": [],
+          "options": [
+            {
+              "id": "opt-b3-1",
+              "kind": "COMBINATION",
+              "code": "CA1",
+              "sections": [
+                {
+                  "id": "sec-b3-1",
+                  "subjectCode": "PHYSICS",
+                  "questionCount": 15,
+                  "blocks": [
+                    {
+                      "id": "blk-b3-1",
+                      "name": "Trắc nghiệm",
+                      "questionType": "SINGLE_CHOICE",
+                      "questionCount": 15,
+                      "setCount": null,
+                      "setSize": null,
+                      "pointsPerQuestion": 1,
+                      "knowledgeScope": {
+                        "nodeIds": [],
+                        "match": "ANY",
+                        "includeDescendants": true
+                      },
+                      "tagCodes": [],
+                      "matrix": {
+                        "mode": "SEPARATE",
+                        "unit": "COUNT",
+                        "cells": [],
+                        "byGrade": [
+                          {
+                            "code": "GRADE_10",
+                            "value": 4
+                          },
+                          {
+                            "code": "GRADE_11",
+                            "value": 5
+                          },
+                          {
+                            "code": "GRADE_12",
+                            "value": 6
+                          }
+                        ],
+                        "byDifficulty": [
+                          {
+                            "code": "RECOGNITION",
+                            "value": 5
+                          },
+                          {
+                            "code": "COMPREHENSION",
+                            "value": 5
+                          },
+                          {
+                            "code": "APPLICATION",
+                            "value": 4
+                          },
+                          {
+                            "code": "HIGH_APPLICATION",
+                            "value": 1
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "expertConfirmed": true
+            },
+            {
+              "id": "opt-b3-2",
+              "kind": "COMBINATION",
+              "code": "CA2",
+              "sections": [
+                {
+                  "id": "sec-b3-2",
+                  "subjectCode": "CHEMISTRY",
+                  "questionCount": 15,
+                  "blocks": [
+                    {
+                      "id": "blk-b3-2",
+                      "name": "Trắc nghiệm",
+                      "questionType": "SINGLE_CHOICE",
+                      "questionCount": 15,
+                      "setCount": null,
+                      "setSize": null,
+                      "pointsPerQuestion": 1,
+                      "knowledgeScope": {
+                        "nodeIds": [],
+                        "match": "ANY",
+                        "includeDescendants": true
+                      },
+                      "tagCodes": [],
+                      "matrix": {
+                        "mode": "SEPARATE",
+                        "unit": "COUNT",
+                        "cells": [],
+                        "byGrade": [
+                          {
+                            "code": "GRADE_10",
+                            "value": 4
+                          },
+                          {
+                            "code": "GRADE_11",
+                            "value": 5
+                          },
+                          {
+                            "code": "GRADE_12",
+                            "value": 6
+                          }
+                        ],
+                        "byDifficulty": [
+                          {
+                            "code": "RECOGNITION",
+                            "value": 5
+                          },
+                          {
+                            "code": "COMPREHENSION",
+                            "value": 5
+                          },
+                          {
+                            "code": "APPLICATION",
+                            "value": 4
+                          },
+                          {
+                            "code": "HIGH_APPLICATION",
+                            "value": 1
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "expertConfirmed": true
+            },
+            {
+              "id": "opt-b3-3",
+              "kind": "COMBINATION",
+              "code": "CA3",
+              "sections": [
+                {
+                  "id": "sec-b3-3",
+                  "subjectCode": "BIOLOGY",
+                  "questionCount": 15,
+                  "blocks": [
+                    {
+                      "id": "blk-b3-3",
+                      "name": "Trắc nghiệm",
+                      "questionType": "SINGLE_CHOICE",
+                      "questionCount": 15,
+                      "setCount": null,
+                      "setSize": null,
+                      "pointsPerQuestion": 1,
+                      "knowledgeScope": {
+                        "nodeIds": [],
+                        "match": "ANY",
+                        "includeDescendants": true
+                      },
+                      "tagCodes": [],
+                      "matrix": {
+                        "mode": "SEPARATE",
+                        "unit": "COUNT",
+                        "cells": [],
+                        "byGrade": [
+                          {
+                            "code": "GRADE_10",
+                            "value": 4
+                          },
+                          {
+                            "code": "GRADE_11",
+                            "value": 5
+                          },
+                          {
+                            "code": "GRADE_12",
+                            "value": 6
+                          }
+                        ],
+                        "byDifficulty": [
+                          {
+                            "code": "RECOGNITION",
+                            "value": 5
+                          },
+                          {
+                            "code": "COMPREHENSION",
+                            "value": 5
+                          },
+                          {
+                            "code": "APPLICATION",
+                            "value": 4
+                          },
+                          {
+                            "code": "HIGH_APPLICATION",
+                            "value": 1
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "expertConfirmed": true
+            },
+            {
+              "id": "opt-b3-4",
+              "kind": "COMBINATION",
+              "code": "CA4",
+              "sections": [
+                {
+                  "id": "sec-b3-4",
+                  "subjectCode": "GEOGRAPHY",
+                  "questionCount": 15,
+                  "blocks": [
+                    {
+                      "id": "blk-b3-4",
+                      "name": "Trắc nghiệm",
+                      "questionType": "SINGLE_CHOICE",
+                      "questionCount": 15,
+                      "setCount": null,
+                      "setSize": null,
+                      "pointsPerQuestion": 1,
+                      "knowledgeScope": {
+                        "nodeIds": [],
+                        "match": "ANY",
+                        "includeDescendants": true
+                      },
+                      "tagCodes": [],
+                      "matrix": {
+                        "mode": "SEPARATE",
+                        "unit": "COUNT",
+                        "cells": [],
+                        "byGrade": [
+                          {
+                            "code": "GRADE_10",
+                            "value": 4
+                          },
+                          {
+                            "code": "GRADE_11",
+                            "value": 5
+                          },
+                          {
+                            "code": "GRADE_12",
+                            "value": 6
+                          }
+                        ],
+                        "byDifficulty": [
+                          {
+                            "code": "RECOGNITION",
+                            "value": 5
+                          },
+                          {
+                            "code": "COMPREHENSION",
+                            "value": 5
+                          },
+                          {
+                            "code": "APPLICATION",
+                            "value": 4
+                          },
+                          {
+                            "code": "HIGH_APPLICATION",
+                            "value": 1
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "expertConfirmed": false
+            }
+          ],
+          "points": 15
+        }
+      ]
+    },
+    {
+      "id": "ex-vact-f-001",
+      "code": "VACT-F-001",
+      "name": "V-ACT · Đề luyện số 1",
+      "kind": "VACT",
+      "format": "FULL",
+      "status": "DRAFT",
+      "servingVersion": null,
+      "hasUnpublishedChanges": true,
+      "totalQuestions": 120,
+      "durationMinutes": 150,
+      "englishOption": false,
+      "combinationCount": 0,
+      "singleSubjectCode": null,
+      "subjectCode": null,
+      "timing": "SHARED",
+      "maxScore": null,
+      "hasEssay": false,
+      "check": {
+        "status": "UNCHECKED",
+        "issueCount": 0,
+        "checkedAt": null
+      },
+      "attemptCount": 0,
+      "updatedAt": "2026-11-16T09:20:00+07:00",
+      "updatedBy": {
+        "id": "u-lan",
+        "name": "Phạm Mai Lan"
+      },
+      "description": "Đề mẫu V-ACT: khối câu theo năng lực, Phần 3 chia 12 câu Logic và 18 câu Suy luận khoa học.",
+      "templateCode": "VACT_FULL",
+      "structureYear": null,
+      "matrixYear": null,
+      "yearsConfirmed": true,
+      "versions": [
+        {
+          "version": null,
+          "state": "WORKING",
+          "publishedAt": null,
+          "publishedBy": null,
+          "attemptCount": 0,
+          "note": null
+        }
+      ],
+      "parts": [
+        {
+          "id": "part-v1",
+          "order": 1,
+          "name": "Phần 1 · Sử dụng ngôn ngữ",
+          "durationMinutes": null,
+          "questionCount": 60,
+          "mode": "FIXED",
+          "sections": [
+            {
+              "id": "sec-v1-1",
+              "subjectCode": "VIETNAMESE",
+              "questionCount": 30,
+              "blocks": [
+                {
+                  "id": "blk-v1-1",
+                  "name": "Tiếng Việt",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 30,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true,
+                    "competencyCodes": [
+                      "VACT-NN-TV"
+                    ]
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_MIXED",
+                        "value": 30
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 8
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 12
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 8
+                      },
+                      {
+                        "code": "HIGH_APPLICATION",
+                        "value": 2
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "sec-v1-2",
+              "subjectCode": "ENGLISH",
+              "questionCount": 30,
+              "blocks": [
+                {
+                  "id": "blk-v1-2",
+                  "name": "Tiếng Anh",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 30,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true,
+                    "competencyCodes": [
+                      "VACT-NN-TA"
+                    ]
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_MIXED",
+                        "value": 30
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 8
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 12
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 8
+                      },
+                      {
+                        "code": "HIGH_APPLICATION",
+                        "value": 2
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": []
+        },
+        {
+          "id": "part-v2",
+          "order": 2,
+          "name": "Phần 2 · Toán học",
+          "durationMinutes": null,
+          "questionCount": 30,
+          "mode": "FIXED",
+          "sections": [
+            {
+              "id": "sec-v2",
+              "subjectCode": "MATH",
+              "questionCount": 30,
+              "blocks": [
+                {
+                  "id": "blk-v2",
+                  "name": "Toán học",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 30,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true,
+                    "competencyCodes": [
+                      "VACT-TOAN"
+                    ]
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_10",
+                        "value": 6
+                      },
+                      {
+                        "code": "GRADE_11",
+                        "value": 8
+                      },
+                      {
+                        "code": "GRADE_12",
+                        "value": 10
+                      },
+                      {
+                        "code": "GRADE_MIXED",
+                        "value": 6
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 8
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 12
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 7
+                      },
+                      {
+                        "code": "HIGH_APPLICATION",
+                        "value": 3
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": []
+        },
+        {
+          "id": "part-v3",
+          "order": 3,
+          "name": "Phần 3 · Tư duy khoa học",
+          "durationMinutes": null,
+          "questionCount": 30,
+          "mode": "FIXED",
+          "sections": [
+            {
+              "id": "sec-v3",
+              "subjectCode": "SCIENTIFIC_THINKING",
+              "questionCount": 30,
+              "blocks": [
+                {
+                  "id": "blk-v3",
+                  "name": "Tư duy khoa học",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 30,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true,
+                    "competencyCodes": [
+                      "VACT-TD-LOGIC",
+                      "VACT-TD-SL"
+                    ]
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_MIXED",
+                        "value": 30
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 6
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 12
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 9
+                      },
+                      {
+                        "code": "HIGH_APPLICATION",
+                        "value": 3
+                      }
+                    ],
+                    "byCompetency": [
+                      {
+                        "code": "VACT-TD-LOGIC",
+                        "value": 12
+                      },
+                      {
+                        "code": "VACT-TD-SL",
+                        "value": 18
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": []
+        }
+      ]
+    },
+    {
+      "id": "ex-thptqg-tin-001",
+      "code": "THPTQG-TIN-001",
+      "name": "THPTQG Tin học · Đề luyện số 1",
+      "kind": "THPTQG",
+      "format": "FULL",
+      "status": "DRAFT",
+      "servingVersion": null,
+      "hasUnpublishedChanges": true,
+      "totalQuestions": 28,
+      "durationMinutes": 50,
+      "englishOption": false,
+      "combinationCount": 0,
+      "singleSubjectCode": null,
+      "subjectCode": "INFORMATICS",
+      "timing": "SHARED",
+      "maxScore": 10,
+      "hasEssay": false,
+      "check": {
+        "status": "UNCHECKED",
+        "issueCount": 0,
+        "checkedAt": null
+      },
+      "attemptCount": 0,
+      "updatedAt": "2026-11-16T09:30:00+07:00",
+      "updatedBy": {
+        "id": "u-hung",
+        "name": "Trần Văn Hùng"
+      },
+      "description": "Đề in 30 câu, học viên làm 28: 24 trắc nghiệm, 2 đúng/sai chung và 2 đúng/sai của nhánh đã chọn.",
+      "templateCode": "THPTQG_INFORMATICS_2025",
+      "structureYear": 2025,
+      "matrixYear": 2025,
+      "yearsConfirmed": true,
+      "versions": [
+        {
+          "version": null,
+          "state": "WORKING",
+          "publishedAt": null,
+          "publishedBy": null,
+          "attemptCount": 0,
+          "note": null
+        }
+      ],
+      "parts": [
+        {
+          "id": "part-t1",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm chọn một",
+          "durationMinutes": null,
+          "questionCount": 24,
+          "mode": "FIXED",
+          "sections": [
+            {
+              "id": "sec-t1",
+              "subjectCode": "INFORMATICS",
+              "questionCount": 24,
+              "blocks": [
+                {
+                  "id": "blk-t1",
+                  "name": "Trắc nghiệm chọn một",
+                  "questionType": "SINGLE_CHOICE",
+                  "questionCount": 24,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 0.25,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "SEPARATE",
+                    "unit": "COUNT",
+                    "cells": [],
+                    "byGrade": [
+                      {
+                        "code": "GRADE_10",
+                        "value": 6
+                      },
+                      {
+                        "code": "GRADE_11",
+                        "value": 8
+                      },
+                      {
+                        "code": "GRADE_12",
+                        "value": 10
+                      }
+                    ],
+                    "byDifficulty": [
+                      {
+                        "code": "RECOGNITION",
+                        "value": 10
+                      },
+                      {
+                        "code": "COMPREHENSION",
+                        "value": 8
+                      },
+                      {
+                        "code": "APPLICATION",
+                        "value": 6
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": []
+        },
+        {
+          "id": "part-t2",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "durationMinutes": null,
+          "questionCount": 4,
+          "mode": "CHOICE",
+          "sections": [
+            {
+              "id": "sec-t2-0",
+              "subjectCode": "INFORMATICS",
+              "questionCount": 2,
+              "blocks": [
+                {
+                  "id": "blk-t2-0",
+                  "name": "Đúng/Sai chung",
+                  "questionType": "TRUE_FALSE",
+                  "questionCount": 2,
+                  "setCount": null,
+                  "setSize": null,
+                  "pointsPerQuestion": 1,
+                  "knowledgeScope": {
+                    "nodeIds": [],
+                    "match": "ANY",
+                    "includeDescendants": true
+                  },
+                  "tagCodes": [],
+                  "matrix": {
+                    "mode": "COMBINED",
+                    "unit": "COUNT",
+                    "cells": [
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "RECOGNITION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "COMPREHENSION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "APPLICATION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_10",
+                        "difficultyCode": "HIGH_APPLICATION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "RECOGNITION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "COMPREHENSION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "APPLICATION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_11",
+                        "difficultyCode": "HIGH_APPLICATION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "RECOGNITION",
+                        "value": 0
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "COMPREHENSION",
+                        "value": 1
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "APPLICATION",
+                        "value": 1
+                      },
+                      {
+                        "gradeCode": "GRADE_12",
+                        "difficultyCode": "HIGH_APPLICATION",
+                        "value": 0
+                      }
+                    ],
+                    "byGrade": [],
+                    "byDifficulty": []
+                  },
+                  "expectedScoring": {
+                    "trueFalseTable": [
+                      0.1,
+                      0.25,
+                      0.5,
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "options": [
+            {
+              "id": "opt-t2-cs",
+              "kind": "BRANCH",
+              "code": "CS",
+              "name": "Khoa học máy tính",
+              "sections": [
+                {
+                  "id": "sec-t2-cs",
+                  "subjectCode": "INFORMATICS",
+                  "questionCount": 2,
+                  "blocks": [
+                    {
+                      "id": "blk-t2-cs",
+                      "name": "Đúng/Sai Khoa học máy tính",
+                      "questionType": "TRUE_FALSE",
+                      "questionCount": 2,
+                      "setCount": null,
+                      "setSize": null,
+                      "pointsPerQuestion": 1,
+                      "knowledgeScope": {
+                        "nodeIds": [],
+                        "match": "ANY",
+                        "includeDescendants": true
+                      },
+                      "tagCodes": [],
+                      "matrix": {
+                        "mode": "COMBINED",
+                        "unit": "COUNT",
+                        "cells": [
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "RECOGNITION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "COMPREHENSION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "HIGH_APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "RECOGNITION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "COMPREHENSION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "HIGH_APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "RECOGNITION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "COMPREHENSION",
+                            "value": 1
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "APPLICATION",
+                            "value": 1
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "HIGH_APPLICATION",
+                            "value": 0
+                          }
+                        ],
+                        "byGrade": [],
+                        "byDifficulty": []
+                      },
+                      "expectedScoring": {
+                        "trueFalseTable": [
+                          0.1,
+                          0.25,
+                          0.5,
+                          1
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "opt-t2-ict",
+              "kind": "BRANCH",
+              "code": "ICT",
+              "name": "Tin học ứng dụng",
+              "sections": [
+                {
+                  "id": "sec-t2-ict",
+                  "subjectCode": "INFORMATICS",
+                  "questionCount": 2,
+                  "blocks": [
+                    {
+                      "id": "blk-t2-ict",
+                      "name": "Đúng/Sai Tin học ứng dụng",
+                      "questionType": "TRUE_FALSE",
+                      "questionCount": 2,
+                      "setCount": null,
+                      "setSize": null,
+                      "pointsPerQuestion": 1,
+                      "knowledgeScope": {
+                        "nodeIds": [],
+                        "match": "ANY",
+                        "includeDescendants": true
+                      },
+                      "tagCodes": [],
+                      "matrix": {
+                        "mode": "COMBINED",
+                        "unit": "COUNT",
+                        "cells": [
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "RECOGNITION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "COMPREHENSION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_10",
+                            "difficultyCode": "HIGH_APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "RECOGNITION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "COMPREHENSION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_11",
+                            "difficultyCode": "HIGH_APPLICATION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "RECOGNITION",
+                            "value": 0
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "COMPREHENSION",
+                            "value": 1
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "APPLICATION",
+                            "value": 1
+                          },
+                          {
+                            "gradeCode": "GRADE_12",
+                            "difficultyCode": "HIGH_APPLICATION",
+                            "value": 0
+                          }
+                        ],
+                        "byGrade": [],
+                        "byDifficulty": []
+                      },
+                      "expectedScoring": {
+                        "trueFalseTable": [
+                          0.1,
+                          0.25,
+                          0.5,
+                          1
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "templates": [
@@ -4311,7 +5722,43 @@
           "questionCount": 50,
           "durationMinutes": 60,
           "mode": "CHOICE",
-          "subjectCode": null
+          "subjectCode": null,
+          "options": [
+            {
+              "kind": "SUBJECT",
+              "code": "ENGLISH"
+            },
+            {
+              "kind": "COMBINATION",
+              "code": "KH-1",
+              "subjectCounts": [
+                17,
+                17,
+                16
+              ],
+              "expertConfirmed": false
+            },
+            {
+              "kind": "COMBINATION",
+              "code": "KH-2",
+              "subjectCounts": [
+                17,
+                17,
+                16
+              ],
+              "expertConfirmed": false
+            },
+            {
+              "kind": "COMBINATION",
+              "code": "KH-3",
+              "subjectCounts": [
+                17,
+                17,
+                16
+              ],
+              "expertConfirmed": false
+            }
+          ]
         }
       ]
     },
@@ -4689,7 +6136,7 @@
       "timing": "PER_PART",
       "durationMinutes": null,
       "maxScore": 10,
-      "expertNote": "Cấu trúc 2026 dùng ma trận 2025: chuyên gia xác nhận chỉ tiêu trước khi bán. Điểm là tạm.",
+      "expertNote": "Điểm từng câu là tạm; thời lượng chưa có trong bản tóm tắt.",
       "parts": [
         {
           "name": "Toán",

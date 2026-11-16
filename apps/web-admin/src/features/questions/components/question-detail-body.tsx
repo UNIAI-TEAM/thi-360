@@ -1,8 +1,8 @@
 "use client";
 
-import { Chip, cn } from "@thi360/ui";
-import { CircleCheck, CircleX } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { Badge, Chip, cn } from "@thi360/ui";
+import { CircleCheck, CircleX, PenLine } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 import { BLANK_MARKER } from "../editor-form";
 import type { QuestionBody, QuestionDetail } from "../types";
@@ -99,47 +99,112 @@ function CorrectMark({ correct, children }: { correct: boolean; children?: React
   );
 }
 
+/** Nhãn "Chấm tay" của câu Tự luận (chữ và icon, không chỉ màu). */
+export function ManualGradingBadge() {
+  const t = useTranslations("questions.detail.body");
+  return (
+    <Badge>
+      <PenLine aria-hidden className="me-1 size-3.5" />
+      {t("manualGrading")}
+    </Badge>
+  );
+}
+
 export function AnswersView({ body }: { body: QuestionBody }) {
   const t = useTranslations("questions.detail.body");
+  const format = useFormatter();
   switch (body.type) {
     case "SINGLE_CHOICE":
     case "MULTIPLE_CHOICE":
       return (
-        <ol className="m-0 flex list-none flex-col gap-2 p-0">
-          {body.options.map((option, index) => (
-            <li
-              key={option.id}
-              className={cn(
-                "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3.5 py-2.5",
-                option.correct ? "border-success bg-success-bg" : "border-border",
-              )}
-            >
-              <span className="font-semibold text-text">{optionLetter(index)}.</span>
-              <span className="min-w-0 flex-1 wrap-break-word text-text">{option.content}</span>
-              <CorrectMark correct={option.correct} />
-            </li>
-          ))}
-        </ol>
+        <div className="flex flex-col gap-2">
+          <ol className="m-0 flex list-none flex-col gap-2 p-0">
+            {body.options.map((option, index) => (
+              <li
+                key={option.id}
+                className={cn(
+                  "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3.5 py-2.5",
+                  option.correct ? "border-success bg-success-bg" : "border-border",
+                )}
+              >
+                <span className="font-semibold text-text">{optionLetter(index)}.</span>
+                <span className="min-w-0 flex-1 wrap-break-word text-text">{option.content}</span>
+                <CorrectMark correct={option.correct} />
+              </li>
+            ))}
+          </ol>
+          {body.type === "MULTIPLE_CHOICE" && (
+            <p className="text-caption text-text-secondary">
+              <span className="font-semibold">{t("scoringRule")}</span> {t(`scoringRules.${body.scoringRule}`)}
+            </p>
+          )}
+        </div>
       );
     case "TRUE_FALSE":
       return (
-        <ol className="m-0 flex list-none flex-col gap-2 p-0">
-          {body.statements.map((statement, index) => (
-            <li key={statement.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5">
-              <span className="font-semibold text-text">{statementLetter(index)})</span>
-              <span className="min-w-0 flex-1 wrap-break-word text-text">{statement.content}</span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 text-caption font-semibold",
-                  statement.answer ? "text-success" : "text-danger",
-                )}
-              >
-                {statement.answer ? <CircleCheck aria-hidden className="size-4" /> : <CircleX aria-hidden className="size-4" />}
-                {statement.answer ? t("true") : t("false")}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <div className="flex flex-col gap-3">
+          <ol className="m-0 flex list-none flex-col gap-2 p-0">
+            {body.statements.map((statement, index) => (
+              <li key={statement.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5">
+                <span className="font-semibold text-text">{statementLetter(index)})</span>
+                <span className="min-w-0 flex-1 wrap-break-word text-text">{statement.content}</span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-caption font-semibold",
+                    statement.answer ? "text-success" : "text-danger",
+                  )}
+                >
+                  {statement.answer ? <CircleCheck aria-hidden className="size-4" /> : <CircleX aria-hidden className="size-4" />}
+                  {statement.answer ? t("true") : t("false")}
+                </span>
+              </li>
+            ))}
+          </ol>
+          <ScoreTableView table={body.scoreTable} />
+        </div>
+      );
+    case "ESSAY":
+      return (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <ManualGradingBadge />
+            <span className="text-caption text-text-secondary">
+              {t("essayMaxPoints", { points: format.number(body.maxPoints) })}
+              {body.wordLimit !== null && ` · ${t("wordLimit", { count: body.wordLimit })}`}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-label font-semibold text-text">{t("rubricTitle")}</p>
+            {body.rubric.length === 0 ? (
+              <p className="text-body text-text-muted">{t("noRubric")}</p>
+            ) : (
+              <ol className="m-0 flex list-none flex-col gap-2 p-0">
+                {body.rubric.map((criterion, index) => (
+                  <li
+                    key={criterion.id}
+                    className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5"
+                  >
+                    <span className="font-semibold text-text">{index + 1}.</span>
+                    <span className="min-w-0 flex-1 wrap-break-word whitespace-pre-wrap text-text">
+                      {criterion.description || t("noContent")}
+                    </span>
+                    <span className="shrink-0 text-caption font-semibold text-text-secondary">
+                      {t("points", { points: criterion.points })}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+          {body.sampleAnswer && (
+            <div className="flex flex-col gap-1">
+              <p className="text-label font-semibold text-text">{t("sampleAnswer")}</p>
+              <p className="rounded-lg border border-border bg-subtle p-3.5 text-body whitespace-pre-wrap text-text">
+                {body.sampleAnswer}
+              </p>
+            </div>
+          )}
+        </div>
       );
     case "FILL_IN":
       return null;
@@ -175,20 +240,55 @@ export function AnswersView({ body }: { body: QuestionBody }) {
   }
 }
 
+/** Bảng điểm Đúng/Sai theo số ý đúng, dạng danh sách mô tả (đọc được bằng trình đọc màn hình). */
+function ScoreTableView({ table }: { table: readonly number[] | undefined }) {
+  const t = useTranslations("questions.detail.body");
+  const format = useFormatter();
+  if (!table?.length) return null;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-label font-semibold text-text">{t("scoreTableTitle")}</p>
+      <dl className="m-0 grid grid-cols-2 gap-2 @md:grid-cols-4">
+        {table.map((value, index) => (
+          <div key={index} className="flex flex-col rounded-lg border border-border px-3 py-2">
+            <dt className="text-caption text-text-muted">{t("scoreTableCell", { count: index + 1 })}</dt>
+            <dd className="m-0 font-semibold text-text tabular-nums">{format.number(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 /** Mô tả ngắn phần đáp án dạng chữ (so sánh phiên bản). */
 export function describeBody(body: QuestionBody, t: (key: string, values?: Record<string, string | number>) => string): string[] {
   switch (body.type) {
     case "SINGLE_CHOICE":
     case "MULTIPLE_CHOICE":
-      return body.options.map(
-        (option, index) => `${optionLetter(index)}. ${option.content}${option.correct ? ` (${t("correct")})` : ""}`,
-      );
+      return [
+        ...body.options.map(
+          (option, index) => `${optionLetter(index)}. ${option.content}${option.correct ? ` (${t("correct")})` : ""}`,
+        ),
+        ...(body.type === "MULTIPLE_CHOICE" ? [`${t("scoringRule")} ${t(`scoringRules.${body.scoringRule}`)}`] : []),
+      ];
     case "TRUE_FALSE":
-      return body.statements.map(
-        (statement, index) => `${statementLetter(index)}) ${statement.content}: ${statement.answer ? t("true") : t("false")}`,
-      );
+      return [
+        ...body.statements.map(
+          (statement, index) => `${statementLetter(index)}) ${statement.content}: ${statement.answer ? t("true") : t("false")}`,
+        ),
+        ...(body.scoreTable?.length
+          ? [t("scoreTableLine", { values: body.scoreTable.map((value) => t("scoreValue", { value })).join(" / ") })]
+          : []),
+      ];
     case "ESSAY":
-      return body.rubric.map((criterion, index) => `${index + 1}. ${criterion.description} (${criterion.points})`);
+      return [
+        t("essaySummary", { points: body.maxPoints }),
+        ...body.rubric.map(
+          (criterion, index) => `${index + 1}. ${criterion.description} (${t("points", { points: criterion.points })})`,
+        ),
+        ...(body.sampleAnswer ? [`${t("sampleAnswer")}: ${body.sampleAnswer}`] : []),
+        ...(body.wordLimit !== null ? [t("wordLimit", { count: body.wordLimit })] : []),
+      ];
     case "FILL_IN":
       return body.blanks.map(
         (blank, index) => `${t("blankLabel", { number: index + 1 })}: ${blank.acceptedAnswers.join(" / ") || t("noAnswer")}`,

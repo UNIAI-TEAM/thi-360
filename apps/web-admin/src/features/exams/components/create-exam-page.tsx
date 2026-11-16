@@ -13,6 +13,8 @@ import {
   notify,
   PageHeader,
   Skeleton,
+  StatusChip,
+  Switch,
   Textarea,
 } from "@thi360/ui";
 import { ChevronLeft, RefreshCw, TriangleAlert } from "lucide-react";
@@ -28,25 +30,47 @@ import { getErrorStatus } from "@/lib/api/query-client";
 import {
   combinationsForKind,
   createExamSchema,
+  type CreateBranchValues,
   type CreateCombinationValues,
   type CreateExamFormValues,
   type CreatePartValues,
+  type CreateSectionValues,
   EXAM_CODE_MAX,
   EXAM_DESCRIPTION_MAX,
   EXAM_NAME_MAX,
   emptyPart,
+  type ExamScope,
+  findTemplate,
   initialParts,
   isSingleScope,
+  isSubjectKind,
+  kindOptionFor,
+  NO_TEMPLATE,
   partsEdited,
+  resolveScope,
+  scopeDefaults,
+  type ScopeDefaults,
   type SingleScope,
   summarizeParts,
+  sumPoints,
   toCreateExamRequest,
 } from "../create-exam-schema";
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
-import type { ExamFormat, ExamKind, ExamTemplate } from "../types";
+import type { ExamTemplate } from "../types";
 import { CreateExamCover, type CoverImage } from "./create-exam-cover";
-import { ChoiceCardGroup, GenerateCodeButton, useCreateExamMessages, useScopeOptions, useSingleScopes } from "./create-exam-fields";
+import {
+  ChoiceCardGroup,
+  FormatField,
+  GenerateCodeButton,
+  KindField,
+  SubjectTemplateFields,
+  TemplateNotes,
+  TimingScoreFields,
+  useCreateExamMessages,
+  useKindLabel,
+  useSingleScopes,
+} from "./create-exam-fields";
 import { CreateExamChoiceEditor, CreateExamPartsEditor } from "./create-exam-structure";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
@@ -58,9 +82,13 @@ function focusAfterChange(path: string) {
   requestAnimationFrame(() => focusField(path));
 }
 
+/** Lỗi của các ô hiện ngay khi gõ (không chờ rời ô): tổng số câu của tổ hợp, phần nhiều môn, phần chung, nhánh. */
+const LIVE_ERROR_PATH = /\.(combinations(\.\d+\.subjectCounts)?|sections|branches\.\d+\.questionCount)$/;
+
 /**
- * Trang Tạo bài thi (`/exams/new`, UniNote PBI-04 mục 3, 4, 5.1–5.3): Thông tin chung, Cấu trúc khởi tạo theo mẫu, Phần
- * tự chọn; bảng tổng hợp dính bên phải. Tạo xong mở Cấu trúc và ma trận để soạn khối câu hỏi.
+ * Trang Tạo bài thi (`/exams/new`, UniNote PBI-04 mục 3, 4, 5.1–5.3; spec 7 kỳ thi): Thông tin chung (kỳ thi, hình
+ * thức, môn và mẫu theo năm), Thời gian và thang điểm, Cấu trúc khởi tạo theo mẫu, Phần tự chọn; bảng tổng hợp dính bên
+ * phải. Tạo xong mở Cấu trúc và ma trận để soạn khối câu hỏi.
  */
 export function CreateExamPage() {
   const t = useTranslations("exams.create");
@@ -123,45 +151,91 @@ export function CreateExamPage() {
 }
 
 interface PendingScope {
-  kind: ExamKind;
-  format: ExamFormat;
-  singleScope: string;
+  scope: ExamScope;
   parts: CreatePartValues[];
+  defaults: ScopeDefaults;
+}
+
+function sameScope(a: ExamScope, b: ExamScope): boolean {
+  return (
+    a.kind === b.kind &&
+    a.format === b.format &&
+    a.singleScope === b.singleScope &&
+    a.subjectCode === b.subjectCode &&
+    a.templateCode === b.templateCode
+  );
 }
 
 function CreateExamForm({ templates, reference }: { templates: readonly ExamTemplate[]; reference: ContentReference }) {
   const t = useTranslations("exams.create");
   const router = useRouter();
   const formId = useId();
+  const pointsSwitchId = useId();
+  const pointsHintId = useId();
   const tParts = useTranslations("exams.create.parts");
   const lookup = useReferenceLookup(reference);
   const subjectName = lookup.subject;
-  const { kindOptions, formatOptions } = useScopeOptions();
+  const kindLabel = useKindLabel();
+  const kinds = reference.examKinds;
   const singleScopes = useSingleScopes();
   const scopeName = singleScopes.scopeName;
   const pendingRef = useRef<HTMLDivElement>(null);
   const messages = useCreateExamMessages();
   const [takenCodes, setTakenCodes] = useState<ReadonlySet<string>>(() => new Set());
-  const schema = useMemo(() => createExamSchema(messages, takenCodes), [messages, takenCodes]);
+  const schema = useMemo(() => createExamSchema(messages, takenCodes, kinds), [messages, takenCodes, kinds]);
   const createExam = useCreateExam();
 
-  const buildParts = useCallback(
-    (kind: ExamKind, format: ExamFormat, singleScope: string) =>
-      initialParts({
-        templates,
-        kind,
-        format,
-        singleScope,
-        combinations: combinationsForKind(reference.combinations, kind),
-        scopeName,
-      }),
-    [templates, reference.combinations, scopeName],
+  /** Cấu trúc khởi tạo và giá trị thời lượng, thang điểm của một phạm vi. */
+  const loadScope = useCallback(
+    (scope: ExamScope): PendingScope => {
+      const template = findTemplate(templates, scope.templateCode);
+      return {
+        scope,
+        parts: initialParts({
+          templates,
+          kind: scope.kind,
+          format: scope.format,
+          singleScope: scope.singleScope,
+          combinations: combinationsForKind(reference.combinations, scope.kind),
+          scopeName,
+          template: scope.format === "FULL" ? (template ?? null) : undefined,
+          subjectCode: scope.subjectCode,
+          subjectName,
+        }),
+        defaults: scopeDefaults(template, kindOptionFor(kinds, scope.kind), scope.format),
+      };
+    },
+    [templates, reference.combinations, kinds, scopeName, subjectName],
   );
-  const [baseline, setBaseline] = useState<CreatePartValues[]>(() => buildParts("HSA", "FULL", ""));
+
+  const [initial] = useState<PendingScope>(() =>
+    loadScope(
+      resolveScope(
+        templates,
+        kinds,
+        reference.subjects,
+        { kind: kinds[0]?.code ?? "", format: "FULL", singleScope: "", subjectCode: "", templateCode: NO_TEMPLATE },
+        {},
+      ),
+    ),
+  );
+  const [baseline, setBaseline] = useState<CreatePartValues[]>(initial.parts);
   const form = useForm<CreateExamFormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
-    defaultValues: { name: "", code: "", kind: "HSA", format: "FULL", singleSubjectCode: "", description: "", parts: baseline },
+    defaultValues: {
+      name: "",
+      code: "",
+      kind: initial.scope.kind,
+      format: initial.scope.format,
+      singleSubjectCode: initial.scope.singleScope,
+      subjectCode: initial.scope.subjectCode,
+      templateCode: initial.scope.templateCode,
+      ...initial.defaults,
+      yearsConfirmed: false,
+      description: "",
+      parts: initial.parts,
+    },
   });
   const { control, register, handleSubmit, setValue, getValues, setError, resetField, getFieldState, formState } = form;
   const values = useWatch({ control }) as CreateExamFormValues;
@@ -172,9 +246,14 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const [liveMessage, setLiveMessage] = useState("");
   const guard = useUnsavedChangesGuard((formState.isDirty || cover !== null) && !createExam.isSuccess);
 
-  // Mã gợi ý theo kỳ thi và hình thức; người dùng đã sửa mã thì giữ mã của họ.
+  // Mã gợi ý theo kỳ thi, hình thức và môn; người dùng đã sửa mã thì giữ mã của họ.
   const suggestion = useSuggestedExamCode(
-    { kind: values.kind, format: values.format, singleScope: values.format === "SINGLE" ? values.singleSubjectCode : null },
+    {
+      kind: values.kind,
+      format: values.format,
+      singleScope: values.format === "SINGLE" ? values.singleSubjectCode : null,
+      subjectCode: values.subjectCode || null,
+    },
     true,
   );
   useEffect(() => {
@@ -192,31 +271,59 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     () => combinationsForKind(reference.combinations, values.kind),
     [reference.combinations, values.kind],
   );
+  const currentKind = kindOptionFor(kinds, values.kind);
+  const currentTemplate = findTemplate(templates, values.templateCode);
 
-  // ------------------------------------------------------------ đổi kỳ thi, hình thức, phần/môn bài lẻ
+  // ------------------------------------------------------------ đổi kỳ thi, hình thức, phần/môn bài lẻ, môn, mẫu
 
-  const templateName = (kind: ExamKind, format: ExamFormat, singleScope: string) =>
-    format === "FULL" ? t("templateFull", { kind }) : t("templateSingle", { kind, scope: scopeName(singleScope) });
-
-  const applyScope = ({ kind, format, singleScope, parts }: PendingScope) => {
-    setValue("kind", kind, { shouldDirty: true });
-    setValue("format", format, { shouldDirty: true });
-    setValue("singleSubjectCode", singleScope, { shouldDirty: true, shouldValidate: formState.isSubmitted });
-    setValue("parts", parts, { shouldDirty: true });
-    setBaseline(parts);
-    setPendingScope(null);
-    setLiveMessage(t("replace.loaded", { name: templateName(kind, format, singleScope) }));
+  const templateName = (scope: ExamScope) => {
+    const kind = kindLabel(scope.kind);
+    if (scope.format === "SINGLE") return t("templateSingle", { kind, scope: scopeName(scope.singleScope) });
+    if (isSubjectKind(kinds, scope.kind)) {
+      const template = findTemplate(templates, scope.templateCode);
+      const subject = scope.subjectCode ? subjectName(scope.subjectCode) : t("noSubject");
+      return template
+        ? t("templateSubject", { kind, subject, year: String(template.structureYear ?? "") })
+        : t("templateBlank", { kind, subject });
+    }
+    return t("templateFull", { kind });
   };
 
-  /** Đổi kỳ thi, hình thức hoặc môn bài lẻ sau khi đã sửa cấu trúc thì hỏi ngay tại chỗ trước khi nạp mẫu (bản vẽ). */
-  const requestScope = (kind: ExamKind, format: ExamFormat, requestedScope?: string) => {
-    const current = getValues("singleSubjectCode");
-    const singleScope = format === "SINGLE" ? (requestedScope ?? (current || "MATH")) : "";
-    if (kind === getValues("kind") && format === getValues("format") && singleScope === current) {
+  const currentScope = (): ExamScope => ({
+    kind: getValues("kind"),
+    format: getValues("format"),
+    singleScope: getValues("singleSubjectCode"),
+    subjectCode: getValues("subjectCode"),
+    templateCode: getValues("templateCode"),
+  });
+
+  const applyScope = ({ scope, parts, defaults }: PendingScope) => {
+    const dirty = { shouldDirty: true } as const;
+    setValue("kind", scope.kind, dirty);
+    setValue("format", scope.format, dirty);
+    setValue("singleSubjectCode", scope.singleScope, { ...dirty, shouldValidate: formState.isSubmitted });
+    setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
+    setValue("templateCode", scope.templateCode, dirty);
+    setValue("timing", defaults.timing, dirty);
+    setValue("sharedDuration", defaults.sharedDuration, dirty);
+    setValue("maxScore", defaults.maxScore, dirty);
+    setValue("pointsByPart", defaults.pointsByPart, dirty);
+    setValue("yearsConfirmed", false, dirty);
+    setValue("parts", parts, dirty);
+    setBaseline(parts);
+    setPendingScope(null);
+    setLiveMessage(t("replace.loaded", { name: templateName(scope) }));
+  };
+
+  /** Đổi phạm vi sau khi đã sửa cấu trúc thì hỏi ngay tại chỗ trước khi nạp mẫu (bản vẽ); chưa sửa thì nạp luôn. */
+  const requestScope = (change: Partial<ExamScope>) => {
+    const current = currentScope();
+    const scope = resolveScope(templates, kinds, reference.subjects, current, change);
+    if (sameScope(scope, current)) {
       setPendingScope(null);
       return;
     }
-    const next: PendingScope = { kind, format, singleScope, parts: buildParts(kind, format, singleScope) };
+    const next = loadScope(scope);
     if (partsEdited(getValues("parts"), baseline)) setPendingScope(next);
     else applyScope(next);
   };
@@ -226,9 +333,13 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     if (pendingScope) pendingRef.current?.focus();
   }, [pendingScope]);
 
-  const setCombinations = (partIndex: number, next: CreateCombinationValues[]) => {
-    setValue(`parts.${partIndex}.combinations`, next, { shouldDirty: true, shouldValidate: formState.isSubmitted });
-  };
+  const validateNow = { shouldDirty: true, shouldValidate: formState.isSubmitted } as const;
+  const setCombinations = (partIndex: number, next: CreateCombinationValues[]) =>
+    setValue(`parts.${partIndex}.combinations`, next, validateNow);
+  const setSections = (partIndex: number, next: CreateSectionValues[]) =>
+    setValue(`parts.${partIndex}.sections`, next, validateNow);
+  const setBranches = (partIndex: number, next: CreateBranchValues[]) =>
+    setValue(`parts.${partIndex}.branches`, next, validateNow);
 
   const movePart = (index: number, delta: -1 | 1) => {
     const parts = [...getValues("parts")];
@@ -246,7 +357,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     setValue(
       "parts",
       getValues("parts").filter((_, position) => position !== index),
-      { shouldDirty: true, shouldValidate: formState.isSubmitted },
+      validateNow,
     );
     setLiveMessage(tParts("removed", { order: index + 1 }));
     focusAfterChange("parts");
@@ -273,12 +384,12 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     return map;
   }, [live]);
 
-  /** Lỗi hiện tại chỗ: lỗi của biểu mẫu (sau khi rời ô hoặc bấm Tạo); lỗi cấu trúc tổ hợp hiện ngay. */
+  /** Lỗi hiện tại chỗ: lỗi của biểu mẫu (sau khi rời ô hoặc bấm Tạo); lỗi tổng số câu hiện ngay. */
   const errorFor = useCallback(
     (path: string): string | undefined => {
       const formError = get(formState.errors, path) as { message?: string } | undefined;
       if (formError?.message) return formError.message;
-      if (/\.combinations(\.\d+\.subjectCounts)?$/.test(path)) return liveErrors.get(path);
+      if (LIVE_ERROR_PATH.test(path)) return liveErrors.get(path);
       return undefined;
     },
     [formState.errors, liveErrors],
@@ -287,15 +398,26 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const fieldLabel = useCallback(
     (path: string): string => {
       const segments = path.split(".");
-      if (segments[0] !== "parts") {
-        const key = segments[0] === "singleSubjectCode" ? "singleSubject" : segments[0];
-        return key === "name" || key === "code" || key === "singleSubject" || key === "description"
-          ? t(`fields.${key}`)
-          : t("fields.parts");
+      const head = segments[0] ?? "";
+      if (head !== "parts") {
+        switch (head) {
+          case "name":
+          case "code":
+          case "description":
+          case "subjectCode":
+          case "sharedDuration":
+          case "maxScore":
+            return t(`fields.${head}`);
+          case "singleSubjectCode":
+            return t("fields.singleSubject");
+          default:
+            return t("fields.parts");
+        }
       }
       if (segments.length < 3) return t("fields.parts");
       const index = Number(segments[1]);
       const order = index + 1;
+      const part = values.parts[index];
       switch (segments[2]) {
         case "name":
           return t("fields.partName", { order });
@@ -305,8 +427,16 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
           return t("fields.partQuestions", { order });
         case "durationMinutes":
           return t("fields.partDuration", { order });
+        case "points":
+          return t("fields.partPoints", { order });
+        case "sections":
+          return t("fields.partSections", { order });
+        case "branches": {
+          const branch = part?.branches[Number(segments[3])];
+          return branch ? t("fields.branch", { name: branch.name }) : t("fields.partOptions", { order });
+        }
         default: {
-          const combination = values.parts[index]?.combinations[Number(segments[3])];
+          const combination = part?.combinations[Number(segments[3])];
           return combination ? t("fields.combination", { code: combination.code }) : t("fields.partOptions", { order });
         }
       }
@@ -319,19 +449,21 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     field: fieldLabel(path),
     message,
   }));
-  const summary = summarizeParts(values.parts);
+  const summary = summarizeParts(values.parts, values);
   const choicePart = values.parts.find((part) => part.mode === "CHOICE");
-  const pathText = !choicePart
-    ? t("summary.pathsFixed")
-    : choicePart.englishOption && choicePart.combinations.length > 0
-      ? t("summary.pathsEnglishAndCombinations", { count: choicePart.combinations.length })
-      : choicePart.englishOption
-        ? t("summary.pathsEnglishOnly")
-        : choicePart.combinations.length > 0
-          ? t("summary.pathsCombinationsOnly", { count: choicePart.combinations.length })
-          : t("summary.pathsNone");
+  const pathText = (() => {
+    if (!choicePart) return t("summary.pathsFixed");
+    const segments = [
+      ...(choicePart.englishOption ? [t("summary.pathsEnglishOnly")] : []),
+      ...(choicePart.combinations.length > 0
+        ? [t("summary.pathsCombinationsOnly", { count: choicePart.combinations.length })]
+        : []),
+      ...(choicePart.branches.length > 0 ? [t("summary.pathsBranches", { count: choicePart.branches.length })] : []),
+    ];
+    return segments.length > 0 ? segments.join(" + ") : t("summary.pathsNone");
+  })();
   const pendingImpact = (() => {
-    const attached = choicePart?.combinations.length ?? 0;
+    const attached = values.parts.reduce((total, part) => total + part.combinations.length, 0);
     return attached > 0
       ? t("replace.impactCombinations", { parts: values.parts.length, combinations: attached })
       : t("replace.impactParts", { parts: values.parts.length });
@@ -339,6 +471,8 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const choiceParts = values.parts
     .map((part, index) => ({ part, index }))
     .filter(({ part }) => part.mode === "CHOICE");
+  const pointsTotal = sumPoints(values.parts.map((part) => part.points ?? 0));
+  const pointsOff = values.pointsByPart && values.maxScore !== null && pointsTotal !== values.maxScore;
 
   // ------------------------------------------------------------ gửi
 
@@ -420,34 +554,15 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Controller
-                control={control}
-                name="kind"
-                render={({ field }) => (
-                  <ChoiceCardGroup
-                    legend={t("kind")}
-                    name={field.name}
-                    value={field.value}
-                    required
-                    options={kindOptions}
-                    onChange={(kind) => requestScope(kind, getValues("format"))}
-                  />
-                )}
-              />
-              <Controller
-                control={control}
-                name="format"
-                render={({ field }) => (
-                  <ChoiceCardGroup
-                    legend={t("format")}
-                    name={field.name}
-                    value={field.value}
-                    required
-                    options={formatOptions}
-                    onChange={(format) => requestScope(getValues("kind"), format)}
-                  />
-                )}
+            <div className="flex flex-col gap-4">
+              <div data-field="kind">
+                <KindField kinds={kinds} value={values.kind} onChange={(kind) => requestScope({ kind })} />
+              </div>
+              <FormatField
+                kinds={kinds}
+                kind={values.kind}
+                value={values.format}
+                onChange={(format) => requestScope({ format })}
               />
             </div>
 
@@ -465,7 +580,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                       variant="pill"
                       hint={t("singleSubjectHint")}
                       options={singleScopes.options}
-                      onChange={(scope) => requestScope(getValues("kind"), "SINGLE", scope)}
+                      onChange={(singleScope) => requestScope({ singleScope })}
                     />
                   )}
                 />
@@ -475,6 +590,20 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                   </p>
                 )}
               </div>
+            )}
+
+            {currentKind?.templateBy === "SUBJECT" && values.format === "FULL" && (
+              <SubjectTemplateFields
+                kind={values.kind}
+                format={values.format}
+                subjects={reference.subjects}
+                templates={templates}
+                subjectCode={values.subjectCode}
+                templateCode={values.templateCode}
+                subjectError={formState.errors.subjectCode?.message}
+                onSubjectChange={(subjectCode) => requestScope({ subjectCode })}
+                onTemplateChange={(templateCode) => requestScope({ templateCode })}
+              />
             )}
 
             {pendingScope && (
@@ -487,11 +616,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                 <div className="flex items-start gap-2.5">
                   <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
                   <div className="flex flex-col gap-1">
-                    <p className="font-semibold text-text">
-                      {t("replace.title", {
-                        name: templateName(pendingScope.kind, pendingScope.format, pendingScope.singleScope),
-                      })}
-                    </p>
+                    <p className="font-semibold text-text">{t("replace.title", { name: templateName(pendingScope.scope) })}</p>
                     <p className="text-body text-text-secondary">{t("replace.description", { impact: pendingImpact })}</p>
                   </div>
                 </div>
@@ -505,6 +630,14 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                 </div>
               </div>
             )}
+
+            <Controller
+              control={control}
+              name="yearsConfirmed"
+              render={({ field }) => (
+                <TemplateNotes template={currentTemplate} yearsConfirmed={field.value} onYearsConfirmedChange={field.onChange} />
+              )}
+            />
 
             <div data-field="description">
               <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
@@ -525,47 +658,124 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
 
           <FormSection
             step={2}
+            title={t("sections.timing")}
+            description={t(values.timing === "SHARED" ? "sections.timingSharedDescription" : "sections.timingPerPartDescription")}
+          >
+            <Controller
+              control={control}
+              name="sharedDuration"
+              render={({ field: durationField }) => (
+                <Controller
+                  control={control}
+                  name="maxScore"
+                  render={({ field: scoreField }) => (
+                    <TimingScoreFields
+                      timing={values.timing}
+                      sharedDuration={durationField.value}
+                      onSharedDurationChange={durationField.onChange}
+                      sharedDurationError={errorFor("sharedDuration")}
+                      partMinutes={summary.totalMinutes}
+                      maxScore={scoreField.value}
+                      onMaxScoreChange={scoreField.onChange}
+                      maxScoreError={errorFor("maxScore")}
+                      maxScoreOptional={currentKind?.maxScore === null}
+                    >
+                      <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+                        <div className="flex items-start gap-3">
+                          <Controller
+                            control={control}
+                            name="pointsByPart"
+                            render={({ field }) => (
+                              <Switch
+                                id={pointsSwitchId}
+                                checked={field.value}
+                                aria-describedby={pointsHintId}
+                                onCheckedChange={(checked) => field.onChange(checked)}
+                                className="mt-0.5"
+                              />
+                            )}
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <label htmlFor={pointsSwitchId} className="cursor-pointer font-medium text-text">
+                              {t("timing.pointsByPart")}
+                            </label>
+                            <p id={pointsHintId} className="text-caption text-text-muted">
+                              {t("timing.pointsByPartHint")}
+                            </p>
+                          </div>
+                        </div>
+                        {values.pointsByPart && (
+                          <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-text tabular-nums">
+                            {values.maxScore === null
+                              ? t("timing.pointsTotal", { actual: pointsTotal })
+                              : t("timing.pointsTotalOf", { actual: pointsTotal, expected: values.maxScore })}
+                            {pointsOff && <StatusChip tone="warning">{t("timing.pointsMismatch")}</StatusChip>}
+                          </p>
+                        )}
+                      </div>
+                    </TimingScoreFields>
+                  )}
+                />
+              )}
+            />
+          </FormSection>
+
+          <FormSection
+            step={3}
             title={t("sections.structure")}
-            description={t("sections.structureDescription", {
-              name: templateName(values.kind, values.format, values.singleSubjectCode),
-            })}
+            description={t("sections.structureDescription", { name: templateName(currentScope()) })}
           >
             <div data-field="parts">
               <CreateExamPartsEditor
                 control={control}
                 parts={values.parts}
                 format={values.format}
+                timing={values.timing}
+                pointsByPart={values.pointsByPart}
                 subjects={reference.subjects}
                 subjectName={subjectName}
                 errorFor={errorFor}
                 onMove={movePart}
                 onRemove={removePart}
                 onAdd={addPart}
+                onSectionsChange={setSections}
               />
             </div>
           </FormSection>
 
-          {choiceParts.map(({ part, index }) => (
-            <FormSection
-              key={part.key}
-              step={3}
-              title={t("sections.choice", { order: index + 1 })}
-              description={t("sections.choiceDescription", { count: Math.max(0, part.questionCount) })}
-            >
-              <CreateExamChoiceEditor
-                control={control}
-                part={part}
-                partIndex={index}
-                kind={values.kind}
-                englishAvailable={values.format === "FULL"}
-                combinations={kindCombinations}
-                subjectName={subjectName}
-                errorFor={errorFor}
-                onCombinationsChange={(next) => setCombinations(index, next)}
-                onAnnounce={setLiveMessage}
-              />
-            </FormSection>
-          ))}
+          {choiceParts.map(({ part, index }, choiceIndex) => {
+            const common = part.sections.reduce((total, section) => total + Math.max(0, section.questionCount), 0);
+            return (
+              <FormSection
+                key={part.key}
+                step={4 + choiceIndex}
+                title={t("sections.choice", { order: index + 1 })}
+                description={
+                  common > 0
+                    ? t("sections.choiceCommonDescription", {
+                        common,
+                        option: Math.max(0, part.questionCount - common),
+                        total: Math.max(0, part.questionCount),
+                      })
+                    : t("sections.choiceDescription", { count: Math.max(0, part.questionCount) })
+                }
+              >
+                <CreateExamChoiceEditor
+                  control={control}
+                  part={part}
+                  partIndex={index}
+                  kindLabel={kindLabel(values.kind)}
+                  combinations={kindCombinations}
+                  subjectName={subjectName}
+                  errorFor={errorFor}
+                  onCombinationsChange={(next) => setCombinations(index, next)}
+                  onSectionsChange={(next) => setSections(index, next)}
+                  onBranchesChange={(next) => setBranches(index, next)}
+                  onAnnounce={setLiveMessage}
+                />
+              </FormSection>
+            );
+          })}
 
           {submitError && (
             <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-body text-danger">
@@ -584,6 +794,8 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
 
         <CreateExamSummaryPanel
           summary={summary}
+          timing={values.timing}
+          maxScore={values.maxScore}
           pathText={pathText}
           issues={issues}
           actions={

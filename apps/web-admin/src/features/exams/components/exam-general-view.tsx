@@ -1,16 +1,29 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Card, ConfirmDialog, LiveStatus, notify, StatusChip } from "@thi360/ui";
+import { Button, Card, ConfirmDialog, EmptyState, LiveStatus, notify, Skeleton, StatusChip } from "@thi360/ui";
+import { TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { useContentReference, useReferenceLookup } from "@/features/content/queries";
+import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { sum } from "../matrix";
 import { useExam, useExamTemplates, useUpdateExamInfo } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
-import type { ExamDetail, ExamFormat, ExamKind, UpdateExamInfoRequest } from "../types";
-import { type ExamInfoFormValues, NO_TEMPLATE, templateFor } from "../create-exam-schema";
+import type { ExamDetail, ExamTemplate, UpdateExamInfoRequest } from "../types";
+import {
+  type ExamInfoFormValues,
+  type ExamScope,
+  findTemplate,
+  isSubjectKind,
+  kindOptionFor,
+  NO_TEMPLATE,
+  resolveScope,
+  scopeDefaults,
+  yearsDiffer,
+} from "../create-exam-schema";
 import { ExamInfoFields, TemplatePreview, useExamInfoSchema, useSingleScopes } from "./create-exam-fields";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 
@@ -22,34 +35,86 @@ function toFormValues(exam: ExamDetail): ExamInfoFormValues {
     format: exam.format,
     templateCode: exam.templateCode ?? NO_TEMPLATE,
     singleSubjectCode: exam.singleSubjectCode ?? "",
+    subjectCode: exam.subjectCode ?? "",
+    timing: exam.timing,
+    sharedDuration: exam.timing === "SHARED" ? exam.durationMinutes : 0,
+    maxScore: exam.maxScore,
+    yearsConfirmed: exam.yearsConfirmed,
     description: exam.description ?? "",
   };
 }
 
-function scopeChanged(exam: ExamDetail, values: ExamInfoFormValues): boolean {
+function examScope(exam: ExamDetail): ExamScope {
+  return {
+    kind: exam.kind,
+    format: exam.format,
+    singleScope: exam.singleSubjectCode ?? "",
+    subjectCode: exam.subjectCode ?? "",
+    templateCode: exam.templateCode ?? NO_TEMPLATE,
+  };
+}
+
+function scopeChanged(exam: ExamDetail, values: ExamInfoFormValues, subjectKind: boolean): boolean {
   return (
     exam.kind !== values.kind ||
     exam.format !== values.format ||
     (exam.templateCode ?? NO_TEMPLATE) !== values.templateCode ||
-    (values.format === "SINGLE" && (exam.singleSubjectCode ?? "") !== values.singleSubjectCode)
+    (values.format === "SINGLE" && (exam.singleSubjectCode ?? "") !== values.singleSubjectCode) ||
+    (subjectKind && (exam.subjectCode ?? "") !== values.subjectCode)
   );
 }
 
 /**
- * Tab Thông tin chung (chưa có bản vẽ riêng; trường theo `TaoBaiThi`, UniNote PBI-04 mục 4). Sửa tên, mã, mô tả; đổi kỳ
- * thi, hình thức, mẫu hoặc môn của bài lẻ thì nạp lại cấu trúc theo mẫu sau khi xác nhận, chỉ khi bài chưa công bố.
- * Bên phải là các thông tin chỉ để đọc.
+ * Tab Thông tin chung (chưa có bản vẽ riêng; trường theo `TaoBaiThi`, UniNote PBI-04 mục 4; spec 7 kỳ thi). Sửa tên, mã,
+ * mô tả, thời lượng chung, thang điểm, xác nhận năm cấu trúc và năm ma trận; đổi kỳ thi, hình thức, môn, mẫu hoặc
+ * môn của bài lẻ thì nạp lại cấu trúc theo mẫu sau khi xác nhận, chỉ khi bài chưa công bố. Bên phải là các thông tin
+ * chỉ để đọc.
  */
 export function ExamGeneralView({ examId }: { examId: string }) {
+  const t = useTranslations("exams.general");
   const examQuery = useExam(examId);
+  const referenceQuery = useContentReference();
+  const templatesQuery = useExamTemplates();
   const [liveMessage, setLiveMessage] = useState("");
   if (!examQuery.data) return null;
+  if (referenceQuery.isError || templatesQuery.isError) {
+    return (
+      <Card padding="md">
+        <EmptyState
+          icon={<TriangleAlert />}
+          headingLevel={2}
+          title={t("loadErrorTitle")}
+          description={t("loadErrorDescription")}
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void referenceQuery.refetch();
+                void templatesQuery.refetch();
+              }}
+            >
+              {t("retry")}
+            </Button>
+          }
+        />
+      </Card>
+    );
+  }
+  if (!referenceQuery.data || !templatesQuery.data) {
+    return (
+      <div className="flex flex-col gap-4" aria-busy="true">
+        <Skeleton className="h-72" />
+      </div>
+    );
+  }
   return (
     <>
       {/* Khóa theo lần cập nhật: lưu xong biểu mẫu nạp lại giá trị mới, hết "chưa lưu". */}
       <ExamGeneralForm
         key={`${examQuery.data.id}-${examQuery.data.updatedAt}`}
         exam={examQuery.data}
+        reference={referenceQuery.data}
+        templates={templatesQuery.data}
         onAnnounce={setLiveMessage}
       />
       <LiveStatus message={liveMessage} />
@@ -57,13 +122,23 @@ export function ExamGeneralView({ examId }: { examId: string }) {
   );
 }
 
-function ExamGeneralForm({ exam, onAnnounce }: { exam: ExamDetail; onAnnounce: (message: string) => void }) {
+function ExamGeneralForm({
+  exam,
+  reference,
+  templates,
+  onAnnounce,
+}: {
+  exam: ExamDetail;
+  reference: ContentReference;
+  templates: readonly ExamTemplate[];
+  onAnnounce: (message: string) => void;
+}) {
   const t = useTranslations("exams.general");
   const tExams = useTranslations("exams");
-  const schema = useExamInfoSchema();
-  const templatesQuery = useExamTemplates();
+  const kinds = reference.examKinds;
+  const lookup = useReferenceLookup(reference);
+  const schema = useExamInfoSchema(undefined, kinds);
   const singleScopes = useSingleScopes();
-  const templates = templatesQuery.data ?? [];
   const update = useUpdateExamInfo(exam.id);
   const [confirmReplace, setConfirmReplace] = useState<UpdateExamInfoRequest | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -74,9 +149,10 @@ function ExamGeneralForm({ exam, onAnnounce }: { exam: ExamDetail; onAnnounce: (
     mode: "onTouched",
     defaultValues: toFormValues(exam),
   });
-  const { control, register, handleSubmit, setValue, setError, reset, formState } = form;
+  const { control, register, handleSubmit, setValue, getValues, setError, reset, formState } = form;
   const values = useWatch({ control }) as ExamInfoFormValues;
   const guard = useUnsavedChangesGuard(formState.isDirty);
+  const subjectKind = isSubjectKind(kinds, values.kind);
 
   const blockCount = useMemo(
     () =>
@@ -87,6 +163,7 @@ function ExamGeneralForm({ exam, onAnnounce }: { exam: ExamDetail; onAnnounce: (
       ),
     [exam.parts],
   );
+  const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
 
   const save = (request: UpdateExamInfoRequest) => {
     setSubmitError(null);
@@ -110,37 +187,70 @@ function ExamGeneralForm({ exam, onAnnounce }: { exam: ExamDetail; onAnnounce: (
   };
 
   const onSubmit = handleSubmit((submitted) => {
+    const template = findTemplate(templates, submitted.templateCode);
     const request: UpdateExamInfoRequest = {
       name: submitted.name,
       code: submitted.code,
       kind: submitted.kind,
       format: submitted.format,
-      templateCode: submitted.templateCode === NO_TEMPLATE ? null : submitted.templateCode,
+      templateCode: template?.code ?? null,
       singleSubjectCode: submitted.format === "SINGLE" ? submitted.singleSubjectCode : null,
+      subjectCode: isSubjectKind(kinds, submitted.kind) ? submitted.subjectCode || null : null,
+      durationMinutes: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
+      maxScore: submitted.maxScore,
+      yearsConfirmed: yearsDiffer(template) ? submitted.yearsConfirmed : true,
       description: submitted.description.trim() || null,
     };
-    if (scopeChanged(exam, submitted)) setConfirmReplace(request);
+    if (scopeChanged(exam, submitted, isSubjectKind(kinds, submitted.kind))) setConfirmReplace(request);
     else save(request);
   });
 
-  const onScopeChange = ({ kind, format }: { kind: ExamKind; format: ExamFormat }) => {
-    setValue("templateCode", templateFor(templates, kind, format)?.code ?? NO_TEMPLATE, { shouldDirty: true });
-    if (format === "FULL") setValue("singleSubjectCode", "", { shouldDirty: true });
+  /** Đổi phạm vi: chọn lại mẫu; về đúng phạm vi đang lưu thì lấy lại giá trị đang lưu, không thì giá trị của mẫu mới. */
+  const onScopeChange = (change: Partial<ExamScope>) => {
+    const current: ExamScope = {
+      kind: getValues("kind"),
+      format: getValues("format"),
+      singleScope: getValues("singleSubjectCode"),
+      subjectCode: getValues("subjectCode"),
+      templateCode: getValues("templateCode"),
+    };
+    const scope = resolveScope(templates, kinds, reference.subjects, current, change);
+    const dirty = { shouldDirty: true } as const;
+    setValue("kind", scope.kind, dirty);
+    setValue("format", scope.format, dirty);
+    setValue("singleSubjectCode", scope.singleScope, { ...dirty, shouldValidate: formState.isSubmitted });
+    setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
+    setValue("templateCode", scope.templateCode, dirty);
+    const saved = examScope(exam);
+    const back =
+      scope.kind === saved.kind &&
+      scope.format === saved.format &&
+      scope.singleScope === saved.singleScope &&
+      scope.subjectCode === saved.subjectCode &&
+      scope.templateCode === saved.templateCode;
+    const defaults = back
+      ? toFormValues(exam)
+      : { ...scopeDefaults(findTemplate(templates, scope.templateCode), kindOptionFor(kinds, scope.kind), scope.format), yearsConfirmed: false };
+    setValue("timing", defaults.timing, dirty);
+    setValue("sharedDuration", defaults.sharedDuration, dirty);
+    setValue("maxScore", defaults.maxScore, dirty);
+    setValue("yearsConfirmed", defaults.yearsConfirmed, dirty);
   };
 
   const pathsText = (() => {
     if (exam.format === "SINGLE") return exam.singleSubjectCode ? singleScopes.scopeName(exam.singleSubjectCode) : "—";
-    if (exam.englishOption && exam.combinationCount > 0) {
-      return t("facts.pathsEnglishAndCombinations", { count: exam.combinationCount });
-    }
-    if (exam.englishOption) return t("facts.pathsEnglishOnly");
-    if (exam.combinationCount > 0) return t("facts.pathsCombinationsOnly", { count: exam.combinationCount });
-    return t("facts.pathsFixed");
+    const segments = [
+      ...(exam.englishOption ? [t("facts.pathsEnglishOnly")] : []),
+      ...(exam.combinationCount > 0 ? [t("facts.pathsCombinationsOnly", { count: exam.combinationCount })] : []),
+      ...(branchCount > 0 ? [t("facts.pathsBranches", { count: branchCount })] : []),
+    ];
+    return segments.length > 0 ? segments.join(" + ") : t("facts.pathsFixed");
   })();
 
-  const showPreview = !lockScope && scopeChanged(exam, values);
+  const showPreview = !lockScope && scopeChanged(exam, values, subjectKind);
   const template = templates.find((item) => item.code === values.templateCode);
   const appliedTemplate = templates.find((item) => item.code === exam.templateCode);
+  const shared = exam.timing === "SHARED";
 
   return (
     <div className="@container flex flex-col gap-4">
@@ -153,6 +263,10 @@ function ExamGeneralForm({ exam, onAnnounce }: { exam: ExamDetail; onAnnounce: (
               register={register}
               errors={formState.errors}
               values={values}
+              kinds={kinds}
+              subjects={reference.subjects}
+              templates={templates}
+              partMinutes={shared ? 0 : exam.durationMinutes}
               lockScope={lockScope}
               lockScopeHint={t("scopeLocked")}
               onScopeChange={onScopeChange}
@@ -161,7 +275,15 @@ function ExamGeneralForm({ exam, onAnnounce }: { exam: ExamDetail; onAnnounce: (
               <TemplatePreview
                 template={template}
                 format={values.format}
-                subjectName={values.singleSubjectCode ? singleScopes.scopeName(values.singleSubjectCode) : null}
+                subjectName={
+                  values.format === "SINGLE"
+                    ? values.singleSubjectCode
+                      ? singleScopes.scopeName(values.singleSubjectCode)
+                      : null
+                    : values.subjectCode
+                      ? lookup.subject(values.subjectCode)
+                      : null
+                }
               />
             )}
             {submitError && (
@@ -208,14 +330,37 @@ function ExamGeneralForm({ exam, onAnnounce }: { exam: ExamDetail; onAnnounce: (
                 {exam.check.checkedAt && <FormattedDate value={exam.check.checkedAt} />}
               </span>
             </Fact>
-            <Fact label={t("facts.template")}>{appliedTemplate?.name ?? t("facts.noTemplate")}</Fact>
+            <Fact label={t("facts.template")}>
+              <span className="flex flex-col">
+                <span>{appliedTemplate?.name ?? t("facts.noTemplate")}</span>
+                {exam.structureYear !== null && (
+                  <span className="text-caption font-normal text-text-muted">
+                    {t("facts.years", {
+                      structureYear: String(exam.structureYear),
+                      matrixYear: exam.matrixYear === null ? "—" : String(exam.matrixYear),
+                    })}
+                  </span>
+                )}
+              </span>
+            </Fact>
+            {yearsDiffer(exam) && (
+              <Fact label={t("facts.yearsConfirmed")}>
+                <StatusChip tone={exam.yearsConfirmed ? "success" : "warning"}>
+                  {exam.yearsConfirmed ? t("facts.yearsConfirmedYes") : t("facts.yearsConfirmedNo")}
+                </StatusChip>
+              </Fact>
+            )}
             <Fact label={t("facts.structure")}>
-              {t("facts.structureValue", {
+              {t(shared ? "facts.structureValueShared" : "facts.structureValue", {
                 parts: exam.parts.length,
                 questions: exam.totalQuestions,
                 minutes: exam.durationMinutes,
               })}
             </Fact>
+            <Fact label={t("facts.maxScore")}>
+              {exam.maxScore === null ? t("facts.maxScoreUnset") : t("facts.maxScoreValue", { count: exam.maxScore })}
+            </Fact>
+            {exam.hasEssay && <Fact label={t("facts.essay")}>{t("facts.essayValue")}</Fact>}
             <Fact label={t("facts.paths")}>{pathsText}</Fact>
             <Fact label={t("facts.attempts")}>{t("facts.attemptsValue", { count: exam.attemptCount })}</Fact>
             <Fact label={t("facts.updated")}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, cn, focusRing } from "@thi360/ui";
+import { Badge, cn, focusRing, Label, Switch } from "@thi360/ui";
 import { CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
@@ -12,6 +12,7 @@ import {
   convertMatrixUnit,
   dimensionValues,
   gridToCells,
+  hasCompetencyDimension,
   type MatrixAxes,
   toDimension,
   validateBlock,
@@ -29,6 +30,11 @@ export interface BlockMatrixEditorProps {
   block: QuestionBlock;
   axes: MatrixAxes;
   labels: MatrixLabels;
+  /**
+   * Năng lực cho chiều năng lực (V-ACT): năng lực đã lọc ở phạm vi của khối, hoặc mọi năng lực của môn. Rỗng: kỳ thi
+   * không dùng năng lực, không hiện chiều này.
+   */
+  competencies: ReadonlyArray<{ code: string; name: string }>;
   onChange: (matrix: BlockMatrix) => void;
   /** Số câu Sẵn sàng khớp bộ lọc của khối; `undefined` khi đang tải hoặc lỗi. */
   available: AvailableQuestionCounts | undefined;
@@ -42,10 +48,20 @@ const CELL_INPUT = "h-9 w-16 px-2";
  * từng chiều; nhập số câu hoặc tỷ lệ %. Tỷ lệ quy đổi thành số câu nguyên theo phần dư lớn nhất, có bảng quy đổi và các
  * bước. Mỗi ô có gợi ý số câu nguồn; tổng lệch số câu của khối thì cảnh báo.
  */
-export function BlockMatrixEditor({ block, axes, labels, onChange, available, availableState }: BlockMatrixEditorProps) {
+export function BlockMatrixEditor({
+  block,
+  axes,
+  labels,
+  competencies,
+  onChange,
+  available,
+  availableState,
+}: BlockMatrixEditorProps) {
   const t = useTranslations("exams.matrix");
   const format = useFormatter();
   const titleId = useId();
+  const competencySwitchId = useId();
+  const competencyHintId = useId();
   const [switched, setSwitched] = useState(false);
   const { matrix } = block;
   const percent = matrix.unit === "PERCENT";
@@ -90,6 +106,25 @@ export function BlockMatrixEditor({ block, axes, labels, onChange, available, av
     values[index] = value;
     onChange({ ...matrix, [dimension]: toDimension(values, codes) });
   };
+
+  const competencyOn = hasCompetencyDimension(matrix);
+  const competencyName = (code: string) => competencies.find((item) => item.code === code)?.name ?? code;
+  const setCompetencyOn = (on: boolean) => {
+    if (!on) {
+      onChange({ ...matrix, byCompetency: undefined });
+      return;
+    }
+    const codes = competencies.map((item) => item.code);
+    // Một năng lực thì nhận đủ số câu của khối; nhiều năng lực để 0 cho người dùng chia.
+    const full = percent ? 100 : block.questionCount;
+    onChange({ ...matrix, byCompetency: codes.map((code) => ({ code, value: codes.length === 1 ? full : 0 })) });
+  };
+  const setCompetencyValue = (index: number, value: number) =>
+    onChange({
+      ...matrix,
+      byCompetency: (matrix.byCompetency ?? []).map((item, position) => (position === index ? { ...item, value } : item)),
+    });
+  const competencySource = (code: string) => available?.byCompetency?.find((item) => item.code === code)?.value ?? 0;
 
   const unitSuffix = percent ? t("percentAria") : t("countAria");
   const totalText = (value: number) => (percent ? t("percentValue", { value: number(value) }) : number(value));
@@ -309,22 +344,111 @@ export function BlockMatrixEditor({ block, axes, labels, onChange, available, av
         </>
       )}
 
+      {(competencies.length > 0 || competencyOn) && (
+        <section aria-label={t("byCompetencyCaption")} className="flex flex-col gap-3">
+          <div className="flex items-start gap-3">
+            <Switch
+              id={competencySwitchId}
+              checked={competencyOn}
+              aria-describedby={competencyHintId}
+              onCheckedChange={setCompetencyOn}
+            />
+            <div className="flex flex-col gap-0.5">
+              <Label htmlFor={competencySwitchId} className="cursor-pointer text-body font-medium text-text">
+                {t("competencyToggle")}
+              </Label>
+              <p id={competencyHintId} className="text-caption text-text-muted">
+                {t("competencyHint")}
+              </p>
+            </div>
+          </div>
+          {competencyOn && allocation.competency && (
+            <MatrixTable caption={t("byCompetencyCaption")} captionVisible>
+              <thead>
+                <tr>
+                  <HeadCell sticky>{t("competencyHeader")}</HeadCell>
+                  <HeadCell>{percent ? t("unitPercent") : t("unitCount")}</HeadCell>
+                  {percent && <HeadCell>{t("converted")}</HeadCell>}
+                </tr>
+              </thead>
+              <tbody>
+                {allocation.competency.codes.map((code, index) => {
+                  const hintId = `${block.id}-competency-src-${index}`;
+                  const conversion = allocation.competency?.conversion;
+                  const need = allocation.competency?.counts[index] ?? 0;
+                  const source = competencySource(code);
+                  return (
+                    <tr key={code}>
+                      <RowHead>{competencyName(code)}</RowHead>
+                      <td className="border-b border-border px-2 py-1.5 align-top">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="flex items-center gap-1">
+                            <BlockNumberInput
+                              className={CELL_INPUT}
+                              allowDecimal={percent}
+                              value={allocation.competency?.input[index] ?? 0}
+                              onValueChange={(value) => setCompetencyValue(index, value)}
+                              aria-label={t("dimensionAria", { label: competencyName(code), unit: unitSuffix })}
+                              aria-describedby={availableState === "ready" ? hintId : undefined}
+                            />
+                            {percent && <span aria-hidden className="text-text-muted">%</span>}
+                          </span>
+                          {availableState === "ready" && (
+                            <span
+                              id={hintId}
+                              className={cn(
+                                "flex items-center justify-end gap-1 text-caption",
+                                need > source ? "text-warning" : "text-text-muted",
+                              )}
+                            >
+                              {need > source && <TriangleAlert aria-hidden className="size-3.5 shrink-0" />}
+                              {need > source ? t("sourceShort", { count: source }) : t("source", { count: source })}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {percent && conversion && (
+                        <ConversionCell
+                          theoretical={number(conversion.theoretical[index] ?? 0)}
+                          result={conversion.results[index] ?? 0}
+                          bonus={conversion.bonus[index] ?? false}
+                        />
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <RowHead footer>{t("total")}</RowHead>
+                  <TotalCell strong>{totalText(allocation.competency.inputTotal)}</TotalCell>
+                  {percent && <TotalCell strong>{t("questionsValue", { count: allocation.competency.total })}</TotalCell>}
+                </tr>
+              </tfoot>
+            </MatrixTable>
+          )}
+        </section>
+      )}
+
       <AllocationStatus
         blockCount={block.questionCount}
-        totals={
-          matrix.mode === "COMBINED"
+        totals={[
+          ...(matrix.mode === "COMBINED"
             ? [{ label: null, total: allocation.total }]
             : [
                 { label: t("byGradeCaption"), total: allocation.gradeTotal },
                 { label: t("byDifficultyCaption"), total: allocation.difficultyTotal },
-              ]
-        }
+              ]),
+          ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
+        ]}
         messages={issues.map((issue) => {
           const dimension =
             "dimension" in issue && issue.dimension !== "COMBINED"
               ? issue.dimension === "GRADE"
                 ? t("byGradeCaption")
-                : t("byDifficultyCaption")
+                : issue.dimension === "COMPETENCY"
+                  ? t("byCompetencyCaption")
+                  : t("byDifficultyCaption")
               : null;
           if (issue.code === "INVALID_VALUE") return t("issues.invalidValue");
           if (issue.code === "PERCENT_TOTAL") {

@@ -9,7 +9,8 @@ import type { QuestionDetail } from "./types";
  *
  * Thứ tự điều kiện theo UniNote:
  * 1. CONTENT: đủ nội dung bắt buộc (đề bài, phương án, mệnh đề, ngữ liệu và câu con của câu chùm).
- * 2. ANSWER: có đáp án hợp lệ cho mọi câu được chấm.
+ * 2. ANSWER: có đáp án hợp lệ cho mọi câu được chấm. Đúng/Sai có bảng điểm hợp lệ (đủ số ý, không giảm, ô cuối bằng
+ *    điểm của câu); Tự luận có ít nhất một tiêu chí chấm và tổng điểm tiêu chí bằng điểm của câu (UNI-2599).
  * 3. CLASSIFICATION: đủ môn, khối lớp, độ khó và kiến thức chính.
  * 4. CATALOG_VALUES: giá trị phân loại có trong danh mục và kiến thức thuộc đúng môn.
  * 5. NO_GAPS: không có câu con hoặc vị trí (ô trống, ô thả) khuyết đáp án.
@@ -59,12 +60,16 @@ export type ReadinessIssueCode =
   | "DRAG_ITEM_EMPTY"
   | "ZONE_LABEL_EMPTY"
   | "SET_WITHOUT_CHILDREN"
+  | "CRITERION_EMPTY"
   // ANSWER
   | "NO_CORRECT_OPTION"
   | "SINGLE_CHOICE_MANY_CORRECT"
   | "NO_STATEMENTS"
   | "NO_BLANKS"
   | "NO_DROP_ZONES"
+  | "SCORE_TABLE_INVALID"
+  | "NO_RUBRIC"
+  | "RUBRIC_TOTAL_MISMATCH"
   // CLASSIFICATION
   | "SUBJECT_MISSING"
   | "GRADE_MISSING"
@@ -118,7 +123,20 @@ export interface ReadinessContext {
   unavailableResources?: ReadonlyArray<{ name: string; child?: number }>;
 }
 
-type QuestionPart = Pick<QuestionDetail, "type" | "content" | "body" | "children">;
+type QuestionPart = Pick<QuestionDetail, "type" | "content" | "body" | "children" | "points">;
+
+const sameScore = (left: number, right: number) => Math.abs(left - right) < 0.0005;
+
+/** Bảng điểm Đúng/Sai hợp lệ: đủ số ý, số không âm, không giảm, phần tử cuối bằng điểm của câu. */
+export function isValidScoreTable(table: readonly number[] | undefined, statementCount: number, points: number): boolean {
+  if (!table || table.length !== statementCount || statementCount === 0) return false;
+  for (let index = 0; index < table.length; index += 1) {
+    const value = table[index]!;
+    if (!Number.isFinite(value) || value < 0) return false;
+    if (index > 0 && value < table[index - 1]!) return false;
+  }
+  return sameScore(table.at(-1)!, points);
+}
 
 const blank = (value: string | null | undefined) => !value || value.trim() === "";
 
@@ -158,6 +176,11 @@ function contentIssues(question: QuestionPart, child?: number): ReadinessIssue[]
         if (blank(zone.label)) issues.push(at({ code: "ZONE_LABEL_EMPTY", position: index + 1 }));
       });
       break;
+    case "ESSAY":
+      body.rubric.forEach((criterion, index) => {
+        if (blank(criterion.description)) issues.push(at({ code: "CRITERION_EMPTY", position: index + 1 }));
+      });
+      break;
     case "FILL_IN":
       break;
   }
@@ -180,7 +203,13 @@ function answerIssues(question: QuestionPart, child?: number): ReadinessIssue[] 
     case "MULTIPLE_CHOICE":
       return body.options.some((option) => option.correct) ? [] : [at("NO_CORRECT_OPTION")];
     case "TRUE_FALSE":
-      return body.statements.length === 0 ? [at("NO_STATEMENTS")] : [];
+      if (body.statements.length === 0) return [at("NO_STATEMENTS")];
+      return isValidScoreTable(body.scoreTable, body.statements.length, question.points) ? [] : [at("SCORE_TABLE_INVALID")];
+    case "ESSAY": {
+      if (body.rubric.length === 0) return [at("NO_RUBRIC")];
+      const total = body.rubric.reduce((sum, criterion) => sum + criterion.points, 0);
+      return sameScore(total, question.points) ? [] : [at("RUBRIC_TOTAL_MISMATCH")];
+    }
     case "FILL_IN":
       return body.blanks.length === 0 ? [at("NO_BLANKS")] : [];
     case "DRAG_DROP":

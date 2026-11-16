@@ -1,0 +1,75 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/test/render";
+import { createExam } from "../api";
+import { ExamGeneralView } from "../components/exam-general-view";
+import { examStore } from "../mock/store";
+
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
+
+afterEach(() => {
+  examStore.reset();
+  routerMock.push.mockReset();
+});
+
+function facts() {
+  const panel = screen.getByRole("heading", { name: "Tình trạng" }).closest("div");
+  if (!panel) throw new Error("khong thay Tinh trang");
+  return within(panel);
+}
+
+describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
+  it("BCA: thời lượng chung, thang điểm và tự luận hiện ở Tình trạng; sửa thời lượng chung rồi Lưu", async () => {
+    const exam = await createExam({
+      name: "BCA thu",
+      code: "BCA-F-902",
+      kind: "BCA",
+      format: "FULL",
+      templateCode: "BCA_FULL",
+      singleSubjectCode: null,
+      description: null,
+    });
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${exam.id}`);
+    renderWithProviders(<ExamGeneralView examId={exam.id} />);
+    const shared = await screen.findByRole("textbox", { name: /Thời lượng chung/ });
+    expect(shared).toHaveValue("180");
+    expect(screen.getByRole("radio", { name: /BCA/ })).toBeChecked();
+    expect(facts().getByText("3 phần · 81 câu · 180 phút chung")).toBeInTheDocument();
+    expect(facts().getByText("100 điểm")).toBeInTheDocument();
+    expect(facts().getByText("Có câu tự luận, chấm tay")).toBeInTheDocument();
+
+    await user.clear(shared);
+    await user.type(shared, "170");
+    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    await waitFor(() => expect(examStore.get(exam.id)?.durationMinutes).toBe(170));
+    expect(examStore.get(exam.id)?.parts).toHaveLength(3);
+  });
+
+  it("SP2E Toán 2026: chờ chuyên gia xác nhận năm ma trận; xác nhận rồi Lưu", async () => {
+    const exam = await createExam({
+      name: "SP2E thu",
+      code: "SP2E-F-TOAN-902",
+      kind: "SP2E",
+      format: "FULL",
+      templateCode: "SP2E_MATH_2026",
+      singleSubjectCode: null,
+      subjectCode: "MATH",
+      description: null,
+    });
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${exam.id}`);
+    renderWithProviders(<ExamGeneralView examId={exam.id} />);
+    const confirm = await screen.findByRole("checkbox", { name: /Chuyên gia đã xác nhận chỉ tiêu/ });
+    expect(confirm).not.toBeChecked();
+    expect(facts().getByText("Năm cấu trúc 2026 · năm ma trận 2025")).toBeInTheDocument();
+    expect(facts().getByText("Chờ chuyên gia xác nhận")).toBeInTheDocument();
+
+    await user.click(confirm);
+    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    await waitFor(() => expect(examStore.get(exam.id)?.yearsConfirmed).toBe(true));
+    expect(await facts().findByText("Chuyên gia đã xác nhận")).toBeInTheDocument();
+  });
+});

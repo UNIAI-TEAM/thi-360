@@ -342,6 +342,15 @@ Quy ước rút ra khi làm các màn đợt 2 (UNI-2590), áp dụng cho mọi 
 - **Luồng nhiều bước** (Nhập câu hỏi từ tệp, Cấp tài khoản hàng loạt): đổi bước thì focus về tiêu đề bước; lỗi chặn bước tiếp hiện thành bảng tóm tắt lỗi nhận focus; báo cáo lỗi tải về là CSV tạo ở trình duyệt.
 - **Cột của `Table` phải ổn định** (`useMemo` hoặc khai báo ngoài component): mảng `columns` mới ở mỗi lần render làm bảng dựng lại ô, mất focus và hỏng việc trả focus khi đóng hộp thoại. Trạng thái của dòng (đang chạy, đang chọn) đưa vào ô qua context hoặc dữ liệu dòng, không qua closure của `columns`.
 
+Quy ước thêm ở đợt 7 kỳ thi và chấm tự luận (UNI-2599):
+
+- **Câu chấm tay:** câu và khối dạng Tự luận mang nhãn "Chấm tay" (icon kèm chữ, không chỉ màu) ở mọi nơi hiện câu: soạn, chi tiết, khối của cấu trúc, xem trước, phiên bản. Lượt thi còn câu chưa chấm ghi "Đang chấm", có điểm tự luận rồi mới ghi "Đã có điểm".
+- **Chờ chuyên gia xác nhận:** số liệu chờ chuyên gia (tổ hợp chia 17–17–16, năm cấu trúc khác năm ma trận) hiện chip trạng thái "Chờ chuyên gia xác nhận" kèm nút "Xác nhận"; xác nhận xong chip đổi thành "Chuyên gia đã xác nhận". Kiểm tra cấu hình chặn công bố khi còn mục chờ.
+- **Thời lượng chung:** bài dùng một thời lượng cho cả bài thì phần không có ô thời lượng; chỗ hiện thời lượng phần ghi chữ chỉ đọc "… phút, dùng chung cả bài", danh sách ghi "… phút chung".
+- **Bảng điểm sửa được** (bảng điểm câu Đúng/Sai, tiêu chí chấm): mỗi ô là một ô nhập số nhận dấu phẩy hoặc dấu chấm như ô Điểm; lỗi hiện ngay dưới ô sai (không phải số, nhỏ hơn ô trước, ô cuối khác điểm của câu), dòng tổng nói rõ đã khớp chưa.
+- **Chọn tệp:** không để lộ nút chọn tệp gốc của trình duyệt (chữ theo ngôn ngữ trình duyệt). Ẩn `input type="file"` bằng `sr-only` + `peer`, dùng `label` mang `buttonVariants` của kit làm nút, kèm dòng tên tệp đã chọn hoặc "Chưa chọn …"; vòng focus lấy từ `peer-focus-visible`.
+- **Màn chấm** (`/grading/[attemptId]`): đề và bài làm bên trái, tiêu chí chấm bên phải, xếp chồng khi khung hẹp (`@4xl`); thanh câu hỏi có điểm tạm từng câu; hoàn tất chấm hỏi xác nhận trong trang và đưa focus tới ô thiếu điểm đầu tiên.
+
 ## 6. Icon và hình ảnh
 
 - Icon: **lucide-react**, nét 1.75–2px, 16px trong nút, 18px trong menu, 20px độc lập.

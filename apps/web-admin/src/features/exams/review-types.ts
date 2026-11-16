@@ -28,6 +28,15 @@ export interface BlockAvailability {
   /** Câu chùm: số bộ nguyên vẹn khớp khối; dạng khác để `null`. */
   setCount: number | null;
   overlap: SourceOverlap | null;
+  /** Số câu Sẵn sàng khớp khối theo từng năng lực (V-ACT); khối không dùng chiều năng lực bỏ trống. */
+  competencies?: Array<{ code: string; count: number }>;
+  /**
+   * Mã các câu nguồn có quy tắc chấm khác quy tắc mong đợi của khối (bảng điểm Đúng/Sai, quy tắc nhiều đáp án). Bỏ
+   * trống: khối không đặt quy tắc mong đợi.
+   */
+  scoringMismatch?: string[];
+  /** Khối Tự luận: mã các câu nguồn chưa có tiêu chí chấm. */
+  missingRubric?: string[];
 }
 
 /** Nguồn theo từng khối, khóa là id khối. */
@@ -84,7 +93,20 @@ export type CheckIssueCode =
   | "DIMENSION_SHORTAGE"
   | "MATRIX_INFEASIBLE"
   | "SET_SHORTAGE"
-  | "OVERLAP_UNCONFIRMED";
+  | "OVERLAP_UNCONFIRMED"
+  | "YEARS_UNCONFIRMED"
+  | "OPTION_UNCONFIRMED"
+  | "PART_POINTS_MISMATCH"
+  | "POINTS_TOTAL_MISMATCH"
+  | "COMPETENCY_SHORTAGE"
+  | "RUBRIC_MISSING"
+  | "SCORING_MISMATCH";
+
+/**
+ * Mức của vấn đề. `ERROR`: lỗi xác định (Không hợp lệ). `UNCONFIRMED`: chưa tìm được phương án trong giới hạn xử lý.
+ * `WARNING`: cần xem lại nhưng không chặn công bố (câu nguồn có quy tắc chấm khác khối).
+ */
+export type CheckIssueSeverity = "ERROR" | "UNCONFIRMED" | "WARNING";
 
 /**
  * Một vấn đề. `ERROR` là lỗi xác định (Không hợp lệ); `UNCONFIRMED` là chưa tìm được phương án trong giới hạn xử lý.
@@ -93,7 +115,7 @@ export type CheckIssueCode =
 export interface CheckIssue {
   key: string;
   code: CheckIssueCode;
-  severity: "ERROR" | "UNCONFIRMED";
+  severity: CheckIssueSeverity;
   group: CheckGroup;
   partId: string | null;
   partName: string | null;
@@ -105,10 +127,14 @@ export interface CheckIssue {
   optionId: string | null;
   gradeCode: string | null;
   difficultyCode: string | null;
-  dimension: "GRADE" | "DIFFICULTY" | null;
+  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | null;
+  /** Năng lực của chỉ tiêu (chiều năng lực, V-ACT). */
+  competencyCode: string | null;
   required: number | null;
   available: number | null;
   timeLimitSeconds: number | null;
+  /** Mã câu nguồn liên quan (quy tắc chấm khác khối, thiếu tiêu chí chấm); `null` khi không áp dụng. */
+  questionCodes: string[] | null;
 }
 
 /** Số câu cần của một ô (ma trận kết hợp) sau khi quy đổi tỷ lệ. */
@@ -129,6 +155,8 @@ export interface BlockRequirement {
   cells: RequiredCell[];
   byGrade: RequiredDimension[];
   byDifficulty: RequiredDimension[];
+  /** Chiều năng lực (V-ACT), kiểm tra thêm bên cạnh Lớp × Độ khó; rỗng khi khối không dùng. */
+  byCompetency: RequiredDimension[];
 }
 
 export interface BlockCheck {
@@ -156,6 +184,7 @@ export interface PathCheck extends ExamPathRef {
   result: PathCheckResult;
   partIds: string[];
   totalQuestions: number;
+  /** Bài dùng thời lượng chung: thời lượng chung; không thì tổng thời lượng các phần của đường. */
   totalMinutes: number;
   totalPoints: number;
   blocks: BlockCheck[];
@@ -178,6 +207,10 @@ export interface ExamCheckOutcome {
   groups: CheckGroupResult[];
   partCount: number;
   totalPoints: number;
+  /** Số câu in trên đề (phần tự chọn theo nhánh in mọi nhánh); bằng số câu học viên làm khi không có nhánh. */
+  printedQuestions: number;
+  /** Thang điểm của bài; `null` khi kỳ thi chưa đặt thang. */
+  maxScore: number | null;
 }
 
 export interface ExamCheckResult extends ExamCheckOutcome {
@@ -212,6 +245,8 @@ export interface PreviewQuestion {
   /** Đáp án dạng chữ (điền đáp án, đúng sai); chỉ hiện trong chế độ quản trị. */
   answer: string | null;
   solution: string | null;
+  /** Câu Tự luận: tiêu chí chấm (chấm tay); dạng khác để `null`. */
+  rubric: Array<{ id: string; description: string; points: number }> | null;
 }
 
 export type PreviewItem =
@@ -239,6 +274,9 @@ export interface PreviewBlock {
   blockName: string;
   subjectCode: string;
   questionType: QuestionType;
+  /** Khối Tự luận: chấm tay, điểm có sau khi người chấm xong. */
+  manualGrading: boolean;
+  pointsPerQuestion: number;
   firstNumber: number;
   lastNumber: number;
   questionCount: number;
@@ -257,6 +295,10 @@ export interface PreviewPart {
   durationMinutes: number | null;
   firstNumber: number;
   lastNumber: number;
+  /** Tổng điểm các câu của phần trên đề đã sinh. */
+  points: number;
+  /** Điểm quy định của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
+  maxPoints: number | null;
   blocks: PreviewBlock[];
 }
 
@@ -279,7 +321,12 @@ export interface PreviewKnowledgeStat {
 export interface PreviewPaper {
   totalQuestions: number;
   totalPoints: number;
+  /** Bài dùng thời lượng chung: thời lượng chung; không thì tổng thời lượng các phần. */
   totalMinutes: number;
+  /** Bài dùng thời lượng chung (các phần không có thời lượng riêng). */
+  sharedDuration: boolean;
+  /** Có khối Tự luận: điểm phần tự luận có sau khi chấm tay. */
+  hasManualGrading: boolean;
   parts: PreviewPart[];
   checks: PreviewCheck[];
   knowledgeStats: PreviewKnowledgeStat[];

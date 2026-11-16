@@ -39,6 +39,8 @@ export interface GeneratePaperInput {
   candidates: (block: QuestionBlock, subjectCode: string) => readonly QuestionDetail[];
   knowledgeNode: (nodeId: string) => KnowledgeInfo | null;
   knowledgeChapter: (nodeId: string) => (KnowledgeInfo & { subjectCode: string }) | null;
+  /** Thời lượng chung của bài (`timing = SHARED`); bỏ trống: cộng thời lượng các phần. */
+  sharedDurationMinutes?: number | null;
 }
 
 /** Số ngẫu nhiên có hạt giống (mulberry32), để "Sinh lại" đổi đề còn cùng hạt giống thì cùng đề. */
@@ -73,11 +75,20 @@ function optionsOf(question: QuestionDetail): PreviewOption[] | null {
   return null;
 }
 
+function rubricOf(question: QuestionDetail): PreviewQuestion["rubric"] {
+  if (question.body.type !== "ESSAY") return null;
+  return question.body.rubric.map((item) => ({ id: item.id, description: item.description, points: item.points }));
+}
+
 function answerOf(question: QuestionDetail): string | null {
   if (question.body.type === "FILL_IN") {
     return question.body.blanks.map((blank) => blank.acceptedAnswers.join(" / ")).join(" · ") || null;
   }
   return null;
+}
+
+function roundPoints(value: number): number {
+  return Math.round(value * 1e6) / 1e6;
 }
 
 interface Slot {
@@ -129,6 +140,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       options: optionsOf(question),
       answer: answerOf(question),
       solution: question.solution,
+      rubric: rubricOf(question),
     };
   };
 
@@ -155,6 +167,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       options: null,
       answer: null,
       solution: null,
+      rubric: null,
     };
   };
 
@@ -265,6 +278,8 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       blockName: block.name,
       subjectCode,
       questionType: block.questionType,
+      manualGrading: block.questionType === "ESSAY",
+      pointsPerQuestion: block.pointsPerQuestion,
       firstNumber,
       lastNumber: number - 1,
       questionCount: questions.length,
@@ -280,6 +295,7 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
   const previewParts: PreviewPart[] = pathSections(parts, path).map(({ part, sections }) => {
     totalMinutes += part.durationMinutes ?? 0;
     const firstNumber = number;
+    const pointsBefore = totalPoints;
     const blocks = sections.flatMap((section) => {
       if (section.subjectCode === "ENGLISH") hasEnglish = true;
       return section.blocks.map((block) => buildBlock(block, section.subjectCode));
@@ -291,21 +307,26 @@ export function generatePaper(input: GeneratePaperInput): PreviewPaper {
       durationMinutes: part.durationMinutes,
       firstNumber,
       lastNumber: number - 1,
+      points: roundPoints(totalPoints - pointsBefore),
+      maxPoints: part.points ?? null,
       blocks,
     };
   });
+  const sharedMinutes = input.sharedDurationMinutes ?? null;
 
   const checks: PreviewCheck[] = [
     { code: "NO_DUPLICATES", status: duplicates === 0 ? "PASS" : "FAIL", value: duplicates },
     { code: "SETS_INTACT", status: hasSet ? "PASS" : "NOT_APPLICABLE", value: null },
     { code: "FIXED_BLOCK_ORDER", status: hasEnglish ? "PASS" : "NOT_APPLICABLE", value: null },
-    { code: "TOTAL_POINTS", status: "PASS", value: totalPoints },
+    { code: "TOTAL_POINTS", status: "PASS", value: roundPoints(totalPoints) },
   ];
 
   return {
     totalQuestions: number - 1,
-    totalPoints,
-    totalMinutes,
+    totalPoints: roundPoints(totalPoints),
+    totalMinutes: sharedMinutes ?? totalMinutes,
+    sharedDuration: sharedMinutes !== null,
+    hasManualGrading: previewParts.some((part) => part.blocks.some((block) => block.manualGrading)),
     parts: previewParts,
     checks,
     knowledgeStats: [...chapterCounts.values()].sort((a, b) => b.count - a.count || a.code.localeCompare(b.code)),
