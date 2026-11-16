@@ -2400,6 +2400,7 @@
       "saveErrors": {
         "generic": "The question could not be saved. Try again in a moment.",
         "fieldErrors": "Not saved: the server rejected some fields. Fix the fields marked below.",
+        "VALIDATION_FAILED": "Not saved: the server rejected the question data as invalid but did not point to a specific field. Review the question and try saving again.",
         "QUESTION_REVISION_CONFLICT": "The data was changed by someone else. Reload the page to edit the latest version.",
         "QUESTION_TYPE_IMMUTABLE": "A saved question cannot change type. Create a new question instead.",
         "QUESTION_SET_CHILDREN_MIN": "A question set needs at least 2 sub-questions.",

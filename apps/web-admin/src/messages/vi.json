@@ -2400,6 +2400,7 @@
       "saveErrors": {
         "generic": "Chưa lưu được câu hỏi. Thử lại sau giây lát.",
         "fieldErrors": "Chưa lưu được: máy chủ không chấp nhận một số trường. Hãy sửa các trường được đánh dấu.",
+        "VALIDATION_FAILED": "Chưa lưu được: máy chủ không chấp nhận dữ liệu câu hỏi nhưng không chỉ rõ trường. Hãy rà soát lại câu hỏi rồi lưu.",
         "QUESTION_REVISION_CONFLICT": "Dữ liệu đã được người khác sửa. Tải lại trang để sửa trên bản mới nhất.",
         "QUESTION_TYPE_IMMUTABLE": "Không đổi được dạng của câu đã lưu. Hãy tạo câu mới với dạng khác.",
         "QUESTION_SET_CHILDREN_MIN": "Câu chùm cần ít nhất 2 câu con.",

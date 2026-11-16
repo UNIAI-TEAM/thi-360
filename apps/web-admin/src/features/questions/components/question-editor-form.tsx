@@ -105,7 +105,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
     });
   };
 
-  /** 412: người khác đã sửa câu này; 422: lỗi theo trường đặt lên ô tương ứng; còn lại: thông báo chung theo mã. */
+  /** 412: người khác đã sửa câu này; 400/422: lỗi theo trường đặt lên ô tương ứng; còn lại: thông báo chung theo mã. */
   const showError = (error: unknown) => {
     if (isRevisionConflict(error)) {
       setSubmitError(null);
@@ -113,7 +113,9 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
       setLiveMessage(t("conflict.title"));
       return;
     }
-    const fieldErrors = getErrorStatus(error) === 422 ? apiFieldErrors(error) : [];
+    const status = getErrorStatus(error);
+    // Máy chủ gửi `fieldErrors` ở cả 400 lẫn 422 `VALIDATION_FAILED`: cứ có lỗi theo trường là đặt lên ô (F-02).
+    const fieldErrors = status === 400 || status === 422 ? apiFieldErrors(error) : [];
     const { applied, unmatched } = applyServerFieldErrors(fieldErrors, methods.setError, (path) =>
       methods.getValues(path as never),
     );

@@ -115,6 +115,31 @@ describe("lưu câu hỏi: lỗi 422 theo trường", () => {
   });
 });
 
+describe("lưu câu hỏi: 400 VALIDATION_FAILED không chỉ rõ trường (F-02)", () => {
+  it("báo lớp lỗi rõ ràng thay vì câu 'thử lại' chung chung; fieldErrors trên 400 cũng được đặt lên ô", async () => {
+    const user = userEvent.setup();
+    fakeApi.put(PUT, fail(400, { code: "VALIDATION_FAILED", message: "Validation failed", fieldErrors: [] }));
+    renderEn(<QuestionEditorView mode="edit" questionId="q-0001" />);
+    rich(await questionText()).set("<p>Sửa</p>");
+    await user.click(screen.getByRole("button", { name: "Save question" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("the server rejected the question data as invalid");
+    expect(alert).not.toHaveTextContent("Try again in a moment");
+
+    fakeApi.put(
+      PUT,
+      fail(400, {
+        code: "VALIDATION_FAILED",
+        message: "Validation failed",
+        fieldErrors: [{ code: "QUESTION_BODY_INVALID", field: "body.options[1].content", message: "x" }] as never,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save question" }));
+    await waitFor(() => expect(screen.getByText(/Fix the fields marked below/)).toBeInTheDocument());
+  });
+});
+
 describe("lưu câu hỏi: lỗi 422 không có ô trên biểu mẫu", () => {
   it("đường dẫn không thuộc biểu mẫu thì không báo 'ô đánh dấu bên dưới' mà ghi lỗi theo mã vào dải thông báo", async () => {
     const user = userEvent.setup();
