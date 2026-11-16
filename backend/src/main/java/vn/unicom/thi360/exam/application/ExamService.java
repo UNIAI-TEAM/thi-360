@@ -407,6 +407,7 @@ public class ExamService {
         exam.changeScope(kindItem.id(), scopeChoice.scope(), scopeChoice.partCode(),
                 scopeChoice.subjectItemId(), structureYear, matrixYear, yearsConfirmed,
                 templateCode, timing, duration, maxScore, actor, now);
+        exam.markStructureChanged(actor, now);
         try {
             exam = examRepository.saveAndFlush(exam);
         } catch (DataIntegrityViolationException ex) {
@@ -525,6 +526,7 @@ public class ExamService {
         if (request.yearsConfirmed() != null && !scopeChanged) {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
+        exam.markStructureChanged(actor, now);
         try {
             examRepository.flush();
         } catch (DataIntegrityViolationException ex) {
