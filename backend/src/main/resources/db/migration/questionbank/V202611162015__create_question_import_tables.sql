@@ -35,6 +35,7 @@ CREATE TABLE questionbank.question_import_upload (
     columns jsonb NOT NULL DEFAULT '[]'::jsonb,
     status text NOT NULL DEFAULT 'UPLOADED'
         CHECK (status IN ('UPLOADED', 'COMMITTING', 'COMMITTED')),
+    version bigint NOT NULL DEFAULT 0,
     import_id uuid REFERENCES questionbank.question_import (id),
     expires_at timestamptz NOT NULL,
     created_by uuid,

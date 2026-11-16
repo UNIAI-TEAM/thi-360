@@ -1,7 +1,6 @@
 package vn.unicom.thi360.questionbank.application;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -98,11 +97,10 @@ public class QuestionImportCommitService {
         }
         QuestionImportUpload initial = validation.requireUpload(id);
         byte[] bytes = storage.get(initial.getObjectKey()).orElse(null);
+        // The lock query must hydrate a fresh version after waiting for another commit.
+        entityManager.detach(initial);
         QuestionImportUpload upload = uploads.findByIdForUpdate(id)
                 .orElseThrow(() -> new NotFoundException("IMPORT_SOURCE_GONE", null));
-        // The upload was read before the lock; refresh after waiting so the persistence context
-        // does not retain an UPLOADED entity that another transaction already committed.
-        entityManager.refresh(upload, LockModeType.PESSIMISTIC_WRITE);
         if (bytes == null && upload.getStatus() == QuestionImportUpload.Status.UPLOADED) {
             throw new NotFoundException("IMPORT_SOURCE_GONE", null);
         }

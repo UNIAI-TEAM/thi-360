@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -56,6 +57,10 @@ public class QuestionImportUpload {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status = Status.UPLOADED;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Column(name = "import_id")
     private UUID importId;
