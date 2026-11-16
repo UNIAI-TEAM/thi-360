@@ -82,7 +82,7 @@ public class QuestionAssetUploadRateLimiter implements HandlerInterceptor {
                     .setCause(ex)
                     .addKeyValue("event", "rate_limit.backend_error")
                     .addKeyValue("userId", user.id())
-                    .log("Redis question-asset rate-limit check failed; failing open");
+                    .log("Redis rate-limit check failed; failing open");
             return true;
         }
         response.setHeader("X-RateLimit-Remaining", Long.toString(probe.getRemainingTokens()));
