@@ -27,6 +27,33 @@ class QuestionHtmlSanitizerTests {
         id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty());
 
     @Test
+    void documentShellAndHeadMatterAreReportedAndCleanedInBothModes() {
+        String[][] cases = {
+            {"<script>alert(1)</script><p>x</p>", "script"},
+            {"<html><head><style>p{display:none}</style></head><body><p>x</p></body></html>", "style"},
+            {"<body onload=alert(1)><p>x</p></body>", "onload"},
+            {"<title><img src=x onerror=alert(1)></title><p>x</p>", "title"}
+        };
+        for (boolean allowImages : new boolean[] {false, true}) {
+            for (String[] example : cases) {
+                Result result = sanitizer.clean(example[0], allowImages);
+                assertFalse(result.unchanged(), example[0]);
+                assertTrue(result.violations().stream().anyMatch(v ->
+                    example[1].equals(v.tag()) || example[1].equals(v.attribute())), example[0]);
+                var output = org.jsoup.Jsoup.parseBodyFragment(result.html());
+                assertTrue(output.select("script, style, title, [onload], [onerror]").isEmpty(), result.html());
+                assertEquals("x", output.selectFirst("p").text());
+            }
+        }
+    }
+
+    @Test
+    void safeMarkupIsReturnedInCleanedForm() {
+        Result result = sanitizer.clean("<P>x</P>");
+        assertEquals("<p>x</p>", result.html());
+    }
+
+    @Test
     void cleanContentUnchanged() {
         String html = "<p>Đề bài <strong>đậm</strong> và <em>nghiêng</em></p><ul><li>ý 1</li></ul>";
         Result result = sanitizer.clean(html);

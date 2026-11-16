@@ -32,6 +32,27 @@ class HtmlContentSanitizerAdapterTests {
             id -> id.equals(assetId) ? Optional.of(assetPath) : Optional.empty()));
 
     @Test
+    void documentShellAndHeadMatterAreReportedAndCleanedInBothModes() {
+        String[][] cases = {
+            {"<script>alert(1)</script><p>x</p>", "script"},
+            {"<html><head><style>p{display:none}</style></head><body><p>x</p></body></html>", "style"},
+            {"<body onload=alert(1)><p>x</p></body>", "onload"},
+            {"<title><img src=x onerror=alert(1)></title><p>x</p>", "title"}
+        };
+        for (Options options : new Options[] {Options.textOnly(), Options.withImages()}) {
+            for (String[] example : cases) {
+                Result result = textOnly.sanitize(example[0], options);
+                assertFalse(result.isClean(), example[0]);
+                assertTrue(result.violations().stream().anyMatch(v ->
+                    example[1].equals(v.tag()) || example[1].equals(v.attribute())), example[0]);
+                var output = org.jsoup.Jsoup.parseBodyFragment(result.html());
+                assertTrue(output.select("script, style, title, [onload], [onerror]").isEmpty(), result.html());
+                assertTrue(output.select("p").stream().anyMatch(p -> p.text().equals("x")));
+            }
+        }
+    }
+
+    @Test
     void textOnlyRejectsImg() {
         Result result = textOnly.sanitize(
             "<p>Đọc kỹ</p><img src=\"/api/v1/admin/question-assets/x\"/>", Options.textOnly());
