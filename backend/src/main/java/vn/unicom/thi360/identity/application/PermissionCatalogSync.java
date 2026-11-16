@@ -29,7 +29,14 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
 
     private static final Map<String, Set<Permission>> SYSTEM_ROLE_DEFAULTS = Map.of(
             "system_admin", EnumSet.allOf(Permission.class),
-            "content_admin", EnumSet.of(Permission.CATALOG_VIEW, Permission.CATALOG_MODIFY),
+            "content_admin", EnumSet.of(
+                    Permission.CATALOG_VIEW,
+                    Permission.CATALOG_MODIFY,
+                    Permission.QUESTION_VIEW,
+                    Permission.QUESTION_MODIFY,
+                    Permission.EXAM_VIEW,
+                    Permission.EXAM_MODIFY,
+                    Permission.EXAM_PUBLISH),
             "operations", EnumSet.of(
                     Permission.USER_VIEW,
                     Permission.USER_MODIFY,

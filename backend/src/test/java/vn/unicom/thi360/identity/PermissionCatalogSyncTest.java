@@ -96,7 +96,10 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
     @Test
     void fourSystemRolesAreSeededWithSpecDefaultPermissions() {
         assertSystemRole("system_admin", Access.MANAGE, Permission.values().length);
-        assertSystemRole("content_admin", Access.MANAGE, 2, Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY);
+        assertSystemRole("content_admin", Access.MANAGE, 7,
+                Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY,
+                Permissions.QUESTION_VIEW, Permissions.QUESTION_MODIFY,
+                Permissions.EXAM_VIEW, Permissions.EXAM_MODIFY, Permissions.EXAM_PUBLISH);
         assertSystemRole(
                 "operations",
                 Access.MANAGE,
@@ -233,6 +236,19 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
                     .map(PermissionEntity::getCode)
                     .collect(Collectors.toSet());
             assertThat(adminCodes).contains(newCodes);
+
+            // F-07: content_admin (2 quyền cũ) nhận thêm 5 quyền mới theo mặc định của vai trò
+            Role contentAdmin = roleRepository.findByCodeNormalized("content_admin").orElseThrow();
+            Set<String> contentCodes = permissionRepository
+                    .findAllById(rolePermissionRepository.findAllByIdRoleId(contentAdmin.getId()).stream()
+                            .map(rp -> rp.getId().getPermissionId())
+                            .toList())
+                    .stream()
+                    .map(PermissionEntity::getCode)
+                    .collect(Collectors.toSet());
+            assertThat(contentCodes).contains(newCodes)
+                    .contains(Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY)
+                    .hasSize(7);
 
             // Grant bị tháo tay KHÔNG bị khôi phục
             assertThat(adminCodes).doesNotContain(removedCode);
