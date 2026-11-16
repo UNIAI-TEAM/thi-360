@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank.application;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -47,6 +48,24 @@ public class QuestionAssetCleanupJob {
             RETURNING a.id, a.object_key
             """;
 
+    private static final String SELECT_PENDING_SQL = """
+            SELECT object_key, asset_id
+            FROM questionbank.question_asset_pending_delete
+            ORDER BY created_at
+            LIMIT ?
+            FOR UPDATE SKIP LOCKED
+            """;
+
+    private static final String INSERT_INTENT_SQL = """
+            INSERT INTO questionbank.question_asset_pending_delete (object_key, asset_id)
+            VALUES (?, ?)
+            ON CONFLICT (object_key) DO NOTHING
+            """;
+
+    private static final String DELETE_INTENT_SQL =
+            "DELETE FROM questionbank.question_asset_pending_delete WHERE object_key = ?";
+
+
     private final JdbcTemplate jdbc;
     private final ObjectStorage objectStorage;
     private final QuestionAssetCleanupProperties properties;
@@ -60,44 +79,64 @@ public class QuestionAssetCleanupJob {
         this.properties = Objects.requireNonNull(properties);
     }
 
-    /** Một lần quét: trả số dòng đã xóa. Object xóa sau commit (best-effort, có log). */
+    /**
+     * Một lần quét: thử lại các ý định xóa object còn dư trước (R1-3 — durable delete
+     * intent), rồi xóa dòng orphan mới. Transaction ghi ý định cùng lúc xóa dòng; object
+     * chỉ xóa sau khi commit, xóa xong mới gỡ dòng ý định. Trả số dòng xóa trong lần này.
+     */
     @Transactional
     public int run() {
         Instant cutoff = Instant.now().minus(properties.orphanAge());
-        List<DeletedAsset> deleted = jdbc.query(
+        List<PendingDelete> pending = jdbc.query(
+                SELECT_PENDING_SQL,
+                (rs, row) -> new PendingDelete(
+                        rs.getString("object_key"), rs.getObject("asset_id", UUID.class)),
+                Math.max(1, properties.batchSize()));
+        List<PendingDelete> deleted = jdbc.query(
                 DELETE_ORPHANS_SQL,
-                (rs, row) -> new DeletedAsset(
-                        rs.getObject("id", UUID.class), rs.getString("object_key")),
+                (rs, row) -> new PendingDelete(
+                        rs.getString("object_key"), rs.getObject("id", UUID.class)),
                 java.sql.Timestamp.from(cutoff),
                 Math.max(1, properties.batchSize()));
-        if (deleted.isEmpty()) {
+        for (PendingDelete asset : deleted) {
+            jdbc.update(INSERT_INTENT_SQL, asset.objectKey(), asset.assetId());
+        }
+        if (pending.isEmpty() && deleted.isEmpty()) {
             return 0;
         }
-        List<DeletedAsset> copy = List.copyOf(deleted);
+        List<PendingDelete> toDelete = new ArrayList<>(pending);
+        toDelete.addAll(deleted);
+        int deletedCount = deleted.size();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                for (DeletedAsset asset : copy) {
+                int objectsRemoved = 0;
+                for (PendingDelete asset : toDelete) {
                     try {
                         objectStorage.delete(asset.objectKey());
+                        // Object đã xóa mới gỡ ý định; lỗi giữ lại ý định để quét sau thử lại.
+                        jdbc.update(DELETE_INTENT_SQL, asset.objectKey());
+                        objectsRemoved++;
                     } catch (RuntimeException ex) {
                         jobLog.atWarn().setCause(ex)
-                                .addKeyValue("assetId", asset.id())
+                                .addKeyValue("assetId", asset.assetId())
                                 .addKeyValue("objectKey", asset.objectKey())
-                                .log("Orphan asset row deleted but object delete failed");
+                                .log("Orphan asset object delete failed; intent kept for next sweep");
                     }
                 }
                 jobLog.atInfo()
                         .addKeyValue("job", "question-asset-cleanup")
-                        .addKeyValue("deleted", copy.size())
+                        .addKeyValue("rows", deletedCount)
+                        .addKeyValue("objects", objectsRemoved)
                         .log("Orphan question assets cleaned");
             }
         });
         return deleted.size();
     }
 
-    private record DeletedAsset(UUID id, String objectKey) {
+    private record PendingDelete(String objectKey, UUID assetId) {
     }
+
 
     /**
      * Vòng lặp định kỳ (theo convention {@code ImportBatchProcessorJob}): tách bean để

@@ -8,18 +8,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.application.QuestionAssetCleanupJob;
@@ -42,7 +50,11 @@ class QuestionAssetCleanupIT extends AbstractIntegrationTest {
     @Autowired private DataSource dataSource;
     @Autowired private ObjectMapper mapper;
     @Autowired private QuestionAssetCleanupJob cleanupJob;
-    @Autowired private ObjectStorage objectStorage;
+    @MockitoSpyBean private ObjectStorage objectStorage;
+    @Autowired private PlatformTransactionManager txManager;
+
+    /** Asset id tạo trong test này — dọn cả ý định xóa object sót lại. */
+    private final List<UUID> createdAssets = new CopyOnWriteArrayList<>();
 
     @Override
     protected org.springframework.test.web.servlet.request.RequestPostProcessor asUser(String... permissions) {
@@ -53,6 +65,12 @@ class QuestionAssetCleanupIT extends AbstractIntegrationTest {
     void removeFixture() {
         String ids = "SELECT id FROM questionbank.question WHERE created_by = ?";
         jdbc.update("DELETE FROM questionbank.question_asset_ref WHERE question_id IN (" + ids + ")", actor);
+        if (!createdAssets.isEmpty()) {
+            String marks = String.join(", ",
+                    java.util.Collections.nCopies(createdAssets.size(), "?"));
+            jdbc.update("DELETE FROM questionbank.question_asset_pending_delete WHERE asset_id IN ("
+                    + marks + ")", createdAssets.toArray());
+        }
         jdbc.update("DELETE FROM questionbank.question_asset WHERE uploaded_by = ?", actor);
         jdbc.update("DELETE FROM questionbank.question_knowledge WHERE question_id IN (" + ids + ")", actor);
         jdbc.update("DELETE FROM questionbank.question_tag WHERE question_id IN (" + ids + ")", actor);
@@ -73,6 +91,7 @@ class QuestionAssetCleanupIT extends AbstractIntegrationTest {
                         + " 10, ?, 4, 4, ?, ?)",
                 id, key, new byte[32], actor, Timestamp.from(createdAt));
         objectStorage.put(key, new byte[] {1, 2, 3}, "image/png");
+        createdAssets.add(id);
         return id;
     }
 
@@ -132,6 +151,54 @@ class QuestionAssetCleanupIT extends AbstractIntegrationTest {
         assertThat(cleanupJob.run()).isZero();
         assertThat(assetExists(asset)).isTrue();
     }
+
+    @Test
+    void failedObjectDeleteRetriedNextSweep() {
+        // R1-3/R1-8: lần xóa object đầu lỗi → ý định còn, object còn; quét sau thử lại và
+        // dọn sạch (dòng asset đã mất từ lần quét đầu).
+        UUID asset = newAsset(Instant.now().minus(30, ChronoUnit.HOURS));
+        String key = objectKeyOf(asset);
+        AtomicBoolean failOnce = new AtomicBoolean(true);
+        Mockito.doAnswer((Answer<Void>) invocation -> {
+            if (failOnce.getAndSet(false)) {
+                throw new IllegalStateException("simulated storage outage");
+            }
+            invocation.callRealMethod();
+            return null;
+        }).when(objectStorage).delete(key);
+
+        assertThat(cleanupJob.run()).isEqualTo(1);
+        assertThat(assetExists(asset)).isFalse();
+        assertThat(objectStorage.exists(key)).isTrue(); // object lỡ sót còn nguyên
+        assertThat(pendingCount(key)).isEqualTo(1);
+
+        assertThat(cleanupJob.run()).isZero(); // không còn orphan mới, chỉ thử lại ý định
+        assertThat(objectStorage.exists(key)).isFalse();
+        assertThat(pendingCount(key)).isZero();
+    }
+
+    @Test
+    void rolledBackCleanupKeepsRowAndObject() {
+        // Transaction dọn bị rollback: dòng asset và object đều nguyên, không ghi ý định.
+        UUID asset = newAsset(Instant.now().minus(30, ChronoUnit.HOURS));
+        String key = objectKeyOf(asset);
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        tx.execute(status -> {
+            assertThat(cleanupJob.run()).isEqualTo(1);
+            status.setRollbackOnly();
+            return null;
+        });
+        assertThat(assetExists(asset)).isTrue();
+        assertThat(objectStorage.exists(key)).isTrue();
+        assertThat(pendingCount(key)).isZero();
+    }
+
+    private int pendingCount(String objectKey) {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM questionbank.question_asset_pending_delete WHERE object_key = ?",
+                Integer.class, objectKey);
+    }
+
 
     @Test
     void raceWithSave() throws Exception {
