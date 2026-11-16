@@ -404,6 +404,7 @@ export function BlockEditor({
                 onChange={(next) => update({ matrix: next })}
                 available={availableQuery.data}
                 availableState={availableState}
+                declared={block.matrix !== null}
               />
               {block.matrix !== null && (
                 <Button type="button" variant="secondary" size="sm" className="w-fit" onClick={() => update({ matrix: null })}>

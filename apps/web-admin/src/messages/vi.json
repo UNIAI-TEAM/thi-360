@@ -4707,7 +4707,6 @@
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
         "subjectRequired": "Chọn phần của bài Theo phần.",
         "descriptionMax": "Mô tả tối đa {max} ký tự.",
-        "instructionsMax": "Hướng dẫn làm bài tối đa {max} ký tự.",
         "partNameRequired": "Nhập tên phần.",
         "partNameMax": "Tên phần tối đa {max} ký tự.",
         "partSubjectRequired": "Chọn môn của phần.",
@@ -4888,6 +4887,12 @@
       "actions": "Thao tác",
       "edit": "Soạn môn",
       "editSubject": "Soạn môn {subject}"
+    },
+    "templateName": {
+      "full": "{kind} · Toàn bài",
+      "part": "{kind} · Theo phần {scope}",
+      "subject": "{kind} · {subject}",
+      "withYear": "{name} · {year}"
     },
     "combinations": {
       "title": "Nhánh học viên chọn",

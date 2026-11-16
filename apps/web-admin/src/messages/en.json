@@ -3817,7 +3817,7 @@
         "setWholeNote": "Sets are always drawn whole; the group's count is sets × sub-questions per set.",
         "points": "Required points per question",
         "pointsOpenHint": "Optional. Leave empty to accept any question; points come from the question version.",
-        "pointsTotal": "Only questions worth exactly {points, number} points enter the source; the group is worth {total, number} points.",
+        "pointsTotal": "Only questions worth exactly {points, plural, one {# point} other {# points}} enter the source; the group is worth {total, plural, one {# point} other {# points}}.",
         "taskType": "Task type",
         "taskTypeSet": "Task type or passage",
         "taskTypeSetHint": "Limit the source by task type; set the passage scope with MAPID below.",
@@ -4707,7 +4707,6 @@
         "codeTaken": "This exam code is already used. Enter another code.",
         "subjectRequired": "Choose the part of the by-part exam.",
         "descriptionMax": "The description can have at most {max} characters.",
-        "instructionsMax": "The instructions can have at most {max} characters.",
         "partNameRequired": "Enter the part name.",
         "partNameMax": "The part name can have at most {max} characters.",
         "partSubjectRequired": "Choose the part's subject.",
@@ -4888,6 +4887,12 @@
       "actions": "Actions",
       "edit": "Edit subject",
       "editSubject": "Edit subject {subject}"
+    },
+    "templateName": {
+      "full": "{kind} · Whole exam",
+      "part": "{kind} · By part {scope}",
+      "subject": "{kind} · {subject}",
+      "withYear": "{name} · {year}"
     },
     "combinations": {
       "title": "Paths learners choose",

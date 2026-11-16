@@ -32,7 +32,6 @@ const MESSAGES: CreateExamSchemaMessages = {
   codeTaken: "codeTaken",
   subjectRequired: "subjectRequired",
   descriptionMax: "descriptionMax",
-  instructionsMax: "instructionsMax",
   partNameRequired: "partNameRequired",
   partNameMax: "partNameMax",
   partSubjectRequired: "partSubjectRequired",
@@ -184,14 +183,14 @@ describe("kiểm tra trang Tạo bài thi", () => {
     expect(errors(values({ code: "HSA F 1" }))).toEqual({ code: "codeInvalid" });
   });
 
-  it("Theo phần phải chọn phần; Theo môn phải chọn môn; hướng dẫn làm bài có giới hạn độ dài", () => {
+  it("Theo phần phải chọn phần; Theo môn phải chọn môn; hướng dẫn làm bài là HTML nên không giới hạn độ dài", () => {
     expect(errors(values({ scope: "PART", partCode: "", parts: parts("HSA", "PART", "MATH") }))).toEqual({
       partCode: "subjectRequired",
     });
     expect(errors(values({ kind: "SPT", scope: "SUBJECT", subjectCode: "", maxScore: 10 }))).toMatchObject({
       subjectCode: "kindSubjectRequired",
     });
-    expect(errors(values({ instructions: "x".repeat(5001) }))).toEqual({ instructions: "instructionsMax" });
+    expect(errors(values({ instructions: `<p>${"x".repeat(5001)}</p>` }))).toEqual({});
   });
 
   it("số câu và thời lượng của phần phải là số nguyên dương; phần cố định phải có môn", () => {

@@ -36,8 +36,6 @@ export function scopesForKind(kinds: readonly ExamKindOption[], kind: ExamKind):
 export const EXAM_NAME_MAX = 200;
 export const EXAM_CODE_MAX = 50;
 export const EXAM_DESCRIPTION_MAX = 1000;
-/** Hướng dẫn làm bài: ô chữ thuần, trình soạn HTML nối ở FE-4 (không nhận ảnh). */
-export const EXAM_INSTRUCTIONS_MAX = 5000;
 export const PART_NAME_MAX = 200;
 /** Ảnh giới thiệu: chỉ nhận ảnh, tối đa 5 MB (dữ liệu mẫu không tải lên). */
 export const COVER_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -221,7 +219,6 @@ export interface ExamInfoSchemaMessages {
   maxScoreRequired: string;
   maxScorePositive: string;
   descriptionMax: string;
-  instructionsMax: string;
 }
 
 /** Mã đã biết là trùng (409 từ máy chủ), so không phân biệt hoa thường. */
@@ -246,7 +243,7 @@ const infoShape = (messages: ExamInfoSchemaMessages, takenCodes: TakenCodes) => 
   maxScore: z.number().nullable(),
   yearsConfirmed: z.boolean(),
   description: z.string().max(EXAM_DESCRIPTION_MAX, messages.descriptionMax),
-  instructions: z.string().max(EXAM_INSTRUCTIONS_MAX, messages.instructionsMax),
+  instructions: z.string(),
 });
 
 type InfoValues = Pick<ExamInfoFormValues, "kind" | "scope" | "partCode" | "subjectCode" | "timing" | "sharedDuration" | "maxScore">;

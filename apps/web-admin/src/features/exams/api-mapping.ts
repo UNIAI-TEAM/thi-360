@@ -372,14 +372,14 @@ function templatePart(part: ExamPart): ExamTemplatePart {
   };
 }
 
-/** Mẫu cấu trúc; tên hiển thị dựng ở giao diện theo ngôn ngữ (`useExamTemplates`), ở đây tạm là mã mẫu. */
+/** Mẫu cấu trúc; máy chủ không trả tên nên `name` để trống, giao diện dựng tên theo ngôn ngữ (`useExamTemplates`). */
 export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): ExamTemplate {
   const document = (response.structure ?? {}) as { parts?: ApiPart[] };
   return {
     code: response.code,
     kind: response.kindCode,
     scope: response.scope as ExamScope,
-    name: response.code,
+    name: "",
     partCode: nullable(response.partCode),
     subjectCode: nullable(response.subjectCode),
     structureYear: nullable(response.structureYear),

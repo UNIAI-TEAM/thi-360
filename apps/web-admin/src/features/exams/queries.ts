@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
+import { useTemplateLabel } from "./template-name";
 import { defaultExamsApiDeps, EXAMS_QUERY_KEYS, type ExamsApiDeps } from "./api";
 import type {
   ApplyExamTemplateRequest,
@@ -29,11 +30,15 @@ export function useExam(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
   });
 }
 
+/** Mẫu cấu trúc; mẫu chưa có tên (API thật) lấy tên theo ngôn ngữ giao diện (`useTemplateLabel`), đổi ngôn ngữ thì đổi ngay. */
 export function useExamTemplates(deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const label = useTemplateLabel();
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.templates(),
     queryFn: () => deps.listExamTemplates(),
     staleTime: 5 * 60_000,
+    select: (templates) =>
+      templates.map((template) => (template.name ? template : { ...template, name: label(template) })),
   });
 }
 
