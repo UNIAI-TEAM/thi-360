@@ -48,6 +48,12 @@ public final class ExamVersionChanges {
                     && identified(before) && identified(after)) {
                 Map<String, JsonNode> oldItems = byId(before);
                 Map<String, JsonNode> newItems = byId(after);
+                List<String> oldOrder = oldItems.keySet().stream().filter(newItems::containsKey).toList();
+                List<String> newOrder = newItems.keySet().stream().filter(oldItems::containsKey).toList();
+                if (!oldOrder.equals(newOrder)) {
+                    out.add(new ExamVersionChange(path, "ORDER_CHANGED", path,
+                            oldOrder.toString(), newOrder.toString(), blockId, null));
+                }
                 for (var entry : oldItems.entrySet()) {
                     String id = entry.getKey();
                     JsonNode next = newItems.get(id);

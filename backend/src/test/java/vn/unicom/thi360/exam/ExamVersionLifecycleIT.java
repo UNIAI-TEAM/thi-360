@@ -150,6 +150,31 @@ class ExamVersionLifecycleIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("b"));
     }
 
+    @Test
+    void reorderingPublishedFixedBlocksMakesTheWorkingPathUnpublished() throws Exception {
+        UUID id = exam("PUBLISHED");
+        jdbc.update("update exam.exam set has_unpublished_changes=true,serving_version=1 where id=?", id);
+        jdbc.update("""
+                update exam.exam_structure set parts=cast(? as jsonb) where exam_id=?
+                """, """
+                {"parts":[{"id":"p","sections":[{"id":"s","groupOrder":"FIXED",
+                "blocks":[{"id":"a"},{"id":"b"}]}]}]}
+                """, id);
+        snapshot(id, 1, "array['default']", "array['default']", "SERVING", "null");
+        String url = "/api/v1/admin/exams/" + id + "/versions";
+        mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.workingCopy.unpublishedPaths").isEmpty());
+        jdbc.update("""
+                update exam.exam_structure set parts=cast(? as jsonb) where exam_id=?
+                """, """
+                {"parts":[{"id":"p","sections":[{"id":"s","groupOrder":"FIXED",
+                "blocks":[{"id":"b"},{"id":"a"}]}]}]}
+                """, id);
+        mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("default"));
+    }
+
     private void snapshot(UUID id, int number, String published, String serving, String state, String duration) {
         jdbc.update("""
                 insert into exam.exam_version(id,exam_id,version_no,config,parts,published_path_ids,serving_path_ids,

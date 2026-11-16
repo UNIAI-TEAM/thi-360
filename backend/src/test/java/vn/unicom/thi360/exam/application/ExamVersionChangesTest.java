@@ -10,9 +10,9 @@ class ExamVersionChangesTest {
 
     @Test
     void identifiesBlockInsertionRemovalAndReorder() throws Exception {
-        var a = mapper.readTree("{\"parts\":[{\"id\":\"p\",\"sections\":[{\"id\":\"s\",\"blocks\":[{\"id\":\"a\",\"name\":\"A\"}]}]}]}");
-        var ba = mapper.readTree("{\"parts\":[{\"id\":\"p\",\"sections\":[{\"id\":\"s\",\"blocks\":[{\"id\":\"b\",\"name\":\"B\"},{\"id\":\"a\",\"name\":\"A\"}]}]}]}");
-        var ab = mapper.readTree("{\"parts\":[{\"id\":\"p\",\"sections\":[{\"id\":\"s\",\"blocks\":[{\"id\":\"a\",\"name\":\"A\"},{\"id\":\"b\",\"name\":\"B\"}]}]}]}");
+        var a = mapper.readTree("{\"parts\":[{\"id\":\"p\",\"sections\":[{\"id\":\"s\",\"groupOrder\":\"FIXED\",\"blocks\":[{\"id\":\"a\",\"name\":\"A\"}]}]}]}");
+        var ba = mapper.readTree("{\"parts\":[{\"id\":\"p\",\"sections\":[{\"id\":\"s\",\"groupOrder\":\"FIXED\",\"blocks\":[{\"id\":\"b\",\"name\":\"B\"},{\"id\":\"a\",\"name\":\"A\"}]}]}]}");
+        var ab = mapper.readTree("{\"parts\":[{\"id\":\"p\",\"sections\":[{\"id\":\"s\",\"groupOrder\":\"FIXED\",\"blocks\":[{\"id\":\"a\",\"name\":\"A\"},{\"id\":\"b\",\"name\":\"B\"}]}]}]}");
         var added = ExamVersionChanges.between(null, a, null, ba);
         assertThat(added).hasSize(1);
         assertThat(added.getFirst().kind()).isEqualTo("BLOCK_ADDED");
@@ -21,7 +21,22 @@ class ExamVersionChangesTest {
         assertThat(removed).hasSize(1);
         assertThat(removed.getFirst().kind()).isEqualTo("BLOCK_REMOVED");
         assertThat(removed.getFirst().blockId()).isEqualTo("b");
-        assertThat(ExamVersionChanges.between(null, ba, null, ab)).isEmpty();
+        var reordered = ExamVersionChanges.between(null, ba, null, ab);
+        assertThat(reordered).hasSize(1);
+        assertThat(reordered.getFirst().kind()).isEqualTo("ORDER_CHANGED");
+        assertThat(reordered.getFirst().where()).isEqualTo("parts/parts/p/sections/s/blocks");
+    }
+
+    @Test
+    void detectsReordersAtEveryCollectionLevelAndAlongsideInsertions() throws Exception {
+        for (String collection : new String[] {"parts", "sections", "blocks", "options"}) {
+            var before = mapper.readTree("{\"" + collection + "\":[{\"id\":\"a\"},{\"id\":\"b\"}]}");
+            var after = mapper.readTree("{\"" + collection + "\":[{\"id\":\"b\"},{\"id\":\"c\"},{\"id\":\"a\"}]}");
+            var changes = ExamVersionChanges.between(null, before, null, after);
+            assertThat(changes.stream().filter(change -> change.kind().equals("ORDER_CHANGED")).toList())
+                    .singleElement().satisfies(change -> assertThat(change.where()).isEqualTo("parts/" + collection));
+            assertThat(changes).hasSize(2);
+        }
     }
 
     @Test
