@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, IconButton } from "@thi360/ui";
+import { Button, IconButton, toast } from "@thi360/ui";
 import { Paperclip, Trash2, Upload } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useRef, useState, type ChangeEvent } from "react";
@@ -78,6 +78,8 @@ export function AttachmentsSection({ formId }: { formId: string }) {
       }
     }
     setUploading(false);
+    // F-09: toast lỗi cũ (ví dụ tải ảnh chèn sai loại) phải nhường chỗ cho lỗi trong dải mới, không nằm chồng ~6 s.
+    if (rejected.length > 0) toast.dismiss();
     setProblems(rejected);
     if (accepted.length > 0) {
       setValue("attachmentIds", [...getValues("attachmentIds"), ...accepted], { shouldDirty: true });
