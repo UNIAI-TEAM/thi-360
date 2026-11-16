@@ -126,39 +126,28 @@ class PaperSolverSpecCasesTest {
     }
 
     @Test
-    @DisplayName("hết hạn trong prep: nguồn đầu tiên tiêu hết hạn, nhóm sau không được hỏi nguồn (R1-4)")
+    @DisplayName("hết hạn trong chuẩn bị ứng viên sau khi nạp nguồn")
     void deadlineDuringPrep() {
-        // hạn giờ chỉ trôi khi nạp nguồn nhóm đầu → kiểm tra hạn bên trong chuẩn bị mới bắt được
-        GroupQuota g1 = GroupQuota.single("g1", 2);
-        GroupQuota g2 = GroupQuota.single("g2", 2);
-        SectionOnPath section = new SectionOnPath("S", "sec", 4, SubjectQuota.NONE,
-                List.of(g1, g2));
-        MutableClock clock = new MutableClock();
+        GroupQuota group = GroupQuota.single("g", 1);
+        SectionOnPath section = section("S", 1, List.of(group));
+        PhaseClock clock = new PhaseClock("Prep", "prepare");
         List<String> fetched = new ArrayList<>();
         CandidateSource source = g -> {
             fetched.add(g.groupId());
-            clock.advance(Duration.ofSeconds(60));
-            List<PathCandidate> pool = new ArrayList<>();
-            for (int i = 0; i < 2_048; i++) {
-                pool.add(single(g.groupId() + "-q" + i));
-            }
-            return pool;
+            return List.of(single("q"));
         };
         PaperSolver limited = new PaperSolver(
                 new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), clock);
-        PathResult result = limited.solvePath(path(List.of(section)), source,
-                SolveMode.check());
-        // chuẩn bị đã vào (một nhóm được hỏi nguồn) rồi hết hạn trước nhóm tiếp theo
-        assertThat(fetched).hasSize(1);
+        PathResult result = limited.solvePath(path(List.of(section)), source, SolveMode.check());
+        assertThat(fetched).containsExactly("g");
+        assertThat(clock.expiredReads).isPositive();
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
         assertThat(result.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
     }
 
     @Test
-    @DisplayName("hết hạn trong quay lui (chùm + nhiều phân hoạch): nguồn nạp xong mới vượt hạn (R1-4)")
+    @DisplayName("hết hạn trong quay lui với chùm và nhiều phân hoạch")
     void deadlineDuringSearch() {
-        // môn khai hai phân hoạch cấp môn (lớp + độ khó) và có nhóm chùm → bắt buộc quay lui;
-        // đồng hồ chỉ vượt hạn sau khi nguồn của cả hai nhóm đã nạp
         SubjectQuota quota = new SubjectQuota(null, new MatrixQuota.Separate(
                 List.of(new DimensionQuota("G10", 3), new DimensionQuota("G11", 3)),
                 List.of(new DimensionQuota("NB", 3), new DimensionQuota("TH", 3))));
@@ -166,32 +155,22 @@ class PaperSolverSpecCasesTest {
         GroupQuota rest = GroupQuota.remainder("gr");
         SectionOnPath section = new SectionOnPath("S", "sec", 6, quota,
                 List.of(setGroup, rest));
-        MutableClock clock = new MutableClock();
+        PhaseClock clock = new PhaseClock("PathSearch", "search");
         List<String> fetched = new ArrayList<>();
         CandidateSource source = g -> {
             fetched.add(g.groupId());
-            if (fetched.size() == 2) {
-                clock.advance(Duration.ofSeconds(60));
-            }
             if (g == setGroup) {
-                return List.of(
-                        setPair("s1", "G10", "NB"), setPair("s2", "G11", "TH"),
-                        setPair("s3", "G11", "NB"), setPair("s4", "G10", "TH"));
+                return List.of(setPair("s1", "G10", "NB"), setPair("s2", "G11", "TH"));
             }
-            List<PathCandidate> pool = new ArrayList<>();
-            for (int i = 0; i < 10; i++) {
-                pool.add(PathCandidate.standalone("q" + i, 1, "SINGLE_CHOICE",
-                        i % 2 == 0 ? "G10" : "G11", i % 3 == 0 ? "TH" : "NB",
-                        BigDecimal.ONE));
-            }
-            return pool;
+            return List.of(unit("q1", "G10", "NB"), unit("q2", "G10", "TH"),
+                    unit("q3", "G11", "NB"), unit("q4", "G11", "TH"),
+                    unit("q5", "G10", "TH"), unit("q6", "G11", "NB"));
         };
         PaperSolver limited = new PaperSolver(
                 new SolverLimits(200, 20_000, Duration.ofSeconds(30), 8), clock);
-        PathResult result = limited.solvePath(path(List.of(section)), source,
-                SolveMode.check());
-        // cả hai nhóm đã nạp nguồn: hết hạn sau chuẩn bị, trong pha tìm kiếm
+        PathResult result = limited.solvePath(path(List.of(section)), source, SolveMode.check());
         assertThat(fetched).containsExactlyInAnyOrder("gs", "gr");
+        assertThat(clock.expiredReads).isPositive();
         assertThat(result.status()).isEqualTo(SolveStatus.UNCONFIRMED);
         assertThat(result.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
     }
@@ -498,12 +477,15 @@ class PaperSolverSpecCasesTest {
         return new PathCandidate(id, 1, id, null, null, units);
     }
 
-    /** Đồng hồ test chỉ trôi khi {@link #advance} được gọi (mô phỏng nạp nguồn tiêu hao giờ). */
-    private static final class MutableClock extends Clock {
-        private Instant now = Instant.EPOCH;
+    /** Đồng hồ chỉ hết hạn khi kiểm tra trong pha được chọn, không phụ thuộc thời gian nguồn. */
+    private static final class PhaseClock extends Clock {
+        private final String className;
+        private final String methodName;
+        private int expiredReads;
 
-        void advance(Duration delta) {
-            now = now.plus(delta);
+        PhaseClock(String className, String methodName) {
+            this.className = PaperSolver.class.getPackageName() + "." + className;
+            this.methodName = methodName;
         }
 
         @Override
@@ -518,7 +500,14 @@ class PaperSolverSpecCasesTest {
 
         @Override
         public Instant instant() {
-            return now;
+            boolean inside = StackWalker.getInstance().walk(frames -> frames.anyMatch(frame ->
+                    frame.getClassName().equals(className)
+                            && frame.getMethodName().equals(methodName)));
+            if (inside) {
+                expiredReads++;
+                return Instant.EPOCH.plusSeconds(60);
+            }
+            return Instant.EPOCH;
         }
     }
 
