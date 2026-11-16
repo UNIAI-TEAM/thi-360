@@ -106,11 +106,15 @@ final class SubproblemSolver {
         int rCount = reqs.size();
         long[] supply = new long[rCount];
         java.util.Set<String> countedForSubject = new java.util.HashSet<>();
+        int scans = 0;
         for (int g = 0; g < nG; g++) {
             deadlineCheck.run();
             int groupUnits = ctx.groups().get(g).units();
             long units = 0;
             for (int i = 0; i < ctx.cands().get(g).size(); i++) {
+                if ((scans++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 if (ctx.usable()[g][i]) {
                     units += ctx.units()[g][i];
                     int[] vec = ctx.contrib()[g][i];
@@ -118,9 +122,12 @@ final class SubproblemSolver {
                     for (int r = ctx.reqFrom()[g]; r < ctx.reqTo()[g]; r++) {
                         supply[r] += vec[r];
                     }
-                    // chỉ tiêu phía môn: hợp nguồn của mọi nhóm, mỗi ứng viên (theo khóa) đếm một lần
-                    if (countedForSubject.add(java.util.Arrays.toString(ctx.keys()[g][i]))) {
-                        for (int r = 0; r < ctx.subjectReqs(); r++) {
+                    // chỉ tiêu phía môn của section chứa nhóm g: hợp nguồn của các nhóm cùng
+                    // section, mỗi ứng viên (theo khóa) đếm một lần (R2-3)
+                    if (countedForSubject.add(ctx.sectionOf()[g] + ":"
+                            + java.util.Arrays.toString(ctx.keys()[g][i]))) {
+                        int[] blk = ctx.subjectBlocks()[ctx.sectionOf()[g]];
+                        for (int r = blk[0]; r < blk[1]; r++) {
                             supply[r] += vec[r];
                         }
                     }

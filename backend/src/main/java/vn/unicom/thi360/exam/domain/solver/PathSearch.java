@@ -141,6 +141,9 @@ final class PathSearch {
     private void buildPairs() {
         List<int[]> pairs = new ArrayList<>();
         for (int c = 0; c < classVecs.size(); c++) {
+            if ((c & 0x3FF) == 0) {
+                deadlineCheck.run();
+            }
             int lastG = -1;
             for (int[] m : members.get(c)) {
                 if (m[0] != lastG) {
@@ -168,16 +171,21 @@ final class PathSearch {
         pairVec = new int[nPairs][];
         int nG = ctx.groups().size();
         for (int p = 0; p < nPairs; p++) {
+            if ((p & 0x3FF) == 0) {
+                deadlineCheck.run();
+            }
             int g = pairs.get(p)[0];
             int c = pairs.get(p)[1];
             pairGroup[p] = g;
             pairClass[p] = c;
-            // vector charge của cặp: chỉ chỉ tiêu phía môn + chỉ tiêu của chính nhóm — đóng góp
-            // vào TỔNG của nhóm khác (matcher khớp mọi đơn vị) không được trừ ở cặp này
+            // vector charge của cặp: chỉ chỉ tiêu phía môn của section chứa nhóm + chỉ tiêu của
+            // chính nhóm — đóng góp vào TỔNG của nhóm khác (matcher khớp mọi đơn vị) và chỉ tiêu
+            // phía môn của section khác không được trừ ở cặp này (R2-3)
             int[] full = classVecs.get(c);
             int[] masked = new int[full.length];
+            int[] blk = ctx.subjectBlocks()[ctx.sectionOf()[g]];
             for (int r = 0; r < full.length; r++) {
-                if (r < ctx.subjectReqs() || (r >= ctx.reqFrom()[g] && r < ctx.reqTo()[g])) {
+                if ((r >= blk[0] && r < blk[1]) || (r >= ctx.reqFrom()[g] && r < ctx.reqTo()[g])) {
                     masked[r] = full[r];
                 }
             }
