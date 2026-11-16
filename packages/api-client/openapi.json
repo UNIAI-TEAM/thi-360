@@ -4275,8 +4275,25 @@
           "name" : {
             "type" : "string"
           },
+          "partCode" : {
+            "description" : "Mã phần khi scope = PART",
+            "type" : "string"
+          },
+          "practiceScoring" : {
+            "description" : "Mặc định chấm luyện tập",
+            "type" : "string"
+          },
           "questionCount" : {
             "format" : "int32",
+            "type" : "integer"
+          },
+          "referenceMax" : {
+            "description" : "Thang điểm quy chiếu (V-ACT)",
+            "type" : "number"
+          },
+          "revision" : {
+            "description" : "Revision hiện tại của bài thi — gửi lại trong expectedRevision",
+            "format" : "int64",
             "type" : "integer"
           },
           "scope" : {
@@ -4292,6 +4309,14 @@
             "description" : "DRAFT | PUBLISHED | DISCONTINUED",
             "type" : "string"
           },
+          "subjectCode" : {
+            "description" : "Mã môn khi bài theo môn",
+            "type" : "string"
+          },
+          "timing" : {
+            "description" : "PER_PART | SHARED",
+            "type" : "string"
+          },
           "updatedAt" : {
             "format" : "date-time",
             "type" : "string"
@@ -4301,7 +4326,7 @@
             "description" : "Người cập nhật gần nhất"
           }
         },
-        "required" : [ "attemptCount", "check", "code", "combinationCount", "hasEnglishOption", "hasEssay", "hasUnpublishedChanges", "id", "kind", "name", "questionCount", "scope", "status", "updatedAt" ],
+        "required" : [ "attemptCount", "check", "code", "combinationCount", "hasEnglishOption", "hasEssay", "hasUnpublishedChanges", "id", "kind", "name", "practiceScoring", "questionCount", "revision", "scope", "status", "timing", "updatedAt" ],
         "type" : "object"
       },
       "ExamTemplateResponse" : {
@@ -14967,6 +14992,20 @@
         }, {
           "in" : "query",
           "name" : "hasEnglishOption",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "checkStatus",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "hasUnpublishedChanges",
           "required" : false,
           "schema" : {
             "type" : "boolean"

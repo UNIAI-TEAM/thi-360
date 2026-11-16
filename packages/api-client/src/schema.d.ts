@@ -4015,8 +4015,19 @@ export interface components {
             /** @description Thang điểm */
             maxScore?: number;
             name: string;
+            /** @description Mã phần khi scope = PART */
+            partCode?: string;
+            /** @description Mặc định chấm luyện tập */
+            practiceScoring: string;
             /** Format: int32 */
             questionCount: number;
+            /** @description Thang điểm quy chiếu (V-ACT) */
+            referenceMax?: number;
+            /**
+             * Format: int64
+             * @description Revision hiện tại của bài thi — gửi lại trong expectedRevision
+             */
+            revision: number;
             /** @description FULL | PART | SUBJECT */
             scope: string;
             /**
@@ -4026,6 +4037,10 @@ export interface components {
             servingVersion?: number;
             /** @description DRAFT | PUBLISHED | DISCONTINUED */
             status: string;
+            /** @description Mã môn khi bài theo môn */
+            subjectCode?: string;
+            /** @description PER_PART | SHARED */
+            timing: string;
             /** Format: date-time */
             updatedAt: string;
             /** @description Người cập nhật gần nhất */
@@ -11723,6 +11738,8 @@ export interface operations {
                 status?: string;
                 hasEssay?: boolean;
                 hasEnglishOption?: boolean;
+                checkStatus?: string;
+                hasUnpublishedChanges?: boolean;
                 page?: number;
                 size?: number;
                 sort?: string;
