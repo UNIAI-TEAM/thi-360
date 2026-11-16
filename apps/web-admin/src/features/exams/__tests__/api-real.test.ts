@@ -167,8 +167,8 @@ describe("ngừng bán từ danh sách (nhánh thật)", () => {
       .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ status: "PUBLISHED", revision: 9, servingVersion: 2 }) })
       .on("POST", `${EXAM_PATH}/discontinue`, { status: 200, body: examDetailWire({ status: "DISCONTINUED", revision: 10 }) });
 
-    // Dòng danh sách không có revision: tham số `expectedRevision` của màn (0) không được gửi đi.
-    const exam = await discontinueExam(EXAM_ID, 0);
+    // Dòng danh sách không có revision: không gửi `expectedRevision`, client đọc revision hiện tại rồi gửi số đó.
+    const exam = await discontinueExam(EXAM_ID);
 
     expect(exam.status).toBe("DISCONTINUED");
     const [post] = server.calls("POST", `${EXAM_PATH}/discontinue`);

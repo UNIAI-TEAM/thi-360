@@ -25,18 +25,23 @@ export const updateExamStructure: typeof mock.updateExamStructure = (...args) =>
 export const applyExamTemplate: typeof mock.applyExamTemplate = (...args) => (isContentMockEnabled() ? mock.applyExamTemplate(...args) : http.applyExamTemplate(...args));
 export const duplicateExam: typeof mock.duplicateExam = (...args) => (isContentMockEnabled() ? mock.duplicateExam(...args) : http.duplicateExam(...args));
 /**
- * Ngừng bán. Dòng danh sách của máy chủ không có `revision`, nên nhánh thật đọc revision hiện tại của bài rồi ngừng bán:
- * đây là bước "lần ghi cuối thắng" có chủ đích, 412 không bắt được sửa chéo giữa lúc mở danh sách và lúc bấm (màn
- * Phiên bản có revision nên vẫn kiểm). `idempotencyKey` do nơi gọi giữ: thử lại cùng một lần bấm dùng cùng khóa.
+ * Ngừng bán. Nơi gọi có `revision` của bản đang xem (màn Phiên bản) gửi làm `expectedRevision`: lệch thì máy chủ trả
+ * 412 `EXAM_REVISION_CONFLICT`. Dòng danh sách của máy chủ không có `revision`, nên nơi gọi đó không gửi và nhánh
+ * thật đọc revision hiện tại của bài rồi ngừng bán — bước "lần ghi cuối thắng" có chủ đích. `idempotencyKey` do nơi
+ * gọi giữ: thử lại cùng một lần bấm dùng cùng khóa.
  */
 export const discontinueExam = async (
   id: string,
-  expectedRevision: number,
+  expectedRevision?: number,
   idempotencyKey?: string,
 ): Promise<ExamDetail> =>
   isContentMockEnabled()
     ? mock.discontinueExam(id, expectedRevision)
-    : discontinueReviewedExam({ examId: id, expectedRevision: (await http.getExam(id)).revision, idempotencyKey });
+    : discontinueReviewedExam({
+        examId: id,
+        expectedRevision: expectedRevision ?? (await http.getExam(id)).revision,
+        idempotencyKey,
+      });
 export const countAvailableQuestions: typeof mock.countAvailableQuestions = (...args) => (isContentMockEnabled() ? mock.countAvailableQuestions(...args) : http.countAvailableQuestions(...args));
 export const countSubjectAvailableQuestions: typeof mock.countSubjectAvailableQuestions = (...args) => (isContentMockEnabled() ? mock.countSubjectAvailableQuestions(...args) : http.countSubjectAvailableQuestions(...args));
 

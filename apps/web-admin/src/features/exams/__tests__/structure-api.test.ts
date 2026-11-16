@@ -236,8 +236,15 @@ describe("sao chép và ngừng bán", () => {
     expect(first.parts.some((part) => sourceIds.has(part.id))).toBe(false);
   });
 
-  it("chỉ ngừng bán được bài Đang bán", async () => {
+  it("chỉ ngừng bán được bài Đang bán; revision cũ của nơi gọi thì máy chủ trả 412", async () => {
     const published = await getExam("ex-qda-f-001");
+    await rejectsWith(discontinueExam(published.id, published.revision + 4), 412, "EXAM_REVISION_CONFLICT");
+
+    // Nơi gọi gửi revision của bản đang xem: không đọc lại chi tiết, POST mang revision cũ.
+    const posts = backend.calls("POST", "/api/v1/admin/exams/ex-qda-f-001/discontinue");
+    expect(posts[0]!.body).toMatchObject({ expectedRevision: published.revision + 4 });
+    expect(backend.calls("GET", "/api/v1/admin/exams/ex-qda-f-001")).toHaveLength(1);
+
     expect((await discontinueExam(published.id, published.revision)).status).toBe("DISCONTINUED");
     const draft = await getExam("ex-hsa-f-002");
     await rejectsWith(discontinueExam(draft.id, draft.revision), 409, "EXAM_NOT_PUBLISHED");
