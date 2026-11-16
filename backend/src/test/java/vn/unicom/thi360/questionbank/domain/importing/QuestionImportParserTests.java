@@ -18,8 +18,9 @@ import vn.unicom.thi360.questionbank.spi.QuestionType;
 class QuestionImportParserTests {
     private static final ImportDictionary DICTIONARY = ImportDictionary.standard();
     private static final ImportCatalog CATALOG = new ImportCatalog(
-        List.of(option("ENGLISH"), option("MATH")), List.of(option("GRADE_11"), option("GRADE_12")),
-        List.of(option("RECOGNITION")), List.of(), List.of(), List.of());
+        List.of(option("ANH"), option("ENGLISH"), option("MATH"), option("TOAN"), option("VAN")),
+        List.of(option("G11"), option("G12"), option("GRADE_11"), option("GRADE_12")),
+        List.of(option("NB"), option("RECOGNITION"), option("TH")), List.of(), List.of(), List.of());
 
     private static ImportCatalogOption option(String code) {
         return new ImportCatalogOption(UUID.nameUUIDFromBytes(code.getBytes(java.nio.charset.StandardCharsets.UTF_8)), code, code, true);
@@ -252,7 +253,7 @@ class QuestionImportParserTests {
     @Test
     void childLeavesEmptyClassificationNullForInheritance() throws Exception {
         var nodes = List.of(
-            new ImportKnowledgeNode(UUID.randomUUID(), "1D4-3-1", "MATH", true, true));
+            new ImportKnowledgeNode(UUID.randomUUID(), "1D4-3-1", List.of("MATH"), true, true));
         var catalog = new ImportCatalog(CATALOG.subjects(), CATALOG.grades(), CATALOG.difficulties(),
             CATALOG.taskTypes(), CATALOG.tags(), nodes);
         var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(
@@ -270,6 +271,24 @@ class QuestionImportParserTests {
         assertEquals(1, setDraft.children().size());
         assertEquals(child, setDraft.children().getFirst());
     }
+
+    @Test
+    void knowledgeNodeMatchesAnyOfItsSubjects() throws Exception {
+        var node = new ImportKnowledgeNode(
+            UUID.randomUUID(), "0D1", List.of("TOAN", "ANH"), true, true);
+        var catalog = new ImportCatalog(
+            List.of(option("ANH"), option("TOAN")), CATALOG.grades(), CATALOG.difficulties(),
+            CATALOG.taskTypes(), CATALOG.tags(), List.of(node));
+        var sheet = ImportSheets.fromTable(ImportFileType.CSV, null, List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "knowledge", "correctAnswer"),
+            List.of("SHORT_ANSWER", "Điền", "ANH", "GRADE_11", "RECOGNITION", "0D1", "x")), ImportLimits.DEFAULT);
+        var result = QuestionImportParser.parse(sheet,
+            ImportColumnMapper.suggestMapping(sheet.columns(), DICTIONARY), catalog, List.of(), DICTIONARY);
+        assertFalse(result.hasErrors(), () -> result.rows().getFirst().issues().toString());
+        assertEquals(List.of(new ImportKnowledgeRef(node.nodeId(), "0D1", true)),
+            result.rows().getFirst().draft().knowledge());
+    }
+
 
     @Test
     void unknownCatalogValuesBlockWhileMissingGuideWarns() throws Exception {

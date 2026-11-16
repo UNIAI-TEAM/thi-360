@@ -527,7 +527,8 @@ public final class QuestionImportParser {
         for (String code : ImportCellSyntax.splitList(raw)) {
             ImportKnowledgeNode node = byCode.get(ImportCellSyntax.normalizeCode(code));
             if (node == null
-                || (subjectCode != null && !ImportCellSyntax.sameCode(node.subjectCode(), subjectCode))) {
+                || (subjectCode != null && node.subjectCodes().stream()
+                    .noneMatch(s -> ImportCellSyntax.sameCode(s, subjectCode)))) {
                 row.add(ImportIssueCode.KNOWLEDGE_UNKNOWN, ImportField.KNOWLEDGE, code, null, row.type);
                 row.lastSubjectCode = subjectCode;
             } else if (!node.leaf()) {
