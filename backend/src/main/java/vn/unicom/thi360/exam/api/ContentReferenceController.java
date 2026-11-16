@@ -25,8 +25,8 @@ public class ContentReferenceController {
     @Operation(
             summary = "Dữ liệu tham chiếu gộp cho màn Ngân hàng câu hỏi và Bài thi",
             description = "Mở cho người có QUESTION.VIEW hoặc EXAM.VIEW. Trả lựa chọn danh mục, "
-                    + "dạng bài, tám dạng câu cố định và cây kiến thức; examKinds rỗng tới BE-4. "
-                    + "Kết quả cache theo revision danh mục.")
+                    + "dạng bài, tám dạng câu cố định, hồ sơ kỳ thi và cây kiến thức. "
+                    + "Kết quả cache theo revision danh mục và xóa khi hồ sơ kỳ thi đổi.")
     public ContentReferenceResponse getContentReference() {
         return contentReferenceService.getContentReference();
     }
