@@ -2375,7 +2375,7 @@
         "passage": "Đoạn dẫn chung"
       },
       "contentHint": {
-        "default": "Ô nhập nhiều dòng. Trình soạn thảo có công thức, hình và bảng sẽ có ở bản sau.",
+        "default": "Soạn bằng thanh công cụ: định dạng chữ, danh sách, bảng, hình và công thức (nút Σ).",
         "fillIn": "Ghi ___ (ba dấu gạch dưới) ở chỗ cần điền, hoặc đặt con trỏ rồi bấm “Thêm ô trống”.",
         "trueFalse": "Phần dùng chung cho mọi ý: dữ kiện, hình vẽ, bảng số liệu.",
         "passage": "Bài đọc, bảng số liệu hoặc hình dùng chung cho mọi câu con.",
