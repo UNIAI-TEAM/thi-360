@@ -1,3 +1,4 @@
+import type { AppLocale } from "@thi360/web-kit/preferences";
 import type { KnowledgeRef, MultipleChoiceRule, QuestionType, TrueFalseMethod } from "@/features/content/types";
 import { normalizePrimary } from "@/features/content/knowledge-tree";
 import { isChildQuestionType, type ChildQuestionType, type SaveChildQuestionRequest, type SaveQuestionRequest } from "./editor-types";
@@ -234,9 +235,9 @@ export function emptyEditorValues(type: QuestionType): QuestionEditorValues {
   };
 }
 
-/** 1.5 → "1,5" (cách viết của ô Điểm). */
-export function formatPoints(points: number): string {
-  return String(points).replace(".", ",");
+/** 1.5 → "1,5" (vi) hoặc "1.5" (en): cách viết của ô Điểm theo ngôn ngữ giao diện. Khi đọc ô, cả hai dấu đều được nhận. */
+export function formatPoints(points: number, locale: AppLocale = "vi"): string {
+  return locale === "en" ? String(points) : String(points).replace(".", ",");
 }
 
 /** "1,5" hoặc "1.5" → 1.5; không phải số thì `NaN`. */
@@ -251,7 +252,7 @@ function answerRows(answers: readonly string[]): { id: string; value: string }[]
   return (answers.length > 0 ? answers : [""]).map((value) => ({ id: draftRowId("a"), value }));
 }
 
-export function bodyToEditor(body: QuestionBody): EditorBody {
+export function bodyToEditor(body: QuestionBody, locale: AppLocale = "vi"): EditorBody {
   const base = emptyBody("QUESTION_SET");
   switch (body.type) {
     case "SINGLE_CHOICE":
@@ -272,7 +273,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
       const questionPoints = perStatement
         ? roundPoints(body.statements.reduce((sum, statement) => sum + (statement.points ?? 0), 0))
         : (body.scoreTable.at(-1) ?? DEFAULT_POINTS);
-      const share = evenSplitText(body.statements.length, questionPoints > 0 ? questionPoints : DEFAULT_POINTS);
+      const share = evenSplitText(body.statements.length, questionPoints > 0 ? questionPoints : DEFAULT_POINTS, locale);
       return {
         ...base,
         scoringMethod: body.scoringMethod,
@@ -280,11 +281,11 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
           id: statement.id,
           content: statement.content,
           answer: statement.answer ? "TRUE" : "FALSE",
-          points: statement.points === null ? (share[index] ?? "") : formatPoints(statement.points),
+          points: statement.points === null ? (share[index] ?? "") : formatPoints(statement.points, locale),
         })),
         scoreTable: perStatement
-          ? evenScoreTableText(body.statements.length, questionPoints > 0 ? questionPoints : DEFAULT_POINTS)
-          : body.scoreTable.map(formatPoints),
+          ? evenScoreTableText(body.statements.length, questionPoints > 0 ? questionPoints : DEFAULT_POINTS, locale)
+          : body.scoreTable.map((value) => formatPoints(value, locale)),
       };
     }
     case "SHORT_ANSWER":
@@ -305,7 +306,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
         blanks: body.blanks.map((blank) => ({
           id: blank.id,
           answers: answerRows(blank.answers),
-          points: formatPoints(blank.points),
+          points: formatPoints(blank.points, locale),
         })),
       };
     case "MATCHING": {
@@ -314,7 +315,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
         ...base,
         left: body.left.map((item) => {
           const pair = rightOf.get(item.id);
-          return { id: item.id, content: item.content, rightId: pair?.rightId ?? "", points: pair ? formatPoints(pair.points) : "" };
+          return { id: item.id, content: item.content, rightId: pair?.rightId ?? "", points: pair ? formatPoints(pair.points, locale) : "" };
         }),
         right: body.right.map((item) => ({ ...item })),
         reuseRight: body.reuseRight,
@@ -331,7 +332,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
         rubric: body.rubric.map((criterion) => ({
           id: criterion.id,
           description: criterion.description,
-          points: formatPoints(criterion.points),
+          points: formatPoints(criterion.points, locale),
         })),
         sampleAnswer: body.sampleAnswer ?? "",
         wordLimit: body.wordLimit === null ? "" : String(body.wordLimit),
@@ -339,7 +340,7 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
   }
 }
 
-export function toEditorValues(question: QuestionDetail): QuestionEditorValues {
+export function toEditorValues(question: QuestionDetail, locale: AppLocale = "vi"): QuestionEditorValues {
   return {
     type: question.type,
     subjectCode: question.subjectCode,
@@ -347,14 +348,14 @@ export function toEditorValues(question: QuestionDetail): QuestionEditorValues {
     difficultyCode: question.difficultyCode,
     competencyCode: question.competencyCode ?? "",
     taskTypeCode: question.taskTypeCode ?? "",
-    points: formatPoints(question.points),
+    points: formatPoints(question.points, locale),
     knowledge: normalizePrimary(question.knowledge),
     tagCodes: [...question.tagCodes],
     content: question.body.type === "CLOZE" ? clozeToEditorContent(question.body.passage) : question.content,
     solution: question.solution ?? "",
     commonMistakes: question.commonMistakes ?? "",
     attachmentIds: [...question.attachmentIds],
-    body: bodyToEditor(question.body),
+    body: bodyToEditor(question.body, locale),
     children: question.children.map((child) => {
       const sameKnowledge = sameNodeIds(child.knowledge, question.knowledge);
       return {
@@ -363,13 +364,13 @@ export function toEditorValues(question: QuestionDetail): QuestionEditorValues {
         type: isChildQuestionType(child.type) ? child.type : "SINGLE_CHOICE",
         content: child.content,
         solution: child.solution ?? "",
-        points: formatPoints(child.points),
+        points: formatPoints(child.points, locale),
         // Mock và máy chủ trả phân loại đã kế thừa: giống câu cha thì hiện là "kế thừa".
         gradeCode: child.gradeCode === question.gradeCode ? "" : child.gradeCode,
         difficultyCode: child.difficultyCode === question.difficultyCode ? "" : child.difficultyCode,
         knowledgeOverride: !sameKnowledge,
         knowledge: sameKnowledge ? [] : normalizePrimary(child.knowledge),
-        body: bodyToEditor(child.body),
+        body: bodyToEditor(child.body, locale),
       };
     }),
   };
@@ -491,8 +492,8 @@ export function evenSplit(count: number, points: number): number[] {
 }
 
 /** Như `evenSplit`, viết theo ô Điểm ("0,5"). */
-export function evenSplitText(count: number, points: number): string[] {
-  return evenSplit(count, points).map(formatPoints);
+export function evenSplitText(count: number, points: number, locale: AppLocale = "vi"): string[] {
+  return evenSplit(count, points).map((value) => formatPoints(value, locale));
 }
 
 /** Tổng các điểm hợp lệ trong danh sách ô Điểm. */
@@ -516,8 +517,8 @@ export function evenScoreTable(statementCount: number, points: number): number[]
 }
 
 /** Như `evenScoreTable`, viết theo ô Điểm ("0,5"). */
-export function evenScoreTableText(statementCount: number, points: number): string[] {
-  return evenScoreTable(statementCount, points).map(formatPoints);
+export function evenScoreTableText(statementCount: number, points: number, locale: AppLocale = "vi"): string[] {
+  return evenScoreTable(statementCount, points).map((value) => formatPoints(value, locale));
 }
 
 /** Làm tròn điểm tới 3 chữ số thập phân (0,125). */
