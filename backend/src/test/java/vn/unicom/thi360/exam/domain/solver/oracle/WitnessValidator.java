@@ -113,7 +113,11 @@ public final class WitnessValidator {
             out.addAll(checkInstance(inst, sw, source, usedGroupKeys));
         }
         for (Instance inst : instances) {
-            if (!inst.groups.isEmpty() && !usedInstances.contains(inst)) {
+            // mọi bài toán con mong đợi cần witness, kể cả khi mục không có nhóm nào: mục
+            // số câu dương không nhóm được oracle kết luận INVALID nên một đề VALID khai báo
+            // không witness là giả (R2-21); witness của bài toán con rỗng nhóm được kiểm qua
+            // SECTION_TOTAL_MISMATCH của chính nó
+            if (!usedInstances.contains(inst)) {
                 out.add(new Violation("MISSING_WITNESS",
                         "subproblem " + inst.key() + " has no witness"));
             }
