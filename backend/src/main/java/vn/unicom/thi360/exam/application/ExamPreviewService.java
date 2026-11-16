@@ -57,6 +57,17 @@ public class ExamPreviewService {
         }
         var resolved = PreviewPathResolver.resolve(document, input.parts(), request.pathId(),
                 request.subjectCodes(), request.seed(), solver.allocator());
+        PathResult selectedPath = new PathResult(resolved.path(), SolveStatus.VALID, null, null,
+                null, List.of(), List.of(), null);
+        List<ObjectNode> staticIssues = ExamCheckRules.issuesForPath(mapper, snapshot.exam(),
+                document, selectedPath);
+        if (staticIssues.stream().anyMatch(issue -> !"WARNING".equals(issue.path("severity").asText()))) {
+            String reason = staticIssues.stream().anyMatch(issue -> "ERROR".equals(issue.path("severity").asText()))
+                    ? "INVALID" : "UNCONFIRMED";
+            return new PreviewResult(id, resolved.pathRef(), null, request.seed(), Instant.now(clock),
+                    "FAILED", null, reason,
+                    staticIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList());
+        }
         PathResult result = solver.solvePath(resolved.path(), input.candidates(), SolveMode.generate(request.seed()));
         if (result.status() != SolveStatus.VALID) {
             return new PreviewResult(id, resolved.pathRef(), null, request.seed(), Instant.now(clock),

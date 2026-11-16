@@ -35,7 +35,7 @@ public class ExamPreviewStore {
     }
 
     public record Snapshot(UUID id, String code, String timing, Integer durationMinutes,
-                           String practiceScoring, BigDecimal maxScore, JsonNode parts) {}
+                           String practiceScoring, BigDecimal maxScore, JsonNode parts, Exam exam) {}
 
     @Transactional(readOnly = true)
     public Snapshot load(UUID id) {
@@ -43,7 +43,7 @@ public class ExamPreviewStore {
         JsonNode parts = structures.findById(id).map(ExamStructure::getParts)
                 .orElseThrow(() -> new NotFoundException("Exam structure not found"));
         return new Snapshot(exam.getId(), exam.getCode(), exam.getTiming(), exam.getDurationMinutes(),
-                exam.getPracticeScoring(), exam.getMaxScore(), parts.deepCopy());
+                exam.getPracticeScoring(), exam.getMaxScore(), parts.deepCopy(), exam);
     }
 
     @Transactional(readOnly = true)

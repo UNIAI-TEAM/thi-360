@@ -45,6 +45,7 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 id, id.toString(), id.toString());
         jdbc.update("insert into exam.exam_structure (exam_id, parts, structure_hash) values (?, cast(? as jsonb), 'test')",
                 id, "{\"parts\":" + parts + "}");
+        jdbc.update("update exam.exam set question_count = (select coalesce(sum((p->>'questionCount')::integer),0) from jsonb_array_elements(cast(? as jsonb)) p) where id = ?", parts, id);
         return id;
     }
 
@@ -84,10 +85,10 @@ class ExamPreviewIT extends AbstractIntegrationTest {
 
     private String part(String subject, String blocks, String quotas) {
         return """
-                [{"id":"part","order":1,"name":"Part","durationMinutes":30,"questionCount":50,
+                [{"id":"part","order":1,"name":"Part","questionCount":%s,
                   "participation":{"mode":"ALL"},"sections":[{"id":"section","subjectCode":"%s",
                   "questionCount":%s,"answerQuotas":%s,"blocks":%s}],"options":[]}]
-                """.formatted(subject, quotas.equals("null") ? "1" : "50", quotas, blocks);
+                """.formatted(quotas.equals("null") ? "1" : "50", subject, quotas.equals("null") ? "1" : "50", quotas, blocks);
     }
 
     private JsonNode preview(UUID examId, String body) throws Exception {
@@ -110,6 +111,36 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         assertThat(item.path("version").asInt()).isEqualTo(1);
         assertThat(preview(examId, request).path("paper")).isEqualTo(first.path("paper"));
         assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and question_id=? and version_no=1 and kind='PREVIEW'", Integer.class, examId, question)).isEqualTo(1);
+    }
+    @Test
+    void invalidSelectedPathNeverGeneratesOrRecordsUsage() throws Exception {
+        Subject a = subject();
+        Subject b = subject();
+        question(a, "SINGLE_CHOICE", "available", false);
+        String valid = part(a.code(), "[{\"id\":\"g\",\"name\":\"Group\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1,\"requiredPointsPerQuestion\":1}]", "null");
+        UUID badPart = exam(valid.replaceFirst("\"questionCount\":1,", "\"questionCount\":2,"));
+        UUID badScore = exam(valid);
+        jdbc.update("update exam.exam set max_score=10 where id=?", badScore);
+        UUID unconfirmed = exam("""
+                [{"id":"p","name":"Choice","questionCount":1,"participation":{"mode":"CHOICE","choose":1},"sections":[],
+                  "options":[{"id":"pick","kind":"SUBJECT_CHOICE","code":"PICK","expertConfirmed":false,
+                    "chooseSubjects":1,"countsByPick":[1],"sections":[
+                      {"id":"a","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"ga","questionType":"SINGLE_CHOICE"}]},
+                      {"id":"b","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"gb","questionType":"SINGLE_CHOICE"}]}]}]}]
+                """.formatted(a.code(), b.code()));
+        for (var test : List.of(
+                new String[]{badPart.toString(), "{\"pathId\":\"default\",\"seed\":1}", "PART_TOTAL_MISMATCH"},
+                new String[]{badScore.toString(), "{\"pathId\":\"default\",\"seed\":1}", "POINTS_TOTAL_MISMATCH"},
+                new String[]{unconfirmed.toString(), "{\"pathId\":\"pick\",\"seed\":1,\"subjectCodes\":[\"" + a.code() + "\"]}", "OPTION_UNCONFIRMED"})) {
+            mockMvc.perform(post("/api/v1/admin/exams/" + test[0] + "/preview")
+                            .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(test[1]))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("FAILED"))
+                    .andExpect(jsonPath("$.reason").value("INVALID"))
+                    .andExpect(jsonPath("$.issues[?(@.code == '" + test[2] + "')]").isNotEmpty());
+            assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=?",
+                    Integer.class, UUID.fromString(test[0]))).isZero();
+        }
     }
 
     @Test
@@ -172,12 +203,12 @@ class ExamPreviewIT extends AbstractIntegrationTest {
             question(subject, "SINGLE_CHOICE", "second", false);
         }
         String sections = """
-                {"id":"a","subjectCode":"%s","blocks":[{"id":"ga","name":"A","questionType":"SINGLE_CHOICE"}]},
-                {"id":"b","subjectCode":"%s","blocks":[{"id":"gb","name":"B","questionType":"SINGLE_CHOICE"}]},
-                {"id":"c","subjectCode":"%s","blocks":[{"id":"gc","name":"C","questionType":"SINGLE_CHOICE"}]}
+                {"id":"a","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"ga","name":"A","questionType":"SINGLE_CHOICE"}]},
+                {"id":"b","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"gb","name":"B","questionType":"SINGLE_CHOICE"}]},
+                {"id":"c","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"gc","name":"C","questionType":"SINGLE_CHOICE"}]}
                 """.formatted(a.code(), b.code(), c.code());
         UUID examId = exam("""
-                [{"id":"p","order":1,"name":"Choice","participation":{"mode":"CHOICE","choose":1},"sections":[],
+                [{"id":"p","order":1,"name":"Choice","questionCount":3,"participation":{"mode":"CHOICE","choose":1},"sections":[],
                   "options":[{"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":2,
                   "countsByPick":[2,1],"sections":[%s]}]}]
                 """.formatted(sections));
