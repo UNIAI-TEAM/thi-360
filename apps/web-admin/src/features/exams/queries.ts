@@ -133,8 +133,8 @@ export function useDuplicateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
 export function useDiscontinueExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({
-    mutationFn: ({ id, expectedRevision }: { id: string; expectedRevision: number }) =>
-      deps.discontinueExam(id, expectedRevision),
+    mutationFn: ({ id, expectedRevision, idempotencyKey }: { id: string; expectedRevision: number; idempotencyKey?: string }) =>
+      deps.discontinueExam(id, expectedRevision, idempotencyKey),
     onSuccess: () => invalidate(),
   });
 }

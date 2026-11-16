@@ -2,6 +2,7 @@ import { isContentMockEnabled } from "@/lib/mock/flags";
 import * as http from "./api.http";
 import * as mock from "./api.mock";
 import { discontinueExam as discontinueReviewedExam } from "./review-api";
+import type { ExamDetail } from "./types";
 
 /**
  * API của Bài thi (danh sách, chi tiết, mẫu cấu trúc, tạo, sửa thông tin, sửa cấu trúc, nạp mẫu, sao chép, ngừng bán,
@@ -23,13 +24,18 @@ export const updateExamStructure: typeof mock.updateExamStructure = (...args) =>
 export const applyExamTemplate: typeof mock.applyExamTemplate = (...args) => (isContentMockEnabled() ? mock.applyExamTemplate(...args) : http.applyExamTemplate(...args));
 export const duplicateExam: typeof mock.duplicateExam = (...args) => (isContentMockEnabled() ? mock.duplicateExam(...args) : http.duplicateExam(...args));
 /**
- * Ngừng bán. Dòng danh sách của máy chủ không có `revision`, nên nhánh thật đọc revision hiện tại của bài rồi ngừng bán
- * qua `review-api` (cùng khóa Idempotency-Key và xử lý lỗi với màn Phiên bản).
+ * Ngừng bán. Dòng danh sách của máy chủ không có `revision`, nên nhánh thật đọc revision hiện tại của bài rồi ngừng bán:
+ * đây là bước "lần ghi cuối thắng" có chủ đích, 412 không bắt được sửa chéo giữa lúc mở danh sách và lúc bấm (màn
+ * Phiên bản có revision nên vẫn kiểm). `idempotencyKey` do nơi gọi giữ: thử lại cùng một lần bấm dùng cùng khóa.
  */
-export const discontinueExam: typeof mock.discontinueExam = async (id, expectedRevision) =>
+export const discontinueExam = async (
+  id: string,
+  expectedRevision: number,
+  idempotencyKey?: string,
+): Promise<ExamDetail> =>
   isContentMockEnabled()
     ? mock.discontinueExam(id, expectedRevision)
-    : discontinueReviewedExam({ examId: id, expectedRevision: (await http.getExam(id)).revision });
+    : discontinueReviewedExam({ examId: id, expectedRevision: (await http.getExam(id)).revision, idempotencyKey });
 export const countAvailableQuestions: typeof mock.countAvailableQuestions = (...args) => (isContentMockEnabled() ? mock.countAvailableQuestions(...args) : http.countAvailableQuestions(...args));
 export const countSubjectAvailableQuestions: typeof mock.countSubjectAvailableQuestions = (...args) => (isContentMockEnabled() ? mock.countSubjectAvailableQuestions(...args) : http.countSubjectAvailableQuestions(...args));
 

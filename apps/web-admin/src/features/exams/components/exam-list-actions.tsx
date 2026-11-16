@@ -17,6 +17,7 @@ import { useState } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examTabHref } from "../editor-tabs";
 import { useDiscontinueExam, useDuplicateExam } from "../queries";
+import { useIdempotencyKey } from "../review-queries";
 import type { ExamSummary } from "../types";
 
 /**
@@ -28,6 +29,7 @@ export function ExamListRowActions({ exam, onAnnounce }: { exam: ExamSummary; on
   const router = useRouter();
   const duplicate = useDuplicateExam();
   const discontinue = useDiscontinueExam();
+  const idempotency = useIdempotencyKey();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [discontinueError, setDiscontinueError] = useState<string | null>(null);
 
@@ -47,8 +49,10 @@ export function ExamListRowActions({ exam, onAnnounce }: { exam: ExamSummary; on
 
   const runDiscontinue = () => {
     setDiscontinueError(null);
-    discontinue.mutate({ id: exam.id, expectedRevision: exam.revision }, {
+    // Một khóa cho mỗi lần ngừng bán của bài này: bấm lại sau lỗi mạng dùng lại khóa; xong thì thả khóa.
+    discontinue.mutate({ id: exam.id, expectedRevision: exam.revision, idempotencyKey: idempotency.keyFor(exam.id) }, {
       onSuccess: () => {
+        idempotency.release();
         setConfirmOpen(false);
         const message = t("discontinueSuccess", { code: exam.code });
         notify.success(message);
