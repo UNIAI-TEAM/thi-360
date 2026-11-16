@@ -235,6 +235,20 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<UUID, List<ClassRef>> findCurrentClassesByUserIds(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<ClassRef>> result = new LinkedHashMap<>();
+        for (ClassMemberRepository.UserClassRow row : classMemberRepository.findCurrentClassRowsByUserIds(Set.copyOf(userIds))) {
+            result.computeIfAbsent(row.getUserId(), k -> new ArrayList<>())
+                    .add(new ClassRef(row.getClassId(), row.getCode(), row.getName()));
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, ClassLookupInfo> findClassesByNormalizedCodes(Collection<String> normalizedCodes) {
         if (normalizedCodes == null || normalizedCodes.isEmpty()) {
             return Map.of();

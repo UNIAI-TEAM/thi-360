@@ -16,6 +16,12 @@ public interface ClassMembershipPort {
 
     UserClassesResult getUserClasses(UUID userId);
 
+    /** Lớp hiện tại (chưa xóa) của nhiều tài khoản trong một truy vấn, mỗi danh sách sắp theo mã lớp. */
+    Map<UUID, List<ClassRef>> findCurrentClassesByUserIds(Collection<UUID> userIds);
+
+    record ClassRef(UUID id, String code, String name) {
+    }
+
     record UserClassesResult(
             List<CurrentClass> currentClasses,
             List<ClassHistoryEntry> history

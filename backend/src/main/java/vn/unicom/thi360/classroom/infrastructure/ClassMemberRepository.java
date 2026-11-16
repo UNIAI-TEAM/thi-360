@@ -1,5 +1,6 @@
 package vn.unicom.thi360.classroom.infrastructure;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,4 +28,24 @@ public interface ClassMemberRepository extends JpaRepository<ClassMember, ClassM
               AND c.deletedAt IS NULL
             """)
     List<UUID> findActiveUserIdsByClassId(@Param("classId") UUID classId);
+
+    @Query("""
+            SELECT cm.id.userId AS userId, c.id AS classId, c.code AS code, c.name AS name
+            FROM ClassMember cm
+            JOIN ClassRoom c ON c.id = cm.id.classId
+            WHERE cm.id.userId IN :userIds
+              AND c.deletedAt IS NULL
+            ORDER BY c.codeNormalized ASC
+            """)
+    List<UserClassRow> findCurrentClassRowsByUserIds(@Param("userIds") Collection<UUID> userIds);
+
+    interface UserClassRow {
+        UUID getUserId();
+
+        UUID getClassId();
+
+        String getCode();
+
+        String getName();
+    }
 }
