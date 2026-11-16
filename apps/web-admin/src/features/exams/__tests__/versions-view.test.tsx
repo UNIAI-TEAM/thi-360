@@ -46,15 +46,15 @@ describe("ExamVersionsView", () => {
     const { dialog } = await openPublishDialog();
     expect(within(dialog).getByRole("heading", { name: "Công bố bản sửa thành v3?" })).toBeInTheDocument();
     const boxes = within(dialog).getAllByRole("checkbox");
-    expect(boxes).toHaveLength(4);
-    expect(boxes.filter((box) => box.getAttribute("aria-checked") === "true")).toHaveLength(2);
-    expect(boxes.filter((box) => box.hasAttribute("disabled"))).toHaveLength(2);
-    expect(within(dialog).getByRole("checkbox", { name: /^KH-2/ })).toBeDisabled();
+    expect(boxes).toHaveLength(2);
+    expect(boxes.filter((box) => box.getAttribute("aria-checked") === "true")).toHaveLength(1);
+    expect(boxes.filter((box) => box.hasAttribute("disabled"))).toHaveLength(1);
+    expect(within(dialog).getByRole("checkbox", { name: /^Khoa học/ })).toBeDisabled();
   });
 
-  it("cong bo hai duong tao v3, duong con lai giu ban cu", async () => {
+  it("cong bo duong hop le tao v3, duong con lai giu ban cu", async () => {
     const { user, dialog } = await openPublishDialog();
-    await user.click(within(dialog).getByRole("button", { name: "Công bố 2 đường lựa chọn" }));
+    await user.click(within(dialog).getByRole("button", { name: "Công bố 1 đường lựa chọn" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const table = await screen.findByRole("table", { name: "Các phiên bản đã công bố của HSA-F-001" });
     await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(4));
@@ -68,7 +68,7 @@ describe("ExamVersionsView", () => {
     fireEvent.change(within(dialog).getByRole("textbox", { name: /Ghi chú công bố/ }), {
       target: { value: "a".repeat(501) },
     });
-    await user.click(within(dialog).getByRole("button", { name: "Công bố 2 đường lựa chọn" }));
+    await user.click(within(dialog).getByRole("button", { name: "Công bố 1 đường lựa chọn" }));
     expect(await within(dialog).findByText("Ghi chú tối đa 500 ký tự.")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });

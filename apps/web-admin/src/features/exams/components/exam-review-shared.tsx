@@ -80,6 +80,7 @@ const QUESTION_CODES_SHOWN = 5;
 /** Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). */
 export function useIssueText() {
   const t = useTranslations("exams.review.issue");
+  const tContent = useTranslations("content");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
   return useCallback(
@@ -107,12 +108,14 @@ export function useIssueText() {
         required: issue.required ?? 0,
         available: issue.available ?? 0,
         seconds: issue.timeLimitSeconds ?? 0,
+        answerType: issue.answerType ? tContent(`questionType.${issue.answerType}`) : "",
+        count: issue.subjectCount ?? 0,
         competency,
         codes: codes.slice(0, QUESTION_CODES_SHOWN).join(", ") + (codes.length > QUESTION_CODES_SHOWN ? ", …" : ""),
       };
       return t(issue.code, values);
     },
-    [t, lookup, competencies],
+    [t, tContent, lookup, competencies],
   );
 }
 

@@ -23,6 +23,14 @@ export const IMPORT_FIELDS = [
   "tags",
   "setCode",
   "rubric",
+  "points",
+  "options",
+  "matchRight",
+  "scoring",
+  "inputHint",
+  "gradingGuide",
+  "commonMistakes",
+  "taskType",
 ] as const;
 export type ImportField = (typeof IMPORT_FIELDS)[number];
 
@@ -102,7 +110,8 @@ export const IMPORT_ISSUE_CODES = [
   "KNOWLEDGE_MISSING",
   "TAG_UNKNOWN",
   "RUBRIC_INVALID",
-  "RUBRIC_MISSING",
+  "GRADING_GUIDE_MISSING",
+  "POINTS_INVALID",
 ] as const;
 export type ImportIssueCode = (typeof IMPORT_ISSUE_CODES)[number];
 
@@ -156,8 +165,14 @@ export interface ImportQuestionDraft {
   content: string;
   options: ImportDraftOption[];
   statements: ImportDraftStatement[];
+  /** Trả lời ngắn: đáp án chuẩn đứng đầu, sau là các đáp án được chấp nhận. */
   acceptedAnswers: string[];
-  /** Tự luận: tiêu chí chấm (rỗng khi tệp không có, câu ở Nháp tới khi bổ sung) và bài làm mẫu (cột Đáp án). */
+  /** Điểm của câu (cột Điểm); `null`: mặc định 1. */
+  points: number | null;
+  /** Trả lời ngắn: hướng dẫn nhập (cột Hướng dẫn nhập). */
+  inputHint: string | null;
+  /** Tự luận: hướng dẫn chấm (cột Hướng dẫn chấm; thiếu thì câu ở Nháp), tiêu chí chấm tùy chọn và bài làm mẫu (cột Đáp án). */
+  gradingGuide: string | null;
   rubric: ImportDraftCriterion[];
   sampleAnswer: string | null;
   solution: string | null;

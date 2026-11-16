@@ -86,7 +86,7 @@ export function useMarkQuestionReady(
 ) {
   const invalidate = useInvalidateQuestions();
   return useMutation({
-    mutationFn: (variables: { id: string }) => deps.markQuestionReady(variables),
+    mutationFn: (variables: { id: string; expectedRevision: number }) => deps.markQuestionReady(variables),
     onSettled: invalidate,
   });
 }
@@ -94,7 +94,7 @@ export function useMarkQuestionReady(
 export function useRetireQuestion(deps: Pick<QuestionBankApiDeps, "retireQuestion"> = defaultQuestionBankApiDeps) {
   const invalidate = useInvalidateQuestions();
   return useMutation({
-    mutationFn: (variables: { id: string }) => deps.retireQuestion(variables),
+    mutationFn: (variables: { id: string; expectedRevision: number }) => deps.retireQuestion(variables),
     onSettled: invalidate,
   });
 }

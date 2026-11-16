@@ -43,7 +43,7 @@ export function ScoreTableEditor({ prefix }: { prefix: BodyPath }) {
   const points = parsePoints(pointsText);
   const referenceQuery = useContentReference();
   const templates = (referenceQuery.data?.examKinds ?? []).flatMap((kind) =>
-    kind.scoringDefaults.trueFalseTable?.length ? [{ code: kind.code, name: kind.name, table: kind.scoringDefaults.trueFalseTable }] : [],
+    kind.scoringDefaults.trueFalse.table.length ? [{ code: kind.code, name: kind.name, table: kind.scoringDefaults.trueFalse.table }] : [],
   );
   const count = statements.length;
 

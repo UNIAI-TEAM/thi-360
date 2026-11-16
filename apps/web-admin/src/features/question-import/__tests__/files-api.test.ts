@@ -4,11 +4,11 @@ import { MockApiError } from "@/lib/mock/content-mock";
 import {
   commitImport,
   downloadQuestionTemplate,
-  importHistoryStore,
   listImportHistory,
   uploadQuestionFile,
   validateImport,
 } from "../api";
+import { importHistoryStore } from "../api.mock";
 import { buildErrorReportTable, collectErrorLines, errorReportFileName } from "../error-report";
 import { checkImportFile, parseCsv, readFileText, sheetFromTable } from "../files";
 import type { ColumnMapping, ImportUpload } from "../types";
@@ -106,7 +106,8 @@ describe("API nhập câu hỏi (dữ liệu mẫu)", () => {
     // Câu Tự luận có tiêu chí chấm: điểm của câu bằng tổng điểm tiêu chí.
     const essay = questionStore.all().find((question) => question.sourceCode === "MAU-0008");
     expect(essay).toMatchObject({ type: "ESSAY", points: 2 });
-    expect(essay?.body).toMatchObject({ type: "ESSAY", maxPoints: 2 });
+    expect(essay?.body).toMatchObject({ type: "ESSAY" });
+    expect(essay?.points).toBe(2);
     if (essay?.body.type === "ESSAY") expect(essay.body.rubric.map((criterion) => criterion.points)).toEqual([0.25, 0.25, 1, 0.5]);
   });
 
@@ -134,7 +135,8 @@ describe("API nhập câu hỏi (dữ liệu mẫu)", () => {
     expect(questionStore.all().length).toBe(before + 13);
     const essay = questionStore.all().find((question) => question.sourceCode === "TOAN11-0016");
     expect(essay).toMatchObject({ type: "ESSAY", status: "DRAFT", points: 1 });
-    expect(essay?.body).toMatchObject({ type: "ESSAY", maxPoints: 1, rubric: [] });
+    expect(essay?.body).toMatchObject({ type: "ESSAY", rubric: [] });
+    expect(essay?.points).toBe(1);
     const imported = questionStore.all().filter((question) => question.sourceCode?.startsWith("TOAN11-"));
     expect(imported.length).toBeGreaterThan(0);
     expect(imported.every((question) => question.status === "DRAFT" && question.version === 1)).toBe(true);

@@ -173,7 +173,7 @@ function VersionsContent({ list, question }: { list: QuestionVersionList; questi
         onConfirm={() => {
           if (!restoring) return;
           restore.mutate(
-            { version: restoring.version, expectedVersion: question.version },
+            { version: restoring.version, expectedRevision: question.revision },
             {
               onSuccess: ({ question: saved }) => {
                 setRestoring(null);
@@ -183,7 +183,7 @@ function VersionsContent({ list, question }: { list: QuestionVersionList; questi
               },
               onError: (error) => {
                 setRestoreError(
-                  error instanceof MockApiError && error.code === "QUESTION_VERSION_CONFLICT"
+                  error instanceof MockApiError && error.code === "QUESTION_REVISION_CONFLICT"
                     ? t("restore.conflict")
                     : t("restore.failed"),
                 );

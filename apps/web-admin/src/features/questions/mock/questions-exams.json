@@ -46,7 +46,7 @@
       "content": "Viết bài văn nghị luận (khoảng 600 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của việc tự học trong thời đại số.",
       "body": {
         "type": "ESSAY",
-        "maxPoints": 25,
+        "gradingGuide": "Chấm theo các tiêu chí: Bảo đảm cấu trúc bài văn nghị luận; Xác định đúng vấn đề cần nghị luận; Triển khai luận điểm với lí lẽ và dẫn chứng thuyết phục; Chính tả, diễn đạt và sáng tạo.",
         "rubric": [
           {
             "id": "q-7001-r1",
@@ -73,7 +73,11 @@
         "wordLimit": 600
       },
       "solution": "Hướng dẫn chấm: xem các tiêu chí.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7002",
@@ -107,13 +111,17 @@
       "content": "Viết bài văn nghị luận (khoảng 600 chữ) bàn về trách nhiệm của người trẻ với cộng đồng.",
       "body": {
         "type": "ESSAY",
-        "maxPoints": 25,
+        "gradingGuide": "Chấm theo ý chính của đề bài.",
         "rubric": [],
         "sampleAnswer": null,
         "wordLimit": 600
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7003",
@@ -173,7 +181,11 @@
         "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "(x² + c)' = 2x với mọi hằng số c.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7004",
@@ -233,7 +245,11 @@
         "scoringRule": "PARTIAL"
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7005",
@@ -285,7 +301,11 @@
         "shuffleOptions": true
       },
       "solution": "Bit là đơn vị nhỏ nhất, nhận một trong hai giá trị 0 hoặc 1.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7006",
@@ -337,7 +357,11 @@
         "shuffleOptions": true
       },
       "solution": "Phép // chia lấy phần nguyên.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7007",
@@ -368,24 +392,29 @@
           {
             "id": "q-7007-s1",
             "content": "Địa chỉ IP dùng để định danh thiết bị trong mạng.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7007-s2",
             "content": "Giao thức HTTPS mã hóa dữ liệu trao đổi giữa trình duyệt và máy chủ.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7007-s3",
             "content": "Mạng LAN luôn có phạm vi toàn cầu.",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-7007-s4",
             "content": "Tên miền được hệ thống DNS chuyển thành địa chỉ IP.",
-            "answer": true
+            "answer": true,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.1,
           0.25,
@@ -394,7 +423,11 @@
         ]
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7008",
@@ -425,24 +458,29 @@
           {
             "id": "q-7008-s1",
             "content": "Thẻ <a> dùng để tạo liên kết.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7008-s2",
             "content": "Thẻ <img> bắt buộc có thẻ đóng </img>.",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-7008-s3",
             "content": "Thuộc tính alt mô tả nội dung ảnh cho người dùng trình đọc màn hình.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7008-s4",
             "content": "CSS chỉ viết được bên trong thẻ <style>.",
-            "answer": false
+            "answer": false,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.25,
           0.5,
@@ -451,7 +489,11 @@
         ]
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7009",
@@ -482,24 +524,29 @@
           {
             "id": "q-7009-s1",
             "content": "Sau lượt duyệt đầu tiên, phần tử lớn nhất nằm ở cuối danh sách.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7009-s2",
             "content": "Độ phức tạp thời gian trong trường hợp xấu nhất là O(n log n).",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-7009-s3",
             "content": "Thuật toán không cần thêm danh sách phụ.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7009-s4",
             "content": "Danh sách đã sắp xếp vẫn cần đúng n² phép so sánh.",
-            "answer": false
+            "answer": false,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.1,
           0.25,
@@ -508,7 +555,11 @@
         ]
       },
       "solution": "Sắp xếp nổi bọt có độ phức tạp O(n²) trong trường hợp xấu nhất.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7010",
@@ -539,24 +590,29 @@
           {
             "id": "q-7010-s1",
             "content": "Hàm SUM tính tổng các giá trị trong một vùng ô.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7010-s2",
             "content": "Địa chỉ $A$1 thay đổi khi sao chép công thức.",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-7010-s3",
             "content": "Có thể lọc dữ liệu theo điều kiện trên một cột.",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-7010-s4",
             "content": "Biểu đồ không cập nhật khi dữ liệu nguồn thay đổi.",
-            "answer": false
+            "answer": false,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.1,
           0.25,
@@ -565,7 +621,11 @@
         ]
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7011",
@@ -579,6 +639,7 @@
       "points": 1,
       "knowledge": [],
       "competencyCode": "VACT-NN-TV",
+      "taskTypeCode": null,
       "tagCodes": [],
       "hasSolution": false,
       "version": 1,
@@ -618,7 +679,10 @@
         "shuffleOptions": true
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7012",
@@ -639,6 +703,7 @@
         }
       ],
       "competencyCode": "VACT-NN-TA",
+      "taskTypeCode": null,
       "tagCodes": [],
       "hasSolution": false,
       "version": 1,
@@ -678,7 +743,10 @@
         "shuffleOptions": true
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7013",
@@ -699,6 +767,7 @@
         }
       ],
       "competencyCode": "VACT-TOAN",
+      "taskTypeCode": null,
       "tagCodes": [],
       "hasSolution": true,
       "version": 1,
@@ -738,7 +807,10 @@
         "shuffleOptions": true
       },
       "solution": "Giá còn lại 0,8 × 0,9 = 0,72 giá ban đầu, tức giảm 28%.",
-      "children": []
+      "children": [],
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7014",
@@ -752,6 +824,7 @@
       "points": 1,
       "knowledge": [],
       "competencyCode": "VACT-TD-LOGIC",
+      "taskTypeCode": null,
       "tagCodes": [],
       "hasSolution": true,
       "version": 1,
@@ -791,7 +864,10 @@
         "shuffleOptions": true
       },
       "solution": "Tháng 7: 240 mm; tháng 8: 240 : 3/4 = 320 mm.",
-      "children": []
+      "children": [],
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-7015",
@@ -805,6 +881,7 @@
       "points": 1,
       "knowledge": [],
       "competencyCode": "VACT-TD-SL",
+      "taskTypeCode": null,
       "tagCodes": [],
       "hasSolution": false,
       "version": 1,
@@ -844,7 +921,10 @@
         "shuffleOptions": true
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     }
   ]
 }

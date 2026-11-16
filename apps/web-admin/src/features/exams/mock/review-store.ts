@@ -1,17 +1,19 @@
 import referenceFixture from "@/features/content/mock/reference.json";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
-import type { ContentReference } from "@/features/content/types";
-import { questionStore } from "@/features/questions/mock/store";
+import type { ContentReference, QuestionType } from "@/features/content/types";
 import type { QuestionDetail } from "@/features/questions/types";
 import { cellKey, enumeratePaths, type ChoiceNameResolver } from "../check";
+import { isSetBlock } from "../matrix";
 import type {
   BlockAvailability,
   ExamAvailability,
   ExamChange,
   ExamCheckResult,
+  SectionAvailability,
   SourceOverlap,
 } from "../review-types";
-import type { ExamDetail, ExamPart, KnowledgeScope, QuestionBlock } from "../types";
+import type { ExamDetail, ExamPart, ExamSection, QuestionBlock } from "../types";
+import { candidatesFor, countForSubject, queryOfBlock } from "./source-count";
 import fixture from "./review.json";
 
 /**
@@ -31,10 +33,17 @@ interface BlockOverride {
   competencies?: Record<string, number>;
 }
 
+/** Ghi đè nguồn cấp môn: số câu theo ô và theo dạng trả lời. */
+interface SectionOverride {
+  cells?: Record<string, number>;
+  answerTypes?: Partial<Record<QuestionType, number>>;
+}
+
 type FixtureChange = Omit<ExamChange, "warning"> & { optionId: string | null };
 
 interface ExamFixture {
   blocks?: Record<string, BlockOverride>;
+  sections?: Record<string, SectionOverride>;
   versionPaths?: Record<string, string[]>;
   changes?: FixtureChange[];
 }
@@ -74,26 +83,9 @@ export function mockKnowledgeChapter(nodeId: string) {
 
 /* ---------- Nguồn câu hỏi ---------- */
 
-function coversScope(nodeIds: readonly string[], scope: KnowledgeScope): boolean {
-  if (scope.nodeIds.length === 0) return true;
-  const covers = (nodeId: string, scopeId: string) =>
-    nodeId === scopeId ||
-    (scope.includeDescendants && (knowledgeIndex.get(nodeId)?.ancestors.some((node) => node.id === scopeId) ?? false));
-  const hit = (scopeId: string) => nodeIds.some((nodeId) => covers(nodeId, scopeId));
-  return scope.match === "ALL" ? scope.nodeIds.every(hit) : scope.nodeIds.some(hit);
-}
-
-/** Câu Sẵn sàng trong kho khớp khối: môn, dạng, nhãn, năng lực, phạm vi MAPID (câu chùm xét cả câu con). */
-export function mockBlockCandidates(block: QuestionBlock, subjectCode: string): QuestionDetail[] {
-  const competencies = block.knowledgeScope.competencyCodes ?? [];
-  return questionStore.all().filter((question) => {
-    if (question.status !== "READY" || question.subjectCode !== subjectCode) return false;
-    if (question.type !== block.questionType) return false;
-    if (!block.tagCodes.every((tag) => question.tagCodes.includes(tag))) return false;
-    if (competencies.length && !competencies.includes(question.competencyCode ?? "")) return false;
-    const nodeIds = [question, ...question.children].flatMap((item) => item.knowledge.map((ref) => ref.nodeId));
-    return coversScope(nodeIds, block.knowledgeScope);
-  });
+/** Câu Sẵn sàng trong kho khớp nhóm: môn, dạng trả lời, nhãn, năng lực, phạm vi MAPID có hiệu lực (D21, D23). */
+export function mockBlockCandidates(block: QuestionBlock, section: ExamSection): QuestionDetail[] {
+  return candidatesFor(queryOfBlock(block, section));
 }
 
 function sameTable(a: readonly number[], b: readonly number[]): boolean {
@@ -125,55 +117,82 @@ function lacksRubric(question: QuestionDetail): boolean {
   return question.body.type === "ESSAY" && question.body.rubric.length === 0;
 }
 
-function forEachBlock(parts: readonly ExamPart[], visit: (block: QuestionBlock, subjectCode: string) => void) {
+function forEachSection(parts: readonly ExamPart[], visit: (section: ExamSection) => void) {
   for (const part of parts) {
-    for (const section of [...part.sections, ...part.options.flatMap((option) => option.sections)]) {
-      for (const block of section.blocks) visit(block, section.subjectCode);
-    }
+    for (const section of [...part.sections, ...part.options.flatMap((option) => option.sections)]) visit(section);
   }
+}
+
+/** Số câu của đường nền: mỗi ô Lớp × Độ khó và mỗi dạng trả lời có thêm `baseline` câu (phần ngân hàng không nạp mẫu). */
+function baselineByAnswerType(types: readonly QuestionType[]): Array<{ answerType: QuestionType; count: number }> {
+  return types.map((answerType) => ({ answerType, count: data.baseline.perCell * MOCK_GRADE_CODES.length * MOCK_DIFFICULTY_CODES.length }));
 }
 
 export function mockAvailability(examId: string, parts: readonly ExamPart[]): ExamAvailability {
   const overrides = data.exams[examId]?.blocks ?? {};
+  const sectionOverrides = data.exams[examId]?.sections ?? {};
   const blocks: Record<string, BlockAvailability> = {};
-  forEachBlock(parts, (block, subjectCode) => {
-    const override = overrides[block.id];
-    const candidates = mockBlockCandidates(block, subjectCode);
-    const isSet = block.questionType === "QUESTION_SET";
-    const units = isSet ? candidates.flatMap((set) => set.children) : candidates;
+  const sections: Record<string, SectionAvailability> = {};
+  forEachSection(parts, (section) => {
+    for (const block of section.blocks) {
+      const override = overrides[block.id];
+      const candidates = mockBlockCandidates(block, section);
+      const isSet = isSetBlock(block);
+      const units = isSet ? candidates.flatMap((set) => set.children) : candidates;
+      const cells = MOCK_GRADE_CODES.flatMap((gradeCode) =>
+        MOCK_DIFFICULTY_CODES.map((difficultyCode) => {
+          const key = cellKey(gradeCode, difficultyCode);
+          const inStore = units.filter((q) => q.gradeCode === gradeCode && q.difficultyCode === difficultyCode).length;
+          return { gradeCode, difficultyCode, count: override?.cells?.[key] ?? inStore + data.baseline.perCell };
+        }),
+      );
+      const byCompetency = block.matrix?.byCompetency ?? [];
+      blocks[block.id] = {
+        blockId: block.id,
+        cells,
+        setCount: isSet ? (override?.sets ?? candidates.length + data.baseline.sets) : null,
+        overlap: override?.overlap ?? null,
+        ...(byCompetency.length
+          ? {
+              competencies: byCompetency.map(({ code }) => ({
+                code,
+                count:
+                  override?.competencies?.[code] ??
+                  units.filter((q) => q.competencyCode === code).length +
+                    data.baseline.perCell * MOCK_DIFFICULTY_CODES.length,
+              })),
+            }
+          : {}),
+        ...(block.expectedScoring
+          ? { scoringMismatch: units.filter((q) => scoringDiffers(q, block)).map((q) => q.code) }
+          : {}),
+        ...(block.questionType === "ESSAY" || units.some((q) => q.type === "ESSAY")
+          ? { missingRubric: units.filter(lacksRubric).map((q) => q.code) }
+          : {}),
+      };
+    }
+    // Nguồn cấp môn: hợp nguồn các nhóm, mỗi câu một lần (D22: đơn vị đếm của chùm là câu con).
+    const counted = countForSubject({ subjectCode: section.subjectCode, groups: section.blocks.map((block) => queryOfBlock(block, section)) });
+    const override = sectionOverrides[section.id];
+    const types = [...new Set([...(section.answerQuotas?.items.map((item) => item.answerType) ?? []), ...counted.byAnswerType.map((item) => item.answerType)])];
     const cells = MOCK_GRADE_CODES.flatMap((gradeCode) =>
       MOCK_DIFFICULTY_CODES.map((difficultyCode) => {
         const key = cellKey(gradeCode, difficultyCode);
-        const inStore = units.filter((q) => q.gradeCode === gradeCode && q.difficultyCode === difficultyCode).length;
+        const inStore = counted.cells.find((cell) => cell.gradeCode === gradeCode && cell.difficultyCode === difficultyCode)?.value ?? 0;
         return { gradeCode, difficultyCode, count: override?.cells?.[key] ?? inStore + data.baseline.perCell };
       }),
     );
-    const byCompetency = block.matrix.byCompetency ?? [];
-    blocks[block.id] = {
-      blockId: block.id,
+    sections[section.id] = {
+      sectionId: section.id,
+      total: cells.reduce((total, cell) => total + cell.count, 0),
       cells,
-      setCount: isSet ? (override?.sets ?? candidates.length + data.baseline.sets) : null,
-      overlap: override?.overlap ?? null,
-      ...(byCompetency.length
-        ? {
-            competencies: byCompetency.map(({ code }) => ({
-              code,
-              count:
-                override?.competencies?.[code] ??
-                units.filter((q) => q.competencyCode === code).length +
-                  data.baseline.perCell * MOCK_DIFFICULTY_CODES.length,
-            })),
-          }
-        : {}),
-      ...(block.expectedScoring
-        ? { scoringMismatch: units.filter((q) => scoringDiffers(q, block)).map((q) => q.code) }
-        : {}),
-      ...(block.questionType === "ESSAY" || units.some((q) => q.type === "ESSAY")
-        ? { missingRubric: units.filter(lacksRubric).map((q) => q.code) }
-        : {}),
+      byAnswerType: baselineByAnswerType(types).map((entry) => ({
+        answerType: entry.answerType,
+        count: override?.answerTypes?.[entry.answerType] ?? entry.count + (counted.byAnswerType.find((item) => item.answerType === entry.answerType)?.value ?? 0),
+      })),
     };
   });
-  return { blocks };
+  return { blocks, sections };
 }
 
 /** Thời gian chạy giả lập: 1 giây + thời gian bộ giải dành cho các nguồn giao nhau (tối đa bằng giới hạn). */

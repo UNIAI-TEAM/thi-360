@@ -2145,12 +2145,13 @@
   },
   "content": {
     "questionType": {
-      "SINGLE_CHOICE": "Trắc nghiệm 1 đáp án",
-      "MULTIPLE_CHOICE": "Trắc nghiệm nhiều đáp án",
-      "TRUE_FALSE": "Đúng / Sai",
-      "FILL_IN": "Điền đáp án",
-      "DRAG_DROP": "Kéo thả",
-      "QUESTION_SET": "Câu chùm",
+      "SINGLE_CHOICE": "Một đáp án",
+      "MULTIPLE_CHOICE": "Nhiều đáp án",
+      "SHORT_ANSWER": "Trả lời ngắn",
+      "CLOZE": "Điền khuyết",
+      "QUESTION_SET": "Bộ câu hỏi",
+      "TRUE_FALSE": "Đúng/Sai",
+      "MATCHING": "Ghép đôi",
       "ESSAY": "Tự luận"
     },
     "questionStatus": {
@@ -2318,10 +2319,10 @@
         "correct": "Đáp án đúng",
         "true": "Đúng",
         "false": "Sai",
-        "zoneLabel": "Ô thả {number}",
-        "correctItem": "Thẻ đúng:",
-        "distractors": "Thẻ nhiễu: {items}",
-        "noDistractors": "Không có thẻ nhiễu.",
+        "zoneLabel": "Mục {number}",
+        "correctItem": "Ghép với:",
+        "distractors": "Lựa chọn thừa: {items}",
+        "noDistractors": "Không có lựa chọn thừa.",
         "manualGrading": "Chấm tay",
         "scoringRule": "Cách chấm:",
         "scoringRules": {
@@ -2331,13 +2332,17 @@
         "essayMaxPoints": "Điểm tối đa {points}",
         "wordLimit": "khoảng {count, number} chữ",
         "rubricTitle": "Tiêu chí chấm",
+        "gradingGuideTitle": "Hướng dẫn chấm",
+        "noGradingGuide": "Chưa có hướng dẫn chấm.",
+        "standardAnswer": "Đáp án chuẩn",
+        "acceptedAnswer": "Đáp án được chấp nhận",
+        "inputHint": "Hướng dẫn nhập:",
         "noRubric": "Chưa có tiêu chí chấm.",
         "sampleAnswer": "Bài làm mẫu",
         "scoreTableTitle": "Bảng điểm theo số ý đúng",
         "scoreTableCell": "Đúng {count, number} ý",
         "scoreTableLine": "Bảng điểm theo số ý đúng: {values}",
-        "scoreValue": "{value, number}",
-        "essaySummary": "Chấm tay · tối đa {points, number} điểm"
+        "scoreValue": "{value, number}"
       }
     },
     "editor": {
@@ -2377,6 +2382,7 @@
       "bodyTitle": {
         "options": "Phương án",
         "statements": "Các ý",
+        "shortAnswer": "Đáp án",
         "blanks": "Đáp án từng ô trống",
         "dragDrop": "Ô thả và thẻ",
         "children": "Câu con",
@@ -2389,7 +2395,7 @@
       },
       "saveErrors": {
         "generic": "Chưa lưu được câu hỏi. Thử lại sau giây lát.",
-        "QUESTION_VERSION_CONFLICT": "Câu hỏi vừa được lưu ở nơi khác. Tải lại trang để sửa trên bản mới nhất.",
+        "QUESTION_REVISION_CONFLICT": "Dữ liệu đã được người khác sửa. Tải lại trang để sửa trên bản mới nhất.",
         "QUESTION_TYPE_IMMUTABLE": "Không đổi được dạng của câu đã lưu. Hãy tạo câu mới với dạng khác.",
         "QUESTION_SET_CHILDREN_MIN": "Câu chùm cần ít nhất 2 câu con.",
         "QUESTION_BODY_TYPE_MISMATCH": "Phần đáp án không khớp dạng câu.",
@@ -2416,9 +2422,10 @@
           "SINGLE_CHOICE": "Nhiều phương án, chỉ một phương án đúng.",
           "MULTIPLE_CHOICE": "Nhiều phương án, có thể đúng nhiều hơn một.",
           "TRUE_FALSE": "Một đề bài, mỗi ý chọn Đúng hoặc Sai.",
-          "FILL_IN": "Học viên gõ số hoặc chữ vào ô trống.",
-          "DRAG_DROP": "Học viên kéo thẻ vào ô trống trong câu.",
-          "QUESTION_SET": "Một đoạn dẫn chung cho nhiều câu con.",
+          "SHORT_ANSWER": "Học viên gõ một số hoặc một cụm chữ ngắn; khớp đúng với đáp án chuẩn hoặc đáp án được chấp nhận.",
+          "CLOZE": "Một đoạn văn có nhiều chỗ trống, mỗi chỗ trống một đáp án.",
+          "MATCHING": "Học viên ghép mỗi mục bên trái với một lựa chọn bên phải.",
+          "QUESTION_SET": "Một ngữ liệu chung cho nhiều câu con.",
           "ESSAY": "Câu trả lời viết, chấm tay theo tiêu chí chấm."
         },
         "cancel": "Hủy",
@@ -2576,7 +2583,7 @@
         "scoreValueInvalid": "Điểm phải là số không âm.",
         "scoreNotIncreasing": "Điểm không được nhỏ hơn ô trước.",
         "scoreLastMismatch": "Ô cuối phải bằng điểm của câu.",
-        "rubricMin": "Thêm ít nhất một tiêu chí chấm.",
+        "gradingGuideRequired": "Nhập hướng dẫn chấm.",
         "criterionRequired": "Nhập mô tả tiêu chí.",
         "criterionMax": "Mô tả quá dài.",
         "criterionPointsInvalid": "Điểm tiêu chí phải là số lớn hơn 0.",
@@ -2609,12 +2616,25 @@
           "description": "Điểm theo tỉ lệ số phương án đúng đã chọn; chọn sai một phương án thì 0 điểm."
         }
       },
+      "shortAnswer": {
+        "hint": "Đáp án đầu tiên là đáp án chuẩn; các đáp án sau là cách viết cũng được chấp nhận. Hệ thống không tự nhận cách viết tương đương (0,5 khác 1/2 nếu 1/2 không có trong danh sách).",
+        "standardLabel": "Đáp án chuẩn",
+        "acceptedLabel": "Đáp án được chấp nhận {number}",
+        "remove": "Bỏ đáp án {number}",
+        "removed": "Đã bỏ đáp án {number}.",
+        "add": "Thêm đáp án được chấp nhận",
+        "added": "Đã thêm đáp án {number}.",
+        "inputHint": "Hướng dẫn nhập",
+        "inputHintHint": "Không bắt buộc. Học viên thấy khi làm bài, ví dụ “Viết dấu phẩy thập phân”."
+      },
       "essay": {
         "manualGrading": "Chấm tay",
+        "gradingGuide": "Hướng dẫn chấm",
+        "gradingGuideHint": "Bắt buộc. Người chấm xem khi chấm; học viên không thấy.",
         "maxPoints": "Điểm tối đa {points} (ô Điểm của câu).",
         "maxPointsUnknown": "Điểm tối đa lấy theo ô Điểm của câu.",
-        "rubricLegend": "Tiêu chí chấm",
-        "rubricHint": "Mỗi tiêu chí có mô tả và điểm tối đa. Tổng điểm các tiêu chí phải bằng điểm của câu.",
+        "rubricLegend": "Tiêu chí chấm (không bắt buộc)",
+        "rubricHint": "Mỗi tiêu chí có mô tả và điểm tối đa. Có tiêu chí thì tổng điểm các tiêu chí phải bằng điểm của câu.",
         "descriptionLabel": "Mô tả tiêu chí {number}",
         "pointsLabel": "Điểm tiêu chí {number}",
         "rowName": "tiêu chí {number}",
@@ -2642,7 +2662,7 @@
       "rules": {
         "CONTENT": "Đầy đủ nội dung bắt buộc",
         "ANSWER": "Có đáp án hợp lệ cho mọi câu được chấm",
-        "CLASSIFICATION": "Đầy đủ khối lớp, độ khó và kiến thức chính",
+        "CLASSIFICATION": "Đầy đủ môn, khối lớp và độ khó",
         "CATALOG_VALUES": "Giá trị phân loại hợp lệ và phù hợp với môn học",
         "NO_GAPS": "Không có câu con hoặc vị trí khuyết thiếu đáp án",
         "RESOURCES": "Hình ảnh, công thức và ngữ liệu hiển thị được",
@@ -2656,18 +2676,19 @@
         "OPTION_EMPTY": "Phương án {position, number} chưa có nội dung.",
         "TOO_FEW_OPTIONS": "Cần ít nhất 2 phương án.",
         "STATEMENT_EMPTY": "Mệnh đề {position, number} chưa có nội dung.",
-        "DRAG_ITEM_EMPTY": "Mục kéo {position, number} chưa có nội dung.",
-        "ZONE_LABEL_EMPTY": "Ô thả {position, number} chưa có nhãn.",
-        "SET_WITHOUT_CHILDREN": "Câu chùm chưa có câu con.",
+        "MATCH_RIGHT_EMPTY": "Lựa chọn bên phải {position, number} chưa có nội dung.",
+        "MATCH_LEFT_EMPTY": "Mục bên trái {position, number} chưa có nội dung.",
+        "SET_WITHOUT_CHILDREN": "Bộ câu hỏi chưa có câu con.",
         "NO_CORRECT_OPTION": "Chưa chọn đáp án đúng.",
         "SINGLE_CHOICE_MANY_CORRECT": "Câu một đáp án đang có nhiều hơn một đáp án đúng.",
         "NO_STATEMENTS": "Chưa có mệnh đề nào.",
         "NO_BLANKS": "Chưa có ô trống nào.",
-        "NO_DROP_ZONES": "Chưa có ô thả nào.",
+        "NO_ANSWERS": "Chưa có đáp án nào.",
+        "NO_PAIRS": "Chưa có mục ghép nào.",
         "SUBJECT_MISSING": "Chưa chọn môn học.",
         "GRADE_MISSING": "Chưa chọn khối lớp.",
         "DIFFICULTY_MISSING": "Chưa chọn độ khó.",
-        "PRIMARY_KNOWLEDGE_MISSING": "Chưa chọn kiến thức chính.",
+        "PRIMARY_KNOWLEDGE_MISSING": "Chưa chọn kiến thức chính (cảnh báo, không chặn Sẵn sàng).",
         "SUBJECT_INVALID": "Môn học {value} không có trong danh mục.",
         "GRADE_INVALID": "Khối lớp {value} không có trong danh mục.",
         "DIFFICULTY_INVALID": "Độ khó {value} không có trong danh mục.",
@@ -2675,14 +2696,14 @@
         "KNOWLEDGE_INVALID": "Kiến thức {value} đã ngừng hoặc không phải cấp Kiến thức.",
         "KNOWLEDGE_OTHER_SUBJECT": "Kiến thức {value} thuộc môn khác.",
         "BLANK_WITHOUT_ANSWER": "Ô trống {position, number} chưa có đáp án.",
-        "ZONE_WITHOUT_ANSWER": "Ô thả {position, number} chưa có đáp án đúng.",
+        "LEFT_WITHOUT_PAIR": "Mục bên trái {position, number} chưa ghép với lựa chọn nào.",
         "RESOURCE_UNAVAILABLE": "Không tải được {value}.",
         "TYPE_UNSUPPORTED": "Dạng câu chưa được hỗ trợ.",
         "BODY_TYPE_MISMATCH": "Phần đáp án không khớp dạng câu.",
-        "NESTED_SET": "Câu chùm không được chứa câu chùm khác.",
+        "NESTED_SET": "Bộ câu hỏi không được chứa Bộ câu hỏi hoặc Điền khuyết.",
         "CRITERION_EMPTY": "Tiêu chí chấm {position, number} chưa có mô tả.",
         "SCORE_TABLE_INVALID": "Bảng điểm theo số ý đúng chưa hợp lệ (đủ số ý, không giảm, ô cuối bằng điểm của câu).",
-        "NO_RUBRIC": "Câu tự luận chưa có tiêu chí chấm.",
+        "NO_GRADING_GUIDE": "Câu tự luận chưa có hướng dẫn chấm.",
         "RUBRIC_TOTAL_MISMATCH": "Tổng điểm tiêu chí chấm chưa bằng điểm của câu."
       },
       "childIssue": "Câu con {child, number}: {issue}",
@@ -2732,6 +2753,7 @@
         "QUESTION_NOT_READY": "Câu hỏi chưa đủ điều kiện; danh sách điều kiện đã được cập nhật.",
         "QUESTION_ALREADY_READY": "Câu hỏi đã ở trạng thái Sẵn sàng.",
         "QUESTION_ALREADY_RETIRED": "Câu hỏi đã ngừng sử dụng.",
+        "QUESTION_REVISION_CONFLICT": "Dữ liệu đã được người khác sửa. Hãy tải lại rồi thử lại.",
         "NOT_FOUND": "Không tìm thấy câu hỏi.",
         "UNKNOWN": "Không thực hiện được. Hãy thử lại."
       }
@@ -2954,7 +2976,15 @@
       "knowledge": "Kiến thức (MAPID)",
       "tags": "Nhãn",
       "setCode": "Mã chùm",
-      "rubric": "Tiêu chí chấm"
+      "rubric": "Tiêu chí chấm",
+      "points": "Điểm",
+      "options": "Lựa chọn",
+      "matchRight": "Lựa chọn bên phải",
+      "scoring": "Cách chấm",
+      "inputHint": "Hướng dẫn nhập",
+      "gradingGuide": "Hướng dẫn chấm",
+      "commonMistakes": "Lỗi sai thường gặp",
+      "taskType": "Dạng bài"
     },
     "upload": {
       "heading": "Chọn tệp câu hỏi",
@@ -2991,7 +3021,15 @@
         "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống thì phải bổ sung trước khi chuyển Sẵn sàng.",
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
         "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm.",
-        "rubric": "Chỉ cho câu Tự luận: mỗi tiêu chí ghi “Mô tả: điểm”, cách nhau dấu ; (ví dụ Mở bài: 0,25; Thân bài: 1). Điểm của câu bằng tổng điểm tiêu chí. Để trống thì câu ở Nháp tới khi bổ sung tiêu chí."
+        "rubric": "Chỉ cho câu Tự luận, không bắt buộc: mỗi tiêu chí ghi “Mô tả: điểm”, cách nhau dấu ; (ví dụ Mở bài: 0,25; Thân bài: 1). Có tiêu chí thì điểm của câu bằng tổng điểm tiêu chí.",
+        "points": "Điểm của câu, số lớn hơn 0 (0,75 hoặc 0.75). Để trống thì mặc định 1.",
+        "options": "Các lựa chọn của câu; mỗi mục một dòng trong ô.",
+        "matchRight": "Ghép đôi: các lựa chọn bên phải, mỗi mục một dòng trong ô.",
+        "scoring": "Cách chấm của câu (Nhiều đáp án, Đúng/Sai, Ghép đôi, Điền khuyết).",
+        "inputHint": "Trả lời ngắn: hướng dẫn nhập cho học viên.",
+        "gradingGuide": "Tự luận: hướng dẫn chấm. Để trống thì câu ở Nháp tới khi bổ sung.",
+        "commonMistakes": "Lỗi sai thường gặp, không bắt buộc.",
+        "taskType": "Tên hoặc mã dạng bài trong danh mục."
       },
       "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2."
     },
@@ -3139,11 +3177,11 @@
       },
       "TYPE_UNKNOWN": {
         "message": "Dạng câu “{value}” chưa được hỗ trợ",
-        "fix": "Dùng một trong: Trắc nghiệm 1 đáp án, Trắc nghiệm nhiều đáp án, Đúng / Sai, Điền đáp án, Tự luận, Câu chùm."
+        "fix": "Dùng một trong: Một đáp án, Nhiều đáp án, Trả lời ngắn, Điền khuyết, Bộ câu hỏi, Đúng/Sai, Ghép đôi, Tự luận."
       },
       "TYPE_NOT_IMPORTABLE": {
         "message": "Dạng “{value}” chưa nhập được từ tệp",
-        "fix": "Soạn câu kéo thả trên màn Thêm câu hỏi."
+        "fix": "Soạn câu Ghép đôi, Điền khuyết trên màn Thêm câu hỏi."
       },
       "SUBJECT_UNKNOWN": {
         "message": "Môn học “{value}” không có trong danh mục",
@@ -3209,9 +3247,13 @@
         "message": "Tiêu chí chấm “{value}” thiếu điểm hoặc điểm không hợp lệ",
         "fix": "Ghi mỗi tiêu chí dạng “Mô tả: điểm” với điểm lớn hơn 0, các tiêu chí cách nhau dấu ;."
       },
-      "RUBRIC_MISSING": {
-        "message": "Câu tự luận chưa có tiêu chí chấm",
-        "fix": "Câu vẫn được nhập ở trạng thái Nháp; bổ sung tiêu chí chấm trước khi chuyển Sẵn sàng."
+      "GRADING_GUIDE_MISSING": {
+        "message": "Câu tự luận chưa có hướng dẫn chấm",
+        "fix": "Câu vẫn được nhập ở trạng thái Nháp; bổ sung hướng dẫn chấm trước khi chuyển Sẵn sàng."
+      },
+      "POINTS_INVALID": {
+        "message": "Điểm “{value}” không hợp lệ",
+        "fix": "Ghi điểm là số lớn hơn 0, ví dụ 1 hoặc 0,75."
       }
     },
     "errorReport": {
@@ -3511,8 +3553,6 @@
         "match": "Cách đối chiếu",
         "matchAny": "Khớp ít nhất một (mặc định)",
         "matchAll": "Khớp tất cả",
-        "descendants": "Bao gồm kiến thức cấp dưới",
-        "descendantsHint": "Mặc định không; bật để lấy cả các mã con của Chương, Bài đã chọn",
         "pickerDescription": "Phạm vi của khối {name}: chọn được Chương, Bài hoặc Kiến thức.",
         "moveUp": "Đưa khối {name} lên trước",
         "moveDown": "Đưa khối {name} xuống sau",
@@ -3729,7 +3769,16 @@
         "POINTS_TOTAL_MISMATCH": "Tổng điểm của đường là {available, number}, thang điểm của bài là {required, number}.",
         "COMPETENCY_SHORTAGE": "Khối {block} cần {required, number} câu năng lực {competency}, hiện có {available, number} câu phù hợp.",
         "RUBRIC_MISSING": "Khối {block}: {available, number} câu tự luận nguồn chưa có tiêu chí chấm ({codes}).",
-        "SCORING_MISMATCH": "Khối {block}: {available, number} câu nguồn có quy tắc chấm khác quy tắc mong đợi của khối ({codes}). Chỉ cảnh báo, không chặn công bố."
+        "SCORING_MISMATCH": "Khối {block}: {available, number} câu nguồn có quy tắc chấm khác quy tắc mong đợi của khối ({codes}). Chỉ cảnh báo, không chặn công bố.",
+        "ANSWER_QUOTA_TOTAL_MISMATCH": "Môn {subject}: tổng chỉ tiêu dạng trả lời là {available, number} câu, phải bằng {required, number} câu của môn.",
+        "SUBJECT_MATRIX_TOTAL_MISMATCH": "Môn {subject}: tổng chỉ tiêu {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} other {khối lớp, độ khó}} là {available, number} câu, phải bằng {required, number} câu của môn.",
+        "GROUP_ANSWER_TYPE_MISSING": "Nhóm {block} chưa có dạng trả lời, trong khi môn {subject} không khai chỉ tiêu dạng trả lời.",
+        "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: số câu từng môn của phương án chọn môn không hợp lệ (cần {required, number}, hiện {available, number}). Số phần tử phải bằng số môn được chọn, tổng bằng số câu của phương án, và mỗi môn phải thuộc nhóm tự nhiên hoặc xã hội để chia số câu.",
+        "REMAINDER_GROUP_INVALID": "Môn {subject} có số câu thay đổi: cần đúng một nhóm câu đơn lấy phần còn lại, và tổng các nhóm cố định không vượt {required, number} câu (hiện {available, number}).",
+        "SUBJECT_QUOTA_COUNT_VARIES": "Môn {subject} nhận từ {required, number} đến {available, number} câu: chỉ tiêu cấp môn phải khai theo tỉ lệ, không khai theo số câu.",
+        "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: chỉ tiêu dạng {answerType} cần {required, number} câu, hiện có {available, number} câu phù hợp.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: không đủ nguồn cho chỉ tiêu cấp môn, cần {required, number} câu {dimension, select, GRADE {{level}} DIFFICULTY {{level}} other {{grade}/{difficulty}}}, hiện có {available, number} câu phù hợp.",
+        "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
       }
     },
     "versions": {
@@ -3811,7 +3860,8 @@
         "confirm": "Ngừng bán",
         "cancel": "Hủy",
         "done": "Đã ngừng bán {code}.",
-        "error": "Không ngừng bán được bài thi. Thử lại."
+        "error": "Không ngừng bán được bài thi. Thử lại.",
+        "conflict": "Bài thi không còn ở trạng thái Đang phục vụ hoặc đã thay đổi. Tải lại trang rồi thử lại."
       },
       "detail": {
         "close": "Đóng",
@@ -3862,6 +3912,11 @@
       "SPT": "SPT",
       "SP2E": "SP2E",
       "THPTQG": "THPTQG"
+    },
+    "scope": {
+      "FULL": "Toàn bài",
+      "PART": "Theo phần",
+      "SUBJECT": "Theo môn"
     },
     "format": {
       "FULL": "FULL",

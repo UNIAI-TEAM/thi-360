@@ -58,8 +58,8 @@ describe("QuestionBankView", () => {
       expect(within(statusGroup).getByRole("radio", { name: new RegExp(`Tất cả\\s*${total}`) })).toBeChecked(),
     );
 
-    // Cau Nhap thieu kien thuc chinh: dong goi y vi tri can sua.
-    expect(screen.getAllByText("Chưa chọn kiến thức chính.").length).toBeGreaterThan(0);
+    // Cau Nhap chua chon dap an dung: dong goi y vi tri can sua.
+    expect(screen.getAllByText("Chưa chọn đáp án đúng.").length).toBeGreaterThan(0);
   });
 
   it("loc theo trang thai ghi len URL va giu tham so khac", async () => {

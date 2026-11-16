@@ -73,7 +73,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0002",
@@ -134,7 +138,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0003",
@@ -196,12 +204,16 @@
         "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0004",
       "code": "CH-000004",
-      "type": "FILL_IN",
+      "type": "SHORT_ANSWER",
       "status": "RETIRED",
       "contentPreview": "Hệ số góc của tiếp tuyến với đồ thị y = x² tại điểm có hoành độ 3 là ___.",
       "subjectCode": "MATH",
@@ -231,18 +243,18 @@
       "updatedAt": "2026-11-13T10:44:00+07:00",
       "content": "Hệ số góc của tiếp tuyến với đồ thị y = x² tại điểm có hoành độ 3 là ___.",
       "body": {
-        "type": "FILL_IN",
-        "blanks": [
-          {
-            "id": "q-0004-b1",
-            "acceptedAnswers": [
-              "6"
-            ]
-          }
-        ]
+        "type": "SHORT_ANSWER",
+        "answers": [
+          "6"
+        ],
+        "inputHint": null
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0005",
@@ -288,27 +300,35 @@
           {
             "id": "q-0005-s1",
             "content": "(x²)' = 2x",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-0005-s2",
             "content": "(sin x)' = −cos x",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-0005-s3",
             "content": "(c)' = 0 với c là hằng số",
-            "answer": true
+            "answer": true,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.3333,
           0.6667,
-          1.0
+          1
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0006",
@@ -347,7 +367,7 @@
           {
             "id": "q-0006-o2",
             "content": "x = −1",
-            "correct": true
+            "correct": false
           },
           {
             "id": "q-0006-o3",
@@ -363,12 +383,16 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0007",
       "code": "CH-000007",
-      "type": "FILL_IN",
+      "type": "SHORT_ANSWER",
       "status": "READY",
       "contentPreview": "Có bao nhiêu giá trị nguyên của m để hàm số y = x³ − 3mx² + 3 có hai điểm cực trị nằm về hai phía trục hoành? Đáp án: ___",
       "subjectCode": "MATH",
@@ -398,18 +422,18 @@
       "updatedAt": "2026-11-08T10:17:00+07:00",
       "content": "Có bao nhiêu giá trị nguyên của m để hàm số y = x³ − 3mx² + 3 có hai điểm cực trị nằm về hai phía trục hoành? Đáp án: ___",
       "body": {
-        "type": "FILL_IN",
-        "blanks": [
-          {
-            "id": "q-0007-b1",
-            "acceptedAnswers": [
-              "4"
-            ]
-          }
-        ]
+        "type": "SHORT_ANSWER",
+        "answers": [
+          "4"
+        ],
+        "inputHint": null
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0008",
@@ -470,12 +494,16 @@
         "shuffleOptions": true
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0009",
       "code": "CH-000009",
-      "type": "DRAG_DROP",
+      "type": "MATCHING",
       "status": "READY",
       "contentPreview": "Kéo nguyên hàm phù hợp vào từng hàm số.",
       "subjectCode": "MATH",
@@ -505,8 +533,22 @@
       "updatedAt": "2026-11-14T10:39:00+07:00",
       "content": "Kéo nguyên hàm phù hợp vào từng hàm số.",
       "body": {
-        "type": "DRAG_DROP",
-        "items": [
+        "type": "MATCHING",
+        "left": [
+          {
+            "id": "q-0009-z1",
+            "content": "cos x"
+          },
+          {
+            "id": "q-0009-z2",
+            "content": "eˣ"
+          },
+          {
+            "id": "q-0009-z3",
+            "content": "1/x"
+          }
+        ],
+        "right": [
           {
             "id": "q-0009-i1",
             "content": "sin x + C"
@@ -520,26 +562,33 @@
             "content": "ln|x| + C"
           }
         ],
-        "zones": [
+        "pairs": [
           {
-            "id": "q-0009-z1",
-            "label": "cos x",
-            "correctItemId": "q-0009-i1"
+            "leftId": "q-0009-z1",
+            "rightId": "q-0009-i1",
+            "points": 0.6667
           },
           {
-            "id": "q-0009-z2",
-            "label": "eˣ",
-            "correctItemId": "q-0009-i2"
+            "leftId": "q-0009-z2",
+            "rightId": "q-0009-i2",
+            "points": 0.6667
           },
           {
-            "id": "q-0009-z3",
-            "label": "1/x",
-            "correctItemId": "q-0009-i3"
+            "leftId": "q-0009-z3",
+            "rightId": "q-0009-i3",
+            "points": 0.6667
           }
-        ]
+        ],
+        "reuseRight": false,
+        "shuffleLeft": false,
+        "shuffleRight": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0010",
@@ -606,7 +655,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0011",
@@ -646,27 +699,35 @@
           {
             "id": "q-0011-s1",
             "content": "Đỉnh parabol là I(2; −1)",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-0011-s2",
             "content": "Hàm số đồng biến trên (−∞; 2)",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-0011-s3",
             "content": "Đồ thị cắt trục tung tại (0; 3)",
-            "answer": true
+            "answer": true,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.3333,
           0.6667,
-          1.0
+          1
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0012",
@@ -729,7 +790,11 @@
         "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0013",
@@ -790,12 +855,16 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0014",
       "code": "CH-000014",
-      "type": "FILL_IN",
+      "type": "SHORT_ANSWER",
       "status": "READY",
       "contentPreview": "Con lắc lò xo có k = 100 N/m, biên độ 4 cm. Cơ năng của con lắc là ___ J.",
       "subjectCode": "PHYSICS",
@@ -825,19 +894,19 @@
       "updatedAt": "2026-11-01T10:34:00+07:00",
       "content": "Con lắc lò xo có k = 100 N/m, biên độ 4 cm. Cơ năng của con lắc là ___ J.",
       "body": {
-        "type": "FILL_IN",
-        "blanks": [
-          {
-            "id": "q-0014-b1",
-            "acceptedAnswers": [
-              "0,08",
-              "0.08"
-            ]
-          }
-        ]
+        "type": "SHORT_ANSWER",
+        "answers": [
+          "0,08",
+          "0.08"
+        ],
+        "inputHint": null
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0015",
@@ -891,7 +960,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0016",
@@ -952,7 +1025,11 @@
         "shuffleOptions": true
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0017",
@@ -1013,7 +1090,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0018",
@@ -1054,21 +1135,28 @@
           {
             "id": "q-0018-s1",
             "content": "Thủy phân trong môi trường kiềm là phản ứng một chiều",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-0018-s2",
             "content": "Thủy phân trong môi trường axit luôn hoàn toàn",
-            "answer": false
+            "answer": false,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.5,
-          1.0
+          1
         ]
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0019",
@@ -1129,7 +1217,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0020",
@@ -1197,7 +1289,11 @@
         "scoringRule": "ALL_OR_NOTHING"
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0021",
@@ -1258,7 +1354,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 3,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0022",
@@ -1319,7 +1419,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0023",
@@ -1380,7 +1484,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0024",
@@ -1442,12 +1550,16 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0025",
       "code": "CH-000025",
-      "type": "FILL_IN",
+      "type": "SHORT_ANSWER",
       "status": "READY",
       "contentPreview": "Choose the word closest in meaning to “rapid”: ___",
       "subjectCode": "ENGLISH",
@@ -1483,19 +1595,19 @@
       "updatedAt": "2026-11-06T10:35:00+07:00",
       "content": "Choose the word closest in meaning to “rapid”: ___",
       "body": {
-        "type": "FILL_IN",
-        "blanks": [
-          {
-            "id": "q-0025-b1",
-            "acceptedAnswers": [
-              "fast",
-              "quick"
-            ]
-          }
-        ]
+        "type": "SHORT_ANSWER",
+        "answers": [
+          "fast",
+          "quick"
+        ],
+        "inputHint": null
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0026",
@@ -1556,7 +1668,11 @@
         "shuffleOptions": true
       },
       "solution": "Lời giải: xem các bước biến đổi chi tiết.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-0027",
@@ -1660,7 +1776,11 @@
             "shuffleOptions": true
           },
           "solution": "Lời giải ngắn cho câu con.",
-          "children": []
+          "children": [],
+          "taskTypeCode": null,
+          "revision": 1,
+          "commonMistakes": null,
+          "attachmentIds": []
         },
         {
           "id": "q-0027-c2",
@@ -1721,7 +1841,11 @@
             "shuffleOptions": true
           },
           "solution": "Lời giải ngắn cho câu con.",
-          "children": []
+          "children": [],
+          "taskTypeCode": null,
+          "revision": 1,
+          "commonMistakes": null,
+          "attachmentIds": []
         },
         {
           "id": "q-0027-c3",
@@ -1782,9 +1906,17 @@
             "shuffleOptions": true
           },
           "solution": "Lời giải ngắn cho câu con.",
-          "children": []
+          "children": [],
+          "taskTypeCode": null,
+          "revision": 1,
+          "commonMistakes": null,
+          "attachmentIds": []
         }
-      ]
+      ],
+      "taskTypeCode": null,
+      "revision": 2,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8001",
@@ -1818,7 +1950,7 @@
       "content": "Viết đoạn văn nghị luận (khoảng 200 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của lòng biết ơn trong cuộc sống.",
       "body": {
         "type": "ESSAY",
-        "maxPoints": 2,
+        "gradingGuide": "Chấm theo các tiêu chí: Đảm bảo hình thức đoạn văn khoảng 200 chữ; Xác định đúng vấn đề nghị luận: ý nghĩa của lòng biết ơn; Triển khai vấn đề: lí lẽ rõ ràng, dẫn chứng phù hợp; Chính tả, ngữ pháp; cách diễn đạt mới mẻ, sáng tạo.",
         "rubric": [
           {
             "id": "q-8001-r1",
@@ -1845,7 +1977,11 @@
         "wordLimit": 200
       },
       "solution": "Chấp nhận nhiều cách triển khai, miễn hợp lí và thuyết phục.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8002",
@@ -1879,7 +2015,7 @@
       "content": "Viết bài văn nghị luận (khoảng 600 chữ) phân tích một truyện ngắn hiện đại Việt Nam mà anh/chị đã học, làm rõ giá trị nhân đạo của tác phẩm.",
       "body": {
         "type": "ESSAY",
-        "maxPoints": 4,
+        "gradingGuide": "Chấm theo các tiêu chí: Đảm bảo cấu trúc bài văn nghị luận: mở bài, thân bài, kết bài; Xác định đúng vấn đề: giá trị nhân đạo của tác phẩm; Phân tích giá trị nhân đạo qua nhân vật, chi tiết, tình huống.",
         "rubric": [
           {
             "id": "q-8002-r1",
@@ -1901,7 +2037,11 @@
         "wordLimit": 600
       },
       "solution": null,
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8003",
@@ -1975,7 +2115,7 @@
           "content": "Xác định phương thức biểu đạt chính của đoạn trích.",
           "body": {
             "type": "ESSAY",
-            "maxPoints": 0.5,
+            "gradingGuide": "Chấm theo các tiêu chí: Nêu đúng phương thức biểu đạt chính: nghị luận.",
             "rubric": [
               {
                 "id": "q-8003-c1-r1",
@@ -1987,7 +2127,11 @@
             "wordLimit": null
           },
           "solution": null,
-          "children": []
+          "children": [],
+          "taskTypeCode": null,
+          "revision": 1,
+          "commonMistakes": null,
+          "attachmentIds": []
         },
         {
           "id": "q-8003-c2",
@@ -2021,7 +2165,7 @@
           "content": "Theo anh/chị, thông điệp ý nghĩa nhất của đoạn trích là gì? Vì sao?",
           "body": {
             "type": "ESSAY",
-            "maxPoints": 1,
+            "gradingGuide": "Chấm theo các tiêu chí: Nêu được một thông điệp phù hợp với đoạn trích; Lí giải hợp lí, thuyết phục.",
             "rubric": [
               {
                 "id": "q-8003-c2-r1",
@@ -2038,9 +2182,17 @@
             "wordLimit": 100
           },
           "solution": null,
-          "children": []
+          "children": [],
+          "taskTypeCode": null,
+          "revision": 1,
+          "commonMistakes": null,
+          "attachmentIds": []
         }
-      ]
+      ],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8004",
@@ -2078,24 +2230,29 @@
           {
             "id": "q-8004-s1",
             "content": "Hàm số đồng biến trên khoảng (1; +∞)",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-8004-s2",
             "content": "Hàm số nghịch biến trên khoảng (−1; 1)",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-8004-s3",
             "content": "Hàm số đạt cực đại tại x = 1",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-8004-s4",
             "content": "Đồ thị hàm số đi qua gốc tọa độ",
-            "answer": true
+            "answer": true,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.1,
           0.25,
@@ -2104,7 +2261,11 @@
         ]
       },
       "solution": "y' = 3x² − 3, y' = 0 khi x = ±1; lập bảng biến thiên.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8005",
@@ -2142,24 +2303,29 @@
           {
             "id": "q-8005-s1",
             "content": "Biên độ dao động là 4 cm",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-8005-s2",
             "content": "Chu kì dao động là 2 s",
-            "answer": false
+            "answer": false,
+            "points": null
           },
           {
             "id": "q-8005-s3",
             "content": "Tại t = 0 vật ở vị trí biên dương",
-            "answer": true
+            "answer": true,
+            "points": null
           },
           {
             "id": "q-8005-s4",
             "content": "Tốc độ cực đại của vật là 8π cm/s",
-            "answer": true
+            "answer": true,
+            "points": null
           }
         ],
+        "scoringMethod": "COUNT_TABLE",
         "scoreTable": [
           0.1,
           0.25,
@@ -2168,7 +2334,11 @@
         ]
       },
       "solution": "ω = 2π rad/s nên T = 1 s; vmax = ωA = 8π cm/s.",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8006",
@@ -2228,7 +2398,11 @@
         "scoringRule": "PARTIAL"
       },
       "solution": "y' = 3x² − 3; cực đại tại x = −1 (y = 4), cực tiểu tại x = 1 (y = 0).",
-      "children": []
+      "children": [],
+      "taskTypeCode": null,
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8007",
@@ -2249,6 +2423,7 @@
         }
       ],
       "competencyCode": "VACT-NN-TA",
+      "taskTypeCode": null,
       "tagCodes": [],
       "hasSolution": true,
       "version": 1,
@@ -2288,7 +2463,10 @@
         "shuffleOptions": true
       },
       "solution": "“Abundant” nghĩa là dồi dào, phong phú.",
-      "children": []
+      "children": [],
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     },
     {
       "id": "q-8008",
@@ -2309,6 +2487,7 @@
         }
       ],
       "competencyCode": "VACT-TOAN",
+      "taskTypeCode": null,
       "tagCodes": [],
       "hasSolution": true,
       "version": 1,
@@ -2348,7 +2527,10 @@
         "shuffleOptions": true
       },
       "solution": "Điều kiện x − 1 ≥ 0 và x ≠ 3.",
-      "children": []
+      "children": [],
+      "revision": 1,
+      "commonMistakes": null,
+      "attachmentIds": []
     }
   ]
 }

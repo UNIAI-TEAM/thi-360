@@ -24,8 +24,9 @@ const TYPE_ICON: Record<QuestionType, LucideIcon> = {
   SINGLE_CHOICE: CircleDot,
   MULTIPLE_CHOICE: SquareCheckBig,
   TRUE_FALSE: ListChecks,
-  FILL_IN: TextCursorInput,
-  DRAG_DROP: Move,
+  SHORT_ANSWER: TextCursorInput,
+  CLOZE: TextCursorInput,
+  MATCHING: Move,
   QUESTION_SET: Layers,
   ESSAY: PenLine,
 };

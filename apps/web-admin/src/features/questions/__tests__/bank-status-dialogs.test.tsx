@@ -26,12 +26,12 @@ describe("MarkReadyDialog (canvas KiemTraSanSang)", () => {
     expect(dialog).toHaveTextContent("Còn 1 trên 7 điều kiện chưa đạt.");
     const items = within(dialog).getAllByRole("listitem").filter((item) => /^\d\./.test(item.textContent ?? ""));
     expect(items).toHaveLength(7);
-    const failed = items.find((item) => item.textContent?.includes("kiến thức chính"))!;
+    const failed = items.find((item) => item.textContent?.includes("đáp án hợp lệ"))!;
     expect(failed).toHaveTextContent("Chưa đạt");
-    expect(failed).toHaveTextContent("Chưa chọn kiến thức chính.");
-    expect(within(failed).getByRole("link", { name: "Đến chỗ cần sửa: Chưa chọn kiến thức chính." })).toHaveAttribute(
+    expect(failed).toHaveTextContent("Chưa chọn đáp án đúng.");
+    expect(within(failed).getByRole("link", { name: "Đến chỗ cần sửa: Chưa chọn đáp án đúng." })).toHaveAttribute(
       "href",
-      "/questions/q-0006/edit#question-knowledge",
+      "/questions/q-0006/edit#question-answers",
     );
     expect(within(dialog).queryByRole("button", { name: "Chuyển sang Sẵn sàng" })).not.toBeInTheDocument();
     expect(within(dialog).getByRole("link", { name: "Sửa câu hỏi" })).toHaveAttribute("href", "/questions/q-0006/edit");

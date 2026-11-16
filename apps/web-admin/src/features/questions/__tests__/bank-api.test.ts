@@ -15,9 +15,12 @@ import { questionStore } from "../mock/store";
 
 afterEach(() => questionStore.reset());
 
-/** Cau Nhap du dieu kien va cau Nhap thieu kien thuc chinh trong du lieu mau. */
+/** Cau Nhap du dieu kien va cau Nhap chua chon dap an dung trong du lieu mau. */
 const READY_DRAFT = "q-0002";
 const NOT_READY_DRAFT = "q-0006";
+
+/** `revision` hiện tại của câu (D13): lệnh ghi gửi lại làm `expectedRevision`. */
+const rev = (id: string) => questionStore.require(id).revision;
 
 describe("API Ngan hang cau hoi (du lieu mau)", () => {
   it("dem cau theo trang thai voi cung bo loc, bo dieu kien trang thai", async () => {
@@ -41,27 +44,43 @@ describe("API Ngan hang cau hoi (du lieu mau)", () => {
   it("danh sach kem goi y dieu kien con thieu cho cau chua Sẵn sàng", async () => {
     const page = await listQuestions({ size: 100 });
     const draft = page.content.find((q) => q.id === NOT_READY_DRAFT)!;
-    expect(draft.readinessHint).toMatchObject({ code: "PRIMARY_KNOWLEDGE_MISSING" });
+    expect(draft.readinessHint).toMatchObject({ code: "NO_CORRECT_OPTION" });
     expect(page.content.find((q) => q.status === "READY")!.readinessHint).toBeNull();
   });
 
   it("chuyen sang Sẵn sàng khi du dieu kien, 422 khi thieu, 409 khi da Sẵn sàng", async () => {
-    const updated = await markQuestionReady({ id: READY_DRAFT });
+    const updated = await markQuestionReady({ id: READY_DRAFT, expectedRevision: rev(READY_DRAFT) });
     expect(updated.status).toBe("READY");
     expect(questionStore.require(READY_DRAFT).status).toBe("READY");
 
-    await expect(markQuestionReady({ id: READY_DRAFT })).rejects.toMatchObject({ status: 409, code: "QUESTION_ALREADY_READY" });
-    await expect(markQuestionReady({ id: NOT_READY_DRAFT })).rejects.toBeInstanceOf(MockApiError);
-    await expect(markQuestionReady({ id: NOT_READY_DRAFT })).rejects.toMatchObject({ status: 422, code: "QUESTION_NOT_READY" });
+    await expect(markQuestionReady({ id: READY_DRAFT, expectedRevision: rev(READY_DRAFT) })).rejects.toMatchObject({ status: 409, code: "QUESTION_ALREADY_READY" });
+    await expect(markQuestionReady({ id: NOT_READY_DRAFT, expectedRevision: rev(NOT_READY_DRAFT) })).rejects.toBeInstanceOf(MockApiError);
+    await expect(markQuestionReady({ id: NOT_READY_DRAFT, expectedRevision: rev(NOT_READY_DRAFT) })).rejects.toMatchObject({ status: 422, code: "QUESTION_NOT_READY" });
     expect((await getQuestionReadiness(NOT_READY_DRAFT)).ready).toBe(false);
+  });
+
+  it("lenh ghi lech revision bi tu choi 412 QUESTION_REVISION_CONFLICT va khong doi trang thai", async () => {
+    const stale = rev(READY_DRAFT) + 5;
+    await expect(markQuestionReady({ id: READY_DRAFT, expectedRevision: stale })).rejects.toMatchObject({
+      status: 412,
+      code: "QUESTION_REVISION_CONFLICT",
+    });
+    await expect(retireQuestion({ id: "q-0001", expectedRevision: stale })).rejects.toMatchObject({
+      status: 412,
+      code: "QUESTION_REVISION_CONFLICT",
+    });
+    expect(questionStore.require(READY_DRAFT).status).toBe("DRAFT");
+    const before = rev(READY_DRAFT);
+    await markQuestionReady({ id: READY_DRAFT, expectedRevision: before });
+    expect(rev(READY_DRAFT)).toBe(before + 1);
   });
 
   it("ngung su dung khong xoa cau; ngung lan hai bao 409", async () => {
     const before = questionStore.all().length;
-    const retired = await retireQuestion({ id: "q-0001" });
+    const retired = await retireQuestion({ id: "q-0001", expectedRevision: rev("q-0001") });
     expect(retired.status).toBe("RETIRED");
     expect(questionStore.all()).toHaveLength(before);
-    await expect(retireQuestion({ id: "q-0001" })).rejects.toMatchObject({ status: 409 });
+    await expect(retireQuestion({ id: "q-0001", expectedRevision: rev("q-0001") })).rejects.toMatchObject({ status: 409 });
   });
 
   it("hang loat: bo qua cau chua du dieu kien va cau da o trang thai dich", async () => {

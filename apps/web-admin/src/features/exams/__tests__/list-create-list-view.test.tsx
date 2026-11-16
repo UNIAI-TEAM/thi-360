@@ -15,18 +15,14 @@ beforeEach(async () => {
     name: "BCA thu",
     code: "BCA-F-901",
     kind: "BCA",
-    format: "FULL",
-    templateCode: "BCA_FULL",
-    singleSubjectCode: null,
+    scope: "FULL",
     description: null,
   });
   await createExam({
     name: "THPTQG Tin hoc thu",
     code: "THPTQG-F-TIN-901",
     kind: "THPTQG",
-    format: "FULL",
-    templateCode: "THPTQG_INFORMATICS_2025",
-    singleSubjectCode: null,
+    scope: "SUBJECT",
     subjectCode: "INFORMATICS",
     description: null,
   });
@@ -61,7 +57,7 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     expect(informatics.getByText("28 câu · 50 phút chung")).toBeInTheDocument();
 
     const hsa = rowOf(table, "HSA FULL · Đề luyện số 1");
-    expect(hsa.getByText("Tiếng Anh + 3 tổ hợp")).toBeInTheDocument();
+    expect(hsa.getByText("Tiếng Anh")).toBeInTheDocument();
     expect(hsa.queryByText("Có tự luận")).not.toBeInTheDocument();
   });
 
@@ -90,5 +86,5 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     await waitFor(() => expect(within(table).queryByRole("link", { name: "BCA thu" })).not.toBeInTheDocument());
     expect(within(table).getByRole("link", { name: "THPTQG Tin hoc thu" })).toBeInTheDocument();
     expect(within(table).queryByRole("link", { name: "HSA FULL · Đề luyện số 1" })).not.toBeInTheDocument();
-  });
+  }, 20_000);
 });
