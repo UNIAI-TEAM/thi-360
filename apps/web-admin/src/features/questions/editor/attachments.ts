@@ -1,4 +1,4 @@
-import { uploadQuestionAsset } from "../asset-upload";
+import { questionAssetErrorReason, uploadQuestionAsset } from "../asset-upload";
 
 /**
  * Tệp đính kèm của câu hỏi (UniNote PBI-03 mục 4.1; spec 4.2): PDF, DOCX, XLSX, PNG, JPEG, WebP, MP3, tối đa 20 MB.
@@ -26,6 +26,26 @@ export function checkAttachment(file: Pick<File, "name" | "size">): AttachmentRe
   if (!(ATTACHMENT_EXTENSIONS as readonly string[]).includes(extension)) return "UNSUPPORTED_TYPE";
   if (file.size > ATTACHMENT_MAX_BYTES) return "TOO_LARGE";
   return null;
+}
+
+/** Lý do hiển thị khi máy chủ từ chối tệp (chữ ở `questions.editor.attachments.rejected.*`); lỗi khác là `FAILED`. */
+export type AttachmentUploadRejection = AttachmentRejection | "RATE_LIMITED" | "FAILED";
+
+/**
+ * Đổi lỗi của `POST /question-assets` thành lý do cho người dùng: 413 quá dung lượng, 415/422 chữ ký tệp không khớp,
+ * 429 tải quá nhiều; mọi lỗi còn lại là lỗi chung.
+ */
+export function attachmentUploadRejection(error: unknown): AttachmentUploadRejection {
+  switch (questionAssetErrorReason(error)) {
+    case "TOO_LARGE":
+      return "TOO_LARGE";
+    case "TYPE_NOT_ALLOWED":
+      return "UNSUPPORTED_TYPE";
+    case "RATE_LIMITED":
+      return "RATE_LIMITED";
+    default:
+      return "FAILED";
+  }
 }
 
 const uploaded = new Map<string, AttachmentInfo>();

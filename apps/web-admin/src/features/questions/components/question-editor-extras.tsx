@@ -7,7 +7,13 @@ import { useId, useRef, useState, type ChangeEvent } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import type { QuestionEditorValues } from "../editor-form";
 import { RichTextField } from "./question-editor-rich-field";
-import { ATTACHMENT_ACCEPT, attachmentInfo, checkAttachment, uploadQuestionAttachment } from "../editor/attachments";
+import {
+  ATTACHMENT_ACCEPT,
+  attachmentInfo,
+  attachmentUploadRejection,
+  checkAttachment,
+  uploadQuestionAttachment,
+} from "../editor/attachments";
 import { EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
 
 /** Lỗi sai thường gặp (PBI-03 mục 4.1): cách hiểu sai học viên hay mắc, làm dữ liệu tham khảo cho AI giải thích. */
@@ -73,8 +79,8 @@ export function AttachmentsSection({ formId }: { formId: string }) {
       }
       try {
         accepted.push((await uploadQuestionAttachment(file)).id);
-      } catch {
-        rejected.push(t("rejected.FAILED", { name: file.name }));
+      } catch (error) {
+        rejected.push(t(`rejected.${attachmentUploadRejection(error)}`, { name: file.name }));
       }
     }
     setUploading(false);

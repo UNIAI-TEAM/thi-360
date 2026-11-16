@@ -2700,9 +2700,10 @@
         "added": "Đã thêm {count, number} tệp đính kèm.",
         "removed": "Đã bỏ tệp {name}.",
         "rejected": {
+          "FAILED": "{name}: không tải lên được.",
+          "RATE_LIMITED": "{name}: bạn tải lên quá nhiều tệp trong thời gian ngắn (tối đa 60 tệp mỗi 10 phút). Thử lại sau.",
           "TOO_LARGE": "{name}: tệp lớn hơn 20 MB.",
-          "UNSUPPORTED_TYPE": "{name}: loại tệp không được hỗ trợ.",
-          "FAILED": "{name}: không tải lên được."
+          "UNSUPPORTED_TYPE": "{name}: loại tệp không được hỗ trợ."
         }
       },
       "scoreTable": {

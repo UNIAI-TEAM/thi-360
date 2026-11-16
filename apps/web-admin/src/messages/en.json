@@ -2700,9 +2700,10 @@
         "added": "{count, plural, one {# attachment} other {# attachments}} added.",
         "removed": "Removed file {name}.",
         "rejected": {
+          "FAILED": "{name}: the upload failed.",
+          "RATE_LIMITED": "{name}: you uploaded too many files in a short time (up to 60 files per 10 minutes). Try again later.",
           "TOO_LARGE": "{name}: the file is larger than 20 MB.",
-          "UNSUPPORTED_TYPE": "{name}: this file type is not supported.",
-          "FAILED": "{name}: the upload failed."
+          "UNSUPPORTED_TYPE": "{name}: this file type is not supported."
         }
       },
       "scoreTable": {

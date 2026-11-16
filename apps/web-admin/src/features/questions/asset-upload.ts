@@ -49,13 +49,13 @@ export type QuestionAssetErrorReason = "TOO_LARGE" | "TYPE_NOT_ALLOWED" | "RATE_
 
 /**
  * Lý do tải thất bại. 413 (kể cả khi tầng web chặn trước nên không có thân lỗi) và `ASSET_TOO_LARGE` là quá dung
- * lượng; 422 `ASSET_TYPE_NOT_ALLOWED` là loại tệp không nhận; 429 là tải quá nhiều.
+ * lượng; 415, 422 hoặc `ASSET_TYPE_NOT_ALLOWED` là loại tệp không nhận (chữ ký byte không khớp); 429 là tải quá nhiều.
  */
 export function questionAssetErrorReason(error: unknown): QuestionAssetErrorReason {
   const status = error instanceof ApiStatusError ? error.status : undefined;
   const code = errorCode(error);
   if (status === 413 || code === "ASSET_TOO_LARGE") return "TOO_LARGE";
-  if (code === "ASSET_TYPE_NOT_ALLOWED") return "TYPE_NOT_ALLOWED";
+  if (status === 415 || status === 422 || code === "ASSET_TYPE_NOT_ALLOWED") return "TYPE_NOT_ALLOWED";
   if (status === 429) return "RATE_LIMITED";
   if (status === 403) return "FORBIDDEN";
   return "UNKNOWN";
