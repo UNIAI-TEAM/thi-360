@@ -604,6 +604,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                         {...controlProps}
                         value={field.value}
                         onChange={field.onChange}
+                        aria-label={t("instructionsLabel")}
                         allowImages={false}
                         invalid={Boolean(formState.errors.instructions)}
                         placeholder={t("instructionsPlaceholder")}

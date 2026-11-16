@@ -773,6 +773,7 @@ export function ExamInfoFields({
                 {...controlProps}
                 value={field.value}
                 onChange={field.onChange}
+                aria-label={t("instructionsLabel")}
                 allowImages={false}
                 invalid={Boolean(errors.instructions)}
                 placeholder={t("instructionsPlaceholder")}

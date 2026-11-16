@@ -167,7 +167,7 @@ describe("trang Tạo bài thi", () => {
       scope: "PART",
       partCode: "MATH",
       subjectCode: null,
-      instructions: "Đọc kỹ đề trước khi làm.",
+      instructions: "<p>Đọc kỹ đề trước khi làm.</p>",
     });
   }, 20_000);
 
