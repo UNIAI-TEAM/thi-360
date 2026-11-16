@@ -23,7 +23,6 @@ import vn.unicom.thi360.exam.domain.solver.SolvePart;
 import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.exam.domain.solver.SubjectChoice;
-import vn.unicom.thi360.exam.domain.solver.SubjectCountAllocator;
 import vn.unicom.thi360.exam.domain.solver.SubjectPick;
 import vn.unicom.thi360.exam.domain.solver.oracle.OracleSupport.ResolvedQuota;
 
@@ -50,16 +49,8 @@ public final class BruteForceOracle {
     /** Ngân sách duyệt: quá thì {@link IllegalStateException} (ca sinh ra phải nhỏ hơn ngưỡng). */
     private static final long MAX_NODES = 2_000_000;
 
-    private final SubjectCountAllocator allocator;
-
     /** Oracle với quy tắc gán số câu theo thứ tự cấu trúc (D25, tự cài từ spec). */
     public BruteForceOracle() {
-        this((choice, pickedSubjectCodes) -> choice.countsByPick().stream()
-                .mapToInt(Integer::intValue).toArray());
-    }
-
-    public BruteForceOracle(SubjectCountAllocator allocator) {
-        this.allocator = Objects.requireNonNull(allocator);
     }
 
     // ------------------------------------------------------------ kết quả
@@ -194,7 +185,7 @@ public final class BruteForceOracle {
         for (int i = 0; i < path.choices().size(); i++) {
             List<SubjectPick> provided = i < path.picks().size() ? path.picks().get(i) : List.of();
             perChoice.add(provided.isEmpty()
-                    ? path.choices().get(i).picks(allocator)
+                    ? OracleSupport.picksOf(path.choices().get(i))
                     : provided);
         }
         List<List<SubjectPick>> combos = new ArrayList<>();

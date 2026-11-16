@@ -295,6 +295,41 @@ final class OracleSupport {
     }
 
     /**
+     * Mọi cách chọn {@code choose} môn của phương án, theo thứ tự tổ hợp ổn định (từ điển trên
+     * chỉ số theo thứ tự cấu trúc), mỗi cách nhận số câu theo D25 qua {@link #structureOrderPick}
+     * — cài lại độc lập từ spec, không dùng bộ gán số câu của bộ giải.
+     */
+    static List<SubjectPick> picksOf(SubjectChoice choice) {
+        List<SectionOnPath> sections = choice.sections();
+        int n = sections.size();
+        int k = choice.choose();
+        List<SubjectPick> out = new ArrayList<>();
+        int[] idx = new int[k];
+        for (int i = 0; i < k; i++) {
+            idx[i] = i;
+        }
+        while (idx[0] <= n - k) {
+            List<SectionOnPath> picked = new ArrayList<>(k);
+            for (int i : idx) {
+                picked.add(sections.get(i));
+            }
+            out.add(structureOrderPick(choice, picked));
+            int p = k - 1;
+            while (p >= 0 && idx[p] == n - k + p) {
+                p--;
+            }
+            if (p < 0) {
+                break;
+            }
+            idx[p]++;
+            for (int j = p + 1; j < k; j++) {
+                idx[j] = idx[j - 1] + 1;
+            }
+        }
+        return out;
+    }
+
+    /**
      * Cách chọn môn với các môn được chỉ định bằng mã (đầu vào của {@code solvePick}): giữ thứ tự
      * cấu trúc của {@code choice.sections}, môn thứ i trong thứ tự đó nhận {@code countsByPick[i]}.
      */
