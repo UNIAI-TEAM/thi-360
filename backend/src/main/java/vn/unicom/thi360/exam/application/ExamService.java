@@ -664,10 +664,12 @@ public class ExamService {
                 summary.hasEnglishOption(), summary.combinationCount());
         exam.markStructureChanged(actor, now);
         rewriteBlockRefs(exam.getId(), doc);
+        examRepository.flush();
     }
 
     private void rewriteBlockRefs(UUID examId, ExamStructureDocument doc) {
         blockRefRepository.deleteByExamIdAndVersionNo(examId, null);
+        blockRefRepository.flush();
         List<vn.unicom.thi360.exam.domain.ExamBlockRef> rows =
                 blockRefProjector.project(examId, doc.parts(), resolver());
         if (!rows.isEmpty()) {

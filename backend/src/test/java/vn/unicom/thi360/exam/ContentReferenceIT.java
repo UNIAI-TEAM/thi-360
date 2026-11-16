@@ -2,6 +2,7 @@ package vn.unicom.thi360.exam;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -65,6 +66,28 @@ class ContentReferenceIT extends AbstractIntegrationTest {
         mockMvc.perform(get(URL).with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.questionTypes.length()").value(8));
+    }
+
+    @Test
+    void profileUpdateInvalidatesCachedExamKinds() throws Exception {
+        String itemId = "00000000-0000-7000-8200-000000000101";
+        Long revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM exam.exam_kind_profile WHERE exam_item_id = CAST(? AS uuid)",
+                Long.class, itemId);
+        mockMvc.perform(get(URL).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.examKinds[?(@.code=='HSA' && @.maxScore==150)]").isNotEmpty());
+        mockMvc.perform(put("/api/v1/admin/exam-kinds/" + itemId + "/profile")
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"scopes":["FULL","PART"],"templateBy":"KIND","timing":"PER_PART",
+                                 "maxScore":149,"practiceScoring":"RAW","expectedRevision":%d}
+                                """.formatted(revision)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(URL).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.examKinds[?(@.code=='HSA' && @.maxScore==149)]").isNotEmpty());
     }
 
     @Test
