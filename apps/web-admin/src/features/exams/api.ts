@@ -2,7 +2,7 @@ import { isContentMockEnabled } from "@/lib/mock/flags";
 import * as http from "./api.http";
 import * as mock from "./api.mock";
 import { discontinueExam as discontinueReviewedExam } from "./review-api";
-import type { ExamDetail } from "./types";
+import type { ExamDetail, ExamListPage, ListExamsQuery } from "./types";
 
 /**
  * API của Bài thi (danh sách, chi tiết, mẫu cấu trúc, tạo, sửa thông tin, sửa cấu trúc, nạp mẫu, sao chép, ngừng bán,
@@ -13,7 +13,8 @@ import type { ExamDetail } from "./types";
 export { EXAMS_QUERY_KEYS } from "./keys";
 export { toExamSummary } from "./exam-summary";
 
-export const listExams: typeof mock.listExams = (...args) => (isContentMockEnabled() ? mock.listExams(...args) : http.listExams(...args));
+export const listExams = (query: ListExamsQuery, signal?: AbortSignal): Promise<ExamListPage> =>
+  isContentMockEnabled() ? mock.listExams(query) : http.listExams(query, signal);
 export const getExam: typeof mock.getExam = (...args) => (isContentMockEnabled() ? mock.getExam(...args) : http.getExam(...args));
 export const listExamTemplates: typeof mock.listExamTemplates = (...args) => (isContentMockEnabled() ? mock.listExamTemplates(...args) : http.listExamTemplates(...args));
 export const getExamStructure: typeof mock.getExamStructure = (...args) => (isContentMockEnabled() ? mock.getExamStructure(...args) : http.getExamStructure(...args));

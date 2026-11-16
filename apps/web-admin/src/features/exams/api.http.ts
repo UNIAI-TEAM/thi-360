@@ -1,6 +1,5 @@
 import { getContentReference } from "@/features/content/api";
 import { createBrowserApiClient } from "@/lib/api/client";
-import type { MockPage } from "@/lib/mock/content-mock";
 import {
   mapAvailableCounts,
   mapExamDetail,
@@ -18,6 +17,7 @@ import type {
   CreateExamRequest,
   DuplicateExamRequest,
   ExamDetail,
+  ExamListPage,
   ExamStructure,
   ExamSummary,
   ExamTemplate,
@@ -35,10 +35,12 @@ import type {
  * phiên bản và công bố nằm ở `review-api.ts`.
  */
 
-/** Danh sách theo hai bộ lọc máy chủ không có (`checkStatus`, `hasUnpublishedChanges`): đọc hết rồi lọc và cắt trang. */
+/**
+ * Danh sách theo hai bộ lọc máy chủ không có (`checkStatus`, `hasUnpublishedChanges`): đọc từng trang rồi lọc và cắt
+ * trang. Đọc tối đa `MAX_FILTER_PAGES` trang (1.000 bài); quá thì dừng và báo `incomplete`.
+ */
 const FILTER_PAGE_SIZE = 100;
-
-type Page<T> = MockPage<T>;
+export const MAX_FILTER_PAGES = 10;
 
 const idempotencyKey = () => globalThis.crypto.randomUUID();
 
@@ -50,20 +52,22 @@ const SERVER_FILTERS = (query: ListExamsQuery) => ({
   status: query.status,
 });
 
-async function fetchSummaries(query: ListExamsQuery, page: number, size: number) {
+async function fetchSummaries(query: ListExamsQuery, page: number, size: number, signal?: AbortSignal) {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/exams", {
     params: { query: { ...SERVER_FILTERS(query), sort: query.sort, page, size } },
+    signal,
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
   return data;
 }
 
-export async function listExams(query: ListExamsQuery): Promise<Page<ExamSummary>> {
+/** `signal` hủy các lần đọc đang chờ khi truy vấn đổi (React Query hủy truy vấn cũ). */
+export async function listExams(query: ListExamsQuery, signal?: AbortSignal): Promise<ExamListPage> {
   const page = query.page ?? 0;
   const size = query.size ?? 20;
   if (!query.checkStatus && !query.hasUnpublishedChanges) {
-    const data = await fetchSummaries(query, page, size);
+    const data = await fetchSummaries(query, page, size, signal);
     return {
       content: data.items.map(mapExamSummary),
       page: data.page,
@@ -73,8 +77,13 @@ export async function listExams(query: ListExamsQuery): Promise<Page<ExamSummary
     };
   }
   const rows: ExamSummary[] = [];
+  let incomplete = false;
   for (let next = 0, pages = 1; next < pages; next += 1) {
-    const data = await fetchSummaries(query, next, FILTER_PAGE_SIZE);
+    if (next >= MAX_FILTER_PAGES) {
+      incomplete = true;
+      break;
+    }
+    const data = await fetchSummaries(query, next, FILTER_PAGE_SIZE, signal);
     pages = data.totalPages;
     rows.push(...data.items.map(mapExamSummary));
   }
@@ -89,6 +98,7 @@ export async function listExams(query: ListExamsQuery): Promise<Page<ExamSummary
     size,
     totalElements: filtered.length,
     totalPages: Math.ceil(filtered.length / size),
+    ...(incomplete ? { incomplete } : {}),
   };
 }
 

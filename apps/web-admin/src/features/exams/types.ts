@@ -7,6 +7,7 @@ import type {
   QuestionType,
   TrueFalseMethod,
 } from "@/features/content/types";
+import type { MockPage } from "@/lib/mock/content-mock";
 
 export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
@@ -307,6 +308,11 @@ export interface ListExamsQuery {
   page?: number;
   size?: number;
   sort?: string;
+}
+
+/** Trang danh sách bài thi. `incomplete`: lọc phía máy khách đã dừng ở số trang tối đa nên kết quả có thể chưa đủ. */
+export interface ExamListPage extends MockPage<ExamSummary> {
+  incomplete?: boolean;
 }
 
 /**

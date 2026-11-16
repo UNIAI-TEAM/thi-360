@@ -467,6 +467,7 @@ export function ExamListView() {
                 : t("list.resultCount", { count: total })}
           </p>
           <p className="text-caption text-text-muted">{t("list.hint")}</p>
+          {examsQuery.data?.incomplete && <StatusChip tone="warning">{t("list.incomplete")}</StatusChip>}
           <LiveStatus message={liveMessage || resultStatus} />
         </div>
 

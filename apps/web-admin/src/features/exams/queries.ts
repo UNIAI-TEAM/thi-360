@@ -18,7 +18,7 @@ import type {
 export function useExamList(query: ListExamsQuery, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.list(query),
-    queryFn: () => deps.listExams(query),
+    queryFn: ({ signal }) => deps.listExams(query, signal),
     placeholderData: keepPreviousWhileSameScope(EXAMS_QUERY_KEYS.list(query)),
   });
 }

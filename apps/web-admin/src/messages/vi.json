@@ -3546,6 +3546,7 @@
       "hint": "Sửa bài đang phục vụ tạo bản làm việc; bản công bố cũ vẫn phục vụ tới khi công bố bản mới.",
       "tableAriaLabel": "Danh sách bài thi",
       "resultCount": "{count, number} bài thi khớp bộ lọc",
+      "incomplete": "Kết quả có thể chưa đủ: chỉ đọc 1.000 bài đầu để lọc theo kiểm tra hoặc bản sửa. Thu hẹp bằng ô tìm kiếm hoặc kỳ thi.",
       "loadingCount": "Đang tải danh sách…",
       "errorCount": "Không tải được danh sách",
       "errorTitle": "Không tải được danh sách bài thi",

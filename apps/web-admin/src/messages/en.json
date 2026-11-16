@@ -3546,6 +3546,7 @@
       "hint": "Editing a serving exam creates a working copy; the published version keeps serving until a new one is published.",
       "tableAriaLabel": "Exam list",
       "resultCount": "{count, plural, one {# exam matches} other {# exams match}} the filters",
+      "incomplete": "Results may be incomplete: only the first 1,000 exams were read to filter by check or working copy. Narrow the list with search or exam type.",
       "loadingCount": "Loading the list…",
       "errorCount": "Could not load the list",
       "errorTitle": "Could not load exams",
