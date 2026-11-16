@@ -334,6 +334,7 @@ export class ExamsBackend {
   private readonly servedPaths = new Map<string, Set<string>>();
   private sequence = 0;
   private readonly countsByPath = new Map<string, Reply>();
+  private readonly previews = new Map<string, Reply>();
   /** Mã gợi ý tùy biến theo truy vấn; mặc định `<KIND>-<F|P|S>-[SLUG-]<NNN>` số tiếp theo chưa dùng. */
   suggestCode: ((query: URLSearchParams, used: Set<string>) => string) | null = null;
 
@@ -401,6 +402,21 @@ export class ExamsBackend {
   /** Đáp số cho đếm nguồn; `path` là `count` hoặc `count-subject`. */
   seedCounts(path: "count" | "count-subject", reply: Reply): this {
     this.countsByPath.set(path, reply);
+    return this;
+  }
+
+  /**
+   * Đề xem trước xếp sẵn cho `POST /preview` (máy chủ sinh đề, client không tính). Khóa: `pathId`, hoặc
+   * `pathId|MÔN1,MÔN2,MÔN3` khi đường Khoa học gửi `subjectCodes`; khớp khóa đầy đủ trước, rồi tới `pathId`.
+   */
+  seedPreview(examId: string, key: string, reply: Reply): this {
+    this.previews.set(`${examId}/${key}`, reply);
+    return this;
+  }
+
+  /** Kết quả của lần bấm "Kiểm tra cấu hình" (`POST /check`): lưu thành kết quả gần nhất sau khi chạy. */
+  seedRunResult(examId: string, result: WireCheck): this {
+    this.checkReplies.set(examId, [{ status: 200, body: result }]);
     return this;
   }
 
@@ -822,6 +838,11 @@ export class ExamsBackend {
     };
   }
 
+  private recordCheck(exam: WireDetail, result: WireCheck): void {
+    this.checks.set(exam.id, result);
+    exam.check = { status: result.status ?? "VALID", issueCount: result.issueCount ?? 0, checkedAt: result.checkedAt };
+  }
+
   private handleCheckPost(exam: WireDetail, request: Recorded): Reply {
     if (request.url.searchParams.get("deep") === "true") {
       const runId = this.nextId("run");
@@ -830,11 +851,23 @@ export class ExamsBackend {
     }
     const queued = this.checkReplies.get(exam.id);
     const reply = queued && queued.length > 1 ? queued.shift()! : queued?.[0];
-    if (reply) return reply;
+    if (reply) {
+      if (reply.status === 200 && reply.body) this.recordCheck(exam, reply.body as WireCheck);
+      return reply;
+    }
     const result = this.checks.get(exam.id) ?? defaultCheck(exam.id);
     this.checks.set(exam.id, result);
     exam.check = { status: result.status ?? "VALID", issueCount: result.issueCount ?? 0, checkedAt: result.checkedAt };
     return { status: 200, body: result };
+  }
+
+  private handlePreview(request: Recorded): Reply {
+    const examId = request.url.pathname.split("/").at(-2)!;
+    const body = (request.body ?? {}) as { pathId?: string; subjectCodes?: string[] };
+    const pathId = body.pathId ?? "";
+    const withSubjects = body.subjectCodes?.length ? `${pathId}|${body.subjectCodes.join(",")}` : undefined;
+    const reply = (withSubjects && this.previews.get(`${examId}/${withSubjects}`)) || this.previews.get(`${examId}/${pathId}`);
+    return reply ?? err(404, "PREVIEW_NOT_SEEDED");
   }
 
   private handleRun(request: Recorded): Reply {
@@ -893,6 +926,7 @@ export class ExamsBackend {
         const exam = this.require(request.url.pathname.split("/").at(-3)!);
         return exam === null ? err(404, "EXAM_NOT_FOUND") : this.applyTemplate(exam, request.body as Record<string, unknown>);
       })
+      .on("POST", `${exams}/:id/preview`, (request) => this.handlePreview(request))
       .on("POST", `${exams}/:id/duplicate`, (request) => {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);
         return exam === null ? err(404, "EXAM_NOT_FOUND") : this.duplicate(exam, request.body as Record<string, unknown>);

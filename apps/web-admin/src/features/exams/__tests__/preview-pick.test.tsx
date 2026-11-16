@@ -1,15 +1,17 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
 import { ExamReviewView } from "../components/exam-review-view";
-import { reviewStore } from "../mock/review-store";
-import { examStore } from "../mock/store";
-import { generatePreview } from "../review-api";
-import { pinInMemoryBackend } from "./in-memory-backend";
+import { ExamsBackend } from "./fake-exams-backend";
+import { PREVIEW_HSA_000_SCIENCE_PCG } from "./review-fixtures";
 
-pinInMemoryBackend();
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReference } = await import("@/features/content/api.mock");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const navigation = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({
@@ -23,11 +25,13 @@ const HSA = "ex-hsa-f-000";
 const SCIENCE = "opt-sci-4";
 
 beforeEach(() => {
-  examStore.reset();
-  questionStore.reset();
-  reviewStore.reset();
+  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   navigation.search = "";
   window.history.replaceState(null, "", "/");
+  // Máy chủ sinh đề: đề của đường Khoa học khi học viên chọn Vật lí, Hóa học, Địa lí (hai môn tự nhiên một môn xã hội).
+  new ExamsBackend()
+    .seedPreview(HSA, `${SCIENCE}|PHYSICS,CHEMISTRY,GEOGRAPHY`, { status: 200, body: PREVIEW_HSA_000_SCIENCE_PCG })
+    .install();
 });
 
 async function openSciencePreview() {
@@ -100,37 +104,5 @@ describe("xem trước đường Khoa học: chọn 3 môn", () => {
     const preview = await waitFor(() => screen.getByRole("tabpanel", { name: "Đề xem trước" }));
     await within(preview).findByRole("button", { name: "Sinh đề xem trước" });
     expect(within(preview).queryByRole("group", { name: /Chọn \d môn để xem trước/ })).not.toBeInTheDocument();
-  });
-});
-
-describe("generatePreview: chỉ tiêu cấp môn trên đề", () => {
-  it("mỗi môn trên đề kèm số câu theo B10 và chỉ tiêu dạng trả lời, khối lớp, độ khó khớp đề sinh", async () => {
-    const result = await generatePreview({
-      examId: HSA,
-      pathId: SCIENCE,
-      seed: 3,
-      subjectCodes: ["BIOLOGY", "HISTORY", "GEOGRAPHY"],
-    });
-    if (result.status !== "GENERATED") throw new Error(`expected a paper, got ${result.status}`);
-    const { subjects } = result.paper;
-    // Hai môn xã hội một môn tự nhiên: môn tự nhiên 16 câu, hai môn xã hội 17 câu; môn cố định đi trước.
-    expect(subjects.map((subject) => [subject.subjectCode, subject.questionCount])).toEqual([
-      ["MATH", 50],
-      ["LITERATURE", 50],
-      ["BIOLOGY", 16],
-      ["HISTORY", 17],
-      ["GEOGRAPHY", 17],
-    ]);
-    expect(subjects.reduce((total, subject) => total + subject.questionCount, 0)).toBe(result.paper.totalQuestions);
-    const withQuotas = subjects.filter((subject) => subject.quotas.length > 0);
-    expect(withQuotas.length).toBeGreaterThan(0);
-    for (const subject of withQuotas) {
-      for (const kind of ["GRADE", "DIFFICULTY"] as const) {
-        const rows = subject.quotas.filter((quota) => quota.kind === kind);
-        // Chỉ tiêu theo khối lớp hoặc độ khó cộng lại bằng số câu của môn, và đề sinh đúng từng chỉ tiêu.
-        if (rows.length) expect(rows.reduce((total, quota) => total + quota.required, 0)).toBe(subject.questionCount);
-      }
-      expect(subject.quotas.every((quota) => quota.required === quota.generated)).toBe(true);
-    }
   });
 });
