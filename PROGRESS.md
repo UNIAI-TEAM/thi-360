@@ -6,6 +6,8 @@
 
 **Giai đoạn:** đợt 1 (nền, PBI-01, PBI-02) đã merge vào `develop` ngày 2026-11-14 (PR #25, `14f983c`; 105/105 điểm của plan). Đợt 2 đã có mockup giao diện PBI-03, PBI-04 trên dữ liệu mẫu (UNI-2590), mở rộng cho 7 kỳ thi và chấm tự luận (UNI-2599); đặc tả backend đã viết (UNI-2605); triển khai backend đang chạy ở UNI-2606 từ 2026-11-16. Các việc phát sinh sau khi dùng thử bản demo: mỗi việc một issue và một PR vào `develop`. Các mục `T…` bên dưới là nhật ký của đợt 1, đường dẫn trang trong đó là tên cũ (xem bảng đổi tên ở mục "Sau đợt 1").
 
+**UNI-2609 — BE-2a p1:** sửa các phát hiện review F1–F9 về lọc HTML, kiểm tra sẵn sàng và tìm kiếm; P1-7/8/21 do lane persistence xử lý, P1-22 chuyển sang BE-2b. Kết quả kiểm thử và SHA được worker báo cho điều phối viên; chưa push hoặc mở PR.
+
 ### Sau đợt 1 (2026-11-14)
 
 - **Bản demo tạm** chạy trên VPS từ `develop`: web học viên `https://thi360.zone17.click`, web admin `https://admin.thi360.zone17.click` (profile `api,worker,dev`, có tài khoản mẫu). Cách vận hành nằm trên VPS ở `~/deploy/thi360-demo/README.md`, ngoài kho mã.
