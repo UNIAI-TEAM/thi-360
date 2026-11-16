@@ -12,9 +12,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 
 /**
@@ -69,14 +72,18 @@ public class QuestionAssetCleanupJob {
     private final JdbcTemplate jdbc;
     private final ObjectStorage objectStorage;
     private final QuestionAssetCleanupProperties properties;
+    private final TransactionTemplate acknowledgementTransaction;
 
     public QuestionAssetCleanupJob(
             JdbcTemplate jdbc,
             ObjectStorage objectStorage,
-            QuestionAssetCleanupProperties properties) {
+            QuestionAssetCleanupProperties properties,
+            PlatformTransactionManager transactionManager) {
         this.jdbc = Objects.requireNonNull(jdbc);
         this.objectStorage = Objects.requireNonNull(objectStorage);
         this.properties = Objects.requireNonNull(properties);
+        this.acknowledgementTransaction = new TransactionTemplate(transactionManager);
+        this.acknowledgementTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     /**
@@ -115,7 +122,8 @@ public class QuestionAssetCleanupJob {
                     try {
                         objectStorage.delete(asset.objectKey());
                         // Object đã xóa mới gỡ ý định; lỗi giữ lại ý định để quét sau thử lại.
-                        jdbc.update(DELETE_INTENT_SQL, asset.objectKey());
+                        acknowledgementTransaction.executeWithoutResult(
+                                status -> jdbc.update(DELETE_INTENT_SQL, asset.objectKey()));
                         objectsRemoved++;
                     } catch (RuntimeException ex) {
                         jobLog.atWarn().setCause(ex)
