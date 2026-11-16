@@ -89,7 +89,7 @@ public final class PaperSolver {
             }
         };
         Function<BlockQuota, List<PathCandidate>> fetch = memoized(candidatesFor);
-        PathEnumerator enumerator = new PathEnumerator(parts);
+        PathEnumerator enumerator = new PathEnumerator(parts, check);
         long total = enumerator.total();
         if (total == 0) {
             return new SolveOutcome(SolveStatus.INVALID, null, List.of());
@@ -135,8 +135,8 @@ public final class PaperSolver {
                 List<PathCandidate> ordered = (rng != null)
                         ? shuffled(raw, rng)
                         : raw;
-                BlockContext ctx = Prep.prepare(block, ordered);
-                String insufficient = insufficientReason(ctx);
+                BlockContext ctx = Prep.prepare(block, ordered, checkDeadline);
+                String insufficient = insufficientReason(ctx, checkDeadline);
                 if (insufficient != null) {
                     return PathResult.invalid(path, SolveReason.INSUFFICIENT_SOURCE, block.blockId());
                 }
@@ -165,11 +165,19 @@ public final class PaperSolver {
     /**
      * Kiểm tra nguồn thiếu rõ ràng của một khối trước khi giải (spec 5.4): tổng chỉ tiêu ma trận không
      * khớp số đơn vị của khối, tổng nguồn nhỏ hơn chỉ tiêu, hoặc nguồn của một chỉ tiêu nhỏ hơn quota.
+     * {@code deadlineCheck} được kiểm định kỳ trong các vòng quét ứng viên.
      *
      * @return mô tả thiếu, hoặc null khi nguồn đủ để thử giải
      */
-    private String insufficientReason(BlockContext ctx) {
+    private String insufficientReason(BlockContext ctx, Runnable deadlineCheck) {
         BlockQuota block = ctx.quota();
+        long positiveQuota = 0;
+        for (Requirement r : ctx.reqs()) {
+            positiveQuota += r.quota();
+        }
+        if (block.questionCount() > 0 && positiveQuota == 0) {
+            return "questionCount " + block.questionCount() + " with no positive quota";
+        }
         if (ctx.primaryCount() > 0) {
             long primarySum = 0;
             for (int r = 0; r < ctx.primaryCount(); r++) {
@@ -194,6 +202,7 @@ public final class PaperSolver {
         }
         int[][] contrib = ctx.contrib();
         for (int r = 0; r < ctx.reqs().size(); r++) {
+            deadlineCheck.run();
             int supply = 0;
             for (int i = 0; i < n; i++) {
                 if (usable[i]) {
@@ -272,10 +281,15 @@ public final class PaperSolver {
         return out;
     }
 
+    /**
+     * Nhớ kết quả {@code candidatesFor} theo toàn bộ {@link BlockQuota} (record — so theo giá trị),
+     * không theo chỉ {@code blockId}: hai đường khác nhau có thể có hai khối cùng id nhưng chỉ tiêu
+     * khác nhau, mỗi khối cần nguồn của riêng nó.
+     */
     private static Function<BlockQuota, List<PathCandidate>> memoized(
             Function<BlockQuota, List<PathCandidate>> fetch) {
-        Map<String, List<PathCandidate>> cache = new HashMap<>();
-        return b -> cache.computeIfAbsent(b.blockId(), id -> fetch.apply(b));
+        Map<BlockQuota, List<PathCandidate>> cache = new HashMap<>();
+        return b -> cache.computeIfAbsent(b, fetch);
     }
 
     private static List<PathCandidate> shuffled(List<PathCandidate> raw, Random rng) {

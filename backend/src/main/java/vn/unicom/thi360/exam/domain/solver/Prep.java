@@ -125,9 +125,11 @@ final class Prep {
      * Dựng {@link BlockContext}: tính vector đóng góp của từng ứng viên và đánh dấu usable.
      *
      * <p>Giữ nguyên thứ tự {@code candidates} (đã được xáo từ trước nếu cần); ứng viên không usable vẫn
-     * nằm trong mảng nhưng cờ usable = false.
+     * nằm trong mảng nhưng cờ usable = false. {@code deadlineCheck} được gọi định kỳ trong vòng lặp lọc
+     * để hạn thời gian được tôn trọng cả khi danh sách ứng viên rất lớn.
      */
-    static BlockContext prepare(BlockQuota block, List<PathCandidate> candidates) {
+    static BlockContext prepare(BlockQuota block, List<PathCandidate> candidates,
+            Runnable deadlineCheck) {
         List<Requirement> reqs = requirements(block);
         int rCount = reqs.size();
         int n = candidates.size();
@@ -141,6 +143,9 @@ final class Prep {
         int[][] requiredGroups = requiredGroups(block, reqs, primaryCount(block));
 
         for (int i = 0; i < n; i++) {
+            if ((i & 0x3FF) == 0) {
+                deadlineCheck.run();
+            }
             PathCandidate c = candidates.get(i);
             int[] vec = new int[rCount];
             contrib[i] = vec;

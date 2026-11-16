@@ -543,30 +543,66 @@ class PaperSolverOracleTest {
     // ---------- kiểm chứng đề độc lập ----------
 
     /**
-     * Kiểm chứng lại đề chứng minh: mọi câu chọn thuộc danh sách đầu vào của đúng khối, chỉ tiêu khớp đúng,
-     * khóa không trùng trên cả đường, mỗi đơn vị được tính.
+     * Kiểm chứng lại đề chứng minh một cách độc lập: mọi câu chọn thuộc danh sách đầu vào của đúng khối,
+     * đủ điều kiện lọc của khối (quy tắc chấm, điểm bắt buộc, kích thước bộ, không khóa trùng trong câu,
+     * mọi đơn vị khớp nhóm bắt buộc, không đóng góp vào chỉ tiêu quota 0), chỉ tiêu khớp đúng, đủ đúng
+     * {@code questionCount} đơn vị, khóa không trùng trên cả đường.
      */
     private void validateWitness(Case cs, PathResult r) {
         assertThat(r.witness()).hasSize(cs.path().blocks().size());
+        Oracle oracle = new Oracle(cs);
         Set<String> globalKeys = new HashSet<>();
-        int[] totalUnits = {0};
         for (int b = 0; b < cs.path().blocks().size(); b++) {
             BlockQuota block = cs.path().blocks().get(b);
             BlockWitness w = r.witness().get(b);
             assertThat(w.blockId()).isEqualTo(block.blockId());
-            OReq[] rs = new Oracle(cs).reqsOf(block);
+            OReq[] rs = oracle.reqsOf(block);
+            int[][] groups = oracle.requiredGroups(block, rs);
             int[] sum = new int[rs.length];
             int units = 0;
-            Set<String> seenIds = new HashSet<>();
+            Set<String> picked = new HashSet<>();
             for (QuestionPick pick : w.picks()) {
                 PathCandidate c = findCandidate(cs.candidates().get(b), pick);
                 assertThat(c).as("pick %s must come from block %s input", pick, block.blockId())
                         .isNotNull();
-                for (String k : new Oracle(cs).keysOf(c)) {
-                    assertThat(globalKeys.add(k))
-                            .as("key %s reused on path", k).isTrue();
+                assertThat(picked.add(c.questionId()))
+                        .as("candidate %s picked twice in block %s", c.questionId(), block.blockId())
+                        .isTrue();
+
+                // điều kiện lọc của khối, kiểm lại độc lập
+                assertThat(c.units()).as("pick %s has no counting unit", c.questionId()).isNotEmpty();
+                if (block.setCount() != null) {
+                    assertThat(c.units().size())
+                            .as("pick %s set size must equal setSize %d", c.questionId(), block.setSize())
+                            .isEqualTo(block.setSize().intValue());
+                }
+                if (block.expectedScoringRule() != null) {
+                    assertThat(c.scoringRule())
+                            .as("pick %s scoring rule must be %s", c.questionId(),
+                                    block.expectedScoringRule())
+                            .isEqualTo(block.expectedScoringRule());
+                }
+                // ứng viên không được đóng góp vào chỉ tiêu nào có quota 0
+                for (int i = 0; i < rs.length; i++) {
+                    if (rs[i].quota() == 0) {
+                        int hit0 = 0;
+                        for (CountingUnit u : c.units()) {
+                            if (rs[i].matcher().test(u)) {
+                                hit0++;
+                            }
+                        }
+                        assertThat(hit0)
+                                .as("pick %s contributes to zero-quota requirement %d", c.questionId(), i)
+                                .isZero();
+                    }
                 }
                 for (CountingUnit u : c.units()) {
+                    if (block.requiredPointsPerUnit() != null) {
+                        assertThat(u.points()).as("unit %s of %s missing points", u, c.questionId())
+                                .isNotNull();
+                        assertThat(u.points().compareTo(block.requiredPointsPerUnit()))
+                                .as("unit %s of %s points != required", u, c.questionId()).isZero();
+                    }
                     int hit = 0;
                     for (int i = 0; i < rs.length; i++) {
                         if (rs[i].matcher().test(u)) {
@@ -576,17 +612,34 @@ class PaperSolverOracleTest {
                     }
                     assertThat(hit).as("unit %s of %s hit no requirement", u, c.questionId())
                             .isGreaterThan(0);
+                    for (int[] group : groups) {
+                        boolean covered = false;
+                        for (int r0 : group) {
+                            if (rs[r0].matcher().test(u)) {
+                                covered = true;
+                                break;
+                            }
+                        }
+                        assertThat(covered)
+                                .as("unit %s of %s misses a required group", u, c.questionId())
+                                .isTrue();
+                    }
                     units++;
                 }
-                seenIds.add(c.questionId());
+                Set<String> ownKeys = new HashSet<>();
+                for (String k : oracle.keysOf(c)) {
+                    assertThat(ownKeys.add(k))
+                            .as("pick %s repeats key %s internally", c.questionId(), k).isTrue();
+                    assertThat(globalKeys.add(k))
+                            .as("key %s reused on path", k).isTrue();
+                }
             }
             for (int i = 0; i < rs.length; i++) {
                 assertThat(sum[i]).as("block %s req %d sum", block.blockId(), i)
                         .isEqualTo(rs[i].quota());
             }
-            assertThat(units).as("block %s counting units", block.blockId())
-                    .isGreaterThanOrEqualTo(block.questionCount() > 0 ? 1 : 0);
-            totalUnits[0] += units;
+            assertThat(units).as("block %s counting units must equal questionCount", block.blockId())
+                    .isEqualTo(block.questionCount());
         }
     }
 

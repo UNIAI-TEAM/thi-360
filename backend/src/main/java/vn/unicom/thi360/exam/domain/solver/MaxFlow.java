@@ -59,20 +59,28 @@ final class MaxFlow {
             }
             reqNodes[b] = rn;
         }
+
+        deadlineCheck.run();
         int candNodeBase = node;
 
-        // gộp các bản ghi ứng viên chung khóa (questionId, childId) về một nút bằng union-find
+        // gộp các bản ghi ứng viên usable chung khóa (questionId, childId) về một nút bằng union-find;
+        // ứng viên không usable không gộp: cầu nối qua khóa của nó sẽ cấm nhầm hai ứng viên hợp lệ
         Dsu dsu = new Dsu(entryCount);
         Map<String, Integer> entryOfKey = new HashMap<>(entryCount * 2);
         int ei = 0;
         for (BlockContext ctx : blocks) {
             for (int i = 0; i < ctx.cands().size(); i++) {
-                for (String k : ctx.keys()[i]) {
-                    Integer known = entryOfKey.get(k);
-                    if (known == null) {
-                        entryOfKey.put(k, ei);
-                    } else {
-                        dsu.union(ei, known);
+                if ((ei & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
+                if (ctx.usable()[i]) {
+                    for (String k : ctx.keys()[i]) {
+                        Integer known = entryOfKey.get(k);
+                        if (known == null) {
+                            entryOfKey.put(k, ei);
+                        } else {
+                            dsu.union(ei, known);
+                        }
                     }
                 }
                 ei++;
@@ -86,6 +94,9 @@ final class MaxFlow {
             BlockContext ctx = blocks.get(b);
             int[] rn = reqNodes[b];
             for (int i = 0; i < ctx.cands().size(); i++) {
+                if ((ei & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 int root = dsu.find(ei);
                 int candNode = candNodeBase + root;
                 if (!sinkEdgeDone[root]) {
@@ -202,23 +213,27 @@ final class MaxFlow {
 
         long maxFlow(int s, int t, Runnable deadlineCheck) {
             long flow = 0;
-            while (bfs(s, t)) {
+            while (bfs(s, t, deadlineCheck)) {
                 deadlineCheck.run();
                 Arrays.fill(it, 0);
                 long pushed;
-                while ((pushed = dfs(s, t, Long.MAX_VALUE)) > 0) {
+                while ((pushed = dfs(s, t, Long.MAX_VALUE, deadlineCheck)) > 0) {
                     flow += pushed;
                 }
             }
             return flow;
         }
 
-        private boolean bfs(int s, int t) {
+        private boolean bfs(int s, int t, Runnable deadlineCheck) {
             Arrays.fill(level, -1);
             Deque<Integer> q = new ArrayDeque<>();
             level[s] = 0;
             q.add(s);
+            int scans = 0;
             while (!q.isEmpty()) {
+                if ((scans++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 int u = q.poll();
                 for (int e : adj.get(u)) {
                     int[] ed = edges.get(e);
@@ -231,16 +246,17 @@ final class MaxFlow {
             return level[t] >= 0;
         }
 
-        private long dfs(int u, int t, long f) {
+        private long dfs(int u, int t, long f, Runnable deadlineCheck) {
             if (u == t) {
                 return f;
             }
+            deadlineCheck.run();
             List<Integer> ad = adj.get(u);
             while (it[u] < ad.size()) {
                 int e = ad.get(it[u]);
                 int[] ed = edges.get(e);
                 if (ed[2] > 0 && level[ed[0]] == level[u] + 1) {
-                    long pushed = dfs(ed[0], t, Math.min(f, ed[2]));
+                    long pushed = dfs(ed[0], t, Math.min(f, ed[2]), deadlineCheck);
                     if (pushed > 0) {
                         ed[2] -= (int) pushed;
                         edges.get(e ^ 1)[2] += (int) pushed;

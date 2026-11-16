@@ -31,13 +31,4 @@ record BlockContext(BlockQuota quota,
         int[] unitsProvided,
         String[][] keys,
         boolean[] usable) {
-
-    /** Tổng quota trên mọi chỉ tiêu. */
-    int totalQuota() {
-        int sum = 0;
-        for (Requirement r : reqs) {
-            sum += r.quota();
-        }
-        return sum;
-    }
 }

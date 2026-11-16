@@ -15,10 +15,12 @@ final class PathEnumerator {
 
     private final List<SolvePart> parts;
     private final List<SolvePart.Choice> choiceParts = new ArrayList<>();
+    private final Runnable deadlineCheck;
     private final long total;
 
-    PathEnumerator(List<SolvePart> parts) {
+    PathEnumerator(List<SolvePart> parts, Runnable deadlineCheck) {
         this.parts = parts == null ? List.of() : List.copyOf(parts);
+        this.deadlineCheck = deadlineCheck;
         long t = 1;
         boolean empty = false;
         for (SolvePart p : this.parts) {
@@ -41,6 +43,7 @@ final class PathEnumerator {
 
     /** Đường thứ {@code index} (0-based); gọi tuần tự hay ngẫu nhiên đều được. */
     SolvePath pathAt(long index) {
+        deadlineCheck.run();
         List<ChosenOption> chosen = new ArrayList<>(choiceParts.size());
         List<BlockQuota> blocks = new ArrayList<>();
         long rem = index;

@@ -90,6 +90,7 @@ class PaperSolverSpecCasesTest {
         assertThat(r.status()).isEqualTo(SolveStatus.INVALID);
         assertThat(r.reason()).isEqualTo(SolveReason.NO_JOINT_SOLUTION);
     }
+    @Test
     @DisplayName("Bộ đúng chỉ tiêu thì ghép được và lấy nguyên vẹn")
     void setPackedWhole() {
         BlockQuota b = BlockQuota.setBlock("B", 1, 5,
@@ -254,5 +255,94 @@ class PaperSolverSpecCasesTest {
                 .containsExactly(new ChosenOption("PC", "EN"));
         assertThat(out.results().get(1).path().chosenOptions())
                 .containsExactly(new ChosenOption("PC", "KH1"));
+    }
+
+    @Test
+    @DisplayName("R1-1: ứng viên không usable không được nối cầu khóa giữa hai câu hợp lệ")
+    void unusableBridgeDoesNotMergeKeys() {
+        // U không usable ở cả hai khối nhưng mang hai khóa: "U" (id bộ) và "q" (câu con).
+        // q dùng được ở B1, U dùng được ở B2; nếu DSU gộp khóa qua U-thiếu-giá-trị thì q và U bị coi là
+        // trùng khóa → NO_JOINT_SOLUTION dù {q, U} là một đề hợp lệ.
+        BlockQuota b1 = block("B1", 1, cell(G, D, 1));
+        BlockQuota b2 = block("B2", 1, cell("G2", D, 1));
+        PathCandidate bridge = set("U", unit("q", G, D), unit("u2", "G2", D));
+        PathCandidate q = cand("q", G, D);
+        PathCandidate u = new PathCandidate("U", 1, null, null, List.of(unit(null, "G2", D)));
+        PathResult r = solver.solve(path(b1, b2),
+                lists(List.of(bridge, q), List.of(bridge, u)), SolveMode.check());
+        assertThat(r.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(r.witness().get(0).picks()).extracting(QuestionPick::questionId)
+                .containsExactly("q");
+        assertThat(r.witness().get(1).picks()).extracting(QuestionPick::questionId)
+                .containsExactly("U");
+    }
+
+    @Test
+    @DisplayName("R1-2: khối có questionCount > 0 nhưng không có chỉ tiêu dương nào → INVALID")
+    void positiveCountWithoutQuotaInvalid() {
+        BlockQuota empty = BlockQuota.combined("B", 1, List.of());
+        PathResult r = solver.solve(path(empty),
+                lists(List.of(cand("q1", G, D))), SolveMode.check());
+        assertThat(r.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(r.reason()).isEqualTo(SolveReason.INSUFFICIENT_SOURCE);
+    }
+
+    @Test
+    @DisplayName("R1-3: hai đường dùng cùng blockId nhưng chỉ tiêu khác nhau lấy đúng nguồn của mình")
+    void sameBlockIdDifferentQuotaGetsOwnSource() {
+        BlockQuota g1 = block("B", 1, cell("G1", D, 1));
+        BlockQuota g2 = block("B", 1, cell("G2", D, 1));
+        List<SolvePart> parts = List.of(SolvePart.Choice.of("PC", List.of(
+                new SolveOption("O1", List.of(g1)),
+                new SolveOption("O2", List.of(g2)))));
+        SolveOutcome out = solver.solveAll(parts, b -> {
+            if (b.equals(g1)) {
+                return List.of(cand("q1", "G1", D));
+            }
+            if (b.equals(g2)) {
+                return List.of(cand("q2", "G2", D));
+            }
+            return List.of();
+        }, SolveMode.check());
+        assertThat(out.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(out.results()).hasSize(2);
+        for (PathResult r : out.results()) {
+            assertThat(r.status()).isEqualTo(SolveStatus.VALID);
+        }
+    }
+
+    @Test
+    @DisplayName("R1-4: hết hạn ngay trong vòng chuẩn bị của khối lớn → UNCONFIRMED (DEADLINE_EXCEEDED)")
+    void deadlineDuringLargePreparation() {
+        // một khối với 20.000 ứng viên; đồng hồ bước hết hạn sau vài lần đọc — vòng lọc của Prep
+        // phải tự kiểm hạn thay vì chỉ chờ đến khi dựng xong BlockContext.
+        SolverTestFixtures.SteppingClock clock = new SolverTestFixtures.SteppingClock(
+                Instant.parse("2026-11-16T00:00:00Z"), 3);
+        PaperSolver timed = new PaperSolver(
+                new SolverLimits(200, 20_000, Duration.ofSeconds(30)), clock);
+        BlockQuota b = block("B", 1, cell(G, D, 1));
+        List<PathCandidate> cands = new ArrayList<>(20_000);
+        for (int i = 0; i < 20_000; i++) {
+            cands.add(cand("q" + i, G, D));
+        }
+        PathResult r = timed.solve(path(b), lists(cands), SolveMode.check());
+        assertThat(r.status()).isEqualTo(SolveStatus.UNCONFIRMED);
+        assertThat(r.reason()).isEqualTo(SolveReason.DEADLINE_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("R1-7: một đường giải được, một đường không → tổng hợp INVALID, kết quả từng đường giữ nguyên")
+    void solveAllMixedAggregation() {
+        BlockQuota ok = block("BOK", 1, cell(G, D, 1));
+        BlockQuota bad = block("BBAD", 1, cell("G9", D, 1));
+        List<SolvePart> parts = List.of(SolvePart.Choice.of("PC", List.of(
+                new SolveOption("O1", List.of(ok)),
+                new SolveOption("O2", List.of(bad)))));
+        SolveOutcome out = solver.solveAll(parts, b -> List.of(cand("q1", G, D)),
+                SolveMode.check());
+        assertThat(out.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(out.results()).hasSize(2);
+        assertThat(out.results().get(0).status()).isEqualTo(SolveStatus.VALID);
+        assertThat(out.results().get(1).status()).isEqualTo(SolveStatus.INVALID);
     }
 }

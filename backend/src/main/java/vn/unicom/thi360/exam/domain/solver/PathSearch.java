@@ -119,6 +119,9 @@ final class PathSearch {
         boolean[] usable = ctx.usable();
         String[][] keys = ctx.keys();
         for (int i = 0; i < n; i++) {
+            if ((i & 0x3FF) == 0) {
+                deadlineCheck.run();
+            }
             if (usable[i] && !conflicts(keys[i])) {
                 order[len++] = i;
             }
@@ -134,6 +137,9 @@ final class PathSearch {
         int[][] contrib = ctx.contrib();
         int[] units = ctx.unitsProvided();
         for (int pos = len - 1; pos >= 0; pos--) {
+            if ((pos & 0x3FF) == 0) {
+                deadlineCheck.run();
+            }
             int[] vec = contrib[order[pos]];
             int[] row = suffixMax[pos];
             int[] next = suffixMax[pos + 1];
