@@ -216,6 +216,9 @@ final class PathSearch {
                     deadlineCheck.run();
                 }
                 for (String key : ctx.keys()[g][member[1]]) {
+                    if ((steps++ & 0x3FF) == 0) {
+                        deadlineCheck.run();
+                    }
                     Integer other = keyOwner.putIfAbsent(key, p);
                     if (other != null) {
                         independentPair[p] = false;
@@ -234,11 +237,17 @@ final class PathSearch {
             }
             int[] vec = pairVec[p];
             for (int r = 0; r < rCount; r++) {
+                if ((steps++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 int q = ctx.reqs().get(r).quota();
                 suffixMax[p][r] = suffixMax[p + 1][r]
                         + (int) Math.min((long) vec[r] * pairMembers[p].size(), (long) q);
             }
             for (int g = 0; g < nG; g++) {
+                if ((steps++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 suffixUnits[p][g] = suffixUnits[p + 1][g];
             }
             suffixUnits[p][pairGroup[p]] += pairUnits[p] * pairMembers[p].size();

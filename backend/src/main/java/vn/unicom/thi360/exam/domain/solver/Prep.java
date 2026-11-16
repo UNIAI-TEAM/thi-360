@@ -102,11 +102,15 @@ final class Prep {
                     comp.quota(), u -> u.competencyCodes().contains(comp.competencyCode()));
         }
 
-        static Requirement mapidGroup(String groupId, MapidGroupQuota group) {
+        static Requirement mapidGroup(String groupId, MapidGroupQuota group,
+                Runnable deadlineCheck, int[] scans) {
             Set<String> nodes = Set.copyOf(group.nodeIds());
             return new Requirement(Kind.MAPID_GROUP, "mapid:" + groupId + ":" + group.groupKey(),
                     group.quota(), u -> {
                         for (String id : u.mapidIds()) {
+                            if ((scans[0]++ & 0x3FF) == 0) {
+                                deadlineCheck.run();
+                            }
                             if (nodes.contains(id)) {
                                 return true;
                             }
@@ -240,6 +244,9 @@ final class Prep {
             throw new IllegalArgumentException("candidatesByGroup must be parallel to groups");
         }
 
+        // Bộ đếm dùng chung cho các matcher MAPID, kiểm hạn mỗi 1024 bước.
+        int[] matcherScans = {0};
+
         List<Requirement> reqs = new ArrayList<>();
         List<QuotaRef> reqRefs = new ArrayList<>();
         List<int[]> dims = new ArrayList<>();
@@ -343,7 +350,8 @@ final class Prep {
                     reqRefs.add(null);
                 }
                 for (MapidGroupQuota mg : group.mapidGroups()) {
-                    reqs.add(Requirement.mapidGroup(group.groupId(), mg));
+                    reqs.add(Requirement.mapidGroup(group.groupId(), mg, deadlineCheck,
+                            matcherScans));
                     reqRefs.add(null);
                 }
                 reqTo[g] = reqs.size();
@@ -501,11 +509,17 @@ final class Prep {
                 }
             }
             for (int[] dim : dims) {
+                if ((scans++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
                 if (!dimApplies(dim, reqFrom, reqTo, sectionIdx)) {
                     continue;
                 }
                 boolean covered = false;
                 for (int r = dim[0]; r < dim[1]; r++) {
+                    if ((scans++ & 0x3FF) == 0) {
+                        deadlineCheck.run();
+                    }
                     if (reqs.get(r).quota() > 0 && reqs.get(r).matcher().test(u)) {
                         covered = true;
                         break;
