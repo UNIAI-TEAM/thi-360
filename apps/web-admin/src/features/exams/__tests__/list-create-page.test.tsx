@@ -30,25 +30,29 @@ function summary() {
 }
 
 describe("trang Tạo bài thi", () => {
-  it("nạp mẫu HSA FULL: 3 phần, 150 câu, 195 phút, 4 đường lựa chọn; tổ hợp 17–17–16", async () => {
+  it("nạp mẫu HSA FULL: 3 phần, 150 câu, 195 phút, 2 đường lựa chọn (Tiếng Anh, Khoa học chọn 3 môn)", async () => {
     await renderPage();
     expect(screen.getByRole("heading", { level: 1, name: "Tạo bài thi" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Danh sách bài thi" })).toHaveAttribute("href", "/exams");
     const aside = summary();
     expect(within(aside).getByText("150 câu")).toBeInTheDocument();
     expect(within(aside).getByText("195 phút")).toBeInTheDocument();
-    expect(within(aside).getByText("Tiếng Anh + 3 tổ hợp")).toBeInTheDocument();
+    expect(within(aside).getByText("Tiếng Anh")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Phần tự chọn · Phần 3" })).toBeInTheDocument();
-    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(3);
+    // Phần 3 chỉ hiện dòng "50 / 50 câu" cho từng tổ hợp; phương án Khoa học chọn môn chưa có ô soạn ở đây (FE-3c).
+    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(2);
     expect(screen.getByRole("checkbox", { name: "Cho chọn Tiếng Anh (50 câu)" })).toBeChecked();
   });
 
   it("tổ hợp 51/50 báo thừa 1 câu, chặn tạo; sửa đúng thì tạo và mở Cấu trúc", async () => {
+    // HSA không còn tổ hợp KH-n (một phương án Khoa học chọn môn); tổ hợp hai môn của QDA vẫn soạn ở trang này.
     const user = await renderPage();
-    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA FULL · Đề thử");
-    const lastBiology = screen.getAllByRole("textbox", { name: "3. Sinh học" }).at(-1)!;
+    await user.click(screen.getByRole("radio", { name: /QDA/ }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("QDA-F-003"));
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "QDA FULL · Đề thử");
+    const lastBiology = screen.getAllByRole("textbox", { name: "2. Địa lí" }).at(-1)!;
     await user.clear(lastBiology);
-    await user.type(lastBiology, "17");
+    await user.type(lastBiology, "26");
     expect(await screen.findByText("51 / 50 câu · thừa 1 câu")).toBeInTheDocument();
     const aside = summary();
     expect(within(aside).getByText("Tổng số câu các môn là 51, phải bằng 50 câu của phần.")).toBeInTheDocument();
@@ -57,12 +61,12 @@ describe("trang Tạo bài thi", () => {
     expect(routerMock.push).not.toHaveBeenCalled();
 
     await user.clear(lastBiology);
-    await user.type(lastBiology, "16");
+    await user.type(lastBiology, "25");
     await waitFor(() => expect(within(aside).getByText("Không còn mục cần xử lý")).toBeInTheDocument());
     await user.click(within(aside).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    const created = examStore.all().find((exam) => exam.code === "HSA-F-003")!;
-    expect(created).toMatchObject({ name: "HSA FULL · Đề thử", status: "DRAFT", totalQuestions: 150, combinationCount: 3 });
+    const created = examStore.all().find((exam) => exam.code === "QDA-F-003")!;
+    expect(created).toMatchObject({ name: "QDA FULL · Đề thử", status: "DRAFT", totalQuestions: 150, combinationCount: 4 });
     expect(routerMock.push).toHaveBeenCalledWith(`/exams/${created.id}/structure`);
   }, 20_000);
 
@@ -88,7 +92,7 @@ describe("trang Tạo bài thi", () => {
     const user = await renderPage();
     await user.click(screen.getByRole("radio", { name: /Bài lẻ/ }));
     expect(screen.getByRole("radio", { name: "Toán" })).toBeChecked();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-L-TOAN-002"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
     await user.click(screen.getByRole("radio", { name: "Khoa học" }));
     expect(screen.getByRole("heading", { name: "Phần tự chọn · Phần 1" })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /Cho chọn Tiếng Anh/ })).not.toBeInTheDocument();
@@ -105,7 +109,7 @@ describe("trang Tạo bài thi", () => {
     expect(await screen.findAllByText("Mã bài thi đã được dùng. Nhập mã khác.")).not.toHaveLength(0);
     expect(within(summary()).getByText("Mã bài thi")).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 
   it("ảnh giới thiệu dùng nút của bộ giao diện, không lộ chữ tiếng Anh của trình duyệt", async () => {
     await renderPage();
@@ -134,7 +138,7 @@ describe("trang Tạo bài thi", () => {
     expect(screen.getByRole("radio", { name: /^Cấu trúc 2026/ })).toBeChecked();
     expect(screen.getAllByText(/Cấu trúc 2026 dùng ma trận 2025/).length).toBeGreaterThan(0);
     expect(screen.getByRole("checkbox", { name: /Chuyên gia đã xác nhận/ })).not.toBeChecked();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("SP2E-F-TOAN-001"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("SP2E-S-TOAN-001"));
 
     await user.click(screen.getByRole("radio", { name: /^Cấu trúc 2025/ }));
     await waitFor(() => expect(screen.queryAllByText(/Cấu trúc 2026 dùng ma trận 2025/)).toHaveLength(0));
@@ -146,6 +150,6 @@ describe("trang Tạo bài thi", () => {
     await user.click(await screen.findByRole("combobox", { name: /Môn của bài thi/ }));
     await user.click(await screen.findByRole("option", { name: "Tiếng Việt" }));
     expect(await screen.findByText(/Tiếng Việt chưa có mẫu cấu trúc/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("THPTQG-F-TV-001"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("THPTQG-S-TV-001"));
   }, 20_000);
 });

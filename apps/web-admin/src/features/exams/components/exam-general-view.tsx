@@ -10,31 +10,39 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { sum } from "../matrix";
-import { useExam, useExamTemplates, useUpdateExamInfo } from "../queries";
+import { useApplyExamTemplate, useExam, useExamTemplates, useUpdateExamInfo } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
 import type { ExamDetail, ExamTemplate, UpdateExamInfoRequest } from "../types";
 import {
   type ExamInfoFormValues,
   type ExamScope,
   findTemplate,
+  formatOfScope,
   isSubjectKind,
   kindOptionFor,
   NO_TEMPLATE,
   resolveScope,
   scopeDefaults,
+  scopeOfFormat,
   yearsDiffer,
 } from "../create-exam-schema";
 import { ExamInfoFields, TemplatePreview, useExamInfoSchema, useSingleScopes } from "./create-exam-fields";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
+
+interface PendingInfoSave {
+  request: UpdateExamInfoRequest;
+  /** Mẫu người dùng chọn ở biểu mẫu (năm cấu trúc); `null`: không có mẫu. */
+  templateCode: string | null;
+}
 
 function toFormValues(exam: ExamDetail): ExamInfoFormValues {
   return {
     name: exam.name,
     code: exam.code,
     kind: exam.kind,
-    format: exam.format,
+    format: formatOfScope(exam.scope),
     templateCode: exam.templateCode ?? NO_TEMPLATE,
-    singleSubjectCode: exam.singleSubjectCode ?? "",
+    singleSubjectCode: exam.partCode ?? "",
     subjectCode: exam.subjectCode ?? "",
     timing: exam.timing,
     sharedDuration: exam.timing === "SHARED" ? exam.durationMinutes : 0,
@@ -47,8 +55,8 @@ function toFormValues(exam: ExamDetail): ExamInfoFormValues {
 function examScope(exam: ExamDetail): ExamScope {
   return {
     kind: exam.kind,
-    format: exam.format,
-    singleScope: exam.singleSubjectCode ?? "",
+    format: formatOfScope(exam.scope),
+    singleScope: exam.partCode ?? "",
     subjectCode: exam.subjectCode ?? "",
     templateCode: exam.templateCode ?? NO_TEMPLATE,
   };
@@ -57,9 +65,9 @@ function examScope(exam: ExamDetail): ExamScope {
 function scopeChanged(exam: ExamDetail, values: ExamInfoFormValues, subjectKind: boolean): boolean {
   return (
     exam.kind !== values.kind ||
-    exam.format !== values.format ||
+    formatOfScope(exam.scope) !== values.format ||
     (exam.templateCode ?? NO_TEMPLATE) !== values.templateCode ||
-    (values.format === "SINGLE" && (exam.singleSubjectCode ?? "") !== values.singleSubjectCode) ||
+    (values.format === "SINGLE" && (exam.partCode ?? "") !== values.singleSubjectCode) ||
     (subjectKind && (exam.subjectCode ?? "") !== values.subjectCode)
   );
 }
@@ -140,7 +148,8 @@ function ExamGeneralForm({
   const schema = useExamInfoSchema(undefined, kinds);
   const singleScopes = useSingleScopes();
   const update = useUpdateExamInfo(exam.id);
-  const [confirmReplace, setConfirmReplace] = useState<UpdateExamInfoRequest | null>(null);
+  const applyTemplate = useApplyExamTemplate(exam.id);
+  const [confirmReplace, setConfirmReplace] = useState<PendingInfoSave | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const lockScope = exam.servingVersion !== null;
 
@@ -165,14 +174,29 @@ function ExamGeneralForm({
   );
   const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
 
-  const save = (request: UpdateExamInfoRequest) => {
+  const done = () => {
+    setConfirmReplace(null);
+    const message = t("saved");
+    notify.success(message);
+    onAnnounce(message);
+  };
+
+  /**
+   * Lưu Thông tin chung. API không còn nhận mẫu: đổi phạm vi thì máy chủ nạp mẫu mới nhất, mẫu khác (năm cấu trúc) nạp
+   * tiếp bằng `applyExamTemplate`. Bước 1 và bước Cấu trúc theo phạm vi là việc của FE-3c.
+   */
+  const save = ({ request, templateCode }: PendingInfoSave) => {
     setSubmitError(null);
     update.mutate(request, {
-      onSuccess: () => {
-        setConfirmReplace(null);
-        const message = t("saved");
-        notify.success(message);
-        onAnnounce(message);
+      onSuccess: (updated) => {
+        if (templateCode && templateCode !== updated.templateCode) {
+          applyTemplate.mutate(
+            { templateCode, confirmReplace: true, expectedRevision: updated.revision },
+            { onSuccess: done, onError: () => setSubmitError(t("saveError")) },
+          );
+          return;
+        }
+        done();
       },
       onError: (error) => {
         setConfirmReplace(null);
@@ -188,21 +212,24 @@ function ExamGeneralForm({
 
   const onSubmit = handleSubmit((submitted) => {
     const template = findTemplate(templates, submitted.templateCode);
+    const changed = scopeChanged(exam, submitted, isSubjectKind(kinds, submitted.kind));
     const request: UpdateExamInfoRequest = {
       name: submitted.name,
       code: submitted.code,
       kind: submitted.kind,
-      format: submitted.format,
-      templateCode: template?.code ?? null,
-      singleSubjectCode: submitted.format === "SINGLE" ? submitted.singleSubjectCode : null,
+      scope: scopeOfFormat(submitted.format, kinds, submitted.kind),
+      partCode: submitted.format === "SINGLE" ? submitted.singleSubjectCode : null,
       subjectCode: isSubjectKind(kinds, submitted.kind) ? submitted.subjectCode || null : null,
       durationMinutes: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
       maxScore: submitted.maxScore,
       yearsConfirmed: yearsDiffer(template) ? submitted.yearsConfirmed : true,
       description: submitted.description.trim() || null,
+      confirmReplace: changed,
+      expectedRevision: exam.revision,
     };
-    if (scopeChanged(exam, submitted, isSubjectKind(kinds, submitted.kind))) setConfirmReplace(request);
-    else save(request);
+    const pending: PendingInfoSave = { request, templateCode: template?.code ?? null };
+    if (changed) setConfirmReplace(pending);
+    else save(pending);
   });
 
   /** Đổi phạm vi: chọn lại mẫu; về đúng phạm vi đang lưu thì lấy lại giá trị đang lưu, không thì giá trị của mẫu mới. */
@@ -238,7 +265,7 @@ function ExamGeneralForm({
   };
 
   const pathsText = (() => {
-    if (exam.format === "SINGLE") return exam.singleSubjectCode ? singleScopes.scopeName(exam.singleSubjectCode) : "—";
+    if (exam.scope === "PART") return exam.partCode ? singleScopes.scopeName(exam.partCode) : "—";
     const segments = [
       ...(exam.englishOption ? [t("facts.pathsEnglishOnly")] : []),
       ...(exam.combinationCount > 0 ? [t("facts.pathsCombinationsOnly", { count: exam.combinationCount })] : []),

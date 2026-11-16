@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { defaultExamsApiDeps, EXAMS_QUERY_KEYS, type ExamsApiDeps } from "./api";
 import type {
+  ApplyExamTemplateRequest,
   AvailableQuestionsQuery,
   CreateExamRequest,
   ListExamsQuery,
@@ -55,7 +56,8 @@ export function useSuggestedExamCode(query: SuggestExamCodeQuery, enabled: boole
 export function useAvailableQuestions(query: AvailableQuestionsQuery | null, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({
     queryKey: query ? EXAMS_QUERY_KEYS.available(query) : ["exams", "available-questions", null],
-    queryFn: () => (query ? deps.countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [] })),
+    queryFn: () =>
+      query ? deps.countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
     enabled: query !== null,
     placeholderData: (previous) => previous,
   });
@@ -91,6 +93,14 @@ export function useUpdateExamStructure(id: string, deps: ExamsApiDeps = defaultE
   });
 }
 
+export function useApplyExamTemplate(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  const invalidate = useInvalidateExams();
+  return useMutation({
+    mutationFn: (request: ApplyExamTemplateRequest) => deps.applyExamTemplate(id, request),
+    onSuccess: () => invalidate(),
+  });
+}
+
 export function useDuplicateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({
@@ -102,7 +112,8 @@ export function useDuplicateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
 export function useDiscontinueExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({
-    mutationFn: (id: string) => deps.discontinueExam(id),
+    mutationFn: ({ id, expectedRevision }: { id: string; expectedRevision: number }) =>
+      deps.discontinueExam(id, expectedRevision),
     onSuccess: () => invalidate(),
   });
 }

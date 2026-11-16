@@ -47,15 +47,17 @@ export function ExamListRowActions({ exam, onAnnounce }: { exam: ExamSummary; on
 
   const runDiscontinue = () => {
     setDiscontinueError(null);
-    discontinue.mutate(exam.id, {
+    discontinue.mutate({ id: exam.id, expectedRevision: exam.revision }, {
       onSuccess: () => {
         setConfirmOpen(false);
         const message = t("discontinueSuccess", { code: exam.code });
         notify.success(message);
         onAnnounce(message);
       },
-      onError: (error) =>
-        setDiscontinueError(getErrorStatus(error) === 409 ? t("discontinueConflict") : t("discontinueError")),
+      onError: (error) => {
+        const status = getErrorStatus(error);
+        setDiscontinueError(status === 409 || status === 412 ? t("discontinueConflict") : t("discontinueError"));
+      },
     });
   };
 

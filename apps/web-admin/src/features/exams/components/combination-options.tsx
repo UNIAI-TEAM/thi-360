@@ -25,7 +25,7 @@ import { CircleMinus, Pencil, Plus, Shapes } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
 import type { CombinationOption } from "@/features/content/types";
-import { sum, type StructureIssue } from "../matrix";
+import { countOf, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamPartOption } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { BranchDialog } from "./exam-structure-branch-dialog";
@@ -100,7 +100,7 @@ export function CombinationOptions({
   const attached = part.options.filter((option) => option.kind === "COMBINATION");
   const branches = part.options.filter((option) => option.kind === "BRANCH");
   const available = combinations.filter((combination) => !attached.some((option) => option.code === combination.code));
-  const commonCount = sum(part.sections.map((section) => section.questionCount));
+  const commonCount = sum(part.sections.map(countOf));
   const branchMode = branches.length > 0 || part.sections.length > 0;
   const showCombinations = combinations.length > 0 || attached.length > 0;
   const canGenerate = subjectPool.length > 1 && defaultCombinationSize > 0;
@@ -380,7 +380,7 @@ function OptionGroup({
             <span className="whitespace-nowrap text-text">{t("subjectPosition", { position: index + 1, subject })}</span>
             <BlockNumberInput
               className="h-8 w-14 px-2"
-              value={section.questionCount}
+              value={section.questionCount ?? 0}
               onValueChange={(value) => onSectionCount(option.id, section.id, value)}
               aria-label={t("subjectCountAria", { code: label(option), subject })}
             />
@@ -390,7 +390,7 @@ function OptionGroup({
     </div>
   );
 
-  const totalOf = (option: ExamPartOption) => commonCount + sum(option.sections.map((section) => section.questionCount));
+  const totalOf = (option: ExamPartOption) => commonCount + sum(option.sections.map(countOf));
   const totalText = (option: ExamPartOption) =>
     commonCount > 0
       ? t("totalWithCommon", { common: commonCount, total: totalOf(option), count: part.questionCount })

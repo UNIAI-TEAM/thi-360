@@ -27,7 +27,8 @@ export interface MatrixLabels {
 }
 
 export interface BlockMatrixEditorProps {
-  block: QuestionBlock;
+  /** Nhóm đã chuẩn hóa: chỉ tiêu riêng và số câu có giá trị (nhóm không có chỉ tiêu riêng hiện ma trận trống). */
+  block: QuestionBlock & { matrix: BlockMatrix; questionCount: number };
   axes: MatrixAxes;
   labels: MatrixLabels;
   /**

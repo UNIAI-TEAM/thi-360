@@ -3,6 +3,7 @@ import { indexKnowledge, filterKnowledgeTree, normalizePrimary } from "@/feature
 import { getContentReference } from "@/features/content/api";
 import { listQuestions, getQuestion } from "@/features/questions/api";
 import { getExam, listExams } from "@/features/exams/api";
+import { validateStructure } from "@/features/exams/matrix";
 import { createMockStore, MockApiError, mockRequest, paginate, readMockScenario } from "@/lib/mock/content-mock";
 
 describe("lớp dữ liệu mẫu", () => {
@@ -77,17 +78,12 @@ describe("dữ liệu mẫu dùng chung", () => {
     const list = await listExams({});
     expect(list.content.map((exam) => exam.code)).toContain("HSA-F-001");
     const exam = await getExam("ex-hsa-f-001");
-    for (const part of exam.parts) {
-      const groups = part.mode === "FIXED" ? [part.sections] : part.options.map((option) => option.sections);
-      for (const sections of groups) {
-        expect(sections.reduce((sum, section) => sum + section.questionCount, 0)).toBe(part.questionCount);
-        for (const section of sections) {
-          expect(section.blocks.reduce((sum, block) => sum + block.questionCount, 0)).toBe(section.questionCount);
-        }
-      }
-    }
+    // Môn của SUBJECT_CHOICE không có số câu cố định (D25): tổng theo `countsByPick`, kiểm ở check-exam.test.ts.
+    expect(validateStructure(exam.parts, { grades: [], difficulties: [] }).filter((issue) => issue.code !== "BLOCK")).toEqual([]);
     const choice = exam.parts.find((part) => part.mode === "CHOICE");
-    expect(choice?.options.find((o) => o.code === "KH-1")?.sections.map((s) => s.questionCount)).toEqual([17, 17, 16]);
+    const science = choice?.options.find((o) => o.kind === "SUBJECT_CHOICE");
+    expect(science).toMatchObject({ code: "SCIENCE", chooseSubjects: 3, countsByPick: [17, 17, 16] });
+    expect(science?.sections).toHaveLength(5);
     expect(exam.totalQuestions).toBe(150);
   });
 });

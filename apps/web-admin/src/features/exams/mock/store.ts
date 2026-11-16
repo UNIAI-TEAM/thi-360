@@ -8,6 +8,17 @@ import fixture from "./exams.json";
  */
 const data = fixture as { exams: ExamDetail[]; templates: ExamTemplate[] };
 
-export const examStore = createMockStore<ExamDetail>(data.exams);
+/** Bài đã sửa cấu trúc tay trong phiên: nạp lại mẫu phải có `confirmReplace` (409 `EXAM_STRUCTURE_REPLACE_CONFIRM`). */
+export const structureEdited = new Set<string>();
+
+const baseStore = createMockStore<ExamDetail>(data.exams);
+
+export const examStore = {
+  ...baseStore,
+  reset(): void {
+    baseStore.reset();
+    structureEdited.clear();
+  },
+};
 
 export const MOCK_EXAM_TEMPLATES: readonly ExamTemplate[] = data.templates;

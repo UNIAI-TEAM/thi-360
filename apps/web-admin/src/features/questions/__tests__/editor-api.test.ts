@@ -6,10 +6,10 @@ import {
   duplicateQuestion,
   getQuestionUsage,
   listQuestionVersions,
-  resetQuestionHistoryForTests,
   restoreQuestionVersion,
   updateQuestion,
 } from "../editor-api";
+import { resetQuestionHistoryForTests } from "../editor-api.mock";
 import { toEditorValues, toSaveRequest } from "../editor-form";
 import { deriveVersionStates, diffSnapshots, servingVersion, toSnapshot } from "../editor-versioning";
 import type { UpdateQuestionRequest } from "../editor-types";
@@ -22,7 +22,7 @@ afterEach(() => {
 
 async function editRequest(id: string, change: (request: UpdateQuestionRequest) => void): Promise<UpdateQuestionRequest> {
   const question = await getQuestion(id);
-  const request: UpdateQuestionRequest = { ...toSaveRequest(toEditorValues(question)), expectedVersion: question.version };
+  const request: UpdateQuestionRequest = { ...toSaveRequest(toEditorValues(question)), expectedRevision: question.revision };
   change(request);
   return request;
 }
@@ -121,11 +121,11 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     expect(versions.versions[0]?.snapshot.content).toBe("Bản nháp mới");
   });
 
-  it("báo 409 khi phiên bản đã đổi và 422 khi đổi dạng câu", async () => {
+  it("báo 412 QUESTION_REVISION_CONFLICT khi revision đã đổi và 422 khi đổi dạng câu", async () => {
     const stale = await editRequest("q-0001", (r) => {
-      r.expectedVersion = 99;
+      r.expectedRevision = 99;
     });
-    await expect(updateQuestion("q-0001", stale)).rejects.toMatchObject({ status: 409, code: "QUESTION_VERSION_CONFLICT" });
+    await expect(updateQuestion("q-0001", stale)).rejects.toMatchObject({ status: 412, code: "QUESTION_REVISION_CONFLICT" });
     const retyped = await editRequest("q-0001", (r) => {
       r.type = "MULTIPLE_CHOICE";
       if (r.body.type === "SINGLE_CHOICE") r.body = { ...r.body, type: "MULTIPLE_CHOICE", scoringRule: "ALL_OR_NOTHING" };
@@ -138,7 +138,7 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     const oldest = before.versions[before.versions.length - 1]!;
     const { question, versionCreated } = await restoreQuestionVersion("q-0021", {
       version: oldest.version,
-      expectedVersion: before.latestVersion,
+      expectedRevision: (await getQuestion("q-0021")).revision,
     });
     expect(versionCreated).toBe(true);
     expect(question.status).toBe("DRAFT");
@@ -146,7 +146,7 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     const after = await listQuestionVersions("q-0021");
     expect(after.latestVersion).toBe(before.latestVersion + 1);
 
-    await expect(restoreQuestionVersion("q-0021", { version: 42, expectedVersion: after.latestVersion })).rejects.toBeInstanceOf(
+    await expect(restoreQuestionVersion("q-0021", { version: 42, expectedRevision: (await getQuestion("q-0021")).revision })).rejects.toBeInstanceOf(
       MockApiError,
     );
   });

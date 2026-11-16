@@ -57,7 +57,7 @@ export interface ValidateImportRowsInput {
   dictionary: ImportDictionary;
 }
 
-const WARNING_CODES: ReadonlySet<ImportIssueCode> = new Set(["KNOWLEDGE_MISSING", "TAG_UNKNOWN", "RUBRIC_MISSING"]);
+const WARNING_CODES: ReadonlySet<ImportIssueCode> = new Set(["KNOWLEDGE_MISSING", "TAG_UNKNOWN", "GRADING_GUIDE_MISSING"]);
 
 /** Trường câu con lấy theo dòng ngữ liệu khi để trống. */
 const INHERITED_FIELDS = ["subject", "grade", "difficulty", "knowledge"] as const satisfies readonly ImportField[];
@@ -95,8 +95,19 @@ function findGrade(options: readonly CatalogOption[], value: string): CatalogOpt
   return options.find((option) => option.name.replace(/\D/g, "") === value.trim());
 }
 
+/**
+ * Bộ chuyển đổi tệp nhập cũ (D12): mã dạng cũ trong tệp vẫn được xử lý. `FILL_IN` một ô nhập thành Trả lời ngắn;
+ * `DRAG_DROP` thành Ghép đôi.
+ */
+const LEGACY_TYPE_CODES: Readonly<Record<string, QuestionType>> = {
+  FILL_IN: "SHORT_ANSWER",
+  DRAG_DROP: "MATCHING",
+};
+
 function resolveType(value: string, dictionary: ImportDictionary): QuestionType | null {
   if (!value) return null;
+  const legacy = LEGACY_TYPE_CODES[value.trim().toUpperCase()];
+  if (legacy) return legacy;
   for (const [type, aliases] of Object.entries(dictionary.typeAliases) as [QuestionType, string[]][]) {
     if (sameCode(type, value) || aliases.some((alias) => sameText(alias, value))) return type;
   }
@@ -172,6 +183,9 @@ function emptyDraft(): ImportQuestionDraft {
     options: [],
     statements: [],
     acceptedAnswers: [],
+    points: null,
+    inputHint: null,
+    gradingGuide: null,
     rubric: [],
     sampleAnswer: null,
     solution: null,
@@ -263,7 +277,7 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
 
     if (!raw.type) add("REQUIRED", "type");
     else if (!type) add("TYPE_UNKNOWN", "type", { value: raw.type });
-    else if (type === "DRAG_DROP") add("TYPE_NOT_IMPORTABLE", "type", { value: raw.type });
+    else if (type === "MATCHING" || type === "CLOZE") add("TYPE_NOT_IMPORTABLE", "type", { value: raw.type });
 
     if (!raw.content) add("REQUIRED", "content");
 
@@ -342,20 +356,29 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
         ...option,
         answer: answers[position] ?? null,
       }));
-    } else if (type === "FILL_IN") {
+    } else if (type === "SHORT_ANSWER") {
       if (!raw.correctAnswer) add("REQUIRED", "correctAnswer");
+      // Mỗi dòng một đáp án (dòng đầu là đáp án chuẩn); tệp cũ ngăn cách bằng dấu | vẫn đọc được (D12).
       draft.acceptedAnswers = raw.correctAnswer
-        .split("|")
+        .split(/[\n|]/)
         .map((answer) => answer.trim())
         .filter(Boolean);
+      draft.inputHint = raw.inputHint || null;
     } else if (type === "ESSAY") {
       draft.sampleAnswer = raw.correctAnswer || null;
-      if (!raw.rubric) add("RUBRIC_MISSING", "rubric");
-      else {
+      draft.gradingGuide = raw.gradingGuide || null;
+      if (!raw.gradingGuide) add("GRADING_GUIDE_MISSING", "gradingGuide");
+      if (raw.rubric) {
         const { criteria, invalid } = parseRubric(raw.rubric);
         if (invalid !== null) add("RUBRIC_INVALID", "rubric", { value: invalid });
         draft.rubric = criteria;
       }
+    }
+
+    if (raw.points) {
+      const points = Number(raw.points.replace(",", "."));
+      if (!(points > 0)) add("POINTS_INVALID", "points", { value: raw.points });
+      else draft.points = points;
     }
 
     for (const field of FORMULA_FIELDS) {

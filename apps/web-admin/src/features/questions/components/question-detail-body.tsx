@@ -4,11 +4,11 @@ import { Badge, Chip, cn } from "@thi360/ui";
 import { CircleCheck, CircleX, PenLine } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { Fragment, type ReactNode } from "react";
-import { BLANK_MARKER } from "../editor-form";
+import { BLANK_MARKER, clozeToEditorContent } from "../editor-form";
 import type { QuestionBody, QuestionDetail } from "../types";
 import { optionLetter, statementLetter } from "./question-editor-shared";
 
-type BodySource = Pick<QuestionDetail, "type" | "content" | "body" | "children" | "solution">;
+type BodySource = Pick<QuestionDetail, "type" | "content" | "body" | "children" | "solution" | "points">;
 
 /**
  * Đề bài và đáp án của một câu theo dạng (canvas `CauHoi*ChiTiet`). Dùng ở trang chi tiết, hộp thoại xem một
@@ -21,12 +21,12 @@ export function QuestionBodyView({ question, headingLevel = 3 }: { question: Bod
   }
   return (
     <div className="flex flex-col gap-3">
-      {question.body.type === "FILL_IN" ? (
-        <FillInContent content={question.content} body={question.body} />
+      {question.body.type === "CLOZE" ? (
+        <ClozeContent body={question.body} />
       ) : (
         <p className="text-body whitespace-pre-wrap text-text">{question.content || t("noContent")}</p>
       )}
-      <AnswersView body={question.body} />
+      <AnswersView body={question.body} points={question.points} />
     </div>
   );
 }
@@ -62,10 +62,10 @@ function QuestionSetView({ question, headingLevel }: { question: BodySource; hea
   );
 }
 
-/** Đề bài Điền đáp án: mỗi `___` thành ô có số thứ tự và đáp án chấp nhận. */
-function FillInContent({ content, body }: { content: string; body: Extract<QuestionBody, { type: "FILL_IN" }> }) {
+/** Ngữ liệu Điền khuyết: mỗi `[[id]]` thành ô có số thứ tự và đáp án. */
+function ClozeContent({ body }: { body: Extract<QuestionBody, { type: "CLOZE" }> }) {
   const t = useTranslations("questions.detail.body");
-  const parts = content.split(BLANK_MARKER);
+  const parts = clozeToEditorContent(body.passage).split(BLANK_MARKER);
   return (
     <p className="text-body leading-8 whitespace-pre-wrap text-text">
       {parts.map((part, index) => {
@@ -77,7 +77,7 @@ function FillInContent({ content, body }: { content: string; body: Extract<Quest
               <mark className="mx-0.5 inline-flex items-baseline gap-1.5 rounded-md border border-primary-600 bg-primary-50 px-2 text-primary-text">
                 <span className="text-caption font-semibold">{t("blankLabel", { number: index + 1 })}</span>
                 <span className="font-semibold">
-                  {blank?.acceptedAnswers.length ? blank.acceptedAnswers.join(" / ") : t("noAnswer")}
+                  {blank?.answers.length ? blank.answers.join(" / ") : t("noAnswer")}
                 </span>
               </mark>
             )}
@@ -110,7 +110,7 @@ export function ManualGradingBadge() {
   );
 }
 
-export function AnswersView({ body }: { body: QuestionBody }) {
+export function AnswersView({ body, points }: { body: QuestionBody; points?: number }) {
   const t = useTranslations("questions.detail.body");
   const format = useFormatter();
   switch (body.type) {
@@ -160,7 +160,7 @@ export function AnswersView({ body }: { body: QuestionBody }) {
               </li>
             ))}
           </ol>
-          <ScoreTableView table={body.scoreTable} />
+          <ScoreTableView table={body.scoringMethod === "COUNT_TABLE" ? body.scoreTable : undefined} />
         </div>
       );
     case "ESSAY":
@@ -169,9 +169,15 @@ export function AnswersView({ body }: { body: QuestionBody }) {
           <div className="flex flex-wrap items-center gap-2">
             <ManualGradingBadge />
             <span className="text-caption text-text-secondary">
-              {t("essayMaxPoints", { points: format.number(body.maxPoints) })}
+              {points !== undefined && t("essayMaxPoints", { points: format.number(points) })}
               {body.wordLimit !== null && ` · ${t("wordLimit", { count: body.wordLimit })}`}
             </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-label font-semibold text-text">{t("gradingGuideTitle")}</p>
+            <p className="rounded-lg border border-border bg-subtle p-3.5 text-body whitespace-pre-wrap text-text">
+              {body.gradingGuide || t("noGradingGuide")}
+            </p>
           </div>
           <div className="flex flex-col gap-2">
             <p className="text-label font-semibold text-text">{t("rubricTitle")}</p>
@@ -206,23 +212,44 @@ export function AnswersView({ body }: { body: QuestionBody }) {
           )}
         </div>
       );
-    case "FILL_IN":
+    case "CLOZE":
       return null;
-    case "DRAG_DROP": {
-      const contentOf = new Map(body.items.map((item) => [item.id, item.content]));
-      const used = new Set(body.zones.map((zone) => zone.correctItemId));
-      const distractors = body.items.filter((item) => !used.has(item.id));
+    case "SHORT_ANSWER":
       return (
         <div className="flex flex-col gap-2">
           <ol className="m-0 flex list-none flex-col gap-2 p-0">
-            {body.zones.map((zone, index) => (
-              <li key={zone.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5">
+            {body.answers.map((answer, index) => (
+              <li key={index} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-success bg-success-bg px-3.5 py-2.5">
+                <span className="text-caption font-semibold text-text-muted">
+                  {index === 0 ? t("standardAnswer") : t("acceptedAnswer")}
+                </span>
+                <span className="min-w-0 flex-1 wrap-break-word text-text">{answer}</span>
+              </li>
+            ))}
+          </ol>
+          {body.inputHint && (
+            <p className="text-caption text-text-secondary">
+              <span className="font-semibold">{t("inputHint")}</span> {body.inputHint}
+            </p>
+          )}
+        </div>
+      );
+    case "MATCHING": {
+      const contentOf = new Map(body.right.map((item) => [item.id, item.content]));
+      const pairOf = new Map(body.pairs.map((pair) => [pair.leftId, pair.rightId]));
+      const used = new Set(body.pairs.map((pair) => pair.rightId));
+      const distractors = body.right.filter((item) => !used.has(item.id));
+      return (
+        <div className="flex flex-col gap-2">
+          <ol className="m-0 flex list-none flex-col gap-2 p-0">
+            {body.left.map((item, index) => (
+              <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5">
                 <span className="text-caption font-semibold text-text-muted">{t("zoneLabel", { number: index + 1 })}</span>
-                <span className="min-w-0 flex-1 wrap-break-word text-text">{zone.label}</span>
+                <span className="min-w-0 flex-1 wrap-break-word text-text">{item.content}</span>
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-success bg-success-bg px-2 py-0.5 font-semibold text-success">
                   <CircleCheck aria-hidden className="size-4" />
                   <span className="sr-only">{t("correctItem")}</span>
-                  {contentOf.get(zone.correctItemId) ?? t("noAnswer")}
+                  {contentOf.get(pairOf.get(item.id) ?? "") ?? t("noAnswer")}
                 </span>
               </li>
             ))}
@@ -276,31 +303,37 @@ export function describeBody(body: QuestionBody, t: (key: string, values?: Recor
         ...body.statements.map(
           (statement, index) => `${statementLetter(index)}) ${statement.content}: ${statement.answer ? t("true") : t("false")}`,
         ),
-        ...(body.scoreTable?.length
+        ...(body.scoringMethod === "COUNT_TABLE" && body.scoreTable.length
           ? [t("scoreTableLine", { values: body.scoreTable.map((value) => t("scoreValue", { value })).join(" / ") })]
           : []),
       ];
     case "ESSAY":
       return [
-        t("essaySummary", { points: body.maxPoints }),
+        `${t("gradingGuideTitle")}: ${body.gradingGuide || t("noGradingGuide")}`,
         ...body.rubric.map(
           (criterion, index) => `${index + 1}. ${criterion.description} (${t("points", { points: criterion.points })})`,
         ),
         ...(body.sampleAnswer ? [`${t("sampleAnswer")}: ${body.sampleAnswer}`] : []),
         ...(body.wordLimit !== null ? [t("wordLimit", { count: body.wordLimit })] : []),
       ];
-    case "FILL_IN":
-      return body.blanks.map(
-        (blank, index) => `${t("blankLabel", { number: index + 1 })}: ${blank.acceptedAnswers.join(" / ") || t("noAnswer")}`,
-      );
-    case "DRAG_DROP": {
-      const contentOf = new Map(body.items.map((item) => [item.id, item.content]));
-      const used = new Set(body.zones.map((zone) => zone.correctItemId));
-      const distractors = body.items.filter((item) => !used.has(item.id));
+    case "SHORT_ANSWER":
       return [
-        ...body.zones.map(
-          (zone, index) =>
-            `${t("zoneLabel", { number: index + 1 })} ${zone.label} → ${contentOf.get(zone.correctItemId) ?? t("noAnswer")}`,
+        body.answers.join(" / ") || t("noAnswer"),
+        ...(body.inputHint ? [`${t("inputHint")} ${body.inputHint}`] : []),
+      ];
+    case "CLOZE":
+      return body.blanks.map(
+        (blank, index) => `${t("blankLabel", { number: index + 1 })}: ${blank.answers.join(" / ") || t("noAnswer")}`,
+      );
+    case "MATCHING": {
+      const contentOf = new Map(body.right.map((item) => [item.id, item.content]));
+      const pairOf = new Map(body.pairs.map((pair) => [pair.leftId, pair.rightId]));
+      const used = new Set(body.pairs.map((pair) => pair.rightId));
+      const distractors = body.right.filter((item) => !used.has(item.id));
+      return [
+        ...body.left.map(
+          (item, index) =>
+            `${t("zoneLabel", { number: index + 1 })} ${item.content} → ${contentOf.get(pairOf.get(item.id) ?? "") ?? t("noAnswer")}`,
         ),
         ...(distractors.length ? [t("distractors", { items: distractors.map((item) => item.content).join(", ") })] : []),
       ];

@@ -15,11 +15,12 @@ import {
   type CreatePartValues,
   type CreateSectionValues,
   defaultSubjectCounts,
+  type ExamFormat,
   optionTarget,
   PART_NAME_MAX,
 } from "../create-exam-schema";
-import { sum } from "../matrix";
-import type { ExamFormat, ExamTemplateBlock, ExamTiming } from "../types";
+import { countOf, sum } from "../matrix";
+import type { ExamTemplateBlock, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationAttachDialog } from "./combination-options";
 import { OptionalNumberInput } from "./create-exam-fields";
@@ -47,11 +48,11 @@ export function TemplateBlocksNote({ blocks }: { blocks: readonly ExamTemplateBl
   if (blocks.length === 0) return null;
   return (
     <div className="flex flex-col gap-1 text-caption text-text-muted">
-      <p className="font-semibold text-text-secondary">{t("title", { count: sum(blocks.map((block) => block.questionCount)) })}</p>
+      <p className="font-semibold text-text-secondary">{t("title", { count: sum(blocks.map(countOf)) })}</p>
       <ul className="flex flex-wrap gap-x-3 gap-y-1">
         {blocks.map((block, index) => (
           <li key={`${block.name}-${index}`} className="tabular-nums">
-            {t("item", { name: block.name, count: block.questionCount })}
+            {t("item", { name: block.name, count: block.questionCount ?? 0 })}
             {block.questionType === "ESSAY" && ` · ${t("essay")}`}
           </li>
         ))}
@@ -106,7 +107,7 @@ function SectionCountsEditor({
               </label>
               <BlockNumberInput
                 id={inputId}
-                value={section.questionCount}
+                value={section.questionCount ?? 0}
                 onValueChange={(value) =>
                   onChange(sections.map((item, position) => (position === index ? { ...item, questionCount: value } : item)))
                 }

@@ -75,7 +75,7 @@ describe("checkExam theo bảy kỳ thi", () => {
 
   it("điểm phần và tổng điểm lệch thang thì không hợp lệ", () => {
     const exam = load("ex-bca-f-001");
-    exam.parts[1]!.sections[2]!.blocks[0]!.pointsPerQuestion = 1;
+    exam.parts[1]!.sections[2]!.blocks[0]!.requiredPointsPerQuestion = 1;
     const issues = run(exam).paths[0]!.issues;
     expect(issues.find((issue) => issue.code === "PART_POINTS_MISMATCH")).toMatchObject({
       partId: "part-b2",
