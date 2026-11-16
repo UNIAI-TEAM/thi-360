@@ -31,6 +31,15 @@ export function knowledgePath(entry: KnowledgeIndexEntry): string {
     .join(" › ");
 }
 
+/**
+ * Tên hiển thị của một mục kiến thức đã gắn câu hỏi: lấy từ cây tham chiếu (đã theo ngôn ngữ đang xem) thay vì
+ * `ref.name` của API câu hỏi — tên đó được lưu khi gắn, không đổi ngôn ngữ theo phiên (F-01). Chỉ dùng `ref.name`
+ * khi nút không còn trong cây tham chiếu (kiến thức đã xóa ngang hàng).
+ */
+export function knowledgeName(index: ReadonlyMap<string, KnowledgeIndexEntry>, ref: KnowledgeRef): string {
+  return index.get(ref.nodeId)?.node.name ?? ref.name;
+}
+
 /** Số nút cấp Kiến thức đang hoạt động bên dưới một nút. */
 export function countSelectableLeaves(node: KnowledgeNode): number {
   if (node.level === "KNOWLEDGE") return node.active ? 1 : 0;

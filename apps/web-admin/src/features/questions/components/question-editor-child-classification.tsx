@@ -3,9 +3,10 @@
 import { Badge, Button, FormField, Select } from "@thi360/ui";
 import { Network } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
+import { indexKnowledge, knowledgeName } from "@/features/content/knowledge-tree";
 import type { ContentReference } from "@/features/content/types";
 import type { QuestionEditorValues } from "../editor-form";
 import { FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
@@ -61,12 +62,12 @@ export function ChildClassification({ index, reference }: { index: number; refer
         {catalog("gradeCode", reference.grades, parentGrade, t("grade"))}
         {catalog("difficultyCode", reference.difficulties, parentDifficulty, t("difficulty"))}
       </div>
-      <ChildKnowledge index={index} />
+      <ChildKnowledge index={index} reference={reference} />
     </fieldset>
   );
 }
 
-function ChildKnowledge({ index }: { index: number }) {
+function ChildKnowledge({ index, reference }: { index: number; reference: ContentReference }) {
   const t = useTranslations("questions.editor.set.classification");
   const announce = useAnnounce();
   const fieldId = useId();
@@ -79,6 +80,7 @@ function ChildKnowledge({ index }: { index: number }) {
   const grade = useWatch({ control, name: `children.${index}.gradeCode` });
   const parentGrade = useWatch({ control, name: "gradeCode" });
   const error = useEditorError(`children.${index}.knowledge`);
+  const treeIndex = useMemo(() => indexKnowledge(reference.knowledgeTree), [reference]);
   const shown = override ? knowledge : parentKnowledge;
 
   return (
@@ -92,7 +94,7 @@ function ChildKnowledge({ index }: { index: number }) {
           <ul aria-labelledby={`${fieldId}-label`} className="m-0 flex list-none flex-wrap gap-1.5 p-0">
             {shown.map((ref) => (
               <li key={ref.nodeId} className="rounded-sm bg-subtle px-2 py-0.5 text-caption font-semibold text-text">
-                {ref.code} · {ref.name}
+                {ref.code} · {knowledgeName(treeIndex, ref)}
               </li>
             ))}
           </ul>

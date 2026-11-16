@@ -25,6 +25,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useId, useMemo, type ReactNode } from "react";
 import { apiErrorCode, isRevisionConflict } from "@/features/content/api-error";
+import { indexKnowledge, knowledgeName } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { QUESTION_STATUS_ERROR_CODES, type QuestionStatusErrorCode } from "../api";
@@ -393,6 +394,7 @@ function RetireBody({
   const impact = useQuestionRetireImpact(question.id);
   const reference = useContentReference();
   const lookup = useReferenceLookup(reference.data);
+  const knowledgeIndex = useMemo(() => indexKnowledge(reference.data?.knowledgeTree ?? []), [reference.data]);
   const effectsId = useId();
   const usageHeadingId = useId();
   const primary = question.knowledge.find((ref) => ref.primary);
@@ -400,7 +402,7 @@ function RetireBody({
     contentT(`questionType.${question.type}`),
     lookup.subject(question.subjectCode),
     lookup.grade(question.gradeCode),
-    primary?.name,
+    primary ? knowledgeName(knowledgeIndex, primary) : undefined,
   ]
     .filter(Boolean)
     .join(" · ");

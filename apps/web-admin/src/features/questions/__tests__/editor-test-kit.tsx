@@ -21,8 +21,8 @@ if (typeof document.elementFromPoint !== "function") document.elementFromPoint =
 /** Dựng chung cho test của từng trình soạn dạng câu (`question-editor-<dạng>.test.tsx`). */
 
 /** Giao diện tiếng Anh: máy chủ trả tên danh mục tiếng Anh (như `Accept-Language: en` qua proxy). */
-export function renderEn(ui: ReactElement) {
-  stubContentReference(apiReferenceFromFixture("en"));
+export function renderEn(ui: ReactElement, reference = apiReferenceFromFixture("en")) {
+  stubContentReference(reference);
   return renderWithProviders(ui, { locale: "en", messages: en });
 }
 

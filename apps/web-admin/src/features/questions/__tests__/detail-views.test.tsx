@@ -7,6 +7,7 @@ import { QuestionDetailLayout, questionTabFromPathname } from "../components/que
 import { QuestionUsageView } from "../components/question-usage-view";
 import { QuestionVersionsView } from "../components/question-versions-view";
 import { questionStore, renderEn } from "./editor-test-kit";
+import { apiReferenceFromFixture } from "./api-fixtures";
 
 const navigation = vi.hoisted(() => ({ pathname: "/questions/q-0003", push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -54,6 +55,25 @@ describe("chi tiết câu hỏi", () => {
     expect(within(tabs).getByRole("link", { name: /Version history/ })).toHaveAttribute("href", "/questions/q-0003/versions");
     expect(await screen.findByRole("heading", { name: "Question and answers" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Details" })).toBeInTheDocument();
+  });
+
+  it("giao diện en hiện tên kiến thức tiếng Anh từ dữ liệu tham chiếu, không phải tên tiếng Việt lưu trong câu (F-01)", async () => {
+    const reference = apiReferenceFromFixture("en");
+    const rename = (nodes: typeof reference.knowledgeTree): void => {
+      for (const node of nodes) {
+        if (node.id === "kn-1D4-3-1") node.name = "Continuous functions at a point";
+        rename(node.children);
+      }
+    };
+    rename(reference.knowledgeTree);
+    renderEn(
+      <QuestionDetailLayout questionId="q-0003">
+        <QuestionDetailContent questionId="q-0003" />
+      </QuestionDetailLayout>,
+      reference,
+    );
+    expect(await screen.findByText("1D4-3-1 · Continuous functions at a point")).toBeInTheDocument();
+    expect(screen.queryByText(/Hàm số liên tục tại một điểm/)).not.toBeInTheDocument();
   });
 
   it("câu không tồn tại thì báo không tìm thấy", async () => {

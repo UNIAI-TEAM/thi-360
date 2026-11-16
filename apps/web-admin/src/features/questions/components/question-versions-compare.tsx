@@ -2,8 +2,9 @@
 
 import { Card } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { RichTextView } from "@/components/rich-text";
+import { indexKnowledge, knowledgeName } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { QuestionVersion } from "../editor-types";
 import { diffSnapshots, SNAPSHOT_FIELDS, type QuestionVersionChange } from "../editor-versioning";
@@ -19,6 +20,7 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
   const tType = useTranslations("content.questionType");
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
+  const knowledgeIndex = useMemo(() => indexKnowledge(referenceQuery.data?.knowledgeTree ?? []), [referenceQuery.data]);
 
   if (!before) {
     return (
@@ -69,7 +71,7 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
           <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
             {change[side].map((ref) => (
               <li key={ref.nodeId}>
-                {ref.code} · {ref.name}
+                {ref.code} · {knowledgeName(knowledgeIndex, ref)}
                 {ref.primary ? ` (${t("primary")})` : ""}
               </li>
             ))}

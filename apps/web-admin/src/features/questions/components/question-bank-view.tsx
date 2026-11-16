@@ -39,6 +39,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
+import { indexKnowledge, knowledgeName, type KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { QUESTION_STATUS_TONE } from "@/features/content/status";
 import { defaultQuestionBankApiDeps, type QuestionBankApiDeps } from "../api";
@@ -97,6 +98,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
   const authorsQuery = useQuestionAuthors(api);
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
+  const knowledgeIndex = useMemo(() => indexKnowledge(referenceQuery.data?.knowledgeTree ?? []), [referenceQuery.data]);
   const issueText = useReadinessIssueText();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -243,7 +245,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
         id: "knowledge",
         header: t("list.table.knowledge"),
         enableSorting: false,
-        cell: ({ row }) => <KnowledgeCell item={row.original} />,
+        cell: ({ row }) => <KnowledgeCell item={row.original} index={knowledgeIndex} />,
       },
       {
         id: "points",
@@ -304,7 +306,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
         ),
       },
     ],
-    [t, contentT, format, lookup, router, issueText, subjectGrade, openDialog],
+    [t, contentT, format, lookup, knowledgeIndex, router, issueText, subjectGrade, openDialog],
   );
 
   /**
@@ -547,7 +549,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
 }
 
 /** Ô MAPID: kiến thức chính (một dòng, cắt dấu ba chấm; đủ ở trang chi tiết) và "+n" khi gắn nhiều kiến thức. */
-function KnowledgeCell({ item }: { item: QuestionSummary }) {
+function KnowledgeCell({ item, index }: { item: QuestionSummary; index: ReadonlyMap<string, KnowledgeIndexEntry> }) {
   const t = useTranslations("questions.list");
   const primary = item.knowledge.find((ref) => ref.primary) ?? item.knowledge[0];
   if (!primary) return <span className="text-text-muted">{t("noKnowledge")}</span>;
@@ -555,7 +557,7 @@ function KnowledgeCell({ item }: { item: QuestionSummary }) {
   return (
     <div className="flex max-w-60 min-w-40 items-center gap-1.5">
       <span className="min-w-0 truncate text-text">
-        <span className="font-semibold">{primary.code}</span> {primary.name}
+        <span className="font-semibold">{primary.code}</span> {knowledgeName(index, primary)}
       </span>
       {more > 0 && (
         <span className="shrink-0 rounded-full bg-neutral-bg px-2 text-caption text-neutral tabular-nums">
