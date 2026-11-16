@@ -8,12 +8,11 @@ import java.util.Objects;
  * Liệt kê đường lựa chọn theo kiểu lặp (odometer) trên các phần CHOICE — không dựng cả tích vào
  * bộ nhớ (spec 5.4).
  *
- * <p>Một đường gồm: mọi môn của phần FIXED + mọi môn chung của phần CHOICE + một phương án cho
- * mỗi phần CHOICE. Giới hạn 200 đường đếm theo <b>trọng số</b>: phương án
- * {@link SolveOption.Sections} tính một đường, phương án {@link SubjectChoice} tính bằng số cách
- * chọn môn của nó. Việc liệt kê đường-kết-quả đi theo tích phương án; một đường mang phương án
- * SUBJECT_CHOICE mang toàn bộ cách chọn môn của nó ({@link SolvePath#picks()}) — kết quả tổng hợp
- * trên từng cách (VALID khi mọi cách VALID, spec 5.4).
+ * <p>Một đường gồm: mọi môn của phần FIXED + mọi môn chung của phần CHOICE + tổ hợp
+ * {@code choose} phương án của mỗi phần CHOICE. Giới hạn 200 đường đếm theo <b>trọng số</b>:
+ * phương án {@link SolveOption.Sections} tính một đường, phương án {@link SubjectChoice} tính bằng
+ * số cách chọn môn của nó. Trọng số của tổ hợp là tích trọng số của các phương án đã chọn;
+ * mỗi đường mang toàn bộ cách chọn môn, VALID chỉ khi mọi cách đều VALID (spec 5.4).
  */
 final class PathEnumerator {
 
@@ -21,6 +20,7 @@ final class PathEnumerator {
     private final SubjectCountAllocator allocator;
     private final Runnable deadlineCheck;
     private final List<SolvePart.Choice> choiceParts = new ArrayList<>();
+    private final List<Long> choiceCombinations = new ArrayList<>();
     private final long comboCount; // tích số phương án (số đường-kết-quả)
     private final long weightedCount; // tổng trọng số (mỗi cách chọn môn = 1)
 
@@ -35,13 +35,15 @@ final class PathEnumerator {
         for (SolvePart p : this.parts) {
             deadlineCheck.run();
             if (p instanceof SolvePart.Choice c) {
-                if (c.options().isEmpty()) {
+                if (c.choose() > c.options().size()) {
                     empty = true;
                     break;
                 }
                 choiceParts.add(c);
-                combos = multiplyCapped(combos, c.options().size());
-                weighted = multiplyCapped(weighted, weightSum(c.options()));
+                long combinations = combinations(c.options().size(), c.choose());
+                choiceCombinations.add(combinations);
+                combos = multiplyCapped(combos, combinations);
+                weighted = multiplyCapped(weighted, weightedCombinations(c.options(), c.choose()));
             }
         }
         this.comboCount = empty ? 0 : combos;
@@ -53,15 +55,50 @@ final class PathEnumerator {
         return option instanceof SubjectChoice sc ? sc.pickCount() : 1;
     }
 
-    private static long weightSum(List<SolveOption> options) {
-        long sum = 0;
-        for (SolveOption o : options) {
-            sum += weight(o);
-            if (sum >= Long.MAX_VALUE / 2) {
-                return Long.MAX_VALUE;
+    /** Tổng tích trọng số của mọi tổ hợp k phần tử, tính quy hoạch động không dựng tổ hợp. */
+    private long weightedCombinations(List<SolveOption> options, int choose) {
+        long[] counts = new long[choose + 1];
+        counts[0] = 1;
+        int seen = 0;
+        for (SolveOption option : options) {
+            deadlineCheck.run();
+            seen++;
+            long weight = weight(option);
+            for (int k = Math.min(choose, seen); k >= 1; k--) {
+                deadlineCheck.run();
+                counts[k] = addCapped(counts[k], multiplyCapped(counts[k - 1], weight));
             }
         }
-        return sum;
+        return counts[choose];
+    }
+
+    private long combinations(int n, int choose) {
+        if (choose < 0 || choose > n) {
+            return 0;
+        }
+        if (choose == 0 || choose == n) {
+            return 1;
+        }
+        if (choose == 1 || choose == n - 1) {
+            return n;
+        }
+        int width = Math.min(choose, n - choose);
+        long[] counts = new long[width + 1];
+        counts[0] = 1;
+        for (int i = 1; i <= n; i++) {
+            deadlineCheck.run();
+            for (int k = Math.min(i, width); k >= 1; k--) {
+                if ((k & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
+                counts[k] = addCapped(counts[k], counts[k - 1]);
+            }
+        }
+        return counts[width];
+    }
+
+    private static long addCapped(long a, long b) {
+        return Long.MAX_VALUE - a < b ? Long.MAX_VALUE : a + b;
     }
 
     /** Số đường đếm cho giới hạn (đã cắt trần): mỗi cách chọn môn của SUBJECT_CHOICE tính một. */
@@ -75,8 +112,8 @@ final class PathEnumerator {
     }
 
     /**
-     * Đường-kết-quả thứ {@code comboIndex} (0-based): một phương án của mỗi phần CHOICE; phương
-     * án SUBJECT_CHOICE mang toàn bộ cách chọn môn.
+     * Đường-kết-quả thứ {@code comboIndex} (0-based): tổ hợp theo thứ tự từ điển của từng phần;
+     * phương án SUBJECT_CHOICE mang toàn bộ cách chọn môn.
      */
     SolvePath pathAt(long comboIndex) {
         deadlineCheck.run();
@@ -93,17 +130,31 @@ final class PathEnumerator {
                 SolvePart.Choice c = (SolvePart.Choice) p;
                 sections.addAll(c.commonSections());
                 long stride = strideAfter(ci);
-                int optIdx = (int) Math.min(rem / stride, (long) c.options().size() - 1L);
-                rem = rem % stride;
-                SolveOption opt = c.options().get(optIdx);
-                if (opt instanceof SolveOption.Sections s) {
-                    chosen.add(new ChosenOption(c.partId(), s.optionId()));
-                    sections.addAll(s.sections());
-                } else {
-                    SubjectChoice sc = (SubjectChoice) opt;
-                    chosen.add(new ChosenOption(c.partId(), sc.optionId()));
-                    choices.add(sc);
-                    picks.add(sc.picks(allocator));
+                long optionRank = rem / stride;
+                rem %= stride;
+                int nextIndex = 0;
+                for (int selected = 0; selected < c.choose(); selected++) {
+                    for (int index = nextIndex; index < c.options().size(); index++) {
+                        deadlineCheck.run();
+                        long tail = combinations(c.options().size() - index - 1,
+                                c.choose() - selected - 1);
+                        if (optionRank >= tail) {
+                            optionRank -= tail;
+                            continue;
+                        }
+                        SolveOption opt = c.options().get(index);
+                        if (opt instanceof SolveOption.Sections s) {
+                            chosen.add(new ChosenOption(c.partId(), s.optionId()));
+                            sections.addAll(s.sections());
+                        } else {
+                            SubjectChoice sc = (SubjectChoice) opt;
+                            chosen.add(new ChosenOption(c.partId(), sc.optionId()));
+                            choices.add(sc);
+                            picks.add(sc.picks(allocator));
+                        }
+                        nextIndex = index + 1;
+                        break;
+                    }
                 }
                 ci++;
             }
@@ -115,14 +166,14 @@ final class PathEnumerator {
     private long strideAfter(int ci) {
         long stride = 1;
         for (int j = ci + 1; j < choiceParts.size(); j++) {
-            stride = multiplyCapped(stride, choiceParts.get(j).options().size());
+            stride = multiplyCapped(stride, choiceCombinations.get(j));
         }
         return stride;
     }
 
     private static long multiplyCapped(long a, long b) {
-        if (b <= 0) {
-            return a;
+        if (a == 0 || b == 0) {
+            return 0;
         }
         if (a > Long.MAX_VALUE / b) {
             return Long.MAX_VALUE;
