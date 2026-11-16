@@ -18,6 +18,8 @@ import vn.unicom.thi360.exam.application.ExamBlockRefProjector;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.exam.infrastructure.ExamBlockRefRepository;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageProvider;
 
 @Transactional
@@ -27,6 +29,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
     @Autowired CatalogLookup catalog;
     @Autowired ExamBlockRefProjector projector;
     @Autowired ExamBlockRefRepository refs;
+    @Autowired QuestionSourcePort source;
     @Autowired QuestionUsageProvider provider;
 
     @Test
@@ -86,5 +89,30 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
             assertThat(response.path(field).toString()).contains("inherited", "choice-b", "Science")
                     .doesNotContain("wrong-type");
         }
+    }
+
+    @Test
+    void descriptionsBatchServingRootAndChildrenAndExcludeRetired() {
+        UUID subject = UUID.randomUUID();
+        UUID root = UUID.randomUUID();
+        UUID child = UUID.randomUUID();
+        UUID retired = UUID.randomUUID();
+        UUID node = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?,'QUESTION_SET','READY',?,1)",
+                root, "USAGE-SET-" + root, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", root);
+        jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position) values (?,?,'SHORT_ANSWER','READY',?,0)",
+                child, "USAGE-CHILD-" + child, root);
+        jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)", child, node);
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?,'SINGLE_CHOICE','RETIRED',?,1)",
+                retired, "USAGE-RETIRED-" + retired, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", retired);
+        var descriptions = source.describe(List.of(root, child, retired, UUID.randomUUID()));
+        assertThat(descriptions.keySet()).containsExactlyInAnyOrder(root, child);
+        assertThat(descriptions.get(child).parentId()).isEqualTo(root);
+        assertThat(descriptions.get(child).subjectId()).isEqualTo(subject);
+        assertThat(descriptions.get(child).questionType()).isEqualTo(QuestionType.QUESTION_SET);
+        assertThat(descriptions.get(child).answerTypes()).containsExactly(QuestionType.SHORT_ANSWER);
+        assertThat(descriptions.get(root).knowledgeIds()).containsExactly(node);
     }
 }

@@ -41,6 +41,39 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<UUID, Description> describe(Collection<UUID> questionIds) {
+        if (questionIds.isEmpty()) return Map.of();
+        String sql = """
+                select q.id, q.parent_id, root.subject_item_id, root.type,
+                       array(select distinct x.type from questionbank.question x
+                             where ((root.type <> 'QUESTION_SET' and x.id = root.id)
+                                 or (root.type = 'QUESTION_SET' and x.parent_id = root.id))
+                                 and x.deleted_at is null) answer_types,
+                       array(select distinct k.knowledge_item_id from questionbank.question_knowledge k
+                             join questionbank.question x on x.id = k.question_id
+                             where (x.id = root.id or x.parent_id = root.id) and x.deleted_at is null) knowledge_ids
+                from questionbank.question q
+                join questionbank.question root on root.id = coalesce(q.parent_id, q.id)
+                join questionbank.question_version v on v.question_id = root.id
+                    and v.version_no = root.current_version_no
+                where q.id in (:ids) and q.deleted_at is null and root.deleted_at is null
+                    and root.parent_id is null and root.status = 'READY'
+                """;
+        Map<UUID, Description> result = new HashMap<>();
+        jdbc.query(sql, new MapSqlParameterSource("ids", questionIds), rs -> {
+            UUID id = rs.getObject("id", UUID.class);
+            String[] answerTypes = (String[]) rs.getArray("answer_types").getArray();
+            UUID[] knowledgeIds = (UUID[]) rs.getArray("knowledge_ids").getArray();
+            result.put(id, new Description(id, rs.getObject("parent_id", UUID.class),
+                    rs.getObject("subject_item_id", UUID.class), QuestionType.valueOf(rs.getString("type")),
+                    java.util.Arrays.stream(answerTypes).map(QuestionType::valueOf).toList(),
+                    List.of(knowledgeIds)));
+        });
+        return Map.copyOf(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Counts count(Filter filter) {
         return countUnion(List.of(filter));
     }

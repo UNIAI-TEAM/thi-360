@@ -83,6 +83,13 @@ public interface QuestionSourcePort {
         }
     }
 
+    /** Coarse serving-source metadata; children describe their serving root and retain their parent ID. */
+    record Description(UUID questionId, UUID parentId, UUID subjectId, QuestionType questionType,
+                       List<QuestionType> answerTypes, List<UUID> knowledgeIds) {}
+
+    /** Only READY, non-deleted questions with a serving root/version are returned. */
+    Map<UUID, Description> describe(Collection<UUID> questionIds);
+
     Counts count(Filter filter);
 
     /** Union of sources, counting each question and each of its units once. */
