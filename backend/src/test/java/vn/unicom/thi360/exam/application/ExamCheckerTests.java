@@ -89,6 +89,22 @@ class ExamCheckerTests {
     }
 
     @Test
+    void everyClearlyShortGroupIsReportedEvenWhenSolverStopsAtTheFirstSubject() throws Exception {
+        Exam exam = exam(4, null, "RAW");
+        subject("MATH", 1);
+        subject("PHYS", 1);
+        String doc = """
+                {"parts":[{"id":"p","name":"Part","questionCount":4,"sections":[
+                {"id":"s1","subjectCode":"MATH","questionCount":2,"blocks":[{"id":"b1","questionType":"SINGLE_CHOICE","questionCount":2}]},
+                {"id":"s2","subjectCode":"PHYS","questionCount":2,"blocks":[{"id":"b2","questionType":"SINGLE_CHOICE","questionCount":2}]}
+                ]}]}
+                """;
+        JsonNode path = check(exam, document(doc)).result().path("paths").get(0);
+        assertThat(path.path("issues").findValuesAsText("blockId")).contains("b1", "b2");
+        assertThat(path.path("blocks").findValuesAsText("result")).containsExactly("NOT_FOUND", "NOT_FOUND");
+    }
+
+    @Test
     void answerQuotaTotalIsDiagnosedSeparatelyFromSectionCount() throws Exception {
         Exam exam = exam(1, null, "RAW");
         subject("MATH", 1);
@@ -131,6 +147,19 @@ class ExamCheckerTests {
                 """;
         assertThat(issueCodes(check(exam, document(doc)).result()))
                 .contains("SECTION_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH");
+    }
+
+    @Test
+    void incompleteOptionLevelRemainderIsReportedRatherThanThrowing() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        String doc = """
+                {"parts":[{"id":"p","name":"Part","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                "options":[{"id":"first","kind":"SUBJECT","code":"MATH",
+                "blocks":[{"id":"b","questionType":"SINGLE_CHOICE"}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issueCodes(result)).contains("REMAINDER_GROUP_INVALID");
     }
 
     @Test

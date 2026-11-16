@@ -86,6 +86,10 @@ final class ExamCheckRules {
                 if (!option.blocks().isEmpty() && option.kind() != OptionKind.SUBJECT) {
                     found.add(issue("OPTION_EMPTY", "STRUCTURE", part, option.id(), null));
                 }
+                if (!option.blocks().isEmpty() && option.kind() == OptionKind.SUBJECT
+                        && option.blocks().stream().anyMatch(block -> !isSet(block) && block.questionCount() == null)) {
+                    found.add(issue("REMAINDER_GROUP_INVALID", "STRUCTURE", part, option.id(), null));
+                }
                 if (option.kind() == OptionKind.SUBJECT_CHOICE) {
                     ObjectNode invalid = choiceIssue(part, option);
                     if (invalid != null) found.add(invalid);

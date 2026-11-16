@@ -209,14 +209,27 @@ final class ExamCheckPathPresenter {
             if (Objects.equals(block.id(), issue.path("blockId").asText(null))) blockIssues.add(issue);
         }
         if (!pool.complete()) {
-            ObjectNode issue = context(issues.create("OVERLAP_UNCONFIRMED", "OVERLAP", "UNCONFIRMED"), info, block);
-            issues.key(issue); blockIssues.add(issue); add(pathIssues, issue);
+            ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.DEADLINE_EXCEEDED,
+                    info.section.subjectCode(), block.id(), null, List.of());
+            addBlockIssue(pathIssues, blockIssues, issue);
+        } else {
+            boolean set = group.kind() == GroupQuota.GroupKind.SET;
+            long available = set ? pool.sets(group.setSize()) : pool.units();
+            int target = set ? group.setCount() : required;
+            if (available < target) {
+                ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE,
+                        info.section.subjectCode(), block.id(), null, List.of());
+                issue.put("required", target);
+                issue.put("available", available);
+                addBlockIssue(pathIssues, blockIssues, issue);
+            }
         }
         if (block.expectedScoring() != null && pool.complete()) {
             ExamCheckSources.Mismatches mismatch = sources.mismatchedCodes(group, block.expectedScoring());
             if (!mismatch.complete()) {
-                ObjectNode issue = context(issues.create("OVERLAP_UNCONFIRMED", "OVERLAP", "UNCONFIRMED"), info, block);
-                issues.key(issue); blockIssues.add(issue); add(pathIssues, issue);
+                ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.DEADLINE_EXCEEDED,
+                        info.section.subjectCode(), block.id(), null, List.of());
+                addBlockIssue(pathIssues, blockIssues, issue);
             } else if (!mismatch.codes().isEmpty()) {
                 ObjectNode issue = context(issues.create("SCORING_MISMATCH", "POINTS", "WARNING"), info, block);
                 issue.put("available", mismatch.codes().size());
@@ -330,6 +343,16 @@ final class ExamCheckPathPresenter {
             }
         }
         return false;
+    }
+
+    private static void addBlockIssue(Map<String, ObjectNode> issues, ArrayNode blockIssues, ObjectNode issue) {
+        ObjectNode existing = issues.putIfAbsent(issue.path("key").asText(), issue);
+        if (existing == null) {
+            blockIssues.add(issue);
+        } else {
+            if (!issue.path("required").isNull()) existing.set("required", issue.path("required"));
+            if (!issue.path("available").isNull()) existing.set("available", issue.path("available"));
+        }
     }
 
     private static void add(Map<String, ObjectNode> issues, ObjectNode issue) { issues.putIfAbsent(issue.path("key").asText(), issue); }
