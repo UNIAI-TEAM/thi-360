@@ -5,28 +5,52 @@ import java.util.List;
 /**
  * Kết quả giải của một đường lựa chọn (spec 5.4).
  *
- * @param path    đường đã giải
- * @param status  VALID / INVALID / UNCONFIRMED
- * @param reason  mã lý do khi INVALID hoặc UNCONFIRMED; null khi VALID
- * @param blockId id khối liên quan tới lý do (khối thiếu nguồn, khối vượt giới hạn ứng viên); null nếu không áp dụng
- * @param witness đề chứng minh khi VALID (một phần tử cho mỗi khối); rỗng khi INVALID / UNCONFIRMED
+ * <p>Đường có {@link SubjectChoice}: VALID khi mọi cách chọn môn VALID; INVALID khi có ít nhất một
+ * cách INVALID (khi đó {@code failingSelections} chỉ đúng các cách chọn lỗi, nêu môn và số câu của
+ * từng trường hợp); còn lại UNCONFIRMED.
+ *
+ * @param path              đường đã giải
+ * @param status            VALID / INVALID / UNCONFIRMED
+ * @param reason            mã lý do khi INVALID hoặc UNCONFIRMED; null khi VALID
+ * @param subjectCode       mã môn liên quan tới lý do; null nếu không áp dụng
+ * @param groupId           id nhóm liên quan tới lý do (nhóm thiếu nguồn, nhóm vượt giới hạn ứng viên); null nếu không áp dụng
+ * @param witness           đề chứng minh theo bài toán con khi VALID (một {@link SubjectWitness} cho mỗi
+ *                          (môn, số câu) trên đường); rỗng khi INVALID / UNCONFIRMED
+ * @param failingSelections các cách chọn môn ({@link SubjectPick}) không giải được của một đường có
+ *                          {@link SubjectChoice}; chỉ khác rỗng khi INVALID do cách chọn lỗi
  */
-public record PathResult(SolvePath path, SolveStatus status, SolveReason reason, String blockId,
-        List<BlockWitness> witness) {
+public record PathResult(
+        SolvePath path,
+        SolveStatus status,
+        SolveReason reason,
+        String subjectCode,
+        String groupId,
+        List<SubjectWitness> witness,
+        List<SubjectPick> failingSelections) {
 
     public PathResult {
         witness = witness == null ? List.of() : List.copyOf(witness);
+        failingSelections = failingSelections == null ? List.of() : List.copyOf(failingSelections);
     }
 
-    static PathResult valid(SolvePath path, List<BlockWitness> witness) {
-        return new PathResult(path, SolveStatus.VALID, null, null, witness);
+    static PathResult valid(SolvePath path, List<SubjectWitness> witness) {
+        return new PathResult(path, SolveStatus.VALID, null, null, null, witness, List.of());
     }
 
-    static PathResult invalid(SolvePath path, SolveReason reason, String blockId) {
-        return new PathResult(path, SolveStatus.INVALID, reason, blockId, List.of());
+    static PathResult invalid(SolvePath path, SolveReason reason, String subjectCode, String groupId) {
+        return new PathResult(path, SolveStatus.INVALID, reason, subjectCode, groupId, List.of(),
+                List.of());
     }
 
-    static PathResult unconfirmed(SolvePath path, SolveReason reason, String blockId) {
-        return new PathResult(path, SolveStatus.UNCONFIRMED, reason, blockId, List.of());
+    static PathResult invalidPicks(SolvePath path, SolveReason reason, String subjectCode,
+            String groupId, List<SubjectPick> failingSelections) {
+        return new PathResult(path, SolveStatus.INVALID, reason, subjectCode, groupId, List.of(),
+                failingSelections);
+    }
+
+    static PathResult unconfirmed(SolvePath path, SolveReason reason, String subjectCode,
+            String groupId) {
+        return new PathResult(path, SolveStatus.UNCONFIRMED, reason, subjectCode, groupId, List.of(),
+                List.of());
     }
 }

@@ -4,149 +4,22 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * Mạng luồng chính xác cho trường hợp đơn giản của spec 5.4: mọi ứng viên usable có đúng một đơn vị đếm
- * và mọi khối chỉ có chỉ tiêu một chiều (ô COMBINED hoặc một chiều SEPARATE).
+ * Lõi mạng luồng (Dinic trên danh sách cạnh kề) và union-find của bộ giải (spec 5.4).
  *
- * <p>Mạng: nguồn → chỉ tiêu (sức chứa = quota) → ứng viên (sức chứa 1) → đích. Nút ứng viên là toàn
- * đường, không theo khối: các bản ghi ứng viên có chung khóa (questionId, childId) được gộp thành một
- * nút nên mỗi câu / câu con chỉ được dùng một lần trên cả đường. Luồng đầy tổng chỉ tiêu nghĩa là VALID.
- *
- * <p>Dinic trên danh sách cạnh kề; đồ thị ba tầng nên số pha nhỏ. Một cạnh chỉ tiêu → ứng viên có luồng
- * = 1 nghĩa là ứng viên đó được chọn (đề chứng minh).
+ * <p>Giai đoạn 2 dựng trên lõi này mạng hai lớp: nguồn → chỉ tiêu phía nhóm → câu (sức chứa 1,
+ * gộp các bản ghi chung khóa bằng {@link Dsu}) → chỉ tiêu phía môn → đích. Cạnh dạng {đích, chỉ số
+ * cạnh ngược, sức chứa còn lại}; id cạnh thuận luôn chẵn. Deadline được kiểm định kỳ trong BFS/DFS.
  */
 final class MaxFlow {
 
-    private final Runnable deadlineCheck;
-
-    MaxFlow(Runnable deadlineCheck) {
-        this.deadlineCheck = deadlineCheck;
+    private MaxFlow() {
     }
 
-    /**
-     * Giải toàn bộ các khối cùng lúc.
-     *
-     * @param blocks các khối đã chuẩn bị theo thứ tự đường
-     * @return mảng song song {@code blocks}: chỉ số ứng viên được chọn mỗi khối; null khi không đủ luồng
-     */
-    List<List<Integer>> solve(List<BlockContext> blocks) {
-        int reqCount = 0;
-        int entryCount = 0;
-        for (BlockContext b : blocks) {
-            reqCount += b.reqs().size();
-            entryCount += b.cands().size();
-        }
-        // nút: 0 = nguồn; 1..reqCount = chỉ tiêu; tiếp = ứng viên (đánh theo chỉ số entry gốc); cuối = đích
-        Dinic net = new Dinic(2 + reqCount + entryCount);
-        int source = 0;
-        int sink = net.nodeCount - 1;
-
-        int[][] reqNodes = new int[blocks.size()][];
-        int node = 1;
-        long totalQuota = 0;
-        for (int b = 0; b < blocks.size(); b++) {
-            BlockContext ctx = blocks.get(b);
-            int[] rn = new int[ctx.reqs().size()];
-            for (int r = 0; r < rn.length; r++) {
-                rn[r] = node++;
-                int q = ctx.reqs().get(r).quota();
-                totalQuota += q;
-                net.addEdge(source, rn[r], q);
-            }
-            reqNodes[b] = rn;
-        }
-
-        deadlineCheck.run();
-        int candNodeBase = node;
-
-        // gộp các bản ghi ứng viên usable chung khóa (questionId, childId) về một nút bằng union-find;
-        // ứng viên không usable không gộp: cầu nối qua khóa của nó sẽ cấm nhầm hai ứng viên hợp lệ
-        Dsu dsu = new Dsu(entryCount);
-        Map<String, Integer> entryOfKey = new HashMap<>(entryCount * 2);
-        int ei = 0;
-        for (BlockContext ctx : blocks) {
-            for (int i = 0; i < ctx.cands().size(); i++) {
-                if ((ei & 0x3FF) == 0) {
-                    deadlineCheck.run();
-                }
-                if (ctx.usable()[i]) {
-                    for (String k : ctx.keys()[i]) {
-                        Integer known = entryOfKey.get(k);
-                        if (known == null) {
-                            entryOfKey.put(k, ei);
-                        } else {
-                            dsu.union(ei, known);
-                        }
-                    }
-                }
-                ei++;
-            }
-        }
-
-        int[][] flowEdge = new int[entryCount][]; // id cạnh chỉ tiêu→ứng viên của từng entry
-        boolean[] sinkEdgeDone = new boolean[entryCount];
-        ei = 0;
-        for (int b = 0; b < blocks.size(); b++) {
-            BlockContext ctx = blocks.get(b);
-            int[] rn = reqNodes[b];
-            for (int i = 0; i < ctx.cands().size(); i++) {
-                if ((ei & 0x3FF) == 0) {
-                    deadlineCheck.run();
-                }
-                int root = dsu.find(ei);
-                int candNode = candNodeBase + root;
-                if (!sinkEdgeDone[root]) {
-                    sinkEdgeDone[root] = true;
-                    net.addEdge(candNode, sink, 1);
-                }
-                if (ctx.usable()[i]) {
-                    int[] vec = ctx.contrib()[i];
-                    int[] edges = new int[rn.length];
-                    Arrays.fill(edges, -1);
-                    for (int r = 0; r < rn.length; r++) {
-                        if (vec[r] > 0) {
-                            edges[r] = net.addEdge(rn[r], candNode, 1);
-                        }
-                    }
-                    flowEdge[ei] = edges;
-                }
-                ei++;
-            }
-        }
-
-        long flow = net.maxFlow(source, sink, deadlineCheck);
-        if (flow < totalQuota) {
-            return null;
-        }
-
-        List<List<Integer>> out = new ArrayList<>(blocks.size());
-        ei = 0;
-        for (int b = 0; b < blocks.size(); b++) {
-            BlockContext ctx = blocks.get(b);
-            List<Integer> picked = new ArrayList<>();
-            for (int i = 0; i < ctx.cands().size(); i++) {
-                int[] edges = flowEdge[ei];
-                if (edges != null) {
-                    for (int e : edges) {
-                        if (e >= 0 && net.flow(e) > 0) {
-                            picked.add(i);
-                            break;
-                        }
-                    }
-                }
-                ei++;
-            }
-            out.add(picked);
-        }
-        return out;
-    }
-
-    /** Union-find trên chỉ số entry để gộp các ứng viên chung khóa. */
-    private static final class Dsu {
+    /** Union-find gộp các entry ứng viên chung khóa (questionId, childId) về một nút. */
+    static final class Dsu {
         private final int[] parent;
 
         Dsu(int n) {
@@ -179,7 +52,7 @@ final class MaxFlow {
     }
 
     /** Dinic: cạnh dạng {đích, chỉ số cạnh ngược trong danh sách kề của đích, sức chứa còn lại}. */
-    private static final class Dinic {
+    static final class Dinic {
         final int nodeCount;
         private final List<int[]> edges = new ArrayList<>();
         private final List<List<Integer>> adj;

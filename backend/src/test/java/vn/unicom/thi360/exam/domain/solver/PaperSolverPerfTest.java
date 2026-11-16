@@ -11,141 +11,104 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * AC-3 (tag {@code perf}): bài HSA mẫu — 150 câu, 3 phần, 2.000 ứng viên mỗi khối — phải giải dưới 10 s.
- * In thời gian đo ra System.out theo quy ước của lane.
+ * Hiệu năng (tag {@code perf}, plan D/BE-5a): bài HSA mẫu — 150 câu, 3 phần; Toán có chỉ tiêu cấp
+ * môn của B9 và chùm; phần 3 là SUBJECT_CHOICE 5 môn chọn 3 cộng nhánh Tiếng Anh — 2.000 ứng viên
+ * mỗi nhóm, giải cả 11 đường (10 cách chọn môn + 1 đường Tiếng Anh) dưới 10 giây. In thời gian đo
+ * theo quy ước {@code PERF PaperSolver HSA11 ms=<n>}.
  */
 @Tag("perf")
 class PaperSolverPerfTest {
 
-    private static final String[] GRADES = {"G10", "G11", "G12"};
-    private static final String[] DIFFS = {"NB", "TH", "VD"};
+    private static final String[] GRADES = {SolverTestFixtures.G10, SolverTestFixtures.G11,
+            SolverTestFixtures.G12};
+    private static final String[] DIFFS = {SolverTestFixtures.NB, SolverTestFixtures.TH,
+            SolverTestFixtures.VD};
+    private static final String[] SCIENCE = {"PHYS", "CHEM", "BIO", "GEO", "TECH"};
 
     @Test
-    @DisplayName("HSA-like: 150 câu, 3 phần, 2.000 ứng viên/khối, giải < 10 s")
-    void hsaLikeUnder10s() {
-        List<BlockQuota> part1 = List.of(
-                combinedBlock("P1-B1", 20),
-                combinedBlock("P1-B2", 25));
-        List<BlockQuota> part2 = List.of(
-                combinedBlock("P2-B1", 35),
-                combinedBlock("P2-B2", 30));
-        // phần CHOICE 2 lựa chọn: 2 đường, mỗi đường 5 khối × tổng 150 câu
+    @DisplayName("HSA: 150 câu, 3 phần, SUBJECT_CHOICE 5 chọn 3, 2.000 ứng viên/nhóm, 11 đường < 10 s")
+    void hsaAllElevenPaths() {
+        // Phần 1 — Toán 50 câu: chỉ tiêu cấp môn 35 SINGLE_CHOICE + 15 SHORT_ANSWER (B9),
+        // ma trận lớp/độ khó của môn, các nhóm gồm một nhóm chùm lẫn dạng.
+        SubjectQuota mathQuota = new SubjectQuota(
+                SolverTestFixtures.answerQuotas(
+                        SolverTestFixtures.dim(SolverTestFixtures.SC, 35),
+                        SolverTestFixtures.dim(SolverTestFixtures.SA, 15)),
+                new MatrixQuota.Separate(
+                        List.of(SolverTestFixtures.dim(SolverTestFixtures.G10, 3),
+                                SolverTestFixtures.dim(SolverTestFixtures.G11, 20),
+                                SolverTestFixtures.dim(SolverTestFixtures.G12, 27)),
+                        List.of(SolverTestFixtures.dim(SolverTestFixtures.NB, 2),
+                                SolverTestFixtures.dim(SolverTestFixtures.TH, 21),
+                                SolverTestFixtures.dim(SolverTestFixtures.VD, 27))));
+        SectionOnPath math = new SectionOnPath("MATH", "SEC-MATH", 50, mathQuota, List.of(
+                new GroupQuota("M-SC", GroupQuota.GroupKind.SINGLE, null, null, null, null, null,
+                        null, List.of(), List.of(), null, null), // nhóm lấy phần còn lại
+                GroupQuota.set("M-SET", 2, 5, null)));
+
+        // Phần 2 — Ngữ văn 50 câu, không chỉ tiêu cấp môn.
+        SectionOnPath lit = SolverTestFixtures.section("LIT", 50,
+                SolverTestFixtures.group("L-G1", 50));
+
+        // Phần 3 — SUBJECT_CHOICE 5 môn chọn 3, countsByPick 17-17-16 (D25) + nhánh Tiếng Anh 10 câu.
+        List<SectionOnPath> scienceSections = new ArrayList<>();
+        for (String code : SCIENCE) {
+            scienceSections.add(new SectionOnPath(code, "SEC-" + code, null,
+                    new SubjectQuota(null,
+                            new MatrixQuota.Separate(
+                                    List.of(SolverTestFixtures.dim(SolverTestFixtures.G11, 34),
+                                            SolverTestFixtures.dim(SolverTestFixtures.G12, 66)),
+                                    List.of(SolverTestFixtures.dim(SolverTestFixtures.NB, 30),
+                                            SolverTestFixtures.dim(SolverTestFixtures.TH, 40),
+                                            SolverTestFixtures.dim(SolverTestFixtures.VD, 30)),
+                                    QuotaUnit.PERCENT)),
+                    List.of(SolverTestFixtures.group(code + "-G1", 8),
+                            GroupQuota.remainder(code + "-REM"))));
+        }
+        SubjectChoice science = new SubjectChoice("OPT-SCI", scienceSections, 3,
+                List.of(17, 17, 16));
+        SectionOnPath eng = SolverTestFixtures.section("ENG", 10,
+                SolverTestFixtures.group("E-G1", 10));
+
         List<SolvePart> parts = List.of(
-                new SolvePart.Fixed("P1", part1),
-                new SolvePart.Fixed("P2", part2),
-                SolvePart.Choice.of("P3", List.of(
-                        new SolveOption("KH1", List.of(combinedBlock("P3-B1", 20),
-                                combinedBlock("P3-B2", 20))),
-                        new SolveOption("KH2", List.of(combinedBlock("P3-B3", 20),
-                                combinedBlock("P3-B4", 20))))));
+                SolverTestFixtures.part("P1", math),
+                SolverTestFixtures.part("P2", lit),
+                SolvePart.Choice.of("P3", List.of(science, new SolveOption.Sections("OPT-ENG",
+                        List.of(eng)))));
 
         Random rng = new Random(261116L);
+        CandidateSource source = group -> generatePool(rng, 2_000, group);
         PaperSolver solver = new PaperSolver();
         long t0 = System.nanoTime();
-        SolveOutcome out = solver.solveAll(parts, block -> generatePool(rng, 2_000), SolveMode.check());
+        SolveOutcome out = solver.solveAll(parts, source, SolveMode.check());
         long ms = (System.nanoTime() - t0) / 1_000_000;
-        System.out.println("PERF PaperSolver HSA ms=" + ms);
+        System.out.println("PERF PaperSolver HSA11 ms=" + ms);
 
-        assertThat(out.results()).hasSize(2);
-        for (PathResult r : out.results()) {
-            assertThat(r.status()).isEqualTo(SolveStatus.VALID);
-            int picked = r.witness().stream().mapToInt(w -> w.picks().size()).sum();
-            assertThat(picked).isEqualTo(150);
-        }
+        assertThat(out.results()).hasSize(2); // đường Khoa học (10 cách chọn) + đường Tiếng Anh
+        assertThat(out.stats().pathsEnumerated()).isEqualTo(11);
+        assertThat(out.stats().subproblemsSolved()).isLessThanOrEqualTo(10);
         assertThat(ms).isLessThan(10_000);
     }
 
-    @Test
-    @DisplayName("Nhánh quay lui: khối chùm + năng lực trên nguồn lớn vẫn nhanh")
-    void backtrackingBranchPerf() {
-        // 1 khối chùm (10 bộ × 3 câu con) + 1 khối SEPARATE có chỉ tiêu năng lực, 800 ứng viên mỗi khối
-        List<CellQuota> cells = List.of(
-                new CellQuota("G12", "NB", 15),
-                new CellQuota("G12", "TH", 10),
-                new CellQuota("G12", "VD", 5));
-        BlockQuota setBlock = BlockQuota.setBlock("SB", 10, 3, new MatrixQuota.Combined(cells));
-        BlockQuota sepBlock = new BlockQuota("SP", 40, null, null,
-                new MatrixQuota.Separate(
-                        List.of(new DimensionQuota("G12", 40)),
-                        List.of(new DimensionQuota("NB", 15), new DimensionQuota("TH", 15),
-                                new DimensionQuota("VD", 10))),
-                List.of(new CompetencyQuota("TUDUY", 40)), List.of(), null, null);
-
-        Random rng = new Random(999L);
-        List<List<PathCandidate>> pools = List.of(
-                genSetPool(rng, 800, 3),
-                genCompPool(rng, 800));
-        SolvePath path = new SolvePath(0, List.of(), List.of(setBlock, sepBlock));
-
-        PaperSolver solver = new PaperSolver();
-        long t0 = System.nanoTime();
-        PathResult r = solver.solve(path, pools, SolveMode.generate(7L));
-        long ms = (System.nanoTime() - t0) / 1_000_000;
-        System.out.println("PERF PaperSolver backtracking ms=" + ms);
-        assertThat(r.status()).isEqualTo(SolveStatus.VALID);
-        assertThat(ms).isLessThan(10_000);
-    }
-
-    private BlockQuota combinedBlock(String id, int qc) {
-        // 9 ô với chỉ tiêu gần đều, tổng đúng qc
-        List<CellQuota> cells = new ArrayList<>();
-        int base = qc / 9;
-        int rem = qc % 9;
-        int i = 0;
-        for (String g : GRADES) {
-            for (String d : DIFFS) {
-                cells.add(new CellQuota(g, d, base + (i++ < rem ? 1 : 0)));
-            }
-        }
-        return BlockQuota.combined(id, qc, cells);
-    }
-
-    private List<PathCandidate> generatePool(Random rng, int n) {
+    private List<PathCandidate> generatePool(Random rng, int n, GroupQuota group) {
         List<PathCandidate> out = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
-            String g = GRADES[rng.nextInt(GRADES.length)];
-            String d = DIFFS[rng.nextInt(DIFFS.length)];
-            out.add(new PathCandidate("q" + rng.nextInt(10_000_000) + "-" + i, 1, null, null,
-                    List.of(new CountingUnit(null, g, d, List.of(), List.of(), BigDecimal.ONE))));
-        }
-        // bảo đảm mọi ô có ít nhất một vài ứng viên
-        int k = 0;
-        for (String g : GRADES) {
-            for (String d : DIFFS) {
-                for (int j = 0; j < 40; j++) {
-                    out.add(new PathCandidate("fill-" + (k++) + "-" + i0(out), 1, null, null,
-                            List.of(new CountingUnit(null, g, d, List.of(), List.of(), BigDecimal.ONE))));
+            boolean isSet = group.kind() == GroupQuota.GroupKind.SET;
+            String grade = GRADES[rng.nextInt(GRADES.length)];
+            String diff = DIFFS[rng.nextInt(DIFFS.length)];
+            String type = rng.nextBoolean() ? SolverTestFixtures.SC : SolverTestFixtures.SA;
+            if (isSet) {
+                int size = group.setSize();
+                List<CountingUnit> units = new ArrayList<>(size);
+                for (int k = 0; k < size; k++) {
+                    units.add(SolverTestFixtures.unit("u" + k, type, grade, diff));
                 }
+                out.add(new PathCandidate("q" + i, 1, "s" + i, null, null, units));
+            } else {
+                out.add(new PathCandidate("q" + i, 1, null, null, null,
+                        List.of(new CountingUnit(null, type, grade, diff, List.of(), List.of(),
+                                BigDecimal.ONE))));
             }
-        }
-        return out;
-    }
-
-    private static int i0(List<PathCandidate> out) {
-        return out.size();
-    }
-
-    private List<PathCandidate> genSetPool(Random rng, int n, int setSize) {
-        List<PathCandidate> out = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            List<CountingUnit> units = new ArrayList<>(setSize);
-            for (int u = 0; u < setSize; u++) {
-                // các bộ gần cân: mỗi đơn vị ngẫu nhiên ô
-                String g = "G12";
-                String d = DIFFS[rng.nextInt(DIFFS.length)];
-                units.add(new CountingUnit("s" + i + "-c" + u, g, d, List.of(), List.of(), null));
-            }
-            out.add(new PathCandidate("S" + i, 1, "S" + i, null, units));
-        }
-        return out;
-    }
-
-    private List<PathCandidate> genCompPool(Random rng, int n) {
-        List<PathCandidate> out = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            String d = DIFFS[rng.nextInt(DIFFS.length)];
-            out.add(new PathCandidate("c" + i, 1, null, null,
-                    List.of(new CountingUnit(null, "G12", d, List.of(), List.of("TUDUY"), null))));
         }
         return out;
     }

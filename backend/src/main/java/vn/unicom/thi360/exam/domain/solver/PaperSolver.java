@@ -1,324 +1,125 @@
 package vn.unicom.thi360.exam.domain.solver;
 
 import java.time.Clock;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
-import java.util.function.Function;
 
 /**
- * Bộ giải sinh đề của module exam (spec 5.4, D15): dùng chung cho kiểm tra cấu hình, xem trước và sinh đề.
+ * Bộ giải sinh đề của module exam (spec 5.4, B9, D15): dùng chung cho kiểm tra cấu hình, xem trước
+ * và sinh đề.
  *
- * <p>Đầu vào là một đường lựa chọn (các khối bắt buộc cộng một lựa chọn của mỗi phần CHOICE), không phải
- * từng khối riêng. Một câu, một câu con chỉ được dùng một lần trên cả đường; bộ câu hỏi và Điền khuyết
- * luôn lấy nguyên vẹn và không được vượt chỉ tiêu.
+ * <p>Đầu vào là một đường lựa chọn dưới dạng danh sách <b>môn</b> ({@link SectionOnPath}: chỉ tiêu
+ * cấp môn và các nhóm của nó), không phải từng nhóm riêng. Phương án {@link SubjectChoice} được mở
+ * thành từng cách chọn môn ({@link SubjectPick}); mỗi cách tính một đường cho giới hạn 200 đường.
+ * Đường được tách thành các bài toán con theo mã môn (gộp các môn cùng {@code subjectCode}), kết
+ * quả nhớ theo {@link SubproblemKey} trong một lời gọi.
  *
- * <p>Thuật toán: trường hợp đơn giản (mọi khối chỉ có ứng viên một đơn vị và chỉ tiêu một chiều, không
- * năng lực, nhóm MAPID hay khối chùm) giải chính xác bằng một mạng luồng cho cả đường; mọi trường hợp
- * khác dùng quay lui có cắt nhánh. Thứ tự duyệt cố định ở chế độ {@link SolveMode.Check}; xáo theo hạt
- * giống ở chế độ {@link SolveMode.Generate}.
+ * <p>Quy tắc đếm của B9: một đơn vị đếm tính một lần vào tổng và đóng góp cùng lúc vào mọi chỉ
+ * tiêu của nhóm và của môn; chùm lấy nguyên, câu con trừ vào từng chỉ tiêu theo phân loại của nó;
+ * một câu, một phiên bản, một câu con chỉ dùng một lần trên cả đường.
  *
- * <p>Thuần Java: không Spring, không DB. Hạn thời gian tính cho cả lời gọi (đọc ứng viên, liệt kê đường,
- * giải) và được kiểm qua {@link Clock} truyền vào để test được.
+ * <p>Thuật toán (giai đoạn 2): mạng luồng chính xác hai lớp (phía nhóm → câu sức chứa 1 → phía
+ * môn) cho trường hợp spec 5.4 cho phép; quay lui có cắt nhánh trên lớp đóng góp cho phần còn lại.
+ * Thứ tự duyệt cố định ở chế độ {@link SolveMode.Check}; xáo theo hạt giống ở
+ * {@link SolveMode.Generate}.
+ *
+ * <p>Thuần Java: không Spring, không DB. Hạn thời gian tính cho cả lời gọi (đọc ứng viên, liệt kê
+ * đường, giải) và được kiểm qua {@link Clock} truyền vào để test được.
  */
 public final class PaperSolver {
 
     private final SolverLimits limits;
     private final Clock clock;
+    private final SubjectCountAllocator allocator;
+    private final QuotaApportioner apportioner;
 
+    /** Bộ giải với giới hạn mặc định của spec (200 đường, 20.000 ứng viên/nhóm, 30 giây, 8 môn). */
     public PaperSolver() {
-        this(SolverLimits.defaults(), Clock.systemUTC());
+        this(SolverLimits.defaults(), Clock.systemUTC(), new StructureOrderAllocator(),
+                new LargestRemainderApportioner());
     }
 
+    /** Bộ giải với giới hạn và đồng hồ cho trước (test dùng đồng hồ điều khiển được). */
     public PaperSolver(SolverLimits limits, Clock clock) {
-        this.limits = Objects.requireNonNull(limits);
-        this.clock = Objects.requireNonNull(clock);
+        this(limits, clock, new StructureOrderAllocator(), new LargestRemainderApportioner());
     }
 
     /**
-     * Giải một đường với ứng viên đã có sẵn, song song với {@code path.blocks()}.
+     * Bộ giải với quy tắc tạm thay thế được (spec 12): gán số câu cho môn được chọn (D25) và quy
+     * chỉ tiêu tỉ lệ ra số câu (PBI-04 7.3).
      */
-    public PathResult solve(SolvePath path, List<List<PathCandidate>> candidatesByBlock, SolveMode mode) {
-        Objects.requireNonNull(path);
-        Objects.requireNonNull(mode);
-        if (candidatesByBlock == null || candidatesByBlock.size() != path.blocks().size()) {
-            throw new IllegalArgumentException("candidatesByBlock must be parallel to path.blocks()");
-        }
-        Map<BlockQuota, List<PathCandidate>> byBlock = new HashMap<>();
-        for (int i = 0; i < path.blocks().size(); i++) {
-            byBlock.put(path.blocks().get(i), candidatesByBlock.get(i));
-        }
-        return solve(path, byBlock::get, mode);
+    public PaperSolver(SolverLimits limits, Clock clock, SubjectCountAllocator allocator,
+            QuotaApportioner apportioner) {
+        this.limits = Objects.requireNonNull(limits, "limits must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
+        this.allocator = Objects.requireNonNull(allocator, "allocator must not be null");
+        this.apportioner = Objects.requireNonNull(apportioner, "apportioner must not be null");
+    }
+
+    /** Giới hạn đang dùng. */
+    public SolverLimits limits() {
+        return limits;
+    }
+
+    /** Quy tắc tạm gán số câu cho môn được chọn (D25). */
+    public SubjectCountAllocator allocator() {
+        return allocator;
+    }
+
+    /** Quy tắc tạm quy chỉ tiêu tỉ lệ ra số câu (PBI-04 7.3). */
+    public QuotaApportioner apportioner() {
+        return apportioner;
     }
 
     /**
-     * Giải một đường, lấy ứng viên từng khối qua {@code candidatesFor} (được gọi một lần mỗi khối).
-     */
-    public PathResult solve(SolvePath path, Function<BlockQuota, List<PathCandidate>> candidatesFor,
-            SolveMode mode) {
-        Objects.requireNonNull(path);
-        Objects.requireNonNull(mode);
-        Instant deadline = clock.instant().plus(limits.timeout());
-        Runnable check = () -> {
-            if (!clock.instant().isBefore(deadline)) {
-                throw new DeadlineHit();
-            }
-        };
-        return solvePath(path, memoized(candidatesFor), mode, check);
-    }
-
-    /**
-     * Giải mọi đường lựa chọn của cấu trúc (liệt kê kiểu lặp, tối đa {@code limits.maxPaths}).
-     */
-    public SolveOutcome solveAll(List<SolvePart> parts,
-            Function<BlockQuota, List<PathCandidate>> candidatesFor, SolveMode mode) {
-        Objects.requireNonNull(parts);
-        Objects.requireNonNull(mode);
-        Instant deadline = clock.instant().plus(limits.timeout());
-        Runnable check = () -> {
-            if (!clock.instant().isBefore(deadline)) {
-                throw new DeadlineHit();
-            }
-        };
-        Function<BlockQuota, List<PathCandidate>> fetch = memoized(candidatesFor);
-        PathEnumerator enumerator = new PathEnumerator(parts, check);
-        long total = enumerator.total();
-        if (total == 0) {
-            return new SolveOutcome(SolveStatus.INVALID, null, List.of());
-        }
-        if (total > limits.maxPaths()) {
-            return new SolveOutcome(SolveStatus.UNCONFIRMED, SolveReason.PATH_LIMIT_EXCEEDED, List.of());
-        }
-        List<PathResult> results = new ArrayList<>((int) Math.min(total, 4096));
-        for (long i = 0; i < total; i++) {
-            results.add(solvePath(enumerator.pathAt(i), fetch, mode, check));
-        }
-        return new SolveOutcome(aggregate(results), null, results);
-    }
-
-    /**
-     * Giải mọi đường lựa chọn với ứng viên lấy theo {@code blockId}.
-     */
-    public SolveOutcome solveAll(List<SolvePart> parts, Map<String, List<PathCandidate>> candidatesByBlock,
-            SolveMode mode) {
-        Objects.requireNonNull(candidatesByBlock);
-        return solveAll(parts,
-                b -> Objects.requireNonNullElse(candidatesByBlock.get(b.blockId()), List.of()), mode);
-    }
-
-    // ---- nội bộ ----
-
-    private PathResult solvePath(SolvePath path, Function<BlockQuota, List<PathCandidate>> fetch,
-            SolveMode mode, Runnable checkDeadline) {
-        try {
-            checkDeadline.run();
-            validateDistinctBlocks(path);
-            Random rng = (mode instanceof SolveMode.Generate g) ? new Random(g.seed()) : null;
-            List<BlockContext> contexts = new ArrayList<>(path.blocks().size());
-            for (BlockQuota block : path.blocks()) {
-                List<PathCandidate> raw = fetch.apply(block);
-                if (raw == null) {
-                    raw = List.of();
-                }
-                if (raw.size() > limits.maxCandidatesPerBlock()) {
-                    return PathResult.unconfirmed(path, SolveReason.CANDIDATE_LIMIT_EXCEEDED,
-                            block.blockId());
-                }
-                List<PathCandidate> ordered = (rng != null)
-                        ? shuffled(raw, rng)
-                        : raw;
-                BlockContext ctx = Prep.prepare(block, ordered, checkDeadline);
-                String insufficient = insufficientReason(ctx, checkDeadline);
-                if (insufficient != null) {
-                    return PathResult.invalid(path, SolveReason.INSUFFICIENT_SOURCE, block.blockId());
-                }
-                contexts.add(ctx);
-                checkDeadline.run();
-            }
-            checkDeadline.run();
-            if (Prep.isSimpleFlowCase(contexts)) {
-                List<List<Integer>> picked = new MaxFlow(checkDeadline).solve(contexts);
-                if (picked == null) {
-                    return PathResult.invalid(path, SolveReason.NO_JOINT_SOLUTION, null);
-                }
-                return PathResult.valid(path, witness(path, contexts, picked));
-            }
-            List<BlockContext> searchOrder = mostConstrainedFirst(contexts);
-            PathSearch search = new PathSearch(searchOrder, checkDeadline);
-            if (!search.solve()) {
-                return PathResult.invalid(path, SolveReason.NO_JOINT_SOLUTION, null);
-            }
-            return PathResult.valid(path, witnessFromSearch(path, contexts, searchOrder, search.witness()));
-        } catch (DeadlineHit e) {
-            return PathResult.unconfirmed(path, SolveReason.DEADLINE_EXCEEDED, null);
-        }
-    }
-
-    /**
-     * Kiểm tra nguồn thiếu rõ ràng của một khối trước khi giải (spec 5.4): tổng chỉ tiêu ma trận không
-     * khớp số đơn vị của khối, tổng nguồn nhỏ hơn chỉ tiêu, hoặc nguồn của một chỉ tiêu nhỏ hơn quota.
-     * {@code deadlineCheck} được kiểm định kỳ trong các vòng quét ứng viên.
+     * Giải mọi đường lựa chọn của cấu trúc (liệt kê kiểu lặp; mỗi cách chọn môn của một
+     * {@link SubjectChoice} tính một đường; tối đa {@code limits.maxPaths}).
      *
-     * @return mô tả thiếu, hoặc null khi nguồn đủ để thử giải
+     * @param parts   các phần của cấu trúc (FIXED + CHOICE), theo thứ tự cấu trúc
+     * @param source  nguồn ứng viên theo nhóm (gọi một lần mỗi giá trị {@link GroupQuota})
+     * @param mode    CHECK (thứ tự cố định) hoặc GENERATE (xáo theo hạt giống)
+     * @return kết quả tổng hợp và kết quả từng đường
      */
-    private String insufficientReason(BlockContext ctx, Runnable deadlineCheck) {
-        BlockQuota block = ctx.quota();
-        long positiveQuota = 0;
-        for (Requirement r : ctx.reqs()) {
-            positiveQuota += r.quota();
-        }
-        if (block.questionCount() > 0 && positiveQuota == 0) {
-            return "questionCount " + block.questionCount() + " with no positive quota";
-        }
-        if (ctx.primaryCount() > 0) {
-            long primarySum = 0;
-            for (int r = 0; r < ctx.primaryCount(); r++) {
-                primarySum += ctx.reqs().get(r).quota();
-            }
-            if (primarySum != (long) block.questionCount() * ctx.primaryDim()) {
-                return "quota-sum " + primarySum + " != questionCount " + block.questionCount()
-                        + " x dim " + ctx.primaryDim();
-            }
-        }
-        long supplyUnits = 0;
-        boolean[] usable = ctx.usable();
-        int[] provided = ctx.unitsProvided();
-        int n = ctx.cands().size();
-        for (int i = 0; i < n; i++) {
-            if (usable[i]) {
-                supplyUnits += provided[i];
-            }
-        }
-        if (supplyUnits < block.questionCount()) {
-            return "supply " + supplyUnits + " < questionCount " + block.questionCount();
-        }
-        int[][] contrib = ctx.contrib();
-        for (int r = 0; r < ctx.reqs().size(); r++) {
-            deadlineCheck.run();
-            int supply = 0;
-            for (int i = 0; i < n; i++) {
-                if (usable[i]) {
-                    supply += contrib[i][r];
-                }
-            }
-            if (supply < ctx.reqs().get(r).quota()) {
-                return "supply " + supply + " < quota " + ctx.reqs().get(r).quota()
-                        + " at req " + ctx.reqs().get(r).key();
-            }
-        }
-        return null;
-    }
-
-    /** Thứ tự giải: khối chặt nhất trước (ít đơn vị ứng viên so với nhu cầu). */
-    private List<BlockContext> mostConstrainedFirst(List<BlockContext> contexts) {
-        record Tightness(BlockContext ctx, double ratio, int usable) {
-        }
-        List<Tightness> scored = new ArrayList<>(contexts.size());
-        for (BlockContext ctx : contexts) {
-            long units = 0;
-            int usable = 0;
-            for (int i = 0; i < ctx.cands().size(); i++) {
-                if (ctx.usable()[i]) {
-                    units += ctx.unitsProvided()[i];
-                    usable++;
-                }
-            }
-            double ratio = units / (double) Math.max(ctx.quota().questionCount(), 1);
-            scored.add(new Tightness(ctx, ratio, usable));
-        }
-        scored.sort(Comparator.comparingDouble(Tightness::ratio).thenComparingInt(Tightness::usable));
-        List<BlockContext> out = new ArrayList<>(contexts.size());
-        for (Tightness t : scored) {
-            out.add(t.ctx());
-        }
-        return out;
-    }
-
-    private List<BlockWitness> witness(SolvePath path, List<BlockContext> contexts,
-            List<List<Integer>> pickedByBlock) {
-        List<BlockWitness> out = new ArrayList<>(contexts.size());
-        for (int b = 0; b < contexts.size(); b++) {
-            BlockContext ctx = contexts.get(b);
-            List<QuestionPick> picks = new ArrayList<>();
-            for (int i : pickedByBlock.get(b)) {
-                PathCandidate c = ctx.cands().get(i);
-                picks.add(new QuestionPick(c.questionId(), c.versionNo()));
-            }
-            out.add(new BlockWitness(ctx.quota().blockId(), picks));
-        }
-        return out;
-    }
-
-    /** Ánh xạ kết quả tìm kiếm (theo thứ tự giải) về thứ tự khối của đường. */
-    private List<BlockWitness> witnessFromSearch(SolvePath path, List<BlockContext> pathOrder,
-            List<BlockContext> searchOrder, List<List<Integer>> pickedBySearchBlock) {
-        List<BlockWitness> out = new ArrayList<>(pathOrder.size());
-        List<BlockWitness> bySearch = new ArrayList<>(searchOrder.size());
-        for (int b = 0; b < searchOrder.size(); b++) {
-            BlockContext ctx = searchOrder.get(b);
-            List<QuestionPick> picks = new ArrayList<>();
-            for (int i : pickedBySearchBlock.get(b)) {
-                PathCandidate c = ctx.cands().get(i);
-                picks.add(new QuestionPick(c.questionId(), c.versionNo()));
-            }
-            bySearch.add(new BlockWitness(ctx.quota().blockId(), picks));
-        }
-        Map<String, BlockWitness> byId = new HashMap<>();
-        for (BlockWitness w : bySearch) {
-            byId.put(w.blockId(), w);
-        }
-        for (BlockQuota q : path.blocks()) {
-            out.add(byId.get(q.blockId()));
-        }
-        return out;
+    public SolveOutcome solveAll(List<SolvePart> parts, CandidateSource source, SolveMode mode) {
+        Objects.requireNonNull(parts, "parts must not be null");
+        Objects.requireNonNull(source, "source must not be null");
+        Objects.requireNonNull(mode, "mode must not be null");
+        throw new UnsupportedOperationException("stage 2");
     }
 
     /**
-     * Nhớ kết quả {@code candidatesFor} theo toàn bộ {@link BlockQuota} (record — so theo giá trị),
-     * không theo chỉ {@code blockId}: hai đường khác nhau có thể có hai khối cùng id nhưng chỉ tiêu
-     * khác nhau, mỗi khối cần nguồn của riêng nó.
+     * Giải một đường đã dựng sẵn (ví dụ một đường được lấy từ phép liệt kê của solveAll, hoặc dựng
+     * tay cho test).
+     *
+     * @param path   đường cần giải (các môn có số câu đã quyết + các cách chọn môn)
+     * @param source nguồn ứng viên theo nhóm
+     * @param mode   CHECK hoặc GENERATE
+     * @return kết quả của đường
      */
-    private static Function<BlockQuota, List<PathCandidate>> memoized(
-            Function<BlockQuota, List<PathCandidate>> fetch) {
-        Map<BlockQuota, List<PathCandidate>> cache = new HashMap<>();
-        return b -> cache.computeIfAbsent(b, fetch);
+    public PathResult solvePath(SolvePath path, CandidateSource source, SolveMode mode) {
+        Objects.requireNonNull(path, "path must not be null");
+        Objects.requireNonNull(source, "source must not be null");
+        Objects.requireNonNull(mode, "mode must not be null");
+        throw new UnsupportedOperationException("stage 2");
     }
 
-    private static List<PathCandidate> shuffled(List<PathCandidate> raw, Random rng) {
-        List<PathCandidate> copy = new ArrayList<>(raw);
-        Collections.shuffle(copy, rng);
-        return copy;
-    }
-
-    private static void validateDistinctBlocks(SolvePath path) {
-        Set<String> seen = new HashSet<>();
-        for (BlockQuota b : path.blocks()) {
-            if (!seen.add(b.blockId())) {
-                throw new IllegalArgumentException("duplicate blockId on path: " + b.blockId());
-            }
-        }
-    }
-
-    private static SolveStatus aggregate(List<PathResult> results) {
-        SolveStatus worst = SolveStatus.VALID;
-        for (PathResult r : results) {
-            switch (r.status()) {
-                case INVALID -> {
-                    return SolveStatus.INVALID;
-                }
-                case UNCONFIRMED -> worst = SolveStatus.UNCONFIRMED;
-                case VALID -> {
-                }
-            }
-        }
-        return worst;
+    /**
+     * Chế độ xem trước (preview): giải đúng một cách chọn môn của một {@link SubjectChoice} —
+     * các môn trong {@code subjectCodes} (phải là tập con đúng {@code choice.choose} môn, số câu
+     * gán theo {@link SubjectCountAllocator} theo thứ tự cấu trúc) — với hạt giống
+     * {@code seed}: cùng hạt giống và cùng đầu vào cho cùng một đề (spec 5.4, D25).
+     *
+     * @param choice       phương án SUBJECT_CHOICE đang xem trước
+     * @param subjectCodes mã các môn học viên chọn (thứ tự bấm chọn không ảnh hưởng)
+     * @param seed         hạt giống xáo trộn của chế độ GENERATE
+     * @param source       nguồn ứng viên theo nhóm
+     * @return kết quả của đường con tương ứng cách chọn này
+     */
+    public PathResult solvePick(SubjectChoice choice, List<String> subjectCodes, long seed,
+            CandidateSource source) {
+        Objects.requireNonNull(choice, "choice must not be null");
+        Objects.requireNonNull(subjectCodes, "subjectCodes must not be null");
+        Objects.requireNonNull(source, "source must not be null");
+        throw new UnsupportedOperationException("stage 2");
     }
 }
