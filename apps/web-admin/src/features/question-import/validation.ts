@@ -23,8 +23,16 @@ import {
   type ImportSummary,
   OPTION_FIELDS,
   OPTION_LETTERS,
-  type OptionLetter,
 } from "./types";
+import {
+  clozeMarkers,
+  type LabeledItem,
+  parseClozeAnswers,
+  parseDecimal,
+  parseKeyedLines,
+  parseLabeledLines,
+  parseTrueFalseScoring,
+} from "./row-parsers";
 
 /**
  * Kiểm tra từng dòng của tệp nhập câu hỏi (bước 3, bản vẽ `NhapCauHoiKiemTra`). Hàm thuần: cùng đầu vào cho cùng kết
@@ -57,13 +65,32 @@ export interface ValidateImportRowsInput {
   dictionary: ImportDictionary;
 }
 
-const WARNING_CODES: ReadonlySet<ImportIssueCode> = new Set(["KNOWLEDGE_MISSING", "TAG_UNKNOWN", "GRADING_GUIDE_MISSING"]);
+const WARNING_CODES: ReadonlySet<ImportIssueCode> = new Set([
+  "KNOWLEDGE_MISSING",
+  "TAG_UNKNOWN",
+  "GRADING_GUIDE_MISSING",
+  "ANSWER_MISSING",
+]);
+
+/** Giới hạn khi lưu (spec 4.3): phương án tối đa, mệnh đề Đúng/Sai tối đa, ô trống Điền khuyết tối đa, đáp án Trả lời ngắn. */
+const MAX_CHOICE_OPTIONS = 10;
+const MAX_TRUE_FALSE_STATEMENTS = 8;
+const MAX_CLOZE_BLANKS = 30;
+const MAX_SHORT_ANSWERS = 20;
 
 /** Trường câu con lấy theo dòng ngữ liệu khi để trống. */
 const INHERITED_FIELDS = ["subject", "grade", "difficulty", "knowledge"] as const satisfies readonly ImportField[];
 
 /** Trường có thể chứa công thức LaTeX. */
-const FORMULA_FIELDS = ["content", ...OPTION_FIELDS, "solution"] as const satisfies readonly ImportField[];
+const FORMULA_FIELDS = [
+  "content",
+  ...OPTION_FIELDS,
+  "options",
+  "matchRight",
+  "solution",
+  "gradingGuide",
+  "commonMistakes",
+] as const satisfies readonly ImportField[];
 
 type RawRow = Record<ImportField, string>;
 
@@ -132,19 +159,42 @@ export function bracesBalanced(text: string): boolean {
   return depth === 0;
 }
 
-/** "A", "a, c", "B;D" thành danh sách chữ cái; ký hiệu lạ hoặc lặp thì trả `null`. */
-function parseLetters(value: string): OptionLetter[] | null {
+/** "A", "a, c", "B;D" thành danh sách chữ cái A tới J; ký hiệu lạ hoặc lặp thì trả `null`. */
+function parseLetters(value: string): string[] | null {
   const parts = value
     .split(/[\s,;]+/)
     .map((part) => part.trim().toUpperCase())
     .filter(Boolean);
   if (parts.length === 0) return null;
-  const letters: OptionLetter[] = [];
+  const letters: string[] = [];
   for (const part of parts) {
-    if (!(OPTION_LETTERS as readonly string[]).includes(part) || letters.includes(part as OptionLetter)) return null;
-    letters.push(part as OptionLetter);
+    if (!/^[A-J]$/.test(part) || letters.includes(part)) return null;
+    letters.push(part);
   }
   return letters;
+}
+
+function closeTo(left: number, right: number): boolean {
+  return Math.abs(left - right) < 1e-6;
+}
+
+/**
+ * Cách chấm Đúng/Sai hợp lệ: đủ số ý; `PER_STATEMENT` cộng đúng điểm của câu (khi tệp ghi điểm); `COUNT_TABLE` không
+ * giảm và phần tử cuối bằng điểm của câu (khi tệp ghi điểm).
+ */
+function trueFalseScoringValid(
+  scoring: NonNullable<ImportQuestionDraft["trueFalseScoring"]>,
+  statementCount: number,
+  points: number | null,
+): boolean {
+  if (scoring.points.length !== statementCount) return false;
+  if (scoring.method === "PER_STATEMENT") {
+    const total = scoring.points.reduce((sum, value) => sum + value, 0);
+    return total > 0 && (points === null || closeTo(total, points));
+  }
+  const nonDecreasing = scoring.points.every((value, index) => index === 0 || value >= scoring.points[index - 1]!);
+  const last = scoring.points.at(-1) ?? 0;
+  return nonDecreasing && last > 0 && (points === null || closeTo(last, points));
 }
 
 const CRITERION_RE = /^(.+?)\s*(?:[:=]\s*(\d+(?:[.,]\d+)?)|\(\s*(\d+(?:[.,]\d+)?)\s*\))\s*$/u;
@@ -183,6 +233,12 @@ function emptyDraft(): ImportQuestionDraft {
     options: [],
     statements: [],
     acceptedAnswers: [],
+    scoringRule: null,
+    trueFalseScoring: null,
+    blanks: [],
+    matching: null,
+    commonMistakes: null,
+    taskTypeCode: null,
     points: null,
     inputHint: null,
     gradingGuide: null,
@@ -265,6 +321,7 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
         severity: WARNING_CODES.has(code) ? "warning" : "error",
         field,
         column: headerOf(field),
+        ...(type ? { questionType: type } : {}),
         ...extra,
       });
     };
@@ -277,7 +334,6 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
 
     if (!raw.type) add("REQUIRED", "type");
     else if (!type) add("TYPE_UNKNOWN", "type", { value: raw.type });
-    else if (type === "MATCHING" || type === "CLOZE") add("TYPE_NOT_IMPORTABLE", "type", { value: raw.type });
 
     if (!raw.content) add("REQUIRED", "content");
 
@@ -316,13 +372,31 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
       else if (!draft.tagCodes.includes(found.code)) draft.tagCodes.push(found.code);
     }
 
-    const filledOptions = OPTION_FIELDS.map((field, position) => ({
-      letter: OPTION_LETTERS[position]!,
-      content: raw[field],
-    })).filter((option) => option.content);
+    let points: number | null = null;
+    if (raw.points) {
+      const parsed = parseDecimal(raw.points);
+      if (parsed === null || !(parsed > 0)) add("POINTS_INVALID", "points", { value: raw.points });
+      else points = parsed;
+    }
+    draft.points = points;
+
+    const taskType = raw.taskType ? findCatalogOption(reference.taskTypes, raw.taskType) : undefined;
+    if (raw.taskType && !taskType) add("TASK_TYPE_UNKNOWN", "taskType", { value: raw.taskType });
+    draft.taskTypeCode = taskType?.code ?? null;
+    draft.commonMistakes = raw.commonMistakes || null;
+
+    // Cột Lựa chọn (mỗi dòng `A. nội dung`) thay cho bốn cột phương án A, B, C, D của tệp cũ.
+    const optionField: ImportField = raw.options ? "options" : "optionA";
+    const listedOptions: LabeledItem[] = raw.options
+      ? parseLabeledLines(raw.options, "letter")
+      : OPTION_FIELDS.map((field, position) => ({ label: OPTION_LETTERS[position]!, content: raw[field] })).filter(
+          (option) => option.content,
+        );
+    const filledOptions = listedOptions.map(({ label, content }) => ({ letter: label, content }));
 
     if (type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE") {
-      if (filledOptions.length < 2) add("OPTIONS_TOO_FEW", "optionA", { min: 2, questionType: type });
+      if (filledOptions.length < 2) add("OPTIONS_TOO_FEW", optionField, { min: 2, questionType: type });
+      if (filledOptions.length > MAX_CHOICE_OPTIONS) add("OPTIONS_TOO_MANY", optionField, { max: MAX_CHOICE_OPTIONS });
       const letters = raw.correctAnswer ? parseLetters(raw.correctAnswer) : null;
       if (!raw.correctAnswer) {
         add("REQUIRED", "correctAnswer");
@@ -338,8 +412,16 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
         ...option,
         correct: letters?.includes(option.letter) ?? false,
       }));
+      if (type === "MULTIPLE_CHOICE" && raw.scoring) {
+        const rule = raw.scoring.trim().toUpperCase();
+        if (rule === "ALL_OR_NOTHING" || rule === "PARTIAL") draft.scoringRule = rule;
+        else add("SCORING_INVALID", "scoring", { value: raw.scoring });
+      }
     } else if (type === "TRUE_FALSE") {
-      if (filledOptions.length < 1) add("OPTIONS_TOO_FEW", "optionA", { min: 1, questionType: type });
+      if (filledOptions.length < 1) add("OPTIONS_TOO_FEW", optionField, { min: 1, questionType: type });
+      if (filledOptions.length > MAX_TRUE_FALSE_STATEMENTS) {
+        add("OPTIONS_TOO_MANY", optionField, { max: MAX_TRUE_FALSE_STATEMENTS });
+      }
       const tokens = raw.correctAnswer.split(/[\s,;]+/).filter(Boolean);
       const answers = tokens.map((token) =>
         dictionary.trueTokens.some((candidate) => sameText(candidate, token))
@@ -356,6 +438,12 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
         ...option,
         answer: answers[position] ?? null,
       }));
+      if (raw.scoring) {
+        const scoring = parseTrueFalseScoring(raw.scoring);
+        if (scoring === null || !trueFalseScoringValid(scoring, filledOptions.length, points)) {
+          add("SCORING_INVALID", "scoring", { value: raw.scoring });
+        } else draft.trueFalseScoring = scoring;
+      }
     } else if (type === "SHORT_ANSWER") {
       if (!raw.correctAnswer) add("REQUIRED", "correctAnswer");
       // Mỗi dòng một đáp án (dòng đầu là đáp án chuẩn); tệp cũ ngăn cách bằng dấu | vẫn đọc được (D12).
@@ -363,7 +451,86 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
         .split(/[\n|]/)
         .map((answer) => answer.trim())
         .filter(Boolean);
+      if (draft.acceptedAnswers.length > MAX_SHORT_ANSWERS) {
+        add("ANSWER_INVALID", "correctAnswer", { value: raw.correctAnswer, questionType: type });
+      }
       draft.inputHint = raw.inputHint || null;
+    } else if (type === "CLOZE") {
+      const markers = clozeMarkers(raw.content);
+      const ids = Array.from(new Set(markers));
+      if (ids.length !== markers.length || ids.length > MAX_CLOZE_BLANKS) {
+        add("CLOZE_MARKER_INVALID", "content", { max: MAX_CLOZE_BLANKS });
+      }
+      const answerLines = raw.correctAnswer ? parseClozeAnswers(raw.correctAnswer) : { blanks: [], invalid: null };
+      if (answerLines.invalid !== null) {
+        add("ANSWER_INVALID", "correctAnswer", { value: answerLines.invalid, questionType: type });
+      }
+      const answerKeys = new Set<string>();
+      for (const blank of answerLines.blanks) {
+        if (answerKeys.has(blank.id)) add("ENTRY_DUPLICATE", "correctAnswer", { value: blank.id });
+        answerKeys.add(blank.id);
+        if (!ids.includes(blank.id)) add("ANSWER_INVALID", "correctAnswer", { value: blank.id, questionType: type });
+      }
+      const pointLines = raw.scoring ? parseKeyedLines(raw.scoring) : { entries: [], invalid: null };
+      if (pointLines.invalid !== null) add("SCORING_INVALID", "scoring", { value: pointLines.invalid });
+      const blankPoints = new Map<string, number>();
+      const pointKeys = new Set<string>();
+      for (const entry of pointLines.entries) {
+        if (pointKeys.has(entry.key)) add("ENTRY_DUPLICATE", "scoring", { value: entry.key });
+        pointKeys.add(entry.key);
+        const value = parseDecimal(entry.value);
+        if (!ids.includes(entry.key) || value === null || !(value > 0)) {
+          add("SCORING_INVALID", "scoring", { value: `${entry.key} = ${entry.value}` });
+        } else if (!blankPoints.has(entry.key)) blankPoints.set(entry.key, value);
+      }
+      draft.blanks = ids.map((id) => ({
+        id,
+        answers: answerLines.blanks.find((blank) => blank.id === id)?.answers ?? [],
+        points: blankPoints.get(id) ?? null,
+      }));
+      if (draft.blanks.length === 0 || draft.blanks.some((blank) => blank.answers.length === 0)) {
+        add("ANSWER_MISSING", "correctAnswer", { questionType: type });
+      }
+    } else if (type === "MATCHING") {
+      const left = parseLabeledLines(raw.options, "number");
+      const right = parseLabeledLines(raw.matchRight, "letter");
+      if (left.length === 0) add("OPTIONS_TOO_FEW", "options", { min: 1, questionType: type });
+      if (right.length === 0) add("OPTIONS_TOO_FEW", "matchRight", { min: 1, questionType: type });
+      const repeatedLeftLabel = left.find((item, position) => left.findIndex((other) => other.label === item.label) !== position);
+      if (repeatedLeftLabel) add("ENTRY_DUPLICATE", "options", { value: repeatedLeftLabel.label });
+      const repeatedRightLabel = right.find(
+        (item, position) => right.findIndex((other) => other.label === item.label) !== position,
+      );
+      if (repeatedRightLabel) add("ENTRY_DUPLICATE", "matchRight", { value: repeatedRightLabel.label });
+      let reuseRight = false;
+      if (raw.scoring) {
+        const mode = raw.scoring.trim().toUpperCase();
+        if (mode === "REUSE" || mode === "ONCE") reuseRight = mode === "REUSE";
+        else add("SCORING_INVALID", "scoring", { value: raw.scoring });
+      }
+      const pairLines = raw.correctAnswer ? parseKeyedLines(raw.correctAnswer) : { entries: [], invalid: null };
+      if (pairLines.invalid !== null) add("ANSWER_INVALID", "correctAnswer", { value: pairLines.invalid, questionType: type });
+      const leftKeys = new Set(left.map((item) => item.label));
+      const rightKeys = new Set(right.map((item) => item.label));
+      const pairs: Array<{ leftKey: string; rightKey: string }> = [];
+      for (const entry of pairLines.entries) {
+        const leftKey = entry.key.toUpperCase();
+        const rightKey = entry.value.toUpperCase();
+        const repeatedLeft = pairs.some((pair) => pair.leftKey === leftKey);
+        const repeatedRight = !reuseRight && pairs.some((pair) => pair.rightKey === rightKey);
+        if (!leftKeys.has(leftKey) || !rightKeys.has(rightKey) || repeatedLeft || repeatedRight) {
+          add("ANSWER_INVALID", "correctAnswer", { value: `${entry.key} = ${entry.value}`, questionType: type });
+        } else pairs.push({ leftKey, rightKey });
+      }
+      if (left.some((item) => !pairs.some((pair) => pair.leftKey === item.label))) {
+        add("ANSWER_MISSING", "correctAnswer", { questionType: type });
+      }
+      draft.matching = {
+        left: left.map((item) => ({ key: item.label, content: item.content })),
+        right: right.map((item) => ({ key: item.label, content: item.content })),
+        pairs,
+        reuseRight,
+      };
     } else if (type === "ESSAY") {
       draft.sampleAnswer = raw.correctAnswer || null;
       draft.gradingGuide = raw.gradingGuide || null;
@@ -375,17 +542,13 @@ export function validateImportRows(input: ValidateImportRowsInput): ImportRowRes
       }
     }
 
-    if (raw.points) {
-      const points = Number(raw.points.replace(",", "."));
-      if (!(points > 0)) add("POINTS_INVALID", "points", { value: raw.points });
-      else draft.points = points;
-    }
-
     for (const field of FORMULA_FIELDS) {
       if (raw[field] && !bracesBalanced(raw[field])) add("FORMULA_INVALID", field);
     }
 
     const parent = parentIndexOf(index);
+    // Điền khuyết không làm câu con của Bộ câu hỏi (D19).
+    if (parent !== undefined && type === "CLOZE") add("SET_CHILD_TYPE_INVALID", "type", { value: raw.type });
     if (isSetPassage && !raw.setCode) add("REQUIRED", "setCode");
     if (!isSetPassage && raw.setCode && parent === undefined) {
       add("SET_PASSAGE_MISSING", "setCode", { value: raw.setCode });

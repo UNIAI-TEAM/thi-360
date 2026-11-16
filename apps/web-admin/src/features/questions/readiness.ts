@@ -70,6 +70,10 @@ export type ReadinessIssueCode =
   | "NO_BLANKS"
   | "NO_PAIRS"
   | "SCORE_TABLE_INVALID"
+  | "STATEMENT_POINTS_MISMATCH"
+  | "BLANK_MARKER_MISMATCH"
+  | "PAIR_INVALID"
+  | "PAIR_POINTS_MISMATCH"
   | "NO_GRADING_GUIDE"
   | "RUBRIC_TOTAL_MISMATCH"
   // CLASSIFICATION
@@ -208,9 +212,15 @@ function answerIssues(question: QuestionPart, child?: number): ReadinessIssue[] 
     }
     case "MULTIPLE_CHOICE":
       return body.options.some((option) => option.correct) ? [] : [at("NO_CORRECT_OPTION")];
-    case "TRUE_FALSE":
+    case "TRUE_FALSE": {
       if (body.statements.length === 0) return [at("NO_STATEMENTS")];
+      if (body.scoringMethod === "PER_STATEMENT") {
+        const total = body.statements.reduce((sum, statement) => sum + (statement.points ?? 0), 0);
+        const valid = body.statements.every((statement) => (statement.points ?? 0) >= 0) && sameScore(total, question.points);
+        return valid ? [] : [at("STATEMENT_POINTS_MISMATCH")];
+      }
       return isValidScoreTable(body.scoreTable, body.statements.length, question.points) ? [] : [at("SCORE_TABLE_INVALID")];
+    }
     case "ESSAY": {
       if (blank(body.gradingGuide)) return [at("NO_GRADING_GUIDE")];
       if (body.rubric.length === 0) return [];
@@ -219,10 +229,35 @@ function answerIssues(question: QuestionPart, child?: number): ReadinessIssue[] 
     }
     case "SHORT_ANSWER":
       return body.answers.some((answer) => !blank(answer)) ? [] : [at("NO_ANSWERS")];
-    case "CLOZE":
-      return body.blanks.length === 0 ? [at("NO_BLANKS")] : [];
-    case "MATCHING":
-      return body.pairs.length === 0 ? [at("NO_PAIRS")] : [];
+    case "CLOZE": {
+      if (body.blanks.length === 0) return [at("NO_BLANKS")];
+      // Mỗi dấu `[[id]]` trong ngữ liệu có đúng một ô và ngược lại (spec 4.3).
+      const markers = Array.from(body.passage.matchAll(/\[\[([^\]]+)\]\]/g), (match) => match[1]!.trim());
+      const ids = body.blanks.map((item) => item.id);
+      const matched =
+        markers.length === ids.length &&
+        new Set(markers).size === markers.length &&
+        markers.every((marker) => ids.includes(marker));
+      return matched ? [] : [at("BLANK_MARKER_MISMATCH")];
+    }
+    case "MATCHING": {
+      if (body.pairs.length === 0) return [at("NO_PAIRS")];
+      // Cặp trỏ tới mục có thật, mỗi mục trái một cặp, lựa chọn phải dùng một lần khi `reuseRight = false`.
+      const leftIds = new Set(body.left.map((item) => item.id));
+      const rightIds = new Set(body.right.map((item) => item.id));
+      const pairedLeft = new Set<string>();
+      const pairedRight = new Set<string>();
+      let invalid = false;
+      for (const pair of body.pairs) {
+        if (!leftIds.has(pair.leftId) || !rightIds.has(pair.rightId) || pairedLeft.has(pair.leftId)) invalid = true;
+        if (!body.reuseRight && pairedRight.has(pair.rightId)) invalid = true;
+        pairedLeft.add(pair.leftId);
+        pairedRight.add(pair.rightId);
+      }
+      const issues = invalid ? [at("PAIR_INVALID")] : [];
+      const total = body.pairs.reduce((sum, pair) => sum + pair.points, 0);
+      return sameScore(total, question.points) ? issues : [...issues, at("PAIR_POINTS_MISMATCH")];
+    }
     case "QUESTION_SET":
       return question.children.flatMap((item, index) => answerIssues(item, index + 1));
     default:

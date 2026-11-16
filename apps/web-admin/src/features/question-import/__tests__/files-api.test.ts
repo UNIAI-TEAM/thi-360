@@ -93,22 +93,54 @@ describe("API nhập câu hỏi (dữ liệu mẫu)", () => {
     expect(template.filename).toBe("mau-nhap-cau-hoi.csv");
     const text = await readFileText(template.blob);
     const upload = await uploadQuestionFile(file(template.filename, text.replace(BOM, "")));
-    expect(upload).toMatchObject({ fileType: "CSV", sheetName: null, rowCount: 8 });
+    expect(upload).toMatchObject({ fileType: "CSV", sheetName: null, rowCount: 10 });
     const validation = await validateImport({ uploadId: upload.id, mapping: upload.suggestedMapping });
-    expect(validation.summary).toMatchObject({ total: 8, valid: 8, error: 0, duplicate: 0, validSets: 1, validSetChildren: 2 });
+    expect(validation.summary).toMatchObject({ total: 10, valid: 10, error: 0, duplicate: 0, validSets: 1, validSetChildren: 2 });
     const result = await commitImport({
       uploadId: upload.id,
       mapping: upload.suggestedMapping,
       duplicatePolicy: "SKIP",
       skipErrors: false,
     });
-    expect(result.createdCount).toBe(6);
-    // Câu Tự luận có tiêu chí chấm: điểm của câu bằng tổng điểm tiêu chí.
-    const essay = questionStore.all().find((question) => question.sourceCode === "MAU-0008");
+    expect(result.createdCount).toBe(8);
+    const byCode = (code: string) => questionStore.all().find((question) => question.sourceCode === code)!;
+
+    // Câu Tự luận: điểm theo cột Điểm, khớp tổng điểm tiêu chí chấm.
+    const essay = byCode("MAU-0007");
     expect(essay).toMatchObject({ type: "ESSAY", points: 2 });
-    expect(essay?.body).toMatchObject({ type: "ESSAY" });
-    expect(essay?.points).toBe(2);
-    if (essay?.body.type === "ESSAY") expect(essay.body.rubric.map((criterion) => criterion.points)).toEqual([0.25, 0.25, 1, 0.5]);
+    if (essay.body.type === "ESSAY") expect(essay.body.rubric.map((criterion) => criterion.points)).toEqual([0.25, 0.25, 1, 0.5]);
+
+    const single = byCode("MAU-0001");
+    expect(single).toMatchObject({ points: 0.75, taskTypeCode: "CALCULATION", commonMistakes: "Quên chia cho n nên chọn 3." });
+    expect(byCode("MAU-0002").body).toMatchObject({ type: "MULTIPLE_CHOICE", scoringRule: "PARTIAL" });
+
+    // Điền khuyết: điểm câu là tổng điểm các ô.
+    const cloze = byCode("MAU-0004");
+    expect(cloze.points).toBe(1.5);
+    expect(cloze.body).toMatchObject({
+      type: "CLOZE",
+      blanks: [
+        { id: "b1", answers: ["Hà Nội"], points: 1 },
+        { id: "b2", answers: ["Hồng", "sông Hồng"], points: 0.5 },
+      ],
+    });
+
+    expect(byCode("MAU-0005").body).toMatchObject({ type: "TRUE_FALSE", scoringMethod: "COUNT_TABLE", scoreTable: [0.1, 0.25, 0.5, 1] });
+
+    // Ghép đôi: điểm câu chia đều cho 3 cặp, tổng bằng điểm câu.
+    const matching = byCode("MAU-0006");
+    expect(matching.body).toMatchObject({ type: "MATCHING", reuseRight: false });
+    if (matching.body.type === "MATCHING") {
+      expect(matching.body.pairs).toHaveLength(3);
+      expect(matching.body.pairs.reduce((sum, pair) => sum + pair.points, 0)).toBeCloseTo(2, 6);
+      expect(matching.body.right).toHaveLength(4);
+    }
+
+    // Câu con Đúng/Sai của chùm chấm theo từng ý.
+    const set = byCode("MAU-0008");
+    const child = set.children.find((candidate) => candidate.type === "TRUE_FALSE");
+    expect(child?.body).toMatchObject({ scoringMethod: "PER_STATEMENT", scoreTable: [] });
+    expect(set.points).toBe(2);
   });
 
   it("nhập câu hợp lệ thành Nháp, bỏ qua câu trùng, ghi lịch sử", async () => {

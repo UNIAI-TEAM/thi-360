@@ -2,9 +2,12 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { questionStore } from "@/features/questions/mock/store";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
-import { importHistoryStore } from "../api.mock";
+import { downloadQuestionTemplate, importHistoryStore } from "../api.mock";
 import { QuestionImportView } from "../components/question-import-view";
+import templateFixture from "../mock/template.json";
+import { readFileText } from "../files";
 
 function setUrl(search = "") {
   window.history.replaceState(null, "", `/questions/import${search}`);
@@ -40,6 +43,39 @@ describe("Nhập câu hỏi từ tệp", () => {
     const history = await screen.findByRole("table", { name: "Lịch sử nhập câu hỏi" });
     expect(within(history).getByText("toan-10-chuong-1.xlsx")).toBeInTheDocument();
     expect(within(history).getByText("120 tạo mới · 3 trùng · 2 lỗi")).toBeInTheDocument();
+  });
+
+  it("bước 1: hướng dẫn nêu đủ 8 dạng câu và 20 cột của tệp mẫu (vi và en)", async () => {
+    const { unmount } = renderWithProviders(<QuestionImportView />);
+    const viTable = await screen.findByRole("table", { name: "Các cột của tệp mẫu" });
+    expect(within(viTable).getAllByRole("row")).toHaveLength(21);
+    expect(screen.getByText("20 cột, dòng đầu là tên cột")).toBeInTheDocument();
+    const rowOf = (table: HTMLElement, name: string) => within(table).getByRole("rowheader", { name }).closest("tr")!;
+    const viType = rowOf(viTable, "Dạng câu");
+    for (const name of ["Trả lời ngắn", "Điền khuyết", "Ghép đôi", "Tự luận", "Câu chùm", "Đúng / Sai"]) {
+      expect(viType).toHaveTextContent(name);
+    }
+    expect(rowOf(viTable, "Cách chấm")).toHaveTextContent("COUNT_TABLE");
+    expect(rowOf(viTable, "Lựa chọn phải")).toHaveTextContent("Ghép đôi");
+    expect(within(viTable).queryByText("A, B, C, D")).not.toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(<QuestionImportView />, { locale: "en", messages: en });
+    const enTable = await screen.findByRole("table", { name: "Template columns" });
+    expect(within(enTable).getAllByRole("row")).toHaveLength(21);
+    expect(screen.getByText("20 columns, the first row holds the column names")).toBeInTheDocument();
+    const enType = rowOf(enTable, "Question type");
+    for (const name of ["Short answer", "Cloze", "Matching", "Essay", "Question set", "True / False"]) {
+      expect(enType).toHaveTextContent(name);
+    }
+  });
+
+  it("bước 1: tên từng cột trong bảng hướng dẫn trùng đúng tên cột của tệp mẫu tải về", async () => {
+    renderWithProviders(<QuestionImportView />);
+    const viTable = await screen.findByRole("table", { name: "Các cột của tệp mẫu" });
+    for (const header of templateFixture.rows[0]!) {
+      expect(within(viTable).getByRole("rowheader", { name: header })).toBeInTheDocument();
+    }
   });
 
   it("báo lỗi ngay khi chọn tệp sai loại", async () => {
@@ -132,6 +168,42 @@ describe("Nhập câu hỏi từ tệp", () => {
 
     await user.click(screen.getByRole("button", { name: "Nhập tệp khác" }));
     expect(await screen.findByRole("heading", { name: "Chọn tệp câu hỏi" })).toHaveFocus();
+  }, 20_000);
+
+  it("tệp mẫu 8 dạng: kiểm tra hợp lệ cả 10 dòng và xem trước Điền khuyết, Ghép đôi, Đúng/Sai", async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<QuestionImportView />);
+    const template = await downloadQuestionTemplate();
+    const text = (await readFileText(template.blob)).replace("\uFEFF", "");
+
+    await screen.findByRole("heading", { name: "Chọn tệp câu hỏi" });
+    await user.upload(fileInput(container), new File([text], template.filename, { type: "text/csv" }));
+    await user.click(screen.getByRole("button", { name: "Đọc tệp" }));
+    await screen.findByRole("heading", { name: "Ánh xạ cột" });
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: kiểm tra" }));
+    await screen.findByRole("heading", { name: "Kiểm tra và xem trước" });
+    const summary = screen.getByLabelText("Tóm tắt kiểm tra");
+    expect(within(summary).getAllByText("10").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("tab", { name: "Hợp lệ (10)" }));
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 5" }));
+    const cloze = (await screen.findByRole("heading", { name: "Xem trước dòng 5" })).closest("section")!;
+    const blanks = within(cloze).getByRole("list", { name: "Các ô trống" });
+    expect(within(blanks).getByText("Hà Nội")).toBeInTheDocument();
+    expect(within(blanks).getByText("Hồng | sông Hồng")).toBeInTheDocument();
+    expect(within(blanks).getByText("0,5 điểm")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 6" }));
+    const trueFalse = (await screen.findByRole("heading", { name: "Xem trước dòng 6" })).closest("section")!;
+    expect(within(trueFalse).getByText(/Bảng theo số ý đúng: 0,1 \/ 0,25 \/ 0,5 \/ 1/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Xem trước dòng 7" }));
+    const matching = (await screen.findByRole("heading", { name: "Xem trước dòng 7" })).closest("section")!;
+    const pairs = within(matching).getByRole("list", { name: "Các cặp ghép" });
+    expect(within(pairs).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(pairs).getByText("ghép với B. eˣ + C")).toBeInTheDocument();
+    expect(within(matching).getByText(/D\. x²\/2 \+ C/)).toBeInTheDocument();
+    expect(within(matching).getByText(/Mỗi lựa chọn dùng một lần/)).toBeInTheDocument();
   }, 20_000);
 
   it("không bỏ qua dòng lỗi thì không nhập và báo trong màn", async () => {

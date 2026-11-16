@@ -114,6 +114,7 @@ export function QuestionFiltersBar({
 
   const competencyName = (code: string) =>
     reference?.competencies.find((option) => option.code === code)?.name ?? code;
+  const taskTypeName = (code: string) => reference?.taskTypes.find((option) => option.code === code)?.name ?? code;
   const authorName = (id: string) => authors.find((person) => person.id === id)?.name ?? id;
   const formatDay = (day: string) => format.dateTime(new Date(`${day}T00:00:00+07:00`), "date");
 
@@ -151,6 +152,11 @@ export function QuestionFiltersBar({
       key: "competency",
       label: chip(t("competency"), competencyName(filters.competency)),
       clear: { competency: null },
+    },
+    filters.taskType && {
+      key: "taskType",
+      label: chip(t("taskType"), taskTypeName(filters.taskType)),
+      clear: { taskType: null },
     },
     ...knowledgeRefs.map((ref) => ({
       key: `knowledge-${ref.nodeId}`,
@@ -362,6 +368,17 @@ export function QuestionFiltersBar({
                     options={selectOptions(reference?.competencies)}
                     value={filters.competency ?? ALL}
                     onValueChange={(value) => onChange({ competency: fromSelect(value) })}
+                  />
+                )}
+              </FormField>
+              <FormField label={t("taskType")}>
+                {(controlProps) => (
+                  <Select
+                    {...controlProps}
+                    name="taskType"
+                    options={selectOptions(reference?.taskTypes)}
+                    value={filters.taskType ?? ALL}
+                    onValueChange={(value) => onChange({ taskType: fromSelect(value) })}
                   />
                 )}
               </FormField>

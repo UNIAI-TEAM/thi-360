@@ -19,7 +19,7 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge, knowledgePath } from "@/features/content/knowledge-tree";
 import type { ContentReference } from "@/features/content/types";
-import { questionSetPoints, type QuestionEditorValues } from "../editor-form";
+import { pointsTotal, questionSetPoints, type QuestionEditorValues } from "../editor-form";
 import { EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
 
 /**
@@ -33,7 +33,9 @@ export function ClassificationSection({ reference }: { reference: ContentReferen
   const { control, register, setValue, formState, trigger } = useFormContext<QuestionEditorValues>();
   const type = useWatch({ control, name: "type" });
   const children = useWatch({ control, name: "children" }) ?? [];
+  const blanks = useWatch({ control, name: "body.blanks" }) ?? [];
   const isSet = type === "QUESTION_SET";
+  const isCloze = type === "CLOZE";
   const pointsError = useEditorError("points");
 
   const catalogSelect = (name: "subjectCode" | "gradeCode" | "difficultyCode", options: ContentReference["subjects"]) => (
@@ -70,9 +72,15 @@ export function ClassificationSection({ reference }: { reference: ContentReferen
         {catalogSelect("subjectCode", reference.subjects)}
         {catalogSelect("gradeCode", reference.grades)}
         {catalogSelect("difficultyCode", reference.difficulties)}
-        {isSet ? (
-          <FormField label={t("pointsTotal")} hint={t("pointsTotalHint")}>
-            {(controlProps) => <Input {...controlProps} value={String(questionSetPoints(children))} readOnly />}
+        {isSet || isCloze ? (
+          <FormField label={t("pointsTotal")} hint={t(isSet ? "pointsTotalHint" : "pointsTotalClozeHint")}>
+            {(controlProps) => (
+              <Input
+                {...controlProps}
+                value={String(isSet ? questionSetPoints(children) : pointsTotal(blanks.map((blank) => blank.points)))}
+                readOnly
+              />
+            )}
           </FormField>
         ) : (
           <FormField
@@ -86,7 +94,20 @@ export function ClassificationSection({ reference }: { reference: ContentReferen
             )}
           </FormField>
         )}
-        <CompetencyField reference={reference} />
+        <OptionalCatalogField
+          name="taskTypeCode"
+          label={t("taskType")}
+          hint={t("taskTypeHint")}
+          noneLabel={t("taskTypeNone")}
+          options={reference.taskTypes}
+        />
+        <OptionalCatalogField
+          name="competencyCode"
+          label={t("competency")}
+          hint={t("competencyHint")}
+          noneLabel={t("competencyNone")}
+          options={reference.competencies}
+        />
       </div>
       <KnowledgeField reference={reference} onChange={(value) => setValue("knowledge", value, { shouldDirty: true })} />
       <TagsField reference={reference} />
@@ -94,29 +115,39 @@ export function ClassificationSection({ reference }: { reference: ContentReferen
   );
 }
 
-const NO_COMPETENCY = "__none__";
+const NONE = "__none__";
 
-/** Năng lực (`ContentReference.competencies`), dùng để dựng ma trận theo năng lực (V-ACT); để trống: không gắn. */
-function CompetencyField({ reference }: { reference: ContentReference }) {
-  const t = useTranslations("questions.editor.classification");
+/**
+ * Danh mục không bắt buộc (Dạng bài `ContentReference.taskTypes`, Năng lực `competencies` của V-ACT): để trống là không
+ * gắn. Dạng bài dùng khi ma trận phân bổ theo dạng bài; năng lực dùng để dựng ma trận theo năng lực.
+ */
+function OptionalCatalogField({
+  name,
+  label,
+  hint,
+  noneLabel,
+  options,
+}: {
+  name: "taskTypeCode" | "competencyCode";
+  label: string;
+  hint: string;
+  noneLabel: string;
+  options: ContentReference["taskTypes"];
+}) {
   const { control } = useFormContext<QuestionEditorValues>();
-  const options = [
-    { value: NO_COMPETENCY, label: t("competencyNone") },
-    ...reference.competencies.map((option) => ({ value: option.code, label: option.name })),
-  ];
   return (
     <Controller
       control={control}
-      name="competencyCode"
+      name={name}
       render={({ field }) => (
-        <FormField label={t("competency")} hint={t("competencyHint")}>
+        <FormField label={label} hint={hint}>
           {(controlProps) => (
             <Select
               {...controlProps}
               name={field.name}
-              value={field.value || NO_COMPETENCY}
-              options={options}
-              onValueChange={(value) => field.onChange(value === NO_COMPETENCY ? "" : value)}
+              value={field.value || NONE}
+              options={[{ value: NONE, label: noneLabel }, ...options.map((option) => ({ value: option.code, label: option.name }))]}
+              onValueChange={(value) => field.onChange(value === NONE ? "" : value)}
             />
           )}
         </FormField>
