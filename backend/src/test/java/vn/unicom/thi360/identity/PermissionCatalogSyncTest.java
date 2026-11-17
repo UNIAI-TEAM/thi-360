@@ -118,6 +118,69 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void freshDb_markerRecordsSkippedAndLaterRemovalIsNeverRestored() throws Exception {
+        // R2-1: khóa một lần phải tồn tại trên DB mới với outcome "skipped" (7 mặc định đã có
+        // sẵn do seedSystemRoleDefaults chạy trước), và sync sau không được khôi phục một grant
+        // bị gỡ cố ý.
+        String upgradeKey = "identity.permission_upgrade.content_admin_defaults";
+        String[] addedCodes = {
+            Permissions.QUESTION_VIEW, Permissions.QUESTION_MODIFY,
+            Permissions.EXAM_VIEW, Permissions.EXAM_MODIFY, Permissions.EXAM_PUBLISH
+        };
+        Role contentAdmin = roleRepository.findByCodeNormalized("content_admin").orElseThrow();
+        UUID roleId = contentAdmin.getId();
+        assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(7);
+
+        // Nhánh thử khác xóa khóa một lần; một sync bảo đảm nó tồn tại lại trước khi đọc.
+        // Trên DB mới outcome chuẩn vẫn là "skipped" vì 7 mặc định đã đủ.
+        permissionCatalogSync.sync();
+        String markerJson = jdbcTemplate.queryForObject(
+                "SELECT value::text FROM shared.system_setting WHERE key = ?",
+                String.class, upgradeKey);
+        JsonNode marker = objectMapper.readTree(markerJson);
+        assertThat(marker.get("outcome").asText()).isEqualTo("skipped");
+        assertThat(marker.get("applied").asBoolean()).isFalse();
+        assertThat(marker.get("reason").asText()).isEqualTo("defaults already granted");
+
+        try {
+            // Gỡ cố ý 5 grant question/exam khỏi content_admin rồi chạy lại sync.
+            jdbcTemplate.update(
+                    "DELETE FROM identity.role_permission WHERE role_id = ? AND permission_id IN"
+                            + " (SELECT id FROM identity.permission WHERE code IN (?,?,?,?,?))",
+                    roleId,
+                    addedCodes[0], addedCodes[1], addedCodes[2], addedCodes[3], addedCodes[4]);
+            assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(2);
+
+            permissionCatalogSync.sync();
+
+            // Khóa một lần đã chốt: sync không được khôi phục các grant bị gỡ.
+            assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(2);
+            Set<String> codes = permissionRepository
+                    .findAllById(rolePermissionRepository.findAllByIdRoleId(roleId).stream()
+                            .map(rp -> rp.getId().getPermissionId())
+                            .toList())
+                    .stream()
+                    .map(PermissionEntity::getCode)
+                    .collect(Collectors.toSet());
+            assertThat(codes).containsExactlyInAnyOrder(
+                    Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY);
+        } finally {
+            // Trả vai trò về đúng 7 mặc định cho các test sau.
+            jdbcTemplate.update(
+                    """
+                    INSERT INTO identity.role_permission (role_id, permission_id, granted_at)
+                    SELECT ?, p.id, now() FROM identity.permission p
+                    WHERE p.code IN (?,?,?,?,?) AND NOT EXISTS (
+                        SELECT 1 FROM identity.role_permission rp
+                        WHERE rp.role_id = ? AND rp.permission_id = p.id)
+                    """,
+                    roleId,
+                    addedCodes[0], addedCodes[1], addedCodes[2], addedCodes[3], addedCodes[4],
+                    roleId);
+        }
+    }
+
+    @Test
     void permissionsEndpointsDoNotAllowWriteMethods() throws Exception {
         mockMvc.perform(post("/api/v1/admin/permissions")
                         .with(asPlatformAdmin())
