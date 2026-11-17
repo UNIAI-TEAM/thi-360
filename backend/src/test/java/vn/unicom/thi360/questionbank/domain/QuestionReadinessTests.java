@@ -246,6 +246,21 @@ class QuestionReadinessTests {
     }
 
     @Test
+    void multipleChoiceReferenceWarnsWithoutBlockingReady() {
+        var options = List.of(new QuestionBody.ChoiceOption("a", "A và B", true),
+            new QuestionBody.ChoiceOption("b", "other", true));
+        for (boolean shuffle : List.of(true, false)) {
+            var body = new QuestionBody.MultipleChoiceBody(QuestionType.MULTIPLE_CHOICE, options,
+                QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING, shuffle);
+            var result = QuestionBodyValidator.validateReady(input(QuestionType.MULTIPLE_CHOICE, body, "Question"),
+                FULL, true, vn.unicom.thi360.questionbank.spi.QuestionAssetResolver.none());
+            assertTrue(result.ready());
+            assertTrue(result.warnings().stream().anyMatch(w -> w.code().equals("OPTION_REFERS_TO_OTHERS")
+                && w.path().equals("body.options[0].content")) == shuffle);
+        }
+    }
+
+    @Test
     void optionReferenceInSetChildHasNestedPath() {
         var choice = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
             new QuestionBody.ChoiceOption("a", "A và B", true),
