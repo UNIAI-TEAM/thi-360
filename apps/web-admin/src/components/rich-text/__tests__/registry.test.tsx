@@ -52,11 +52,11 @@ describe("insert registry", () => {
     const ids = INSERT_REGISTRY.map((entry) => entry.id).sort();
     for (const messages of [en, viMessages]) {
       expect(Object.keys(messages.richText.insert).sort()).toEqual(ids);
-      // Khóa chung (nút, hộp tạm) cộng một khối `richText.insertDialog.<id>` cho mỗi mục đã có hộp thật (wave 2).
+      // Khóa chung của hộp chèn + một khối `insertDialog.<id>` cho mỗi hộp thật (lane sóng 2 thêm dần).
       const shared = ["cancel", "close", "insert", "stub"];
-      const own = Object.keys(messages.richText.insertDialog).filter((key) => !shared.includes(key));
-      expect(Object.keys(messages.richText.insertDialog)).toEqual(expect.arrayContaining(shared));
-      expect(own.every((key) => ids.includes(key))).toBe(true);
+      const keys = Object.keys(messages.richText.insertDialog);
+      expect(keys.filter((key) => shared.includes(key)).sort()).toEqual(shared);
+      for (const key of keys.filter((key) => !shared.includes(key))) expect(ids).toContain(key);
     }
   });
 
@@ -79,6 +79,14 @@ describe("insert registry", () => {
     expect(chemistry.openForSelection(fake("x^2"))).toBeNull();
     expect(math.openForSelection(fake("\\ce{H2O}"))).toBeNull();
     expect(chemistry.openForSelection(fake("\\ce{H2O}"))).toBe(true);
+  });
+
+  it("node entries return null (not false) for a non-matching node", () => {
+    const other = Object.assign(Object.create(PMNode.prototype), { type: { name: "paragraph" }, attrs: {} }) as PMNode;
+    for (const id of ["table", "image", "quote", "blank", "cross"]) {
+      const entry = INSERT_REGISTRY.find((item) => item.id === id)!;
+      expect(entry.openForSelection(other)).toBeNull();
+    }
   });
 });
 
