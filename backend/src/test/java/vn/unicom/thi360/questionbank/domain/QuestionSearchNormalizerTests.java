@@ -58,6 +58,7 @@ class QuestionSearchNormalizerTests {
     void searchTextWalksChildren() {
         QuestionBody body = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>Đoạn văn đọc hiểu</p>",
+            null,
             List.of(
                 new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu hỏi con</p>",
                     new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of("4"), null),

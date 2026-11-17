@@ -236,6 +236,61 @@
       "allowImages": true,
       "html": "<p><span class=\"blank\" data-blank=\"1\">text</span></p>",
       "violations": [{ "tag": "span" }]
+    },
+    {
+      "name": "bad-blank-without-class",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p><span data-blank=\"1\"></span></p>",
+      "violations": [{ "tag": "span", "attribute": "data-blank" }]
+    },
+    {
+      "name": "bad-blank-on-math-inline",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p><span class=\"math-inline\" data-blank=\"1\">\\(x\\)</span></p>",
+      "violations": [{ "tag": "span", "attribute": "data-blank" }]
+    },
+    {
+      "name": "bad-quote-source-before-body",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><p class=\"figure-source\">source</p><p>body</p></blockquote>",
+      "violations": [{ "tag": "blockquote" }]
+    },
+    {
+      "name": "bad-quote-source-before-footer",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><p>body</p><p class=\"figure-source\">source</p><footer>author</footer></blockquote>",
+      "violations": [{ "tag": "blockquote" }]
+    },
+    {
+      "name": "quote-footer-then-source",
+      "valid": true,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><p>body</p><footer>author</footer><p class=\"figure-source\">source</p></blockquote>"
+    },
+    {
+      "name": "bad-image-missing-width-and-zoom",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"image\"><img src=\"/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\" alt=\"x\" data-asset-id=\"9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\"><footer>bad child</footer></figure>",
+      "violations": [{ "tag": "figure", "attribute": "data-width" }, { "tag": "figure", "attribute": "data-zoom" }]
+    },
+    {
+      "name": "bad-cross-with-image-attributes",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"cross\" data-width=\"small\" data-zoom=\"true\"><table><tbody><tr><td>x</td></tr></tbody></table></figure>",
+      "violations": [{ "tag": "figure", "attribute": "data-width" }, { "tag": "figure", "attribute": "data-zoom" }]
+    },
+    {
+      "name": "bad-quote-multiple-attributes",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"pull\" data-kind=\"letter\"><footer>bad child</footer></blockquote>",
+      "violations": [{ "tag": "blockquote", "attribute": "class" }, { "tag": "blockquote", "attribute": "data-kind" }, { "tag": "blockquote", "attribute": "data-line-numbers" }]
     }
   ]
 }

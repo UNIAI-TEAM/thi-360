@@ -81,4 +81,110 @@ class QuestionReadinessTests {
         assertFalse(QuestionBodyValidator.isBlankHtml(image));
         assertTrue(QuestionBodyValidator.isBlankHtml("<p> </p>"));
     }
+
+    // --------------------------------------------------------- spec 6 (UNI-2638)
+
+    private static QuestionInput input(QuestionType type, QuestionBody body, String content) {
+        return new QuestionInput(type, body, BigDecimal.ONE, content, null, List.of(), List.of());
+    }
+
+    private static QuestionBody setBody(String passage, List<QuestionBody.ChildQuestion> children) {
+        return new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET, passage, null, children);
+    }
+
+    private static QuestionBody.ChildQuestion child(String content) {
+        return new QuestionBody.ChildQuestion(QuestionType.SHORT_ANSWER, content,
+            QuestionBodyValidationTests.shortAnswerBody(), null, null, null, null, List.of(), null);
+    }
+
+    private static boolean has(ReadinessResult result, String code, String path) {
+        return result.errors().stream()
+            .anyMatch(e -> e.code().equals(code) && e.path().equals(path));
+    }
+
+    @Test
+    void blankInStemFlagsOutsideSetPassage() {
+        String stem = "<p>Điền <span class=\"blank\" data-blank=\"1\"></span> vào chỗ trống.</p>";
+        ReadinessResult result = QuestionBodyValidator.validateReady(
+            input(QuestionType.SINGLE_CHOICE,
+                QuestionBodyValidationTests.singleChoiceBody(), stem),
+            FULL, true, null);
+        assertTrue(has(result, "BLANK_OUTSIDE_SET_PASSAGE", "content"));
+    }
+
+    @Test
+    void blankInSetPassageMatchingChildrenPasses() {
+        String passage = "<p>Điền <span class=\"blank\" data-blank=\"1\"></span> và "
+            + "<span class=\"blank\" data-blank=\"2\"></span>.</p>";
+        ReadinessResult result = QuestionBodyValidator.validateReady(
+            input(QuestionType.QUESTION_SET,
+                setBody(passage, List.of(child("<p>Câu 1</p>"), child("<p>Câu 2</p>"))),
+                "<p>Đọc đoạn sau.</p>"),
+            FULL, true, null);
+        assertTrue(result.errors().stream()
+            .noneMatch(e -> e.code().startsWith("BLANK_")), () -> "errors: " + result.errors());
+    }
+
+    @Test
+    void blankCountMismatchInSet() {
+        String passage = "<p><span class=\"blank\" data-blank=\"1\"></span>"
+            + "<span class=\"blank\" data-blank=\"2\"></span>"
+            + "<span class=\"blank\" data-blank=\"3\"></span></p>";
+        ReadinessResult result = QuestionBodyValidator.validateReady(
+            input(QuestionType.QUESTION_SET,
+                setBody(passage, List.of(child("<p>Câu 1</p>"))),
+                "<p>Đọc đoạn sau.</p>"),
+            FULL, true, null);
+        assertTrue(has(result, "BLANK_CHILD_MISMATCH", "body.passage"));
+    }
+
+    @Test
+    void blankInsideChildContentIsOutsideSetPassage() {
+        String childContent = "<p>Điền <span class=\"blank\" data-blank=\"1\"></span>.</p>";
+        ReadinessResult result = QuestionBodyValidator.validateReady(
+            input(QuestionType.QUESTION_SET,
+                setBody("<p>Đoạn đọc.</p>", List.of(child(childContent))),
+                "<p>Đọc đoạn sau.</p>"),
+            FULL, true, null);
+        assertTrue(has(result, "BLANK_OUTSIDE_SET_PASSAGE", "body.children[0].content"));
+    }
+
+    @Test
+    void underlineLabelsDuplicateAndMisplaced() {
+        String stem = "<p><u data-label=\"A\">x</u> <u data-label=\"C\">y</u> "
+            + "<u data-label=\"A\">z</u></p>";
+        ReadinessResult result = QuestionBodyValidator.validateReady(
+            input(QuestionType.MULTIPLE_CHOICE,
+                QuestionBodyValidationTests.multipleChoiceBody(), stem),
+            FULL, true, null);
+        assertTrue(has(result, "UNDERLINE_LABEL_DUPLICATE", "content"));
+        assertTrue(has(result, "UNDERLINE_LABEL_MISPLACED", "content"));
+    }
+
+    @Test
+    void underlineLabelsInShortAnswerChildrenAreMisplaced() {
+        ReadinessResult result = QuestionBodyValidator.validateReady(
+            input(QuestionType.QUESTION_SET,
+                setBody("<p>Đoạn đọc.</p>", List.of(
+                    child("<p><u data-label=\"B\">x</u></p>"),
+                    child("<p><u data-label=\"A\">y</u></p>"))),
+                "<p>Đọc đoạn sau.</p>"),
+            FULL, true, null);
+        assertTrue(result.errors().stream()
+            .anyMatch(e -> e.code().equals("UNDERLINE_LABEL_MISPLACED")
+                && e.path().equals("body.children[1].content")), () -> "errors: " + result.errors());
+    }
+
+    @Test
+    void imageWithoutAltWarnsNotFails() {
+        String image = "<img data-asset-id=\"00000000-0000-0000-0000-000000000001\">";
+        ReadinessResult result = QuestionBodyValidator.validateReady(
+            input(QuestionType.SINGLE_CHOICE,
+                QuestionBodyValidationTests.singleChoiceBody(), image),
+            FULL, true, null);
+        assertTrue(result.warnings().stream()
+            .anyMatch(e -> e.code().equals("IMAGE_ALT_MISSING") && e.path().equals("content")));
+        assertTrue(result.errors().stream()
+            .noneMatch(e -> e.code().equals("IMAGE_ALT_MISSING")));
+    }
 }

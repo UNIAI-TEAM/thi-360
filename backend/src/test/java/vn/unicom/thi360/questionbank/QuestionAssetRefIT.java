@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -102,6 +103,60 @@ class QuestionAssetRefIT extends AbstractIntegrationTest {
         return "{\"expectedRevision\":" + revision + ",\"type\":\"SINGLE_CHOICE\","
                 + "\"subjectCode\":\"TOAN\",\"gradeCode\":\"G10\",\"difficultyCode\":\"NB\",\"content\":\""
                 + imgHtml(assetId) + "\",\"body\":" + QuestionTestSupport.singleChoiceBody() + "}";
+    }
+
+    @Test
+    void validRichTextBlocksSurviveSaveAndReload() throws Exception {
+        UUID asset = saveAsset(QuestionAssetKind.IMAGE);
+        var fixture = mapper.readTree(java.nio.file.Files.readString(
+                java.nio.file.Path.of("..", "docs", "specs", "fixtures", "rich-text-samples.json")));
+        String fixtureAsset = fixture.path("assetId").asText();
+        for (var sample : fixture.path("samples")) {
+            if (!sample.path("valid").asBoolean()) {
+                continue;
+            }
+            String html = sample.path("html").asText().replace(fixtureAsset, asset.toString());
+            var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    mapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+            request.put("content", html);
+            UUID id = createId(request.toString());
+            var result = mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                    .andExpect(status().isOk()).andReturn();
+            assertThat(mapper.readTree(result.getResponse().getContentAsString()).path("content").asText())
+                    .as(sample.path("name").asText()).isEqualTo(html);
+        }
+    }
+
+    @Test
+    void readinessChecksRichTextInSetPassageAndChildren() throws Exception {
+        UUID asset = saveAsset(QuestionAssetKind.IMAGE);
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                mapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        var body = (com.fasterxml.jackson.databind.node.ObjectNode) request.get("body");
+        body.put("passage", "<p><span class=\"blank\" data-blank=\"1\"></span>"
+                + "<span class=\"blank\" data-blank=\"1\"></span></p>");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) body.at("/children/0"))
+                .put("content", "<p><u data-label=\"A\">x</u><u data-label=\"A\">y</u>"
+                        + "<img data-asset-id=\"" + asset + "\"></p>");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) body.at("/children/1"))
+                .put("content", "<p><u data-label=\"B\">z</u>"
+                        + "<span class=\"blank\" data-blank=\"1\"></span></p>");
+        UUID id = createId(request.toString());
+        var response = mockMvc.perform(get(BASE + "/{id}/readiness", id)
+                        .with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andReturn();
+        var readiness = mapper.readTree(response.getResponse().getContentAsString());
+        var errors = new java.util.HashSet<String>();
+        readiness.path("errors").forEach(error -> errors.add(error.path("code").asText()));
+        assertThat(errors).contains("BLANK_CHILD_MISMATCH", "BLANK_OUTSIDE_SET_PASSAGE",
+                "UNDERLINE_LABEL_DUPLICATE", "UNDERLINE_LABEL_MISPLACED");
+        var warnings = new java.util.HashSet<String>();
+        readiness.path("warnings").forEach(warning -> warnings.add(warning.path("code").asText()));
+        assertThat(warnings).contains("IMAGE_ALT_MISSING");
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + revision(id) + "}"))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
