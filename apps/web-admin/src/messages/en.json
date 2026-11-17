@@ -5332,7 +5332,7 @@
         "description": "Subscripts, charges, reaction arrows, conditions, states"
       },
       "cross": {
-        "label": "Punnett square",
+        "label": "Genetic cross diagram",
         "description": "P, G, F₁ for genetics"
       },
       "image": {
@@ -5460,7 +5460,7 @@
           "sexA": "Sex of the first parent",
           "sexB": "Sex of the second parent"
         },
-        "insert": "Insert Punnett square",
+        "insert": "Insert genetic cross diagram",
         "phenotypePlaceholder": "Phenotype ratio (optional)",
         "previewEmpty": "Nothing yet",
         "previewLabel": "Preview",
@@ -5470,8 +5470,8 @@
         "subscript": "Subscript",
         "superscript": "Superscript",
         "symbolsNote": "The symbols ♂, ♀, F₁, F₂ and alleles on sex chromosomes are in Symbols.",
-        "title": "Punnett square",
-        "update": "Update Punnett square"
+        "title": "Genetic cross diagram",
+        "update": "Update genetic cross diagram"
       },
       "image": {
         "altError": "Enter alternative text for the image.",
