@@ -655,12 +655,13 @@ def build_pool():
                     task="SINGLE", knowledge=[KNOW_TOAN_HEP]) for _ in range(10)]
     fill_gl(scoped)
     QUESTIONS.extend(scoped)
-    # --- TOAN MĐ 0,25 (40): rải 12 ô, mỗi ô 3-4 câu
+    # --- TOAN MĐ 0,25: 40 câu rải đều và một câu G12/VDC cho TEST-ERR-11.
     rows = [qrow("TOAN-MC025", fam := fam + 1, "TOAN", "SINGLE_CHOICE", 0.25)
             for _ in range(40)]
+    # Keep subsequent family numbers stable; the code prefix makes this ID distinct.
+    rows.append(qrow("TOAN-MC025", fam + 1, "TOAN", "SINGLE_CHOICE", 0.25))
     fill_gl(rows)
-    for i, r in enumerate(rows):
-        r["grade"], r["level"] = GL_CYCLE[i % 12]
+    rows[-1]["grade"], rows[-1]["level"] = "G12", "VDC"
     QUESTIONS.extend(rows)
     # --- TOAN ĐS 1đ COUNT_TABLE (8)
     QUESTIONS += [qrow("TOAN-TF1", fam := fam + 1, "TOAN", "TRUE_FALSE", 1)
@@ -839,8 +840,10 @@ def emit_ready_series(out):
         else:
             groups.append([key, number, number, [row]])
     for (prefix, qtype, subject, task, points, knowledge, tags), start, end, rows in groups:
-        grades = periodic([GRADE[row["grade"]] for row in rows])
-        levels = periodic([LEVEL[row["level"]] for row in rows])
+        # The extra TEST-ERR-11 row is corrected after the existing periodic series.
+        periodic_rows = rows[:-1] if prefix == "TESTQ-TOAN-MC025" else rows
+        grades = periodic([GRADE[row["grade"]] for row in periodic_rows])
+        levels = periodic([LEVEL[row["level"]] for row in periodic_rows])
         grade_array = "ARRAY[" + ",".join(sql_quote(value) for value in grades) + "]::uuid[]"
         level_array = "ARRAY[" + ",".join(sql_quote(value) for value in levels) + "]::uuid[]"
         body = BODY[qtype]() if qtype != "CLOZE" else cloze_body(10, 0.2)
@@ -853,6 +856,13 @@ def emit_ready_series(out):
         out.append(f"       NULL, NULL, 'READY', {pg_array(knowledge)}, {pg_array(tags)}")
         out.append(f"FROM generate_series({start}, {end}) AS series(n)")
         out.append(f"CROSS JOIN LATERAL (SELECT {sql_quote(prefix + '-')} || lpad(n::text, GREATEST(3, length(n::text)), '0') AS code) seeded;")
+        if prefix == "TESTQ-TOAN-MC025":
+            out.append("")
+            out.append("-- TEST-ERR-11 requires exactly four eligible G12/VDC questions at 0.25 points.")
+            out.append("UPDATE testq_rows")
+            out.append(f"SET grade_id = '{GRADE[rows[-1]['grade']]}',")
+            out.append(f"    level_id = '{LEVEL[rows[-1]['level']]}'")
+            out.append(f"WHERE code = '{rows[-1]['code']}';")
         out.append("")
 
 
