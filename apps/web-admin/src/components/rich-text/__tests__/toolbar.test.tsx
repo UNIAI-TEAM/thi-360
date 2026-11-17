@@ -158,6 +158,15 @@ describe("RichTextEditor toolbar", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("gives toggles aria-pressed but not Undo/Redo, which are plain actions", () => {
+    renderEditor();
+    const byLabel = (label: string) => toolbarButtons().find((b) => b.getAttribute("aria-label") === label)!;
+    expect(byLabel("Undo").hasAttribute("aria-pressed")).toBe(false);
+    expect(byLabel("Redo").hasAttribute("aria-pressed")).toBe(false);
+    expect(byLabel("Bold").getAttribute("aria-pressed")).toBe("false");
+    expect(byLabel("Math formula").getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("lets every button group wrap so a narrow viewport does not widen the page", () => {
     renderEditor();
     const groups = [...document.querySelectorAll<HTMLElement>('[role="toolbar"] [role="group"]')];

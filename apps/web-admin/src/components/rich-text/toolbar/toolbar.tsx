@@ -33,6 +33,7 @@ type ToolbarButton = {
   key: string;
   icon: ReactNode;
   label: string;
+  /** Chỉ nút bật/tắt (định dạng, mục Chèn) có `pressed`; Hoàn tác/Làm lại để trống, không có `aria-pressed`. */
   pressed?: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -81,7 +82,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "bold",
       icon: <Bold />,
       label: t("toolbar.bold"),
-      pressed: state?.bold,
+      pressed: state?.bold ?? false,
       disabled: disabled || !editor?.can().toggleBold(),
       onClick: () => chain()?.toggleBold().run(),
     },
@@ -89,7 +90,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "italic",
       icon: <Italic />,
       label: t("toolbar.italic"),
-      pressed: state?.italic,
+      pressed: state?.italic ?? false,
       disabled: disabled || !editor?.can().toggleItalic(),
       onClick: () => chain()?.toggleItalic().run(),
     },
@@ -97,7 +98,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "underline",
       icon: <Underline />,
       label: t("toolbar.underline"),
-      pressed: state?.underline,
+      pressed: state?.underline ?? false,
       disabled: disabled || !editor?.can().toggleUnderline(),
       onClick: () => chain()?.toggleUnderline().run(),
     },
@@ -105,7 +106,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "strike",
       icon: <Strikethrough />,
       label: t("toolbar.strike"),
-      pressed: state?.strike,
+      pressed: state?.strike ?? false,
       disabled: disabled || !editor?.can().toggleStrike(),
       onClick: () => chain()?.toggleStrike().run(),
     },
@@ -113,7 +114,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "subscript",
       icon: <SubscriptIcon />,
       label: t("toolbar.subscript"),
-      pressed: state?.subscript,
+      pressed: state?.subscript ?? false,
       disabled: disabled || !editor?.can().toggleSubscript(),
       onClick: () => chain()?.toggleSubscript().run(),
     },
@@ -121,7 +122,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "superscript",
       icon: <SuperscriptIcon />,
       label: t("toolbar.superscript"),
-      pressed: state?.superscript,
+      pressed: state?.superscript ?? false,
       disabled: disabled || !editor?.can().toggleSuperscript(),
       onClick: () => chain()?.toggleSuperscript().run(),
     },
@@ -129,7 +130,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "bulletList",
       icon: <List />,
       label: t("toolbar.bulletList"),
-      pressed: state?.bulletList,
+      pressed: state?.bulletList ?? false,
       disabled: disabled || !editor?.can().toggleBulletList(),
       onClick: () => chain()?.toggleBulletList().run(),
     },
@@ -137,7 +138,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       key: "orderedList",
       icon: <ListOrdered />,
       label: t("toolbar.orderedList"),
-      pressed: state?.orderedList,
+      pressed: state?.orderedList ?? false,
       disabled: disabled || !editor?.can().toggleOrderedList(),
       onClick: () => chain()?.toggleOrderedList().run(),
     },
@@ -236,7 +237,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
                 size="md"
                 icon={item.icon}
                 aria-label={item.label}
-                aria-pressed={item.pressed ?? false}
+                aria-pressed={item.pressed}
                 aria-disabled={item.disabled}
                 tabIndex={index === effectiveTabStop ? 0 : -1}
                 onFocus={() => setTabStop(index)}
