@@ -3,18 +3,11 @@ import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
 
 export type CatalogGroupResponse = components["schemas"]["CatalogGroupResponse"];
-/** Nhánh của mã tổ hợp (đợt 2B, spec mục 4). */
-export type CombinationBranch = "SCIENCE" | "ENGLISH";
-export type CatalogItemResponse = Omit<components["schemas"]["CatalogItemResponse"], "combination"> & {
-  combination?: CombinationVersionResponse;
-};
-// Trường `branch` chưa có trong api-client (worker backend đang thêm và sinh lại): giao diện dùng bản mở rộng cục bộ.
-export type CreateCatalogItemRequest = components["schemas"]["CreateCatalogItemRequest"] & {
-  branch?: CombinationBranch | null;
-};
-export type UpdateCatalogItemRequest = components["schemas"]["UpdateCatalogItemRequest"] & {
-  branch?: CombinationBranch | null;
-};
+/** Nhánh của mã tổ hợp (đợt 2B, spec mục 4); suy ra từ phiên bản tổ hợp đã sinh. */
+export type CombinationBranch = NonNullable<CombinationVersionResponse["branch"]>;
+export type CatalogItemResponse = components["schemas"]["CatalogItemResponse"];
+export type CreateCatalogItemRequest = components["schemas"]["CreateCatalogItemRequest"];
+export type UpdateCatalogItemRequest = components["schemas"]["UpdateCatalogItemRequest"];
 export type CreateCatalogGroupRequest = components["schemas"]["CreateCatalogGroupRequest"];
 export type UpdateCatalogGroupRequest = components["schemas"]["UpdateCatalogGroupRequest"];
 export type ReorderCatalogItemsRequest = components["schemas"]["ReorderCatalogItemsRequest"];
@@ -27,9 +20,7 @@ export type CatalogOptionResponse = components["schemas"]["CatalogOptionResponse
 export type CatalogUsageResponse = components["schemas"]["CatalogUsageResponse"];
 export type CatalogUsagesResponse = components["schemas"]["CatalogUsagesResponse"];
 export type CombinationSubjectResponse = components["schemas"]["CombinationSubjectResponse"];
-export type CombinationVersionResponse = components["schemas"]["CombinationVersionResponse"] & {
-  branch?: CombinationBranch | null;
-};
+export type CombinationVersionResponse = components["schemas"]["CombinationVersionResponse"];
 export type AuditEventResponse = components["schemas"]["AuditEventResponse"];
 export type PageResponseAuditEventResponse = components["schemas"]["PageResponseAuditEventResponse"];
 export type CatalogImportPreviewResponse = components["schemas"]["CatalogImportPreviewResponse"];

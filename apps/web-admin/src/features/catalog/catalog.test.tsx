@@ -1739,7 +1739,7 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
       await within(editDialog).findByRole("button", { name: "Di chuyển Ngữ văn (VAN) lên" }),
     );
     expect(
-      await within(editDialog).findByText(/sẽ tạo phiên bản 2/),
+      await within(editDialog).findByText(/lần lưu này tạo phiên bản 2/),
     ).toBeInTheDocument();
     expect(
       within(editDialog).getByRole("button", { name: "Lưu thành phiên bản mới" }),
@@ -1808,7 +1808,10 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
 
       await userEvent.click(branchBox);
       await userEvent.click(await screen.findByRole("option", { name: "Không có nhánh" }));
-      await userEvent.click(within(dialog).getByRole("button", { name: "Lưu" }));
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Lưu thành phiên bản mới" }),
+      );
 
       await waitFor(() => expect(api.updateItem).toHaveBeenCalledTimes(1));
       expect(api.updateItem).toHaveBeenCalledWith(
@@ -1839,7 +1842,10 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
       expect(up("Ngữ văn (VAN)")).toHaveAttribute("aria-disabled", "true");
       expect(down("Toán học (TOAN)")).toHaveAttribute("aria-disabled", "true");
 
-      await userEvent.click(within(dialog).getByRole("button", { name: "Lưu" }));
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Lưu thành phiên bản mới" }),
+      );
       await waitFor(() => expect(api.updateItem).toHaveBeenCalledTimes(1));
       expect(api.updateItem).toHaveBeenCalledWith(
         "item-qd01",

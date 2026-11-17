@@ -45,6 +45,7 @@ import {
   type CatalogGroupResponse,
   type CatalogItemResponse,
   type CatalogStatus,
+  type CombinationBranch,
   type CreateCatalogItemRequest,
   type UpdateCatalogItemRequest,
 } from "../api";
@@ -185,6 +186,9 @@ function CombinationFormBody({
 
   const initialCombo = mode === "edit" ? item?.combination : undefined;
   const initialExamId = initialCombo?.examItemId ?? "";
+  const initialBranch: "NONE" | CombinationBranch = isCombinationBranch(initialCombo?.branch)
+    ? initialCombo.branch
+    : NO_BRANCH_VALUE;
   const initialSubjectIds = useMemo(
     () =>
       initialCombo
@@ -233,7 +237,7 @@ function CombinationFormBody({
             status: item.status,
             examItemId: initialExamId,
             subjectItemIds: initialSubjectIds,
-            branch: isCombinationBranch(initialCombo?.branch) ? initialCombo.branch : NO_BRANCH_VALUE,
+            branch: initialBranch,
             sourceNote: initialCombo?.sourceNote ?? "",
             description: item.description ?? "",
             reason: "",
@@ -256,21 +260,33 @@ function CombinationFormBody({
   const watchedStatus = useWatch({ control, name: "status" });
   const watchedExamId = useWatch({ control, name: "examItemId" });
   const watchedSubjectIds = useWatch({ control, name: "subjectItemIds" });
+  const watchedBranch = useWatch({ control, name: "branch" });
 
   const showReason = mode === "edit" && item?.status === "ACTIVE" && watchedStatus === "INACTIVE";
   const stopBlocked =
     showReason &&
     (usagesQuery.isPending || usagesQuery.isError || Boolean(usagesQuery.data?.blocking));
 
-  const compositionChanged =
+  const branchChanged = mode === "edit" && watchedBranch !== initialBranch;
+  const orderChanged =
+    mode === "edit" &&
+    watchedSubjectIds.length === initialSubjectIds.length &&
+    watchedSubjectIds.length > 0 &&
+    !watchedSubjectIds.every((id, index) => id === initialSubjectIds[index]);
+  const membershipOrExamChanged =
     mode === "edit" &&
     (watchedExamId !== initialExamId ||
       watchedSubjectIds.length !== initialSubjectIds.length ||
-      watchedSubjectIds.some((id, index) => id !== initialSubjectIds[index]));
+      watchedSubjectIds.some((id) => !initialSubjectIds.includes(id)));
+  const compositionChanged = branchChanged || orderChanged || membershipOrExamChanged;
 
   const currentVersionNo = initialCombo?.versionNo ?? 1;
   const isReferenced = (usagesQuery.data?.totalCount ?? 0) > 0;
-  const willCreateNewVersion = mode === "edit" && compositionChanged && isReferenced;
+  // Đợt 2B: đổi nhánh hoặc thứ tự môn luôn tạo phiên bản mới (kể cả khi chưa được dùng);
+  // đổi kỳ thi hoặc danh sách môn chỉ tạo phiên bản mới khi phiên bản hiện tại đã được tham chiếu.
+  const willCreateNewVersion =
+    mode === "edit" &&
+    (branchChanged || orderChanged || (membershipOrExamChanged && isReferenced));
 
   const examOptions = useMemo(() => {
     const active = (examsQuery.data ?? []).map((opt) => ({
