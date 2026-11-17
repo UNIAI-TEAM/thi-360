@@ -1,13 +1,19 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import { INSERT_REGISTRY } from "../../registry";
 import { WordPasteDialog, type WordPasteResult } from "../word-paste-dialog";
 import { wordFixture } from "./fixtures";
 
 // Mỗi hộp dựng KaTeX và một hộp công thức thật: dựng chậm trong jsdom.
 vi.setConfig({ testTimeout: 20_000 });
+
+// Hộp công thức nạp lười: nạp trước để lần chạy nguội không vượt hạn 1 giây mặc định của `findByRole`.
+beforeAll(async () => {
+  await INSERT_REGISTRY.find((entry) => entry.id === "math")!.load();
+}, 60_000);
 
 const CHOICE = wordFixture("synthetic-word365-choice.html");
 const EXTRAS = wordFixture("synthetic-word365-extras.html");
@@ -31,7 +37,7 @@ const applyButton = () => screen.getByRole("button", { name: "Put into the form"
 /** Mở hộp công thức toán của registry, gõ LaTeX rồi chèn (bản tạm của ED-0b có ô LaTeX và nút "Insert formula"). */
 async function retypeWith(row: HTMLElement, latex: string) {
   fireEvent.click(within(row).getByRole("button", { name: "Retype formula" }));
-  const dialog = await screen.findByRole("dialog", { name: "Insert formula" });
+  const dialog = await screen.findByRole("dialog", { name: "Insert formula" }, { timeout: 10_000 });
   fireEvent.change(within(dialog).getByLabelText("LaTeX code"), { target: { value: latex } });
   fireEvent.click(within(dialog).getByRole("button", { name: "Insert formula" }));
   await waitFor(() => expect(screen.queryByRole("dialog", { name: "Insert formula" })).not.toBeInTheDocument());
@@ -168,7 +174,7 @@ describe("WordPasteDialog: công thức cần gõ lại chặn \"Đưa vào bi�
   it("a cancelled formula box changes nothing", async () => {
     renderDialog();
     fireEvent.click(within(reviewRows()[3]!).getByRole("button", { name: "Retype formula" }));
-    const dialog = await screen.findByRole("dialog", { name: "Insert formula" });
+    const dialog = await screen.findByRole("dialog", { name: "Insert formula" }, { timeout: 10_000 });
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Insert formula" })).not.toBeInTheDocument());
     expect(screen.getByText("3 formulas need retyping")).toBeInTheDocument();
