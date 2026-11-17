@@ -9,12 +9,20 @@ import java.util.UUID;
 public final class ExamCheckApiModels {
     private ExamCheckApiModels() { }
 
+    @Schema(name = "ExamIssueLocation")
+    public record Location(String partId, String sectionId, String blockId, Integer slotIndex,
+                           Integer childPosition, String pathId) { }
+    @Schema(name = "ExamSectionState")
+    public record SectionState(String partId, String sectionId, String subjectCode,
+            @Schema(allowableValues = {"INCOMPLETE", "CHECKED", "NEEDS_CHECK"}) String state) { }
+
     @Schema(name = "ExamCheckIssue")
     public record Issue(String key, String code, String severity, String group, String partId,
                         String partName, String sectionId, String subjectCode, String blockId,
                         String blockName, String optionId, String gradeCode, String difficultyCode,
                         String dimension, String competencyCode, String answerType, Integer subjectCount,
-                        BigDecimal required, BigDecimal available, Long timeLimitSeconds, List<String> questionCodes) { }
+                        BigDecimal required, BigDecimal available, Long timeLimitSeconds, List<String> questionCodes,
+                        Location location, List<String> affectedCodes) { }
     @Schema(name = "ExamCheckGroup")
     public record Group(String group, String status, List<Issue> issues) { }
     @Schema(name = "ExamCheckChoice")
@@ -49,7 +57,7 @@ public final class ExamCheckApiModels {
     public record Result(UUID examId, Instant checkedAt, double durationSeconds, long timeLimitSeconds,
                          boolean stale, String invalidReason, String status, int issueCount, List<Path> paths,
                          List<Group> groups, int partCount, BigDecimal totalPoints, int printedQuestions,
-                         BigDecimal maxScore) { }
+                         BigDecimal maxScore, @Schema(types = {"array", "null"}) List<SectionState> sectionStates) { }
     @Schema(name = "ExamCheckRun")
     public record Run(UUID runId, String state, Result result, String errorCode) { }
 }

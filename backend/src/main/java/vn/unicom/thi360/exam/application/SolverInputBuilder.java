@@ -165,13 +165,12 @@ public class SolverInputBuilder {
                             return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                                     .map(CatalogItemView::id).toList();
                         })).toList();
-                QuestionSourcePort.Match match = scope != null && scope.match() != null
-                        && scope.match().name().equals("ALL") ? QuestionSourcePort.Match.ALL : QuestionSourcePort.Match.ANY;
+                QuestionSourcePort.Match match = QuestionSourcePort.Match.ANY;
                 List<QuestionType> answerTypes = block.questionType() == null && section.answerQuotas() != null
                         ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(a -> a != null).toList()
                         : List.of();
                 filters.put(group, new QuestionSourcePort.Filter(subject, subtrees, match, answerTypes,
-                        block.questionType(), block.taskTypeCode(), block.childAnswerType(), block.tagCodes(),
+                        block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                         scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion()));
                 groups.add(group);
             }
@@ -254,7 +253,7 @@ public class SolverInputBuilder {
                     item.competencyCodes(), item.points()));
         }
         return new PathCandidate(candidate.questionId().toString(), candidate.versionNo(),
-                candidate.setId() == null ? null : candidate.setId().toString(), candidate.taskTypeCode(),
+                candidate.setId() == null ? null : candidate.setId().toString(),
                 candidate.scoringRule(), units);
     }
 }

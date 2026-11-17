@@ -2347,6 +2347,15 @@
         "standardAnswer": "Standard answer",
         "acceptedAnswer": "Accepted answer",
         "inputHint": "Input hint:",
+        "answerFormat": "Answer format:",
+        "answerFormats": {
+          "INTEGER": "Integer",
+          "DECIMAL": "Decimal",
+          "FRACTION": "Fraction",
+          "TEXT": "Text",
+          "CHEM_FORMULA": "Chemical formula",
+          "CHEM_EQUATION": "Chemical equation"
+        },
         "noRubric": "No rubric yet.",
         "sampleAnswer": "Sample answer",
         "scoreTableTitle": "Score by number of correct statements",
@@ -2775,7 +2784,10 @@
         "add": "Add accepted answer",
         "added": "Added answer {number}.",
         "inputHint": "Input hint",
-        "inputHintHint": "Optional. Learners see it while answering, for example “Write a decimal comma”."
+        "inputHintHint": "Optional. Learners see it while answering, for example “Write a decimal comma”.",
+        "answerFormat": "Answer format",
+        "answerFormatHint": "Optional. Used to filter questions when a group of an exam asks for specific formats; a question without a format is not picked by a filtered group.",
+        "answerFormatNone": "None"
       },
       "essay": {
         "manualGrading": "Graded by hand",
@@ -3973,10 +3985,6 @@
         "points": "Required points per question",
         "pointsOpenHint": "Optional. Leave empty to accept any question; points come from the question version.",
         "pointsTotal": "Only questions worth exactly {points, plural, one {# point} other {# points}} enter the source; the group is worth {total, plural, one {# point} other {# points}}.",
-        "taskType": "Task type",
-        "taskTypeSet": "Task type or passage",
-        "taskTypeSetHint": "Limit the source by task type; set the passage scope with MAPID below.",
-        "taskTypeAny": "Do not filter by task type",
         "ownMatrix": "The group's own grade and difficulty matrix",
         "ownMatrixNone": "Not set (optional)",
         "ownMatrixSet": "Set",
@@ -5069,9 +5077,6 @@
       "pick": "Choose knowledge",
       "remove": "Remove knowledge {code} {name}",
       "useSection": "Use the subject's scope",
-      "match": "Matching",
-      "matchAny": "Match at least one (default)",
-      "matchAll": "Match all",
       "pickerDescription": "Scope of {name}: chapters, lessons or knowledge items can be chosen. A chosen node also matches questions tagged with its child nodes."
     },
     "subjectChoice": {

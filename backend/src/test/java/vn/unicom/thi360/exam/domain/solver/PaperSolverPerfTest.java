@@ -144,9 +144,9 @@ class PaperSolverPerfTest {
                             k % 5 < 3 ? SolverTestFixtures.SC : SolverTestFixtures.SA, grade, diff));
                 }
                 out.add(new PathCandidate(group.groupId() + "-q" + i, 1,
-                        group.groupId() + "-s" + i, null, null, units));
+                        group.groupId() + "-s" + i, null, units));
             } else {
-                out.add(new PathCandidate(group.groupId() + "-q" + i, 1, null, null, null,
+                out.add(new PathCandidate(group.groupId() + "-q" + i, 1, null, null,
                         List.of(new CountingUnit(null, type, grade, diff, List.of(), List.of(),
                                 BigDecimal.ONE))));
             }

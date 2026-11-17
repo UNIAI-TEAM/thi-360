@@ -47,7 +47,7 @@ public final class QuestionBodyValidator {
     static final int MAX_OPTIONS = 10;
     static final int MAX_ANSWERS = 20;
     static final int MAX_BLANKS = 30;
-    static final int MAX_CHILDREN = 20;
+    static final int MAX_CHILDREN = vn.unicom.thi360.questionbank.spi.QuestionSourcePort.MAX_SET_CHILDREN;
     static final int MAX_STATEMENTS = 8;
     static final int MIN_OPTIONS = 2;
     static final int MIN_STATEMENTS = 2;

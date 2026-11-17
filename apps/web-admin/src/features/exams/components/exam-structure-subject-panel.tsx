@@ -64,7 +64,6 @@ export function ExamStructureSubjectPanel({
         answerTypes: block.questionType === null ? quotaTypes : [],
         childAnswerType: block.childAnswerType,
         knowledgeScope: effectiveScope(block, section),
-        taskTypeCode: block.taskTypeCode,
         tagCodes: block.tagCodes,
         requiredPointsPerQuestion: block.requiredPointsPerQuestion,
       }),
@@ -332,7 +331,6 @@ export function ExamStructureSubjectPanel({
         </div>
 
         <KnowledgeScopeField
-          fieldId={section.id}
           value={section.knowledgeScope}
           onChange={setScope}
           reference={reference}

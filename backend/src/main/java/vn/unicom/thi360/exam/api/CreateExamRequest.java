@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Schema(description = "Tạo bài thi Nháp theo phạm vi (spec 5.2, 9.2)")
 public record CreateExamRequest(
@@ -42,6 +43,10 @@ public record CreateExamRequest(
         String description,
         @Schema(description = "Hướng dẫn làm bài (HTML; qua ExamInstructionsPolicy)")
         @Size(max = 100000)
-        String instructions
+        String instructions,
+        @Schema(description = "STANDARD | REVIEW", allowableValues = {"STANDARD", "REVIEW"})
+        String buildMode,
+        @Schema(description = "Cấu trúc tổng quan")
+        List<ExamOverviewRequest.Row> overview
 ) {
 }

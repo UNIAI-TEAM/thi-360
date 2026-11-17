@@ -20,9 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
+import vn.unicom.thi360.questionbank.spi.QuestionUsageKind;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
-import vn.unicom.thi360.questionbank.spi.QuestionUsageKind;
 
 /** Reads only the serving projection of READY root questions. */
 @Service
@@ -82,10 +83,11 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
     @Override
     @Transactional(readOnly = true)
     public Counts countUnion(List<Filter> filters) {
-        if (filters.isEmpty()) return new Counts(0, List.of(), List.of(), List.of());
+        if (filters.isEmpty()) return new Counts(0, 0, List.of(), List.of(), List.of());
         var params = new MapSqlParameterSource();
         String sql = roots(filters, params, null) + units() + """
-                select answer_type, grade_id, level_id, competency_id, count(*) as n
+                select answer_type, grade_id, level_id, competency_id,
+                       count(*) as n, coalesce(sum(command_count), 0) as command_count
                 from units group by answer_type, grade_id, level_id, competency_id
                 """;
         var cells = new LinkedHashMap<List<String>, Long>();
@@ -93,9 +95,11 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         var competencies = new LinkedHashMap<String, Long>();
         Map<UUID, String> codes = catalogCodes();
         long[] total = {0};
+        long[] commandTotal = {0};
         jdbc.query(sql, params, rs -> {
             long n = rs.getLong("n");
             total[0] += n;
+            commandTotal[0] += rs.getLong("command_count");
             String grade = codes.get(rs.getObject("grade_id", UUID.class));
             String level = codes.get(rs.getObject("level_id", UUID.class));
             var key = java.util.Arrays.asList(grade, level);
@@ -104,7 +108,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
             String competency = codes.get(rs.getObject("competency_id", UUID.class));
             if (competency != null) competencies.merge(competency, n, Long::sum);
         });
-        return new Counts(total[0], cells.entrySet().stream()
+        return new Counts(total[0], commandTotal[0], cells.entrySet().stream()
                 .map(e -> new CellCount(e.getKey().get(0), e.getKey().get(1), e.getValue())).toList(),
                 answers.entrySet().stream().map(e -> new AnswerTypeCount(e.getKey(), e.getValue())).toList(),
                 competencies.entrySet().stream().map(e -> new CompetencyCount(e.getKey(), e.getValue())).toList());
@@ -148,12 +152,17 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 scoringByUnit.put(unitId, scoring(rs.getString("unit_tf_method"), rs.getString("unit_tf_table"),
                         rs.getString("unit_mc_rule")));
             }
+            String answerFormat = rs.getString("answer_format");
             Unit unit = new Unit(unitId, rs.getString("reference"),
                     QuestionType.valueOf(rs.getString("answer_type")),
                     codes.get(rs.getObject("grade_id", UUID.class)),
                     codes.get(rs.getObject("level_id", UUID.class)), ids,
                     competency == null ? List.of() : List.of(competency), rs.getBigDecimal("points"),
-                    scoringByUnit.get(unitId), rs.getString("unit_code"));
+                    scoringByUnit.get(unitId), rs.getString("unit_code"), rs.getInt("command_count"),
+                    (Integer) rs.getObject("statement_count"), (Integer) rs.getObject("left_count"),
+                    (Integer) rs.getObject("right_count"),
+                    answerFormat == null ? null : AnswerFormat.valueOf(answerFormat),
+                    rs.getBoolean("has_attachment"));
             grouped.computeIfAbsent(root, ignored -> new ArrayList<>()).add(unit);
             if (!candidates.containsKey(root)) {
                 String type = rs.getString("root_type");
@@ -316,63 +325,166 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         }
         if (f.childAnswerType() != null) {
             params.addValue(p + "child", f.childAnswerType().name());
-            parts.add("(q.type <> 'QUESTION_SET' or not exists (select 1 from questionbank.question c where c.parent_id=q.id and c.deleted_at is null and c.type <> :" + p + "child))");
+            parts.add("(q.type <> 'QUESTION_SET' or not exists (select 1 from questionbank.question c "
+                    + "where c.parent_id=q.id and c.deleted_at is null and c.type <> :" + p + "child))");
         }
         if (f.taskTypeCode() != null) {
             var item = catalog.findActiveItem("TASK_TYPE", f.taskTypeCode());
             if (item.isEmpty()) parts.add("false");
-            else { params.addValue(p + "task", item.get().id()); parts.add("q.task_type_item_id = :" + p + "task"); }
+            else {
+                params.addValue(p + "task", item.get().id());
+                parts.add("q.task_type_item_id = :" + p + "task");
+            }
         }
         if (f.competencyCodes() != null && !f.competencyCodes().isEmpty()) {
-            List<UUID> ids = f.competencyCodes().stream().map(c -> catalog.findActiveItem("COMPETENCY", c)).flatMap(java.util.Optional::stream).map(CatalogItemView::id).toList();
+            List<UUID> ids = f.competencyCodes().stream()
+                    .map(c -> catalog.findActiveItem("COMPETENCY", c))
+                    .flatMap(java.util.Optional::stream).map(CatalogItemView::id).toList();
             if (ids.isEmpty()) parts.add("false");
-            else { params.addValue(p + "competencies", ids); parts.add("q.competency_item_id in (:" + p + "competencies)"); }
+            else {
+                params.addValue(p + "competencies", ids);
+                parts.add("q.competency_item_id in (:" + p + "competencies)");
+            }
         }
-        if (f.tagCodes() != null) {
-            for (int j = 0; j < f.tagCodes().size(); j++) {
-                var item = catalog.findActiveItem("QUESTION_TAG", f.tagCodes().get(j));
-                if (item.isEmpty()) parts.add("false");
-                else { String k = p + "tag" + j; params.addValue(k, item.get().id()); parts.add("exists (select 1 from questionbank.question_tag t where t.question_id=q.id and t.tag_item_id=:" + k + ")"); }
+        if (f.tagCodes() != null && !f.tagCodes().isEmpty()) {
+            List<UUID> ids = f.tagCodes().stream()
+                    .map(c -> catalog.findActiveItem("QUESTION_TAG", c))
+                    .flatMap(java.util.Optional::stream).map(CatalogItemView::id).toList();
+            if (ids.isEmpty()) parts.add("false");
+            else {
+                params.addValue(p + "tags", ids);
+                parts.add("exists (select 1 from questionbank.question_tag t "
+                        + "where t.question_id=q.id and t.tag_item_id in (:" + p + "tags))");
             }
         }
         if (f.knowledgeGroups() != null && !f.knowledgeGroups().isEmpty()) {
             List<String> scope = new ArrayList<>();
             for (int j = 0; j < f.knowledgeGroups().size(); j++) {
                 List<UUID> group = f.knowledgeGroups().get(j);
-                if (group.isEmpty()) { scope.add("false"); continue; }
+                if (group.isEmpty()) {
+                    scope.add("false");
+                    continue;
+                }
                 String k = p + "knowledge" + j;
                 params.addValue(k, group);
-                scope.add("exists (select 1 from questionbank.question_knowledge k join questionbank.question x on x.id=k.question_id where (x.id=q.id or (x.parent_id=q.id and x.deleted_at is null)) and k.knowledge_item_id in (:" + k + "))");
+                scope.add("exists (select 1 from questionbank.question_knowledge k "
+                        + "join questionbank.question x on x.id=k.question_id "
+                        + "where (x.id=q.id or (x.parent_id=q.id and x.deleted_at is null)) "
+                        + "and k.knowledge_item_id in (:" + k + "))");
             }
-            parts.add("(" + String.join(f.knowledgeMatch() == Match.ALL ? " and " : " or ", scope) + ")");
+            // H22/R-77: every selected scope is one-of; Match.ALL is retained only for SPI compatibility.
+            parts.add("(" + String.join(" or ", scope) + ")");
+        }
+        if (f.itemShape() != null) {
+            String rootShape = shapePredicate("q.type", "v.snapshot", p + "shape", f.itemShape(), params);
+            String childShape = shapePredicate("c.type", "cv.snapshot", p + "childShape", f.itemShape(), params);
+            parts.add("((q.type <> 'QUESTION_SET' and " + rootShape + ") or "
+                    + "(q.type = 'QUESTION_SET' and not exists (select 1 "
+                    + "from questionbank.question c "
+                    + "join questionbank.question_version cv on cv.question_id=c.id "
+                    + "and cv.version_no=q.current_version_no "
+                    + "where c.parent_id=q.id and c.deleted_at is null and not (" + childShape + "))))");
+        }
+        if (f.answerFormats() != null && !f.answerFormats().isEmpty()) {
+            params.addValue(p + "formats", f.answerFormats().stream().map(Enum::name).toList());
+            parts.add("((q.type = 'SHORT_ANSWER' and v.snapshot #>> '{body,answerFormat}' in (:"
+                    + p + "formats)) or (q.type = 'QUESTION_SET' and exists (select 1 "
+                    + "from questionbank.question c join questionbank.question_version cv "
+                    + "on cv.question_id=c.id and cv.version_no=q.current_version_no "
+                    + "where c.parent_id=q.id and c.deleted_at is null and c.type='SHORT_ANSWER') "
+                    + "and not exists (select 1 from questionbank.question c "
+                    + "join questionbank.question_version cv on cv.question_id=c.id "
+                    + "and cv.version_no=q.current_version_no where c.parent_id=q.id "
+                    + "and c.deleted_at is null and c.type='SHORT_ANSWER' "
+                    + "and coalesce(cv.snapshot #>> '{body,answerFormat}', '') not in (:"
+                    + p + "formats))))");
+        }
+        if (f.childConditions() != null && !f.childConditions().isEmpty()) {
+            for (int j = 0; j < f.childConditions().size(); j++) {
+                var condition = f.childConditions().get(j);
+                String from = p + "childFrom" + j;
+                String to = p + "childTo" + j;
+                String nodes = p + "childNodes" + j;
+                params.addValue(from, condition.from());
+                params.addValue(to, condition.to());
+                params.addValue(nodes, condition.nodeIds());
+                parts.add(condition.from() < 1 || condition.to() < condition.from() || condition.nodeIds().isEmpty()
+                        ? "false"
+                        : "(q.type = 'QUESTION_SET' and not exists (select 1 from generate_series(:"
+                        + from + ", :" + to + ") pos where not exists (select 1 "
+                        + "from questionbank.question c join questionbank.question_knowledge ck "
+                        + "on ck.question_id=c.id where c.parent_id=q.id and c.deleted_at is null "
+                        + "and c.position=pos - 1 and ck.knowledge_item_id in (:" + nodes + "))))");
+            }
         }
         if (f.requiredPointsPerQuestion() != null) {
             params.addValue(p + "points", f.requiredPointsPerQuestion());
-            parts.add("(case when q.type='QUESTION_SET' then not exists (select 1 from questionbank.question c where c.parent_id=q.id and c.deleted_at is null and c.points <> :" + p + "points) when q.type='CLOZE' then not exists (select 1 from jsonb_array_elements(v.snapshot #> '{body,blanks}') b where (b->>'points')::numeric <> :" + p + "points) else q.points = :" + p + "points end)");
+            parts.add("(case when q.type='QUESTION_SET' then not exists (select 1 "
+                    + "from questionbank.question c where c.parent_id=q.id and c.deleted_at is null "
+                    + "and c.points <> :" + p + "points) when q.type='CLOZE' then not exists "
+                    + "(select 1 from jsonb_array_elements(v.snapshot #> '{body,blanks}') b "
+                    + "where (b->>'points')::numeric <> :" + p + "points) else q.points = :" + p + "points end)");
         }
         return "(" + String.join(" and ", parts) + ")";
     }
 
+    private String shapePredicate(String type, String snapshot, String prefix,
+                                  QuestionSourcePort.ItemShape shape, MapSqlParameterSource params) {
+        List<String> parts = new ArrayList<>();
+        if (shape.statements() != null) {
+            params.addValue(prefix + "statements", shape.statements());
+            parts.add(type + " = 'TRUE_FALSE' and coalesce(jsonb_array_length("
+                    + snapshot + " #> '{body,statements}'), 0) = :" + prefix + "statements");
+        }
+        if (shape.leftItems() != null) {
+            params.addValue(prefix + "left", shape.leftItems());
+            parts.add(type + " = 'MATCHING' and coalesce(jsonb_array_length("
+                    + snapshot + " #> '{body,left}'), 0) = :" + prefix + "left");
+        }
+        if (shape.rightItems() != null) {
+            params.addValue(prefix + "right", shape.rightItems());
+            parts.add(type + " = 'MATCHING' and coalesce(jsonb_array_length("
+                    + snapshot + " #> '{body,right}'), 0) = :" + prefix + "right");
+        }
+        return parts.isEmpty() ? "true" : String.join(" and ", parts);
+    }
+
     private String units() {
         return """
-                units as (
+                raw_units as (
                   select r.id root_id, r.current_version_no version_no, r.type root_type,
                          r.id unit_id, null::text reference, r.type answer_type,
                          r.grade_item_id grade_id, r.level_item_id level_id,
-                         r.competency_item_id competency_id, r.points, 0::bigint unit_order
+                         r.competency_item_id competency_id, r.points, 0::bigint unit_order,
+                         r.snapshot unit_snapshot
                   from roots r where r.type not in ('QUESTION_SET','CLOZE')
                   union all
                   select r.id, r.current_version_no, r.type, c.id, null::text, c.type,
                          coalesce(c.grade_item_id,r.grade_item_id), coalesce(c.level_item_id,r.level_item_id),
-                         coalesce(c.competency_item_id,r.competency_item_id), c.points, c.position::bigint
+                         coalesce(c.competency_item_id,r.competency_item_id), c.points, c.position::bigint,
+                         coalesce(cv.snapshot, '{}'::jsonb)
                   from roots r join questionbank.question c on c.parent_id=r.id and c.deleted_at is null
+                  left join questionbank.question_version cv
+                    on cv.question_id=c.id and cv.version_no=r.current_version_no
                   where r.type='QUESTION_SET'
                   union all
                   select r.id, r.current_version_no, r.type, r.id, b.value->>'id', 'CLOZE',
                          r.grade_item_id, r.level_item_id, r.competency_item_id,
-                         (b.value->>'points')::numeric, b.ordinality
+                         (b.value->>'points')::numeric, b.ordinality, r.snapshot
                   from roots r cross join lateral jsonb_array_elements(r.snapshot #> '{body,blanks}') with ordinality b(value, ordinality)
                   where r.type='CLOZE'
+                ),
+                units as (
+                  select raw_units.*,
+                         case when answer_type = 'TRUE_FALSE' then coalesce(jsonb_array_length(unit_snapshot #> '{body,statements}'), 0)
+                              when answer_type = 'MATCHING' then coalesce(jsonb_array_length(unit_snapshot #> '{body,left}'), 0)
+                              else 1 end command_count,
+                         case when answer_type = 'TRUE_FALSE' then jsonb_array_length(unit_snapshot #> '{body,statements}') end statement_count,
+                         case when answer_type = 'MATCHING' then jsonb_array_length(unit_snapshot #> '{body,left}') end left_count,
+                         case when answer_type = 'MATCHING' then jsonb_array_length(unit_snapshot #> '{body,right}') end right_count,
+                         case when answer_type = 'SHORT_ANSWER' then unit_snapshot #>> '{body,answerFormat}' end answer_format,
+                         coalesce(jsonb_array_length(unit_snapshot #> '{attachmentIds}'), 0) > 0 has_attachment
+                  from raw_units
                 )
                 """;
     }

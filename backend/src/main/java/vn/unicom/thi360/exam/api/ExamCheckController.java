@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.audit.spi.AuditActorType;
@@ -28,6 +29,7 @@ import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.security.RequirePermission;
+import vn.unicom.thi360.shared.api.NotImplementedException;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @RestController
@@ -51,11 +53,19 @@ public class ExamCheckController {
             content = @Content(schema = @Schema(implementation = ExamCheckApiModels.Result.class, nullable = true)))
     public JsonNode latest(@PathVariable UUID examId) {
         ObjectNode result = query.latest(examId);
+        if (result != null && !result.has("sectionStates")) {
+            result.putNull("sectionStates");
+        }
         return result == null ? NullNode.getInstance() : result;
     }
 
     @Schema(name = "ExamCheckStarted")
     public record Started(UUID runId) { }
+
+    @Schema(name = "ExamCheckRequest")
+    public record CheckRequest(
+            @Schema(allowableValues = {"EXAM", "PART", "SECTION"}) String scope,
+            String sectionId, String partId) { }
 
     @PostMapping
     @RequirePermission(Permissions.EXAM_MODIFY)
@@ -67,7 +77,11 @@ public class ExamCheckController {
                 content = @Content(schema = @Schema(implementation = Started.class)))
     })
     public ResponseEntity<?> check(@PathVariable UUID examId,
-            @RequestParam(defaultValue = "false") boolean deep) {
+            @RequestParam(defaultValue = "false") boolean deep,
+            @RequestBody(required = false) CheckRequest request) {
+        if (request != null && request.scope() != null && !"EXAM".equals(request.scope())) {
+            throw new NotImplementedException();
+        }
         var actor = actor();
         String traceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         if (deep) {

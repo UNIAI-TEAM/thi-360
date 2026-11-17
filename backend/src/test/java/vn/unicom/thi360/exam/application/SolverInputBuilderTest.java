@@ -40,13 +40,14 @@ class SolverInputBuilderTest {
         when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of(parentNode, childNode));
         when(catalog.findActiveItem("SUBJECT", "TOAN")).thenReturn(Optional.of(subject));
         when(source.findCandidates(any(), eq(8))).thenReturn(List.of());
-        var scope = new KnowledgeScope(List.of(root), KnowledgeMatch.ALL, null, List.of("C1"));
+        var scope = new KnowledgeScope(List.of(root), List.of("C1"));
         var matrix = new BlockMatrix(MatrixMode.COMBINED, MatrixUnit.PERCENT,
                 List.of(new MatrixCell("G10", "NB", BigDecimal.valueOf(100))),
                 List.of(), List.of(), List.of(new MatrixDimensionValue("C1", BigDecimal.valueOf(100))));
         var block = new QuestionBlock("set", "Set", QuestionType.QUESTION_SET, 2, 1, 2,
-                null, matrix, null, null, null, false, BigDecimal.ONE, List.of("TAG"),
-                new BlockExpectedScoring(null, null, "ALL_OR_NOTHING"));
+                null, matrix, null, null, false, BigDecimal.ONE, List.of("TAG"),
+                new BlockExpectedScoring(null, null, "ALL_OR_NOTHING"), true, false, List.of(),
+                List.of(), null, List.of(), false, List.of(), null);
         var section = new ExamSection("math", "TOAN", 2, scope, null, null, null, List.of(block));
         var part = new ExamPart("p", 1, "Part", 20, 2, 2, 2,
                 new PartParticipation(ParticipationMode.ALL, null), null, List.of(section), List.of());
@@ -61,7 +62,7 @@ class SolverInputBuilderTest {
         var filter = ArgumentCaptor.forClass(QuestionSourcePort.Filter.class);
         verify(source).findCandidates(filter.capture(), eq(8));
         assertThat(filter.getValue().subjectId()).isEqualTo(subjectId);
-        assertThat(filter.getValue().knowledgeMatch()).isEqualTo(QuestionSourcePort.Match.ALL);
+        assertThat(filter.getValue().knowledgeMatch()).isEqualTo(QuestionSourcePort.Match.ANY);
         assertThat(filter.getValue().knowledgeGroups().getFirst()).containsExactlyInAnyOrder(root, child);
         assertThat(filter.getValue().tagCodes()).containsExactly("TAG");
         assertThat(filter.getValue().competencyCodes()).containsExactly("C1");

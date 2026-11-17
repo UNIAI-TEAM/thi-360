@@ -42,9 +42,8 @@ function block(matrix: Partial<BlockMatrix>, overrides: Partial<QuestionBlock> =
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY" },
+    knowledgeScope: { nodeIds: [] },
     tagCodes: [],
-    taskTypeCode: null,
     childAnswerType: null,
     templateGroupCode: null,
     answerTypeLocked: false,
@@ -232,22 +231,21 @@ describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
     knowledgeScope,
   });
   it("group inherits subject scope; own scope not intersected", () => {
-    const math = section({ nodeIds: ["kn-1D4"], match: "ANY" });
+    const math = section({ nodeIds: ["kn-1D4"] });
     // Nhóm không có phạm vi riêng (null) dùng phạm vi của môn.
     expect(effectiveScope(singles(null), math)).toEqual(math.knowledgeScope);
     // Nhóm có phạm vi riêng chỉ dùng phạm vi riêng, không giao với phạm vi của môn (kn-0D1 nằm ngoài kn-1D4).
-    const own = singles({ nodeIds: ["kn-0D1"], match: "ANY" });
+    const own = singles({ nodeIds: ["kn-0D1"] });
     expect(effectiveScope(own, math)).toEqual(own.knowledgeScope);
     // Cả hai cùng trống là không giới hạn MAPID.
     const open = section(null);
     expect(effectiveScope(singles(null), open)).toBeNull();
     // Phạm vi riêng chưa chọn nút (hủy hộp chọn, chỉ có năng lực) kế thừa nút của môn và giữ lọc năng lực (R1-3, R1-4).
-    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), math)).toEqual(math.knowledgeScope);
-    expect(effectiveScope(singles({ nodeIds: [], match: "ANY", competencyCodes: ["VACT-TOAN"] }), math)).toEqual({
+    expect(effectiveScope(singles({ nodeIds: [] }), math)).toEqual(math.knowledgeScope);
+    expect(effectiveScope(singles({ nodeIds: [], competencyCodes: ["VACT-TOAN"] }), math)).toEqual({
       nodeIds: ["kn-1D4"],
-      match: "ANY",
       competencyCodes: ["VACT-TOAN"],
     });
-    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), open)).toEqual({ nodeIds: [], match: "ANY" });
+    expect(effectiveScope(singles({ nodeIds: [] }), open)).toEqual({ nodeIds: [] });
   });
 });

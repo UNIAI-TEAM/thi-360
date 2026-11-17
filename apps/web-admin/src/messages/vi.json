@@ -2347,6 +2347,15 @@
         "standardAnswer": "Đáp án chuẩn",
         "acceptedAnswer": "Đáp án được chấp nhận",
         "inputHint": "Hướng dẫn nhập:",
+        "answerFormat": "Định dạng đáp án:",
+        "answerFormats": {
+          "INTEGER": "Số nguyên",
+          "DECIMAL": "Số thập phân",
+          "FRACTION": "Phân số",
+          "TEXT": "Văn bản",
+          "CHEM_FORMULA": "Công thức hóa học",
+          "CHEM_EQUATION": "Phương trình hóa học"
+        },
         "noRubric": "Chưa có tiêu chí chấm.",
         "sampleAnswer": "Bài làm mẫu",
         "scoreTableTitle": "Bảng điểm theo số ý đúng",
@@ -2775,7 +2784,10 @@
         "add": "Thêm đáp án được chấp nhận",
         "added": "Đã thêm đáp án {number}.",
         "inputHint": "Hướng dẫn nhập",
-        "inputHintHint": "Không bắt buộc. Học viên thấy khi làm bài, ví dụ “Viết dấu phẩy thập phân”."
+        "inputHintHint": "Không bắt buộc. Học viên thấy khi làm bài, ví dụ “Viết dấu phẩy thập phân”.",
+        "answerFormat": "Định dạng đáp án",
+        "answerFormatHint": "Không bắt buộc. Dùng để lọc câu khi sinh đề theo nhóm có chỉ định định dạng; câu chưa đặt định dạng không vào nhóm có lọc.",
+        "answerFormatNone": "Không đặt"
       },
       "essay": {
         "manualGrading": "Chấm tay",
@@ -3973,10 +3985,6 @@
         "points": "Điểm mỗi câu yêu cầu",
         "pointsOpenHint": "Không bắt buộc. Để trống thì câu nào cũng vào nguồn, điểm lấy từ phiên bản câu.",
         "pointsTotal": "Chỉ câu có đúng {points, number} điểm vào nguồn; nhóm có {total, number} điểm.",
-        "taskType": "Dạng bài",
-        "taskTypeSet": "Dạng bài hoặc ngữ liệu",
-        "taskTypeSetHint": "Giới hạn nguồn theo dạng bài; phạm vi ngữ liệu đặt ở MAPID bên dưới.",
-        "taskTypeAny": "Không lọc theo dạng bài",
         "ownMatrix": "Ma trận lớp và độ khó riêng của nhóm",
         "ownMatrixNone": "Chưa khai (tùy chọn)",
         "ownMatrixSet": "Đã khai",
@@ -5069,9 +5077,6 @@
       "pick": "Chọn kiến thức",
       "remove": "Bỏ kiến thức {code} {name}",
       "useSection": "Dùng phạm vi của môn",
-      "match": "Cách đối chiếu",
-      "matchAny": "Khớp ít nhất một (mặc định)",
-      "matchAll": "Khớp tất cả",
       "pickerDescription": "Phạm vi của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó."
     },
     "subjectChoice": {

@@ -315,6 +315,7 @@ const bodySchema = z.object({
   scoreTable: z.array(z.string()),
   gradingGuide: z.string(),
   inputHint: z.string(),
+  answerFormat: z.string(),
   rubric: z.array(z.object({ id: z.string(), description: z.string(), points: z.string() })),
   sampleAnswer: z.string(),
   wordLimit: z.string(),

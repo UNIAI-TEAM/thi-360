@@ -1,9 +1,13 @@
 package vn.unicom.thi360.questionbank.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -14,9 +18,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.identity.spi.Permissions;
-import vn.unicom.thi360.questionbank.application.AvailableQuestionCountService;
-import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.security.RequirePermission;
+import vn.unicom.thi360.questionbank.application.AvailableQuestionCountService;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 @Tag(name = "Exam", description = "Dữ liệu tham chiếu và bài thi")
 @RestController
@@ -29,13 +35,30 @@ public class AvailableQuestionCountController {
     }
 
     @Schema(name = "AvailableQuestionsKnowledgeScope", description = "Phạm vi kiến thức có hiệu lực của nhóm")
-    public record KnowledgeScope(List<UUID> nodeIds, String match, List<String> competencyCodes) {}
+    public record KnowledgeScope(List<@NotNull UUID> nodeIds, String match, List<String> competencyCodes) {}
+
+    @Schema(name = "AvailableQuestionsItemShape")
+    public record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}
+
+    @Schema(name = "AvailableQuestionsChildCondition")
+    public record ChildCondition(@Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int from,
+                                 @Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int to,
+                                 List<@NotNull UUID> nodeIds) {
+        @AssertTrue
+        @JsonIgnore
+        @Schema(hidden = true)
+        public boolean isOrdered() {
+            return from <= to;
+        }
+    }
 
     @Schema(name = "AvailableQuestionsQuery", description = "Bộ lọc nguồn câu hỏi của một nhóm")
     public record Query(@NotBlank String subjectCode, QuestionType questionType,
                         List<QuestionType> answerTypes, QuestionType childAnswerType,
-                        KnowledgeScope knowledgeScope, String taskTypeCode, List<String> tagCodes,
-                        List<String> competencyCodes, BigDecimal requiredPointsPerQuestion) {}
+                        @Valid KnowledgeScope knowledgeScope, List<String> tagCodes,
+                        List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                        ItemShape itemShape, List<@NotNull AnswerFormat> answerFormats,
+                        List<@NotNull @Valid ChildCondition> childConditions) {}
 
     @Schema(name = "AvailableQuestionsSubjectQuery", description = "Các nhóm nguồn của một môn")
     public record SubjectQuery(@NotBlank String subjectCode, @NotNull List<@Valid Query> groups) {}
@@ -47,8 +70,13 @@ public class AvailableQuestionCountController {
     @Schema(name = "AvailableQuestionsCompetency")
     public record Competency(String code, long value) {}
     @Schema(name = "AvailableQuestionsResponse")
-    public record Response(long total, List<Cell> cells, List<AnswerType> byAnswerType,
-                           List<Competency> byCompetency) {}
+    public record Response(long total, long commandCount, List<Cell> cells, List<AnswerType> byAnswerType,
+                           List<Competency> byCompetency) {
+        public Response(long total, List<Cell> cells, List<AnswerType> byAnswerType,
+                        List<Competency> byCompetency) {
+            this(total, total, cells, byAnswerType, byCompetency);
+        }
+    }
 
     @PostMapping("/count")
     @RequirePermission(Permissions.EXAM_VIEW)
