@@ -141,6 +141,7 @@ Sub-issue theo plan A5 (17 task, 100 điểm):
 Đã merge vào `integration/dot-2b` (issue chuyển `in_review`, chờ người duyệt):
 
 - BE-3 UNI-2652, PR #81 (`fef09eb7`), 2026-11-18.
+- BE-1 UNI-2650, PR #82 (`829c51fa`), 2026-11-18.
 
 ### Thứ tự làm
 
