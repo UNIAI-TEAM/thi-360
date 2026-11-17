@@ -1,12 +1,56 @@
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import "katex/contrib/mhchem";
+
+const MHCHEM_COMMAND = /\\(?:ce|pu)(?![A-Za-z])/;
+let mhchemLoaded = false;
+let mhchemFailed = false;
+let mhchemLoading: Promise<void> | null = null;
+
+/**
+ * mhchem (`\ce`, `\pu`) nặng ~10 KB gzip nên không nằm trong chunk đầu của trang: nạp một lần, ngay khi gặp LaTeX có
+ * `\ce`/`\pu`. Trả `null` nếu không cần chờ (đã nạp, nạp lỗi, hoặc LaTeX không dùng mhchem).
+ */
+function whenMhchemReady(latex: string): Promise<void> | null {
+  if (mhchemLoaded || mhchemFailed || !MHCHEM_COMMAND.test(latex)) return null;
+  // Nạp động có chủ đích (ngân sách bundle ED-QA): mhchem tự đăng ký macro vào `katex`, không thể import tĩnh ở chunk đầu.
+  mhchemLoading ??= import("katex/contrib/mhchem").then(
+    () => {
+      mhchemLoaded = true;
+    },
+    () => {
+      mhchemFailed = true;
+    },
+  );
+  return mhchemLoading;
+}
+
+/**
+ * Trong lúc mhchem đang nạp: thay nội dung `target` bằng giữ chỗ trung tính (dấu ba chấm mờ, `aria-busy`, tên truy cập là
+ * LaTeX của công thức; không hiện mã nguồn cho người xem) rồi gọi `rerender` khi nạp xong, nếu `target` còn trong DOM và
+ * chưa bị dựng lại. Trả `true` nếu đã hiện giữ chỗ (nơi gọi dừng tại đó).
+ */
+export function deferUntilMhchem(latex: string, target: HTMLElement, rerender: () => void): boolean {
+  const pending = whenMhchemReady(latex);
+  if (!pending) return false;
+  const placeholder = document.createElement("span");
+  placeholder.className = "text-text-muted";
+  placeholder.setAttribute("role", "img");
+  placeholder.setAttribute("aria-busy", "true");
+  placeholder.setAttribute("aria-label", latex);
+  placeholder.textContent = "\u2026";
+  target.replaceChildren(placeholder);
+  void pending.then(() => {
+    if (target.isConnected && placeholder.parentNode === target) rerender();
+  });
+  return true;
+}
 
 /**
  * Dựng công thức vào một phần tử đã gắn DOM. LaTeX lỗi không làm vỡ trang: nội dung hiện
  * mã nguồn trong khung cảnh báo `math-error` (màu của DESIGN.md).
  */
 function renderLatex(latex: string, displayMode: boolean, target: HTMLElement, fallbackText?: string) {
+  if (deferUntilMhchem(latex, target, () => renderLatex(latex, displayMode, target, fallbackText))) return;
   try {
     katex.render(latex, target, { displayMode, throwOnError: true });
   } catch {

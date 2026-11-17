@@ -8,6 +8,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import katex from "katex";
+import { deferUntilMhchem } from "./math-render";
 import "katex/dist/katex.min.css";
 import { useTranslations } from "next-intl";
 import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type AriaAttributes, type Ref } from "react";
@@ -57,6 +58,7 @@ export interface RichTextEditorProps extends AriaAttributes {
 }
 
 function renderLatex(latex: string, displayMode: boolean, target: HTMLElement) {
+  if (deferUntilMhchem(latex, target, () => renderLatex(latex, displayMode, target))) return;
   try {
     katex.render(latex, target, { displayMode, throwOnError: true });
   } catch {
