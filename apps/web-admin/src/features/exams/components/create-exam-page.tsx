@@ -23,6 +23,7 @@ import { useCallback, useEffect, useEffectEvent, useId, useMemo, useRef, useStat
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { RichTextEditor } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
+import { apiErrorCode } from "@/features/content/api-error";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
@@ -439,8 +440,12 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
           const code = submitted.code.trim().toUpperCase();
           setTakenCodes((current) => new Set([...current, code]));
           setError("code", { message: t("errors.codeTaken") }, { shouldFocus: true });
+        } else if (status === 422) {
+          // Lỗi nghiệp vụ 422 hiện theo mã (`ExamErrorCodes`), có bản dịch; mã lạ thì câu chung. Không in thân lỗi của máy chủ.
+          const reason = apiErrorCode(error);
+          setSubmitError(reason && t.has(`errors.codes.${reason}`) ? t(`errors.codes.${reason}`) : t("errors.structure"));
         } else {
-          setSubmitError(status === 422 ? t("errors.structure") : t("errors.generic"));
+          setSubmitError(t("errors.generic"));
         }
       },
     });

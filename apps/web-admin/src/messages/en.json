@@ -4911,6 +4911,15 @@
       },
       "errors": {
         "codeTaken": "This exam code is already used. Enter another code.",
+        "codes": {
+          "EXAM_INSTRUCTIONS_UNSAFE": "The exam instructions contain content that is not allowed. Fix it and try again.",
+          "EXAM_KIND_UNKNOWN": "The exam type is not valid. Choose the exam type again.",
+          "EXAM_MAX_SCORE_INVALID": "The maximum score must be greater than 0.",
+          "EXAM_PART_OR_SUBJECT_REQUIRED": "Choose the part or subject of the exam.",
+          "EXAM_SCOPE_NOT_ALLOWED": "This exam type does not allow the chosen scope. Choose another scope.",
+          "EXAM_STRUCTURE_INVALID": "The overview structure is not valid. Check the question counts, durations and points in the table, then try again.",
+          "EXAM_TEMPLATE_MISMATCH": "There is no default template for this choice. Choose another subject or part."
+        },
         "generic": "Could not create the exam. Try again later.",
         "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again."
       },

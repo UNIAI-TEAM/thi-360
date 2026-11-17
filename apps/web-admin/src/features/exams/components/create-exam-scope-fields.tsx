@@ -5,6 +5,7 @@ import { Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { CatalogOption, ExamKindOption } from "@/features/content/types";
 import {
+  latestTemplate,
   partCodesForKind,
   partNeedsSubject,
   type ScopeSelection,
@@ -50,10 +51,26 @@ export function CreateExamScopeFields({
       ? partCodesForKind(templates, kinds, selection.kind).map((code) => ({ value: code, label: partNames.partName(code) }))
       : [];
   const counts = templateCountBySubject(templates, selection.kind);
+  /*
+   * Chỉ chào môn mà API có mẫu cho phạm vi đang chọn (F-06): Theo môn = có mẫu Theo môn; môn trước phần (SP2E, SPT
+   * Theo phần, R2-02) = mẫu Theo môn mặc định STANDARD có phần. Kỳ thi chưa có mẫu nào cho phạm vi thì chào hết để
+   * người tạo dựng bảng trống.
+   */
+  const offers = new Set(
+    subjects
+      .filter((subject) =>
+        subjectFirst
+          ? subjectPartOptions(templates, selection.kind, subject.code).length > 0
+          : counts.has(subject.code),
+      )
+      .map((subject) => subject.code),
+  );
   const subjectOptions = subjects
-    .filter((subject) => !subjectFirst || counts.has(subject.code))
+    .filter((subject) => offers.size === 0 || offers.has(subject.code))
     .map((subject) => ({ value: subject.code, label: subject.name }));
-  const noTemplate = Boolean(selection.subjectCode) && !counts.has(selection.subjectCode);
+  const noTemplate =
+    offers.size === 0 ||
+    !latestTemplate(templates, { kind: selection.kind, scope: "SUBJECT", partCode: "", subjectCode: selection.subjectCode, buildMode: selection.buildMode ?? "STANDARD" });
   const subjectName = subjects.find((subject) => subject.code === selection.subjectCode)?.name ?? selection.subjectCode;
   const buildModes: Array<{ value: ExamBuildMode; label: string; description: string }> = [
     {

@@ -139,10 +139,24 @@ export function templateCountBySubject(templates: readonly ExamTemplate[], kind:
   return counts;
 }
 
-/** Môn mặc định khi chọn Theo môn (hoặc môn trước phần): môn đầu tiên của danh mục có mẫu; không có thì để trống. */
-export function defaultSubjectFor(templates: readonly ExamTemplate[], subjects: readonly CatalogOption[], kind: ExamKind): string {
+/**
+ * Môn mặc định khi chọn Theo môn (hoặc môn trước phần): môn đầu tiên của danh mục có mẫu Theo môn; `needsParts`
+ * (SP2E, SPT Theo phần, R2-02) chỉ môn mà mẫu Theo môn mặc định `STANDARD` có phần. Không có thì để trống.
+ */
+export function defaultSubjectFor(
+  templates: readonly ExamTemplate[],
+  subjects: readonly CatalogOption[],
+  kind: ExamKind,
+  needsParts = false,
+): string {
   const counts = templateCountBySubject(templates, kind);
-  return subjects.find((subject) => counts.has(subject.code))?.code ?? "";
+  if (counts.size === 0) return "";
+  return (
+    subjects.find(
+      (subject) =>
+        counts.has(subject.code) && (!needsParts || subjectPartOptions(templates, kind, subject.code).length > 0),
+    )?.code ?? ""
+  );
 }
 
 export function findTemplate(templates: readonly ExamTemplate[], code: string | null | undefined): ExamTemplate | undefined {
@@ -224,8 +238,14 @@ export function resolveScope(
   let subjectCode = "";
   if (scope === "SUBJECT" || needsSubject) {
     subjectCode = change.subjectCode ?? current.subjectCode;
-    const keep = subjectCode && (change.subjectCode !== undefined || templateCountBySubject(templates, kind).has(subjectCode));
-    if (!keep) subjectCode = defaultSubjectFor(templates, subjects, kind);
+    // Môn trước phần (SP2E, SPT Theo phần, R2-02): chỉ giữ môn mà mẫu Theo môn mặc định STANDARD có phần.
+    const keep =
+      subjectCode &&
+      (change.subjectCode !== undefined ||
+        (needsSubject && scope === "PART"
+          ? subjectPartOptions(templates, kind, subjectCode).length > 0
+          : templateCountBySubject(templates, kind).has(subjectCode)));
+    if (!keep) subjectCode = defaultSubjectFor(templates, subjects, kind, needsSubject && scope === "PART");
   }
   let partCode = "";
   if (scope === "PART") {

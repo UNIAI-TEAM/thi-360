@@ -203,6 +203,25 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
     expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ kind: "SPT", scope: "SUBJECT", subjectCode: "MATH", buildMode: "REVIEW" });
   }, 20_000);
+
+  it("ô Môn chỉ chào môn có mẫu; Theo phần của SPT chỉ chào môn mà mẫu Theo môn STANDARD có phần (không tính bài ôn)", async () => {
+    const SPT_PHYSICS_REVIEW = template("SPT_PHYSICS_REVIEW", { kindCode: "SPT", subjectCode: "PHYSICS", buildMode: "REVIEW", structureYear: 2025, maxScore: 10 }, [
+      part(1, "Bài ôn", 10, 15, [section("PHYSICS", 10)]),
+    ]);
+    createServer([...ALL_TEMPLATES, SPT_PHYSICS_REVIEW]).install();
+    const user = await renderPage();
+    await pickKind(user, "SPT");
+    const subjects = async () => {
+      await user.click(screen.getByRole("combobox", { name: /^Môn/ }));
+      const names = within(await screen.findByRole("listbox")).getAllByRole("option").map((option) => option.textContent);
+      await user.keyboard("{Escape}");
+      return names;
+    };
+    // Theo môn: môn có mẫu (kể cả chỉ có bài ôn), không có Hóa học hay môn khác không có mẫu.
+    expect(await subjects()).toEqual(["Toán", "Vật lí"]);
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(await subjects()).toEqual(["Toán"]);
+  }, 20_000);
 });
 
 describe("trang Tạo bài thi, nhánh thật: đổi lựa chọn sau khi sửa bảng", () => {
@@ -329,7 +348,7 @@ describe("trang Tạo bài thi, nhánh thật: lỗi khi tạo", () => {
     expect(routerMock.push).not.toHaveBeenCalled();
   }, 20_000);
 
-  it("422 (tổng quan không hợp lệ): báo ở đầu biểu mẫu, giữ nguyên số đã nhập", async () => {
+  it("422 (tổng quan không hợp lệ): báo ở dưới biểu mẫu, giữ nguyên số đã nhập", async () => {
     createServer().on("POST", EXAMS_PATH, { status: 422, body: { code: "EXAM_STRUCTURE_INVALID", fieldErrors: [] } }).install();
     const user = await renderPage();
     await user.type(name(), "HSA thử");
@@ -337,9 +356,24 @@ describe("trang Tạo bài thi, nhánh thật: lỗi khi tạo", () => {
     await user.clear(count);
     await user.type(count, "12");
     await user.click(submit());
-    expect(await screen.findByText(/Cấu trúc khởi tạo chưa hợp lệ/)).toBeInTheDocument();
+    expect(await screen.findByText(/Cấu trúc tổng quan chưa hợp lệ/)).toBeInTheDocument();
     expect(count).toHaveValue("12");
     expect(routerMock.push).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it("422 theo mã: hiện câu đã dịch, không in thân lỗi của máy chủ; mã lạ thì câu chung", async () => {
+    const body = { code: "EXAM_TEMPLATE_MISMATCH", message: "RAW-SERVER-TEXT", fieldErrors: [{ field: "subjectCode", code: "X" }] };
+    createServer()
+      .on("POST", EXAMS_PATH, { status: 422, body }, { status: 422, body: { code: "SOMETHING_NEW", message: "RAW-SERVER-TEXT" } })
+      .install();
+    const user = await renderPage();
+    await user.type(name(), "HSA thử");
+    await user.click(submit());
+    expect(await screen.findByText("Chưa có mẫu mặc định khớp với lựa chọn này. Chọn môn hoặc phần khác.")).toBeInTheDocument();
+    expect(screen.queryByText(/RAW-SERVER-TEXT|fieldErrors|EXAM_TEMPLATE_MISMATCH/)).toBeNull();
+    await user.click(submit());
+    expect(await screen.findByText(/Cấu trúc khởi tạo chưa hợp lệ/)).toBeInTheDocument();
+    expect(screen.queryByText(/RAW-SERVER-TEXT/)).toBeNull();
   }, 20_000);
 
   it("lỗi mạng khác (500): báo lỗi chung, thử lại được", async () => {
