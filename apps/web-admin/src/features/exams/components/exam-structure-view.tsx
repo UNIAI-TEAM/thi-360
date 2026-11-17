@@ -47,6 +47,7 @@ import {
   updateSection,
   validateDraft,
 } from "./exam-structure-draft";
+import { ExamEditorActions } from "./exam-editor-actions";
 import { optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
 import { ExamStructureLeaveDialog } from "./exam-structure-leave-dialog";
 import { ExamStructureList } from "./exam-structure-list";
@@ -104,7 +105,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
 
   if (structureQuery.isPending || referenceQuery.isPending || examQuery.isPending) {
     return (
-      <div role="status" aria-label={common("loading")} className="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div role="status" aria-label={common("loading")} className="grid grid-cols-1 gap-4 lg:grid-cols-[18.75rem_minmax(0,1fr)]">
         <Skeleton className="h-96" />
         <div className="flex flex-col gap-4">
           <Skeleton className="h-24" />
@@ -367,9 +368,33 @@ function StructureEditor({
     : selectedPart
       ? { scope: "PART", partId: selectedPart.id }
       : null;
+  const checkAction = checkRequest ? (
+    <Button type="button" variant="secondary" size="sm" loading={check.isPending || save.isPending} onClick={() => runCheck(checkRequest)}>
+      <ClipboardCheck />
+      <span>{checkRequest.scope === "SECTION" ? t("check.section") : t("check.part")}</span>
+    </Button>
+  ) : null;
 
   return (
     <div className="@container flex flex-col gap-4">
+      <ExamEditorActions>
+        {dirty && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
+        <Button type="button" variant="secondary" disabled={!dirty || save.isPending} onClick={() => setConfirmDiscard(true)}>
+          {t("discard")}
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => runSave()} loading={save.isPending} disabled={!dirty}>
+          <Save />
+          <span>{t("save")}</span>
+        </Button>
+        <Button type="button" variant="secondary" loading={check.isPending || save.isPending} onClick={() => runCheck({ scope: "EXAM" })}>
+          <ClipboardCheck />
+          <span>{t("check.all")}</span>
+        </Button>
+        <Button type="button" loading={check.isPending || save.isPending} onClick={continueToReview}>
+          <span>{t("check.continue")}</span>
+          <ArrowRight />
+        </Button>
+      </ExamEditorActions>
       <Card padding="md" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <dl aria-label={t("summary.label")} className="flex flex-wrap gap-x-6 gap-y-2 text-body">
@@ -404,32 +429,9 @@ function StructureEditor({
               warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
             />
           </dl>
-          <div className="flex flex-wrap items-center gap-2">
-            {dirty && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!dirty || save.isPending}
-              onClick={() => setConfirmDiscard(true)}
-            >
-              {t("discard")}
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
-            </Button>
-            <Button type="button" variant="secondary" loading={check.isPending || save.isPending} onClick={() => runCheck({ scope: "EXAM" })}>
-              <ClipboardCheck />
-              <span>{t("check.all")}</span>
-            </Button>
-            <Button type="button" variant={dirty ? "secondary" : "primary"} loading={check.isPending || save.isPending} onClick={continueToReview}>
-              <span>{t("check.continue")}</span>
-              <ArrowRight />
-            </Button>
-            <Button type="button" onClick={() => runSave()} loading={save.isPending} disabled={!dirty}>
-              <Save />
-              <span>{t("save")}</span>
-            </Button>
-          </div>
+          <Button asChild variant="secondary">
+            <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
+          </Button>
         </div>
         <p className="text-caption text-text-muted">
           {exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote")}
@@ -466,7 +468,7 @@ function StructureEditor({
         <LiveStatus message={liveMessage} />
       </Card>
 
-      <div className="grid grid-cols-1 items-start gap-4 @5xl:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[18.75rem_minmax(0,1fr)]">
         <ExamStructureList
           parts={draft}
           combinations={structure.combinations ?? []}
@@ -477,14 +479,6 @@ function StructureEditor({
           onSelect={select}
         />
         <div className="flex min-w-0 flex-col gap-4">
-          {checkRequest && (
-            <div className="flex justify-end">
-              <Button type="button" variant="secondary" size="sm" loading={check.isPending || save.isPending} onClick={() => runCheck(checkRequest)}>
-                <ClipboardCheck />
-                <span>{checkRequest.scope === "SECTION" ? t("check.section") : t("check.part")}</span>
-              </Button>
-            </div>
-          )}
           {sectionContext?.option?.kind === "SUBJECT_CHOICE" && (
             <SubjectChoiceNav
               option={sectionContext.option}
@@ -507,6 +501,7 @@ function StructureEditor({
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
               onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
+              headerAction={checkAction}
             />
           ) : blockContext ? (
             <BlockEditor
@@ -538,6 +533,7 @@ function StructureEditor({
                 selectNow({ kind: "part", partId: blockContext.part.id });
                 announce(t("blockRemoved", { name }));
               }}
+              headerAction={checkAction}
             />
           ) : selectedPart ? (
             <ExamStructurePartPanel
@@ -594,6 +590,7 @@ function StructureEditor({
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
               onSelectSection={(sectionId) => select({ kind: "section", sectionId })}
               sectionStates={sectionStates}
+              headerAction={checkAction}
             />
           ) : null}
           <ExamStructureSummaryRegion

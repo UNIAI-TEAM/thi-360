@@ -6,6 +6,7 @@ import { examTabHref } from "../editor-tabs";
 import { ExamStructureList } from "../components/exam-structure-list";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { defaultSelection } from "../components/exam-structure-draft";
+import { ExamEditorActionsSlot } from "../components/exam-editor-actions";
 import type { ExamPart, ExamSection } from "../types";
 import checkHsa from "./fixtures/check-hsa-f-001.json";
 import { ExamsBackend } from "./fake-exams-backend";
@@ -383,6 +384,26 @@ describe("Khung bước 2: nút kiểm tra", () => {
     await waitFor(() => expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(1));
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1);
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
+  });
+
+  it("nút đầu trang nằm ở hàng tiêu đề của khung, 'Kiểm tra môn' nằm ở đầu vùng chi tiết", async () => {
+    const titleRow = document.createElement("div");
+    document.body.append(titleRow);
+    window.history.replaceState(null, "", `/exams/${QDA}/structure?section=sec-41`);
+    renderWithProviders(
+      <ExamEditorActionsSlot.Provider value={titleRow}>
+        <ExamStructureView examId={QDA} />
+      </ExamEditorActionsSlot.Provider>,
+    );
+    await screen.findByRole("navigation", { name: "Cấu trúc" });
+    for (const name of ["Lưu", "Kiểm tra toàn bài", "Tiếp tục"]) {
+      expect(within(titleRow).getByRole("button", { name })).toBeInTheDocument();
+    }
+    expect(within(titleRow).queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sửa thông tin tổng quan" })).toBeInTheDocument();
+    const detailTitle = await screen.findByRole("heading", { level: 2, name: /Toán/ });
+    expect(detailTitle.parentElement!.parentElement!).toContainElement(screen.getByRole("button", { name: "Kiểm tra môn" }));
+    titleRow.remove();
   });
   it("PUT lưu trước chưa xong thì các nút kiểm tra khóa: click đúp chỉ gửi một PUT", async () => {
     const user = userEvent.setup();
