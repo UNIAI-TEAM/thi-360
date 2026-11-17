@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { describe, expect, it, vi, type Mock } from "vitest";
@@ -68,13 +68,18 @@ async function selectFigure(user: UserEvent) {
   await openDialog(user);
 }
 
-async function fillFigure(user: UserEvent) {
-  await user.type(screen.getByLabelText(/^Alternative text/), EXPECTED.alt);
-  await user.type(screen.getByLabelText("Caption below the image"), EXPECTED.caption);
-  await user.type(screen.getByLabelText("Source"), EXPECTED.source);
+// Chữ dài nhập bằng một sự kiện change thay vì từng phím: `user.type` chậm trên máy Windows và làm bài vượt hạn.
+function setField(label: string | RegExp, value: string) {
+  fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
-describe("image dialog", () => {
+function fillFigure() {
+  setField(/^Alternative text/, EXPECTED.alt);
+  setField("Caption below the image", EXPECTED.caption);
+  setField("Source", EXPECTED.source);
+}
+
+describe("image dialog", { timeout: 20_000 }, () => {
   it("opens from the toolbar Image button without any direct upload", async () => {
     vi.mocked(uploadQuestionAsset).mockClear();
     const user = userEvent.setup();
@@ -100,12 +105,49 @@ describe("image dialog", () => {
     // Có ảnh mà thiếu mô tả: vẫn khóa.
     expect(insertButton()).toBeDisabled();
 
-    await fillFigure(user);
+    fillFigure();
     expect(insertButton()).toBeEnabled();
     await user.click(insertButton());
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(lastHtml(onChange)).toBe(FIGURE_HTML);
+  });
+
+  it("inserts the figure after the list when the caret is inside a list item", async () => {
+    vi.mocked(uploadQuestionAsset).mockResolvedValue({ id: ASSET.id, url: ASSET.url, fileName: "chart.png", size: 4 });
+    const user = userEvent.setup();
+    const onChange = renderEditor({ value: "<ul><li><p>one</p></li><li><p>two</p></li></ul>" });
+    await waitFor(() => expect(tiptap()).toBeTruthy());
+    act(() => {
+      tiptap().commands.setTextSelection(tiptap().state.doc.content.size - 3);
+    });
+    expect(tiptap().state.selection.$from.depth).toBeGreaterThan(1);
+    await openDialog(user);
+    await user.upload(fileInput(), png());
+    await screen.findByRole("button", { name: "Replace image" });
+    setField(/^Alternative text/, "Chart");
+    await user.click(insertButton());
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(lastHtml(onChange)).toMatch(/^<ul><li><p>one<\/p><\/li><li><p>two<\/p><\/li><\/ul><figure class="image"/);
+    expect(lastHtml(onChange).match(/<ul>/g)).toHaveLength(1);
+  });
+
+  it("shows the alternative-text error under the field after it is left empty and clears it once filled", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await openDialog(user);
+    const alt = screen.getByLabelText(/^Alternative text/);
+
+    expect(screen.queryByText("Enter alternative text for the image.")).toBeNull();
+    await user.click(alt);
+    await user.tab();
+
+    expect(screen.getByText("Enter alternative text for the image.")).toBeInTheDocument();
+    expect(alt).toHaveAttribute("aria-invalid", "true");
+    setField(/^Alternative text/, "Chart");
+    expect(screen.queryByText("Enter alternative text for the image.")).toBeNull();
+    expect(alt).not.toHaveAttribute("aria-invalid");
   });
 
   it("treats a blank alternative text as missing", async () => {
@@ -116,7 +158,7 @@ describe("image dialog", () => {
     await user.upload(fileInput(), png());
     await screen.findByRole("button", { name: "Replace image" });
 
-    await user.type(screen.getByLabelText(/^Alternative text/), "   ");
+    setField(/^Alternative text/, "   ");
 
     expect(insertButton()).toBeDisabled();
   });
@@ -128,11 +170,12 @@ describe("image dialog", () => {
     await openDialog(user);
     await user.upload(fileInput(), png());
     await screen.findByRole("button", { name: "Replace image" });
-    await user.type(screen.getByLabelText(/^Alternative text/), "Chart");
+    setField(/^Alternative text/, "Chart");
 
-    expect(screen.getByRole("tab", { name: "Medium" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("group", { name: "Width" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Medium" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /enlarge the image/ })).toBeChecked();
-    await user.click(screen.getByRole("tab", { name: "Full width" }));
+    await user.click(screen.getByRole("radio", { name: "Full width" }));
     await user.click(screen.getByRole("checkbox", { name: /enlarge the image/ }));
     await user.click(insertButton());
 
@@ -152,7 +195,7 @@ describe("image dialog", () => {
     expect(screen.getByLabelText(/^Alternative text/)).toHaveValue(EXPECTED.alt);
     expect(screen.getByLabelText("Caption below the image")).toHaveValue(EXPECTED.caption);
     expect(screen.getByLabelText("Source")).toHaveValue(EXPECTED.source);
-    expect(screen.getByRole("tab", { name: "Small" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("radio", { name: "Small" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /enlarge the image/ })).not.toBeChecked();
     expect(screen.getByRole("img", { name: EXPECTED.alt })).toHaveAttribute("src", ASSET.url);
 
@@ -201,7 +244,7 @@ describe("image dialog", () => {
     const onChange = renderEditor({ value: marked });
     await selectFigure(user);
 
-    await user.type(screen.getByLabelText("Source"), "!");
+    setField("Source", `${EXPECTED.source}!`);
     await user.click(insertButton());
 
     await waitFor(() => expect(lastHtml(onChange)).toContain("<figcaption><sub>2</sub>Bi"));

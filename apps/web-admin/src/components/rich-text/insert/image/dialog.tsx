@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Checkbox, FormField, Input, Label, Tabs, TabsList, TabsTrigger } from "@thi360/ui";
+import { Button, Checkbox, FormField, Input, Label } from "@thi360/ui";
 import { questionAssetErrorMessageKey } from "@/features/questions/asset-upload";
 import { uploadQuestionAsset } from "@/features/questions/api";
 import { NodeSelection } from "@tiptap/pm/state";
@@ -10,7 +10,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { IMAGE_FIGURE_NODE } from "../../extensions";
 import type { InsertDialogProps } from "../registry";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
-import { buildFigureHtml, isFigureWidth, parseFigure, type FigureState, type FigureWidth } from "./figure-html";
+import { upsertAtom } from "../shared/upsert-atom";
+import { buildFigureHtml, parseFigure, type FigureState, type FigureWidth } from "./figure-html";
 
 const EMPTY_FIGURE: FigureState = {
   asset: null,
@@ -46,6 +47,9 @@ export default function ImageInsertDialog({ editor, open, onOpenChange }: Insert
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputId = useId();
+  // Lỗi mô tả thay thế chỉ hiện sau khi rời ô (DESIGN 5.2), mất ngay khi có chữ.
+  const [altTouched, setAltTouched] = useState(false);
+  const altMissing = altTouched && !figure.alt.trim();
   // Hộp đóng khi đang tải thì kết quả về muộn không được ghi vào trạng thái đã bỏ.
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -76,20 +80,10 @@ export default function ImageInsertDialog({ editor, open, onOpenChange }: Insert
     if (!figure.asset || !figure.alt.trim() || uploading) return;
     const attrs = { width: figure.width, zoom: String(figure.zoom), html: buildFigureHtml(figure) };
     // Còn đúng hình đang sửa ở vị trí cũ thì ghi đè nó; không thì (nội dung đã đổi dưới chân hộp) chèn mới.
-    const existing = editingFigure ? editor.state.doc.nodeAt(editingFigure.pos) : null;
-    if (editingFigure && existing?.type.name === IMAGE_FIGURE_NODE) {
-      const pos = editingFigure.pos;
-      editor
-        .chain()
-        .focus()
-        .command(({ tr }) => {
-          tr.setNodeMarkup(pos, undefined, attrs);
-          return true;
-        })
-        .run();
-    } else {
-      editor.chain().focus().insertContent({ type: IMAGE_FIGURE_NODE, attrs }).run();
-    }
+    const current = editingFigure ? editor.state.doc.nodeAt(editingFigure.pos) : null;
+    const existing =
+      editingFigure && current?.type.name === IMAGE_FIGURE_NODE ? { pos: editingFigure.pos, node: current } : null;
+    upsertAtom(editor, IMAGE_FIGURE_NODE, attrs, existing);
     onOpenChange(false);
   }
 
@@ -160,9 +154,15 @@ export default function ImageInsertDialog({ editor, open, onOpenChange }: Insert
         </section>
 
         <div className="flex flex-col gap-4">
-          <FormField label={t("altLabel")} hint={t("altHint")} required>
+          <FormField label={t("altLabel")} hint={t("altHint")} required error={altMissing ? t("altError") : undefined}>
             {(props) => (
-              <Input {...props} value={figure.alt} onChange={(event) => update({ alt: event.target.value })} autoComplete="off" />
+              <Input
+                {...props}
+                value={figure.alt}
+                onChange={(event) => update({ alt: event.target.value })}
+                onBlur={() => setAltTouched(true)}
+                autoComplete="off"
+              />
             )}
           </FormField>
           <FormField label={t("captionLabel")}>
@@ -175,26 +175,27 @@ export default function ImageInsertDialog({ editor, open, onOpenChange }: Insert
               <Input {...props} value={figure.source} onChange={(event) => update({ source: event.target.value })} autoComplete="off" />
             )}
           </FormField>
-          <div className="flex flex-col gap-1.5">
-            <span id={`${fileInputId}-width`} className="text-field-label font-medium text-text-secondary">
-              {t("widthLabel")}
-            </span>
-            <Tabs
-              variant="segmented"
-              value={figure.width}
-              onValueChange={(value) => {
-                if (isFigureWidth(value)) update({ width: value });
-              }}
-            >
-              <TabsList aria-labelledby={`${fileInputId}-width`}>
-                {WIDTHS.map((width) => (
-                  <TabsTrigger key={width} value={width}>
-                    {t(`width.${width}`)}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="mb-1.5 text-field-label font-medium text-text-secondary">{t("widthLabel")}</legend>
+            <div className="flex h-12 w-full items-center gap-1 rounded-lg bg-subtle p-1">
+              {WIDTHS.map((width) => (
+                <label
+                  key={width}
+                  className="flex h-full flex-1 cursor-pointer items-center justify-center rounded-md text-body font-medium text-text-muted has-checked:bg-surface has-checked:text-primary-text has-checked:shadow-sm has-focus-visible:outline-3 has-focus-visible:-outline-offset-3 has-focus-visible:outline-primary-text"
+                >
+                  <input
+                    type="radio"
+                    name={`${fileInputId}-width`}
+                    value={width}
+                    checked={figure.width === width}
+                    onChange={() => update({ width })}
+                    className="sr-only"
+                  />
+                  {t(`width.${width}`)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div className="flex items-center gap-3">
             <Checkbox id={`${fileInputId}-zoom`} checked={figure.zoom} onCheckedChange={(checked) => update({ zoom: checked === true })} />
             <Label htmlFor={`${fileInputId}-zoom`} className="cursor-pointer text-body text-text">

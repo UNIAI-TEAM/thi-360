@@ -5361,6 +5361,7 @@
       "cancel": "Cancel",
       "close": "Close",
       "image": {
+        "altError": "Enter alternative text for the image.",
         "altHint": "Screen readers read this description aloud. Do not put answers here.",
         "altLabel": "Alternative text",
         "captionLabel": "Caption below the image",

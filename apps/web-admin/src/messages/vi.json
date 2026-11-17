@@ -5361,6 +5361,7 @@
       "cancel": "Hủy",
       "close": "Đóng",
       "image": {
+        "altError": "Nhập mô tả thay thế cho ảnh.",
         "altHint": "Trình đọc màn hình đọc mô tả này. Không ghi đáp án vào đây.",
         "altLabel": "Mô tả thay thế",
         "captionLabel": "Chú thích dưới hình",
