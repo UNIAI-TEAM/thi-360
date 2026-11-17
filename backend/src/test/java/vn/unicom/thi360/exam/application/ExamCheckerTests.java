@@ -307,7 +307,7 @@ class ExamCheckerTests {
     }
 
     @Test
-    void scienceReportsAllTwelveSelectionsAndTheSeventeenQuestionShortfall() throws Exception {
+    void scienceReportsAllTenSelectionsAndTheSeventeenQuestionShortfall() throws Exception {
         Exam exam = exam(50, null, "RAW");
         subject("ENGLISH", 50);
         subject("PHY", 16);
@@ -327,13 +327,13 @@ class ExamCheckerTests {
         JsonNode science = result.result().path("paths").get(1);
         assertThat(english.path("result").asText()).isEqualTo("VALID");
         assertThat(science.path("result").asText()).isEqualTo("INVALID");
-        assertThat(science.path("selections")).hasSize(12);
+        assertThat(science.path("selections")).hasSize(10);
         assertThat(science.path("issues").findValuesAsText("subjectCode")).contains("PHY");
         assertThat(science.path("issues").findValues("subjectCount").stream().anyMatch(value -> value.asInt() == 17)).isTrue();
     }
 
     @Test
-    void sciencePointsAreCheckedForEachSelectionAndSplit() throws Exception {
+    void sciencePointsAreCheckedForEachFullCountSelection() throws Exception {
         Exam exam = exam(50, new BigDecimal("50"), "RAW");
         for (String code : List.of("A", "B", "C", "D", "E")) subject(code, 17);
         List<String> sections = new ArrayList<>();
@@ -349,12 +349,20 @@ class ExamCheckerTests {
                 """.formatted(String.join(",", sections));
         JsonNode path = check(exam, document(doc)).result().path("paths").get(0);
         assertThat(path.path("result").asText()).isEqualTo("INVALID");
-        assertThat(path.path("selections")).hasSize(12);
+        assertThat(path.path("selections")).hasSize(10);
+        // BE-5 must account for the eventual trim when checking part and path totals.
         for (JsonNode selection : path.path("selections")) {
-            boolean naturalOnly = !selection.path("subjectCodes").toString().contains("\"D\"")
-                    && !selection.path("subjectCodes").toString().contains("\"E\"");
-            assertThat(selection.path("result").asText()).isEqualTo(naturalOnly ? "VALID" : "INVALID");
-            if (!naturalOnly) assertThat(selection.path("issues").findValuesAsText("code")).contains("POINTS_TOTAL_MISMATCH");
+            assertThat(selection.path("result").asText()).isEqualTo("INVALID");
+            assertThat(selection.path("counts")).hasSize(3);
+            for (JsonNode count : selection.path("counts")) assertThat(count.asInt()).isEqualTo(17);
+            int social = 0;
+            for (JsonNode code : selection.path("subjectCodes")) {
+                if (List.of("D", "E").contains(code.asText())) social++;
+            }
+            JsonNode points = java.util.stream.StreamSupport.stream(selection.path("issues").spliterator(), false)
+                    .filter(issue -> "POINTS_TOTAL_MISMATCH".equals(issue.path("code").asText()))
+                    .findFirst().orElseThrow();
+            assertThat(points.path("available").asInt()).isEqualTo(51 + 17 * social);
         }
     }
 
