@@ -112,7 +112,7 @@ final class ExamOverview {
     }
 
     static List<ExamOverviewRequest.Row> presentIn(ExamStructureDocument source,
-            ExamStructureDocument destination, List<ExamOverviewRequest.Row> changes) {
+            ExamStructureDocument destination, List<ExamOverviewRequest.Row> changes, boolean sameTemplate) {
         Map<String, ExamPart> originals = new HashMap<>();
         source.parts().forEach(part -> originals.put(part.id(), part));
         List<ExamOverviewRequest.Row> result = new ArrayList<>();
@@ -120,8 +120,9 @@ final class ExamOverview {
             ExamPart original = originals.get(row.partId());
             if (original == null) continue;
             List<ExamPart> matches = destination.parts().stream()
-                    .filter(part -> java.util.Objects.equals(part.id(), original.id())
-                            || original.order() != null && java.util.Objects.equals(part.order(), original.order()))
+                    .filter(part -> sameTemplate
+                            ? java.util.Objects.equals(part.id(), original.id())
+                            : original.order() != null && java.util.Objects.equals(part.order(), original.order()))
                     .toList();
             if (matches.size() != 1) continue;
             ExamPart part = matches.getFirst();
@@ -131,8 +132,10 @@ final class ExamOverview {
                 candidates.addAll(part.subjectPool());
                 part.options().forEach(option -> candidates.addAll(option.sections()));
                 List<ExamSection> matching = candidates.stream()
-                        .filter(section -> java.util.Objects.equals(section.id(), row.sectionId())
-                                || java.util.Objects.equals(section.subjectCode(), row.subjectCode()))
+                        .filter(section -> sameTemplate
+                                ? java.util.Objects.equals(section.id(), row.sectionId())
+                                : row.subjectCode() != null
+                                        && java.util.Objects.equals(section.subjectCode(), row.subjectCode()))
                         .toList();
                 if (matching.size() != 1) continue;
                 sectionId = matching.getFirst().id();

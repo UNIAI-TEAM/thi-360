@@ -117,7 +117,9 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         String templateCode = "HSA_VER_" + suffix;
         jdbc.update("""
                 UPDATE exam.exam_template SET structure = jsonb_set(
-                  jsonb_set(structure, '{parts,0,id}', '"old-part"'::jsonb),
+                  jsonb_set(
+                    jsonb_set(structure, '{parts,0,id}', '"old-part"'::jsonb),
+                    '{parts,0,sections,0,id}', '"old-section"'::jsonb),
                   '{parts,0,order}', '1'::jsonb)
                 WHERE code = 'HSA_FULL'
                 """);
@@ -125,8 +127,19 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 INSERT INTO exam.exam_template
                   (code, kind_code, scope, timing, duration_minutes, max_score, structure, active, build_mode, is_default)
                 SELECT ?, kind_code, scope, timing, duration_minutes, max_score,
-                  jsonb_set(structure, '{parts,0,id}', '"new-part"'::jsonb), true, build_mode, false
+                  jsonb_set(
+                    jsonb_set(structure, '{parts,0,id}', '"new-part"'::jsonb),
+                    '{parts,0,sections,0,id}', '"new-section"'::jsonb), true, build_mode, false
                 FROM exam.exam_template WHERE code = 'HSA_FULL'
+                """, templateCode);
+        // UUIDs reused for different rows must not override the cross-version business keys.
+        jdbc.update("""
+                UPDATE exam.exam_template
+                SET structure = jsonb_set(
+                  jsonb_set(structure, '{parts,1,id}', '"old-part"'::jsonb),
+                  '{parts,0,sections}', structure #> '{parts,0,sections}'
+                    || '[{"id":"old-section","subjectCode":"VAN","questionCount":7,"blocks":[]}]'::jsonb)
+                WHERE code = ?
                 """, templateCode);
         String create = """
                 {"kind":"HSA","scope":"FULL","code":"HSA-V-%s","name":"Version test",
@@ -137,8 +150,19 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(create))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.parts[0].questionCount").value(40))
                 .andReturn().getResponse().getContentAsString());
-        String url = "/api/v1/admin/exams/" + created.path("id").asText() + "/structure/template";
-        String revision = created.path("revision").asText();
+        String examUrl = "/api/v1/admin/exams/" + created.path("id").asText();
+        String url = examUrl + "/structure/template";
+        String partId = created.path("parts").get(0).path("id").asText();
+        String sectionId = created.path("parts").get(0).path("sections").get(0).path("id").asText();
+        var edited = mapper.readTree(mockMvc.perform(put(examUrl + "/overview")
+                        .with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "expectedRevision", created.path("revision").asLong(),
+                                "overview", List.of(Map.of("partId", partId,
+                                        "sectionId", sectionId, "questionCount", 30))))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String revision = edited.path("revision").asText();
         String load = "{\"templateCode\":\"" + templateCode + "\",\"expectedRevision\":" + revision + "}";
         mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(load))
                 .andExpect(status().isUnauthorized());
@@ -152,14 +176,18 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         var kept = mapper.readTree(mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(confirmed.replace("}", ",\"overviewPolicy\":\"KEEP_EDITED\"}")))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].id").value("new-part"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].id").value("new-part"))
                 .andExpect(jsonPath("$.parts[0].questionCount").value(40))
+                .andExpect(jsonPath("$.parts[0].sections[0].id").value("new-section"))
+                .andExpect(jsonPath("$.parts[0].sections[0].questionCount").value(30))
                 .andReturn().getResponse().getContentAsString());
         String useTemplate = "{\"templateCode\":\"" + templateCode + "\",\"confirmReplace\":true,"
                 + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + kept.path("revision").asLong() + "}";
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content(useTemplate))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].questionCount").value(50));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].questionCount").value(50))
+                .andExpect(jsonPath("$.parts[0].sections[0].questionCount").value(50));
     }
 
     @Test
