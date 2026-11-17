@@ -70,6 +70,14 @@ CREATE TEMP TABLE seed_2b_knowledge (
     knowledge_item_id uuid NOT NULL
 ) ON COMMIT DROP;
 
+CREATE TEMP TABLE seed_inserted_questions (
+    id uuid PRIMARY KEY,
+    subject_id uuid NOT NULL,
+    status text NOT NULL
+) ON COMMIT DROP;
+
+CREATE TEMP TABLE seed_inserted_children (id uuid PRIMARY KEY) ON COMMIT DROP;
+
 -- HSA Mathematics: each grade x level x answer-type cell has 12 independent
 -- questions, giving ample headroom for the 35/15 answer and 3/20/27 grade quotas.
 INSERT INTO seed_question_rows
@@ -821,13 +829,17 @@ WITH prepared AS (
            points, CASE WHEN seed_status = 'DRAFT' THEN NULL ELSE 1 END,
            CASE WHEN seed_status = 'DRAFT' THEN 1 ELSE NULL END, plain, lower(code || ' ' || plain)
     FROM prepared
-    ON CONFLICT DO NOTHING RETURNING subject_item_id, status
+    ON CONFLICT DO NOTHING RETURNING id, subject_item_id, status
 )
+INSERT INTO seed_inserted_questions (id, subject_id, status)
+SELECT id, subject_item_id, status FROM inserted;
+
 INSERT INTO questionbank.question_source_revision (subject_item_id, revision)
-SELECT subject_item_id, count(*) FROM inserted WHERE status = 'READY' GROUP BY subject_item_id
+SELECT subject_id, count(*) FROM seed_inserted_questions WHERE status = 'READY' GROUP BY subject_id
 ON CONFLICT (subject_item_id) DO UPDATE
 SET revision = questionbank.question_source_revision.revision + EXCLUDED.revision;
 
+WITH inserted AS (
 INSERT INTO questionbank.question
     (id, code, type, status, parent_id, position, subject_item_id, grade_item_id,
      level_item_id, task_type_item_id, points, current_version_no, working_version_no,
@@ -838,10 +850,14 @@ SELECT id, code, type, 'READY', parent_id, position, subject_id, grade_id, level
        lower(code || ' ' || regexp_replace(content, '<[^>]+>', '', 'g') ||
              CASE type WHEN 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END)
 FROM seed_question_rows WHERE parent_id IS NOT NULL
-ON CONFLICT DO NOTHING;
+ON CONFLICT DO NOTHING RETURNING id
+)
+INSERT INTO seed_inserted_children (id) SELECT id FROM inserted;
 
 INSERT INTO questionbank.question_knowledge (question_id, knowledge_item_id, is_primary)
-SELECT question_id, knowledge_item_id, true FROM seed_2b_knowledge
+SELECT k.question_id, k.knowledge_item_id, true FROM seed_2b_knowledge k
+WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = k.question_id)
+   OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = k.question_id)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO questionbank.question_version (question_id, version_no, snapshot, ready_at)
@@ -860,5 +876,7 @@ JOIN questionbank.question q ON q.id = s.id
 ON CONFLICT DO NOTHING;
 
 INSERT INTO questionbank.question_tag (question_id, tag_item_id)
-SELECT question_id, tag_item_id FROM seed_2b_question_tags
+SELECT t.question_id, t.tag_item_id FROM seed_2b_question_tags t
+WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = t.question_id)
+   OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = t.question_id)
 ON CONFLICT DO NOTHING;

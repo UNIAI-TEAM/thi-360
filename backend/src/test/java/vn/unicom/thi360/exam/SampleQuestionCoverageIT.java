@@ -171,6 +171,43 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 QuestionType.SINGLE_CHOICE, null, null, List.of("TOAN_DU_LIEU_TONG_HOP"), List.of(), null, null,
                 List.of(), List.of());
         assertThat(source.findCandidates(synthesis, 100)).isNotEmpty();
+        UUID edited = jdbc.queryForObject("""
+                select q.id from questionbank.question q
+                join questionbank.question_tag t on t.question_id = q.id
+                join catalog.catalog_item tag on tag.id = t.tag_item_id
+                where q.code like 'SEED-2B-TAGGED-english_pronunciation-%' and tag.code = 'ANH_PHAT_AM'
+                order by q.code limit 1
+                """, UUID.class);
+        jdbc.update("delete from questionbank.question_tag where question_id = ?", edited);
+        jdbc.update("""
+                insert into questionbank.question_version (question_id, version_no, snapshot, ready_at)
+                select question_id, 2, jsonb_set(snapshot, '{tagItemIds}', '[]'::jsonb), now()
+                from questionbank.question_version where question_id = ? and version_no = 1
+                """, edited);
+        jdbc.update("update questionbank.question set current_version_no = 2, revision = revision + 1 where id = ?", edited);
+        jdbc.update("""
+                update questionbank.question_source_revision set revision = revision + 1
+                where subject_item_id = (select subject_item_id from questionbank.question where id = ?)
+                """, edited);
+        var versions = jdbc.queryForList("""
+                select version_no, snapshot::text from questionbank.question_version
+                where question_id = ? order by version_no
+                """, edited);
+        var question = jdbc.queryForMap("select current_version_no, revision from questionbank.question where id = ?", edited);
+        var revisions = jdbc.queryForList("select * from questionbank.question_source_revision order by subject_item_id");
+        jdbc.execute("drop table seed_question_rows, seed_2b_tags, seed_2b_question_tags, seed_2b_knowledge, "
+                + "seed_inserted_questions, seed_inserted_children");
+        ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/devdata/R__seed_questionbank_dev_data.sql"));
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question_tag where question_id = ?",
+                Integer.class, edited)).isZero();
+        assertThat(jdbc.queryForList("""
+                select version_no, snapshot::text from questionbank.question_version
+                where question_id = ? order by version_no
+                """, edited)).isEqualTo(versions);
+        assertThat(jdbc.queryForMap("select current_version_no, revision from questionbank.question where id = ?", edited))
+                .isEqualTo(question);
+        assertThat(jdbc.queryForList("select * from questionbank.question_source_revision order by subject_item_id"))
+                .isEqualTo(revisions);
     }
 
     private void inspect(JsonNode node, String subject, String template, List<String> failures, int[] checked) {
