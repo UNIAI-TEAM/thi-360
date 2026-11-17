@@ -404,7 +404,7 @@ public class QuestionHtmlSanitizer {
                     if (!el.hasAttr("data-blank")) {
                         return drop(el, violations, "span", "data-blank", false);
                     }
-                    if (!el.children().isEmpty()) {
+                    if (!el.childNodes().isEmpty()) {
                         return drop(el, violations, "span", null, false);
                     }
                 }
