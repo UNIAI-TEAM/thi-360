@@ -169,10 +169,11 @@ class ExamCreateIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(request))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EXAM_PART_OR_SUBJECT_REQUIRED"));
+        // 2B §10 adds QDA's Toán part template, so keep the unknown part code.
         mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(request.replace("\"HSA\"", "\"QDA\"").replace("UNKNOWN", "TOAN")))
+                        .content(request.replace("\"HSA\"", "\"QDA\"")))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EXAM_PART_OR_SUBJECT_REQUIRED"));
         jdbc.update("UPDATE exam.exam_template SET active=false WHERE code='HSA_PART_MATH'");
