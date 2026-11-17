@@ -89,8 +89,14 @@ SELECT md5('thi360-testq-' || seeded.code)::uuid, seeded.code, 'SINGLE_CHOICE', 
        NULL, 0.25, '<p>' || seeded.code || ' content</p>',
        seeded.code || ' content' || ' One Two', '{"type":"SINGLE_CHOICE","options":[{"id":"a","content":"<p>One</p>","correct":true},{"id":"b","content":"<p>Two</p>","correct":false}]}'::jsonb,
        NULL, NULL, 'READY', '{}', '{}'
-FROM generate_series(219, 258) AS series(n)
+FROM generate_series(219, 259) AS series(n)
 CROSS JOIN LATERAL (SELECT 'TESTQ-TOAN-MC025-' || lpad(n::text, GREATEST(3, length(n::text)), '0') AS code) seeded;
+
+-- TEST-ERR-11 requires exactly four eligible G12/VDC questions at 0.25 points.
+UPDATE testq_rows
+SET grade_id = '00000000-0000-7000-8200-000000000303',
+    level_id = '00000000-0000-7000-8200-000000000404'
+WHERE code = 'TESTQ-TOAN-MC025-259';
 
 INSERT INTO testq_rows (id, code, type, subject_id, grade_id, level_id, task_type_id, points, content, plain, body, parent_id, position, seed_status, knowledge_ids, tag_ids)
 SELECT md5('thi360-testq-' || seeded.code)::uuid, seeded.code, 'TRUE_FALSE', '00000000-0000-7000-8200-000000000201',

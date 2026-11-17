@@ -74,10 +74,12 @@ WITH sets AS (
            md5('thi360-seed-hsa-math-set-' || n || '-a')::uuid AS first_id,
            md5('thi360-seed-hsa-math-set-' || n || '-b')::uuid AS second_id,
            subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
-    FROM generate_series(1, 6) n
+    FROM generate_series(1, 120) n
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'TOAN'
-    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G10'
-    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'NB'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003'
+        AND grade.code = (ARRAY['G10', 'G11', 'G12'])[1 + (n - 1) / 40]
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004'
+        AND level.code = (ARRAY['NB', 'TH', 'VD', 'VDC'])[1 + ((n - 1) / 10) % 4]
 ), hsa_children AS (
     SELECT s.*, c.pos, c.child_id,
            'SINGLE_CHOICE'::text AS type,
@@ -257,8 +259,11 @@ WITH prepared AS (
                WHEN 'MATCHING' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Left one Left two Right one Right two'
                WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
                WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
-               WHEN 'QUESTION_SET' THEN CASE WHEN code LIKE 'SEED-READING-%'
-                   THEN 'Reading set Reading context Reading child One Two Reading child One Two'
+               WHEN 'QUESTION_SET' THEN CASE
+                   WHEN code LIKE 'SEED-READING-%'
+                       THEN 'Reading set Reading context Reading child One Two Reading child One Two'
+                   WHEN code LIKE 'SEED-HSA-MATH-SET-%'
+                       THEN 'HSA Math set HSA Math context HSA Math child One Two HSA Math child One Two'
                    ELSE 'Math set Math context Math child One Two Math child 1' END
            END AS plain
     FROM seed_question_rows s WHERE parent_id IS NULL
