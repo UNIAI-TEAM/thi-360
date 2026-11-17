@@ -347,10 +347,11 @@ class ExamCheckerTests {
                 "options":[{"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":3,
                 "countsByPick":[17,17,16],"sections":[%s]}]}]}
                 """.formatted(String.join(",", sections));
+        // FU-BE4a-1: BE-5 subtracts the TrimPolicy drop from SUBJECT_CHOICE totals, restoring VALID for HSA.
         JsonNode path = check(exam, document(doc)).result().path("paths").get(0);
         assertThat(path.path("result").asText()).isEqualTo("INVALID");
         assertThat(path.path("selections")).hasSize(10);
-        // BE-5 must account for the eventual trim when checking part and path totals.
+        // FU-BE4a-1: full-count totals are interim until BE-5 applies the TrimPolicy drop.
         for (JsonNode selection : path.path("selections")) {
             assertThat(selection.path("result").asText()).isEqualTo("INVALID");
             assertThat(selection.path("counts")).hasSize(3);
@@ -362,6 +363,7 @@ class ExamCheckerTests {
             JsonNode points = java.util.stream.StreamSupport.stream(selection.path("issues").spliterator(), false)
                     .filter(issue -> "POINTS_TOTAL_MISMATCH".equals(issue.path("code").asText()))
                     .findFirst().orElseThrow();
+            // FU-BE4a-1: this includes 17 + 17 + 17 before the SUBJECT_CHOICE trim.
             assertThat(points.path("available").asInt()).isEqualTo(51 + 17 * social);
         }
     }

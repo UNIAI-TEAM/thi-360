@@ -323,7 +323,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             softly.assertThat(result.path("issueCount").asInt()).as(code).isZero();
         }
 
-        // FU-BE1-5: BE-5 must reconcile full-count solving with the trimmed paper totals.
+        // FU-BE4a-1: BE-5 subtracts the TrimPolicy drop from SUBJECT_CHOICE totals, restoring VALID for HSA.
         Set<String> fullCountCheckerIssues = Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
                 "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH");
         for (String code : List.of("TEST-HSA-01", "TEST-HSA-04")) {
@@ -349,11 +349,12 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         // The 35 + 14 quota totals 49 for a 50-question section.
         invalid.put("TEST-ERR-05", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         invalid.put("TEST-ERR-06", Set.of("ANSWER_TYPE_SHORTAGE"));
-        // BE-5 still reports totals before applying the 17-to-16 paper trim.
+        // FU-BE4a-1: these totals still include 17 + 17 + 17 before the SUBJECT_CHOICE trim.
         invalid.put("TEST-ERR-08", fullCountCheckerIssues);
+        // FU-BE4a-1: these totals also include the untrimmed SUBJECT_CHOICE count; other errors remain.
         invalid.put("TEST-ERR-09", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
                 "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH", "ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
-        // 17 + 17 + 17 = 51, not 50. Masking the invalid option also leaves the part empty.
+        // FU-BE4a-1: full-count totals are interim; the invalid 17 + 17 + 17 option also leaves the part empty.
         invalid.put("TEST-ERR-10", Set.of("SUBJECT_CHOICE_COUNTS_INVALID", "PART_EMPTY",
                 "PART_POINTS_MISMATCH", "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH",
                 "POINTS_TOTAL_MISMATCH"));
@@ -367,6 +368,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         }
         JsonNode narrow = check("TEST-ERR-07");
         softly.assertThat(narrow.path("status").asText()).as("TEST-ERR-07").isEqualTo("INVALID");
+        // FU-BE4a-1: the total mismatches include the untrimmed SUBJECT_CHOICE count; the shortage remains.
         Set<String> shortageIssues = Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
                 "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH", "CELL_SHORTAGE");
         softly.assertThat(codes(narrow)).as("TEST-ERR-07").isEqualTo(shortageIssues);
