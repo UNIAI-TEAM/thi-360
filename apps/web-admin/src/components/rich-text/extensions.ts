@@ -1,5 +1,6 @@
 import { Extension, Node } from "@tiptap/core";
 import type { CommandProps } from "@tiptap/core";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { KatexOptions } from "katex";
 import { sanitizeQuestionHtml } from "./sanitize";
 
@@ -120,7 +121,12 @@ export const MathBlock = Node.create<MathNodeOptions>({
   },
 });
 
-/** Lệnh `setMath` dùng chung cho hai node; thay chip đang chọn hoặc chèn mới tại con trỏ. */
+const MATH_NODE_NAMES = new Set(["mathInline", "mathBlock"]);
+
+/**
+ * Lệnh `setMath` dùng chung cho hai node; thay công thức đang chọn hoặc chèn mới tại con trỏ. Đang chọn một nút khác
+ * (ví dụ ảnh) thì chèn ngay sau nút đó, không thay nó (F-05).
+ */
 export const MathCommands = Extension.create({
   name: "mathCommands",
 
@@ -128,10 +134,15 @@ export const MathCommands = Extension.create({
     return {
       setMath:
         ({ latex, display }: { latex: string; display: boolean }) =>
-        ({ commands }: CommandProps) => {
+        ({ commands, state }: CommandProps) => {
           const trimmed = latex.trim();
           if (!trimmed) return false;
-          return commands.insertContent({ type: display ? "mathBlock" : "mathInline", attrs: { latex: trimmed } });
+          const content = { type: display ? "mathBlock" : "mathInline", attrs: { latex: trimmed } };
+          const { selection } = state;
+          if (selection instanceof NodeSelection && !MATH_NODE_NAMES.has(selection.node.type.name)) {
+            return commands.insertContentAt(selection.to, content);
+          }
+          return commands.insertContent(content);
         },
     };
   },
