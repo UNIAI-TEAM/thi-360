@@ -99,6 +99,10 @@
       "UNKNOWN_ACTION": "Thao tác khác"
     },
     "behaviorWarning": "Thêm giá trị không tự tạo chức năng xử lý tương ứng.",
+    "branches": {
+      "ENGLISH": "Tiếng Anh",
+      "SCIENCE": "Khoa học"
+    },
     "cancel": "Hủy",
     "cardValueMeta": "Giá trị: {value}",
     "close": "Đóng",
@@ -116,6 +120,9 @@
     "combinationDialog": {
       "addSubjectLabel": "Thêm môn",
       "addSubjectPlaceholder": "Chọn môn đang hoạt động…",
+      "branchHint": "Dùng để lọc mã theo phần Khoa học hoặc Tiếng Anh của bài thi.",
+      "branchLabel": "Nhánh",
+      "branchNone": "Không có nhánh",
       "codeConventionHint": "Duy nhất trong danh mục, ví dụ QDA_QD01 (tổ hợp xác định theo kỳ thi).",
       "createTitle": "Thêm mã tổ hợp",
       "currentVersionMeta": "Nhóm: {groupName} ({groupCode}) · Phiên bản hiện tại: {version}",
@@ -169,6 +176,7 @@
       "auditPermissionDenied": "Bạn chưa được cấp quyền xem nhật ký nên không xem được lịch sử thay đổi.",
       "auditReasonLabel": "Lý do: {reason}",
       "auditTab": "Lịch sử thay đổi",
+      "branchLabel": "Nhánh",
       "combinationSectionTitle": "Cấu hình tổ hợp hiện hành",
       "createdAtLabel": "Ngày tạo",
       "currentVersionBadge": "Hiện hành",
