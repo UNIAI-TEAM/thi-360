@@ -32,6 +32,8 @@ class ExamOverviewIT extends AbstractIntegrationTest {
     @Test
     void updatesByIdWithoutReplacingBlocksAndRejectsStaleRevision() throws Exception {
         String url = "/api/v1/admin/exams/00000000-0000-7000-8700-000000000001";
+        String examId = "00000000-0000-7000-8700-000000000001";
+        long auditBefore = auditCount(examId, "EXAM.OVERVIEW_UPDATE");
         var before = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         var part = before.path("parts").get(0);
@@ -44,8 +46,15 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         assertThat(after.path("parts").get(0).path("questionCount").asInt()).isEqualTo(40);
         assertThat(after.path("parts").get(0).path("sections").get(0).path("questionCount").asInt()).isEqualTo(40);
         assertThat(after.path("parts").get(0).path("sections").get(0).path("blocks")).isEqualTo(blocks);
+        assertThat(auditCount(examId, "EXAM.OVERVIEW_UPDATE")).isEqualTo(auditBefore + 1);
         mockMvc.perform(put(url + "/overview").with(asUser(Permissions.EXAM_MODIFY))
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isPreconditionFailed());
+        String invalid = mapper.writeValueAsString(Map.of("expectedRevision", after.path("revision").asLong(),
+                "overview", List.of(Map.of("partId", "missing", "questionCount", 4))));
+        mockMvc.perform(put(url + "/overview").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(invalid))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(auditCount(examId, "EXAM.OVERVIEW_UPDATE")).isEqualTo(auditBefore + 1);
         String second = mapper.writeValueAsString(Map.of("expectedRevision", after.path("revision").asLong(),
                 "overview", List.of(Map.of("partId", part.path("id").asText(), "questionCount", 50))));
         var restored = mapper.readTree(mockMvc.perform(put(url + "/overview").with(asUser(Permissions.EXAM_MODIFY))
@@ -53,6 +62,7 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(restored.path("parts").get(0).path("questionCount").asInt()).isEqualTo(50);
         assertThat(restored.path("parts").get(0).path("sections").get(0).path("blocks")).isEqualTo(blocks);
+        assertThat(auditCount(examId, "EXAM.OVERVIEW_UPDATE")).isEqualTo(auditBefore + 2);
     }
 
     @Test
@@ -184,6 +194,7 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.parts[0].questionCount").value(40))
                 .andReturn().getResponse().getContentAsString());
         String examUrl = "/api/v1/admin/exams/" + created.path("id").asText();
+        String examId = created.path("id").asText();
         String url = examUrl + "/structure/template";
         String partId = created.path("parts").get(0).path("id").asText();
         String sectionId = created.path("parts").get(0).path("sections").get(0).path("id").asText();
@@ -209,6 +220,10 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         String confirmed = load.replace("}", ",\"confirmReplace\":true}");
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON).content(confirmed))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_OVERVIEW_CONFIRM"));
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content(confirmed.replace("}", ",\"overviewPolicy\":\"INVALID\"}")))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(auditCount(examId, "EXAM.TEMPLATE_LOAD")).isZero();
         var kept = mapper.readTree(mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(confirmed.replace("}", ",\"overviewPolicy\":\"KEEP_EDITED\"}")))
@@ -218,12 +233,18 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.parts[0].sections[0].id").value("new-section"))
                 .andExpect(jsonPath("$.parts[0].sections[0].questionCount").value(30))
                 .andReturn().getResponse().getContentAsString());
+        assertThat(auditCount(examId, "EXAM.TEMPLATE_LOAD")).isEqualTo(1);
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content(confirmed.replace("}", ",\"overviewPolicy\":\"USE_TEMPLATE\"}")))
+                .andExpect(status().isPreconditionFailed());
+        assertThat(auditCount(examId, "EXAM.TEMPLATE_LOAD")).isEqualTo(1);
         String useTemplate = "{\"templateCode\":\"" + templateCode + "\",\"confirmReplace\":true,"
                 + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + kept.path("revision").asLong() + "}";
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content(useTemplate))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].questionCount").value(50))
                 .andExpect(jsonPath("$.parts[0].sections[0].questionCount").value(50));
+        assertThat(auditCount(examId, "EXAM.TEMPLATE_LOAD")).isEqualTo(2);
     }
 
     @Test
@@ -409,5 +430,11 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         jdbc.execute(sql);
         assertThat(jdbc.queryForObject("SELECT structure::text FROM exam.exam_template WHERE code=?", String.class, code))
                 .isEqualTo(first);
+    }
+    private long auditCount(String examId, String action) {
+        entityManager.flush();
+        return jdbc.queryForObject("SELECT count(*) FROM shared.outbox_event WHERE topic='audit' "
+                + "AND payload->>'module'='EXAM' AND payload->>'action'=? AND payload->>'targetId'=?",
+                Long.class, action, examId);
     }
 }
