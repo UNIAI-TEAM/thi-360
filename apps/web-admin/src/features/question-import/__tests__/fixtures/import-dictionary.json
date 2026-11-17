@@ -109,6 +109,10 @@
     "taskType": [
       "Dạng bài",
       "Task type"
+    ],
+    "keepOptionOrder": [
+      "Giữ thứ tự phương án",
+      "Keep option order"
     ]
   },
   "ignoreHeaders": [

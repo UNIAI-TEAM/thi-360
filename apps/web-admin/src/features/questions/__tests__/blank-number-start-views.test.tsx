@@ -157,6 +157,7 @@ describe("số chỗ trống theo blankNumberStart ở mọi nơi dựng ngữ l
       matching: null,
       commonMistakes: null,
       taskTypeCode: null,
+      keepOptionOrder: false,
       points: null,
       inputHint: null,
       gradingGuide: null,

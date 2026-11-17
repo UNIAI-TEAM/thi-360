@@ -58,6 +58,7 @@ interface DraftBodyShape {
   right?: MatchingSide[];
   pairs?: Array<{ leftId?: string; rightId?: string }>;
   reuseRight?: boolean;
+  shuffleOptions?: boolean;
 }
 
 export interface DownloadedFile {
@@ -157,6 +158,7 @@ function mapDraft(draft: ApiDraft | undefined): ImportQuestionDraft {
     matching: type === "MATCHING" ? mapMatching(body) : null,
     commonMistakes: mistakes.length > 0 ? mistakes.join("; ") : null,
     taskTypeCode: draft?.taskTypeCode ?? null,
+    keepOptionOrder: (type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE") && body.shuffleOptions === false,
     points: draft?.points ?? null,
     inputHint: draft?.inputHint ?? null,
     gradingGuide: draft?.gradingGuide ?? null,
