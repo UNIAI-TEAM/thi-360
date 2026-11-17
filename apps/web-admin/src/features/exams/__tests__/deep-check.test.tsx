@@ -192,6 +192,38 @@ describe("Kiểm tra kỹ", () => {
     expect(getCheckRun).toHaveBeenCalledTimes(4);
   });
 
+  it("G5: rời trang khi đang chạy rồi quay lại thì hiện lại chỉ báo và hỏi tiếp cùng lần chạy, xong thì thay kết quả", async () => {
+    const { user, getCheckRun, startDeepCheck, initial, view, element } = await setup();
+    await startFromTopCard(user);
+    await waitFor(() => expect(getCheckRun).toHaveBeenCalledTimes(1));
+
+    // Đổi tab của bài thi là đổi trang: tab kiểm tra bị gỡ khỏi cây rồi dựng lại.
+    view.rerender(<></>);
+    expect(screen.queryByText("Đang kiểm tra kỹ")).not.toBeInTheDocument();
+    getCheckRun.mockImplementation(async (_examId, runId) =>
+      getCheckRun.mock.calls.length < 3
+        ? { ...running, runId }
+        : { runId, state: "DONE", result: confirmed(initial), errorCode: null },
+    );
+    view.rerender(element());
+
+    expect(await screen.findByText("Đang kiểm tra kỹ")).toBeInTheDocument();
+    await waitFor(() => expect(getCheckRun).toHaveBeenCalledTimes(2));
+    await tick();
+    await waitFor(() => expect(screen.queryByText("Đang kiểm tra kỹ")).not.toBeInTheDocument());
+    expect(screen.getByText(/12 trường hợp: 4 hợp lệ, 8 không hợp lệ, 0 chưa xác nhận được\./)).toBeInTheDocument();
+    expect(getCheckRun.mock.calls.every(([, runId]) => runId === "run-1")).toBe(true);
+    // Không bắt đầu lần chạy mới khi quay lại.
+    expect(startDeepCheck).toHaveBeenCalledTimes(1);
+
+    // Đã xong thì lần sau quay lại không hỏi lại lần chạy cũ.
+    const calls = getCheckRun.mock.calls.length;
+    view.rerender(<></>);
+    view.rerender(element());
+    await tick(POLL_MS * 2);
+    expect(getCheckRun).toHaveBeenCalledTimes(calls);
+  });
+
   it("hỏi kết quả lỗi thì dừng chu kỳ, báo lỗi kèm Thử lại bắt đầu lần chạy mới", async () => {
     const { user, getCheckRun, startDeepCheck, initial } = await setup();
     getCheckRun.mockRejectedValue(new ExamsApiError(503, "", "UNAVAILABLE"));
