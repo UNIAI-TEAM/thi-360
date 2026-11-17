@@ -3,7 +3,8 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
-import { ExamsBackend } from "./fake-exams-backend";
+import { FIXTURE_TEMPLATES } from "./exam-fixture";
+import { ExamsBackend, templateUuid } from "./fake-exams-backend";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 const referenceMock = vi.hoisted(() => ({ error: null as Error | null }));
@@ -172,6 +173,55 @@ describe("trang Tạo bài thi, bước 1: bảng tổng quan", () => {
     expect(body.overview).toHaveLength(1);
     expect(body.overview[0]).toMatchObject({ questionCount: 40 });
   }, 20_000);
+
+  // R1-01: `id` của phần, môn trong mẫu (UUID từ BE-6) đi thẳng vào `partId`/`sectionId` của `overview`.
+  it("FULL: dòng phần đã sửa gửi partId là UUID của phần trong mẫu", async () => {
+    const user = await renderPage();
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA FULL sửa phần");
+    await user.clear(countInputs()[1]!);
+    await user.type(countInputs()[1]!, "40");
+    await user.click(submitButton());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    const body = backend.calls("POST", EXAMS_PATH)[0]!.body as { overview: Array<Record<string, unknown>> };
+    expect(body.overview).toEqual([{ partId: templateUuid("HSA_FULL/part/1"), questionCount: 40 }]);
+  }, 20_000);
+
+  it("FULL: dòng môn đã sửa gửi cả partId và sectionId của mẫu", async () => {
+    const user = await renderPage();
+    await pickKind(user, "BCA");
+    const sectionCount = (await screen.findAllByRole("textbox", { name: /^Số câu của/ })).at(-2)!;
+    await user.clear(sectionCount);
+    await user.type(sectionCount, "7");
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "BCA FULL sửa môn");
+    await user.click(submitButton());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    const body = backend.calls("POST", EXAMS_PATH)[0]!.body as { overview: Array<Record<string, unknown>> };
+    expect(body.overview).toHaveLength(1);
+    expect(body.overview[0]).toMatchObject({
+      partId: templateUuid("BCA_FULL/part/1"),
+      sectionId: templateUuid("BCA_FULL/part/1/section/2"),
+      questionCount: 7,
+    });
+  }, 20_000);
+
+  it.each([
+    ["Theo phần", async (user: UserEvent) => user.click(screen.getByRole("radio", { name: /^Theo phần/ }))],
+    ["Theo môn", async (user: UserEvent) => pickKind(user, "SPT")],
+  ])("%s: dòng đã sửa gửi partId là UUID của phần trong mẫu", async (scope, choose) => {
+    const user = await renderPage();
+    await choose(user);
+    const count = (await screen.findAllByRole("textbox", { name: /^Số câu của/ }))[0]!;
+    await user.clear(count);
+    await user.type(count, "5");
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), `${scope} sửa số`);
+    await user.click(submitButton());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    const body = backend.calls("POST", EXAMS_PATH)[0]!.body as { overview: Array<{ partId?: string; questionCount?: number }> };
+    const templateIds = FIXTURE_TEMPLATES.flatMap((item) => item.parts.map((_, index) => templateUuid(`${item.code}/part/${index}`)));
+    expect(body.overview).toHaveLength(1);
+    expect(body.overview[0]!.questionCount).toBe(5);
+    expect(templateIds).toContain(body.overview[0]!.partId);
+  }, 20_000);
 });
 
 describe("trang Tạo bài thi, bước 1: đổi lựa chọn nạp lại bảng", () => {
@@ -297,17 +347,20 @@ describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi
     expect(countInputs()[0]).toHaveValue("50");
   }, 20_000);
 
-  it("tóm tắt nằm dưới bảng tổng quan (không còn cột phải); Hủy về danh sách, Lưu và tiếp tục ở cuối", async () => {
+  it("Hủy, Lưu và tiếp tục ngay dưới bảng tổng quan trong biểu mẫu, Tóm tắt đứng sau các nút (TaoBaiThi2B)", async () => {
     await renderPage();
-    expect(screen.queryByRole("complementary")).toBeNull();
     const table = screen.getByRole("table");
-    expect(table.compareDocumentPosition(summary()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const cancel = screen.getByRole("link", { name: "Hủy" });
     expect(cancel).toHaveAttribute("href", "/exams");
     const buttons = screen.getAllByRole("button", { name: SUBMIT });
     expect(buttons).toHaveLength(1);
-    expect(summary().compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const form = screen.getByRole("form", { name: "Tạo bài thi" });
+    expect(form).toContainElement(cancel);
+    expect(form).toContainElement(buttons[0]!);
+    expect(form).not.toContainElement(summary());
+    expect(table.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(cancel.compareDocumentPosition(buttons[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(buttons[0]!.compareDocumentPosition(summary()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" })).toBeNull();
   });
 
