@@ -21,15 +21,45 @@ public interface QuestionSourcePort {
             QuestionType childAnswerType,
             List<String> tagCodes,
             List<String> competencyCodes,
-            BigDecimal requiredPointsPerQuestion) {}
+            BigDecimal requiredPointsPerQuestion,
+            ItemShape itemShape,
+            List<AnswerFormat> answerFormats,
+            List<ChildCondition> childConditions) {
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, Match knowledgeMatch,
+                      List<QuestionType> answerTypes, QuestionType questionType, String taskTypeCode,
+                      QuestionType childAnswerType, List<String> tagCodes, List<String> competencyCodes,
+                      BigDecimal requiredPointsPerQuestion) {
+            this(subjectId, knowledgeGroups, knowledgeMatch, answerTypes, questionType, taskTypeCode,
+                    childAnswerType, tagCodes, competencyCodes, requiredPointsPerQuestion, null, null, null);
+        }
+        /**
+         * @deprecated removed after UNI-2650 merges; knowledge scopes now use one-of semantics.
+         */
+        @Deprecated(forRemoval = true)
+        public Match knowledgeMatch() {
+            return knowledgeMatch;
+        }
+    }
+
+    record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}
+    record ChildCondition(int from, int to, List<UUID> nodeIds) {
+        public ChildCondition {
+            nodeIds = nodeIds == null ? List.of() : List.copyOf(nodeIds);
+        }
+    }
 
     enum Match { ANY, ALL }
 
     record CellCount(String gradeCode, String difficultyCode, long value) {}
     record AnswerTypeCount(QuestionType answerType, long value) {}
     record CompetencyCount(String competencyCode, long value) {}
-    record Counts(long total, List<CellCount> byCell, List<AnswerTypeCount> byAnswerType,
-                  List<CompetencyCount> byCompetency) {}
+    record Counts(long total, long commandCount, List<CellCount> byCell, List<AnswerTypeCount> byAnswerType,
+                  List<CompetencyCount> byCompetency) {
+        public Counts(long total, List<CellCount> byCell, List<AnswerTypeCount> byAnswerType,
+                      List<CompetencyCount> byCompetency) {
+            this(total, total, byCell, byAnswerType, byCompetency);
+        }
+    }
 
     /** Scoring information from the serving snapshot; null fields do not apply to that type. */
     record ScoringDetails(String trueFalseMethod, List<BigDecimal> trueFalseTable,
@@ -41,7 +71,16 @@ public interface QuestionSourcePort {
 
     record Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                 String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
-                BigDecimal points, ScoringDetails scoring, String code) {
+                BigDecimal points, ScoringDetails scoring, String code, int commandCount,
+                Integer statementCount, Integer leftCount, Integer rightCount,
+                AnswerFormat answerFormat, boolean hasAttachment) {
+        public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
+                    String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
+                    BigDecimal points, ScoringDetails scoring, String code) {
+            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes,
+                    points, scoring, code, 1, null, null, null, null, false);
+        }
+
         public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                     String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
                     BigDecimal points, ScoringDetails scoring) {
@@ -51,9 +90,11 @@ public interface QuestionSourcePort {
 
         public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                     String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes, BigDecimal points) {
-            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes, points, null, null);
+            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes,
+                    points, null, null);
         }
     }
+
     record Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
                      String taskTypeCode, String scoringRule, String trueFalseMethod,
                      List<BigDecimal> trueFalseTable, String multipleChoiceRule, String code) {

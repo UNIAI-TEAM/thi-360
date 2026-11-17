@@ -13,7 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import vn.unicom.thi360.questionbank.domain.QuestionBody;
-import vn.unicom.thi360.questionbank.spi.QuestionType;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 
 class QuestionImportParserTests {
     private static final ImportDictionary DICTIONARY = ImportDictionary.standard();
