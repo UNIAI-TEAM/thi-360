@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,18 +23,45 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class ExamTemplateSaveIT extends AbstractIntegrationTest {
     // FU-BE1-6: BE-5 will remove this narrowly scoped fast-check exception.
-    private static final Set<String> CODE_SOURCED_PARTS = Set.of("BCA_FULL:3", "QDA_FULL:3");
+    private static final Set<String> CODE_SOURCED_PARTS = Set.of(
+            "BCA_FULL:3", "BCA_PART_TN_TU_CHON:1",
+            "QDA_FULL:3", "QDA_PART_SCIENCE:1", "QDA_PART_ENGLISH:1");
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper mapper;
 
     @Test
     void eachActiveTemplateCanBeLoadedSavedAndChecked() throws Exception {
         var templates = jdbc.queryForList("""
-                select code, kind_code, scope, part_code, subject_code, build_mode, active
+                select code, kind_code, scope, part_code, subject_code, build_mode, active,
+                       structure::text as document
                 from exam.exam_template order by code
                 """);
         assertThat(templates).isNotEmpty();
+        Set<String> actualCodeSourcedParts = new LinkedHashSet<>();
+        Set<String> failures = new LinkedHashSet<>();
         for (var template : templates) {
+            String code = (String) template.get("code");
+            JsonNode parts = mapper.readTree((String) template.get("document")).path("parts");
+            for (int i = 0; i < parts.size(); i++) {
+                if (parts.get(i).hasNonNull("codeSource")) actualCodeSourcedParts.add(code + ":" + (i + 1));
+            }
+        }
+        if (!actualCodeSourcedParts.equals(CODE_SOURCED_PARTS)) {
+            failures.add("Code-source exception positions differ: actual " + actualCodeSourcedParts
+                    + ", expected " + CODE_SOURCED_PARTS);
+        }
+        for (var template : templates) {
+            String code = (String) template.get("code");
+            try {
+                checkTemplate(template, failures);
+            } catch (AssertionError | Exception failure) {
+                failures.add(code + ": " + failure.getClass().getSimpleName() + ": " + failure.getMessage());
+            }
+        }
+        assertThat(failures).as("template save/check failures").isEmpty();
+    }
+
+    private void checkTemplate(Map<String, Object> template, Set<String> failures) throws Exception {
             String code = (String) template.get("code");
             assertThat(template.get("active")).as("%s must be loadable", code).isEqualTo(true);
             ObjectNode create = mapper.createObjectNode()
@@ -71,12 +100,12 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
                 for (JsonNode issue : issueList) {
                     if ("STRUCTURE".equals(issue.path("group").asText())
                             && "ERROR".equals(issue.path("severity").asText())) {
-                        assertThat(allowedCodeSourceIssue(code, structure.path("parts"), issue))
-                                .as("%s structural issue: %s", code, issue).isTrue();
+                        if (!allowedCodeSourceIssue(code, structure.path("parts"), issue)) {
+                            failures.add(code + " structural issue: " + issue);
+                        }
                     }
                 }
             }
-        }
     }
 
     private boolean allowedCodeSourceIssue(String code, JsonNode parts, JsonNode issue) {
