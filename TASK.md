@@ -121,6 +121,22 @@ Issue cha: **UNI-2638**. Đặc tả `docs/specs/2026-11-17-trinh-soan-noi-dung.
 | Issue | Việc | Trạng thái |
 |---|---|---|
 | UNI-2647 | Đặc tả `docs/specs/2026-11-17-pbi04-dot-2b.md`, bảng yêu cầu `docs/specs/2026-11-17-pbi04-dot-2b-yeu-cau.md`, plan `docs/plans/2026-11-17-pbi04-dot-2b.md` (17 task, 100 điểm). Đã qua 4 lượt review của Fable; M.Trường chốt K6 đến K15 và duyệt 2026-11-17; PR #70 đã merge. Bản vẽ G2: PR #78 (`docs/design/dot-2b/`). Cook ở một đợt chạy riêng sau khi trình soạn vào `develop` | in_progress |
+| UNI-2649 | Issue cha đợt 2B (cook từ 2026-11-17, nhánh `integration/dot-2b` từ `develop` 23c64377, Orca Run `run_89ebffeca5a8`) | in_progress |
+
+Sub-issue theo plan A5 (17 task, 100 điểm):
+
+| Task | Issue | Điểm | Sóng | Task | Issue | Điểm | Sóng |
+|---|---|---|---|---|---|---|---|
+| BE-1 | UNI-2650 | 10 | 1 | BE-9 | UNI-2660 | 4 | 4 |
+| BE-2 | UNI-2651 | 4 | 1 | FE-1 | UNI-2661 | 6 | 2 |
+| BE-3 | UNI-2652 | 4 | 1 | FE-2 | UNI-2662 | 8 | 2 |
+| BE-10 | UNI-2653 | 3 | 2 | FE-3a | UNI-2663 | 7 | 3 |
+| BE-4a | UNI-2654 | 6 | 2 | FE-3b | UNI-2664 | 6 | 4 |
+| BE-4b | UNI-2655 | 4 | 3 | FE-4 | UNI-2665 | 6 | 3 |
+| BE-5 | UNI-2656 | 10 | 3 | QA | UNI-2666 | 6 | 5 |
+| BE-8 | UNI-2657 | 5 | 3 | | | | |
+| BE-6 | UNI-2658 | 5 | 2 | | | | |
+| BE-7 | UNI-2659 | 6 | 2 | | | | |
 
 ### Thứ tự làm
 
