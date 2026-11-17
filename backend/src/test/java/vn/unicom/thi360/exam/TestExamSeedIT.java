@@ -558,6 +558,39 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 .isEqualTo(revisions);
     }
 
+    @Test
+    void examKindProfilesSeedScopesPerSpec2B() {
+        Map<String, String> scopes = jdbc.query(
+                "SELECT i.code, array_to_string(p.scopes, ',') FROM exam.exam_kind_profile p"
+                        + " JOIN catalog.catalog_item i ON i.id = p.exam_item_id",
+                rs -> {
+                    Map<String, String> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.put(rs.getString(1), rs.getString(2));
+                    }
+                    return result;
+                });
+        assertThat(scopes).containsExactlyInAnyOrderEntriesOf(Map.of(
+                "HSA", "FULL,PART,SUBJECT",
+                "QDA", "FULL,PART,SUBJECT",
+                "BCA", "FULL,PART,SUBJECT",
+                "VACT", "FULL",
+                "SPT", "SUBJECT,PART",
+                "SP2E", "SUBJECT,PART",
+                "THPTQG", "SUBJECT"));
+    }
+
+    @Test
+    void examSeedsContainNoAssumedCombinationCodes() {
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM catalog.catalog_item WHERE code_normalized ~ '^(qda_qd0|kh-)'",
+                Integer.class)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM catalog.catalog_item i JOIN catalog.combination_version v ON v.item_id = i.id"
+                        + " WHERE i.code_normalized ~ '^(qda_qd0|kh-)'",
+                Integer.class)).isZero();
+    }
+
     private void runRepairMigration() {
         ScriptUtils.executeSqlScript(
                 DataSourceUtils.getConnection(dataSource),
