@@ -426,13 +426,23 @@ class ExamStructureIT extends AbstractIntegrationTest {
         JsonNode savedVan = saved.path("parts").get(1).path("sections").get(0);
         assertThat(savedVan.path("groupOrder").asText()).isEqualTo("SHUFFLE");
         JsonNode savedVanBlocks = savedVan.path("blocks");
+        // Seed b974d1c0 thêm khối HSA_VN_PASSAGE_SINGLE vào Văn: sau khi dời WORD_USAGE
+        // xuống cuối, thứ tự là PASSAGE -> PASSAGE_SINGLE -> WORD_USAGE; mỗi nút giữ lại
+        // vẫn mang giá trị mẫu của chính nó dù đổi vị trí.
+        assertThat(savedVanBlocks.size()).isEqualTo(3);
         assertThat(savedVanBlocks.get(0).path("id").asText()).isEqualTo(
                 vanBlocks.get(0).path("id").asText());
         assertThat(savedVanBlocks.get(0).path("templateGroupCode").asText())
                 .isEqualTo("HSA_VN_PASSAGE");
+        assertThat(savedVanBlocks.get(1).path("id").asText()).isEqualTo(
+                vanBlocks.get(1).path("id").asText());
         assertThat(savedVanBlocks.get(1).path("templateGroupCode").asText())
+                .isEqualTo("HSA_VN_PASSAGE_SINGLE");
+        assertThat(savedVanBlocks.get(2).path("id").asText())
+                .isEqualTo(wordUsage.path("id").asText());
+        assertThat(savedVanBlocks.get(2).path("templateGroupCode").asText())
                 .isEqualTo("HSA_VN_WORD_USAGE");
-        assertThat(savedVanBlocks.get(1).path("answerTypeLocked").asBoolean()).isTrue();
+        assertThat(savedVanBlocks.get(2).path("answerTypeLocked").asBoolean()).isTrue();
 
         JsonNode savedScience = saved.path("parts").get(2).path("options").get(0).path("sections");
         assertThat(savedScience).hasSize(5);
