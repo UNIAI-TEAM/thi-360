@@ -115,7 +115,7 @@ describe("evaluateReadiness (UniNote PBI-03 muc 7.2)", () => {
 
   it("tai nguyen loi va cau chum long cau chum", () => {
     const set = sample("QUESTION_SET");
-    set.children[0] = { ...set.children[0]!, type: "QUESTION_SET", body: { type: "QUESTION_SET", passage: "x", childIds: [] } };
+    set.children[0] = { ...set.children[0]!, type: "QUESTION_SET", body: { type: "QUESTION_SET", passage: "x", blankNumberStart: 1, childIds: [] } };
     const result = evaluateReadiness(set, { reference, unavailableResources: [{ name: "hinh-2.png", child: 2 }] });
     expect(result.rules.find((rule) => rule.rule === "RESOURCES")!.issues).toEqual([
       { code: "RESOURCE_UNAVAILABLE", field: "content", value: "hinh-2.png", child: 2 },

@@ -198,7 +198,7 @@ describe("xem trước câu hỏi", () => {
       ...fakeQuestions.require("q-0027"),
       id: "q-tiny-set",
       points: 0.125,
-      body: { type: "QUESTION_SET", passage: "Đọc.", childIds: [essay.id] },
+      body: { type: "QUESTION_SET", passage: "Đọc.", blankNumberStart: 1, childIds: [essay.id] },
       children: [essay],
     };
     fakeQuestions.insert(set);
@@ -255,7 +255,7 @@ describe("xem trước câu hỏi", () => {
       ...fakeQuestions.require("q-0027"),
       id: "q-essay-set",
       points: essay.points,
-      body: { type: "QUESTION_SET", passage: "Đọc đoạn trích.", childIds: [essay.id] },
+      body: { type: "QUESTION_SET", passage: "Đọc đoạn trích.", blankNumberStart: 1, childIds: [essay.id] },
       children: [essay],
     };
     fakeQuestions.insert(set);

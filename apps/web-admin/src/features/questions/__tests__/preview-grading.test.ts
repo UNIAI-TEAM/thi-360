@@ -169,7 +169,7 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
       { type: "ESSAY", gradingGuide: "Guide", rubric: [], sampleAnswer: "Mẫu", wordLimit: null },
       3,
     );
-    const set = question({ type: "QUESTION_SET", passage: "", childIds: [single.id, essay.id] }, 4, [single, essay]);
+    const set = question({ type: "QUESTION_SET", passage: "", blankNumberStart: 1, childIds: [single.id, essay.id] }, 4, [single, essay]);
 
     const answered = gradePreview(set, {
       type: "QUESTION_SET",
@@ -186,13 +186,13 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
       { type: "ESSAY", gradingGuide: "Guide", rubric: [], sampleAnswer: null, wordLimit: null },
       1.5,
     );
-    const set = question({ type: "QUESTION_SET", passage: "", childIds: [essay.id] }, 1.5, [essay]);
+    const set = question({ type: "QUESTION_SET", passage: "", blankNumberStart: 1, childIds: [essay.id] }, 1.5, [essay]);
     const filled = gradePreview(set, { type: "QUESTION_SET", children: { [essay.id]: { type: "ESSAY", text: "bài làm" } } });
     expect(filled).toMatchObject({ state: "manual", earned: 0, max: 1.5, hasManualPart: true });
 
     // Cau con tu cham bo trong, cau Tu luan da dien: van la cho cham, khong phai sai.
     const single = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!] }, 1);
-    const mixed = question({ type: "QUESTION_SET", passage: "", childIds: [single.id, essay.id] }, 2.5, [single, essay]);
+    const mixed = question({ type: "QUESTION_SET", passage: "", blankNumberStart: 1, childIds: [single.id, essay.id] }, 2.5, [single, essay]);
     const essayOnly = gradePreview(mixed, {
       type: "QUESTION_SET",
       children: { [essay.id]: { type: "ESSAY", text: "bài làm" } },
