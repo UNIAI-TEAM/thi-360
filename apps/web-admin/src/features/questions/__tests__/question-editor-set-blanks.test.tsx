@@ -192,7 +192,7 @@ describe("câu chùm: Đánh số từ và bảng Chỗ trống và câu con", (
       fail(422, {
         code: "VALIDATION_FAILED",
         message: "Validation failed",
-        fieldErrors: [{ code: "QUESTION_WORD_LIMIT_INVALID", field: "body.blankNumberStart", message: "x" }] as never,
+        fieldErrors: [{ code: "QUESTION_BLANK_NUMBER_START_INVALID", field: "body.blankNumberStart", message: "x" }] as never,
       }),
     );
     renderEn(<QuestionEditorView mode="edit" questionId={id} />);
@@ -202,7 +202,7 @@ describe("câu chùm: Đánh số từ và bảng Chỗ trống và câu con", (
     await screen.findByText("Not saved: the server rejected some fields. Fix the fields marked below.");
     await waitFor(() => expect(start).toHaveAttribute("aria-invalid", "true"));
     const error = document.getElementById(start.getAttribute("aria-describedby")!.split(" ").find((token) => document.getElementById(token)?.getAttribute("role") === "alert")!);
-    expect(error).toHaveTextContent("The suggested word count must be greater than 0.");
+    expect(error).toHaveTextContent("Blank numbering must start between 1 and 200.");
     expect(navigation.push).not.toHaveBeenCalled();
   });
 });

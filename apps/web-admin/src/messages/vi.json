@@ -2688,6 +2688,7 @@
           "QUESTION_PAIR_DUPLICATE_LEFT": "Một mục bên trái đang được ghép hai lần.",
           "QUESTION_ATTACHMENT_UNKNOWN": "Tệp đính kèm không còn tồn tại. Hãy tải lên lại.",
           "QUESTION_WORD_LIMIT_INVALID": "Số chữ gợi ý phải lớn hơn 0.",
+          "QUESTION_BLANK_NUMBER_START_INVALID": "Số bắt đầu đánh chỗ trống phải từ 1 đến 200.",
           "QUESTION_SCORING_METHOD_MISSING": "Chưa chọn cách chấm.",
           "QUESTION_SCORING_RULE_MISSING": "Chưa chọn quy tắc chấm.",
           "POINTS_NOT_POSITIVE": "Điểm phải lớn hơn 0.",

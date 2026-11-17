@@ -2688,6 +2688,7 @@
           "QUESTION_PAIR_DUPLICATE_LEFT": "A left item is matched twice.",
           "QUESTION_ATTACHMENT_UNKNOWN": "The attachment no longer exists. Upload it again.",
           "QUESTION_WORD_LIMIT_INVALID": "The suggested word count must be greater than 0.",
+          "QUESTION_BLANK_NUMBER_START_INVALID": "Blank numbering must start between 1 and 200.",
           "QUESTION_SCORING_METHOD_MISSING": "No scoring method is chosen.",
           "QUESTION_SCORING_RULE_MISSING": "No scoring rule is chosen.",
           "POINTS_NOT_POSITIVE": "Points must be greater than 0.",
