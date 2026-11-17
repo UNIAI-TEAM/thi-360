@@ -385,7 +385,7 @@ public class ExamService {
                         value.subjectCodes().stream().filter(code -> !subjects.contains(code)).toList()));
             }
         }
-        return new ExamStructureResponse(examId, presented.parts(), revision, presented.examQuotas(), combinations);
+        return new ExamStructureResponse(examId, presented.parts(), revision, presented.examQuotas(), combinations, null);
     }
 
     /** Mã gợi ý <KIND>-<F|P|S>-[PHẦN|MÔN-]<seq:03d>: số tiếp theo chưa dùng trong cùng tiền tố. */

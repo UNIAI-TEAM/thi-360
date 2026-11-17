@@ -3139,7 +3139,7 @@
             "items" : {
               "$ref" : "#/components/schemas/ExamSectionState"
             },
-            "type" : "array"
+            "type" : [ "array", "null" ]
           },
           "stale" : {
             "type" : "boolean"
@@ -3792,6 +3792,32 @@
         },
         "type" : "object"
       },
+      "ExamPreviewCompliance" : {
+        "properties" : {
+          "actual" : {
+            "type" : "number"
+          },
+          "basis" : {
+            "type" : "string"
+          },
+          "criterion" : {
+            "type" : "string"
+          },
+          "enforcement" : {
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "required" : {
+            "type" : "number"
+          },
+          "scope" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ExamPreviewIssue" : {
         "properties" : {
           "answerType" : {
@@ -3880,6 +3906,11 @@
           },
           "kind" : {
             "type" : "string"
+          },
+          "originalOrder" : {
+            "description" : "Original solver-selected item position",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
           },
           "passage" : {
             "type" : "string"
@@ -4095,11 +4126,30 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "optionOrder" : {
+            "description" : "Displayed option IDs in order; PaperOrdering never shuffles when shuffleOptions=false",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
           "options" : {
             "items" : {
               "$ref" : "#/components/schemas/ExamPreviewOption"
             },
             "type" : "array"
+          },
+          "originalNumber" : {
+            "description" : "Original solver-selected question position",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "originalOptionOrder" : {
+            "description" : "Option IDs in the author's original order",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
           },
           "points" : {
             "type" : "number"
@@ -4131,25 +4181,41 @@
       },
       "ExamPreviewRequest" : {
         "properties" : {
-          "pathId" : {
+          "basePreviewId" : {
+            "format" : "uuid",
             "type" : "string"
+          },
+          "pathId" : {
+            "deprecated" : true,
+            "description" : "Legacy path selection; use target when BE-8 is available",
+            "type" : "string"
+          },
+          "regeneratePartIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "seed" : {
             "format" : "int64",
             "type" : "integer"
           },
           "subjectCodes" : {
+            "deprecated" : true,
+            "description" : "Legacy subject selection; use target.subjectCodes",
             "items" : {
               "type" : "string"
             },
             "type" : "array"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/ExamPreviewTarget"
           },
           "version" : {
             "format" : "int32",
             "type" : "integer"
           }
         },
-        "required" : [ "pathId", "seed" ],
         "type" : "object"
       },
       "ExamPreviewRequirementCell" : {
@@ -4181,6 +4247,18 @@
       },
       "ExamPreviewResult" : {
         "properties" : {
+          "compliance" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewCompliance"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "droppedQuestions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewQuestion"
+            },
+            "type" : [ "array", "null" ]
+          },
           "examId" : {
             "format" : "uuid",
             "type" : "string"
@@ -4200,6 +4278,10 @@
           },
           "path" : {
             "$ref" : "#/components/schemas/ExamPreviewPathRef"
+          },
+          "previewId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
           },
           "reason" : {
             "type" : "string"
@@ -4304,6 +4386,32 @@
             "type" : "integer"
           }
         },
+        "type" : "object"
+      },
+      "ExamPreviewTarget" : {
+        "properties" : {
+          "kind" : {
+            "enum" : [ "SECTION", "PATH", "EXAM" ],
+            "type" : "string"
+          },
+          "pathId" : {
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "sectionQuestionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subjectCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "kind" ],
         "type" : "object"
       },
       "ExamPublishKeptPath" : {
@@ -4490,6 +4598,13 @@
             "description" : "Revision của bài thi — gửi lại trong expectedRevision khi PUT",
             "format" : "int64",
             "type" : "integer"
+          },
+          "sectionStates" : {
+            "description" : "Section check states, populated by the checking implementation",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamSectionState"
+            },
+            "type" : [ "array", "null" ]
           }
         },
         "required" : [ "examId", "parts", "revision" ],

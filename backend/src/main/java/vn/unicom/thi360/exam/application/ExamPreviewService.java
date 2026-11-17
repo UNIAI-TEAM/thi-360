@@ -56,7 +56,8 @@ public class ExamPreviewService {
         if (!draftIssues.isEmpty()) {
             PathRef path = PreviewPathResolver.resolveDraft(document, request.pathId(), request.subjectCodes());
             return new PreviewResult(id, path, request.version(), request.seed(), Instant.now(clock), "FAILED", null,
-                    "INVALID", draftIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList());
+                    "INVALID", draftIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList(),
+                    null, null, null);
         }
         PaperSolver solver = new PaperSolver(limits, clock);
         SolverInputBuilder.SolverInput input;
@@ -76,12 +77,13 @@ public class ExamPreviewService {
                     ? "INVALID" : "UNCONFIRMED";
             return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                     "FAILED", null, reason,
-                    staticIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList());
+                    staticIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList(),
+                    null, null, null);
         }
         PathResult result = solver.solvePath(resolved.path(), input.candidates(), SolveMode.generate(request.seed()));
         if (result.status() != SolveStatus.VALID) {
             return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                    "FAILED", null, result.status().name(), issues(result, document));
+                    "FAILED", null, result.status().name(), issues(result, document), null, null, null);
         }
         Map<String, GroupWitness> groups = new HashMap<>();
         List<QuestionSourcePort.VersionKey> keys = new ArrayList<>();
@@ -115,7 +117,7 @@ public class ExamPreviewService {
         PreviewPaper paper = paperBuilder.build(snapshot, document, resolved.path());
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
         return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                "GENERATED", paper, null, null);
+                "GENERATED", paper, null, null, null, null, null);
     }
 
 
@@ -279,7 +281,7 @@ public class ExamPreviewService {
                             childVersion.snapshot(), unit, subjectCode));
                 }
                 return new PreviewItem("SET", null, version.key().questionId().toString(), version.code(),
-                        version.key().versionNo(), false, text(body, "passage"), children);
+                        version.key().versionNo(), false, text(body, "passage"), children, null);
             }
             if (candidate.units().isEmpty()) throw new IllegalStateException("Question has no counting units");
             int start = number;
@@ -292,7 +294,7 @@ public class ExamPreviewService {
                 countKnowledge(snapshot, subjectCode);
             }
             if (number <= start) throw new IllegalStateException("Invalid question numbering");
-            return new PreviewItem("QUESTION", question, null, null, null, false, null, null);
+            return new PreviewItem("QUESTION", question, null, null, null, false, null, null, null);
         }
 
         private PreviewQuestion question(String id, String code, int version, JsonNode snapshot,
@@ -317,7 +319,8 @@ public class ExamPreviewService {
             }
             return new PreviewQuestion(number - 1, id, code, version, unit.answerType().name(), false,
                     text(snapshot, "content"), unit.gradeCode(), unit.difficultyCode(), ref, points,
-                    options(body), answer(body), text(snapshot, "solution"), rubric(body), body.isMissingNode() ? null : body);
+                    options(body), answer(body), text(snapshot, "solution"), rubric(body), body.isMissingNode() ? null : body,
+                    null, null, null);
         }
 
         private static BigDecimal points(QuestionSourcePort.Unit unit) {

@@ -57,7 +57,7 @@ public final class ExamCheckApiModels {
     public record Result(UUID examId, Instant checkedAt, double durationSeconds, long timeLimitSeconds,
                          boolean stale, String invalidReason, String status, int issueCount, List<Path> paths,
                          List<Group> groups, int partCount, BigDecimal totalPoints, int printedQuestions,
-                         BigDecimal maxScore, List<SectionState> sectionStates) { }
+                         BigDecimal maxScore, @Schema(types = {"array", "null"}) List<SectionState> sectionStates) { }
     @Schema(name = "ExamCheckRun")
     public record Run(UUID runId, String state, Result result, String errorCode) { }
 }

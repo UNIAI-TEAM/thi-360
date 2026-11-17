@@ -15,7 +15,9 @@ public record ExamStructureResponse(
                 requiredMode = Schema.RequiredMode.REQUIRED)
         long revision,
         List<ExamQuota> examQuotas,
-        List<StructureCombination> combinations
+        List<StructureCombination> combinations,
+        @Schema(types = {"array", "null"}, description = "Section check states, populated by the checking implementation")
+        List<ExamCheckApiModels.SectionState> sectionStates
 ) {
     public ExamStructureResponse {
         parts = parts == null ? List.of() : List.copyOf(parts);
@@ -24,6 +26,6 @@ public record ExamStructureResponse(
     }
 
     public ExamStructureResponse(UUID examId, List<ExamPart> parts, long revision) {
-        this(examId, parts, revision, List.of(), List.of());
+        this(examId, parts, revision, List.of(), List.of(), null);
     }
 }

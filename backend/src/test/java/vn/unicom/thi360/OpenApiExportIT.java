@@ -53,6 +53,33 @@ class OpenApiExportIT extends AbstractIntegrationTest {
         assertThat(schemas.path("CreateExamRequest").path("properties").has("overview")).isTrue();
         assertThat(schemas.path("LoadExamTemplateRequest").path("properties").has("overviewPolicy")).isTrue();
         assertThat(schemas.path("ExamCheckRequest").path("properties").has("scope")).isTrue();
+        JsonNode previewRequest = schemas.path("ExamPreviewRequest").path("properties");
+        assertThat(previewRequest.path("pathId").path("deprecated").asBoolean()).isTrue();
+        assertThat(previewRequest.path("subjectCodes").path("deprecated").asBoolean()).isTrue();
+        assertThat(previewRequest.has("target")).isTrue();
+        assertThat(previewRequest.has("basePreviewId")).isTrue();
+        assertThat(previewRequest.has("regeneratePartIds")).isTrue();
+        assertThat(schemas.path("ExamPreviewTarget").path("properties").has("subjectCodes")).isTrue();
+        assertThat(schemas.path("ExamPreviewResult").path("properties").has("compliance")).isTrue();
+        assertThat(schemas.path("ExamPreviewQuestion").path("properties").has("optionOrder")).isTrue();
+        assertThat(schemas.path("ExamPreviewQuestion").path("properties").has("originalOptionOrder")).isTrue();
+        assertThat(schemas.path("ExamPreviewQuestion").path("properties").has("originalNumber")).isTrue();
+        assertThat(schemas.path("ExamPreviewItem").path("properties").has("originalOrder")).isTrue();
+        assertThat(schemas.path("ExamStructureResponse").path("properties").has("sectionStates")).isTrue();
+        assertThat(schemas.path("ExamCheckResult").path("properties").has("sectionStates")).isTrue();
+        for (String[] nullableProperty : List.of(
+                new String[] {"ExamPreviewResult", "compliance", "array"},
+                new String[] {"ExamPreviewQuestion", "optionOrder", "array"},
+                new String[] {"ExamPreviewQuestion", "originalOptionOrder", "array"},
+                new String[] {"ExamPreviewQuestion", "originalNumber", "integer"},
+                new String[] {"ExamPreviewItem", "originalOrder", "integer"},
+                new String[] {"ExamStructureResponse", "sectionStates", "array"},
+                new String[] {"ExamCheckResult", "sectionStates", "array"})) {
+            JsonNode type = schemas.path(nullableProperty[0]).path("properties")
+                    .path(nullableProperty[1]).path("type");
+            assertThat(type).as("%s.%s type", nullableProperty[0], nullableProperty[1])
+                    .extracting(JsonNode::asText).containsExactlyInAnyOrder(nullableProperty[2], "null");
+        }
         JsonNode matching = schemas.path("MatchingBody").path("allOf").get(1).path("properties");
         assertThat(matching.has("shuffleLeft")).isFalse();
         assertThat(matching.has("shuffleRight")).isFalse();

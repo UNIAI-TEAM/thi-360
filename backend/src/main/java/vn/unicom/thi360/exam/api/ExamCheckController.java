@@ -53,6 +53,9 @@ public class ExamCheckController {
             content = @Content(schema = @Schema(implementation = ExamCheckApiModels.Result.class, nullable = true)))
     public JsonNode latest(@PathVariable UUID examId) {
         ObjectNode result = query.latest(examId);
+        if (result != null && !result.has("sectionStates")) {
+            result.putNull("sectionStates");
+        }
         return result == null ? NullNode.getInstance() : result;
     }
 

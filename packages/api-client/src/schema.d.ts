@@ -3605,7 +3605,7 @@ export interface components {
             paths?: components["schemas"]["ExamCheckPath"][];
             /** Format: int32 */
             printedQuestions?: number;
-            sectionStates?: components["schemas"]["ExamSectionState"][];
+            sectionStates?: components["schemas"]["ExamSectionState"][] | null;
             stale?: boolean;
             status?: string;
             /** Format: int64 */
@@ -3874,6 +3874,15 @@ export interface components {
             status?: string;
             value?: number;
         };
+        ExamPreviewCompliance: {
+            actual?: number;
+            basis?: string;
+            criterion?: string;
+            enforcement?: string;
+            note?: string;
+            required?: number;
+            scope?: string;
+        };
         ExamPreviewIssue: {
             answerType?: string;
             /** Format: int32 */
@@ -3905,6 +3914,11 @@ export interface components {
             children?: components["schemas"]["ExamPreviewQuestion"][];
             code?: string;
             kind?: string;
+            /**
+             * Format: int32
+             * @description Original solver-selected item position
+             */
+            originalOrder?: number | null;
             passage?: string;
             question?: components["schemas"]["ExamPreviewQuestion"];
             setId?: string;
@@ -3979,7 +3993,16 @@ export interface components {
             knowledge?: components["schemas"]["ExamPreviewKnowledgeRef"];
             /** Format: int32 */
             number?: number;
+            /** @description Displayed option IDs in order; PaperOrdering never shuffles when shuffleOptions=false */
+            optionOrder?: string[] | null;
             options?: components["schemas"]["ExamPreviewOption"][];
+            /**
+             * Format: int32
+             * @description Original solver-selected question position
+             */
+            originalNumber?: number | null;
+            /** @description Option IDs in the author's original order */
+            originalOptionOrder?: string[] | null;
             points?: number;
             questionId?: string;
             rubric?: components["schemas"]["ExamPreviewRubricItem"][];
@@ -3990,10 +4013,22 @@ export interface components {
             version?: number;
         };
         ExamPreviewRequest: {
-            pathId: string;
+            /** Format: uuid */
+            basePreviewId?: string;
+            /**
+             * @deprecated
+             * @description Legacy path selection; use target when BE-8 is available
+             */
+            pathId?: string;
+            regeneratePartIds?: string[];
             /** Format: int64 */
-            seed: number;
+            seed?: number;
+            /**
+             * @deprecated
+             * @description Legacy subject selection; use target.subjectCodes
+             */
             subjectCodes?: string[];
+            target?: components["schemas"]["ExamPreviewTarget"];
             /** Format: int32 */
             version?: number;
         };
@@ -4009,6 +4044,8 @@ export interface components {
             required?: number;
         };
         ExamPreviewResult: {
+            compliance?: components["schemas"]["ExamPreviewCompliance"][] | null;
+            droppedQuestions?: components["schemas"]["ExamPreviewQuestion"][] | null;
             /** Format: uuid */
             examId?: string;
             /** Format: date-time */
@@ -4016,6 +4053,8 @@ export interface components {
             issues?: components["schemas"]["ExamPreviewIssue"][];
             paper?: components["schemas"]["ExamPreviewPaper"];
             path?: components["schemas"]["ExamPreviewPathRef"];
+            /** Format: uuid */
+            previewId?: string | null;
             reason?: string;
             /** Format: int64 */
             seed?: number;
@@ -4052,6 +4091,15 @@ export interface components {
             answerType?: string;
             /** Format: int32 */
             required?: number;
+        };
+        ExamPreviewTarget: {
+            /** @enum {string} */
+            kind: "SECTION" | "PATH" | "EXAM";
+            pathId?: string;
+            sectionId?: string;
+            /** Format: int32 */
+            sectionQuestionCount?: number;
+            subjectCodes?: string[];
         };
         ExamPublishKeptPath: {
             pathId?: string;
@@ -4117,6 +4165,8 @@ export interface components {
              * @description Revision của bài thi — gửi lại trong expectedRevision khi PUT
              */
             revision: number;
+            /** @description Section check states, populated by the checking implementation */
+            sectionStates?: components["schemas"]["ExamSectionState"][] | null;
         };
         /** @description Tổng hợp cấu trúc theo phần, môn và nhóm */
         ExamStructureSummaryResponse: {
