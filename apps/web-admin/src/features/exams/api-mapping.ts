@@ -10,6 +10,7 @@ import type {
   ExamPart,
   ExamPartOption,
   ExamSection,
+  ExamSectionState,
   ExamStatus,
   ExamSummary,
   ExamTemplate,
@@ -36,6 +37,19 @@ type ApiMatrix = Schemas["BlockMatrix"];
 type ApiScope = Schemas["KnowledgeScope"];
 
 const nullable = <T>(value: T | null | undefined): T | null => value ?? null;
+
+/** `null` khi máy chủ chưa tính trạng thái môn (BE-5): màn không hiện huy hiệu (khác danh sách rỗng). */
+export function mapSectionStates(
+  states: readonly Schemas["ExamSectionState"][] | null | undefined,
+): ExamSectionState[] | null {
+  if (!states) return null;
+  return states.map((item) => ({
+    partId: item.partId ?? null,
+    sectionId: item.sectionId ?? null,
+    subjectCode: item.subjectCode ?? null,
+    state: item.state === "CHECKED" || item.state === "NEEDS_CHECK" ? item.state : "INCOMPLETE",
+  }));
+}
 
 function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   if (!scope) return null;

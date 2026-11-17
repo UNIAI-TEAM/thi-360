@@ -21,7 +21,6 @@ export const suggestExamCode = http.suggestExamCode;
 export const createExam = http.createExam;
 export const updateExamInfo = http.updateExamInfo;
 export const updateExamStructure = http.updateExamStructure;
-export const updateExamOverview = http.updateExamOverview;
 export const applyExamTemplate = http.applyExamTemplate;
 export const duplicateExam = http.duplicateExam;
 /**
@@ -43,7 +42,6 @@ export interface ExamsApiDeps {
   createExam: typeof createExam;
   updateExamInfo: typeof updateExamInfo;
   updateExamStructure: typeof updateExamStructure;
-  updateExamOverview: typeof updateExamOverview;
   applyExamTemplate: typeof applyExamTemplate;
   duplicateExam: typeof duplicateExam;
   discontinueExam: typeof discontinueExam;
@@ -61,7 +59,6 @@ export const defaultExamsApiDeps: ExamsApiDeps = {
   createExam,
   updateExamInfo,
   updateExamStructure,
-  updateExamOverview,
   applyExamTemplate,
   duplicateExam,
   discontinueExam,

@@ -66,22 +66,64 @@ describe("Cấu trúc: phiên bản năm", () => {
     expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
   }, 20_000);
 
-  it("chỉ một phiên bản thì ô bị khóa; HSA Theo phần Toán có ô phiên bản, phần chưa có mẫu thì không hiện ô", async () => {
+  it("chỉ một phiên bản thì ẩn ô chọn phiên bản; phần chưa có mẫu cũng không hiện ô", async () => {
     const { unmount } = openStructure("ex-qda-f-001");
-    expect(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ })).toBeDisabled();
+    await screen.findByRole("navigation", { name: "Cấu trúc" });
+    expect(screen.queryByRole("combobox", { name: /Phiên bản cấu trúc/ })).not.toBeInTheDocument();
     unmount();
     const math = await createExam({ name: "HSA Toán", code: "HSA-P-902", kind: "HSA", scope: "PART", partCode: "MATH", maxScore: 50, description: null });
     expect(math.templateCode).toBe("HSA_SINGLE");
     const view = openStructure(math.id, `?part=${backend.app(math.id).parts[0]!.id}`);
-    const picker = await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ });
-    expect(picker).toBeDisabled();
-    expect(picker).toHaveTextContent("HSA · Theo phần Toán");
+    await screen.findByRole("textbox", { name: /Số câu phải làm/ });
+    expect(screen.queryByRole("combobox", { name: /Phiên bản cấu trúc/ })).not.toBeInTheDocument();
     view.unmount();
     const literature = await createExam({ name: "HSA Văn", code: "HSA-P-903", kind: "HSA", scope: "PART", partCode: "LITERATURE", maxScore: 50, description: null });
     openStructure(literature.id, `?part=${backend.app(literature.id).parts[0]!.id}`);
     await screen.findByRole("textbox", { name: /Số câu phải làm/ });
     expect(screen.queryByRole("combobox", { name: /Phiên bản cấu trúc/ })).not.toBeInTheDocument();
   });
+});
+
+const policyOf = (body: unknown): unknown => (typeof body === "object" && body !== null && "overviewPolicy" in body ? body.overviewPolicy : undefined);
+
+describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVERVIEW_CONFIRM)", () => {
+  async function startReload(code: string) {
+    const exam = await createExam({ name: "SP2E thử", code, kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", description: null });
+    backend.requireOverviewConfirm(exam.id);
+    const user = userEvent.setup();
+    openStructure(exam.id);
+    await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
+    await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
+    const reload = await screen.findByRole("dialog", { name: /Nạp lại cấu trúc theo/ });
+    await user.click(within(reload).getByRole("button", { name: "Nạp lại cấu trúc" }));
+    const ask = await screen.findByRole("dialog", { name: "Giữ số tổng quan đã sửa?" });
+    return { exam, user, ask };
+  }
+  const templatePath = (id: string) => `/api/v1/admin/exams/${id}/structure/template`;
+
+  it("hỏi lại sau hộp xác nhận nạp lại; chọn giữ số đã sửa thì gửi lại kèm KEEP_EDITED", async () => {
+    const { exam, user, ask } = await startReload("SP2E-S-904");
+    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    await user.click(within(ask).getByRole("button", { name: "Giữ số đã sửa" }));
+    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
+    expect(backend.server.calls("POST", templatePath(exam.id)).map((call) => policyOf(call.body))).toEqual([undefined, "KEEP_EDITED"]);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  }, 20_000);
+
+  it("chọn lấy số của mẫu thì gửi lại kèm USE_TEMPLATE", async () => {
+    const { exam, user, ask } = await startReload("SP2E-S-905");
+    await user.click(within(ask).getByRole("button", { name: "Lấy số của phiên bản mới" }));
+    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
+    expect(backend.server.calls("POST", templatePath(exam.id)).map((call) => policyOf(call.body))).toEqual([undefined, "USE_TEMPLATE"]);
+  }, 20_000);
+
+  it("hủy ở câu hỏi giữ số thì không nạp lại: cấu trúc giữ nguyên, không gửi thêm yêu cầu", async () => {
+    const { exam, user, ask } = await startReload("SP2E-S-906");
+    await user.click(within(ask).getByRole("button", { name: "Hủy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    expect(backend.server.calls("POST", templatePath(exam.id))).toHaveLength(1);
+  }, 20_000);
 });
 
 describe("Cấu trúc: phần thi", () => {

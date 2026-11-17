@@ -333,6 +333,12 @@ export class ExamsBackend {
   private sequence = 0;
   private readonly countsByPath = new Map<string, Reply>();
   private readonly previews = new Map<string, Reply>();
+  /** Phần thêm của `GET structure` (sectionStates, combinations) theo bài; BE-5 chưa có thì bỏ trống. */
+  private readonly structureExtras = new Map<string, { sectionStates?: unknown[] | null; combinations?: unknown[] }>();
+  /** Dòng tổng hợp của `GET structure/summary`; chưa xếp thì trả 501 như BE-5 chưa triển khai. */
+  private readonly summaries = new Map<string, unknown[]>();
+  /** Bài mà đổi phiên bản thiếu `overviewPolicy` thì trả 409 `EXAM_OVERVIEW_CONFIRM`. */
+  private readonly overviewConfirm = new Set<string>();
   /** Mã gợi ý tùy biến theo truy vấn; mặc định `<KIND>-<F|P|S>-[SLUG-]<NNN>` số tiếp theo chưa dùng. */
   suggestCode: ((query: URLSearchParams, used: Set<string>) => string) | null = null;
 
@@ -385,6 +391,23 @@ export class ExamsBackend {
   /** Ghi kết quả kiểm tra gần nhất (GET/POST /check trả bản này nếu `checkReplies` rỗng). */
   seedCheck(examId: string, result: WireCheck): this {
     this.checks.set(examId, result);
+    return this;
+  }
+
+  /** Trạng thái môn và mã bài thi của `GET structure` (BE-5, R-24). */
+  seedStructureExtras(examId: string, extras: { sectionStates?: unknown[] | null; combinations?: unknown[] }): this {
+    this.structureExtras.set(examId, extras);
+    return this;
+  }
+
+  seedSummary(examId: string, rows: unknown[]): this {
+    this.summaries.set(examId, rows);
+    return this;
+  }
+
+  /** Đổi phiên bản của bài này phải kèm `overviewPolicy`, nếu không 409 `EXAM_OVERVIEW_CONFIRM` (K8). */
+  requireOverviewConfirm(examId: string): this {
+    this.overviewConfirm.add(examId);
     return this;
   }
 
@@ -720,6 +743,10 @@ export class ExamsBackend {
       (exam.scope !== "PART" || template.partCode === exam.partCode) &&
       (exam.scope !== "SUBJECT" || template.subjectCode === exam.subjectCode);
     if (!template || !matches) return err(422, "EXAM_TEMPLATE_MISMATCH");
+    if (this.overviewConfirm.has(exam.id)) {
+      if (!body.overviewPolicy) return err(409, "EXAM_OVERVIEW_CONFIRM");
+      this.overviewConfirm.delete(exam.id);
+    }
     if (this.edits.has(exam.id) && body.confirmReplace !== true) return err(409, "EXAM_STRUCTURE_REPLACE_CONFIRM");
     this.edits.delete(exam.id);
     const request: ScopeRequest = { kind: exam.kind as ExamKind, scope: exam.scope as ExamScope, partCode: exam.partCode ?? null, subjectCode: exam.subjectCode ?? null };
@@ -920,9 +947,18 @@ export class ExamsBackend {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);
         return exam === null ? err(404, "EXAM_NOT_FOUND") : this.versionsList(exam);
       })
+      .on("GET", `${exams}/:id/structure/summary`, (request) => {
+        const id = request.url.pathname.split("/").at(-3)!;
+        const exam = this.require(id);
+        if (exam === null) return err(404, "EXAM_NOT_FOUND");
+        const rows = this.summaries.get(id);
+        return rows ? { status: 200, body: { parts: rows } } : err(501, "NOT_IMPLEMENTED");
+      })
       .on("GET", `${exams}/:id/structure`, (request) => {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);
-        return exam === null ? err(404, "EXAM_NOT_FOUND") : { status: 200, body: { examId: exam.id, revision: exam.revision, parts: exam.parts } };
+        return exam === null
+          ? err(404, "EXAM_NOT_FOUND")
+          : { status: 200, body: { examId: exam.id, revision: exam.revision, parts: exam.parts, ...this.structureExtras.get(exam.id) } };
       })
       .on("PUT", `${exams}/:id/structure`, (request) => {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);

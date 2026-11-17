@@ -3835,7 +3835,6 @@
       "emptyAction": "Mở Thông tin chung",
       "save": "Lưu",
       "discard": "Hủy thay đổi",
-      "checkLink": "Kiểm tra cấu hình",
       "unsavedChip": "Có thay đổi chưa lưu",
       "saved": "Đã lưu cấu trúc và ma trận.",
       "savedRecheck": "Đã lưu cấu trúc và ma trận. Bài thi cần kiểm tra lại trước khi công bố.",
@@ -3845,16 +3844,22 @@
       "workingNote": "Lưu tạo bản làm việc; phiên bản v{version} vẫn phục vụ học viên tới khi công bố bản mới.",
       "draftNote": "Bài chưa công bố. Lưu thường xuyên; kiểm tra cấu hình trước khi công bố.",
       "version": {
-        "label": "Phiên bản cấu trúc",
-        "placeholder": "Chọn phiên bản",
+        "expertPending": "Chờ chuyên gia xác nhận",
         "hint": "{count, number} phiên bản khớp kỳ thi, phạm vi và môn của bài. Đổi phiên bản sẽ nạp lại cấu trúc sau khi bạn xác nhận.",
-        "hintSingle": "Chỉ có một phiên bản cho kỳ thi, phạm vi và môn của bài.",
-        "reloadTitle": "Nạp lại cấu trúc theo {name}?",
+        "label": "Phiên bản cấu trúc",
+        "overviewCancel": "Hủy",
+        "overviewClose": "Đóng",
+        "overviewDescription": "Tổng quan của bài đã được sửa tay và khác số của phiên bản mới. Giữ số đã sửa cho các phần và môn còn trong phiên bản mới, hay lấy số của phiên bản mới?",
+        "overviewKeepEdited": "Giữ số đã sửa",
+        "overviewTitle": "Giữ số tổng quan đã sửa?",
+        "overviewUseTemplate": "Lấy số của phiên bản mới",
+        "placeholder": "Chọn phiên bản",
+        "reloadConfirm": "Nạp lại cấu trúc",
         "reloadDescription": "Cấu trúc hiện tại sẽ được thay bằng các phần dưới đây. Các khối và ma trận đã khai báo sẽ mất.",
         "reloadDescriptionDirty": "Cấu trúc hiện tại, kể cả thay đổi chưa lưu, sẽ được thay bằng các phần dưới đây. Các khối và ma trận đã khai báo sẽ mất.",
-        "reloadConfirm": "Nạp lại cấu trúc",
-        "reloaded": "Đã nạp lại cấu trúc theo {name}.",
-        "reloadError": "Không nạp lại được cấu trúc. Thử lại sau."
+        "reloadError": "Không nạp lại được cấu trúc. Thử lại sau.",
+        "reloadTitle": "Nạp lại cấu trúc theo {name}?",
+        "reloaded": "Đã nạp lại cấu trúc theo {name}."
       },
       "discardTitle": "Hủy các thay đổi chưa lưu?",
       "discardDescription": "Cấu trúc trở về lần lưu gần nhất. Không hoàn tác được thao tác này.",
@@ -3870,13 +3875,13 @@
       "blockLocation": "{hasOption, select, yes {{part} · {option} · {subject}} other {{part} · {subject}}} · nhóm {position, number} / {total, number}",
       "summary": {
         "label": "Tổng hợp cấu trúc",
+        "kind": "Kỳ thi",
+        "scope": "Phạm vi",
         "questions": "Tổng số câu",
         "duration": "Tổng thời gian",
+        "editOverview": "Sửa thông tin tổng quan",
         "minutes": "{count, number} phút",
         "points": "Tổng điểm",
-        "allocated": "Đã phân bổ",
-        "allocatedValue": "{allocated, number}, còn thiếu {missing, number}",
-        "issues": "Lỗi cần xử lý",
         "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
         "sharedMinutes": "{count, number} phút, chung cả bài",
         "pointsOfScale": "{points} / {scale} điểm"
@@ -3886,6 +3891,30 @@
         "description": "Các thay đổi chưa lưu trên trang này sẽ mất.",
         "leave": "Rời trang",
         "stay": "Ở lại"
+      },
+      "check": {
+        "all": "Kiểm tra toàn bài",
+        "codes": "Mã: {codes}",
+        "continue": "Tiếp tục",
+        "done": "Đã kiểm tra xong.",
+        "error": "Không kiểm tra được. Thử lại sau.",
+        "errorsChip": "{count, number} lỗi",
+        "errorsTitle": "Lỗi ({count, number})",
+        "part": "Kiểm tra phần",
+        "pass": "Đạt",
+        "resultTitle": "Kết quả kiểm tra",
+        "section": "Kiểm tra môn",
+        "warningsChip": "{count, number} cảnh báo",
+        "warningsTitle": "Cảnh báo ({count, number})",
+        "wholeExam": "Cả bài"
+      },
+      "leave": {
+        "close": "Đóng",
+        "description": "Cấu trúc có thay đổi chưa lưu. Lưu rồi chuyển, bỏ thay đổi để quay về lần lưu gần nhất, hoặc ở lại để sửa tiếp.",
+        "discard": "Bỏ thay đổi",
+        "saveAndGo": "Lưu và chuyển",
+        "stay": "Ở lại",
+        "title": "Còn thay đổi chưa lưu"
       },
       "list": {
         "blockCount": "{count, number} câu",
@@ -3906,6 +3935,26 @@
         },
         "summary": "{parts, number} phần · {count, number} câu",
         "title": "Cấu trúc"
+      },
+      "science": {
+        "navLabel": "Chuyển môn của {name}",
+        "next": "Môn tiếp theo: {subject}",
+        "overview": "Về tổng quan {name}",
+        "position": "{name} › môn {index, number}/{total, number}"
+      },
+      "summaryPanel": {
+        "allocated": "Đã phân bổ",
+        "caption": "Tổng hợp số câu theo phần, môn và nhóm",
+        "difference": "Chênh lệch",
+        "headline": "{state, select, ok {Đã phân bổ đủ {target, number} câu.} over {Đã phân bổ {allocated, number}/{target, number} câu. Thừa {extra, number} câu.} other {Đã phân bổ {allocated, number}/{target, number} câu. Còn thiếu {missing, number} câu.}}",
+        "name": "Mục",
+        "noIssues": "Không có lỗi cấu trúc trên màn hình.",
+        "points": "Điểm",
+        "rowGo": "Đến {name}",
+        "stale": "Bảng theo bản đã lưu gần nhất; lưu để cập nhật.",
+        "target": "Chỉ tiêu",
+        "title": "Tổng hợp",
+        "unavailable": "Chưa có tổng hợp từ máy chủ; số trên đây tính từ bản đang sửa."
       },
       "part": {
         "fixedHint": "Mọi học viên làm cùng các môn của phần này.",
@@ -5096,8 +5145,9 @@
       "group": "Nhóm môn",
       "groups": "Số nhóm",
       "actions": "Thao tác",
-      "edit": "Soạn môn",
-      "editSubject": "Soạn môn {subject}"
+      "edit": "Thiết lập",
+      "editSubject": "Thiết lập môn {subject}",
+      "status": "Trạng thái"
     },
     "templateName": {
       "full": "{kind} · Toàn bài",

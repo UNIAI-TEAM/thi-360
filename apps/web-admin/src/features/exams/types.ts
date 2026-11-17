@@ -540,22 +540,6 @@ export interface ExamStructureSummary {
   rows: ExamStructureSummaryRow[];
 }
 
-/** Một dòng tổng quan gửi lên `PUT /exams/{id}/overview` (K8): khóa phần/môn và ba số sửa được. */
-export interface ExamOverviewRow {
-  partId?: string | null;
-  sectionId?: string | null;
-  partCode?: string | null;
-  subjectCode?: string | null;
-  questionCount?: number | null;
-  durationMinutes?: number | null;
-  maxPoints?: number | null;
-}
-
-export interface UpdateExamOverviewRequest {
-  rows: ExamOverviewRow[];
-  expectedRevision: number;
-}
-
 export interface UpdateExamStructureRequest {
   parts: ExamPart[];
   expectedRevision: number;

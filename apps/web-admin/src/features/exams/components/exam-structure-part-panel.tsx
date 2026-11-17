@@ -5,7 +5,7 @@ import { Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { CombinationOption } from "@/features/content/types";
 import { countOf, sectionsPoints, sum, type StructureIssue } from "../matrix";
-import type { ExamPart, ExamSection, ExamTiming } from "../types";
+import type { ExamPart, ExamSectionState, ExamSection, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
 import { OptionalNumberInput } from "./create-exam-fields";
@@ -33,6 +33,8 @@ export interface PartPanelProps
   onAttachCombination: (combination: CombinationOption) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
+  /** Trạng thái kiểm tra theo môn (H2); `null` hoặc bỏ trống: không hiện cột trạng thái. */
+  sectionStates?: readonly ExamSectionState[] | null;
   /** Mở môn để soạn chỉ tiêu cấp môn và các nhóm. */
   onSelectSection: (sectionId: string) => void;
   onPoints: (points: number | null) => void;
@@ -61,6 +63,7 @@ export function ExamStructurePartPanel({
   onRemoveOption,
   onSelectBlock,
   onSelectSection,
+  sectionStates,
   onPoints,
   onOnPaper,
   onChoose,
@@ -213,7 +216,13 @@ export function ExamStructurePartPanel({
           {part.options
             .filter((option) => option.kind === "SUBJECT_CHOICE")
             .map((option) => (
-              <SubjectChoiceOptions key={option.id} option={option} names={names} onSelectSection={onSelectSection} />
+              <SubjectChoiceOptions
+                key={option.id}
+                option={option}
+                names={names}
+                sectionStates={sectionStates}
+                onSelectSection={onSelectSection}
+              />
             ))}
           <CombinationOptions
             part={part}

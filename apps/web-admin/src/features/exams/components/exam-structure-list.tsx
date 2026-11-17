@@ -21,8 +21,8 @@ export interface ExamStructureListProps {
   onSelect: (selection: StructureSelection) => void;
 }
 
-/** Trạng thái môn từ `sectionStates`/`ExamCheckResult.sectionStates` (H2, spec 7.3). */
-const STATE_TONES = {
+/** Màu huy hiệu trạng thái môn (H2, spec 7.3); chữ luôn đi kèm (DESIGN.md mục 8). */
+export const SECTION_STATE_TONES = {
   CHECKED: "success",
   NEEDS_CHECK: "warning",
   INCOMPLETE: "danger",
@@ -97,7 +97,7 @@ export function ExamStructureList({
             {showSubject || section.choiceGroup ? subject : t("sectionOf", { subject })}
           </span>
           {state && (
-            <StatusChip tone={STATE_TONES[state]} className="ml-1.5">
+            <StatusChip tone={SECTION_STATE_TONES[state]} className="ml-1.5">
               {t(`state.${state}`)}
             </StatusChip>
           )}

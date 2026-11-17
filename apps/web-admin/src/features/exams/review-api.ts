@@ -4,7 +4,7 @@ import { QUESTION_TYPES, type QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
-import { mapExamDetail } from "./api-mapping";
+import { mapExamDetail, mapSectionStates } from "./api-mapping";
 import type {
   BlockCheck,
   BlockCheckResult,
@@ -57,7 +57,6 @@ import type {
   ExamPart,
   ExamPartOption,
   ExamSection,
-  ExamSectionState,
   ExamVersion,
   QuestionBlock,
 } from "./types";
@@ -589,15 +588,7 @@ function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
     totalPoints: result.totalPoints ?? 0,
     printedQuestions: result.printedQuestions ?? 0,
     maxScore: result.maxScore ?? null,
-    sectionStates: (result.sectionStates ?? []).map((item) => ({
-      partId: item.partId ?? null,
-      sectionId: item.sectionId ?? null,
-      subjectCode: item.subjectCode ?? null,
-      state:
-        item.state === "CHECKED" || item.state === "NEEDS_CHECK"
-          ? (item.state as ExamSectionState["state"])
-          : "INCOMPLETE",
-    })),
+    sectionStates: mapSectionStates(result.sectionStates),
   };
 }
 

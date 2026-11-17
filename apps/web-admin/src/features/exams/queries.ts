@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { useTemplateLabel } from "./template-name";
 import { defaultExamsApiDeps, EXAMS_QUERY_KEYS, type ExamsApiDeps } from "./api";
-import { ExamsApiError } from "./review-api";
 import type {
   ApplyExamTemplateRequest,
   AvailableQuestionsQuery,
@@ -13,7 +12,6 @@ import type {
   SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
-  UpdateExamOverviewRequest,
   UpdateExamStructureRequest,
 } from "./types";
 
@@ -53,13 +51,15 @@ export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsAp
   });
 }
 
-/** Tổng hợp cấu trúc vùng (d) (spec 15.2). `null` khi BE-5 chưa triển khai (501); dữ liệu mới nhất khi lưu. */
+/**
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2). `null` khi BE-5 chưa triển khai (501). Không thử lại: vùng (d) dùng được
+ * không cần bảng này (số tính trên màn hình), và thử lại làm chậm mọi thao tác ghi đang chờ làm mới nhóm `exams`.
+ */
 export function useExamStructureSummary(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.structureSummary(id),
     queryFn: () => deps.getExamStructureSummary(id),
-    // 501 (BE-5 chưa có) không nên thử lại liên tục.
-    retry: (count, error) => (error instanceof ExamsApiError && error.status === 501 ? false : count < 2),
+    retry: false,
   });
 }
 
@@ -126,14 +126,6 @@ export function useUpdateExamStructure(id: string, deps: ExamsApiDeps = defaultE
   });
 }
 
-
-export function useUpdateExamOverview(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
-  const invalidate = useInvalidateExams();
-  return useMutation({
-    mutationFn: (request: UpdateExamOverviewRequest) => deps.updateExamOverview(id, request),
-    onSuccess: () => invalidate(),
-  });
-}
 export function useApplyExamTemplate(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({

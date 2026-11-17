@@ -6,6 +6,7 @@ import {
   mapExamSummary,
   mapExamTemplate,
   mapParts,
+  mapSectionStates,
   toApiParts,
 } from "./api-mapping";
 import { partsFromInput } from "./create-parts";
@@ -18,7 +19,6 @@ import type {
   DuplicateExamRequest,
   ExamDetail,
   ExamListPage,
-  ExamSectionState,
   ExamStructure,
   ExamStructureSummary,
   ExamTemplate,
@@ -26,7 +26,6 @@ import type {
   SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
-  UpdateExamOverviewRequest,
   UpdateExamStructureRequest,
 } from "./types";
 
@@ -102,15 +101,7 @@ export async function getExamStructure(id: string): Promise<ExamStructure> {
       nameVi: item.nameVi ?? null,
       nameEn: item.nameEn ?? null,
     })),
-    sectionStates: (data.sectionStates ?? []).map((item) => ({
-      partId: item.partId ?? null,
-      sectionId: item.sectionId ?? null,
-      subjectCode: item.subjectCode ?? null,
-      state:
-        item.state === "CHECKED" || item.state === "NEEDS_CHECK"
-          ? (item.state as ExamSectionState["state"])
-          : "INCOMPLETE",
-    })),
+    sectionStates: mapSectionStates(data.sectionStates),
   };
 }
 
@@ -141,31 +132,6 @@ export async function getExamStructureSummary(id: string): Promise<ExamStructure
       maxPoints: row.maxPoints ?? null,
     })),
   };
-}
-
-/**
- * Lưu tổng quan từ hộp thoại "Sửa thông tin tổng quan" (PUT `/exams/{id}/overview`). BE-5 chưa triển khai: nút vẫn
- * hiện nhưng lưu trả lỗi máy chủ.
- */
-export async function updateExamOverview(id: string, request: UpdateExamOverviewRequest): Promise<ExamDetail> {
-  const client = createBrowserApiClient();
-  const { data, error, response } = await client.PUT("/api/v1/admin/exams/{id}/overview", {
-    params: { path: { id } },
-    body: {
-      expectedRevision: request.expectedRevision,
-      overview: request.rows.map((row) => ({
-        partId: row.partId ?? undefined,
-        sectionId: row.sectionId ?? undefined,
-        partCode: row.partCode ?? undefined,
-        subjectCode: row.subjectCode ?? undefined,
-        questionCount: row.questionCount ?? undefined,
-        durationMinutes: row.durationMinutes ?? undefined,
-        maxPoints: row.maxPoints ?? undefined,
-      })),
-    },
-  });
-  if (!response.ok || !data) throw toExamsApiError(response.status, error);
-  return mapExamDetail(data);
 }
 
 export async function suggestExamCode(query: SuggestExamCodeQuery): Promise<string> {

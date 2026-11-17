@@ -306,6 +306,18 @@ export function selectionExists(parts: readonly ExamPart[], selection: Structure
 }
 
 /**
+ * Khóa "đang ở môn hay phần nào" của một mục: chuyển sang khóa khác khi còn thay đổi chưa lưu thì hỏi lại (R-05). Nhóm
+ * thuộc môn chứa nó nên mở nhóm của cùng môn không phải chuyển môn.
+ */
+export function selectionScope(parts: readonly ExamPart[], selection: StructureSelection): string {
+  if (selection.kind === "part") return `part:${selection.partId}`;
+  if (selection.kind === "option") return `option:${selection.optionId}`;
+  if (selection.kind === "section") return `section:${selection.sectionId}`;
+  const context = findBlock(parts, selection.blockId);
+  return context ? `section:${context.section.id}` : `block:${selection.blockId}`;
+}
+
+/**
  * Mục mở mặc định (bản vẽ `BaiThiBuoc2`): bài một môn → môn đó; bài FULL (nhiều môn, không chọn) → môn của phần đầu
  * tiên; phần đầu tiên theo mã → môn đầu của `subjectPool`; phần đầu tiên chỉ có phương án chọn môn (HSA Khoa học) →
  * phương án đó (tổng quan chọn môn). Không khớp → phần đầu tiên.
