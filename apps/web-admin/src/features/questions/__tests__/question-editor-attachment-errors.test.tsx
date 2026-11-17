@@ -1,5 +1,6 @@
-import { screen } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Toaster, notify } from "@thi360/ui";
 import { describe, expect, it, vi } from "vitest";
 import { fail, fakeApi, ok } from "@/test/fake-api";
 import { QuestionEditorView } from "../components/question-editor-view";
@@ -43,5 +44,29 @@ describe("trình soạn câu hỏi: tệp đính kèm bị máy chủ từ chố
     await pickAttachment();
     expect(await screen.findByText("scan.pdf")).toBeInTheDocument();
     expect(screen.queryByText(/the upload failed/)).not.toBeInTheDocument();
+  });
+
+  it("tệp bị từ chối chỉ đóng toast lỗi tải ảnh cũ, không đóng toast khác đang hiện", async () => {
+    fakeApi.post(ASSETS, fail(413));
+    const user = userEvent.setup();
+    renderEn(
+      <>
+        <QuestionEditorView mode="edit" questionId="q-0001" />
+        <Toaster containerAriaLabel="Notifications" closeButtonAriaLabel="Close" />
+      </>,
+    );
+    await screen.findByRole("textbox", { name: /^Question text/ });
+    const imageInput = document.querySelector<HTMLInputElement>('input[type="file"]:not([aria-label="Choose attachments"])');
+    await user.upload(imageInput!, new File([new Uint8Array([137, 80, 78, 71])], "hinh.png", { type: "image/png" }));
+    expect(await screen.findByText("The image is larger than 5 MB.")).toBeInTheDocument();
+    act(() => {
+      notify.info("Unrelated notice");
+    });
+    expect(await screen.findByText("Unrelated notice")).toBeInTheDocument();
+
+    await user.upload(screen.getByLabelText("Choose attachments"), pdf());
+    expect(await screen.findByRole("alert")).toHaveTextContent("scan.pdf: the file is larger than 20 MB.");
+    await waitFor(() => expect(screen.queryByText("The image is larger than 5 MB.")).not.toBeInTheDocument());
+    expect(screen.getByText("Unrelated notice")).toBeInTheDocument();
   });
 });

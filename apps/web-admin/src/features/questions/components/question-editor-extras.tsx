@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, IconButton, toast } from "@thi360/ui";
+import { Button, IconButton } from "@thi360/ui";
 import { Paperclip, Trash2, Upload } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useRef, useState, type ChangeEvent } from "react";
@@ -14,6 +14,7 @@ import {
   checkAttachment,
   uploadQuestionAttachment,
 } from "../editor/attachments";
+import { dismissImageUploadToasts } from "../editor/upload-toasts";
 import { EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
 
 /** Lỗi sai thường gặp (PBI-03 mục 4.1): cách hiểu sai học viên hay mắc, làm dữ liệu tham khảo cho AI giải thích. */
@@ -84,8 +85,8 @@ export function AttachmentsSection({ formId }: { formId: string }) {
       }
     }
     setUploading(false);
-    // F-09: toast lỗi cũ (ví dụ tải ảnh chèn sai loại) phải nhường chỗ cho lỗi trong dải mới, không nằm chồng ~6 s.
-    if (rejected.length > 0) toast.dismiss();
+    // F-09: toast lỗi tải ảnh chèn cũ phải nhường chỗ cho lỗi trong dải mới; chỉ đóng toast của đường tải ảnh.
+    if (rejected.length > 0) dismissImageUploadToasts();
     setProblems(rejected);
     if (accepted.length > 0) {
       setValue("attachmentIds", [...getValues("attachmentIds"), ...accepted], { shouldDirty: true });
