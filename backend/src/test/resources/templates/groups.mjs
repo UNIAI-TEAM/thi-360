@@ -1,6 +1,6 @@
 // Assign a stable, non-null templateGroupCode to every block of a template.
-// Codes reuse the seeded HSA_* / HSA_*_REMAINDER set where the group still
-// exists; new codes follow <KIND>_<SUBJECT>_<GROUP>.
+// Codes reuse seeded HSA_* groups where the group still exists;
+// new codes follow <KIND>_<SUBJECT>_<GROUP>.
 // assign(template, resolve) walks every block location (part sections,
 // part.subjectPool, option.sections and option.blocks) and calls
 //   resolve({block, subjectCode, optionCode}) -> code or null.

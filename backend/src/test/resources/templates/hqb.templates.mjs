@@ -19,27 +19,27 @@ const percentOf17 = values => {
 };
 // templateGroupCode: reuse the seeded HSA_* groups where a group still exists;
 // new codes follow <KIND>_<SUBJECT>_<GROUP>. HSA keeps the seeded subject
-// aliases (MATH/VN/EN) and the *_REMAINDER / *_CLUSTER science groups.
+// aliases (MATH/VN/EN) and *_CLUSTER science groups.
 const hsaSubject={TOAN:'MATH',VAN:'VN',ANH:'EN'};
 const groupSuffix={
   HSA:{
     TOAN:{'Trắc nghiệm độc lập':'SINGLE','Trả lời ngắn':'SINGLE','Chùm cuối':'CONTEXT'},
     VAN:{'Từ khác nhóm nghĩa':'ODD_WORD','Từ sai':'WORD_USAGE','Cặp từ điền chỗ trống':'WORD_PAIR','Một ngữ liệu một câu':'PASSAGE_SINGLE','Đọc hiểu':'PASSAGE'},
     ANH:{'Hoàn thành câu':'SENTENCE','Đồng nghĩa':'SYNONYM','Trái nghĩa':'ANTONYM','Viết lại câu':'REWRITE','Kết hợp câu':'COMBINE','Hội thoại':'DIALOGUE','Sắp xếp hội thoại':'DIALOGUE_ORDER','Đọc điền':'CLOZE','Đọc hiểu 1':'READING','Đọc hiểu 2':'READING_2','Tư duy logic':'LOGIC'},
-    '*':{'Trắc nghiệm độc lập':'REMAINDER','Trả lời ngắn':'REMAINDER','Chùm':'CLUSTER'}
+    '*':{'Trắc nghiệm độc lập':'FLEX','Trả lời ngắn':'FLEX','Chùm':'CLUSTER'}
   },
   QDA:{
     TOAN:{'Trắc nghiệm độc lập':'SINGLE','Trả lời ngắn':'SINGLE','Chùm trắc nghiệm':'CONTEXT'},
     VAN:{'Từ khác nhóm nghĩa':'ODD_WORD','Từ sai':'WORD_USAGE','Cặp từ điền chỗ trống':'WORD_PAIR','Một ngữ liệu một câu':'PASSAGE_SINGLE','Đọc hiểu':'PASSAGE'},
     ANH:{'Hoàn thành câu':'SENTENCE','Đồng nghĩa hoặc trái nghĩa':'SYN_ANT','Hội thoại':'DIALOGUE','Thông báo':'NOTICE','Viết lại câu':'REWRITE','Kết hợp câu':'COMBINE','Đọc điền':'CLOZE','Đọc hiểu 1':'READING','Đọc hiểu 2':'READING_2','Suy luận':'INFERENCE'},
-    '*':{'Trắc nghiệm độc lập':'REMAINDER','Trả lời ngắn':'REMAINDER','Chùm':'CLUSTER'}
+    '*':{'Trắc nghiệm độc lập':'FLEX','Trả lời ngắn':'FLEX','Chùm':'CLUSTER'}
   },
   BCA:{
-    TOAN:{'Trắc nghiệm độc lập':'REMAINDER','Trả lời ngắn':'SHORT','Chùm trắc nghiệm':'CLUSTER'},
+    TOAN:{'Trắc nghiệm độc lập':'FLEX','Trả lời ngắn':'SHORT','Chùm trắc nghiệm':'CLUSTER'},
     VAN:{'Nghị luận xã hội từ 500 chữ':'ESSAY'},
-    SU:{'Trắc nghiệm độc lập':'REMAINDER','Tư liệu lịch sử':'CLUSTER'},
+    SU:{'Trắc nghiệm độc lập':'FLEX','Tư liệu lịch sử':'CLUSTER'},
     ANH:{'Phát âm':'PRON','Trọng âm':'STRESS','Từ vựng và ngữ pháp':'GRAMMAR','Đọc điền':'CLOZE','Đọc hiểu':'READING'},
-    '*':{'Trắc nghiệm độc lập':'REMAINDER','Chùm':'CLUSTER'}
+    '*':{'Trắc nghiệm độc lập':'FLEX','Chùm':'CLUSTER'}
   }
 };
 function templateGroup(template, block, subjectCode) {
