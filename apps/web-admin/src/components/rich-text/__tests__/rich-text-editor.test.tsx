@@ -7,7 +7,7 @@ import { renderWithProviders } from "@/test/render";
 import type * as QuestionsApi from "@/features/questions/api";
 import { uploadQuestionAsset } from "@/features/questions/api";
 import { RichTextEditor } from "../rich-text-editor";
-import { RichTextView } from "../rich-text-view";
+import { RichTextView } from "../view/rich-text-view";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
 
 vi.mock("@/features/questions/api", async (importOriginal) => {

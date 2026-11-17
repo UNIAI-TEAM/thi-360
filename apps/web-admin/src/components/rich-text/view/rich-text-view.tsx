@@ -3,15 +3,18 @@
 import { cn } from "@thi360/ui";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import "katex/contrib/mhchem";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { sanitizeQuestionHtml } from "./sanitize";
-import "./rich-text.css";
+import { sanitizeQuestionHtml } from "../sanitize";
+import "../rich-text.css";
 
 export interface RichTextViewProps {
   /** HTML nội dung (đã lọc khi lưu); view vẫn lọc lại phòng dữ liệu cũ hoặc mock viết tay. */
   html: string;
   /** `false` coi mọi `img` là vi phạm và bỏ khỏi hiển thị (mirror hướng dẫn làm bài của bài thi). */
   allowImages?: boolean;
+  /** Số bắt đầu của chỗ trống trong ngữ liệu câu chùm: chỗ trống n hiện start + n − 1. */
+  blankNumberStart?: number;
   className?: string;
 }
 
@@ -19,12 +22,24 @@ const subscribe = () => () => {};
 const clientSnapshot = () => true;
 const serverSnapshot = () => false;
 
+/**
+ * Dựng công thức vào một phần tử đã gắn DOM. LaTeX lỗi không làm vỡ trang: nội dung hiện
+ * mã nguồn trong khung cảnh báo `math-error` (màu của DESIGN.md).
+ */
+function renderLatex(latex: string, displayMode: boolean, target: HTMLElement, fallbackText?: string) {
+  try {
+    katex.render(latex, target, { displayMode, throwOnError: true });
+  } catch {
+    target.classList.add("math-error");
+    target.textContent = fallbackText ?? latex;
+  }
+}
 
 /**
  * Dựng công thức trong phần tử đã gắn DOM: `<span class="math-inline|math-block">` được KaTeX
- * dựng từ nội dung trong cặp dấu; văn bản thuần còn sót `\( … \)`/`\[ … \]` (người soạn gõ tay
- * mà chưa tạo chip) cũng được dựng. Cặp dấu không khớp giữ nguyên chữ — cảnh báo NO_GAPS nằm
- * ở trình soạn, không phải nơi đọc.
+ * dựng từ nội dung trong cặp dấu (kể cả `\ce{…}` của mhchem); văn bản thuần còn sót
+ * `\( … \)`/`\[ … \]` (người soạn gõ tay mà chưa tạo chip) cũng được dựng. Cặp dấu không khớp
+ * giữ nguyên chữ — cảnh báo NO_GAPS nằm ở trình soạn, không phải nơi đọc.
  */
 function renderMath(container: HTMLElement) {
   for (const span of [...container.querySelectorAll<HTMLElement>("span.math-inline, span.math-block")]) {
@@ -38,11 +53,7 @@ function renderMath(container: HTMLElement) {
       latex = text.trim().startsWith(open) && text.trim().endsWith(close) ? text.trim().slice(2, -2) : text;
       span.dataset.latex = latex;
     }
-    try {
-      katex.render(latex, span, { displayMode, throwOnError: false });
-    } catch {
-      // KaTeX không ném với throwOnError:false; giữ chữ gốc nếu có phiên bản khác.
-    }
+    renderLatex(latex, displayMode, span, displayMode ? `\\[${latex}\\]` : `\\(${latex}\\)`);
   }
 
   // Tách các cặp dấu trong text node thuần (ngoài span công thức).
@@ -75,11 +86,7 @@ function renderMath(container: HTMLElement) {
       const span = document.createElement("span");
       span.className = block ? "math-block" : "math-inline";
       span.dataset.latex = latex;
-      try {
-        katex.render(latex, span, { displayMode: block, throwOnError: false });
-      } catch {
-        span.textContent = text.slice(index, end + 2);
-      }
+      renderLatex(latex, block, span, text.slice(index, end + 2));
       fragment.append(span);
       cursor = end + 2;
       changed = true;
@@ -91,18 +98,66 @@ function renderMath(container: HTMLElement) {
   }
 }
 
+/** Chỗ trống hiện "(số) ____": số = blankNumberStart + data-blank − 1 (spec 4.8). */
+function renderBlanks(container: HTMLElement, blankNumberStart: number) {
+  for (const span of [...container.querySelectorAll<HTMLElement>("span.blank")]) {
+    const n = Number.parseInt(span.getAttribute("data-blank") ?? "", 10);
+    if (!Number.isInteger(n)) continue;
+    span.textContent = `(${blankNumberStart + n - 1}) ____`;
+  }
+}
+
 /**
- * Hiển thị HTML nội dung câu hỏi/bài thi: lọc theo danh sách cho phép của spec 4.2 rồi dựng
- * công thức bằng KaTeX. Không dùng cho nhập liệu — xem `RichTextEditor`.
+ * Đoạn trích thơ `data-line-numbers="5"`: mỗi dòng (ngắt bằng `br`) thành một hàng lưới
+ * `quote-line`, cột số bên trái chỉ điền ở dòng 5, 10, 15… Số đếm liên tục qua các khổ.
  */
-export function RichTextView({ html, allowImages = true, className }: RichTextViewProps) {
+function renderQuoteLineNumbers(container: HTMLElement) {
+  for (const quote of [...container.querySelectorAll<HTMLElement>('blockquote.quote[data-line-numbers="5"]')]) {
+    let lineNumber = 0;
+    for (const paragraph of [...quote.querySelectorAll<HTMLElement>("p")]) {
+      // Dòng thuộc về khổ hiện tại, tách tại mỗi <br>.
+      const lines: Node[][] = [[]];
+      for (const child of [...paragraph.childNodes]) {
+        if (child.nodeType === Node.ELEMENT_NODE && (child as Element).tagName === "BR") {
+          lines.push([]);
+        } else {
+          lines.at(-1)!.push(child);
+        }
+      }
+      const rows = lines.map((lineNodes) => {
+        lineNumber += 1;
+        const row = document.createElement("span");
+        row.className = "quote-line";
+        const marker = document.createElement("span");
+        marker.className = "quote-line-number";
+        if (lineNumber % 5 === 0) marker.textContent = String(lineNumber);
+        const content = document.createElement("span");
+        content.className = "quote-line-text";
+        content.append(...lineNodes);
+        row.append(marker, content);
+        return row;
+      });
+      paragraph.replaceChildren(...rows);
+    }
+  }
+}
+
+/**
+ * Hiển thị HTML nội dung câu hỏi/bài thi (spec 3/5): lọc theo danh sách cho phép rồi dựng
+ * công thức bằng KaTeX + mhchem, chỗ trống đánh số và số dòng của đoạn trích thơ.
+ * Không dùng cho nhập liệu — xem `RichTextEditor`.
+ */
+export function RichTextView({ html, allowImages = true, blankNumberStart = 1, className }: RichTextViewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const mounted = useSyncExternalStore(subscribe, clientSnapshot, serverSnapshot);
   const sanitized = mounted ? sanitizeQuestionHtml(html, { allowImages }).html : "";
 
   useEffect(() => {
-    if (rootRef.current) renderMath(rootRef.current);
-  }, [sanitized]);
+    if (!rootRef.current) return;
+    renderMath(rootRef.current);
+    renderBlanks(rootRef.current, blankNumberStart);
+    renderQuoteLineNumbers(rootRef.current);
+  }, [sanitized, blankNumberStart]);
 
   // Cùng một đối tượng `__html` giữa các lần render: React 19 gán lại innerHTML nếu đối tượng mới, xóa công thức KaTeX
   // đã dựng và mọi thay đổi DOM của nơi dùng (effect bên dưới chỉ chạy lại khi `sanitized` đổi).
