@@ -404,15 +404,15 @@ Lưới `SymbolGrid` theo nhóm, ô tìm theo tên vi/en, hộp không đóng sa
 
 #### 5.15.4 Hộp Bảng số liệu
 
-Tên bảng, đơn vị, nguồn, lưới ô sửa trực tiếp, dán từ Excel, gộp ô, tối đa 30×15 (bản vẽ `SoanThaoBang`).
+Bản vẽ `SoanThaoBang`. Hàng trên: Tên bảng và Đơn vị (hai cột từ `sm`); hàng nút `role="toolbar"` (Thêm hàng, Thêm cột, Xóa hàng, Xóa cột, Gộp ô, Tách ô; nút `secondary` cỡ `sm`) rồi ba `Checkbox` "Hàng đầu là tiêu đề", "Cột đầu là tiêu đề", "Căn phải cột số"; lưới ô là một `table` có tên, mỗi ô là `Input` không viền và không bo (ô tiêu đề nền `subtle`, chữ đậm; ô trong vùng chọn nhiều ô nền `primary-50`), cuộn trong khung viền `border`; dưới lưới là ô Nguồn và các dòng gợi ý (dán từ Excel, chọn nhiều ô, giới hạn). Thêm/xóa hàng cột tác động lên ô đang chọn; Thêm hàng/cột tắt ở 30 hàng, 15 cột; dán vượt giới hạn thì cắt phần thừa và báo bằng dòng `role="status"` màu `warning`. Enter trong ô xuống ô dưới, không gửi biểu mẫu; mũi tên đổi ô (trái/phải chỉ khi con trỏ ở mép chữ); chọn nhiều ô bằng Shift+bấm hoặc Alt+Shift+mũi tên rồi Gộp ô; vùng gộp không vắt qua ranh giới hàng/cột tiêu đề. Ô chứa định dạng nội tuyến (`sub`, `sup`, công thức) hiện mã HTML của ô bằng chữ đơn cách (`font-mono`) để sửa mà không mất định dạng. Ghi chú đơn vị và nguồn lưu `p.figure-note`/`p.figure-source` bắt đầu bằng nhãn "Đơn vị:" và "Nguồn:" (hoặc "Unit:" và "Source:") của ngôn ngữ người soạn. Nút chính là Chèn bảng (Cập nhật bảng khi mở lại bảng đang chọn), tắt khi bảng chưa có chữ nào.
 
 #### 5.15.5 Hộp Hình
 
-Tải ảnh, mô tả thay thế bắt buộc, chú thích, nguồn, độ rộng, cho phóng to; không có ở ô `allowImages={false}` (bản vẽ `SoanThaoHinh`).
+Hộp hai cột (bản vẽ `SoanThaoHinh`): trái là Xem trước (ảnh theo độ rộng đã chọn, chú thích) cùng nút Chọn ảnh / Thay ảnh và Xóa ảnh, dòng "Nhận PNG, JPG, WebP." và lỗi tải lên (413, 422, 429...) ngay dưới; phải là Mô tả thay thế (bắt buộc, có dấu `*` và câu hướng dẫn cho trình đọc màn hình), Chú thích dưới hình, Nguồn, Độ rộng (`Tabs` kiểu `segmented`: Nhỏ / Vừa / Rộng hết khung) và ô "Cho phép học viên phóng to hình khi thi" (`Checkbox`). Nút Chèn hình tắt khi chưa có ảnh, đang tải lên hoặc mô tả trống; mở lại một hình đang chọn thì nút là Cập nhật hình. Ảnh tải qua `POST /question-assets` (nút Hình trên thanh công cụ không còn tải thẳng); lưu thành `figure.image` với `data-width` và `data-zoom`, dòng nguồn `p.figure-source` bắt đầu bằng "Nguồn: ". Không có ở ô `allowImages={false}`; dán hoặc thả tệp ảnh vào vùng soạn vẫn tải thẳng.
 
 #### 5.15.6 Hộp Đoạn trích
 
-Kiểu Thơ/Văn xuôi/Tư liệu, nội dung, tác giả, tác phẩm, ghi chú nguồn, giữ ngắt dòng, đánh số dòng (bản vẽ `SoanThaoDoanTrich`).
+Bản vẽ `SoanThaoDoanTrich`, hai cột từ `lg` (một cột ở màn hẹp). Trái: nhóm radio "Kiểu đoạn trích" (Thơ, Văn xuôi, Tư liệu; chọn một giá trị nên là nhóm radio, mục 5.2), Nội dung (`Textarea`, bắt buộc, có dấu `*`), hai `Checkbox` "Giữ nguyên ngắt dòng" và "Đánh số dòng, 5 dòng một lần" (tắt khi không phải Thơ), Tác giả, Tác phẩm, Ghi chú nguồn. Phải: Xem trước dựng bằng chính `RichTextView` (cột số dòng bên trái, chỉ hiện số 5, 10, 15…, đếm liên tục qua các khổ) kèm câu "Văn xuôi và tư liệu lịch sử dùng cùng khối này, không ngắt dòng và không đánh số." Dòng trống tách khổ hoặc đoạn; thơ giữ ngắt dòng thì mỗi dòng là một `br`, tắt thì mỗi khổ là một dòng liền. Chú thích cuối là `footer` dạng "(Tác giả, <cite>Tác phẩm</cite>)", ghi chú nguồn là `p.figure-source`. Nút chính là Chèn đoạn trích (Cập nhật đoạn trích khi mở lại), tắt khi nội dung trống.
 
 #### 5.15.7 Gạch chân đánh nhãn và Chỗ trống
 
