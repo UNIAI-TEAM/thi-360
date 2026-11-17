@@ -267,7 +267,8 @@
       "timing": "SHARED",
       "maxScore": 100,
       "scopes": [
-        "FULL"
+        "FULL",
+        "SUBJECT"
       ],
       "referenceMax": null,
       "practiceScoring": "RAW",
@@ -288,7 +289,7 @@
       "timing": "SHARED",
       "maxScore": 1200,
       "scopes": [
-        "FULL"
+        "SUBJECT"
       ],
       "referenceMax": 1200,
       "practiceScoring": "LINEAR",
@@ -309,7 +310,8 @@
       "timing": "PER_PART",
       "maxScore": 10,
       "scopes": [
-        "SUBJECT"
+        "SUBJECT",
+        "PART"
       ],
       "referenceMax": null,
       "practiceScoring": "RAW",
@@ -335,7 +337,8 @@
       "timing": "PER_PART",
       "maxScore": 10,
       "scopes": [
-        "SUBJECT"
+        "SUBJECT",
+        "PART"
       ],
       "referenceMax": null,
       "practiceScoring": "RAW",

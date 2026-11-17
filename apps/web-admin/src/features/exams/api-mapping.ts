@@ -350,14 +350,18 @@ function templateOption(option: ExamPartOption): TemplateOption {
   };
 }
 
-function templatePart(part: ExamPart): ExamTemplatePart {
+function templatePart(part: ExamPart, index: number): ExamTemplatePart {
+  const withIds = part as ExamPart & { partId?: string | null };
   return {
+    partId: withIds.partId ?? part.id ?? null,
+    order: part.order ?? index + 1,
     name: part.name,
     questionCount: part.questionCount,
     durationMinutes: part.durationMinutes,
     mode: part.mode,
     subjectCode: null,
     points: part.maxPoints ?? null,
+    maxPoints: part.maxPoints ?? null,
     ...(part.sections.length ? { sections: part.sections.map(templateSection) } : {}),
     ...(part.mode === "CHOICE" ? { options: part.options.map(templateOption) } : {}),
   };
@@ -370,7 +374,7 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     code: response.code,
     kind: response.kindCode,
     scope: response.scope as ExamScope,
-    name: "",
+    name: response.label ?? "",
     partCode: nullable(response.partCode),
     subjectCode: nullable(response.subjectCode),
     structureYear: nullable(response.structureYear),
@@ -378,6 +382,10 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     timing: response.timing as ExamTiming,
     durationMinutes: nullable(response.durationMinutes),
     maxScore: nullable(response.maxScore),
+    buildMode: nullable(response.buildMode) as ExamTemplate["buildMode"],
+    isDefault: nullable(response.isDefault),
+    label: nullable(response.label),
+    summary: nullable(response.summary),
     expertNote: nullable(response.expertNote),
     parts: mapParts(document.parts).map(templatePart),
   };
