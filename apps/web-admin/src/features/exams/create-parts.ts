@@ -24,7 +24,6 @@ export function newSection(subjectCode: string, questionCount: number | null): E
     knowledgeScope: null,
     answerQuotas: null,
     matrix: null,
-    groupOrder: "SHUFFLE",
     choiceGroup: null,
     blocks: [],
   };
@@ -61,7 +60,6 @@ function blockFromTemplate(block: ExamTemplateBlock): QuestionBlock {
     childAnswerType: block.childAnswerType ?? null,
     templateGroupCode: block.templateGroupCode ?? null,
     answerTypeLocked: block.answerTypeLocked ?? false,
-    shuffle: block.shuffle ?? "SHUFFLE",
     ...(block.expectedScoring ? { expectedScoring: structuredClone(block.expectedScoring) } : {}),
   };
 }
@@ -77,7 +75,6 @@ export function sectionFromTemplate(section: ExamTemplateSection): ExamSection {
     knowledgeScope: structuredClone(section.knowledgeScope ?? null),
     answerQuotas: structuredClone(section.answerQuotas ?? null),
     matrix: structuredClone(section.matrix ?? null),
-    groupOrder: section.groupOrder ?? "SHUFFLE",
     choiceGroup: section.choiceGroup ?? null,
     blocks: blocksFromTemplate(section.blocks),
   };

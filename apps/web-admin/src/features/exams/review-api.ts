@@ -375,7 +375,6 @@ const CHANGE_KINDS: Record<string, true> = {
   BLOCK_REMOVED: true,
   BLOCK_CHANGED: true,
   MATRIX_CHANGED: true,
-  ORDER_RULE_CHANGED: true,
   ORDER_CHANGED: true,
   QUESTIONS_REPLACED: true,
 };
@@ -893,7 +892,6 @@ function mapBlock(block: ApiBlock): QuestionBlock {
     childAnswerType: questionTypeOf(block.childAnswerType),
     templateGroupCode: block.templateGroupCode ?? null,
     answerTypeLocked: block.answerTypeLocked ?? false,
-    ...(block.shuffle !== undefined ? { shuffle: block.shuffle } : {}),
     ...(block.expectedScoring !== undefined
       ? {
           expectedScoring: {
@@ -920,7 +918,6 @@ function mapSection(section: ApiSection): ExamSection {
     knowledgeScope: mapKnowledgeScope(section.knowledgeScope),
     answerQuotas: mapAnswerQuotas(section.answerQuotas),
     matrix: mapMatrix(section.matrix),
-    groupOrder: section.groupOrder === "SHUFFLE" ? "SHUFFLE" : "FIXED",
     choiceGroup:
       section.choiceGroup === "NATURAL" || section.choiceGroup === "SOCIAL"
         ? (section.choiceGroup as ChoiceGroup)

@@ -295,7 +295,6 @@ export function validateQuestionEditor(values: QuestionEditorValues): EditorIssu
 const optionSchema = z.object({ id: z.string(), content: z.string(), correct: z.boolean() });
 const bodySchema = z.object({
   options: z.array(optionSchema),
-  shuffleOptions: z.boolean(),
   statements: z.array(
     z.object({ id: z.string(), content: z.string(), answer: z.enum(["", "TRUE", "FALSE"]), points: z.string() }),
   ),

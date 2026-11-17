@@ -38,7 +38,6 @@ const TEMPLATE = {
             id: null,
             subjectCode: "MATH",
             questionCount: 10,
-            groupOrder: "FIXED",
             blocks: [{ id: null, name: "Trắc nghiệm", questionType: "SINGLE_CHOICE", questionCount: 10, requiredPointsPerQuestion: 1 }],
           },
         ],

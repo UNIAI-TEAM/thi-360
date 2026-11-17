@@ -1,10 +1,10 @@
 "use client";
 
-import { Button, Checkbox, cn } from "@thi360/ui";
+import { Button, cn } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef } from "react";
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { MULTIPLE_CHOICE_RULES } from "@/features/content/types";
 import { emptyOption, type QuestionEditorValues } from "../editor-form";
 import {
@@ -96,16 +96,6 @@ export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; mu
             <Plus aria-hidden />
             {t("add")}
           </Button>
-          <Controller
-            control={control}
-            name={`${prefix}.shuffleOptions`}
-            render={({ field }) => (
-              <label className="flex min-h-10 items-center gap-2.5 text-body text-text">
-                <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
-                {t("shuffle")}
-              </label>
-            )}
-          />
         </div>
       </fieldset>
       {multiple && <ScoringRuleField prefix={prefix} />}

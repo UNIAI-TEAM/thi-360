@@ -2496,8 +2496,7 @@
         "add": "Thêm phương án",
         "added": "Đã thêm phương án {letter}.",
         "removed": "Đã xóa phương án {letter}.",
-        "moved": "Đã chuyển phương án {letter} tới vị trí {position}.",
-        "shuffle": "Trộn thứ tự phương án khi thi"
+        "moved": "Đã chuyển phương án {letter} tới vị trí {position}."
       },
       "statements": {
         "hint": "Mỗi ý phải được đánh dấu Đúng hoặc Sai. Cần ít nhất 2 ý.",
@@ -4320,7 +4319,6 @@
           "BLOCK_REMOVED": "Bỏ khối",
           "BLOCK_CHANGED": "Sửa khối",
           "MATRIX_CHANGED": "Sửa ma trận",
-          "ORDER_RULE_CHANGED": "Đổi quy tắc đảo",
           "ORDER_CHANGED": "Đổi thứ tự",
           "QUESTIONS_REPLACED": "Thay câu hỏi"
         },
@@ -4348,7 +4346,6 @@
             "chooseSubjects": "Số môn được chọn",
             "description": "Mô tả",
             "durationMinutes": "Thời lượng",
-            "groupOrder": "Thứ tự nhóm",
             "instructions": "Hướng dẫn làm bài",
             "knowledgeScope": "Phạm vi kiến thức",
             "matrix": "Ma trận",
@@ -4367,7 +4364,6 @@
             "requiredPointsPerQuestion": "Điểm mỗi câu",
             "setCount": "Số bộ",
             "setSize": "Số câu mỗi bộ",
-            "shuffle": "Quy tắc đảo câu",
             "subjectCode": "Môn",
             "tagCodes": "Nhãn",
             "taskTypeCode": "Dạng bài",

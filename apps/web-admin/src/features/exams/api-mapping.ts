@@ -102,7 +102,6 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
     childAnswerType: nullable(block.childAnswerType),
     templateGroupCode: nullable(block.templateGroupCode),
     answerTypeLocked: block.answerTypeLocked ?? false,
-    ...(block.shuffle ? { shuffle: block.shuffle } : {}),
     ...(expectedScoring ? { expectedScoring } : {}),
   };
 }
@@ -115,7 +114,6 @@ export function mapSection(section: ApiSection): ExamSection {
     knowledgeScope: mapScope(section.knowledgeScope),
     answerQuotas: mapQuotas(section.answerQuotas),
     matrix: mapMatrix(section.matrix),
-    groupOrder: section.groupOrder ?? "FIXED",
     choiceGroup: nullable(section.choiceGroup),
     blocks: (section.blocks ?? []).map(mapBlock),
   };
@@ -161,7 +159,7 @@ export function mapParts(parts: readonly ApiPart[] | undefined): ExamPart[] {
 
 /**
  * Cấu trúc gửi lên: bỏ `null` (máy chủ coi trường thiếu là `null`) và `mode` của phần (suy ra từ `participation`);
- * trường của mẫu (`shuffle`, `answerTypeLocked`, `groupOrder`, `templateGroupCode`) máy chủ giữ theo mẫu.
+ * trường của mẫu (`answerTypeLocked`, `templateGroupCode`) máy chủ giữ theo mẫu.
  */
 export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
   const strip = (value: unknown): unknown => {
@@ -312,7 +310,6 @@ function templateBlock(block: QuestionBlock): ExamTemplateBlock {
     answerTypeLocked: block.answerTypeLocked,
     knowledgeScope: block.knowledgeScope,
     matrix: block.matrix,
-    ...(block.shuffle ? { shuffle: block.shuffle } : {}),
   };
 }
 
@@ -324,7 +321,6 @@ function templateSection(section: ExamSection): ExamTemplateSection {
     knowledgeScope: section.knowledgeScope,
     answerQuotas: section.answerQuotas,
     matrix: section.matrix,
-    groupOrder: section.groupOrder,
     choiceGroup: section.choiceGroup,
   };
 }

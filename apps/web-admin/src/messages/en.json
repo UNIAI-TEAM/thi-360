@@ -2496,8 +2496,7 @@
         "add": "Add option",
         "added": "Added option {letter}.",
         "removed": "Deleted option {letter}.",
-        "moved": "Moved option {letter} to position {position}.",
-        "shuffle": "Shuffle options during the exam"
+        "moved": "Moved option {letter} to position {position}."
       },
       "statements": {
         "hint": "Mark every statement True or False. At least 2 statements.",
@@ -4320,7 +4319,6 @@
           "BLOCK_REMOVED": "Block removed",
           "BLOCK_CHANGED": "Block changed",
           "MATRIX_CHANGED": "Matrix changed",
-          "ORDER_RULE_CHANGED": "Shuffle rule changed",
           "ORDER_CHANGED": "Order changed",
           "QUESTIONS_REPLACED": "Questions replaced"
         },
@@ -4348,7 +4346,6 @@
             "chooseSubjects": "Subjects to choose",
             "description": "Description",
             "durationMinutes": "Duration",
-            "groupOrder": "Group order",
             "instructions": "Instructions",
             "knowledgeScope": "Knowledge scope",
             "matrix": "Matrix",
@@ -4367,7 +4364,6 @@
             "requiredPointsPerQuestion": "Points per question",
             "setCount": "Number of sets",
             "setSize": "Questions per set",
-            "shuffle": "Shuffle rule",
             "subjectCode": "Subject",
             "tagCodes": "Tags",
             "taskTypeCode": "Task type",

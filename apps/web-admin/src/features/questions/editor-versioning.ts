@@ -85,7 +85,6 @@ function comparableBody(body: QuestionDetail["body"]): unknown {
       return {
         type: body.type,
         options: body.options.map((option) => [option.content, option.correct]),
-        shuffleOptions: body.shuffleOptions,
         scoringRule: body.type === "MULTIPLE_CHOICE" ? body.scoringRule : null,
       };
     case "TRUE_FALSE":

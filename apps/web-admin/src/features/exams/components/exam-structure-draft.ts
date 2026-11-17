@@ -129,7 +129,6 @@ export function newBlock(name: string): QuestionBlock {
     childAnswerType: null,
     templateGroupCode: null,
     answerTypeLocked: false,
-    shuffle: "SHUFFLE",
   };
 }
 
@@ -222,7 +221,6 @@ export function buildOption(
       knowledgeScope: null,
       answerQuotas: null,
       matrix: null,
-      groupOrder: "SHUFFLE",
       choiceGroup: null,
       blocks: [],
     })),

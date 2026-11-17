@@ -48,7 +48,7 @@ describe("đổi phản hồi API câu hỏi sang kiểu của web", () => {
     expect(detail.subjectCode).toBe("MATH");
     expect(detail.commonMistakes).toBe("<p>a</p><p>b</p>");
     expect(detail.body).toMatchObject({ type: "QUESTION_SET", childIds: ["c1"] });
-    expect(detail.children[0]).toMatchObject({ id: "c1", subjectCode: "PHYSICS", body: { type: "SINGLE_CHOICE", shuffleOptions: false } });
+    expect(detail.children[0]).toMatchObject({ id: "c1", subjectCode: "PHYSICS", body: { type: "SINGLE_CHOICE" } });
   });
 
   it("điều kiện Sẵn sàng: nhóm theo điều kiện, vị trí tính từ 1 và câu con", () => {

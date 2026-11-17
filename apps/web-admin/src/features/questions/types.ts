@@ -109,7 +109,7 @@ export function clozeMarker(blankId: string): string {
 /**
  * Phần riêng theo dạng câu (spec 4.3, 9.2).
  *
- * - Một đáp án, Nhiều đáp án: `shuffleOptions`; Nhiều đáp án thêm `scoringRule`.
+ * - Một đáp án, Nhiều đáp án: `options`; Nhiều đáp án thêm `scoringRule`. Phương án luôn được đảo khi sinh đề, không có cờ.
  * - Trả lời ngắn: `answers` (đáp án chuẩn đứng đầu, tối đa 20), `inputHint` hướng dẫn nhập cho học viên.
  * - Điền khuyết: `passage` có các dấu `[[id]]`, `blanks` mỗi ô một điểm.
  * - Đúng/Sai: `scoringMethod`; `PER_STATEMENT` dùng `statements[].points`, `COUNT_TABLE` dùng `scoreTable` (độ dài bằng
@@ -119,8 +119,8 @@ export function clozeMarker(blankId: string): string {
  * - Bộ câu hỏi: ngữ liệu chung và id câu con; không nhận Bộ câu hỏi hay Điền khuyết làm câu con (D19).
  */
 export type QuestionBody =
-  | { type: "SINGLE_CHOICE"; options: ChoiceOption[]; shuffleOptions: boolean }
-  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; shuffleOptions: boolean; scoringRule: MultipleChoiceRule }
+  | { type: "SINGLE_CHOICE"; options: ChoiceOption[] }
+  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; scoringRule: MultipleChoiceRule }
   | { type: "SHORT_ANSWER"; answers: string[]; inputHint: string | null }
   | { type: "CLOZE"; passage: string; blanks: ClozeBlank[] }
   | { type: "QUESTION_SET"; passage: string; childIds: string[] }

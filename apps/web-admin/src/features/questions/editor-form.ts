@@ -59,7 +59,6 @@ export interface EditorCriterion {
 
 export interface EditorBody {
   options: EditorOption[];
-  shuffleOptions: boolean;
   /** Nhiều đáp án: đúng hết mới có điểm hay chấm từng phần. */
   scoringRule: MultipleChoiceRule;
   statements: EditorStatement[];
@@ -180,7 +179,6 @@ export function emptyBody(type: QuestionType, locale: AppLocale = "vi"): EditorB
       type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE"
         ? [emptyOption(), emptyOption(), emptyOption(), emptyOption()]
         : [],
-    shuffleOptions: true,
     scoringRule: "ALL_OR_NOTHING",
     statements: statements.map((statement, index) => ({ ...statement, points: statementShare[index] ?? "" })),
     scoringMethod: "COUNT_TABLE",
@@ -259,13 +257,11 @@ export function bodyToEditor(body: QuestionBody, locale: AppLocale = "vi"): Edit
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
-        shuffleOptions: body.shuffleOptions,
       };
     case "MULTIPLE_CHOICE":
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
-        shuffleOptions: body.shuffleOptions,
         scoringRule: body.scoringRule,
       };
     case "TRUE_FALSE": {
@@ -407,13 +403,11 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
-        shuffleOptions: body.shuffleOptions,
       };
     case "MULTIPLE_CHOICE":
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
-        shuffleOptions: body.shuffleOptions,
         scoringRule: body.scoringRule,
       };
     case "TRUE_FALSE": {

@@ -464,7 +464,6 @@ export type ExamChangeKind =
   | "BLOCK_REMOVED"
   | "BLOCK_CHANGED"
   | "MATRIX_CHANGED"
-  | "ORDER_RULE_CHANGED"
   | "ORDER_CHANGED"
   | "QUESTIONS_REPLACED";
 
