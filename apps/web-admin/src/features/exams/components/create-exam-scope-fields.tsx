@@ -110,7 +110,7 @@ export function CreateExamScopeFields({
               />
             )}
           </FormField>
-          {noTemplate && !subjectFirst && (
+          {Boolean(selection.subjectCode) && noTemplate && !subjectFirst && (
             <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-body text-text-secondary">
               <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
               {t("noTemplate", { subject: subjectName })}

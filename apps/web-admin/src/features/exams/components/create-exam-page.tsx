@@ -79,7 +79,9 @@ export function CreateExamPage() {
   const forbidden = [templatesQuery, referenceQuery].some((query) => query.isError && getErrorStatus(query.error) === 403);
 
   let body: ReactNode;
+  let showStepper = true;
   if (forbidden) {
+    showStepper = false;
     body = (
       <Card padding="md">
         <EmptyState
@@ -91,6 +93,7 @@ export function CreateExamPage() {
       </Card>
     );
   } else if (referenceQuery.isError) {
+    showStepper = false;
     body = (
       <Card padding="md">
         <EmptyState
@@ -150,7 +153,7 @@ export function CreateExamPage() {
           {t("backToList")}
         </Link>
         <PageHeader title={t("title")} description={t("description")} />
-        <CreateExamStepper />
+        {showStepper && <CreateExamStepper />}
       </div>
       {body}
     </div>

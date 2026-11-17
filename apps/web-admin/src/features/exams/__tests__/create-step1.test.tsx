@@ -243,6 +243,7 @@ describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
     expect(await screen.findByText("Không tải được dữ liệu kỳ thi")).toBeInTheDocument();
     expect(screen.queryByText(/mẫu cấu trúc/)).toBeNull();
     expect(screen.queryByRole("form", { name: "Tạo bài thi" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Các bước tạo bài thi" })).toBeNull();
   });
 
   it("403: nêu quyền EXAM.MODIFY cần có", async () => {
@@ -253,6 +254,7 @@ describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
     expect(await screen.findByText("Thiếu quyền tạo bài")).toBeInTheDocument();
     expect(screen.getByText(/Bạn cần quyền EXAM\.MODIFY để tạo bài thi/)).toBeInTheDocument();
     expect(screen.queryByRole("form", { name: "Tạo bài thi" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Các bước tạo bài thi" })).toBeNull();
   });
 
   it("mẫu còn đang tải: biểu mẫu hiện sẵn, khối tổng quan hiện khung chờ và không cho tạo", async () => {
@@ -307,6 +309,18 @@ describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi
     expect(summary().compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(cancel.compareDocumentPosition(buttons[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" })).toBeNull();
+  });
+
+  it("form đã sửa: bấm Hủy mở hộp thoại rời trang chưa lưu, Ở lại giữ nguyên trang", async () => {
+    const user = await renderPage();
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "Bài đang soạn");
+    await user.click(screen.getByRole("link", { name: "Hủy" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Rời trang khi chưa lưu?")).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue("Bài đang soạn");
   });
 
   it("giữ ô Hướng dẫn làm bài (trình soạn văn bản)", async () => {
