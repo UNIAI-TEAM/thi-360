@@ -455,56 +455,34 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   });
 
   const submitButton = (
-    <Button
-      type="submit"
-      form={formId}
-      loading={createExam.isPending}
-      disabled={templatesStatus === "loading"}
-      className="w-full sm:w-auto"
-    >
+    <Button type="submit" loading={createExam.isPending} disabled={templatesStatus === "loading"}>
       {t("submit")}
+      <ArrowRight aria-hidden className="size-4" />
     </Button>
   );
   const cancelButton = (
-    <Button asChild variant="secondary" className="w-full sm:w-auto">
+    <Button asChild variant="secondary">
       <Link href={EXAMS_HREF}>{t("cancel")}</Link>
     </Button>
   );
 
+  // Như TaoBaiThi2B: Hủy / Lưu và tiếp tục nằm ngay dưới bảng tổng quan, Tóm tắt đứng bên phải khi đủ rộng, hẹp thì xuống
+  // dưới các nút.
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <form
-        id={formId}
-        noValidate
-        aria-label={t("formAriaLabel")}
-        onSubmit={(event) => void onSubmit(event)}
-        className="flex min-w-0 flex-col gap-5"
-      >
-        <FormSection step={1} title={t("sections.info")}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[3fr_2fr]">
-            <div data-field="name">
-              <FormField label={t("name")} required error={formState.errors.name?.message}>
-                {(controlProps) => (
-                  <Input
-                    {...controlProps}
-                    {...register("name")}
-                    autoComplete="off"
-                    maxLength={EXAM_NAME_MAX}
-                    placeholder={t("namePlaceholder")}
-                  />
-                )}
-              </FormField>
-            </div>
-            <div data-field="kind">
-              <KindSelect kinds={kinds} value={selection.kind} onChange={(kind) => requestScope({ kind })} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_3fr]">
-            <div data-field="code">
-              <FormField label={t("code")} required hint={t("codeHint")} error={formState.errors.code?.message}>
-                {(controlProps) => (
-                  <div className="flex gap-2">
+      <div className="flex flex-wrap items-start gap-6">
+        <form
+          id={formId}
+          noValidate
+          aria-label={t("formAriaLabel")}
+          onSubmit={(event) => void onSubmit(event)}
+          className="flex min-w-0 flex-[999_1_640px] flex-col gap-5"
+        >
+          <FormSection step={1} title={t("sections.info")}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[3fr_2fr]">
+              <div data-field="name">
+                <FormField label={t("name")} required error={formState.errors.name?.message}>
+                  {(controlProps) => (
                     <Input
                       {...controlProps}
                       {...register("code")}
@@ -664,28 +642,24 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
         </FormSection>
       </form>
 
-      <CreateExamSummaryPanel
-        data={{
-          kindLabel: kindLabel(selection.kind),
-          scopeLabel: selectionLabel(selection),
-          totalQuestions: totals.questions,
-          totalMinutes: totals.durationMinutes,
-          totalPoints: showPoints ? totals.maxPoints : values.maxScore,
-          templateName: templateName(template),
-        }}
-        timing={values.timing}
-        issues={issues}
-      />
+          <div className="flex flex-wrap justify-end gap-2">
+            {cancelButton}
+            {submitButton}
+          </div>
+        </form>
 
-      {submitError && (
-        <p role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-danger">
-          {submitError}
-        </p>
-      )}
-
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        {cancelButton}
-        {submitButton}
+        <CreateExamSummaryPanel
+          data={{
+            kindLabel: kindLabel(selection.kind),
+            scopeLabel: selectionLabel(selection),
+            totalQuestions: totals.questions,
+            totalMinutes: totals.durationMinutes,
+            totalPoints: showPoints ? totals.maxPoints : values.maxScore,
+            templateName: templateName(template),
+          }}
+          timing={values.timing}
+          issues={issues}
+        />
       </div>
 
       <UnsavedChangesDialog guard={guard} />
