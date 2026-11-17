@@ -232,6 +232,258 @@ INSERT INTO exam.exam_template (code, kind_code, scope, part_code, subject_code,
 VALUES ('BCA_SUBJECT_DIA', 'BCA', 'SUBJECT', NULL, 'DIA', 2026, 2026, 'SHARED', NULL, 15, NULL, 'BCA – Địa lí', '15 câu, thang 15 điểm.', 'STANDARD', true, '{"parts":[{"name":"Địa lí","durationMinutes":null,"questionCount":15,"questionCountOnPaper":15,"questionCountRequired":15,"maxPoints":15,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"DIA","questionCount":15,"blocks":[{"name":"Trắc nghiệm độc lập","questionType":"SINGLE_CHOICE","questionCount":12,"requiredPointsPerQuestion":1,"id":"81af63b9-23b4-5238-84e4-2c152dfa0d6a"},{"name":"Chùm","questionType":"QUESTION_SET","questionCount":3,"requiredPointsPerQuestion":1,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE","id":"d529e232-902f-581c-a2f0-c855f34a593b"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REQUIRED","difficultyEnforcement":"REFERENCE","byGrade":[{"code":"G10","value":2},{"code":"G11","value":1},{"code":"G12","value":12}],"byDifficulty":[{"code":"NB","value":2},{"code":"TH","value":10},{"code":"VD","value":3},{"code":"VDC","value":0}]},"id":"6b6c58b5-d9f0-5935-b1cf-cdd462fdee46"}],"options":[],"order":1,"id":"fb3e8420-a7ef-513c-adca-55302f9267bf"}],"examQuotas":[]}'::jsonb, true)
 ON CONFLICT (code) DO UPDATE SET kind_code = EXCLUDED.kind_code, scope = EXCLUDED.scope, part_code = EXCLUDED.part_code, subject_code = EXCLUDED.subject_code, structure_year = EXCLUDED.structure_year, matrix_year = EXCLUDED.matrix_year, timing = EXCLUDED.timing, duration_minutes = EXCLUDED.duration_minutes, max_score = EXCLUDED.max_score, expert_note = EXCLUDED.expert_note, label = EXCLUDED.label, summary = EXCLUDED.summary, build_mode = EXCLUDED.build_mode, is_default = EXCLUDED.is_default, structure = EXCLUDED.structure, active = true;
 
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'TOAN',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 90,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Toán – Cấu trúc 2025',
+  summary = '22 câu, 90 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"deb37447-da0e-5d50-9ac9-dffaa244560e","order":1,"name":"Toán","durationMinutes":90,"questionCount":22,"questionCountOnPaper":22,"questionCountRequired":22,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"2a7e363b-8d8c-5077-bd45-eae9f647e6f2","subjectCode":"TOAN","questionCount":22,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"a1ee6c6f-9143-51a6-bc8d-6a452211fda9","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":12,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"1dc7140e-6573-5b64-977a-24e92c6c58e7","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1},{"id":"0dd32dc7-a702-5f52-8e92-3484d5a3f3b5","name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":6,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.5}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_MATH_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'VAN',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 120,
+  max_score = 10,
+  expert_note = 'Đọc hiểu là một chùm 5 câu tự luận, tổng 4 điểm; điểm từng câu theo hướng dẫn chấm.',
+  label = 'THPTQG – Ngữ văn – Cấu trúc 2025',
+  summary = '7 câu, 120 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"86f37764-4348-5061-a291-b021182d4d01","order":1,"name":"Ngữ văn","durationMinutes":120,"questionCount":7,"questionCountOnPaper":7,"questionCountRequired":7,"participation":{"mode":"ALL","choose":null},"maxPoints":10,"sections":[{"id":"74464f13-e276-59a1-ab8a-d57673b81b8d","subjectCode":"VAN","questionCount":7,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"be12d880-9344-553f-a18c-3f9e964eb4c3","name":"Đọc hiểu","questionType":"QUESTION_SET","questionCount":5,"setCount":1,"setSize":5,"knowledgeScope":null,"matrix":null,"childAnswerType":"ESSAY","templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":0.8,"tagCodes":null,"expectedScoring":null},{"id":"2a73e3d0-74f0-5b0a-913e-052d8e884d01","name":"Viết đoạn văn (khoảng 200 chữ)","questionType":"ESSAY","questionCount":1,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":2,"tagCodes":null,"expectedScoring":null},{"id":"acef6020-2883-5484-9808-4033d35258f5","name":"Viết bài văn (khoảng 600 chữ)","questionType":"ESSAY","questionCount":1,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":4,"tagCodes":null,"expectedScoring":null}]}],"options":[]}]}'::jsonb
+WHERE code = 'THPTQG_LITERATURE_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'ANH',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Tiếng Anh – Cấu trúc 2025',
+  summary = '40 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"03a8b981-c723-543d-a3f1-5334a29918d6","order":1,"name":"Tiếng Anh","durationMinutes":50,"questionCount":40,"questionCountOnPaper":40,"questionCountRequired":40,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"d4c2686c-f65f-534f-adf2-662328e1b635","subjectCode":"ANH","questionCount":40,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"0aa0c604-9928-5418-8c10-4ad4807d1e6d","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":40,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_ENGLISH_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'LY',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Vật lí – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"73624fe7-86ea-5a1d-8bbe-45c5660a5f02","order":1,"name":"Vật lí","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"94f5cab7-0ee5-5d77-bddf-cd6a442e937d","subjectCode":"LY","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"297dd281-dc9a-59f5-8d72-07be75bc6578","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":18,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"ece9124f-409f-5f7d-9646-77aacea39865","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1},{"id":"8017387a-87a9-5393-9f2d-504e825419e8","name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":6,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_PHYSICS_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'HOA',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Hóa học – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"4b521398-04a5-5f92-b3b5-4b7a51fec9dc","order":1,"name":"Hóa học","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"d821065f-ced6-5828-9863-3d560e8e9c73","subjectCode":"HOA","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"4650759b-d837-5a1e-8528-d2cf11c9f8de","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":18,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"c6f4cb22-f310-5da0-a82a-a97da49c9f85","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1},{"id":"6b20c7ea-81f8-5f03-9b44-1d21c08bda28","name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":6,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_CHEMISTRY_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'SINH',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Sinh học – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"9f9982d6-aea6-5f51-990e-d54770e4846e","order":1,"name":"Sinh học","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"ebb1bed4-d459-5a1c-ab62-73abd3cb0fca","subjectCode":"SINH","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"7e3c0253-8531-57ef-880f-6cb80cd1c9ef","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":18,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"2173a273-a5ee-5fac-aadc-8d06c90cfd24","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1},{"id":"0923ab9f-1d45-5cf5-9a82-365a91d07504","name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":6,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_BIOLOGY_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'DIA',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Địa lí – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"5abcadde-2e98-52ff-8e33-8d01c651b81f","order":1,"name":"Địa lí","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"f1f361a3-e069-5061-a5db-303c3fa37784","subjectCode":"DIA","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"75865611-18f3-5b24-9304-b09dad8a0e5d","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":18,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"d192f120-905c-58de-94de-71a6c777062c","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1},{"id":"4feb1546-6ed8-5ec7-b5dc-b270c46a8645","name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":6,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_GEOGRAPHY_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'SU',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Lịch sử – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"49aed80c-172a-5814-b3a6-bba43df3e88c","order":1,"name":"Lịch sử","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"3ca512ad-f48e-5eb0-8371-9491202c5fe5","subjectCode":"SU","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"21d190f6-cb1b-5514-9c2c-7a1b1e6c4cfc","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":24,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"203b5fb7-d03b-5da1-9bc8-4d5fd0bc2009","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_HISTORY_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'ECON_LAW',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Giáo dục kinh tế và pháp luật – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"eabe338a-2f0a-586e-9513-07748a233241","order":1,"name":"Giáo dục kinh tế và pháp luật","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"cdfbb293-0629-52bf-b9de-345625f29493","subjectCode":"ECON_LAW","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"489e5191-7652-5ae2-9dea-1100afb35a33","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":24,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"54b885ad-50d5-5044-a6fa-57a813e1921c","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_ECON_LAW_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'TECH_INDUSTRY',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Công nghệ công nghiệp – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"53faa92a-dfb6-5f47-b16a-c1e3f50859d3","order":1,"name":"Công nghệ (định hướng công nghiệp)","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"04e2a2fa-416c-5152-8411-90107e3ef74d","subjectCode":"TECH_INDUSTRY","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"42145f41-5b8f-5358-a15d-dac412a8d83c","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":24,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"57be05de-73a0-59c3-9975-df6709a5f23e","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_TECH_INDUSTRY_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'TECH_AGRICULTURE',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Công nghệ nông nghiệp – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"488fa108-a511-5913-8c18-721a11a5b0e3","order":1,"name":"Công nghệ (định hướng nông nghiệp)","durationMinutes":50,"questionCount":28,"questionCountOnPaper":28,"questionCountRequired":28,"participation":{"mode":"ALL","choose":null},"sections":[{"id":"de197f9d-6513-596f-b222-a65132abdf2a","subjectCode":"TECH_AGRICULTURE","questionCount":28,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"blocks":[{"id":"a1b5396c-a169-5674-b698-4a3f3fad2309","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":24,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":0.25},{"id":"c78c8765-1e2a-5fe6-92d8-33b7a579e8af","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":false,"requiredPointsPerQuestion":1}]}],"options":[],"maxPoints":null}]}'::jsonb
+WHERE code = 'THPTQG_TECH_AGRICULTURE_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'THPTQG',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'INFORMATICS',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'SHARED',
+  duration_minutes = 50,
+  max_score = 10,
+  expert_note = NULL,
+  label = 'THPTQG – Tin học – Cấu trúc 2025',
+  summary = '28 câu, 50 phút, thang 10 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"55f0b4e0-065a-56a4-a5b6-c1804e304eba","order":1,"name":"Phần I · Trắc nghiệm chọn một","durationMinutes":null,"questionCount":24,"questionCountOnPaper":24,"questionCountRequired":24,"participation":{"mode":"ALL","choose":null},"maxPoints":6,"sections":[{"id":"471268bd-bc9b-5c52-b2f8-c7370143b990","subjectCode":"INFORMATICS","questionCount":24,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"3b95e160-dc40-59c5-9f8f-97e1e7ec5659","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":24,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":0.25,"tagCodes":null,"expectedScoring":null}]}],"options":[]},{"id":"a86aa047-23c8-508f-81cd-8912f0e4f93d","order":2,"name":"Phần II · Đúng/Sai","durationMinutes":null,"questionCount":4,"questionCountOnPaper":6,"questionCountRequired":4,"participation":{"mode":"CHOICE","choose":1},"maxPoints":4,"sections":[{"id":"acf8b388-5995-5f6a-89f9-1fed04efebad","subjectCode":"INFORMATICS","questionCount":2,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"2e946d62-d7bd-5463-a535-746a320dc1fb","name":"Đúng/Sai chung","questionType":"TRUE_FALSE","questionCount":2,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":1,"tagCodes":null,"expectedScoring":null}]}],"options":[{"id":"ad45b11b-e2d0-5c39-9e58-e9b88f571458","kind":"BRANCH","code":"CS","name":"Khoa học máy tính","chooseSubjects":null,"countsByPick":null,"expertConfirmed":null,"sections":[{"id":"370b1295-b3fa-5cb2-82fd-72ffc726dbd2","subjectCode":"INFORMATICS","questionCount":2,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"0a1d12d4-dc0b-5223-be72-a663db2ccff4","name":"Đúng/Sai Khoa học máy tính","questionType":"TRUE_FALSE","questionCount":2,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":1,"tagCodes":null,"expectedScoring":null}]}],"blocks":[]},{"id":"ec1a841f-f187-5e0f-a1eb-c4d329d403f2","kind":"BRANCH","code":"ICT","name":"Tin học ứng dụng","chooseSubjects":null,"countsByPick":null,"expertConfirmed":null,"sections":[{"id":"cb34f5e7-d939-50d5-a184-9ca75e975e78","subjectCode":"INFORMATICS","questionCount":2,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"578e2db3-d148-5c60-bac0-2e28b77c8fb7","name":"Đúng/Sai Tin học ứng dụng","questionType":"TRUE_FALSE","questionCount":2,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":1,"tagCodes":null,"expectedScoring":null}]}],"blocks":[]}]}]}'::jsonb
+WHERE code = 'THPTQG_INFORMATICS_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'VACT',
+  scope = 'FULL',
+  part_code = NULL,
+  subject_code = NULL,
+  structure_year = NULL,
+  matrix_year = NULL,
+  timing = 'SHARED',
+  duration_minutes = 150,
+  max_score = 1200,
+  expert_note = 'Điểm luyện tập tạm tính 10 điểm mỗi câu; kỳ thi thật dùng IRT.',
+  label = 'V-ACT – Đầy đủ cấu trúc',
+  summary = '120 câu trong 150 phút, thang 1.200 điểm.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"id":"f1f4ad6a-83f6-54b5-ac31-f0c3d9467194","order":1,"name":"Phần 1 · Sử dụng ngôn ngữ","durationMinutes":null,"questionCount":60,"questionCountOnPaper":60,"questionCountRequired":60,"participation":{"mode":"ALL","choose":null},"maxPoints":600,"sections":[{"id":"e401ffeb-384d-55f0-83c9-1736b4d1dd6b","subjectCode":"VIETNAMESE","questionCount":30,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"6d1d9c9c-de29-505c-a85c-dc37fdc5706c","name":"Tiếng Việt","questionType":"SINGLE_CHOICE","questionCount":30,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":10,"tagCodes":null,"expectedScoring":null}]},{"id":"02c64577-fbe8-59eb-b8f7-3e30b30456be","subjectCode":"ANH","questionCount":30,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"58c75311-7e8a-5551-b04d-53b928f57471","name":"Tiếng Anh","questionType":"SINGLE_CHOICE","questionCount":30,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":10,"tagCodes":null,"expectedScoring":null}]}],"options":[]},{"id":"4d90c6b5-3f13-5d98-a9f0-9b60df20c514","order":2,"name":"Phần 2 · Toán học","durationMinutes":null,"questionCount":30,"questionCountOnPaper":30,"questionCountRequired":30,"participation":{"mode":"ALL","choose":null},"maxPoints":300,"sections":[{"id":"02ff2ed3-52c1-5951-afd2-3131796ce314","subjectCode":"TOAN","questionCount":30,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"8deb37e2-3b8d-5d64-89ee-be54263f8629","name":"Toán học","questionType":"SINGLE_CHOICE","questionCount":30,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":10,"tagCodes":null,"expectedScoring":null}]}],"options":[]},{"id":"288ca739-3e0f-54fa-8b0f-3991e94c36f7","order":3,"name":"Phần 3 · Tư duy khoa học","durationMinutes":null,"questionCount":30,"questionCountOnPaper":30,"questionCountRequired":30,"participation":{"mode":"ALL","choose":null},"maxPoints":300,"sections":[{"id":"94de53b5-f0db-5610-a643-4df4c8a397c9","subjectCode":"SCIENTIFIC_THINKING","questionCount":30,"knowledgeScope":null,"answerQuotas":null,"matrix":null,"choiceGroup":null,"blocks":[{"id":"3f07dd8e-c968-58e6-8e8d-12f0ae784090","name":"Logic, phân tích số liệu","questionType":"SINGLE_CHOICE","questionCount":12,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":10,"tagCodes":null,"expectedScoring":null},{"id":"3a2a8383-23a9-56e9-b0ba-6d4002ee1cf8","name":"Suy luận khoa học","questionType":"SINGLE_CHOICE","questionCount":18,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":10,"tagCodes":null,"expectedScoring":null}]}],"options":[]}]}'::jsonb
+WHERE code = 'VACT_FULL';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SP2E',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'TOAN',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = 90,
+  max_score = 10,
+  expert_note = 'Cấu trúc 12–4–6 và điểm là giả định, chờ chuyên gia xác nhận.',
+  label = 'SP2E – Toán – Cấu trúc giả định 2025',
+  summary = '22 câu trong 90 phút: trắc nghiệm, đúng/sai và trả lời ngắn.',
+  build_mode = 'STANDARD',
+  is_default = false,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":12,"questionCountOnPaper":12,"questionCountRequired":12,"participation":{"mode":"ALL"},"maxPoints":3,"sections":[{"subjectCode":"TOAN","questionCount":12,"blocks":[{"id":"d1491f24-837b-572d-b8d1-f136f835530c","name":"Trắc nghiệm chọn một","questionType":"SINGLE_CHOICE","questionCount":12,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":0.25,"tagCodes":null,"expectedScoring":null}],"id":"6471031b-1d32-5e27-a838-98da0ef15226"}],"options":[],"order":1,"id":"90658451-9aed-5abb-b299-0486f412b251"},{"name":"Phần II · Đúng/Sai","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"participation":{"mode":"ALL"},"maxPoints":4,"sections":[{"subjectCode":"TOAN","questionCount":4,"blocks":[{"id":"c97fbea8-622e-562c-b6e4-d7035fbb26ff","name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":4,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":1,"tagCodes":null,"expectedScoring":null}],"id":"f1174a5b-c764-5962-b54d-1c5f41fff20f"}],"options":[],"order":2,"id":"e5f1ec87-0885-5186-8776-eeacabb004ba"},{"name":"Phần III · Trả lời ngắn","questionCount":6,"questionCountOnPaper":6,"questionCountRequired":6,"participation":{"mode":"ALL"},"maxPoints":3,"sections":[{"subjectCode":"TOAN","questionCount":6,"blocks":[{"id":"5d44f3d1-a466-546f-a0b0-9655306d51f0","name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":6,"setCount":null,"setSize":null,"knowledgeScope":null,"matrix":null,"childAnswerType":null,"templateGroupCode":null,"answerTypeLocked":null,"requiredPointsPerQuestion":0.5,"tagCodes":null,"expectedScoring":null}],"id":"31c6724f-ddf3-52e9-8517-29312a43ffe4"}],"options":[],"order":3,"id":"f3ce28eb-b22b-518b-826e-264ad79173ae"}]}'::jsonb
+WHERE code = 'SP2E_MATH_2025';
+
 INSERT INTO exam.exam_template (code, kind_code, scope, part_code, subject_code, structure_year, matrix_year, timing, duration_minutes, max_score, expert_note, label, summary, build_mode, is_default, structure, active)
 VALUES ('QDA_PART_MATH', 'QDA', 'PART', 'TOAN', NULL, 2026, 2026, 'PER_PART', 80, 50, NULL, 'QDA – Phần Toán học và xử lí số liệu', '50 câu trong 80 phút: 35 câu trắc nghiệm và 15 câu trả lời ngắn.', 'STANDARD', true, '{"parts":[{"order":1,"name":"Toán học và xử lí số liệu","durationMinutes":80,"questionCount":50,"questionCountOnPaper":50,"questionCountRequired":50,"participation":{"mode":"ALL"},"maxPoints":50,"sections":[{"subjectCode":"TOAN","questionCount":50,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"SINGLE_CHOICE","value":35},{"answerType":"SHORT_ANSWER","value":15}]},"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REQUIRED","difficultyEnforcement":"REQUIRED","byGrade":[{"code":"G10","value":5},{"code":"G11","value":15},{"code":"G12","value":30}],"byDifficulty":[]},"blocks":[{"name":"Trắc nghiệm độc lập","questionType":"SINGLE_CHOICE","questionCount":32,"requiredPointsPerQuestion":1,"id":"5a214f08-6f0c-5def-91e9-93c60c3dc9b6"},{"name":"Chùm trắc nghiệm","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE","requiredPointsPerQuestion":1,"id":"625e8420-6016-5f79-bf13-b23b03816d5a"},{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":15,"answerFormats":["INTEGER","DECIMAL","FRACTION"],"requiredPointsPerQuestion":1,"id":"8926d404-a9f4-5c12-ba95-f1bde512d4e7"}],"id":"526f1aa1-fcba-57ea-9997-2168d9a82f14"}],"options":[],"id":"bb2f7ff8-a3ab-515c-b36d-89eb6fa64c98"}]}'::jsonb, true)
 ON CONFLICT (code) DO UPDATE SET kind_code = EXCLUDED.kind_code, scope = EXCLUDED.scope, part_code = EXCLUDED.part_code, subject_code = EXCLUDED.subject_code, structure_year = EXCLUDED.structure_year, matrix_year = EXCLUDED.matrix_year, timing = EXCLUDED.timing, duration_minutes = EXCLUDED.duration_minutes, max_score = EXCLUDED.max_score, expert_note = EXCLUDED.expert_note, label = EXCLUDED.label, summary = EXCLUDED.summary, build_mode = EXCLUDED.build_mode, is_default = EXCLUDED.is_default, structure = EXCLUDED.structure, active = true;
@@ -417,3 +669,219 @@ ON CONFLICT (code) DO UPDATE SET kind_code = EXCLUDED.kind_code, scope = EXCLUDE
 INSERT INTO exam.exam_template (code, kind_code, scope, part_code, subject_code, structure_year, matrix_year, timing, duration_minutes, max_score, expert_note, label, summary, build_mode, is_default, structure, active)
 VALUES ('SP2E_SU_OLD', 'SP2E', 'SUBJECT', NULL, 'SU', 2025, 2025, 'SHARED', 60, 10, 'Chờ chuyên gia xác nhận.', 'SP2E – Lịch sử – Đề minh họa cũ', '20 câu, thang 10 điểm, 60 phút.', 'STANDARD', false, '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":10,"questionCountOnPaper":10,"questionCountRequired":10,"participation":{"mode":"ALL"},"maxPoints":2,"sections":[{"subjectCode":"SU","questionCount":10,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":10,"requiredPointsPerQuestion":0.2,"id":"de5551ab-8924-5d72-9fa9-82e78b19488e"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"d41e0c78-6fc4-509a-857c-8d6b8d3e2d59"}],"options":[],"order":1,"id":"8ed125c9-a721-591f-86fe-462d0c77d73e"},{"name":"Phần II · Đúng/Sai","questionCount":5,"questionCountOnPaper":5,"questionCountRequired":5,"participation":{"mode":"ALL"},"maxPoints":4,"sections":[{"subjectCode":"SU","questionCount":5,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":5,"requiredPointsPerQuestion":0.8,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"PER_STATEMENT"},"id":"e7a07d66-6469-597d-9c94-9f152186593a"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"e8ecfc6b-aac6-5d62-ab39-d6a24360270e"}],"options":[],"order":2,"id":"a835545a-7653-5865-aa20-f8cf57568cf2"},{"name":"Phần III · Ghép đôi","questionCount":5,"questionCountOnPaper":5,"questionCountRequired":5,"participation":{"mode":"ALL"},"maxPoints":4,"sections":[{"subjectCode":"SU","questionCount":5,"blocks":[{"name":"Ghép đôi","questionType":"MATCHING","questionCount":5,"requiredPointsPerQuestion":0.8,"itemShape":{"leftItems":4,"rightItems":6},"id":"9311fd65-2f7e-5a72-aedb-1b73a7affbe6"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"3bb74b6f-1a71-52db-95f0-2bdbd7d2f9a4"}],"options":[],"order":3,"id":"6c1c048e-8104-5296-be9d-f660a76ad59f"}],"examQuotas":[{"id":"su-difficulty-reference","name":"Tỷ trọng độ khó tham khảo","dimension":"DIFFICULTY","basis":"QUESTION","enforcement":"REFERENCE","subjectCodes":["SU"],"buckets":[{"codes":["NB"],"percent":30},{"codes":["TH"],"percent":30},{"codes":["VD"],"percent":20},{"codes":["VDC"],"percent":20}]}]}'::jsonb, true)
 ON CONFLICT (code) DO UPDATE SET kind_code = EXCLUDED.kind_code, scope = EXCLUDED.scope, part_code = EXCLUDED.part_code, subject_code = EXCLUDED.subject_code, structure_year = EXCLUDED.structure_year, matrix_year = EXCLUDED.matrix_year, timing = EXCLUDED.timing, duration_minutes = EXCLUDED.duration_minutes, max_score = EXCLUDED.max_score, expert_note = EXCLUDED.expert_note, label = EXCLUDED.label, summary = EXCLUDED.summary, build_mode = EXCLUDED.build_mode, is_default = EXCLUDED.is_default, structure = EXCLUDED.structure, active = true;
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'TOAN',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Toán – V1 theo đề tham khảo 075',
+  summary = '22 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":16,"questionCountOnPaper":16,"questionCountRequired":16,"maxPoints":4,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TOAN","questionCount":16,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":16,"requiredPointsPerQuestion":0.25,"id":"1546d6b5-6f8f-55f2-848d-e259b2d844a8"}],"id":"479fef3c-5bda-5bb2-9868-cc9fad6e2f59"}],"options":[],"order":1,"id":"43a3a974-76d4-5fe9-a66a-332d01373f38"},{"name":"Phần II · Đúng/Sai","questionCount":2,"questionCountOnPaper":2,"questionCountRequired":2,"maxPoints":2,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TOAN","questionCount":2,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":2,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"02e4d29a-e835-54ca-8b0c-9ef7c66a31d6"}],"id":"3f70f469-25ef-5721-ae6d-760deb65ae3f"}],"options":[],"order":2,"id":"58e23d6f-f7c9-58ab-891f-a61e4a208116"},{"name":"Phần III · Trả lời ngắn","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TOAN","questionCount":4,"blocks":[{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":4,"requiredPointsPerQuestion":0.25,"id":"eb5cfb0c-e7c3-58e2-b780-44979fc9c2a5"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":3,"requiredPointsPerQuestion":null,"omitted":true,"id":"b55b2e39-5bf2-5988-9c07-f049c30991f0"}],"id":"c268dd61-facf-5a30-ab37-71411a3bf739"}],"options":[],"order":3,"id":"2bc69bf5-f9de-558f-a294-8cc4763ad83d"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_MATH_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'LY',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Vật lí – V1 theo đề tham khảo 075',
+  summary = '19 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":12,"questionCountOnPaper":12,"questionCountRequired":12,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"LY","questionCount":12,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":12,"requiredPointsPerQuestion":0.25,"id":"86270e0d-1fee-540d-9739-eadfa19a89fe"}],"id":"479d62eb-4d11-52ab-b270-be9e6c7b993f"}],"options":[],"order":1,"id":"c6b85df2-552d-5ac6-9d04-2b3e06700b0f"},{"name":"Phần II · Đúng/Sai","questionCount":3,"questionCountOnPaper":3,"questionCountRequired":3,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"LY","questionCount":3,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":3,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"fed13df3-5cb9-5401-ba2f-ea5ead66fabb"}],"id":"39a3e223-32a9-593a-b55b-aa7896663bf3"}],"options":[],"order":2,"id":"cfd1d652-8408-595e-82ba-9c4e04238ed9"},{"name":"Phần III · Trả lời ngắn","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"LY","questionCount":4,"blocks":[{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":4,"requiredPointsPerQuestion":0.25,"id":"cdb7460d-6240-5dd6-8ef4-0e20b12afe96"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":2,"requiredPointsPerQuestion":null,"omitted":true,"id":"26ecd3bc-c9a3-5eec-981f-6375ef3d782a"}],"id":"e3ccd78e-7c5b-5f36-b768-822038aa090b"}],"options":[],"order":3,"id":"bef32704-7837-5507-bd29-9f9488be59d2"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_LY_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'HOA',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 8,
+  expert_note = NULL,
+  label = 'SPT – Hóa học – V1 theo đề tham khảo 075',
+  summary = '26 câu, thang 8 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":20,"questionCountOnPaper":20,"questionCountRequired":20,"maxPoints":5,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"HOA","questionCount":20,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":20,"requiredPointsPerQuestion":0.25,"id":"c38844a4-d9d0-575f-8c1d-2e3be8ecdb49"}],"id":"0a8f8231-d1ab-5a82-8877-9fc7073fb0d8"}],"options":[],"order":1,"id":"e900d289-17f7-5c1a-8037-923aafc57a6e"},{"name":"Phần II · Đúng/Sai","questionCount":2,"questionCountOnPaper":2,"questionCountRequired":2,"maxPoints":2,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"HOA","questionCount":2,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":2,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"1e543dc7-e73a-578f-9282-cae6d4d0bae5"}],"id":"e63b431a-988a-5d9e-a481-9a150853aab9"}],"options":[],"order":2,"id":"2947c02d-acc2-5223-bc26-16d0ee3801eb"},{"name":"Phần III · Trả lời ngắn","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"HOA","questionCount":4,"blocks":[{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":4,"requiredPointsPerQuestion":0.25,"id":"f9ab8c75-7d94-5f36-9cbf-0d1427c68011"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":1,"requiredPointsPerQuestion":null,"omitted":true,"id":"c9ea4614-006a-53a5-acab-cbb6a2f0e4d2"}],"id":"5488a639-90f2-5ebf-ab02-a07af43dd047"}],"options":[],"order":3,"id":"3a06eab5-3bac-57a1-ae7f-71b3ec134c23"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_HOA_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'SINH',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Sinh học – V1 theo đề tham khảo 075',
+  summary = '19 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":12,"questionCountOnPaper":12,"questionCountRequired":12,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"SINH","questionCount":12,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":12,"requiredPointsPerQuestion":0.25,"id":"71d6c976-20fc-556c-a09a-682f35e118a5"}],"id":"8dc11f5e-d053-5852-b04f-a31dace3d969"}],"options":[],"order":1,"id":"570a3c79-b8a7-5b57-b152-090c44d41a3e"},{"name":"Phần II · Đúng/Sai","questionCount":3,"questionCountOnPaper":3,"questionCountRequired":3,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"SINH","questionCount":3,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":3,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"f1a6c597-be80-564a-9bd1-37aa9d1d7fdc"}],"id":"5ff5ec71-43cc-591b-9669-8b4e86abc855"}],"options":[],"order":2,"id":"1abb2191-e089-552e-8d48-97fb74243a7b"},{"name":"Phần III · Trả lời ngắn","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"SINH","questionCount":4,"blocks":[{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":4,"requiredPointsPerQuestion":0.25,"id":"0338a229-ecd9-5a20-81a6-de0dba801a66"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":3,"requiredPointsPerQuestion":null,"omitted":true,"id":"82ec082d-e122-541f-94cf-16515b4b2867"}],"id":"9ef4a4c9-b711-5c53-bdaf-15df4b2b046d"}],"options":[],"order":3,"id":"790e9aa8-83a8-527f-ad9e-defe9670ba35"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_SINH_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'SU',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Lịch sử – V1 theo đề tham khảo 075',
+  summary = '22 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":20,"questionCountOnPaper":20,"questionCountRequired":20,"maxPoints":5,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"SU","questionCount":20,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":20,"requiredPointsPerQuestion":0.25,"id":"5c61113b-4afe-5332-9c25-04fea7286c53"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"9e245018-19c2-5079-9c16-5e20ef36f745"}],"options":[],"order":1,"id":"27bf22ec-f795-52a4-8ac9-782bad837fa5"},{"name":"Phần II · Đúng/Sai","questionCount":2,"questionCountOnPaper":2,"questionCountRequired":2,"maxPoints":2,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"SU","questionCount":2,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":2,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"d217cbea-393a-5888-a66d-ae3812a845fe"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":3,"requiredPointsPerQuestion":null,"omitted":true,"id":"c6998709-428b-5d44-888d-d990adef99f7"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"ad2c7e03-87ea-563c-8303-bbbda4bced5a"}],"options":[],"order":2,"id":"ed51295c-dd02-562f-86ce-bdcf67eea07c"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_SU_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'DIA',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Địa lí – V1 theo đề tham khảo 075',
+  summary = '19 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":12,"questionCountOnPaper":12,"questionCountRequired":12,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"DIA","questionCount":12,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":12,"requiredPointsPerQuestion":0.25,"id":"c0f7ac43-98bf-57d9-b243-8ac5e73def03"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"e4f7d045-df45-552b-a41e-ad2064334477"}],"options":[],"order":1,"id":"41524e10-1be7-5537-8b52-c4b5c8557a27"},{"name":"Phần II · Đúng/Sai","questionCount":3,"questionCountOnPaper":3,"questionCountRequired":3,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"DIA","questionCount":3,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":3,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"8b5709f3-99de-5dbd-afbc-2ae0dfa36e0b"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"6df04e0c-8b62-5783-9c21-92566cab5e94"}],"options":[],"order":2,"id":"6b5de634-b984-58a9-8bba-7ed713d43068"},{"name":"Phần III · Trả lời ngắn","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"DIA","questionCount":4,"blocks":[{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":4,"requiredPointsPerQuestion":0.25,"id":"30704ace-f39c-54a0-a976-d0e57d13cf66"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":1,"requiredPointsPerQuestion":null,"omitted":true,"id":"75e74c5f-d943-5c49-89ab-1fcad1bc6b5a"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"fb319083-3f12-5899-88ea-b0abeccfb617"}],"options":[],"order":3,"id":"6b0046e1-78c8-5f15-af34-d94dae36e888"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_DIA_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'ECON_LAW',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Giáo dục kinh tế và pháp luật – V1 theo đề tham khảo 075',
+  summary = '19 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":16,"questionCountOnPaper":16,"questionCountRequired":16,"maxPoints":4,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"ECON_LAW","questionCount":16,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":16,"requiredPointsPerQuestion":0.25,"id":"9b9dd332-942b-54d3-93f0-7c4d76dcd623"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"fca02337-6f88-597f-8ed6-1f8295b3d794"}],"options":[],"order":1,"id":"bb2abfbf-5804-5d98-87c6-ecdc473d678c"},{"name":"Phần II · Đúng/Sai","questionCount":3,"questionCountOnPaper":3,"questionCountRequired":3,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"ECON_LAW","questionCount":3,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":3,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"574514db-f552-508b-b53f-43b8ea5ed889"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":2,"requiredPointsPerQuestion":null,"omitted":true,"id":"803eb122-5e85-5631-9303-b2db2da133cf"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"07b0b71a-4dcd-5adf-8ce6-3d2a9f1d963f"}],"options":[],"order":2,"id":"f7c1daf9-589d-552f-8b43-7e0079eac856"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_ECON_LAW_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'TECH_INDUSTRY',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Công nghệ công nghiệp – V1 theo đề tham khảo 075',
+  summary = '22 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":16,"questionCountOnPaper":16,"questionCountRequired":16,"maxPoints":4,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TECH_INDUSTRY","questionCount":16,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":16,"requiredPointsPerQuestion":0.25,"id":"9ff99a30-5a35-5660-81ba-7af86a983b76"}],"id":"577c5361-9dba-50f3-a1c6-372633d92514"}],"options":[],"order":1,"id":"64e1f583-beb4-5731-a205-faf01c380b70"},{"name":"Phần II · Đúng/Sai","questionCount":2,"questionCountOnPaper":2,"questionCountRequired":2,"maxPoints":2,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TECH_INDUSTRY","questionCount":2,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":2,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"2629b073-1d97-5de2-be31-88c6a857808b"}],"id":"ee499fc6-3302-5529-8afd-eaede13e5d74"}],"options":[],"order":2,"id":"6ab58638-0de5-55ca-b5e4-b747c77c62ca"},{"name":"Phần III · Trả lời ngắn","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TECH_INDUSTRY","questionCount":4,"blocks":[{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":4,"requiredPointsPerQuestion":0.25,"id":"7656ab21-5c56-5c97-b29a-b30e76ac25d6"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":2,"requiredPointsPerQuestion":null,"omitted":true,"id":"f4c541a7-b8bb-5a2b-9810-3dafeeb2186e"}],"id":"184b3c6a-9b99-57fa-8189-790de83be757"}],"options":[],"order":3,"id":"f5120102-71e6-5503-af9b-684b0f60a935"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_TECH_INDUSTRY_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'TECH_AGRICULTURE',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Công nghệ nông nghiệp – V1 theo đề tham khảo 075',
+  summary = '22 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":16,"questionCountOnPaper":16,"questionCountRequired":16,"maxPoints":4,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TECH_AGRICULTURE","questionCount":16,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":16,"requiredPointsPerQuestion":0.25,"id":"f681c904-564b-53ac-b6cd-056906d1c99a"}],"id":"481aa1f9-3284-5d9d-8d9e-838aff7c98b4"}],"options":[],"order":1,"id":"3b46227c-4517-5f19-b513-ffad81a303d5"},{"name":"Phần II · Đúng/Sai","questionCount":2,"questionCountOnPaper":2,"questionCountRequired":2,"maxPoints":2,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TECH_AGRICULTURE","questionCount":2,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":2,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"a44fe945-41c8-51d2-83d0-91094cc80926"}],"id":"e22d7df0-6dca-5f95-a2a7-7f6efb4b1a10"}],"options":[],"order":2,"id":"11ff42b2-1c26-5bd2-8f5b-c8838852586e"},{"name":"Phần III · Trả lời ngắn","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TECH_AGRICULTURE","questionCount":4,"blocks":[{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":4,"requiredPointsPerQuestion":0.25,"id":"80bacc68-bb4a-5e0e-a722-25fa4b109c96"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":2,"requiredPointsPerQuestion":null,"omitted":true,"id":"6ffcefc6-d110-5787-bd8f-ab3b49ad4f75"}],"id":"3ebdadea-67ce-572d-94c9-4380921f0864"}],"options":[],"order":3,"id":"162dbd9f-9671-50a3-995b-0b88849cb7fe"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_TECH_AGRICULTURE_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'VAN',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 3,
+  expert_note = NULL,
+  label = 'SPT – Ngữ văn – Đọc hiểu',
+  summary = '10 câu, thang 3 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Đọc hiểu","questionCount":10,"questionCountOnPaper":10,"questionCountRequired":10,"maxPoints":3,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"VAN","questionCount":10,"blocks":[{"name":"Hai văn bản","questionType":"QUESTION_SET","questionCount":10,"requiredPointsPerQuestion":0.3,"setCount":2,"setSize":5,"childAnswerType":"SINGLE_CHOICE","slots":[{"index":1,"tagCodes":["VAN_KHOA_HOC"]},{"index":2,"tagCodes":["VAN_THONG_TIN"]}],"id":"b124c3bc-4a34-56c5-9866-1912a62eefac"}],"id":"abcc4c5e-12e9-526d-b038-aba89137a5f8"}],"options":[],"order":1,"id":"b4fe2397-7eb8-526d-b6cb-687a395372c5"},{"name":"Phần II · Viết","questionCount":0,"questionCountOnPaper":0,"questionCountRequired":0,"maxPoints":null,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"VAN","questionCount":0,"blocks":[{"name":"Nghị luận xã hội","questionType":"ESSAY","questionCount":1,"requiredPointsPerQuestion":null,"omitted":true,"id":"ee57b9a2-440c-599a-8c21-67cf0a9cf526"},{"name":"Nghị luận văn học","questionType":"ESSAY","questionCount":1,"requiredPointsPerQuestion":null,"omitted":true,"id":"096e5798-bc9f-53f2-a810-15dca8c97edb"}],"id":"9495491f-3d97-5e24-bf6d-1694428a5c26"}],"options":[],"order":2,"id":"e808292d-ff26-54d3-834f-e7c7a3d63892"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_VAN_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'ANH',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 8,
+  expert_note = NULL,
+  label = 'SPT – Tiếng Anh – V1 theo đề tham khảo 075',
+  summary = '32 câu, thang 8 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Use of English","questionCount":18,"questionCountOnPaper":18,"questionCountRequired":18,"maxPoints":4.5,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"ANH","questionCount":18,"blocks":[{"name":"Câu đơn","questionType":"SINGLE_CHOICE","questionCount":5,"requiredPointsPerQuestion":0.25,"tagCodes":["ANH_TU_VUNG_NGU_PHAP"],"id":"8b87aeee-83a2-5290-8c12-058a038d978f"},{"name":"Đọc điền","questionType":"QUESTION_SET","questionCount":12,"requiredPointsPerQuestion":0.25,"setCount":2,"setSize":6,"childAnswerType":"SINGLE_CHOICE","tagCodes":["ANH_DOC_DIEN"],"id":"c53383d5-e11a-571c-abb9-45a35f599077"},{"name":"Sắp xếp hội thoại","questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.25,"tagCodes":["ANH_SAP_XEP_HOI_THOAI"],"id":"10b244d3-f9e7-5d03-be85-21034feff358"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"751410ef-093f-55c9-9624-32569bff6411"}],"options":[],"order":1,"id":"00f7710d-b8c2-5079-aabb-dbd1c44ea264"},{"name":"Phần II · Reading","questionCount":10,"questionCountOnPaper":10,"questionCountRequired":10,"maxPoints":2.5,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"ANH","questionCount":10,"blocks":[{"name":"Đọc hiểu","questionType":"QUESTION_SET","questionCount":10,"requiredPointsPerQuestion":0.25,"setCount":2,"setSize":5,"childAnswerType":"SINGLE_CHOICE","tagCodes":["ANH_DOC_HIEU"],"id":"9e664e2d-645a-52eb-8fe9-08a384105d9d"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"9134e0ae-3525-5aef-b035-2ce10095e5d2"}],"options":[],"order":2,"id":"0cad4649-44e9-5087-a550-5526a0b8a5fe"},{"name":"Phần III · Word Formation","questionCount":4,"questionCountOnPaper":4,"questionCountRequired":4,"maxPoints":1,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"ANH","questionCount":4,"blocks":[{"name":"Word Formation","questionType":"CLOZE","questionCount":4,"requiredPointsPerQuestion":0.25,"setCount":1,"setSize":4,"tagCodes":["ANH_WORD_FORMATION"],"id":"27eda2c3-0ce8-5e2e-9cfc-df18937141aa"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":1,"requiredPointsPerQuestion":null,"omitted":true,"id":"4b5e8412-14b8-5ac1-b804-3eb804528d7e"}],"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE","byGrade":[],"byDifficulty":[]},"id":"6d4819e7-e0ce-5b6f-9519-49373256fd89"}],"options":[],"order":3,"id":"888800f4-b836-5c04-97b3-827c9a8c720b"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_ANH_2025';
+
+UPDATE exam.exam_template SET
+  kind_code = 'SPT',
+  scope = 'SUBJECT',
+  part_code = NULL,
+  subject_code = 'INFORMATICS',
+  structure_year = 2025,
+  matrix_year = 2025,
+  timing = 'PER_PART',
+  duration_minutes = NULL,
+  max_score = 7,
+  expert_note = NULL,
+  label = 'SPT – Tin học – V1 theo đề tham khảo 075',
+  summary = '22 câu, thang 7 điểm; phần tự luận tạm bỏ qua.',
+  build_mode = 'STANDARD',
+  is_default = true,
+  structure = '{"parts":[{"name":"Phần I · Trắc nghiệm","questionCount":20,"questionCountOnPaper":20,"questionCountRequired":20,"maxPoints":5,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"INFORMATICS","questionCount":20,"blocks":[{"name":"Một đáp án","questionType":"SINGLE_CHOICE","questionCount":20,"requiredPointsPerQuestion":0.25,"id":"e1fa9fd8-ea5e-59b7-aa2c-946569d9f2e9"}],"id":"be9613b0-4fab-5493-bc33-f84a3066b473"}],"options":[],"order":1,"id":"69faf359-18fd-57f9-a2a5-a63f8853c8b6"},{"name":"Phần II · Đúng/Sai","questionCount":2,"questionCountOnPaper":3,"questionCountRequired":2,"maxPoints":2,"participation":{"mode":"CHOICE","choose":1},"sections":[{"subjectCode":"INFORMATICS","questionCount":1,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":1,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"84c52833-00a7-59b8-8636-11afe282431d"},{"name":"Tự luận – tạm bỏ qua","questionType":"ESSAY","questionCount":3,"requiredPointsPerQuestion":null,"omitted":true,"id":"0828762f-f949-54f3-b959-d03713ab95c4"}],"id":"e9f43637-640e-53b8-b3ae-0cb73e21bdbc"}],"options":[{"kind":"BRANCH","code":"CS","name":"Khoa học máy tính","sections":[{"subjectCode":"INFORMATICS","questionCount":1,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":1,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"f80433a0-3c51-5abe-bab9-e1772b70ba92"}],"id":"a4d4a436-da08-5182-b7d8-7775cdd8e316"}],"id":"c8261b17-9943-5133-ad56-a5ce43c5af0e"},{"kind":"BRANCH","code":"ICT","name":"Tin học ứng dụng","sections":[{"subjectCode":"INFORMATICS","questionCount":1,"blocks":[{"name":"Đúng/Sai","questionType":"TRUE_FALSE","questionCount":1,"requiredPointsPerQuestion":1,"itemShape":{"statements":4},"expectedScoring":{"trueFalseMethod":"COUNT_TABLE","trueFalseTable":[0.1,0.25,0.5,1]},"id":"dbc516d5-f940-571c-9b31-dc7c719bda5c"}],"id":"760e6026-8319-546b-8211-2714eb6cc08b"}],"id":"1210817a-55a7-5908-800e-d65fe45fe5d4"}],"order":2,"id":"a2bf28a0-9391-509d-b1b0-e3c8d4604360"}],"examQuotas":[]}'::jsonb
+WHERE code = 'SPT_INFORMATICS_2025';

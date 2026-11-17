@@ -406,6 +406,160 @@
     "buildMode": "STANDARD",
     "isDefault": true
   },
+  "THPTQG_MATH_2025": {
+    "questions": 22,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TOAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_LITERATURE_2025": {
+    "questions": 7,
+    "maxPoints": 10,
+    "durationMinutes": 120,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "VAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_ENGLISH_2025": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "ANH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_PHYSICS_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "LY",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_CHEMISTRY_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "HOA",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_BIOLOGY_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SINH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_GEOGRAPHY_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "DIA",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_HISTORY_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SU",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_ECON_LAW_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "ECON_LAW",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_TECH_INDUSTRY_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TECH_INDUSTRY",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_TECH_AGRICULTURE_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TECH_AGRICULTURE",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "THPTQG_INFORMATICS_2025": {
+    "questions": 28,
+    "maxPoints": 10,
+    "durationMinutes": 50,
+    "examKind": "THPTQG",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "INFORMATICS",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VACT_FULL": {
+    "questions": 120,
+    "maxPoints": 1200,
+    "durationMinutes": 150,
+    "examKind": "VACT",
+    "scope": "FULL",
+    "partCode": null,
+    "subjectCode": null,
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SP2E_MATH_2025": {
+    "questions": 22,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "SP2E",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TOAN",
+    "buildMode": "STANDARD",
+    "isDefault": false
+  },
   "QDA_PART_MATH": {
     "questions": 50,
     "maxPoints": 50,
@@ -570,5 +724,137 @@
     "subjectCode": "SU",
     "buildMode": "STANDARD",
     "isDefault": false
+  },
+  "SPT_MATH_2025": {
+    "questions": 22,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TOAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_LY_2025": {
+    "questions": 19,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "LY",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_HOA_2025": {
+    "questions": 26,
+    "maxPoints": 8,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "HOA",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_SINH_2025": {
+    "questions": 19,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SINH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_SU_2025": {
+    "questions": 22,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SU",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_DIA_2025": {
+    "questions": 19,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "DIA",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_ECON_LAW_2025": {
+    "questions": 19,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "ECON_LAW",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_TECH_INDUSTRY_2025": {
+    "questions": 22,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TECH_INDUSTRY",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_TECH_AGRICULTURE_2025": {
+    "questions": 22,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TECH_AGRICULTURE",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_VAN_2025": {
+    "questions": 10,
+    "maxPoints": 3,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "VAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_ANH_2025": {
+    "questions": 32,
+    "maxPoints": 8,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "ANH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "SPT_INFORMATICS_2025": {
+    "questions": 22,
+    "maxPoints": 7,
+    "durationMinutes": null,
+    "examKind": "SPT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "INFORMATICS",
+    "buildMode": "STANDARD",
+    "isDefault": true
   }
 }
