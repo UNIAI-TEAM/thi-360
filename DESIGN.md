@@ -384,7 +384,15 @@ Trình soạn và khung xem nội dung HTML (UNI-2617, mở rộng ở UNI-2638)
 
 #### 5.15.1 Hộp Công thức toán
 
-Ô soạn trực quan đồng bộ hai chiều với ô mã LaTeX, bảng nút theo tab, nhãn Hợp lệ/Lỗi cú pháp, xem trước trong câu, dùng gần đây (bản vẽ `SoanThaoCongThucToan`). Bản tạm hiện tại chỉ có ô LaTeX và chọn Cùng dòng/Khối. Lưu thành `span.math-inline` hoặc `span.math-block`.
+Bản vẽ `SoanThaoCongThucToan`; lưu thành `span.math-inline` hoặc `span.math-block`.
+
+- **Bố cục:** hai cột trên màn rộng (3 : 2, cột phải ngăn bằng viền trái), một cột dưới 1024px; hộp rộng 1000px, toàn màn dưới 640px (`InsertDialogShell`). Cột trái: hàng tab nhóm mẫu (`Tabs` kiểu `content`, tám tab: Thường dùng, Phân số/căn, Mũ/chỉ số, Giới hạn/tích phân, Hệ/ma trận, Hình học/vectơ, Tập hợp/logic, Hy Lạp; tự cuộn ngang khi hẹp), lưới nút mẫu, ô "Soạn trực quan", ô "Mã LaTeX". Cột phải: "Xem trước" kèm nút Trong dòng/Dòng riêng, "Dùng gần đây", dòng ghi chú cuối.
+- **Lưới nút mẫu:** 8 cột ở màn rộng (6 ở màn vừa, 4 ở màn hẹp), nút cao 56px, viền `border`, nền `surface`, rê chuột `subtle` + `border-strong`; mặt nút là chính công thức dựng bằng KaTeX, ô giữ chỗ là ô vuông rỗng; mỗi nút có `aria-label` và tooltip vi/en. Không dùng `SymbolGrid` (nút 40×40 không đủ chỗ cho giới hạn, tích phân, ma trận). Lưới tắt khi ô soạn trực quan chưa tải xong.
+- **Ô soạn trực quan:** `mathlive` (chỉ tải khi mở hộp), cao tối thiểu 150px, chữ 28px, viền `border`, focus `primary-text` + vòng 3px như ô nhập; bàn phím ảo và trình đơn riêng của mathlive tắt (nút mẫu thay bàn phím). Gợi ý phím một dòng dưới ô (Tab, `/`, `^`, `_`); tải lỗi thì ô ẩn lời gợi ý và hiện thông báo, ô mã LaTeX vẫn dùng được.
+- **Ô mã LaTeX:** `Textarea` hai dòng, chữ mono, đồng bộ hai chiều với ô trực quan. Nhãn trạng thái (`StatusChip`) ở góc phải nhãn ô: Hợp lệ (success), Lỗi cú pháp (danger), Còn ô giữ chỗ (warning), trống thì không nhãn. Dưới ô là một dòng chữ `danger` nêu lý do ("Thiếu dấu đóng", "Lệnh không hỗ trợ: \…", "Công thức chưa dựng được", hoặc nhắc điền ô giữ chỗ). Chèn tắt khi lỗi, trống hoặc còn ô giữ chỗ; mở lại để sửa đổi nhãn nút thành "Cập nhật công thức".
+- **Xem trước:** nền `subtle`, bo 12px; đặt công thức vào câu đang soạn, tối đa 80 ký tự chữ mỗi bên điểm chèn; Dòng riêng căn giữa trên một dòng.
+- **Dùng gần đây:** tối đa 8 công thức của người dùng (`localStorage`), nút cao 44px, bấm để chèn vào ô trực quan; không có phiên hoặc lỗi lưu trữ thì mục này không hiện.
+- **Khung "Công thức đang chọn":** ô mã LaTeX sửa trực tiếp (viền `danger` khi không dựng được), nút Sửa mở hộp này, Trong dòng/Dòng riêng (đổi kiểu mà công thức vẫn được chọn, khung không biến mất), Xóa công thức (`danger`) ở mép phải.
 
 #### 5.15.2 Hộp Công thức hóa học
 
