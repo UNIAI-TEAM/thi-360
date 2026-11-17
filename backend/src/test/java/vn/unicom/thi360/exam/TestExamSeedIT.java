@@ -278,19 +278,34 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
         SoftAssertions softly = new SoftAssertions();
-        List<String> valid = List.of("TEST-HSA-01", "TEST-HSA-02", "TEST-HSA-03", "TEST-HSA-04",
-                "TEST-QDA-01", "TEST-BCA-01", "TEST-VACT-01", "TEST-SPT-01", "TEST-SP2E-01",
-                "TEST-SP2E-02", "TEST-SP2E-03", "TEST-THPTQG-01", "TEST-THPTQG-02", "TEST-THPTQG-03");
+        List<String> valid = List.of("TEST-HSA-02", "TEST-HSA-03", "TEST-VACT-01", "TEST-SPT-01",
+                "TEST-SP2E-01", "TEST-SP2E-02", "TEST-SP2E-03", "TEST-THPTQG-01",
+                "TEST-THPTQG-02", "TEST-THPTQG-03");
         for (String code : valid) {
             JsonNode result = check(code);
             softly.assertThat(result.path("status").asText()).as("%s: %s", code, codes(result)).isEqualTo("VALID");
             softly.assertThat(result.path("issueCount").asInt()).as(code).isZero();
         }
 
+        // FU-BE1-5: BE-5 restores VALID for HSA SUBJECT_CHOICE under 2B H3.
+        Set<String> legacyHsaIssues = Set.of("REMAINDER_GROUP_INVALID", "SUBJECT_QUOTA_COUNT_VARIES",
+                "PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE");
+        for (String code : List.of("TEST-HSA-01", "TEST-HSA-04")) {
+            JsonNode result = check(code);
+            softly.assertThat(result.path("status").asText()).as(code).isEqualTo("INVALID");
+            softly.assertThat(codes(result)).as(code).isEqualTo(legacyHsaIssues);
+        }
+        // FU-BE1-6: BE-4a builds codeSource/subjectPool paths and BE-5 removes OPTION_EMPTY.
+        for (String code : List.of("TEST-QDA-01", "TEST-BCA-01")) {
+            JsonNode result = check(code);
+            softly.assertThat(result.path("status").asText()).as(code).isEqualTo("INVALID");
+            softly.assertThat(codes(result)).as(code).isEqualTo(Set.of("OPTION_EMPTY"));
+        }
+
         Map<String, Set<String>> invalid = new LinkedHashMap<>();
         invalid.put("TEST-ERR-01", Set.of("MATRIX_INCOMPLETE"));
-        // Part 2 is 65 instead of 60; the full paper is 105 instead of 100.
-        invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH"));
+        // FU-BE1-6: BE-4a/BE-5 restore the points errors after codeSource paths are supported.
+        invalid.put("TEST-ERR-02", Set.of("OPTION_EMPTY"));
         invalid.put("TEST-ERR-03", Set.of("SET_SHORTAGE"));
         // 40 + 9 = 49 instead of 50; the solver also cannot satisfy the 50-unit matrix.
         invalid.put("TEST-ERR-04", Set.of("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
@@ -298,11 +313,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         // The 35 + 14 quota totals 49 for a 50-question section.
         invalid.put("TEST-ERR-05", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         invalid.put("TEST-ERR-06", Set.of("ANSWER_TYPE_SHORTAGE"));
-        // 6 set children + 11 fixed singles = 17 even when physics receives 16.
-        invalid.put("TEST-ERR-08", Set.of("REMAINDER_GROUP_INVALID", "CELL_SHORTAGE",
-                "PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH"));
-        // 12 + 4 is fixed at 16 but the choice can assign chemistry 17.
-        invalid.put("TEST-ERR-09", Set.of("SUBJECT_QUOTA_COUNT_VARIES", "CELL_SHORTAGE"));
+        // FU-BE1-5: BE-5 replaces these HSA remainder checks with 2B H3 trimming.
+        invalid.put("TEST-ERR-08", legacyHsaIssues);
+        invalid.put("TEST-ERR-09", legacyHsaIssues);
         // 17 + 17 + 17 = 51, not 50. Masking the invalid option also leaves the part empty.
         invalid.put("TEST-ERR-10", Set.of("SUBJECT_CHOICE_COUNTS_INVALID", "PART_EMPTY",
                 "PART_POINTS_MISMATCH", "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH",
@@ -317,7 +330,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         }
         JsonNode narrow = check("TEST-ERR-07");
         softly.assertThat(narrow.path("status").asText()).as("TEST-ERR-07").isEqualTo("INVALID");
-        softly.assertThat(codes(narrow)).as("TEST-ERR-07").isEqualTo(Set.of("CELL_SHORTAGE"));
+        // FU-BE1-5: BE-5 restores the targeted geography shortage after 2B H3 trimming.
+        softly.assertThat(codes(narrow)).as("TEST-ERR-07").isEqualTo(legacyHsaIssues);
         int failures = 0;
         int selections = 0;
         for (JsonNode path : narrow.path("paths")) {
@@ -331,7 +345,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 }
                 if (geography17) failures++;
                 softly.assertThat(selection.path("result").asText()).as(selection.toString())
-                        .isEqualTo(geography17 ? "INVALID" : "VALID");
+                        .isEqualTo("INVALID");
+                softly.assertThat(selection.path("issues").findValuesAsText("code"))
+                        .as(selection.toString()).containsOnlyElementsOf(legacyHsaIssues);
             }
         }
         softly.assertThat(selections).as("TEST-ERR-07 selections").isEqualTo(12);
@@ -351,33 +367,46 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         assertThat(cell.path("required").asInt(-1)).isEqualTo(12);
         assertThat(cell.path("available").asInt(-1)).isEqualTo(4);
 
+        // FU-BE1-5: BE-5 restores the geography-specific selection checks after 2B H3 trimming.
+        // The legacy checker also reports spurious 16-question shortages before the real DIA shortage.
         JsonNode result = check("TEST-ERR-07");
+        Set<String> legacyHsaIssues = Set.of("REMAINDER_GROUP_INVALID", "SUBJECT_QUOTA_COUNT_VARIES",
+                "PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE");
+        assertThat(codes(result)).isEqualTo(legacyHsaIssues);
         JsonNode shortage = result.path("groups").findValues("issues").stream()
                 .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
-                .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText()))
+                .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText())
+                        && "DIA".equals(issue.path("subjectCode").asText())
+                        && issue.path("required").asInt(-1) == 11)
                 .findFirst().orElseThrow();
-        assertThat(shortage.path("subjectCode").asText()).isEqualTo("DIA");
-        assertThat(shortage.path("subjectCount").asInt(-1)).isEqualTo(17);
-        assertThat(shortage.path("required").asInt(-1)).isEqualTo(11);
         assertThat(shortage.path("available").asInt(-1)).isEqualTo(10);
         Set<Set<String>> failed = new java.util.HashSet<>();
         int failedCount = 0;
         for (JsonNode path : result.path("paths")) {
             for (JsonNode selection : path.path("selections")) {
-                if (!"INVALID".equals(selection.path("result").asText())) continue;
-                failedCount++;
+                assertThat(selection.path("result").asText()).isEqualTo("INVALID");
+                assertThat(selection.path("issues").findValuesAsText("code"))
+                        .containsOnlyElementsOf(legacyHsaIssues);
                 JsonNode selectionIssue = selection.path("issues").get(0);
-                assertThat(selectionIssue.path("required").asInt(-1)).isEqualTo(11);
-                assertThat(selectionIssue.path("available").asInt(-1)).isEqualTo(10);
-                Set<String> subjects = new java.util.HashSet<>();
-                for (JsonNode subject : selection.path("subjectCodes")) subjects.add(subject.asText());
-                failed.add(subjects);
+                assertThat(selectionIssue.path("code").asText()).isEqualTo("CELL_SHORTAGE");
+                assertThat(selectionIssue.path("subjectCount").asInt(-1)).isEqualTo(16);
+                assertThat(selectionIssue.path("required").isNull()).isTrue();
+                assertThat(selectionIssue.path("available").isNull()).isTrue();
+                int shortageIndex = -1;
                 int geography = -1;
+                Set<String> subjects = new java.util.HashSet<>();
                 for (int i = 0; i < selection.path("subjectCodes").size(); i++) {
-                    if ("DIA".equals(selection.path("subjectCodes").get(i).asText())) geography = i;
+                    String subject = selection.path("subjectCodes").get(i).asText();
+                    subjects.add(subject);
+                    if (subject.equals(selectionIssue.path("subjectCode").asText())) shortageIndex = i;
+                    if ("DIA".equals(subject)) geography = i;
                 }
-                assertThat(geography).isGreaterThanOrEqualTo(0);
-                assertThat(selection.path("counts").get(geography).asInt()).isEqualTo(17);
+                assertThat(shortageIndex).isGreaterThanOrEqualTo(0);
+                assertThat(selection.path("counts").get(shortageIndex).asInt()).isEqualTo(16);
+                if (geography >= 0 && selection.path("counts").get(geography).asInt() == 17) {
+                    failedCount++;
+                    failed.add(subjects);
+                }
             }
         }
         assertThat(failedCount).isEqualTo(3);
