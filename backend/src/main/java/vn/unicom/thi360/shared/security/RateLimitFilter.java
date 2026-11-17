@@ -41,6 +41,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final SecurityProperties securityProperties;
     private final SecurityErrorWriter errorWriter;
     private final LettuceConnectionFactory lettuceConnectionFactory;
+    private final boolean loginOnly;
 
     private volatile StatefulRedisConnection<String, byte[]> connection;
     private volatile ProxyManager<String> proxyManager;
@@ -49,11 +50,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
             ClientIpResolver clientIpResolver,
             SecurityProperties securityProperties,
             SecurityErrorWriter errorWriter,
-            LettuceConnectionFactory lettuceConnectionFactory) {
+            LettuceConnectionFactory lettuceConnectionFactory, boolean loginOnly) {
         this.clientIpResolver = Objects.requireNonNull(clientIpResolver, "clientIpResolver must not be null");
         this.securityProperties = Objects.requireNonNull(securityProperties, "securityProperties must not be null");
         this.errorWriter = Objects.requireNonNull(errorWriter, "errorWriter must not be null");
         this.lettuceConnectionFactory = Objects.requireNonNull(lettuceConnectionFactory, "lettuceConnectionFactory must not be null");
+        this.loginOnly = loginOnly;
     }
 
     @Override
@@ -61,7 +63,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        return resolvePolicy(extractPath(request)) == null;
+        String path = extractPath(request);
+        return loginOnly ? !LOGIN_PATH.equals(path)
+                : LOGIN_PATH.equals(path) || resolvePolicy(path) == null;
     }
 
     @Override

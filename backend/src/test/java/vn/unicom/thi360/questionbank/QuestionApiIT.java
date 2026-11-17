@@ -49,11 +49,11 @@ class QuestionApiIT extends AbstractIntegrationTest {
     // ---------------------------------------------------------------- quyền & tồn tại
 
     @Test
-    void anonymousReadIsUnauthorizedAndWriteWithoutOriginIsForbidden() throws Exception {
+    void anonymousReadAndWriteWithoutOriginAreUnauthorized() throws Exception {
         mockMvc.perform(get(BASE)).andExpect(status().isUnauthorized());
         mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                         .content(QuestionTestSupport.createSingleChoiceRequest()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -210,6 +210,32 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void resavingSetWithItsOwnChildIdsPreservesChildren() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode saved = read(created);
+        UUID parent = UUID.fromString(saved.at("/summary/id").asText());
+        UUID first = UUID.fromString(saved.at("/body/children/0/id").asText());
+        UUID second = UUID.fromString(saved.at("/body/children/1/id").asText());
+        request.set("body", saved.path("body"));
+        request.put("expectedRevision", currentRevision(parent));
+        mockMvc.perform(put(BASE + "/{id}", parent).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.body.children[0].id").value(first.toString()))
+                .andExpect(jsonPath("$.question.body.children[1].id").value(second.toString()));
+        var childIds = jdbcTemplate.queryForList(
+                "SELECT id FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL ORDER BY position",
+                UUID.class, parent);
+        org.assertj.core.api.Assertions.assertThat(childIds).containsExactly(first, second);
+    }
+
+    @Test
     void unsafeContentRejected422() throws Exception {
         String body = """
                 {"type":"SINGLE_CHOICE",
@@ -325,12 +351,15 @@ class QuestionApiIT extends AbstractIntegrationTest {
     void auditCapturesWorkingMetadataAndFingerprintWithoutHtml() throws Exception {
         UUID tag1 = UUID.randomUUID();
         UUID tag2 = UUID.randomUUID();
+        int nextTagValue = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(MAX(value), 0) + 1 FROM catalog.catalog_item WHERE group_id = ?",
+                Integer.class, QuestionTestSupport.QUESTION_TAG_GROUP_ID);
         for (var entry : java.util.Map.of(tag1, "AUDIT-A", tag2, "AUDIT-B").entrySet()) {
             jdbcTemplate.update("INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value,"
                     + " name_vi, name_en, display_order, status, is_system, depth, path)"
                     + " VALUES (?, ?, ?, ?, ?, 'Audit', 'Audit', 0, 1, false, 1, ?)",
                     entry.getKey(), QuestionTestSupport.QUESTION_TAG_GROUP_ID, entry.getValue(),
-                    entry.getValue().toLowerCase(java.util.Locale.ROOT), entry.getKey().equals(tag1) ? 1 : 2,
+                    entry.getValue().toLowerCase(java.util.Locale.ROOT), nextTagValue++,
                     "/" + entry.getKey() + "/");
         }
         var request = (com.fasterxml.jackson.databind.node.ObjectNode)
