@@ -126,6 +126,36 @@ class QuestionReadinessTests {
     }
 
     @Test
+    void setContentEqualToPassageIsCheckedOnlyAsPassage() {
+        // Trình soạn web gửi content = body.passage cho câu chùm (ED-4 E2E).
+        String passage = "<p>Điền <span class=\"blank\" data-blank=\"1\"></span> và "
+            + "<span class=\"blank\" data-blank=\"2\"></span>.</p>";
+        ReadinessResult ok = QuestionBodyValidator.validateReady(
+            input(QuestionType.QUESTION_SET,
+                setBody(passage, List.of(child("<p>Câu 1</p>"), child("<p>Câu 2</p>"))),
+                passage),
+            FULL, true, null);
+        assertTrue(ok.errors().stream().noneMatch(e -> e.code().startsWith("BLANK_")),
+            () -> "errors: " + ok.errors());
+
+        ReadinessResult mismatch = QuestionBodyValidator.validateReady(
+            input(QuestionType.QUESTION_SET,
+                setBody(passage, List.of(child("<p>Câu 1</p>"))),
+                passage),
+            FULL, true, null);
+        assertTrue(has(mismatch, "BLANK_CHILD_MISMATCH", "body.passage"));
+        assertFalse(mismatch.errors().stream().anyMatch(e -> e.path().equals("content")),
+            () -> "errors: " + mismatch.errors());
+
+        ReadinessResult differing = QuestionBodyValidator.validateReady(
+            input(QuestionType.QUESTION_SET,
+                setBody("<p>Đoạn khác.</p>", List.of(child("<p>Câu 1</p>"))),
+                "<p>Điền <span class=\"blank\" data-blank=\"1\"></span>.</p>"),
+            FULL, true, null);
+        assertTrue(has(differing, "BLANK_OUTSIDE_SET_PASSAGE", "content"));
+    }
+
+    @Test
     void blankCountMismatchInSet() {
         String passage = "<p><span class=\"blank\" data-blank=\"1\"></span>"
             + "<span class=\"blank\" data-blank=\"2\"></span>"
