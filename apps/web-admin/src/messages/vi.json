@@ -5356,7 +5356,24 @@
       },
       "underline-label": {
         "label": "Gạch chân đánh nhãn",
-        "description": "Câu tìm lỗi sai, từ cần xét phát âm hoặc trọng âm"
+        "description": "Câu tìm lỗi sai, từ cần xét phát âm hoặc trọng âm",
+        "dialog": {
+          "allUsed": "Đã dùng hết nhãn A–H.",
+          "apply": "Gạch chân",
+          "labelLegend": "Nhãn",
+          "labelUsed": "{label}, đã dùng ở cụm khác",
+          "nextHint": "Nhãn kế tiếp chưa dùng: {label}",
+          "phrase": "Cụm đang chọn",
+          "phraseEmpty": "Bôi đen một cụm chữ trong đề bài rồi bấm lại.",
+          "phraseMultiBlock": "Chọn cụm trong một đoạn văn.",
+          "relabel": "Đổi nhãn",
+          "remove": "Bỏ gạch chân"
+        },
+        "panel": {
+          "relabel": "Đổi nhãn",
+          "remove": "Bỏ gạch chân",
+          "title": "Cụm đang chọn: nhãn {label}"
+        }
       },
       "word": {
         "label": "Dán từ Word",

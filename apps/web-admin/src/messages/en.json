@@ -5356,7 +5356,24 @@
       },
       "underline-label": {
         "label": "Labeled underline",
-        "description": "Error-spotting questions; pronunciation or stress"
+        "description": "Error-spotting questions; pronunciation or stress",
+        "dialog": {
+          "allUsed": "All labels A–H are in use.",
+          "apply": "Underline",
+          "labelLegend": "Label",
+          "labelUsed": "{label}, used by another phrase",
+          "nextHint": "Next unused label: {label}",
+          "phrase": "Selected phrase",
+          "phraseEmpty": "Select a phrase in the question text first, then press the button again.",
+          "phraseMultiBlock": "Select a phrase inside a single paragraph.",
+          "relabel": "Change label",
+          "remove": "Remove underline"
+        },
+        "panel": {
+          "relabel": "Change label",
+          "remove": "Remove underline",
+          "title": "Selected phrase: label {label}"
+        }
       },
       "word": {
         "label": "Paste from Word",
